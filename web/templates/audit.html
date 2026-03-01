@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Audit Log — TX Wholesale Agency{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800">Audit Log</h1>
+      <p class="text-sm text-slate-500 mt-1">{{ entries | length }} entries{{ ' for agent "' + agent_filter + '"' if agent_filter else '' }}</p>
+    </div>
+  </div>
+
+  <!-- Agent filter -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
+    <form action="/audit" method="get" class="flex items-end gap-3">
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Filter by Agent</label>
+        <input type="text" name="agent" value="{{ agent_filter }}" placeholder="e.g. orchestrator"
+               class="block text-sm border border-slate-300 rounded-md px-3 py-1.5 bg-white text-slate-700
+                      focus:outline-none focus:ring-2 focus:ring-indigo-500 w-52" />
+      </div>
+      <button type="submit"
+              class="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg
+                     hover:bg-indigo-700 transition-colors shadow">
+        Filter
+      </button>
+      {% if agent_filter %}
+      <a href="/audit"
+         class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-slate-300
+                hover:bg-slate-50 transition-colors">
+        Clear
+      </a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Audit table -->
+  {% if entries %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          <th class="px-4 py-3 text-left">Timestamp</th>
+          <th class="px-4 py-3 text-left">Agent</th>
+          <th class="px-4 py-3 text-left">Action</th>
+          <th class="px-4 py-3 text-left">Entity</th>
+          <th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3 text-left">Input</th>
+          <th class="px-4 py-3 text-left">Output</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for e in entries %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-2.5 text-slate-400 text-xs whitespace-nowrap font-mono">
+            {{ e.timestamp | string | truncate(19, True, '') }}
+          </td>
+          <td class="px-4 py-2.5 font-medium text-slate-700">{{ e.agent }}</td>
+          <td class="px-4 py-2.5 text-slate-600 text-xs">{{ e.action }}</td>
+          <td class="px-4 py-2.5 text-slate-400 text-xs font-mono">
+            {% if e.entity_type %}{{ e.entity_type }}{% endif %}
+            {% if e.entity_id %}:{{ e.entity_id[:8] }}…{% endif %}
+          </td>
+          <td class="px-4 py-2.5">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+              {% if e.status == 'success' %}bg-green-100 text-green-700
+              {% elif e.status == 'blocked' %}bg-red-100 text-red-700
+              {% elif e.status == 'flagged' %}bg-amber-100 text-amber-700
+              {% elif e.status == 'escalated' %}bg-orange-100 text-orange-700
+              {% else %}bg-slate-100 text-slate-600{% endif %}">
+              {{ e.status }}
+            </span>
+          </td>
+          <td class="px-4 py-2.5 text-slate-500 text-xs max-w-[160px] truncate" title="{{ e.input_summary or '' }}">
+            {{ e.input_summary or '—' }}
+          </td>
+          <td class="px-4 py-2.5 text-slate-500 text-xs max-w-[160px] truncate" title="{{ e.output_summary or '' }}">
+            {{ e.output_summary or '—' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-12 text-center text-slate-400">
+    No audit entries found{% if agent_filter %} for agent "{{ agent_filter }}"{% endif %}.
+    <a href="/pipeline" class="text-indigo-600 hover:underline ml-1">Run the pipeline</a> to generate activity.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

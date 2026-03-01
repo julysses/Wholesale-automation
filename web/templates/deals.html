@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Deals — TX Wholesale Agency{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-800">Active Deals</h1>
+    <p class="text-sm text-slate-500 mt-1">{{ deals | length }} deal(s) in progress</p>
+  </div>
+
+  {% if deals %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          <th class="px-4 py-3 text-left">Deal ID</th>
+          <th class="px-4 py-3 text-left">Lead ID</th>
+          <th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3 text-left">Contract Price</th>
+          <th class="px-4 py-3 text-left">Assignment Fee</th>
+          <th class="px-4 py-3 text-left">Created</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for deal in deals %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-2.5 font-mono text-xs text-slate-400">{{ deal.id[:8] }}…</td>
+          <td class="px-4 py-2.5 font-mono text-xs text-slate-400">{{ deal.lead_id[:8] }}…</td>
+          <td class="px-4 py-2.5">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+              {% if deal.status == 'under_contract' %}bg-green-100 text-green-700
+              {% elif deal.status == 'pending' %}bg-amber-100 text-amber-700
+              {% elif deal.status == 'assigned' %}bg-indigo-100 text-indigo-700
+              {% else %}bg-slate-100 text-slate-600{% endif %}">
+              {{ deal.status }}
+            </span>
+          </td>
+          <td class="px-4 py-2.5 font-semibold text-slate-700">
+            {{ fmt_currency(deal.contract_price) }}
+          </td>
+          <td class="px-4 py-2.5 font-semibold text-green-600">
+            {{ fmt_currency(deal.assignment_fee) }}
+          </td>
+          <td class="px-4 py-2.5 text-slate-400 text-xs whitespace-nowrap">
+            {{ deal.created_at | string | truncate(10, True, '') }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-12 text-center text-slate-400">
+    No active deals. <a href="/pipeline" class="text-indigo-600 hover:underline">Run the pipeline</a> to generate deals from leads.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

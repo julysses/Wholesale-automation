@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Buyers — TX Wholesale Agency{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-800">Qualified Buyers</h1>
+    <p class="text-sm text-slate-500 mt-1">{{ buyers | length }} active buyer(s) in pool</p>
+  </div>
+
+  {% if buyers %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          <th class="px-4 py-3 text-left">Name</th>
+          <th class="px-4 py-3 text-left">Company</th>
+          <th class="px-4 py-3 text-left">Source</th>
+          <th class="px-4 py-3 text-left">Reliability Score</th>
+          <th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3 text-left">Added</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for buyer in buyers %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-2.5 font-medium text-slate-800">{{ buyer.name }}</td>
+          <td class="px-4 py-2.5 text-slate-500">{{ buyer.company or '—' }}</td>
+          <td class="px-4 py-2.5">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+              {{ buyer.source }}
+            </span>
+          </td>
+          <td class="px-4 py-2.5">
+            <div class="flex items-center gap-2">
+              <div class="flex-1 bg-slate-100 rounded-full h-1.5 w-16">
+                <div class="h-1.5 rounded-full
+                  {% if buyer.reliability_score >= 70 %}bg-green-500
+                  {% elif buyer.reliability_score >= 40 %}bg-amber-500
+                  {% else %}bg-red-500{% endif %}"
+                     style="width: {{ buyer.reliability_score }}%"></div>
+              </div>
+              <span class="text-sm font-semibold
+                {% if buyer.reliability_score >= 70 %}text-green-600
+                {% elif buyer.reliability_score >= 40 %}text-amber-600
+                {% else %}text-red-600{% endif %}">
+                {{ '%.0f' | format(buyer.reliability_score) }}/100
+              </span>
+            </div>
+          </td>
+          <td class="px-4 py-2.5">
+            {% if buyer.disqualified %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Disqualified</span>
+            {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2.5 text-slate-400 text-xs whitespace-nowrap">
+            {{ buyer.created_at | string | truncate(10, True, '') }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-12 text-center text-slate-400">
+    No buyers yet. Buyers are sourced automatically when you run the full pipeline with buyer research requests.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Run Pipeline — TX Wholesale Agency{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-800">Run Pipeline</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Upload a CSV and run the full AI pipeline: ingest → score → underwrite → compliance → outreach drafts → dispo matching.
+    </p>
+  </div>
+
+  <!-- Pipeline form -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
+    <h2 class="text-sm font-semibold text-slate-700 mb-4">Pipeline Input</h2>
+    <form id="pipeline-form" action="/pipeline/run" method="post" enctype="multipart/form-data"
+          class="flex flex-wrap items-end gap-4">
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">CSV File</label>
+        <input type="file" name="file" accept=".csv" required
+               class="block text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3
+                      file:rounded-md file:border file:border-slate-300
+                      file:text-xs file:font-medium file:bg-slate-50 file:text-slate-700
+                      hover:file:bg-slate-100 cursor-pointer" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Data Source</label>
+        <select name="source"
+                class="block text-sm border border-slate-300 rounded-md px-3 py-1.5
+                       bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="manual">Manual</option>
+          <option value="tax_delinquent">Tax Delinquent</option>
+          <option value="probate">Probate</option>
+          <option value="propstream">PropStream</option>
+          <option value="batchleads">BatchLeads</option>
+        </select>
+      </div>
+      <button type="submit"
+              class="px-5 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg
+                     hover:bg-slate-700 transition-colors shadow">
+        ⚡ Run Pipeline
+      </button>
+    </form>
+    <p class="mt-3 text-xs text-slate-400">
+      Pipeline calls Claude AI — allow 30–90 seconds depending on lead count.
+    </p>
+  </div>
+
+  <!-- Error -->
+  {% if error %}
+  <div class="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+    ✗ Pipeline failed: {{ error }}
+  </div>
+  {% endif %}
+
+  <!-- Results -->
+  {% if state %}
+  <!-- Summary cards -->
+  <div class="mb-6">
+    <h2 class="text-base font-semibold text-slate-700 mb-3">Pipeline Results</h2>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+      {% set summary = [
+        (state.raw_leads | length,            'Ingested',         'bg-slate-100',   'text-slate-700'),
+        (state.scored_leads | length,         'Passed Scoring',   'bg-indigo-50',   'text-indigo-700'),
+        (state.underwriting_reports | length, 'Viable Deals',     'bg-amber-50',    'text-amber-700'),
+        (state.outreach_messages | length,    'Outreach Drafted', 'bg-green-50',    'text-green-700'),
+        (state.dispo_results | length,        'Dispo Matches',    'bg-purple-50',   'text-purple-700'),
+      ] %}
+      {% for count, label, bg, fg in summary %}
+      <div class="{{ bg }} rounded-xl px-4 py-4 text-center">
+        <div class="text-2xl font-extrabold {{ fg }}">{{ count }}</div>
+        <div class="text-xs text-slate-500 mt-0.5 font-medium">{{ label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Outreach drafts -->
+  {% if state.outreach_messages %}
+  <div class="mb-8">
+    <h3 class="text-sm font-semibold text-slate-700 mb-3">Outreach Drafts (Compliance-Cleared)</h3>
+    <div class="space-y-3">
+      {% for msg in state.outreach_messages %}
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+            {% if msg.channel.value == 'sms' %}bg-green-100 text-green-700
+            {% else %}bg-blue-100 text-blue-700{% endif %}">
+            {{ msg.channel.value | upper }}
+          </span>
+          <span class="text-xs text-slate-400 font-mono">lead:{{ msg.lead_id | string | truncate(8, True, '') }}</span>
+          {% if msg.is_followup %}
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Follow-up</span>
+          {% endif %}
+        </div>
+        <pre class="text-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed bg-slate-50 rounded-lg p-3 border border-slate-100">{{ msg.content }}</pre>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Dispo matches -->
+  {% if state.dispo_results %}
+  <div class="mb-8">
+    <h3 class="text-sm font-semibold text-slate-700 mb-3">Disposition Matches</h3>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <th class="px-4 py-3 text-left">Property</th>
+            <th class="px-4 py-3 text-left">Top Buyer</th>
+            <th class="px-4 py-3 text-left">Score</th>
+            <th class="px-4 py-3 text-left">Recommended</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for result in state.dispo_results %}
+          {% set winner = result.top_matches | selectattr('recommended') | first %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-2.5 text-slate-700 font-medium">{{ truncate(result.lead_address, 40) }}</td>
+            <td class="px-4 py-2.5 text-slate-600">
+              {{ winner.buyer_name if winner else (result.top_matches[0].buyer_name if result.top_matches else '—') }}
+            </td>
+            <td class="px-4 py-2.5 font-semibold text-indigo-600">
+              {{ '%.0f' | format(winner.combined_score) if winner else '—' }}
+            </td>
+            <td class="px-4 py-2.5">
+              {% if winner %}
+              <span class="text-green-600 font-semibold">✓ Yes</span>
+              {% else %}
+              <span class="text-slate-400">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Link to CRM views -->
+  <div class="flex gap-3">
+    <a href="/leads"  class="text-sm text-indigo-600 hover:underline font-medium">View all leads →</a>
+    <a href="/deals"  class="text-sm text-indigo-600 hover:underline font-medium">View deals →</a>
+    <a href="/audit"  class="text-sm text-indigo-600 hover:underline font-medium">View audit log →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

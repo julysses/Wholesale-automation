@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — TX Wholesale Agency{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl">
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-slate-800">Dashboard</h1>
+    <p class="text-sm text-slate-500 mt-1">Texas Wholesale Agency — AI pipeline overview</p>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+    {% set cards = [
+      (lead_count,  'Total Leads',       'bg-indigo-50',  'text-indigo-700',  'border-indigo-200', '/leads'),
+      (deal_count,  'Active Deals',      'bg-amber-50',   'text-amber-700',   'border-amber-200',  '/deals'),
+      (buyer_count, 'Qualified Buyers',  'bg-green-50',   'text-green-700',   'border-green-200',  '/buyers'),
+    ] %}
+    {% for count, label, bg, fg, border, href in cards %}
+    <a href="{{ href }}"
+       class="flex flex-col gap-1 rounded-xl border {{ border }} {{ bg }} px-6 py-5
+              shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+      <span class="text-3xl font-extrabold {{ fg }}">{{ count }}</span>
+      <span class="text-sm font-medium text-slate-600">{{ label }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Quick actions -->
+  <div class="mb-10 flex gap-3">
+    <a href="/leads"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold
+              rounded-lg shadow hover:bg-indigo-700 transition-colors">
+      📋 Ingest Leads
+    </a>
+    <a href="/pipeline"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 text-white text-sm font-semibold
+              rounded-lg shadow hover:bg-slate-700 transition-colors">
+      ⚡ Run Full Pipeline
+    </a>
+    <a href="/buyers"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-semibold
+              rounded-lg shadow border border-slate-200 hover:bg-slate-50 transition-colors">
+      👥 View Buyers
+    </a>
+  </div>
+
+  <!-- Recent audit log -->
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-base font-semibold text-slate-700">Recent Activity</h2>
+      <a href="/audit" class="text-xs text-indigo-600 hover:underline font-medium">View all →</a>
+    </div>
+
+    {% if recent_audit %}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <th class="px-4 py-3 text-left">Time</th>
+            <th class="px-4 py-3 text-left">Agent</th>
+            <th class="px-4 py-3 text-left">Action</th>
+            <th class="px-4 py-3 text-left">Status</th>
+            <th class="px-4 py-3 text-left">Summary</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for e in recent_audit %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-2.5 text-slate-400 text-xs whitespace-nowrap">
+              {{ e.timestamp | string | truncate(16, True, '') }}
+            </td>
+            <td class="px-4 py-2.5 font-medium text-slate-700">{{ e.agent }}</td>
+            <td class="px-4 py-2.5 text-slate-500">{{ e.action }}</td>
+            <td class="px-4 py-2.5">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                {% if e.status == 'success' %}bg-green-100 text-green-700
+                {% elif e.status == 'blocked' %}bg-red-100 text-red-700
+                {% elif e.status == 'flagged' %}bg-amber-100 text-amber-700
+                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                {{ e.status }}
+              </span>
+            </td>
+            <td class="px-4 py-2.5 text-slate-500 text-xs max-w-xs truncate">
+              {{ e.output_summary or e.input_summary or '—' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-10 text-center text-slate-400">
+      No activity yet. <a href="/pipeline" class="text-indigo-600 hover:underline">Run the pipeline</a> to get started.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
