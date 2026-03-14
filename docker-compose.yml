@@ -1,0 +1,29 @@
+# WholesaleOS — one-command deployment
+# Usage:
+#   cp .env.example .env && nano .env   # fill in your API keys
+#   docker compose up --build -d
+#   open http://localhost:8000
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        # Vite bakes these into the React bundle at build time.
+        # Set them in your .env file — docker compose reads it automatically.
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file: .env
+    volumes:
+      # Persist SQLite database and logs outside the container
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Dev / IDE
+.git/
+.gitignore
+*.md
+.env
+.env.*
+!.env.example
+
+# Test / CI
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# DB and logs (mounted as volumes)
+*.db
+*.sqlite
+logs/
+data/
+
+# macOS
+.DS_Store

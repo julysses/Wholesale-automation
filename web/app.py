@@ -1,14 +1,18 @@
 """
-Web interface for the TX Wholesale Agency.
+TX Wholesale Agency — FastAPI application.
 
 Development (two terminals):
-    uvicorn web.app:app --reload --port 8000   # FastAPI backend
-    cd frontend && npm run dev                  # React dev server (proxies /api to :8000)
+    uvicorn web.app:app --reload --port 8000   # Python backend
+    cd frontend && npm run dev                  # React dev server → proxies /api to :8000
 
-Production (single server):
-    cd frontend && npm run build               # builds to frontend/dist/
+Production (single process):
+    cd frontend && npm run build               # outputs to frontend/dist/
     uvicorn web.app:app --host 0.0.0.0 --port 8000
-    then open http://localhost:8000
+    # or: docker compose up
+
+Environment variables (see .env.example):
+    ANTHROPIC_API_KEY, DATABASE_URL, CORS_ORIGINS,
+    VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY  ← used by /api/config
 """
 
 from __future__ import annotations
@@ -16,36 +20,62 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import os
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-# ── Ensure project root is importable ─────────────────────────────────────────
+# ── Path setup ─────────────────────────────────────────────────────────────────
 ROOT = Path(__file__).parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from orchestrator import MasterOrchestrator          # noqa: E402
-from schemas.compliance import AuditLogEntry         # noqa: E402
-from schemas.property import DataSource              # noqa: E402
-from tools.crm import CRMStore                       # noqa: E402
-
-from web.api import router as ai_router  # noqa: E402
+from orchestrator import MasterOrchestrator       # noqa: E402
+from schemas.compliance import AuditLogEntry      # noqa: E402
+from schemas.property import DataSource           # noqa: E402
+from tools.crm import CRMStore                    # noqa: E402
+from web.api import router as ai_router           # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="TX Wholesale Agency — WholesaleOS", docs_url=None, redoc_url=None)
+# ── App ────────────────────────────────────────────────────────────────────────
+app = FastAPI(
+    title="WholesaleOS — TX Wholesale Agency",
+    version="1.0.0",
+    docs_url=None,
+    redoc_url=None,
+)
 
-# ── Mount AI REST endpoints (used by React frontend) ──────────────────────────
-app.include_router(ai_router)
+# ── CORS ───────────────────────────────────────────────────────────────────────
+_cors_origins = [
+    o.strip()
+    for o in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://localhost:3000,http://localhost:8000",
+    ).split(",")
+    if o.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ── AI endpoints (used by React/WholesaleOS) ───────────────────────────────────
+app.include_router(ai_router)  # POST /api/ai/*
+
+# ── Jinja2 templates (legacy pipeline UI at /v1/*) ────────────────────────────
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
-# ── Shared CRM singleton ───────────────────────────────────────────────────────
+# ── CRM singleton ──────────────────────────────────────────────────────────────
 _crm: Optional[CRMStore] = None
 
 
@@ -56,8 +86,7 @@ def get_crm() -> CRMStore:
     return _crm
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
+# ── Helpers ────────────────────────────────────────────────────────────────────
 def _source_enum(source: str) -> DataSource:
     return {
         "tax_delinquent_csv": DataSource.TAX_DELINQUENT,
@@ -77,46 +106,52 @@ def _truncate(s: str, n: int = 35) -> str:
     return (s[:n] + "…") if s and len(s) > n else (s or "")
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# ── System API ─────────────────────────────────────────────────────────────────
 
-@app.get("/health")
-def health_check():
-    """Health-check endpoint for Railway / load-balancer probes."""
-    return {"status": "ok"}
+@app.get("/api/health", tags=["system"])
+def health_check() -> dict:
+    """Health-check for load-balancers, Docker HEALTHCHECK, and Railway/Render probes."""
+    return {"status": "ok", "service": "wholesaleos"}
 
 
-@app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request) -> HTMLResponse:
+@app.get("/api/config", tags=["system"])
+def frontend_config() -> dict:
+    """
+    Serves Supabase connection config to the React app at runtime.
+    Eliminates the need to bake VITE_ vars into the frontend build image.
+    """
+    return {
+        "supabase_url":      os.getenv("VITE_SUPABASE_URL", ""),
+        "supabase_anon_key": os.getenv("VITE_SUPABASE_ANON_KEY", ""),
+    }
+
+
+# ── Legacy pipeline UI (Jinja2 at /v1/*) ──────────────────────────────────────
+# The React/WholesaleOS frontend is the primary UI (served at /).
+# These routes provide direct pipeline access without a frontend build.
+
+@app.get("/v1", response_class=HTMLResponse)
+@app.get("/v1/", response_class=HTMLResponse)
+def v1_dashboard(request: Request) -> HTMLResponse:
     crm = get_crm()
-    leads   = crm.get_all_leads()
-    deals   = crm.get_active_deals()
-    buyers  = crm.get_active_buyers()
-    audit   = crm.get_audit_log(limit=8)
     return templates.TemplateResponse("dashboard.html", {
-        "request":     request,
-        "active":      "dashboard",
-        "lead_count":  len(leads),
-        "deal_count":  len(deals),
-        "buyer_count": len(buyers),
-        "recent_audit": audit,
+        "request": request, "active": "dashboard",
+        "lead_count":   len(crm.get_all_leads()),
+        "deal_count":   len(crm.get_active_deals()),
+        "buyer_count":  len(crm.get_active_buyers()),
+        "recent_audit": crm.get_audit_log(limit=8),
     })
 
 
-# ── Leads ─────────────────────────────────────────────────────────────────────
-
-@app.get("/leads", response_class=HTMLResponse)
-def leads_page(request: Request) -> HTMLResponse:
-    crm = get_crm()
-    leads = crm.get_all_leads()
+@app.get("/v1/leads", response_class=HTMLResponse)
+def v1_leads(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("leads.html", {
-        "request": request,
-        "active":  "leads",
-        "leads":   leads,
+        "request": request, "active": "leads", "leads": get_crm().get_all_leads(),
     })
 
 
-@app.post("/leads/ingest", response_class=HTMLResponse)
-def ingest_leads(
+@app.post("/v1/leads/ingest", response_class=HTMLResponse)
+def v1_ingest_leads(
     request: Request,
     file:   UploadFile = File(...),
     source: str        = Form("manual"),
@@ -124,47 +159,31 @@ def ingest_leads(
     crm = get_crm()
     message: Optional[str] = None
     error:   Optional[str] = None
-    ingested = 0
-
     try:
-        content = file.file.read().decode("utf-8")
-        reader  = csv.DictReader(io.StringIO(content))
-        records = list(reader)
+        records = list(csv.DictReader(io.StringIO(file.file.read().decode("utf-8"))))
         if not records:
             error = "CSV file is empty or has no data rows."
         else:
-            orch        = MasterOrchestrator()
-            source_enum = _source_enum(source)
-            leads_out   = orch.ingest_leads(records, source_enum)
+            leads_out = MasterOrchestrator().ingest_leads(records, _source_enum(source))
             for lead in leads_out:
                 crm.save_lead(lead)
-            ingested = len(leads_out)
-            message  = f"Ingested {ingested} lead(s) from {file.filename}"
+            message = f"Ingested {len(leads_out)} lead(s) from {file.filename}"
     except Exception as exc:
         logger.exception("Ingest failed")
         error = str(exc)
-
     return templates.TemplateResponse("leads.html", {
-        "request": request,
-        "active":  "leads",
-        "leads":   crm.get_all_leads(),
-        "message": message,
-        "error":   error,
+        "request": request, "active": "leads",
+        "leads": crm.get_all_leads(), "message": message, "error": error,
     })
 
 
-# ── Pipeline ──────────────────────────────────────────────────────────────────
-
-@app.get("/pipeline", response_class=HTMLResponse)
-def pipeline_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("pipeline.html", {
-        "request": request,
-        "active":  "pipeline",
-    })
+@app.get("/v1/pipeline", response_class=HTMLResponse)
+def v1_pipeline(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse("pipeline.html", {"request": request, "active": "pipeline"})
 
 
-@app.post("/pipeline/run", response_class=HTMLResponse)
-def run_pipeline(
+@app.post("/v1/pipeline/run", response_class=HTMLResponse)
+def v1_run_pipeline(
     request: Request,
     file:   UploadFile = File(...),
     source: str        = Form("manual"),
@@ -172,90 +191,58 @@ def run_pipeline(
     crm = get_crm()
     state = None
     error: Optional[str] = None
-
     try:
-        content = file.file.read().decode("utf-8")
-        reader  = csv.DictReader(io.StringIO(content))
-        records = list(reader)
+        records = list(csv.DictReader(io.StringIO(file.file.read().decode("utf-8"))))
         if not records:
             error = "CSV file is empty."
         else:
-            orch        = MasterOrchestrator()
-            source_enum = _source_enum(source)
-            state       = orch.run_full_pipeline(records, source_enum)
-
-            for lead in state.raw_leads:
-                crm.save_lead(lead)
-            for deal in state.active_deals:
-                crm.save_deal(deal)
+            orch  = MasterOrchestrator()
+            state = orch.run_full_pipeline(records, _source_enum(source))
+            for lead in state.raw_leads:   crm.save_lead(lead)
+            for deal in state.active_deals: crm.save_deal(deal)
             for entry in orch.export_audit_log():
                 crm.save_audit_entry(AuditLogEntry(**entry))
     except Exception as exc:
         logger.exception("Pipeline run failed")
         error = str(exc)
-
     return templates.TemplateResponse("pipeline.html", {
-        "request":      request,
-        "active":       "pipeline",
-        "state":        state,
-        "error":        error,
-        "fmt_currency": _fmt_currency,
-        "truncate":     _truncate,
+        "request": request, "active": "pipeline",
+        "state": state, "error": error,
+        "fmt_currency": _fmt_currency, "truncate": _truncate,
     })
 
 
-# ── Deals ─────────────────────────────────────────────────────────────────────
-
-@app.get("/deals", response_class=HTMLResponse)
-def deals_page(request: Request) -> HTMLResponse:
-    crm   = get_crm()
-    deals = crm.get_active_deals()
+@app.get("/v1/deals", response_class=HTMLResponse)
+def v1_deals(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("deals.html", {
-        "request":      request,
-        "active":       "deals",
-        "deals":        deals,
-        "fmt_currency": _fmt_currency,
+        "request": request, "active": "deals",
+        "deals": get_crm().get_active_deals(), "fmt_currency": _fmt_currency,
     })
 
 
-# ── Buyers ────────────────────────────────────────────────────────────────────
-
-@app.get("/buyers", response_class=HTMLResponse)
-def buyers_page(request: Request) -> HTMLResponse:
-    crm    = get_crm()
-    buyers = crm.get_active_buyers()
+@app.get("/v1/buyers", response_class=HTMLResponse)
+def v1_buyers(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("buyers.html", {
-        "request": request,
-        "active":  "buyers",
-        "buyers":  buyers,
+        "request": request, "active": "buyers", "buyers": get_crm().get_active_buyers(),
     })
 
 
-# ── Audit Log ─────────────────────────────────────────────────────────────────
-
-@app.get("/audit", response_class=HTMLResponse)
-def audit_page(request: Request, agent: str = "") -> HTMLResponse:
-    crm     = get_crm()
-    entries = crm.get_audit_log(agent=agent or None, limit=200)
+@app.get("/v1/audit", response_class=HTMLResponse)
+def v1_audit(request: Request, agent: str = "") -> HTMLResponse:
     return templates.TemplateResponse("audit.html", {
-        "request":      request,
-        "active":       "audit",
-        "entries":      entries,
+        "request": request, "active": "audit",
+        "entries": get_crm().get_audit_log(agent=agent or None, limit=200),
         "agent_filter": agent,
     })
 
 
 # ── Serve React frontend (WholesaleOS) ────────────────────────────────────────
-# After `cd frontend && npm run build`, the compiled app lives in frontend/dist/.
-# FastAPI serves it as static files at /app, falling back to index.html for
-# client-side React Router routes.
+# MUST be registered last — acts as catch-all for all unmatched paths.
+# html=True means any unknown path returns index.html, letting React Router
+# handle client-side navigation (/leads, /pipeline, /buyers, etc.).
 _frontend_dist = ROOT / "frontend" / "dist"
 if _frontend_dist.exists():
-    app.mount(
-        "/app",
-        StaticFiles(directory=str(_frontend_dist), html=True),
-        name="wholesaleos",
-    )
-    logger.info(f"[WholesaleOS] Serving React app from {_frontend_dist} at /app")
+    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="wholesaleos")
+    logger.info(f"[WholesaleOS] Serving React build from {_frontend_dist}")
 else:
-    logger.info("[WholesaleOS] React build not found. Run: cd frontend && npm run build")
+    logger.info("[WholesaleOS] No React build. Run:  cd frontend && npm install && npm run build")
