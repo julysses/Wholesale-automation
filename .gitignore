@@ -10,3 +10,5 @@ logs/*.log
 .mypy_cache/
 dist/
 build/
+.nixpacks/
+.railway/

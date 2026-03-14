@@ -27,6 +27,7 @@ from schemas.property import DataSource
 from tools.crm import CRMStore
 from tools.data_providers import DataProviderFactory
 
+Path("logs").mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",

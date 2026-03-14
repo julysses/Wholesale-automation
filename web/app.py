@@ -68,6 +68,12 @@ def _truncate(s: str, n: int = 35) -> str:
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+@app.get("/health")
+def health_check():
+    """Health-check endpoint for Railway / load-balancer probes."""
+    return {"status": "ok"}
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request) -> HTMLResponse:
     crm = get_crm()
