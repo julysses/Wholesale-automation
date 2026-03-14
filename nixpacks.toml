@@ -1,0 +1,27 @@
+# Railway deployment — Nixpacks build config
+# https://nixpacks.com/docs/configuration/file
+#
+# Setup in Railway:
+#   1. New Project → Deploy from GitHub repo
+#   2. Add environment variables (Settings → Variables):
+#        ANTHROPIC_API_KEY, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+#        DATABASE_URL (add a Railway Postgres plugin → copy the URL)
+#        CORS_ORIGINS=https://your-railway-domain.up.railway.app
+#   3. Railway auto-detects this file and runs the build below.
+
+[phases.setup]
+nixPkgs = ["python311", "nodejs_20", "nodePackages.npm"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "cd frontend && npm install --prefer-offline"
+]
+
+[phases.build]
+cmds = [
+  "cd frontend && npm run build"
+]
+
+[start]
+cmd = "uvicorn web.app:app --host 0.0.0.0 --port $PORT"

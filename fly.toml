@@ -1,0 +1,54 @@
+# Fly.io deployment config
+# https://fly.io/docs/reference/configuration/
+#
+# Setup:
+#   1. Install flyctl: curl -L https://fly.io/install.sh | sh
+#   2. fly auth login
+#   3. fly launch --no-deploy          # creates the app, skips first deploy
+#   4. Set secrets:
+#        fly secrets set ANTHROPIC_API_KEY=sk-ant-...
+#        fly secrets set VITE_SUPABASE_URL=https://your-project.supabase.co
+#        fly secrets set VITE_SUPABASE_ANON_KEY=your-anon-key
+#   5. fly deploy                      # builds Dockerfile and deploys
+
+app = "wholesaleos"
+primary_region = "dfw"               # Dallas — closest to Texas HQ
+
+[build]
+  # Uses the multi-stage Dockerfile in the project root.
+  # Pass Supabase build args so Vite can bake them into the React bundle.
+  [build.args]
+    VITE_SUPABASE_URL    = ""        # overridden by fly secrets
+    VITE_SUPABASE_ANON_KEY = ""
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port       = 8080
+  force_https         = true
+  auto_stop_machines  = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type       = "requests"
+    hard_limit = 200
+    soft_limit = 150
+
+[[http_service.checks]]
+  grace_period = "15s"
+  interval     = "30s"
+  method       = "GET"
+  path         = "/api/health"
+  timeout      = "10s"
+
+[mounts]
+  # Persist SQLite DB across deploys. Remove if using Postgres.
+  source      = "wholesaleos_data"
+  destination = "/app/data"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

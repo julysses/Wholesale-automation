@@ -1,0 +1,38 @@
+# Render deployment — Infrastructure as Code
+# https://render.com/docs/blueprint-spec
+#
+# Setup:
+#   1. Push this repo to GitHub
+#   2. Render dashboard → New → Blueprint → connect your repo
+#   3. Set secret env vars in Render dashboard (not here):
+#        ANTHROPIC_API_KEY
+#        VITE_SUPABASE_URL
+#        VITE_SUPABASE_ANON_KEY
+#   4. Render will provision the Postgres DB and web service automatically.
+
+services:
+  - type: web
+    name: wholesaleos
+    runtime: python
+    region: oregon
+    plan: starter           # upgrade to standard for production
+    buildCommand: "./build.sh"
+    startCommand: "uvicorn web.app:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: wholesaleos-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: "https://wholesaleos.onrender.com"
+      # Set these as secret env vars in the Render dashboard:
+      # ANTHROPIC_API_KEY, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+
+databases:
+  - name: wholesaleos-db
+    databaseName: wholesale_agency
+    plan: starter           # free tier available
+    region: oregon
