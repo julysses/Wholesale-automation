@@ -1,8 +1,13 @@
 """
 Web interface for the TX Wholesale Agency.
 
-Run from the project root:
-    uvicorn web.app:app --reload --port 8000
+Development (two terminals):
+    uvicorn web.app:app --reload --port 8000   # FastAPI backend
+    cd frontend && npm run dev                  # React dev server (proxies /api to :8000)
+
+Production (single server):
+    cd frontend && npm run build               # builds to frontend/dist/
+    uvicorn web.app:app --host 0.0.0.0 --port 8000
     then open http://localhost:8000
 """
 
@@ -17,6 +22,7 @@ from typing import Any, Optional
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 # ── Ensure project root is importable ─────────────────────────────────────────
@@ -29,9 +35,14 @@ from schemas.compliance import AuditLogEntry         # noqa: E402
 from schemas.property import DataSource              # noqa: E402
 from tools.crm import CRMStore                       # noqa: E402
 
+from web.api import router as ai_router  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="TX Wholesale Agency", docs_url=None, redoc_url=None)
+app = FastAPI(title="TX Wholesale Agency — WholesaleOS", docs_url=None, redoc_url=None)
+
+# ── Mount AI REST endpoints (used by React frontend) ──────────────────────────
+app.include_router(ai_router)
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 # ── Shared CRM singleton ───────────────────────────────────────────────────────
@@ -232,3 +243,19 @@ def audit_page(request: Request, agent: str = "") -> HTMLResponse:
         "entries":      entries,
         "agent_filter": agent,
     })
+
+
+# ── Serve React frontend (WholesaleOS) ────────────────────────────────────────
+# After `cd frontend && npm run build`, the compiled app lives in frontend/dist/.
+# FastAPI serves it as static files at /app, falling back to index.html for
+# client-side React Router routes.
+_frontend_dist = ROOT / "frontend" / "dist"
+if _frontend_dist.exists():
+    app.mount(
+        "/app",
+        StaticFiles(directory=str(_frontend_dist), html=True),
+        name="wholesaleos",
+    )
+    logger.info(f"[WholesaleOS] Serving React app from {_frontend_dist} at /app")
+else:
+    logger.info("[WholesaleOS] React build not found. Run: cd frontend && npm run build")
