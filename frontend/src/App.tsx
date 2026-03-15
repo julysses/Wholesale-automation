@@ -4,7 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { Layout } from '@/components/layout/Layout';
+
+// Auth pages (no Layout wrapper)
 import { Login } from '@/pages/Login';
+import { Register } from '@/pages/Register';
+
+// Main app pages
 import { Dashboard } from '@/pages/Dashboard';
 import { Leads } from '@/pages/Leads';
 import { Pipeline } from '@/pages/Pipeline';
@@ -13,6 +18,10 @@ import { Buyers } from '@/pages/Buyers';
 import { AIAgents } from '@/pages/AIAgents';
 import { Tasks } from '@/pages/Tasks';
 import { Reports } from '@/pages/Reports';
+import { SetupWizard } from '@/pages/SetupWizard';
+
+// Admin pages
+import { AdminUsers } from '@/pages/admin/Users';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +42,7 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Loading state
   if (session === undefined) {
     return (
       <div className="min-h-screen bg-[#F2F4F6] flex items-center justify-center">
@@ -46,22 +56,33 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {!session ? (
+            // ── Unauthenticated routes ────────────────────────────────────────
             <>
-              <Route path="/login" element={<Login />} />
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              <Route path="/login"    element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="*"         element={<Navigate to="/login" replace />} />
             </>
           ) : (
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/leads" element={<Leads />} />
-              <Route path="/pipeline" element={<Pipeline />} />
-              <Route path="/analyzer" element={<DealAnalyzer />} />
-              <Route path="/buyers" element={<Buyers />} />
-              <Route path="/ai-agents" element={<AIAgents />} />
-              <Route path="/tasks" element={<Tasks />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
+            // ── Authenticated routes ──────────────────────────────────────────
+            <>
+              {/* Setup wizard — full-screen, no layout wrapper */}
+              <Route path="/setup" element={<SetupWizard />} />
+
+              {/* Main app with shared Layout (sidebar + topbar) */}
+              <Route element={<Layout />}>
+                <Route path="/"             element={<Dashboard />} />
+                <Route path="/leads"        element={<Leads />} />
+                <Route path="/pipeline"     element={<Pipeline />} />
+                <Route path="/analyzer"     element={<DealAnalyzer />} />
+                <Route path="/buyers"       element={<Buyers />} />
+                <Route path="/ai-agents"    element={<AIAgents />} />
+                <Route path="/tasks"        element={<Tasks />} />
+                <Route path="/reports"      element={<Reports />} />
+                {/* Admin routes — access enforced inside the page component */}
+                <Route path="/admin/users"  element={<AdminUsers />} />
+                <Route path="*"             element={<Navigate to="/" replace />} />
+              </Route>
+            </>
           )}
         </Routes>
       </BrowserRouter>

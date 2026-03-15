@@ -1,34 +1,52 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/useUIStore';
+import { useProfile } from '@/hooks/useProfile';
 import {
-  LayoutDashboard,
-  Users,
-  GitBranch,
-  Calculator,
-  UserCheck,
-  Bot,
-  CheckSquare,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-  Building2,
+  LayoutDashboard, Users, GitBranch, Calculator, UserCheck,
+  Bot, CheckSquare, BarChart3, ChevronLeft, ChevronRight,
+  Building2, ShieldCheck, Settings, Zap
 } from 'lucide-react';
 
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/leads', label: 'Leads', icon: Users },
-  { path: '/pipeline', label: 'Pipeline', icon: GitBranch },
-  { path: '/analyzer', label: 'Deal Analyzer', icon: Calculator },
-  { path: '/buyers', label: 'Buyers', icon: UserCheck },
-  { path: '/ai-agents', label: 'AI Agents', icon: Bot },
-  { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
+const mainNav = [
+  { path: '/',          label: 'Dashboard',     icon: LayoutDashboard },
+  { path: '/leads',     label: 'Leads',         icon: Users },
+  { path: '/pipeline',  label: 'Pipeline',      icon: GitBranch },
+  { path: '/analyzer',  label: 'Deal Analyzer', icon: Calculator },
+  { path: '/buyers',    label: 'Buyers',        icon: UserCheck },
+  { path: '/ai-agents', label: 'AI Agents',     icon: Bot },
+  { path: '/tasks',     label: 'Tasks',         icon: CheckSquare },
+  { path: '/reports',   label: 'Reports',       icon: BarChart3 },
+];
+
+const adminNav = [
+  { path: '/admin/users',  label: 'Manage Users', icon: ShieldCheck },
+  { path: '/setup',        label: 'Setup Wizard', icon: Zap },
 ];
 
 export function Sidebar() {
   const location = useLocation();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const { isAdmin } = useProfile();
+
+  const NavLink = ({ path, label, icon: Icon }: { path: string; label: string; icon: React.ElementType }) => {
+    const active = location.pathname === path;
+    return (
+      <Link
+        to={path}
+        title={sidebarCollapsed ? label : undefined}
+        className={cn(
+          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+          active
+            ? 'bg-[#E8720C] text-white'
+            : 'text-white/70 hover:bg-white/10 hover:text-white'
+        )}
+      >
+        <Icon className="h-5 w-5 shrink-0" />
+        {!sidebarCollapsed && <span>{label}</span>}
+      </Link>
+    );
+  };
 
   return (
     <aside
@@ -45,27 +63,20 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Nav */}
+      {/* Main nav */}
       <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
-        {navItems.map(({ path, label, icon: Icon }) => {
-          const active = location.pathname === path;
-          return (
-            <Link
-              key={path}
-              to={path}
-              title={sidebarCollapsed ? label : undefined}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                active
-                  ? 'bg-[#E8720C] text-white'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
-              )}
-            >
-              <Icon className="h-5 w-5 shrink-0" />
-              {!sidebarCollapsed && <span>{label}</span>}
-            </Link>
-          );
-        })}
+        {mainNav.map((item) => <NavLink key={item.path} {...item} />)}
+
+        {/* Admin section — only visible to admin users */}
+        {isAdmin && (
+          <>
+            <div className={cn('mt-4 mb-1 px-3', sidebarCollapsed && 'hidden')}>
+              <span className="text-xs text-white/30 uppercase tracking-widest font-semibold">Admin</span>
+            </div>
+            {!sidebarCollapsed && <div className="border-t border-white/10 my-1" />}
+            {adminNav.map((item) => <NavLink key={item.path} {...item} />)}
+          </>
+        )}
       </nav>
 
       {/* Collapse button */}
@@ -74,11 +85,7 @@ export function Sidebar() {
           onClick={toggleSidebar}
           className="w-full flex items-center justify-center p-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
         >
-          {sidebarCollapsed ? (
-            <ChevronRight className="h-5 w-5" />
-          ) : (
-            <ChevronLeft className="h-5 w-5" />
-          )}
+          {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
       </div>
     </aside>
