@@ -41,6 +41,7 @@ from schemas.compliance import AuditLogEntry      # noqa: E402
 from schemas.property import DataSource           # noqa: E402
 from tools.crm import CRMStore                    # noqa: E402
 from web.api import router as ai_router           # noqa: E402
+from web.api.webhooks import router as webhook_router  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,8 @@ app.add_middleware(
 )
 
 # ── AI endpoints (used by React/WholesaleOS) ───────────────────────────────────
-app.include_router(ai_router)  # POST /api/ai/*
+app.include_router(ai_router)       # POST /api/ai/*
+app.include_router(webhook_router)  # POST /webhooks/* — dialer + SMS inbound events
 
 # ── Jinja2 templates (legacy pipeline UI at /v1/*) ────────────────────────────
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))

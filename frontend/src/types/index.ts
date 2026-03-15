@@ -44,6 +44,27 @@ export interface Lead {
   internal_notes?: string;
   ai_qualification_summary?: string;
   assigned_to?: string;
+  // Skip trace & blueprint scoring (migration 002)
+  seller_score?: number;
+  priority_tier?: 'A' | 'B' | 'C' | 'D';
+  skip_traced_at?: string;
+  skip_trace_provider?: string;
+  absentee_owner?: boolean;
+  out_of_state_owner?: boolean;
+  pre_foreclosure?: boolean;
+  tax_delinquent_flag?: boolean;
+  vacant?: boolean;
+  years_owned?: number;
+  apn?: string;
+  county?: string;
+  phones?: Array<{ number: string; type: string; confidence: number; status: string }>;
+  emails_enriched?: Array<{ email: string; confidence: number }>;
+  // Vendor refs
+  dialer_contact_id?: string;
+  dialer_campaign_id?: string;
+  launch_control_id?: string;
+  podio_item_id?: string;
+  resimpli_lead_id?: string;
 }
 
 export interface Deal {
@@ -171,15 +192,41 @@ export interface AIAgentLog {
 
 // UI Types
 export type LeadStatus =
+  // Intake
   | 'new'
+  | 'normalized'
+  | 'skip_traced'
+  | 'scored'
+  // Dialer flow
+  | 'ready_for_dialer'
+  | 'in_dialer_campaign'
   | 'contacted'
+  // Call outcomes
+  | 'no_answer'
+  | 'voicemail'
+  | 'wrong_number'
+  | 'not_interested'
+  | 'callback'
   | 'responding'
+  // Qualified
+  | 'warm'
+  | 'hot'
+  | 'appointment_set'
+  // Legacy aliases (kept for backward compat)
   | 'qualified_hot'
   | 'qualified_warm'
   | 'qualified_cold'
+  // Deal flow
+  | 'crm_synced'
   | 'offer_made'
   | 'under_contract'
+  // SMS / nurture
+  | 'sms_nurture'
+  | 'acq_review'
+  // Terminal
+  | 'contracted'
   | 'dead'
+  | 'recycle'
   | 'dnc';
 
 export type DealStage =

@@ -75,5 +75,56 @@ class Settings:
     propstream_api_key: str = os.getenv("PROPSTREAM_API_KEY", "")
     batchleads_api_key: str = os.getenv("BATCHLEADS_API_KEY", "")
 
+    # ── New integrations (blueprint) ──────────────────────────────────────────
+
+    # BatchData / BatchSkipTracing
+    batchdata_api_key: str = os.getenv("BATCHDATA_API_KEY", "")
+
+    # BatchDialer
+    batchdialer_api_key: str = os.getenv("BATCHDIALER_API_KEY", "")
+    # Default campaign to push A/B leads into (set after creating a campaign in BatchDialer)
+    batchdialer_default_campaign_id: str = os.getenv("BATCHDIALER_DEFAULT_CAMPAIGN_ID", "")
+
+    # Readymode (adapter slot — use CSV/webhook integration)
+    readymode_api_key: str = os.getenv("READYMODE_API_KEY", "")
+    readymode_webhook_url: str = os.getenv("READYMODE_WEBHOOK_URL", "")
+
+    # Launch Control SMS
+    # Mode: zapier_webhook | csv_sync | api_direct
+    launch_control_mode: str = os.getenv("LAUNCH_CONTROL_MODE", "zapier_webhook")
+    launch_control_zapier_hook_url: str = os.getenv("LAUNCH_CONTROL_ZAPIER_HOOK_URL", "")
+    launch_control_api_key: str = os.getenv("LAUNCH_CONTROL_API_KEY", "")  # private API (optional)
+    # Default SMS campaign name for C-tier nurture
+    launch_control_default_campaign: str = os.getenv("LAUNCH_CONTROL_DEFAULT_CAMPAIGN", "Nurture Sequence")
+
+    # Podio CRM
+    podio_client_id: str = os.getenv("PODIO_CLIENT_ID", "")
+    podio_client_secret: str = os.getenv("PODIO_CLIENT_SECRET", "")
+    podio_app_id_leads: str = os.getenv("PODIO_APP_ID_LEADS", "")
+    podio_app_token_leads: str = os.getenv("PODIO_APP_TOKEN_LEADS", "")
+
+    # REsimpli CRM
+    resimpli_api_key: str = os.getenv("RESIMPLI_API_KEY", "")
+    resimpli_webhook_url: str = os.getenv("RESIMPLI_WEBHOOK_URL", "")
+
+    # Notifications
+    slack_webhook_url: str = os.getenv("SLACK_WEBHOOK_URL", "")
+    notification_email: str = os.getenv("NOTIFICATION_EMAIL", "")
+
+    # Webhook secrets (for verifying inbound webhooks)
+    batchdialer_webhook_secret: str = os.getenv("BATCHDIALER_WEBHOOK_SECRET", "")
+    launch_control_webhook_secret: str = os.getenv("LAUNCH_CONTROL_WEBHOOK_SECRET", "")
+
+    # ── Seller score routing thresholds ───────────────────────────────────────
+    # Tiers: A=70+ B=50-69 C=30-49 D<30  (A+B → dialer, C → SMS, D → suppress)
+    seller_score_dialer_min_tier: str = os.getenv("SELLER_SCORE_DIALER_MIN_TIER", "B")
+    seller_score_sms_min_tier: str = os.getenv("SELLER_SCORE_SMS_MIN_TIER", "C")
+    # Skip trace all leads by default before scoring
+    auto_skip_trace: bool = os.getenv("AUTO_SKIP_TRACE", "true").lower() == "true"
+    # Auto-push A/B leads to BatchDialer after scoring
+    auto_push_to_dialer: bool = os.getenv("AUTO_PUSH_TO_DIALER", "false").lower() == "true"
+    # Auto-enroll C leads in Launch Control SMS
+    auto_enroll_sms_nurture: bool = os.getenv("AUTO_ENROLL_SMS_NURTURE", "false").lower() == "true"
+
 
 settings = Settings()

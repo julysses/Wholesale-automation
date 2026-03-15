@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import {
   Plus, Upload, Search, ChevronDown, ChevronLeft, ChevronRight,
   MoreHorizontal, Trash2, Bot, ArrowRight, Phone, Mail,
-  MessageSquare, Eye, Ban
+  MessageSquare, Eye, Ban, PhoneCall, Zap
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
@@ -28,16 +28,51 @@ import { supabase } from '@/lib/supabase';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
+  // Intake
   { value: 'new', label: 'New' },
+  { value: 'skip_traced', label: 'Skip Traced' },
+  { value: 'scored', label: 'Scored' },
+  { value: 'ready_for_dialer', label: 'Ready for Dialer' },
+  // Active outreach
+  { value: 'in_dialer_campaign', label: 'In Dialer' },
   { value: 'contacted', label: 'Contacted' },
+  { value: 'no_answer', label: 'No Answer' },
+  { value: 'voicemail', label: 'Voicemail' },
+  { value: 'callback', label: 'Callback' },
   { value: 'responding', label: 'Responding' },
-  { value: 'qualified_hot', label: 'Hot' },
-  { value: 'qualified_warm', label: 'Warm' },
-  { value: 'qualified_cold', label: 'Cold' },
+  { value: 'sms_nurture', label: 'SMS Nurture' },
+  // Qualified
+  { value: 'warm', label: 'Warm' },
+  { value: 'hot', label: 'Hot' },
+  { value: 'appointment_set', label: 'Appt Set' },
+  { value: 'qualified_hot', label: 'Hot (legacy)' },
+  { value: 'qualified_warm', label: 'Warm (legacy)' },
+  // Deal flow
   { value: 'offer_made', label: 'Offer Made' },
   { value: 'under_contract', label: 'Under Contract' },
+  // Terminal
   { value: 'dead', label: 'Dead' },
+  { value: 'recycle', label: 'Recycle' },
+  { value: 'dnc', label: 'DNC' },
 ];
+
+const TIER_OPTIONS = [
+  { value: '', label: 'All Tiers' },
+  { value: 'A', label: 'Tier A (70+)' },
+  { value: 'B', label: 'Tier B (50–69)' },
+  { value: 'C', label: 'Tier C (30–49)' },
+  { value: 'D', label: 'Tier D (<30)' },
+];
+
+function getTierBadgeClass(tier?: string): string {
+  switch (tier) {
+    case 'A': return 'bg-green-100 text-green-800 border border-green-200';
+    case 'B': return 'bg-blue-100 text-blue-800 border border-blue-200';
+    case 'C': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+    case 'D': return 'bg-gray-100 text-gray-500 border border-gray-200';
+    default:  return 'bg-gray-50 text-gray-400';
+  }
+}
 
 const SOURCE_OPTIONS = [
   { value: '', label: 'All Sources' },
@@ -67,6 +102,7 @@ export function Leads() {
   const [source, setSource] = useState('');
   const [motivation, setMotivation] = useState('');
   const [page, setPage] = useState(1);
+  const [tier, setTier] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
@@ -78,8 +114,35 @@ export function Leads() {
   const totalPages = Math.ceil(total / 50);
 
   const deleteLead = useDeleteLead();
+  const updateLead = useUpdateLead();
   const createDeal = useCreateDeal();
   const [logActivityLead, setLogActivityLead] = useState<Lead | null>(null);
+
+  // Filter leads by tier client-side (Supabase query doesn't include tier filter yet)
+  const filteredLeads = tier ? leads.filter((l) => l.priority_tier === tier) : leads;
+
+  const handlePushToDialer = async (lead: Lead) => {
+    if (!confirm(`Push ${lead.property_address} to BatchDialer?`)) return;
+    try {
+      await supabase.from('leads').update({ status: 'ready_for_dialer' }).eq('id', lead.id);
+      toast.success('Lead marked ready for dialer — push will run on next sync');
+    } catch {
+      toast.error('Failed to update lead status');
+    }
+  };
+
+  const handleEnrollSMS = async (lead: Lead) => {
+    if (!confirm(`Enroll ${lead.property_address} in Launch Control SMS nurture?`)) return;
+    try {
+      await supabase.from('leads').update({
+        status: 'sms_nurture',
+        sms_sequence_active: true,
+      }).eq('id', lead.id);
+      toast.success('Lead enrolled in SMS nurture');
+    } catch {
+      toast.error('Failed to enroll lead in SMS nurture');
+    }
+  };
 
   const handleMoveToPipeline = async (lead: Lead) => {
     if (!confirm(`Create a pipeline deal for ${lead.property_address}?`)) return;
@@ -124,7 +187,8 @@ export function Leads() {
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#1B3A5C]"
           />
         </div>
-        <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} options={STATUS_OPTIONS} className="w-40" />
+        <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} options={STATUS_OPTIONS} className="w-44" />
+        <Select value={tier} onChange={(e) => { setTier(e.target.value); }} options={TIER_OPTIONS} className="w-36" />
         <Select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} options={SOURCE_OPTIONS} className="w-36" />
         <Select value={motivation} onChange={(e) => { setMotivation(e.target.value); setPage(1); }} options={MOTIVATION_OPTIONS} className="w-40" />
       </div>
@@ -135,7 +199,7 @@ export function Leads() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                {['Address', 'Owner', 'Phone', 'Source', 'Motivation', 'Score', 'Status', 'Last Contact', 'Next Follow-up', ''].map((h) => (
+                {['Address', 'Owner', 'Phone', 'Source', 'Motivation', 'Tier', 'Score', 'Status', 'Last Contact', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                     {h}
                   </th>
@@ -145,7 +209,7 @@ export function Leads() {
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr><td colSpan={10} className="px-4 py-6"><TableSkeleton rows={8} cols={8} /></td></tr>
-              ) : leads.length === 0 ? (
+              ) : filteredLeads.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-400">
@@ -155,11 +219,18 @@ export function Leads() {
                     </div>
                   </td>
                 </tr>
-              ) : leads.map((lead) => (
+              ) : filteredLeads.map((lead) => (
                 <tr key={lead.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setDetailLead(lead)}>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900 truncate max-w-48">{lead.property_address}</p>
-                    <p className="text-xs text-gray-400">{lead.city}, {lead.state} {lead.zip_code}</p>
+                    <div className="flex items-center gap-1.5">
+                      <div>
+                        <p className="font-medium text-gray-900 truncate max-w-44">{lead.property_address}</p>
+                        <p className="text-xs text-gray-400">{lead.city}, {lead.state} {lead.zip_code}</p>
+                      </div>
+                      {lead.skip_traced_at && (
+                        <span title="Skip traced" className="text-xs text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 shrink-0">ST</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {lead.owner_first_name || lead.owner_last_name
@@ -167,7 +238,11 @@ export function Leads() {
                       : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-gray-600">
-                    {phoneFormat(lead.owner_phone_1) || <span className="text-gray-300">—</span>}
+                    {phoneFormat(lead.owner_phone_1) || (
+                      lead.phones && lead.phones.length > 0
+                        ? <span className="text-xs text-teal-600">{lead.phones.length} enriched</span>
+                        : <span className="text-gray-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {lead.source
@@ -179,6 +254,24 @@ export function Leads() {
                       ? <span className="capitalize text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">{lead.motivation_tag.replace(/_/g, ' ')}</span>
                       : <span className="text-gray-300">—</span>}
                   </td>
+                  {/* Tier badge */}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {lead.priority_tier ? (
+                      <span className={cn('px-2 py-0.5 rounded text-xs font-bold', getTierBadgeClass(lead.priority_tier))}>
+                        {lead.priority_tier}
+                        {lead.seller_score !== undefined && (
+                          <span className="ml-1 font-normal opacity-70">{lead.seller_score}</span>
+                        )}
+                      </span>
+                    ) : lead.total_score !== undefined ? (
+                      <span className={cn('px-2 py-0.5 rounded text-xs font-bold', getScoreBadgeClass(lead.total_score))}>
+                        {lead.total_score}
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </td>
+                  {/* Distress score */}
                   <td className="px-4 py-3">
                     <span className={cn('px-2 py-0.5 rounded text-xs font-bold', getScoreBadgeClass(lead.total_score))}>
                       {lead.total_score ?? '—'}
@@ -192,9 +285,6 @@ export function Leads() {
                   <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                     {formatDate(lead.last_contact_date) || '—'}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                    {formatDate(lead.next_follow_up_date) || '—'}
-                  </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="relative">
                       <button
@@ -204,7 +294,7 @@ export function Leads() {
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                       {openMenuId === lead.id && (
-                        <div className="absolute right-0 top-8 z-10 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+                        <div className="absolute right-0 top-8 z-10 w-52 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
                           <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => { setDetailLead(lead); setOpenMenuId(null); }}>
                             <Eye className="h-3.5 w-3.5" /> View / Edit
                           </button>
@@ -216,6 +306,20 @@ export function Leads() {
                             onClick={() => { setLogActivityLead(lead); setOpenMenuId(null); }}>
                             <Phone className="h-3.5 w-3.5" /> Log Activity
                           </button>
+                          {/* Dialer push — shown for Tier A/B or unscored leads */}
+                          {lead.status !== 'dnc' && lead.status !== 'in_dialer_campaign' && (
+                            <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
+                              onClick={() => { handlePushToDialer(lead); setOpenMenuId(null); }}>
+                              <PhoneCall className="h-3.5 w-3.5" /> Push to Dialer
+                            </button>
+                          )}
+                          {/* SMS nurture — shown for Tier C or unscored leads */}
+                          {lead.status !== 'dnc' && !lead.sms_sequence_active && (
+                            <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-teal-600 hover:bg-teal-50"
+                              onClick={() => { handleEnrollSMS(lead); setOpenMenuId(null); }}>
+                              <Zap className="h-3.5 w-3.5" /> Enroll in SMS Nurture
+                            </button>
+                          )}
                           <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50" onClick={() => { if (confirm('Delete this lead?')) deleteLead.mutate(lead.id); setOpenMenuId(null); }}>
                             <Trash2 className="h-3.5 w-3.5" /> Delete
                           </button>

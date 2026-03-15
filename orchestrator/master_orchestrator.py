@@ -24,6 +24,7 @@ from agents.buyer_qualification_agent import QualificationEvent
 from agents.buyer_sourcing_agent import BuyerResearchRequest
 from agents.dispo_matching_agent import DispoMatchResult
 from agents.distress_scoring_agent import DistressScoreResult
+from agents.seller_score_agent import SellerScoreAgent, SellerScoreResult
 from agents.underwriting_agent import UnderwritingInput
 from config.prompts import SystemPrompts
 from config.settings import settings
@@ -31,7 +32,10 @@ from schemas.buyer import BuyerProfile, BuyerQualification
 from schemas.compliance import AuditLogEntry
 from schemas.deal import Deal, DealStatus, UnderwritingReport
 from schemas.outreach import OutreachChannel, OutreachMessage
-from schemas.property import DataSource, PropertyLead
+from schemas.property import DataSource, DistressSignal, PropertyLead
+from tools.batchdata_adapter import BatchDataAdapter, SkipTracePayload, SkipTraceResult
+from tools.batchdialer_adapter import BatchDialerAdapter
+from tools.launch_control_adapter import LaunchControlAdapter, LaunchControlContact
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +45,10 @@ class PipelineState:
     """Mutable pipeline state passed across agent calls."""
     raw_leads: list[PropertyLead] = field(default_factory=list)
     scored_leads: list[tuple[PropertyLead, DistressScoreResult]] = field(default_factory=list)
+    # Skip trace results keyed by lead_id
+    skip_trace_results: dict[str, SkipTraceResult] = field(default_factory=dict)
+    # Blueprint seller scores keyed by lead_id
+    seller_scores: dict[str, SellerScoreResult] = field(default_factory=dict)
     underwriting_reports: list[UnderwritingReport] = field(default_factory=list)
     active_deals: list[Deal] = field(default_factory=list)
     outreach_messages: list[OutreachMessage] = field(default_factory=list)
@@ -67,6 +75,7 @@ class MasterOrchestrator:
         # Instantiate all agents
         self.data_source = DataSourceAgent()
         self.distress_scoring = DistressScoringAgent()
+        self.seller_score = SellerScoreAgent()
         self.underwriting = UnderwritingAgent()
         self.seller_outreach = SellerOutreachAgent()
         self.buyer_sourcing = BuyerSourcingAgent()
@@ -74,8 +83,13 @@ class MasterOrchestrator:
         self.dispo_matching = DispoMatchingAgent()
         self.compliance = ComplianceLoggingAgent()
 
+        # External adapters (dry-run when API keys not configured)
+        self.batchdata = BatchDataAdapter()
+        self.batchdialer = BatchDialerAdapter()
+        self.launch_control = LaunchControlAdapter()
+
         self.state = PipelineState()
-        logger.info("[Orchestrator] Initialized with all agents")
+        logger.info("[Orchestrator] Initialized with all agents + adapters")
 
     # ── Step 1: Data Ingestion ────────────────────────────────────────────────
 
@@ -126,6 +140,219 @@ class MasterOrchestrator:
         )
         logger.info(f"[Orchestrator] {len(passing)}/{len(leads)} leads passed distress threshold")
         return passing
+
+    # ── Step 2b: Skip Trace ───────────────────────────────────────────────────
+
+    def skip_trace_leads(
+        self,
+        leads: Optional[list[PropertyLead]] = None,
+    ) -> dict[str, SkipTraceResult]:
+        """
+        Skip trace all leads via BatchData.
+        Enriches phone numbers and emails; updates phone_numbers on the lead.
+        Returns a dict of lead_id → SkipTraceResult.
+        """
+        if leads is None:
+            leads = self.state.raw_leads
+
+        self.compliance.log_action(
+            agent="orchestrator",
+            action="skip_trace_start",
+            input_summary=f"count={len(leads)}",
+        )
+
+        results: dict[str, SkipTraceResult] = {}
+        for lead in leads:
+            payload = SkipTracePayload(
+                owner_name=lead.owner_name,
+                property_address=lead.address.street,
+                city=lead.address.city,
+                state=lead.address.state,
+                zip_code=lead.address.zip_code,
+            )
+            result = self.batchdata.skip_trace_property(payload, lead_id=str(lead.id))
+            results[str(lead.id)] = result
+
+            # Enrich lead phone list with skip-trace results
+            if result.phones:
+                enriched = [p.number for p in result.phones if p.number]
+                # Merge with existing phones (deduplicate)
+                existing = set(lead.phone_numbers)
+                lead.phone_numbers = list(existing | set(enriched))
+
+        self.state.skip_trace_results.update(results)
+        enriched_count = sum(1 for r in results.values() if r.phones)
+
+        self.compliance.log_action(
+            agent="orchestrator",
+            action="skip_trace_complete",
+            output_summary=f"enriched={enriched_count}/{len(leads)}",
+        )
+        logger.info(
+            f"[Orchestrator] Skip trace complete — "
+            f"{enriched_count}/{len(leads)} leads enriched with phone data"
+        )
+        return results
+
+    # ── Step 2c: Seller Scoring (blueprint formula) ───────────────────────────
+
+    def apply_seller_scores(
+        self,
+        leads: Optional[list[PropertyLead]] = None,
+    ) -> dict[str, SellerScoreResult]:
+        """
+        Apply the blueprint additive scoring formula to all leads.
+        Returns a dict of lead_id → SellerScoreResult with tier (A/B/C/D).
+        """
+        if leads is None:
+            leads = self.state.raw_leads
+
+        self.compliance.log_action(
+            agent="orchestrator",
+            action="seller_scoring_start",
+            input_summary=f"count={len(leads)}",
+        )
+
+        results: dict[str, SellerScoreResult] = {}
+        for lead in leads:
+            lead_id = str(lead.id)
+            skip = self.state.skip_trace_results.get(lead_id)
+            has_mobile = skip.has_mobile if skip else bool(lead.phone_numbers)
+            has_any_phone = bool(skip.phones if skip else lead.phone_numbers)
+
+            result = self.seller_score.score_lead(
+                lead_id=lead_id,
+                absentee_owner=lead.is_absentee,
+                vacant=lead.is_vacant,
+                tax_delinquent=bool(lead.tax_delinquent_amount and lead.tax_delinquent_amount > 0),
+                pre_foreclosure=DistressSignal.PROBATE_INHERITED in (lead.signals_raw or []),
+                out_of_state_owner=(
+                    lead.owner_mailing_address is not None
+                    and lead.owner_mailing_address.state != lead.address.state
+                ),
+                estimated_equity_pct=lead.estimated_equity_pct,
+                dnc=lead.flagged,
+                has_mobile_phone=has_mobile,
+                has_any_phone=has_any_phone,
+            )
+            results[lead_id] = result
+
+        self.state.seller_scores.update(results)
+        tier_counts = {"A": 0, "B": 0, "C": 0, "D": 0}
+        for r in results.values():
+            tier_counts[r.priority_tier] += 1
+
+        self.compliance.log_action(
+            agent="orchestrator",
+            action="seller_scoring_complete",
+            output_summary=(
+                f"A={tier_counts['A']} B={tier_counts['B']} "
+                f"C={tier_counts['C']} D={tier_counts['D']}"
+            ),
+        )
+        logger.info(f"[Orchestrator] Seller scores: {tier_counts}")
+        return results
+
+    # ── Step 2d: Route leads to dialer / SMS / suppress ───────────────────────
+
+    def route_leads(
+        self,
+        leads: Optional[list[PropertyLead]] = None,
+        dialer_campaign_id: str = "",
+    ) -> dict[str, list[PropertyLead]]:
+        """
+        Route scored leads:
+          A/B → BatchDialer (if auto_push_to_dialer=True)
+          C   → Launch Control SMS nurture (if auto_enroll_sms_nurture=True)
+          D   → suppressed
+
+        Returns dict keyed by routing action: {"dialer": [...], "sms_nurture": [...], "suppress": [...]}
+        """
+        if leads is None:
+            leads = self.state.raw_leads
+
+        routed: dict[str, list[PropertyLead]] = {"dialer": [], "sms_nurture": [], "suppress": []}
+        campaign_id = dialer_campaign_id or settings.batchdialer_default_campaign_id
+
+        for lead in leads:
+            score_result = self.state.seller_scores.get(str(lead.id))
+            if not score_result:
+                routed["suppress"].append(lead)
+                continue
+
+            routed[score_result.routing_action].append(lead)
+
+            # Auto-push to BatchDialer
+            if (
+                score_result.routing_action == "dialer"
+                and settings.auto_push_to_dialer
+                and campaign_id
+            ):
+                skip = self.state.skip_trace_results.get(str(lead.id))
+                best_phone = skip.best_phone if skip else None
+                phone = best_phone.number if best_phone else (
+                    lead.phone_numbers[0] if lead.phone_numbers else ""
+                )
+                if phone:
+                    name_parts = lead.owner_name.split(" ", 1)
+                    contact_id, ok = self.batchdialer.push_lead_to_campaign(
+                        lead_id=str(lead.id),
+                        first_name=name_parts[0],
+                        last_name=name_parts[1] if len(name_parts) > 1 else "",
+                        phone=phone,
+                        campaign_id=campaign_id,
+                        property_address=lead.address.street,
+                        city=lead.address.city,
+                        state=lead.address.state,
+                        zip_code=lead.address.zip_code,
+                        seller_score=score_result.seller_score,
+                        priority_tier=score_result.priority_tier,
+                        tags=[score_result.priority_tier, lead.source.value],
+                    )
+                    if ok:
+                        logger.info(
+                            f"[Orchestrator] Pushed lead {lead.id} to BatchDialer "
+                            f"contact={contact_id} campaign={campaign_id}"
+                        )
+
+            # Auto-enroll in Launch Control SMS
+            elif (
+                score_result.routing_action == "sms_nurture"
+                and settings.auto_enroll_sms_nurture
+            ):
+                skip = self.state.skip_trace_results.get(str(lead.id))
+                best_phone = skip.best_phone if skip else None
+                phone = best_phone.number if best_phone else (
+                    lead.phone_numbers[0] if lead.phone_numbers else ""
+                )
+                if phone and not lead.flagged:
+                    name_parts = lead.owner_name.split(" ", 1)
+                    contact = LaunchControlContact(
+                        lead_id=str(lead.id),
+                        first_name=name_parts[0],
+                        phone=phone,
+                        property_address=lead.address.street,
+                        city=lead.address.city,
+                        state=lead.address.state,
+                        zip_code=lead.address.zip_code,
+                        campaign_name=settings.launch_control_default_campaign,
+                        seller_score=score_result.seller_score,
+                        priority_tier=score_result.priority_tier,
+                    )
+                    ok = self.launch_control.add_contact_to_campaign(contact)
+                    if ok:
+                        logger.info(
+                            f"[Orchestrator] Enrolled lead {lead.id} in "
+                            f"Launch Control SMS campaign"
+                        )
+
+        logger.info(
+            f"[Orchestrator] Routing complete — "
+            f"dialer={len(routed['dialer'])} "
+            f"sms={len(routed['sms_nurture'])} "
+            f"suppress={len(routed['suppress'])}"
+        )
+        return routed
 
     # ── Step 3: Underwriting ──────────────────────────────────────────────────
 
@@ -339,11 +566,21 @@ class MasterOrchestrator:
             logger.warning("[Orchestrator] No clean leads after ingestion — stopping")
             return self.state
 
-        # 2. Score
+        # 2. Score (distress-based filter gate)
         scored = self.score_leads(leads)
         if not scored:
             logger.warning("[Orchestrator] No leads passed distress threshold — stopping")
             return self.state
+
+        # 2b. Skip trace (enrich phone/email)
+        if settings.auto_skip_trace:
+            self.skip_trace_leads(leads)
+
+        # 2c. Apply blueprint seller score + A/B/C/D tiers
+        self.apply_seller_scores(leads)
+
+        # 2d. Route to dialer / SMS / suppress
+        self.route_leads(leads)
 
         # 3. Underwrite
         reports = self.underwrite_leads(scored)
