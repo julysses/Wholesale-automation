@@ -294,10 +294,14 @@ function LeadFormModal({ open, onClose, lead }: { open: boolean; onClose: () => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.property_address || !form.city) return toast.error('Address and city required');
+    const numericFields = ['bedrooms', 'bathrooms', 'sqft', 'asking_price', 'estimated_equity_pct'];
+    const payload = Object.fromEntries(
+      Object.entries(form).map(([k, v]) => [k, numericFields.includes(k) && v === '' ? null : v])
+    );
     if (isEdit && lead) {
-      await updateLead.mutateAsync({ id: lead.id, updates: form as Partial<Lead> });
+      await updateLead.mutateAsync({ id: lead.id, updates: payload as Partial<Lead> });
     } else {
-      await createLead.mutateAsync(form as Partial<Lead>);
+      await createLead.mutateAsync(payload as Partial<Lead>);
     }
     onClose();
   };
