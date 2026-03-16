@@ -12,6 +12,14 @@ Routes:
 
   GET  /webhooks/launch_control/csv-queue
       Returns the current CSV queue for manual upload to Launch Control.
+
+  POST /webhooks/retell/call
+      Retell AI fires this when a call event occurs (call_ended / call_analyzed).
+      Persists to ai_call_records, updates lead status, creates hot-lead tasks.
+
+  POST /webhooks/air_ai/call
+      Air AI fires this on call completion.
+      Same processing as Retell — normalized through AICallingAdapter.parse_webhook().
 """
 
 from __future__ import annotations
@@ -25,6 +33,7 @@ from pydantic import BaseModel
 
 from tools.batchdialer_adapter import BatchDialerAdapter, CallResultEvent
 from tools.launch_control_adapter import LaunchControlAdapter
+from tools.retell_adapter import AICallingAdapter, CallResultEvent as AICallResultEvent
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
@@ -32,6 +41,8 @@ router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 # ── Optional webhook secret verification ──────────────────────────────────────
 BATCHDIALER_WEBHOOK_SECRET = os.getenv("BATCHDIALER_WEBHOOK_SECRET", "")
 LAUNCH_CONTROL_WEBHOOK_SECRET = os.getenv("LAUNCH_CONTROL_WEBHOOK_SECRET", "")
+RETELL_WEBHOOK_SECRET = os.getenv("RETELL_WEBHOOK_SECRET", "")
+AIR_AI_WEBHOOK_SECRET = os.getenv("AIR_AI_WEBHOOK_SECRET", "")
 
 # ── Dispositions that need immediate hot-lead routing ─────────────────────────
 HOT_DISPOSITIONS = {"HOT", "APPOINTMENT_SET"}
@@ -302,3 +313,188 @@ def get_launch_control_csv_queue() -> dict:
     lc = LaunchControlAdapter()
     csv_content = lc.export_csv_queue()
     return {"csv": csv_content, "mode": lc._mode}
+
+
+# ── AI Calling webhook handlers (Retell AI / Air AI) ─────────────────────────
+
+async def _handle_ai_call_result(event: AICallResultEvent, provider: str) -> None:
+    """
+    Background task: persist AI call result to ai_call_records, update lead
+    status, create acquisition tasks for HOT/APPOINTMENT_SET dispositions.
+    """
+    logger.info(
+        f"[Webhook/{provider}] Call {event.call_id} lead={event.lead_id} "
+        f"disposition={event.disposition.value} hot={event.is_hot} "
+        f"duration={event.duration_seconds}s"
+    )
+
+    supabase_url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL", "")
+    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY", "")
+
+    if not (supabase_url and supabase_key):
+        logger.warning(f"[Webhook/{provider}] Supabase not configured — event logged only")
+        return
+
+    try:
+        from supabase import create_client  # type: ignore[import]
+        sb = create_client(supabase_url, supabase_key)
+
+        qual = event.qualification
+
+        # 1. Insert AI call record
+        sb.table("ai_call_records").insert({
+            "lead_id":           event.lead_id or None,
+            "provider":          event.provider.value,
+            "call_id":           event.call_id,
+            "phone_number":      "",  # populated from lead if needed
+            "status":            "completed",
+            "disposition":       event.disposition.value,
+            "duration_sec":      event.duration_seconds,
+            "recording_url":     event.recording_url,
+            "transcript":        event.transcript,
+            "timeline_to_sell":  qual.timeline_to_sell if qual else None,
+            "property_condition":qual.property_condition if qual else None,
+            "occupancy":         qual.occupancy if qual else None,
+            "mortgage_balance":  qual.mortgage_balance if qual else None,
+            "asking_price":      qual.asking_price if qual else None,
+            "call_notes":        qual.notes if qual else None,
+            "raw_payload":       event.raw_payload,
+        }).execute()
+
+        if not event.lead_id:
+            logger.warning(f"[Webhook/{provider}] Call {event.call_id} has no lead_id — skipping lead update")
+            return
+
+        # 2. Map AI disposition → lead status
+        DISP_TO_STATUS = {
+            "no_answer":       "no_answer",
+            "voicemail":       "voicemail",
+            "wrong_number":    "dead",
+            "not_interested":  "contacted",
+            "callback":        "callback",
+            "warm":            "warm",
+            "hot":             "hot",
+            "appointment_set": "appointment_set",
+        }
+        new_status = DISP_TO_STATUS.get(event.disposition.value, "contacted")
+
+        # Increment contact_attempts
+        lead_resp = (
+            sb.table("leads")
+            .select("contact_attempts")
+            .eq("id", event.lead_id)
+            .single()
+            .execute()
+        )
+        current_attempts = (lead_resp.data or {}).get("contact_attempts", 0)
+
+        sb.table("leads").update({
+            "status":           new_status,
+            "last_contact_date": datetime.now(timezone.utc).date().isoformat(),
+            "contact_attempts": current_attempts + 1,
+        }).eq("id", event.lead_id).execute()
+
+        # 3. Create urgent task for HOT / APPOINTMENT_SET
+        if event.is_hot:
+            disposition_label = event.disposition.value.replace("_", " ").title()
+            notes_parts = []
+            if qual:
+                if qual.timeline_to_sell:
+                    notes_parts.append(f"Timeline: {qual.timeline_to_sell}")
+                if qual.property_condition:
+                    notes_parts.append(f"Condition: {qual.property_condition}")
+                if qual.occupancy:
+                    notes_parts.append(f"Occupancy: {qual.occupancy}")
+                if qual.mortgage_balance:
+                    notes_parts.append(f"Mortgage: ${qual.mortgage_balance:,.0f}")
+                if qual.asking_price:
+                    notes_parts.append(f"Asking: ${qual.asking_price:,.0f}")
+                if qual.notes:
+                    notes_parts.append(f"Summary: {qual.notes}")
+
+            sb.table("tasks").insert({
+                "lead_id":     event.lead_id,
+                "title":       f"🔥 {disposition_label} — AI Call Result",
+                "description": "\n".join(notes_parts) if notes_parts else "Follow up with seller immediately.",
+                "priority":    "high",
+                "status":      "pending",
+                "type":        "acquisition_review",
+            }).execute()
+
+            # Insert acquisition alert notification
+            sb.table("app_notifications").insert({
+                "recipient_role": "admin",
+                "type":           "hot_lead" if event.disposition.value == "hot" else "appointment_set",
+                "title":          f"{'🔥 Hot Lead' if event.disposition.value == 'hot' else '📅 Appointment Set'}",
+                "body":           (
+                    f"AI call completed. {disposition_label}. "
+                    + (f"Seller asking: ${qual.asking_price:,.0f}" if qual and qual.asking_price else "")
+                ).strip(),
+                "action_url":     f"/leads?status={new_status}",
+                "lead_id":        event.lead_id,
+            }).execute()
+
+        logger.info(f"[Webhook/{provider}] Lead {event.lead_id} → {new_status}")
+
+    except Exception as exc:
+        logger.error(f"[Webhook/{provider}] Processing failed: {exc}")
+
+
+@router.post("/retell/call")
+async def retell_call_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    x_webhook_secret: str = Header(default=""),
+) -> dict:
+    """
+    Receive a call event from Retell AI (call_ended or call_analyzed).
+    Responds immediately with 200; all Supabase writes happen in the background.
+    """
+    if RETELL_WEBHOOK_SECRET and x_webhook_secret != RETELL_WEBHOOK_SECRET:
+        raise HTTPException(401, "Invalid webhook secret")
+
+    payload = await request.json()
+    event = AICallingAdapter.parse_webhook(payload, provider="retell")
+
+    if event is None:
+        # Non-final event (call_started, etc.) — acknowledge and ignore
+        return {"status": "ignored", "reason": "non-final event"}
+
+    background_tasks.add_task(_handle_ai_call_result, event, "retell")
+
+    return {
+        "status": "accepted",
+        "call_id": event.call_id,
+        "disposition": event.disposition.value,
+        "lead_id": event.lead_id,
+        "is_hot": event.is_hot,
+    }
+
+
+@router.post("/air_ai/call")
+async def air_ai_call_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    x_webhook_secret: str = Header(default=""),
+) -> dict:
+    """
+    Receive a call completion event from Air AI.
+    """
+    if AIR_AI_WEBHOOK_SECRET and x_webhook_secret != AIR_AI_WEBHOOK_SECRET:
+        raise HTTPException(401, "Invalid webhook secret")
+
+    payload = await request.json()
+    event = AICallingAdapter.parse_webhook(payload, provider="air_ai")
+
+    if event is None:
+        return {"status": "ignored", "reason": "unparseable payload"}
+
+    background_tasks.add_task(_handle_ai_call_result, event, "air_ai")
+
+    return {
+        "status": "accepted",
+        "call_id": event.call_id,
+        "disposition": event.disposition.value,
+        "lead_id": event.lead_id,
+        "is_hot": event.is_hot,
+    }

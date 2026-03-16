@@ -4,6 +4,7 @@ import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity }
 import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
 import { OutreachTimeline } from '@/components/leads/OutreachTimeline';
+import { StackBadge } from '@/components/leads/StackBadge';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,10 +59,10 @@ const STATUS_OPTIONS = [
 
 const TIER_OPTIONS = [
   { value: '', label: 'All Tiers' },
-  { value: 'A', label: 'Tier A (70+)' },
-  { value: 'B', label: 'Tier B (50–69)' },
-  { value: 'C', label: 'Tier C (30–49)' },
-  { value: 'D', label: 'Tier D (<30)' },
+  { value: 'A', label: 'Tier A (90+)' },
+  { value: 'B', label: 'Tier B (70–89)' },
+  { value: 'C', label: 'Tier C (50–69)' },
+  { value: 'D', label: 'Tier D (<50)' },
 ];
 
 function getTierBadgeClass(tier?: string): string {
@@ -85,14 +86,18 @@ const SOURCE_OPTIONS = [
 ];
 
 const MOTIVATION_OPTIONS = [
-  { value: '', label: 'All Motivations' },
+  { value: '', label: 'All Signals' },
   { value: 'absentee', label: 'Absentee' },
+  { value: 'vacant', label: 'Vacant' },
   { value: 'tax_delinquent', label: 'Tax Delinquent' },
   { value: 'pre_foreclosure', label: 'Pre-Foreclosure' },
   { value: 'probate', label: 'Probate' },
-  { value: 'inherited', label: 'Inherited' },
-  { value: 'vacant', label: 'Vacant' },
+  { value: 'code_violation', label: 'Code Violation' },
+  { value: 'utility_shutoff', label: 'Utility Shutoff' },
+  { value: 'municipal_lien', label: 'Municipal Lien' },
   { value: 'high_equity', label: 'High Equity' },
+  { value: 'out_of_state', label: 'Out-of-State Owner' },
+  { value: 'inherited', label: 'Inherited/Probate' },
 ];
 
 export function Leads() {
@@ -199,7 +204,7 @@ export function Leads() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                {['Address', 'Owner', 'Phone', 'Source', 'Motivation', 'Tier', 'Score', 'Status', 'Last Contact', ''].map((h) => (
+                {['Address', 'Owner', 'Phone', 'Source', 'Stack', 'Tier', 'Score', 'Status', 'Last Contact', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                     {h}
                   </th>
@@ -250,9 +255,13 @@ export function Leads() {
                       : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-3">
-                    {lead.motivation_tag
-                      ? <span className="capitalize text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">{lead.motivation_tag.replace(/_/g, ' ')}</span>
-                      : <span className="text-gray-300">—</span>}
+                    {lead.stack_name && lead.stack_name !== 'Single Signal' ? (
+                      <StackBadge stackName={lead.stack_name} stackBonus={lead.stack_bonus} />
+                    ) : lead.motivation_tag ? (
+                      <span className="capitalize text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">{lead.motivation_tag.replace(/_/g, ' ')}</span>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </td>
                   {/* Tier badge */}
                   <td className="px-4 py-3 whitespace-nowrap">

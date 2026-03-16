@@ -4,6 +4,7 @@ import { KPICard } from '@/components/dashboard/KPICard';
 import { PipelineChart } from '@/components/dashboard/PipelineChart';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { DealsByStage } from '@/components/dashboard/DealsByStage';
+import { FunnelPanel } from '@/components/dashboard/FunnelPanel';
 import { useHotLeads } from '@/hooks/useLeads';
 import { useUpcomingClosings } from '@/hooks/useDeals';
 import { useTodayTasks } from '@/hooks/useTasks';
@@ -202,6 +203,9 @@ export function Dashboard() {
               <p className="text-sm text-gray-400 text-center py-4">No closings in next 14 days</p>
             )}
           </div>
+
+          {/* Acquisition Funnel */}
+          <FunnelPanel />
 
           {/* Deals by Stage */}
           <DealsByStage />

@@ -1,42 +1,73 @@
 """
-Seller Score Agent — blueprint additive scoring formula.
+Seller Score Agent — blueprint additive scoring formula with stacking bonuses.
 
-Produces a 0–100+ seller_score and a priority tier (A/B/C/D) for each lead.
-This runs AFTER skip tracing so phone quality is factored in.
+SIGNAL SCORES:
+  +20  absentee_owner
+  +25  vacant_property
+  +25  probate_case
+  +20  pre_foreclosure
+  +15  tax_delinquent
+  +20  code_violation         (government data)
+  +20  utility_shutoff        (government data)
+  +15  municipal_lien         (government data)
+  +10  equity_above_50
+  +10  ownership_length_over_10
+  +10  out_of_state_owner
 
-Scoring formula (from blueprint):
-  +20  absentee owner
-  +20  vacant property
-  +15  tax delinquent
-  +15  pre-foreclosure
-  +10  equity > 50%
-  +10  years owned > 10
-  +10  out-of-state owner
-  ─────────────────────
-  Max  100 (before penalties)
+STACKING BONUSES (applied on top of signal scores):
+  absentee + vacant                        +30
+  vacant + tax_delinquent                  +35
+  probate + vacant                         +40
+  code_violation + vacant                  +40
+  utility_shutoff + vacant                 +45
+  absentee + tax_delinquent                +30
+  absentee + vacant + tax_delinquent       +50
+  Ultimate Distress (all four)             +70
 
-  -40  on DNC list
-  -20  duplicate owner contacted in last 90 days
-  -15  landline only (no mobile phone found)
+TIER THRESHOLDS:
+  A = 90+  → AI calling campaign (highest priority)
+  B = 70–89 → AI calling campaign
+  C = 50–69 → SMS nurture only
+  D = <50   → suppress
 
-Tiers:
-  A = 70+  → push to dialer automatically
-  B = 50–69 → push to dialer automatically
-  C = 30–49 → enroll in SMS nurture
-  D = <30   → suppress unless manually approved
-
-This agent is deterministic — no Claude call needed.
-It is used by the orchestrator after skip tracing.
+Only Tier A and B enter AI calling campaigns.
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
 from typing import Optional
 
+from schemas.property import DistressSignal, PropertyLead, SIGNAL_WEIGHTS, compute_stack_bonus
+
 logger = logging.getLogger(__name__)
+
+
+# ── Tier configuration ─────────────────────────────────────────────────────────
+
+TIER_A_MIN = 90
+TIER_B_MIN = 70
+TIER_C_MIN = 50
+# D is anything below TIER_C_MIN
+
+
+def score_to_tier(score: int) -> str:
+    if score >= TIER_A_MIN: return "A"
+    if score >= TIER_B_MIN: return "B"
+    if score >= TIER_C_MIN: return "C"
+    return "D"
+
+
+def tier_to_routing(tier: str) -> tuple[str, str]:
+    """Return (routing_action, routing_reason) for a given tier."""
+    if tier == "A":
+        return "ai_calling", "Tier A (90+) — highest priority AI calling campaign"
+    if tier == "B":
+        return "ai_calling", "Tier B (70–89) — AI calling campaign"
+    if tier == "C":
+        return "sms_nurture", "Tier C (50–69) — SMS nurture only"
+    return "suppress", "Tier D (<50) — suppress unless manually approved"
 
 
 # ── Score result ───────────────────────────────────────────────────────────────
@@ -45,41 +76,23 @@ logger = logging.getLogger(__name__)
 class SellerScoreResult:
     lead_id: str
     seller_score: int
-    priority_tier: str          # A | B | C | D
-    score_breakdown: dict       # field → points awarded
-    routing_action: str         # dialer | sms_nurture | suppress
+    priority_tier: str              # A | B | C | D
+    signal_score: int               # Sum of raw signal points
+    stack_name: str                 # e.g. "Absentee + Vacant" or "Single Signal"
+    stack_bonus: int                # Extra points from stacking
+    score_breakdown: dict           # signal/penalty → points
+    active_signals: list[str]       # Which signals contributed
+    routing_action: str             # ai_calling | sms_nurture | suppress
     routing_reason: str
-
-
-# ── Tier helpers ───────────────────────────────────────────────────────────────
-
-def score_to_tier(score: int) -> str:
-    if score >= 70:
-        return "A"
-    if score >= 50:
-        return "B"
-    if score >= 30:
-        return "C"
-    return "D"
-
-
-def tier_to_routing(tier: str) -> tuple[str, str]:
-    """Return (routing_action, routing_reason) for a given tier."""
-    if tier in ("A", "B"):
-        return "dialer", f"Tier {tier} (score >= {'70' if tier == 'A' else '50'}) — push to dialer"
-    if tier == "C":
-        return "sms_nurture", "Tier C (30–49) — enroll in SMS nurture campaign"
-    return "suppress", "Tier D (< 30) — suppress unless manually approved"
+    enters_calling_campaign: bool   # True only for A and B
 
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
 
 class SellerScoreAgent:
     """
-    Deterministic seller scoring agent.
-
-    Inputs come from the lead record + skip trace result.
-    All scoring logic is explicit and auditable — no AI call.
+    Deterministic seller scoring agent implementing the blueprint formula.
+    Supports both direct field inputs and PropertyLead objects.
     """
 
     name = "seller_score_agent"
@@ -87,118 +100,160 @@ class SellerScoreAgent:
     def score_lead(
         self,
         lead_id: str,
-        # Motivation flags
+        # Core distress signals
         absentee_owner: bool = False,
         vacant: bool = False,
-        tax_delinquent: bool = False,
+        probate: bool = False,
         pre_foreclosure: bool = False,
-        out_of_state_owner: bool = False,
-        years_owned: Optional[int] = None,
+        tax_delinquent: bool = False,
+        code_violation: bool = False,
+        utility_shutoff: bool = False,
+        municipal_lien: bool = False,
+        # Equity / ownership modifiers
         estimated_equity_pct: Optional[float] = None,
+        years_owned: Optional[int] = None,
+        out_of_state_owner: bool = False,
         # Compliance penalties
         dnc: bool = False,
-        days_since_last_contact: Optional[int] = None,  # for 90-day duplicate check
-        # Phone quality (from skip trace)
+        days_since_last_contact: Optional[int] = None,
+        # Phone quality
         has_mobile_phone: bool = True,
         has_any_phone: bool = True,
     ) -> SellerScoreResult:
-        """
-        Score a single lead using the blueprint additive formula.
-        Returns a SellerScoreResult with score, tier, and routing action.
-        """
+        """Score a single lead using the blueprint additive formula + stacking."""
+
         breakdown: dict[str, int] = {}
-        score = 0
+        active_signals: list[DistressSignal] = []
 
-        # ── Positive signals ──────────────────────────────────────────────────
+        # ── Signal scores ──────────────────────────────────────────────────────
 
-        if absentee_owner:
-            breakdown["absentee_owner"] = 20
-            score += 20
+        def add(signal: DistressSignal, condition: bool) -> None:
+            if condition:
+                pts = SIGNAL_WEIGHTS[signal]
+                breakdown[signal.value] = pts
+                active_signals.append(signal)
 
-        if vacant:
-            breakdown["vacant"] = 20
-            score += 20
-
-        if tax_delinquent:
-            breakdown["tax_delinquent"] = 15
-            score += 15
-
-        if pre_foreclosure:
-            breakdown["pre_foreclosure"] = 15
-            score += 15
+        add(DistressSignal.ABSENTEE_OWNER,     absentee_owner)
+        add(DistressSignal.VACANCY,            vacant)
+        add(DistressSignal.PROBATE_INHERITED,  probate)
+        add(DistressSignal.PRE_FORECLOSURE,    pre_foreclosure)
+        add(DistressSignal.TAX_DELINQUENT,     tax_delinquent)
+        add(DistressSignal.CODE_VIOLATION,     code_violation)
+        add(DistressSignal.UTILITY_SHUTOFF,    utility_shutoff)
+        add(DistressSignal.MUNICIPAL_LIEN,     municipal_lien)
 
         if estimated_equity_pct is not None and estimated_equity_pct > 50:
-            breakdown["equity_gt_50pct"] = 10
-            score += 10
+            add(DistressSignal.HIGH_EQUITY, True)
 
-        if years_owned is not None and years_owned > 10:
-            breakdown["years_owned_gt_10"] = 10
-            score += 10
+        if years_owned is not None and years_owned >= 10:
+            add(DistressSignal.LONG_TERM_OWNER, True)
 
-        if out_of_state_owner:
-            breakdown["out_of_state_owner"] = 10
-            score += 10
+        add(DistressSignal.OUT_OF_STATE_OWNER, out_of_state_owner)
+
+        signal_score = sum(breakdown.values())
+
+        # ── Stacking bonus ────────────────────────────────────────────────────
+
+        signal_set = set(active_signals)
+        stack_name, stack_bonus = compute_stack_bonus(signal_set)
+
+        if stack_bonus > 0:
+            breakdown[f"stack_bonus:{stack_name}"] = stack_bonus
+
+        raw_score = signal_score + stack_bonus
 
         # ── Penalties ─────────────────────────────────────────────────────────
 
         if dnc:
             breakdown["dnc_penalty"] = -40
-            score -= 40
+            raw_score -= 40
 
         if days_since_last_contact is not None and days_since_last_contact < 90:
             breakdown["duplicate_contact_90d_penalty"] = -20
-            score -= 20
+            raw_score -= 20
 
         if has_any_phone and not has_mobile_phone:
             breakdown["landline_only_penalty"] = -15
-            score -= 15
+            raw_score -= 15
 
-        # ── Derive tier + routing ─────────────────────────────────────────────
+        # ── Tier + routing ────────────────────────────────────────────────────
 
-        # If no valid phone at all, force suppress regardless of score
         if not has_any_phone:
+            # No phone at all → direct mail only, force suppress
             breakdown["no_phone_override"] = 0
             tier = "D"
             routing_action = "suppress"
-            routing_reason = "No phone number found from skip trace — direct mail only"
+            routing_reason = "No phone number found — direct mail only"
         else:
-            tier = score_to_tier(score)
+            tier = score_to_tier(raw_score)
             routing_action, routing_reason = tier_to_routing(tier)
+
+        enters_calling = tier in ("A", "B") and not dnc and has_any_phone
 
         result = SellerScoreResult(
             lead_id=lead_id,
-            seller_score=score,
+            seller_score=raw_score,
             priority_tier=tier,
+            signal_score=signal_score,
+            stack_name=stack_name,
+            stack_bonus=stack_bonus,
             score_breakdown=breakdown,
+            active_signals=[s.value for s in active_signals],
             routing_action=routing_action,
             routing_reason=routing_reason,
+            enters_calling_campaign=enters_calling,
         )
 
         logger.info(
-            f"[{self.name}] lead={lead_id} score={score} tier={tier} "
-            f"action={routing_action} breakdown={breakdown}"
+            f"[{self.name}] lead={lead_id} score={raw_score} "
+            f"(signals={signal_score} + stack={stack_bonus}) "
+            f"tier={tier} stack='{stack_name}' action={routing_action}"
         )
         return result
 
-    def score_batch(self, lead_inputs: list[dict]) -> list[SellerScoreResult]:
-        """
-        Score a list of leads from dicts.
-        Each dict should include the same kwargs as score_lead().
-        Required key: 'lead_id'.
-        """
+    def score_property_lead(self, lead: PropertyLead) -> SellerScoreResult:
+        """Score from a PropertyLead object directly."""
+        out_of_state = (
+            lead.owner_mailing_address is not None
+            and lead.owner_mailing_address.state != lead.address.state
+        )
+        return self.score_lead(
+            lead_id=str(lead.id),
+            absentee_owner=lead.is_absentee,
+            vacant=lead.is_vacant,
+            probate=lead.probate_status,
+            pre_foreclosure=lead.pre_foreclosure_status,
+            tax_delinquent=bool(lead.tax_delinquent_amount and lead.tax_delinquent_amount > 0),
+            code_violation=lead.code_violation_status,
+            utility_shutoff=lead.utility_shutoff_status,
+            municipal_lien=lead.municipal_lien_status,
+            estimated_equity_pct=lead.estimated_equity_pct,
+            years_owned=lead.years_owned,
+            out_of_state_owner=out_of_state,
+            dnc=lead.flagged,
+            has_mobile_phone=bool(lead.phone_numbers),
+            has_any_phone=bool(lead.phone_numbers),
+        )
+
+    def score_batch(self, leads: list[PropertyLead]) -> list[SellerScoreResult]:
+        """Score a list of PropertyLead objects."""
         results = []
-        for inp in lead_inputs:
-            lead_id = str(inp.pop("lead_id", "unknown"))
-            result = self.score_lead(lead_id=lead_id, **inp)
+        tier_counts = {"A": 0, "B": 0, "C": 0, "D": 0}
+
+        for lead in leads:
+            result = self.score_property_lead(lead)
+            # Write scores back to lead
+            lead.seller_score = result.seller_score
+            lead.stack_name   = result.stack_name
+            lead.stack_bonus  = result.stack_bonus
+            tier_counts[result.priority_tier] += 1
             results.append(result)
 
-        tier_counts = {"A": 0, "B": 0, "C": 0, "D": 0}
-        for r in results:
-            tier_counts[r.priority_tier] = tier_counts.get(r.priority_tier, 0) + 1
-
+        calling_count = sum(1 for r in results if r.enters_calling_campaign)
         logger.info(
-            f"[{self.name}] Batch scored {len(results)} leads — "
+            f"[{self.name}] Batch {len(leads)} leads — "
             f"A={tier_counts['A']} B={tier_counts['B']} "
-            f"C={tier_counts['C']} D={tier_counts['D']}"
+            f"C={tier_counts['C']} D={tier_counts['D']} "
+            f"calling_eligible={calling_count}"
         )
         return results

@@ -132,6 +132,135 @@ class BatchLeadsProvider(BaseDataProvider):
         return []
 
 
+# ── Government Data Providers ─────────────────────────────────────────────────
+
+class CodeViolationCSVProvider(BaseDataProvider):
+    """
+    City code enforcement / unsafe structure CSV export.
+
+    Expected columns (flexible — DataSourceAgent normalizes):
+      address, owner_name, parcel_id, violation_type, violation_date,
+      violation_status, owner_occupied, property_type, county, zip,
+      ownership_years
+
+    Sources:
+      - City code enforcement departments
+      - Municipal unsafe structure registries
+      - Vacant building registries
+
+    Blueprint criteria:
+      code_violation_status = true
+      violation_type = structural OR unsafe
+      ownership_length >= 5
+      property_type = single_family
+      exclude MLS_active
+    """
+
+    name = "code_violation_csv"
+    source_tag = "code_violation"
+
+    def fetch(self, file_path: str, **kwargs: Any) -> list[dict[str, Any]]:
+        path = Path(file_path)
+        if not path.exists():
+            logger.error(f"[{self.name}] File not found: {file_path}")
+            return []
+
+        records: list[dict[str, Any]] = []
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                row["_source_tag"] = self.source_tag
+                row["_code_violation_status"] = "true"
+                records.append(dict(row))
+
+        logger.info(f"[{self.name}] Loaded {len(records)} code violation records from {file_path}")
+        return records
+
+
+class UtilityShutoffCSVProvider(BaseDataProvider):
+    """
+    Utility shutoff (electric / water / gas) CSV export.
+
+    Expected columns (flexible):
+      address, owner_name, parcel_id, utility_type, shutoff_date,
+      owner_occupied, equity_percent, property_type, county, zip
+
+    Sources:
+      - Electric utility departments
+      - Water departments
+      - Gas utility providers
+
+    Blueprint criteria:
+      utility_shutoff_status = true
+      owner_occupied = false
+      equity >= 30
+      property_type = single_family
+      exclude MLS_active
+    """
+
+    name = "utility_shutoff_csv"
+    source_tag = "utility_shutoff"
+
+    def fetch(self, file_path: str, **kwargs: Any) -> list[dict[str, Any]]:
+        path = Path(file_path)
+        if not path.exists():
+            logger.error(f"[{self.name}] File not found: {file_path}")
+            return []
+
+        records: list[dict[str, Any]] = []
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                row["_source_tag"] = self.source_tag
+                row["_utility_shutoff_status"] = "true"
+                records.append(dict(row))
+
+        logger.info(f"[{self.name}] Loaded {len(records)} utility shutoff records from {file_path}")
+        return records
+
+
+class MunicipalLienCSVProvider(BaseDataProvider):
+    """
+    Municipal lien CSV export (county clerk / city finance / lien registry).
+
+    Expected columns (flexible):
+      address, owner_name, parcel_id, lien_type, lien_amount, lien_date,
+      equity_percent, ownership_years, property_type, county, zip
+
+    Sources:
+      - County clerk lien filings
+      - City finance departments
+      - Municipal lien registries
+
+    Blueprint criteria:
+      municipal_lien_status = true
+      lien_amount >= 1000
+      equity >= 40
+      ownership_length >= 5
+      property_type = single_family
+    """
+
+    name = "municipal_lien_csv"
+    source_tag = "municipal_lien"
+
+    def fetch(self, file_path: str, **kwargs: Any) -> list[dict[str, Any]]:
+        path = Path(file_path)
+        if not path.exists():
+            logger.error(f"[{self.name}] File not found: {file_path}")
+            return []
+
+        records: list[dict[str, Any]] = []
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                row["_source_tag"] = self.source_tag
+                row["_municipal_lien_status"] = "true"
+                records.append(dict(row))
+
+        logger.info(f"[{self.name}] Loaded {len(records)} municipal lien records from {file_path}")
+        return records
+
+
 # ── Factory ───────────────────────────────────────────────────────────────────
 
 
@@ -147,11 +276,15 @@ class DataProviderFactory:
     """Create the right provider by name."""
 
     _registry: dict[str, BaseDataProvider] = {
-        "tax_delinquent_csv": TaxDelinquentCSVProvider(),
-        "probate_csv": ProbateCSVProvider(),
-        "manual": ManualLeadProvider(),
-        "propstream": PropStreamProvider(),
-        "batchleads": BatchLeadsProvider(),
+        "tax_delinquent_csv":  TaxDelinquentCSVProvider(),
+        "probate_csv":         ProbateCSVProvider(),
+        "manual":              ManualLeadProvider(),
+        "propstream":          PropStreamProvider(),
+        "batchleads":          BatchLeadsProvider(),
+        # Government data sources (blueprint)
+        "code_violation_csv":  CodeViolationCSVProvider(),
+        "utility_shutoff_csv": UtilityShutoffCSVProvider(),
+        "municipal_lien_csv":  MunicipalLienCSVProvider(),
     }
 
     @classmethod

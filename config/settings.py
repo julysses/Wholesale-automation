@@ -111,12 +111,27 @@ class Settings:
     slack_webhook_url: str = os.getenv("SLACK_WEBHOOK_URL", "")
     notification_email: str = os.getenv("NOTIFICATION_EMAIL", "")
 
+    # Retell AI (primary AI calling provider)
+    retell_api_key: str = os.getenv("RETELL_API_KEY", "")
+    retell_agent_id: str = os.getenv("RETELL_AGENT_ID", "")
+    retell_from_number: str = os.getenv("RETELL_FROM_NUMBER", "")
+    retell_webhook_secret: str = os.getenv("RETELL_WEBHOOK_SECRET", "")
+
+    # Air AI (alternative AI calling provider)
+    air_ai_api_key: str = os.getenv("AIR_AI_API_KEY", "")
+    air_ai_agent_id: str = os.getenv("AIR_AI_AGENT_ID", "")
+    air_ai_from_number: str = os.getenv("AIR_AI_FROM_NUMBER", "")
+    air_ai_webhook_secret: str = os.getenv("AIR_AI_WEBHOOK_SECRET", "")
+
+    # AI calling provider selection: "retell" | "air_ai"
+    ai_calling_provider: str = os.getenv("AI_CALLING_PROVIDER", "retell")
+
     # Webhook secrets (for verifying inbound webhooks)
     batchdialer_webhook_secret: str = os.getenv("BATCHDIALER_WEBHOOK_SECRET", "")
     launch_control_webhook_secret: str = os.getenv("LAUNCH_CONTROL_WEBHOOK_SECRET", "")
 
     # ── Seller score routing thresholds ───────────────────────────────────────
-    # Tiers: A=70+ B=50-69 C=30-49 D<30  (A+B → dialer, C → SMS, D → suppress)
+    # Tiers: A=90+ B=70-89 C=50-69 D<50  (A+B → AI calling, C → SMS, D → suppress)
     seller_score_dialer_min_tier: str = os.getenv("SELLER_SCORE_DIALER_MIN_TIER", "B")
     seller_score_sms_min_tier: str = os.getenv("SELLER_SCORE_SMS_MIN_TIER", "C")
     # Skip trace all leads by default before scoring
