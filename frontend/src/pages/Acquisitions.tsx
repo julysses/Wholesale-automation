@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { classificationColor, dispositionLabel } from '@/lib/retellAdapter';
+import { StrategyComparisonPanel } from '@/components/dashboard/StrategyComparisonPanel';
 import type { CallClassification, CallDisposition } from '@/lib/retellAdapter';
 import { cn } from '@/lib/utils';
 import {
@@ -745,6 +746,9 @@ export function Acquisitions() {
           AI-qualified sellers — HOT leads, WARM leads, and scheduled appointments
         </p>
       </div>
+
+      {/* Strategy comparison (collapsible) */}
+      <StrategyComparisonPanel />
 
       {/* Summary row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

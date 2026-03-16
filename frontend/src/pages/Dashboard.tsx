@@ -6,6 +6,7 @@ import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { DealsByStage } from '@/components/dashboard/DealsByStage';
 import { FunnelPanel } from '@/components/dashboard/FunnelPanel';
 import { PrecisionTargetingPanel } from '@/components/dashboard/PrecisionTargetingPanel';
+import { StrategyComparisonPanel } from '@/components/dashboard/StrategyComparisonPanel';
 import { useHotLeads } from '@/hooks/useLeads';
 import { useUpcomingClosings } from '@/hooks/useDeals';
 import { useTodayTasks } from '@/hooks/useTasks';
@@ -210,6 +211,9 @@ export function Dashboard() {
 
           {/* Precision Targeting */}
           <PrecisionTargetingPanel />
+
+          {/* Strategy Comparison */}
+          <StrategyComparisonPanel />
 
           {/* Deals by Stage */}
           <DealsByStage />
