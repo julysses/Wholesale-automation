@@ -1,12 +1,15 @@
 /**
- * FunnelPanel — Blueprint acquisition funnel visualization.
+ * FunnelPanel — Precision Acquisition Funnel visualization.
  *
- * Target funnel (blueprint):
- *   20,000 calls → 2,500 conversations → 300 interested
- *   → 100 warm → 25 appointments → 5 contracts
+ * PRD model: precision targeting — 2,000 high-probability leads
+ * instead of mass outreach.
+ *
+ * Precision funnel (PRD Section 3 vs 4):
+ *   Traditional:  30,000 leads → 20,000 calls → 2,000 convos → 2-4 deals
+ *   Precision:    2,000 leads  → 1,500 calls  → 500 convos   → 2-6 deals
  *
  * Shows actual vs. target for each funnel stage pulled from Supabase
- * via the funnel_metrics view (migration 004).
+ * via the funnel_metrics view (migration 004 + 005).
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -22,14 +25,15 @@ interface FunnelMetrics {
   appointments_completed: number;
 }
 
-// Blueprint targets per month (updated: 30k calls → 6 contracts)
+// PRD precision targeting model: 2,000 leads → 2-6 contracts/month
+// (replaces mass-call model per PRD Section 1 + Section 3)
 const TARGETS: FunnelMetrics = {
-  total_calls: 30000,
-  conversations: 4000,
-  interested: 500,
-  hot_leads: 150,
-  appointments: 40,
-  appointments_completed: 6,
+  total_calls: 1500,          // ~75% of 2,000 precision leads get called
+  conversations: 500,         // 33% conversation rate from precision list
+  interested: 150,            // 30% of conversations show interest
+  hot_leads: 40,              // 27% of interested are HOT
+  appointments: 12,           // 30% of HOT leads book
+  appointments_completed: 6,  // 50% of appointments → contract
 };
 
 interface StageProps {
@@ -192,7 +196,7 @@ export function FunnelPanel() {
         <span className="text-xs text-gray-400">Monthly target</span>
       </div>
       <p className="text-xs text-gray-500 mb-4">
-        Blueprint: 30k calls → 4k convos → 40 appts → 6 contracts/mo
+        Precision model: 2,000 targeted leads → 500 convos → 6 contracts/mo
       </p>
 
       {isLoading ? (
@@ -219,7 +223,7 @@ export function FunnelPanel() {
             </span>
           </div>
           <div className="text-xs text-gray-400 mt-0.5">
-            {projectedContracts} contract{projectedContracts !== 1 ? 's' : ''} × $10,000 avg fee · target: 6/mo
+            {projectedContracts} contract{projectedContracts !== 1 ? 's' : ''} × $10,000+ avg fee · target: 2–6/mo
           </div>
         </div>
       )}
@@ -227,9 +231,9 @@ export function FunnelPanel() {
       {projectedContracts === 0 && !isLoading && (
         <div className="mt-4 pt-4 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-400">
-            Target: 6 contracts/month · $10,000 avg assignment fee
+            Precision target: 2–6 contracts/month · $10,000+ avg fee
           </p>
-          <p className="text-xs font-medium text-gray-600 mt-0.5">= $60,000/month</p>
+          <p className="text-xs font-medium text-gray-600 mt-0.5">= $20,000–$60,000/month</p>
         </div>
       )}
     </div>

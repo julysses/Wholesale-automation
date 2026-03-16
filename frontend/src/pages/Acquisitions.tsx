@@ -16,6 +16,7 @@ import {
   Flame, TrendingUp, CalendarCheck, Phone, Mic,
   ChevronDown, ChevronUp, AlertTriangle, Clock,
   DollarSign, Home, User, MessageSquare, ExternalLink,
+  BarChart2, Hammer, Lightbulb, ShieldCheck, ArrowRight,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -70,6 +71,51 @@ interface Appointment {
   status: string;
   notes: string | null;
   lead?: { property_address: string; owner_first_name: string | null; owner_last_name: string | null };
+}
+
+interface DealAnalysis {
+  id: string;
+  lead_id: string | null;
+  arv_low: number | null;
+  arv_mid: number | null;
+  arv_high: number | null;
+  arv_confidence: string | null;
+  repair_tier: string | null;
+  repair_tier_label: string | null;
+  repair_cost_low: number | null;
+  repair_cost_high: number | null;
+  mao: number | null;
+  as_is_value: number | null;
+  offer_range_low: number | null;
+  offer_range_high: number | null;
+  projected_assignment_fee: number | null;
+  exit_strategy: string | null;
+  is_viable: boolean;
+  weak_deal_reasons: string[] | null;
+  summary: string | null;
+  analyzed_at: string;
+  // Joined
+  property_address?: string;
+  owner_name?: string;
+}
+
+interface OfferRec {
+  id: string;
+  lead_id: string | null;
+  opening_offer: number | null;
+  target_offer: number | null;
+  ceiling_offer: number | null;
+  pain_points: string[] | null;
+  motivation_level: string | null;
+  primary_exit: string | null;
+  exit_rationale: string | null;
+  opening_script: string | null;
+  closing_notes: string | null;
+  objection_handlers: Array<{ objection: string; response: string }> | null;
+  generated_at: string;
+  // Joined
+  property_address?: string;
+  owner_name?: string;
 }
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
@@ -156,6 +202,73 @@ function useAcquisitionLeads(classification: CallClassification) {
     },
     staleTime: 30000,
     refetchInterval: 60000,
+  });
+}
+
+function useDealAnalyses() {
+  return useQuery<DealAnalysis[]>({
+    queryKey: ['deal_analyses'],
+    queryFn: async () => {
+      const { data: analyses } = await supabase
+        .from('deal_analyses')
+        .select('*')
+        .eq('is_viable', true)
+        .order('analyzed_at', { ascending: false })
+        .limit(30);
+      if (!analyses?.length) return [];
+
+      const leadIds = [...new Set(analyses.map((a) => a.lead_id).filter(Boolean))];
+      const { data: leads } = leadIds.length
+        ? await supabase
+            .from('leads')
+            .select('id, property_address, owner_first_name, owner_last_name')
+            .in('id', leadIds)
+        : { data: [] };
+
+      const leadMap = Object.fromEntries((leads ?? []).map((l) => [l.id, l]));
+      return analyses.map((a) => {
+        const l = leadMap[a.lead_id ?? ''];
+        return {
+          ...a,
+          property_address: l?.property_address,
+          owner_name: l ? `${l.owner_first_name ?? ''} ${l.owner_last_name ?? ''}`.trim() : undefined,
+        };
+      });
+    },
+    staleTime: 60000,
+  });
+}
+
+function useOfferRecs() {
+  return useQuery<OfferRec[]>({
+    queryKey: ['offer_recommendations'],
+    queryFn: async () => {
+      const { data: recs } = await supabase
+        .from('offer_recommendations')
+        .select('*')
+        .order('generated_at', { ascending: false })
+        .limit(20);
+      if (!recs?.length) return [];
+
+      const leadIds = [...new Set(recs.map((r) => r.lead_id).filter(Boolean))];
+      const { data: leads } = leadIds.length
+        ? await supabase
+            .from('leads')
+            .select('id, property_address, owner_first_name, owner_last_name')
+            .in('id', leadIds)
+        : { data: [] };
+
+      const leadMap = Object.fromEntries((leads ?? []).map((l) => [l.id, l]));
+      return recs.map((r) => {
+        const l = leadMap[r.lead_id ?? ''];
+        return {
+          ...r,
+          property_address: l?.property_address,
+          owner_name: l ? `${l.owner_first_name ?? ''} ${l.owner_last_name ?? ''}`.trim() : undefined,
+        };
+      });
+    },
+    staleTime: 60000,
   });
 }
 
@@ -387,21 +500,240 @@ function LeadCard({ lead }: { lead: AcquisitionLead }) {
   );
 }
 
+function RepairTierBadge({ tier }: { tier: string }) {
+  const styles: Record<string, string> = {
+    light:    'bg-green-100 text-green-700 border-green-200',
+    moderate: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    heavy:    'bg-orange-100 text-orange-700 border-orange-200',
+    full_gut: 'bg-red-100 text-red-700 border-red-200',
+  };
+  const labels: Record<string, string> = {
+    light: 'Light', moderate: 'Moderate', heavy: 'Heavy', full_gut: 'Full Gut',
+  };
+  return (
+    <span className={cn(
+      'text-xs px-2 py-0.5 rounded-full border font-semibold',
+      styles[tier] ?? 'bg-gray-100 text-gray-500 border-gray-200',
+    )}>
+      <Hammer className="h-3 w-3 inline mr-0.5" />
+      {labels[tier] ?? tier} Renovation
+    </span>
+  );
+}
+
+function ExitStrategyBadge({ strategy }: { strategy: string }) {
+  const map: Record<string, { label: string; style: string }> = {
+    wholesale_assignment: { label: 'Wholesale',  style: 'bg-blue-100 text-blue-700 border-blue-200' },
+    novation_agreement:   { label: 'Novation',   style: 'bg-purple-100 text-purple-700 border-purple-200' },
+    wholetail:            { label: 'Wholetail',  style: 'bg-teal-100 text-teal-700 border-teal-200' },
+    investor_resale:      { label: 'Inv. Resale',style: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+    too_risky:            { label: 'Too Risky',  style: 'bg-red-100 text-red-700 border-red-200' },
+  };
+  const { label, style } = map[strategy] ?? { label: strategy, style: 'bg-gray-100 text-gray-500 border-gray-200' };
+  return (
+    <span className={cn('text-xs px-2 py-0.5 rounded-full border font-semibold', style)}>
+      {label}
+    </span>
+  );
+}
+
+function DealAnalysisCard({ deal }: { deal: DealAnalysis }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-sm transition-shadow">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {deal.exit_strategy && <ExitStrategyBadge strategy={deal.exit_strategy} />}
+            {deal.repair_tier && <RepairTierBadge tier={deal.repair_tier} />}
+            {deal.arv_confidence && (
+              <span className="text-xs text-gray-400">ARV confidence: {deal.arv_confidence}</span>
+            )}
+          </div>
+          <p className="font-semibold text-gray-900 mt-1 truncate">{deal.property_address ?? 'Unknown'}</p>
+          {deal.owner_name && <p className="text-xs text-gray-500">{deal.owner_name}</p>}
+        </div>
+        <button onClick={() => setOpen(!open)} className="p-1 rounded hover:bg-gray-100 text-gray-400 shrink-0">
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {/* Key numbers */}
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        {[
+          { label: 'ARV',       value: deal.arv_low   ? formatCurrency(deal.arv_low)   : '—', color: 'text-blue-700' },
+          { label: 'Repairs',   value: deal.repair_cost_high ? formatCurrency(deal.repair_cost_high) : '—', color: 'text-orange-600' },
+          { label: 'MAO',       value: deal.mao       ? formatCurrency(deal.mao)       : '—', color: 'text-gray-800' },
+          { label: 'Proj. Fee', value: deal.projected_assignment_fee ? formatCurrency(deal.projected_assignment_fee) : '—', color: 'text-green-700' },
+        ].map((s) => (
+          <div key={s.label} className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+            <p className="text-gray-400">{s.label}</p>
+            <p className={cn('font-bold', s.color)}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Offer range */}
+      {deal.offer_range_low && deal.offer_range_high && (
+        <div className="mt-2 text-xs">
+          <span className="text-gray-400">Offer range: </span>
+          <span className="font-semibold text-green-700">
+            {formatCurrency(deal.offer_range_low)} – {formatCurrency(deal.offer_range_high)}
+          </span>
+        </div>
+      )}
+
+      {/* Expanded */}
+      {open && (
+        <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+          {deal.summary && <p className="text-xs text-gray-600 italic">{deal.summary}</p>}
+          {deal.weak_deal_reasons && deal.weak_deal_reasons.length > 0 && (
+            <div className="flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-700 space-y-0.5">
+                {deal.weak_deal_reasons.map((r, i) => <p key={i}>{r}</p>)}
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {deal.arv_mid && <div><span className="text-gray-400">ARV mid: </span><span className="font-medium">{formatCurrency(deal.arv_mid)}</span></div>}
+            {deal.as_is_value && <div><span className="text-gray-400">As-is: </span><span className="font-medium">{formatCurrency(deal.as_is_value)}</span></div>}
+            {deal.repair_cost_low && deal.repair_cost_high && (
+              <div><span className="text-gray-400">Repair range: </span><span className="font-medium">{formatCurrency(deal.repair_cost_low)} – {formatCurrency(deal.repair_cost_high)}</span></div>
+            )}
+          </div>
+          <p className="text-xs text-gray-400">
+            Analyzed {formatDistanceToNow(new Date(deal.analyzed_at), { addSuffix: true })}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OfferRecCard({ rec }: { rec: OfferRec }) {
+  const [open, setOpen] = useState(false);
+  const motivationColors: Record<string, string> = {
+    urgent: 'text-red-700', high: 'text-orange-600', medium: 'text-yellow-600', low: 'text-gray-500',
+  };
+  return (
+    <div className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-sm transition-shadow">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {rec.motivation_level && (
+              <span className={cn(
+                'text-xs font-semibold capitalize px-2 py-0.5 rounded-full border',
+                rec.motivation_level === 'urgent'
+                  ? 'bg-red-100 border-red-200 text-red-700'
+                  : rec.motivation_level === 'high'
+                  ? 'bg-orange-100 border-orange-200 text-orange-700'
+                  : 'bg-gray-100 border-gray-200 text-gray-600',
+              )}>
+                {rec.motivation_level} motivation
+              </span>
+            )}
+            {rec.primary_exit && <ExitStrategyBadge strategy={rec.primary_exit} />}
+          </div>
+          <p className="font-semibold text-gray-900 mt-1 truncate">{rec.property_address ?? 'Unknown'}</p>
+          {rec.owner_name && <p className="text-xs text-gray-500">{rec.owner_name}</p>}
+        </div>
+        <button onClick={() => setOpen(!open)} className="p-1 rounded hover:bg-gray-100 text-gray-400 shrink-0">
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {/* Offer trio */}
+      <div className="mt-3 flex gap-3 text-xs">
+        {[
+          { label: 'Open with', value: rec.opening_offer, color: 'text-gray-700' },
+          { label: 'Target',    value: rec.target_offer,  color: 'text-blue-700' },
+          { label: 'Ceiling',   value: rec.ceiling_offer, color: 'text-red-700' },
+        ].map((o) => (
+          <div key={o.label} className="flex-1 bg-gray-50 rounded-lg p-2 border border-gray-100 text-center">
+            <p className="text-gray-400">{o.label}</p>
+            <p className={cn('font-bold', o.color)}>{o.value ? formatCurrency(o.value) : '—'}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Pain points */}
+      {rec.pain_points && rec.pain_points.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {rec.pain_points.slice(0, 3).map((p, i) => (
+            <span key={i} className="text-xs bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-full">
+              {p}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Expanded */}
+      {open && (
+        <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+          {rec.opening_script && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
+                <Lightbulb className="h-3.5 w-3.5" /> Opening script
+              </p>
+              <p className="text-xs text-gray-700 bg-blue-50 border border-blue-100 rounded-lg p-2.5 italic">
+                "{rec.opening_script}"
+              </p>
+            </div>
+          )}
+          {rec.exit_rationale && (
+            <p className="text-xs text-gray-500">
+              <span className="font-semibold">Exit rationale:</span> {rec.exit_rationale}
+            </p>
+          )}
+          {rec.objection_handlers && rec.objection_handlers.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5" /> Objection handlers
+              </p>
+              <div className="space-y-2">
+                {rec.objection_handlers.slice(0, 3).map((oh, i) => (
+                  <div key={i} className="text-xs space-y-0.5">
+                    <p className="font-medium text-gray-700 flex items-center gap-1">
+                      <ArrowRight className="h-3 w-3 text-gray-400" />
+                      "{oh.objection}"
+                    </p>
+                    <p className="text-gray-500 pl-4">{oh.response}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {rec.closing_notes && (
+            <p className="text-xs text-gray-500 border-t border-gray-100 pt-2">
+              <span className="font-semibold">Closing note:</span> {rec.closing_notes}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-type Tab = 'hot' | 'warm' | 'appointments';
+type Tab = 'hot' | 'warm' | 'deal_analysis' | 'negotiation' | 'appointments';
 
 export function Acquisitions() {
   const [tab, setTab] = useState<Tab>('hot');
 
-  const { data: hotLeads = [], isLoading: hotLoading }  = useAcquisitionLeads('HOT');
-  const { data: warmLeads = [], isLoading: warmLoading } = useAcquisitionLeads('WARM');
-  const { data: appointments = [] }                      = useAppointments();
+  const { data: hotLeads = [], isLoading: hotLoading }    = useAcquisitionLeads('HOT');
+  const { data: warmLeads = [], isLoading: warmLoading }  = useAcquisitionLeads('WARM');
+  const { data: deals = [], isLoading: dealsLoading }     = useDealAnalyses();
+  const { data: offerRecs = [], isLoading: recsLoading }  = useOfferRecs();
+  const { data: appointments = [] }                       = useAppointments();
 
   const tabs: { key: Tab; label: string; icon: React.ElementType; count?: number; color: string }[] = [
-    { key: 'hot',          label: 'HOT Leads',    icon: Flame,        count: hotLeads.length,    color: 'text-red-600' },
-    { key: 'warm',         label: 'WARM Leads',   icon: TrendingUp,   count: warmLeads.length,   color: 'text-orange-600' },
-    { key: 'appointments', label: 'Appointments', icon: CalendarCheck, count: appointments.length, color: 'text-blue-600' },
+    { key: 'hot',          label: 'HOT Leads',      icon: Flame,        count: hotLeads.length,    color: 'text-red-600' },
+    { key: 'warm',         label: 'WARM Leads',     icon: TrendingUp,   count: warmLeads.length,   color: 'text-orange-600' },
+    { key: 'deal_analysis',label: 'Deal Analysis',  icon: BarChart2,    count: deals.length,       color: 'text-blue-600' },
+    { key: 'negotiation',  label: 'Negotiation',    icon: Lightbulb,    count: offerRecs.length,   color: 'text-purple-600' },
+    { key: 'appointments', label: 'Appointments',   icon: CalendarCheck, count: appointments.length, color: 'text-teal-600' },
   ];
 
   return (
@@ -513,6 +845,47 @@ export function Acquisitions() {
             </div>
           )}
           {warmLeads.map((lead) => <LeadCard key={lead.id} lead={lead} />)}
+        </div>
+      )}
+
+      {tab === 'deal_analysis' && (
+        <div className="space-y-3">
+          {dealsLoading && (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          )}
+          {!dealsLoading && deals.length === 0 && (
+            <div className="text-center py-16">
+              <BarChart2 className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-500 font-medium">No deal analyses yet</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Deal analyses are generated automatically for HOT and WARM leads after qualification
+              </p>
+            </div>
+          )}
+          {deals.map((deal) => <DealAnalysisCard key={deal.id} deal={deal} />)}
+        </div>
+      )}
+
+      {tab === 'negotiation' && (
+        <div className="space-y-3">
+          {recsLoading && (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <div key={i} className="h-28 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          )}
+          {!recsLoading && offerRecs.length === 0 && (
+            <div className="text-center py-16">
+              <Lightbulb className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-500 font-medium">No negotiation briefs yet</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Negotiation briefs are generated for HOT leads with opening offers,
+                objection handlers, and exit strategy recommendations
+              </p>
+            </div>
+          )}
+          {offerRecs.map((rec) => <OfferRecCard key={rec.id} rec={rec} />)}
         </div>
       )}
 

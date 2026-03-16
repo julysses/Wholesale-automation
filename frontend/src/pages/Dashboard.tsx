@@ -5,6 +5,7 @@ import { PipelineChart } from '@/components/dashboard/PipelineChart';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { DealsByStage } from '@/components/dashboard/DealsByStage';
 import { FunnelPanel } from '@/components/dashboard/FunnelPanel';
+import { PrecisionTargetingPanel } from '@/components/dashboard/PrecisionTargetingPanel';
 import { useHotLeads } from '@/hooks/useLeads';
 import { useUpcomingClosings } from '@/hooks/useDeals';
 import { useTodayTasks } from '@/hooks/useTasks';
@@ -206,6 +207,9 @@ export function Dashboard() {
 
           {/* Acquisition Funnel */}
           <FunnelPanel />
+
+          {/* Precision Targeting */}
+          <PrecisionTargetingPanel />
 
           {/* Deals by Stage */}
           <DealsByStage />
