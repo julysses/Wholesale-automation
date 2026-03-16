@@ -16,6 +16,7 @@ import { Pipeline } from '@/pages/Pipeline';
 import { DealAnalyzer } from '@/pages/DealAnalyzer';
 import { Buyers } from '@/pages/Buyers';
 import { AIAgents } from '@/pages/AIAgents';
+import { Acquisitions } from '@/pages/Acquisitions';
 import { Tasks } from '@/pages/Tasks';
 import { Reports } from '@/pages/Reports';
 import { SetupWizard } from '@/pages/SetupWizard';
@@ -76,6 +77,7 @@ export default function App() {
                 <Route path="/analyzer"     element={<DealAnalyzer />} />
                 <Route path="/buyers"       element={<Buyers />} />
                 <Route path="/ai-agents"    element={<AIAgents />} />
+                <Route path="/acquisitions" element={<Acquisitions />} />
                 <Route path="/tasks"        element={<Tasks />} />
                 <Route path="/reports"      element={<Reports />} />
                 {/* Admin routes — access enforced inside the page component */}

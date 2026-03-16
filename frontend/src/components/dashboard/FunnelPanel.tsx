@@ -22,14 +22,14 @@ interface FunnelMetrics {
   appointments_completed: number;
 }
 
-// Blueprint targets per month
+// Blueprint targets per month (updated: 30k calls → 6 contracts)
 const TARGETS: FunnelMetrics = {
-  total_calls: 20000,
-  conversations: 2500,
-  interested: 300,
-  hot_leads: 100,
-  appointments: 25,
-  appointments_completed: 5,
+  total_calls: 30000,
+  conversations: 4000,
+  interested: 500,
+  hot_leads: 150,
+  appointments: 40,
+  appointments_completed: 6,
 };
 
 interface StageProps {
@@ -158,7 +158,7 @@ export function FunnelPanel() {
     },
     {
       icon: <Flame className="h-3.5 w-3.5" />,
-      label: 'Hot Leads',
+      label: 'Warm / Hot Leads',
       actual: actual.hot_leads,
       target: TARGETS.hot_leads,
       color: 'text-orange-600',
@@ -192,7 +192,7 @@ export function FunnelPanel() {
         <span className="text-xs text-gray-400">Monthly target</span>
       </div>
       <p className="text-xs text-gray-500 mb-4">
-        Blueprint: 20k calls → 2,500 convos → 25 appts → 5 contracts
+        Blueprint: 30k calls → 4k convos → 40 appts → 6 contracts/mo
       </p>
 
       {isLoading ? (
@@ -219,7 +219,7 @@ export function FunnelPanel() {
             </span>
           </div>
           <div className="text-xs text-gray-400 mt-0.5">
-            {projectedContracts} contract{projectedContracts !== 1 ? 's' : ''} × $10,000 avg fee
+            {projectedContracts} contract{projectedContracts !== 1 ? 's' : ''} × $10,000 avg fee · target: 6/mo
           </div>
         </div>
       )}
@@ -227,9 +227,9 @@ export function FunnelPanel() {
       {projectedContracts === 0 && !isLoading && (
         <div className="mt-4 pt-4 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-400">
-            Target: 2 contracts/month · $10,000 avg assignment fee
+            Target: 6 contracts/month · $10,000 avg assignment fee
           </p>
-          <p className="text-xs font-medium text-gray-600 mt-0.5">= $20,000/month</p>
+          <p className="text-xs font-medium text-gray-600 mt-0.5">= $60,000/month</p>
         </div>
       )}
     </div>

@@ -93,14 +93,49 @@ AIR_DISPOSITION_MAP: dict[str, CallDisposition] = {
 
 @dataclass
 class CallRequest:
-    """Input for creating an outbound AI call."""
+    """
+    Input for creating an outbound AI call.
+
+    Matches the blueprint call payload structure:
+    {
+      "lead_id": "uuid",
+      "phone_number": "+15551234567",
+      "property_address": "123 Main St",
+      "owner_name": "John Doe",
+      "metadata": {
+        "seller_score": 82,
+        "distress_flags": ["vacant", "tax_delinquent"]
+      }
+    }
+    """
     lead_id: str
-    phone_number: str          # E.164 format e.g. +12145551234
+    phone_number: str               # E.164 format e.g. +12145551234
     property_address: str
     owner_name: str
     agent_name: str = ""
     campaign_id: str = ""
+    seller_score: Optional[int] = None
+    distress_flags: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_payload(self) -> dict[str, Any]:
+        """Return the canonical blueprint call payload dict."""
+        meta = {
+            **self.metadata,
+        }
+        if self.seller_score is not None:
+            meta["seller_score"] = self.seller_score
+        if self.distress_flags:
+            meta["distress_flags"] = self.distress_flags
+        if self.campaign_id:
+            meta["campaign_id"] = self.campaign_id
+        return {
+            "lead_id": self.lead_id,
+            "phone_number": self.phone_number,
+            "property_address": self.property_address,
+            "owner_name": self.owner_name,
+            "metadata": meta,
+        }
 
 
 @dataclass
@@ -202,26 +237,7 @@ class RetellAdapter:
                 status="dry_run",
             )
 
-        agent_name = req.agent_name or settings.agency_contact_name or "Alex"
-
-        payload = {
-            "agent_id": self.agent_id,
-            "from_number": self.from_number,
-            "to_number": req.phone_number,
-            "metadata": {
-                "lead_id": req.lead_id,
-                "property_address": req.property_address,
-                "owner_name": req.owner_name,
-                "campaign_id": req.campaign_id,
-                **req.metadata,
-            },
-            "retell_llm_dynamic_variables": {
-                "property_address": req.property_address,
-                "owner_name": req.owner_name,
-                "agent_name": agent_name,
-                "agency_name": settings.agency_name,
-            },
-        }
+        payload = build_retell_call_payload(req, self.agent_id, self.from_number)
 
         with httpx.Client(timeout=30) as client:
             resp = client.post(
@@ -262,10 +278,17 @@ class RetellAdapter:
         """
         Parse a Retell AI webhook payload into a CallResultEvent.
 
-        Retell sends: call_started, call_ended, call_analyzed events.
-        Only call_analyzed has the full AI-extracted disposition.
+        Retell webhook event types:
+          retell.call.started   → call_started  (call initiated)
+          retell.call.answered  → call_answered (seller picked up)
+          retell.call.transcript → call_transcript (real-time transcript chunk)
+          retell.call.completed → call_ended / call_analyzed (final result)
+
+        Only call_ended and call_analyzed return a full CallResultEvent;
+        earlier events return None (caller should persist for real-time transcript).
         """
-        event_type = payload.get("event")
+        # Handle both "event" (Retell v1) and "event_type" (Retell v2) field names
+        event_type = payload.get("event") or payload.get("event_type", "")
         call_data = payload.get("call", {})
         call_id = call_data.get("call_id", "")
 
@@ -273,9 +296,20 @@ class RetellAdapter:
             logger.warning("[retell] Webhook missing call_id")
             return None
 
-        # Only process final analysis events
-        if event_type not in ("call_ended", "call_analyzed"):
-            logger.debug(f"[retell] Ignoring event type: {event_type}")
+        # Non-final events — return None; caller handles storage separately
+        NON_FINAL = {
+            "call_started", "call_answered", "call_transcript",
+            "retell.call.started", "retell.call.answered", "retell.call.transcript",
+        }
+        if event_type in NON_FINAL:
+            logger.debug(f"[retell] Non-final event {event_type!r} for call {call_id}")
+            return None
+
+        if event_type not in (
+            "call_ended", "call_analyzed",
+            "retell.call.completed", "retell.call.analyzed",
+        ):
+            logger.debug(f"[retell] Unknown event type {event_type!r}")
             return None
 
         metadata = call_data.get("metadata", {})
@@ -592,3 +626,140 @@ def build_call_script_prompt(
         agent_name=agent_name or settings.agency_contact_name or "Alex",
         agency_name=agency_name or settings.agency_name or "Texas Wholesale Solutions",
     )
+
+
+# ── Transcript utilities ───────────────────────────────────────────────────────
+
+@dataclass
+class TranscriptTurn:
+    """A single speaker turn in a call transcript."""
+    role: str          # "agent" | "user" (seller)
+    content: str
+    timestamp_ms: Optional[int] = None
+
+
+def parse_transcript(raw_transcript: Any) -> list[TranscriptTurn]:
+    """
+    Normalize a Retell transcript into a list of TranscriptTurn objects.
+
+    Retell returns transcript as either:
+    - A plain string (older API)
+    - A list of {"role": str, "content": str, "words": [...]} dicts (newer API)
+
+    Always returns a list regardless of input shape.
+    """
+    if not raw_transcript:
+        return []
+
+    # List format (Retell v2+)
+    if isinstance(raw_transcript, list):
+        turns = []
+        for item in raw_transcript:
+            if isinstance(item, dict):
+                turns.append(TranscriptTurn(
+                    role=item.get("role", "unknown"),
+                    content=item.get("content", ""),
+                    timestamp_ms=item.get("words", [{}])[0].get("start") if item.get("words") else None,
+                ))
+        return turns
+
+    # Plain string — split by common patterns like "Agent: ..." / "User: ..."
+    if isinstance(raw_transcript, str):
+        turns = []
+        for line in raw_transcript.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line.lower().startswith("agent:"):
+                turns.append(TranscriptTurn(role="agent", content=line[6:].strip()))
+            elif line.lower().startswith(("user:", "seller:", "owner:")):
+                content = line.split(":", 1)[1].strip() if ":" in line else line
+                turns.append(TranscriptTurn(role="user", content=content))
+            else:
+                # Append to last turn if ambiguous
+                if turns:
+                    turns[-1].content += " " + line
+                else:
+                    turns.append(TranscriptTurn(role="unknown", content=line))
+        return turns
+
+    return []
+
+
+def transcript_to_text(turns: list[TranscriptTurn]) -> str:
+    """Convert structured turns back to a flat readable string."""
+    lines = []
+    for t in turns:
+        label = "Agent" if t.role == "agent" else "Seller"
+        lines.append(f"{label}: {t.content}")
+    return "\n".join(lines)
+
+
+def extract_lead_signals(
+    transcript: Any,
+    property_address: str = "",
+    owner_name: str = "",
+) -> "QualificationResult":  # type: ignore[name-defined]  # noqa: F821
+    """
+    Parse transcript + run LLM qualification analysis.
+
+    Returns a QualificationResult with:
+    - Extracted signals (timeline, condition, occupancy, asking_price, etc.)
+    - qualification_score (blueprint formula)
+    - classification: HOT | WARM | COLD
+
+    This is the primary entry point used by the webhook handler after
+    receiving a completed call transcript from Retell AI.
+    """
+    from agents.qualification_agent import QualificationAgent  # lazy import
+
+    # Convert transcript to text if it's structured
+    if isinstance(transcript, list):
+        turns = parse_transcript(transcript)
+        text = transcript_to_text(turns)
+    elif isinstance(transcript, str):
+        text = transcript
+    else:
+        text = ""
+
+    agent = QualificationAgent()
+    return agent.analyze_transcript(text, property_address, owner_name)
+
+
+# ── Blueprint call payload builder ────────────────────────────────────────────
+
+def build_retell_call_payload(
+    req: CallRequest,
+    agent_id: str,
+    from_number: str,
+) -> dict[str, Any]:
+    """
+    Build the full Retell API payload for POST /v2/create-phone-call.
+
+    Merges the blueprint metadata structure (seller_score, distress_flags)
+    with Retell-specific fields (agent_id, retell_llm_dynamic_variables).
+    """
+    agent_name = req.agent_name or settings.agency_contact_name or "Alex"
+    agency_name = settings.agency_name or "Texas Wholesale Solutions"
+
+    blueprint_payload = req.to_payload()
+
+    return {
+        "agent_id": agent_id,
+        "from_number": from_number,
+        "to_number": req.phone_number,
+        # Blueprint metadata (lead_id, seller_score, distress_flags, etc.)
+        "metadata": {
+            **blueprint_payload["metadata"],
+            "lead_id": req.lead_id,
+            "property_address": req.property_address,
+            "owner_name": req.owner_name,
+        },
+        # Dynamic variables injected into the agent script at runtime
+        "retell_llm_dynamic_variables": {
+            "property_address": req.property_address,
+            "owner_name": req.owner_name,
+            "agent_name": agent_name,
+            "agency_name": agency_name,
+        },
+    }
