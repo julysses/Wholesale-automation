@@ -39,6 +39,7 @@ interface QualResult {
   offer_range_high: number | null;
   summary: string;
   key_quotes: string[];
+  score_breakdown: Record<string, number> | null;
   created_at: string;
 }
 
@@ -60,8 +61,8 @@ interface AcquisitionLead {
   qual?: QualResult;
   recording_url?: string | null;
   transcript?: string | null;
-  call_duration?: number;
-  called_at?: string;
+  call_duration?: number | null;
+  called_at?: string | null;
 }
 
 interface Appointment {
@@ -165,10 +166,11 @@ function useAcquisitionLeads(classification: CallClassification) {
       );
 
       // Latest call per lead
+      type CallRow = { lead_id: string; call_id: string; disposition: string; recording_url: string | null; duration_sec: number | null; created_at: string };
       const latestCall = Object.fromEntries(
-        (calls ?? []).reduce<[string, typeof calls[0]][]>((acc, c) => {
+        (calls ?? []).reduce<[string, CallRow][]>((acc, c) => {
           if (!acc.find(([id]) => id === c.lead_id)) {
-            acc.push([c.lead_id, c]);
+            acc.push([c.lead_id, c as CallRow]);
           }
           return acc;
         }, [])
@@ -454,14 +456,14 @@ function LeadCard({ lead }: { lead: AcquisitionLead }) {
             <div>
               <p className="text-xs font-semibold text-gray-500 mb-1">Score breakdown</p>
               <div className="flex flex-wrap gap-1.5">
-                {Object.entries(qual.score_breakdown).map(([key, pts]) => (
+                {Object.entries(qual.score_breakdown ?? {}).map(([key, pts]) => (
                   <span key={key} className={cn(
                     'text-xs px-1.5 py-0.5 rounded border font-medium',
-                    pts > 0
+                    (pts as number) > 0
                       ? 'bg-green-50 text-green-700 border-green-200'
                       : 'bg-red-50 text-red-700 border-red-200',
                   )}>
-                    {key.replace(/_/g, ' ')} {pts > 0 ? `+${pts}` : pts}
+                    {key.replace(/_/g, ' ')} {(pts as number) > 0 ? `+${pts}` : pts}
                   </span>
                 ))}
               </div>

@@ -44,9 +44,13 @@ export interface Lead {
   internal_notes?: string;
   ai_qualification_summary?: string;
   assigned_to?: string;
-  // Skip trace & blueprint scoring (migration 002)
+  // Skip trace & blueprint scoring (migration 002 + 004)
   seller_score?: number;
   priority_tier?: 'A' | 'B' | 'C' | 'D';
+  stack_name?: string;
+  stack_bonus?: number;
+  precision_tier?: 1 | 2 | 3;
+  priority_rank?: number;
   skip_traced_at?: string;
   skip_trace_provider?: string;
   absentee_owner?: boolean;
