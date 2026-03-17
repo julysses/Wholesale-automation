@@ -20,6 +20,7 @@ import { Acquisitions } from '@/pages/Acquisitions';
 import { Tasks } from '@/pages/Tasks';
 import { Reports } from '@/pages/Reports';
 import { SetupWizard } from '@/pages/SetupWizard';
+import { UserManual } from '@/pages/UserManual';
 
 // Admin pages
 import { AdminUsers } from '@/pages/admin/Users';
@@ -80,6 +81,7 @@ export default function App() {
                 <Route path="/acquisitions" element={<Acquisitions />} />
                 <Route path="/tasks"        element={<Tasks />} />
                 <Route path="/reports"      element={<Reports />} />
+                <Route path="/manual"       element={<UserManual />} />
                 {/* Admin routes — access enforced inside the page component */}
                 <Route path="/admin/users"  element={<AdminUsers />} />
                 <Route path="*"             element={<Navigate to="/" replace />} />
