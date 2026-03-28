@@ -7,6 +7,7 @@ import { DealsByStage } from '@/components/dashboard/DealsByStage';
 import { FunnelPanel } from '@/components/dashboard/FunnelPanel';
 import { PrecisionTargetingPanel } from '@/components/dashboard/PrecisionTargetingPanel';
 import { StrategyComparisonPanel } from '@/components/dashboard/StrategyComparisonPanel';
+import { WorkflowGuide } from '@/components/WorkflowGuide';
 import { useHotLeads } from '@/hooks/useLeads';
 import { useUpcomingClosings } from '@/hooks/useDeals';
 import { useTodayTasks } from '@/hooks/useTasks';
@@ -68,6 +69,9 @@ export function Dashboard() {
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-0.5">Your wholesale pipeline at a glance</p>
       </div>
+
+      {/* Getting Started Guide */}
+      <WorkflowGuide />
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

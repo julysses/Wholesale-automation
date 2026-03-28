@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { StepBanner } from '@/components/StepBanner';
 import { useUIStore } from '@/stores/useUIStore';
 import { cn } from '@/lib/utils';
 import { Toaster } from 'sonner';
@@ -18,6 +19,7 @@ export function Layout() {
           sidebarCollapsed ? 'ml-16' : 'ml-60'
         )}
       >
+        <StepBanner />
         <div className="p-6">
           <Outlet />
         </div>
