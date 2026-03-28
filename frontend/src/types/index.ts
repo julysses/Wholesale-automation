@@ -305,6 +305,136 @@ export interface BuyerMatchResult {
   blast_sms: string;
 }
 
+// ─── Land Wholesaling Module ──────────────────────────────────────────────────
+
+export type LandZoning = 'single_family' | 'multifamily' | 'commercial' | 'agricultural' | 'mixed' | 'unknown';
+export type LandWaterSource = 'city' | 'well' | 'none' | 'unknown';
+export type LandSewage = 'city_sewer' | 'septic' | 'none' | 'unknown';
+export type LandStatus = 'new' | 'vetting' | 'vetted' | 'comped' | 'offer_made' | 'under_contract' | 'dead';
+export type LandBuyerType = 'builder' | 'land_banker' | 'trailer_park' | 'mineral_rights';
+
+export interface LandLead {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  lead_id?: string;
+  xleads_id?: string;
+  source: string;
+  owner_name: string;
+  owner_phone_1?: string;
+  owner_phone_2?: string;
+  owner_mailing_address?: string;
+  owner_email?: string;
+  property_address: string;
+  city: string;
+  state: string;
+  zip_code?: string;
+  county?: string;
+  apn?: string;
+  lot_size_acres?: number;
+  lot_size_sqft?: number;
+  zoning?: LandZoning;
+  zoning_raw?: string;
+  water_source: LandWaterSource;
+  sewage: LandSewage;
+  septic_last_pump_date?: string;
+  power_available?: boolean;
+  power_hookup_possible?: boolean;
+  is_buildable?: boolean;
+  buildability_issues?: string[];
+  flood_zone?: string;
+  infill_lot: boolean;
+  infill_confirmed_at?: string;
+  tav?: number;
+  asking_price?: number;
+  offer_price?: number;
+  mao?: number;
+  status: LandStatus;
+  vetting_passed?: boolean;
+  assigned_to?: string;
+  internal_notes?: string;
+  seller_notes?: string;
+  contact_attempts: number;
+  last_contact_date?: string;
+  dnc: boolean;
+  sms_sequence_active: boolean;
+  dialer_campaign_id?: string;
+  // Joined
+  vetting?: LandVetting;
+  comps?: LandComps;
+}
+
+export interface LandVetting {
+  id: string;
+  created_at: string;
+  land_lead_id: string;
+  vetted_by?: string;
+  completed_at?: string;
+  // Must 1
+  lot_size_confirmed?: boolean;
+  lot_size_record?: number;
+  lot_size_actual?: number;
+  lot_size_notes?: string;
+  // Must 2
+  zoning_confirmed?: boolean;
+  zoning_type?: LandZoning;
+  zoning_notes?: string;
+  // Must 3
+  seller_motivation?: string;
+  motivation_score?: number;
+  motivation_tag?: string;
+  // Must 4
+  water_confirmed?: boolean;
+  water_source?: LandWaterSource;
+  water_notes?: string;
+  // Must 5
+  sewage_confirmed?: boolean;
+  sewage_type?: LandSewage;
+  septic_pump_date?: string;
+  sewage_notes?: string;
+  // Must 6
+  power_confirmed?: boolean;
+  power_type?: string;
+  power_notes?: string;
+  // Must 7
+  buildability_confirmed?: boolean;
+  can_build?: boolean;
+  buildability_issues?: string[];
+  buildability_notes?: string;
+  // Result
+  passed?: boolean;
+  fail_reasons?: string[];
+  recommendation?: string;
+}
+
+export interface LandComps {
+  id: string;
+  created_at: string;
+  land_lead_id: string;
+  direct_comp_avg?: number;
+  direct_comp_count?: number;
+  direct_comp_low?: number;
+  direct_comp_high?: number;
+  direct_comp_details?: Array<{ address: string; price: number; sqft: number; date: string; distance_mi: number }>;
+  avg_house_arv?: number;
+  arv_15pct_value?: number;
+  house_comp_count?: number;
+  tav?: number;
+  tav_source?: string;
+  recommended_offer_low?: number;
+  recommended_offer_high?: number;
+  comp_notes?: string;
+}
+
+export interface LandBuyer extends Buyer {
+  land_buyer_type?: LandBuyerType;
+  target_acres_min?: number;
+  target_acres_max?: number;
+  preferred_zoning?: LandZoning[];
+  buys_land: boolean;
+  buys_infill: boolean;
+}
+
 export interface DealAnalysis {
   arv: number;
   repairs: number;

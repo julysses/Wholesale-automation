@@ -21,6 +21,7 @@ import { Tasks } from '@/pages/Tasks';
 import { Reports } from '@/pages/Reports';
 import { SetupWizard } from '@/pages/SetupWizard';
 import { UserManual } from '@/pages/UserManual';
+import { LandLeads } from '@/pages/LandLeads';
 
 // Admin pages
 import { AdminUsers } from '@/pages/admin/Users';
@@ -82,6 +83,7 @@ export default function App() {
                 <Route path="/tasks"        element={<Tasks />} />
                 <Route path="/reports"      element={<Reports />} />
                 <Route path="/manual"       element={<UserManual />} />
+                <Route path="/land"         element={<LandLeads />} />
                 {/* Admin routes — access enforced inside the page component */}
                 <Route path="/admin/users"  element={<AdminUsers />} />
                 <Route path="*"             element={<Navigate to="/" replace />} />
