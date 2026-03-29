@@ -22,6 +22,7 @@ import { Reports } from '@/pages/Reports';
 import { SetupWizard } from '@/pages/SetupWizard';
 import { UserManual } from '@/pages/UserManual';
 import { LandLeads } from '@/pages/LandLeads';
+import { BuyerIntelligence } from '@/pages/BuyerIntelligence';
 
 // Admin pages
 import { AdminUsers } from '@/pages/admin/Users';
@@ -84,6 +85,7 @@ export default function App() {
                 <Route path="/reports"      element={<Reports />} />
                 <Route path="/manual"       element={<UserManual />} />
                 <Route path="/land"         element={<LandLeads />} />
+                <Route path="/buyer-intel"  element={<BuyerIntelligence />} />
                 {/* Admin routes — access enforced inside the page component */}
                 <Route path="/admin/users"  element={<AdminUsers />} />
                 <Route path="*"             element={<Navigate to="/" replace />} />

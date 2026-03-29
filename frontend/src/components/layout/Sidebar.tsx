@@ -5,21 +5,22 @@ import { useProfile } from '@/hooks/useProfile';
 import {
   LayoutDashboard, Users, GitBranch, Calculator, UserCheck,
   Bot, CheckSquare, BarChart3, ChevronLeft, ChevronRight,
-  Building2, ShieldCheck, Zap, Flame, BookOpen, TreePine
+  Building2, ShieldCheck, Zap, Flame, BookOpen, TreePine, BrainCircuit
 } from 'lucide-react';
 
 const mainNav = [
-  { path: '/',             label: 'Dashboard',     icon: LayoutDashboard },
-  { path: '/leads',        label: 'Leads',         icon: Users },
-  { path: '/acquisitions', label: 'Acquisitions',  icon: Flame },
-  { path: '/pipeline',     label: 'Pipeline',      icon: GitBranch },
-  { path: '/analyzer',     label: 'Deal Analyzer', icon: Calculator },
-  { path: '/buyers',       label: 'Buyers',        icon: UserCheck },
-  { path: '/ai-agents',    label: 'AI Agents',     icon: Bot },
-  { path: '/tasks',        label: 'Tasks',         icon: CheckSquare },
-  { path: '/reports',      label: 'Reports',       icon: BarChart3 },
-  { path: '/land',         label: 'Vacant Land',   icon: TreePine },
-  { path: '/manual',       label: 'User Manual',   icon: BookOpen },
+  { path: '/',              label: 'Dashboard',      icon: LayoutDashboard },
+  { path: '/leads',         label: 'Leads',          icon: Users },
+  { path: '/acquisitions',  label: 'Acquisitions',   icon: Flame },
+  { path: '/pipeline',      label: 'Pipeline',       icon: GitBranch },
+  { path: '/analyzer',      label: 'Deal Analyzer',  icon: Calculator },
+  { path: '/buyers',        label: 'Buyers',         icon: UserCheck },
+  { path: '/buyer-intel',   label: 'Buyer Intel',    icon: BrainCircuit },
+  { path: '/ai-agents',     label: 'AI Agents',      icon: Bot },
+  { path: '/tasks',         label: 'Tasks',          icon: CheckSquare },
+  { path: '/reports',       label: 'Reports',        icon: BarChart3 },
+  { path: '/land',          label: 'Vacant Land',    icon: TreePine },
+  { path: '/manual',        label: 'User Manual',    icon: BookOpen },
 ];
 
 const adminNav = [

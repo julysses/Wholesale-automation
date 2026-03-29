@@ -447,3 +447,135 @@ export interface DealAnalysis {
   };
   recommendation?: string;
 }
+
+// ─── Investor Buyer Intelligence Engine (IBIE) ────────────────────────────────
+
+export type IBIETier = 'A' | 'B' | 'C' | 'D';
+export type IBIEBuyerType = 'flipper' | 'landlord' | 'institutional' | 'builder';
+
+/** Extended buyer row from buyer_leaderboard view (includes IBIE fields) */
+export interface IBIEBuyer extends Buyer {
+  entity_name?: string;
+  market?: string;
+  ibie_score: number;
+  ibie_tier: IBIETier;
+  buyer_type_ibie?: IBIEBuyerType;
+  ai_classified_at?: string;
+  cash_buyer: boolean;
+  repeat_buyer: boolean;
+  total_purchases_12mo: number;
+  properties_owned: number;
+  avg_purchase_price?: number;
+  last_purchase_date?: string;
+  lender_used?: string;
+  tags: string[];
+  engagement_delta: number;
+  outreach_ignore_count: number;
+  last_scored_at?: string;
+  score_version: number;
+  transaction_count?: number;
+  most_recent_purchase?: string;
+}
+
+/** Single property purchase record (from county records) */
+export interface BuyerTransaction {
+  id: string;
+  created_at: string;
+  buyer_id: string;
+  property_address: string;
+  city?: string;
+  state: string;
+  zip_code?: string;
+  county?: string;
+  purchase_price?: number;
+  purchase_date?: string;
+  cash_transaction: boolean;
+  lender_name?: string;
+  loan_amount?: number;
+  property_type?: string;
+  sqft?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  year_built?: number;
+  resale_date?: string;
+  resale_price?: number;
+  flip_detected: boolean;
+  apn?: string;
+  grantor?: string;
+  grantee?: string;
+  source: string;
+}
+
+/** Detailed deal targeting preferences for a buyer */
+export interface BuyerPreference {
+  id: string;
+  buyer_id: string;
+  min_price?: number;
+  max_price?: number;
+  preferred_property_types: string[];
+  preferred_condition: string;
+  preferred_zips: string[];
+  preferred_counties: string[];
+  target_roi?: number;
+  max_days_to_close?: number;
+  requires_seller_finance: boolean;
+  requires_subject_to: boolean;
+  pays_above_market: boolean;
+  contact_method: string;
+  notes?: string;
+}
+
+/** Result of matching a buyer to a deal */
+export interface DealMatch {
+  id: string;
+  deal_id: string;
+  buyer_id: string;
+  zip_score: number;
+  price_score: number;
+  type_score: number;
+  ibie_score: number;
+  match_score: number;
+  rank: number;
+  sms_sent_at?: string;
+  email_sent_at?: string;
+  responded_at?: string;
+  response_type?: string;
+  buyer?: IBIEBuyer;
+}
+
+/** Outreach sent to a buyer (SMS or email) */
+export interface BuyerOutreach {
+  id: string;
+  created_at: string;
+  buyer_id: string;
+  deal_id?: string;
+  channel: 'sms' | 'email';
+  direction: string;
+  status: string;
+  subject?: string;
+  body: string;
+  to_address: string;
+  provider?: string;
+  opened_at?: string;
+  replied_at?: string;
+  reply_body?: string;
+  buyer?: Pick<IBIEBuyer, 'first_name' | 'last_name'>;
+}
+
+/** CSV import log row */
+export interface BuyerImportLog {
+  id: string;
+  created_at: string;
+  source: string;
+  filename?: string;
+  market?: string;
+  rows_total: number;
+  rows_imported: number;
+  buyers_created: number;
+  buyers_updated: number;
+  transactions_created: number;
+  rows_skipped: number;
+  errors: Array<{ row: number; error: string }>;
+  status: 'pending' | 'processing' | 'complete' | 'failed';
+  completed_at?: string;
+}
