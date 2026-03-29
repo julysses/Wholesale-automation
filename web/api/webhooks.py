@@ -41,6 +41,12 @@ from tools.retell_adapter import (
     extract_lead_signals,
     transcript_to_text,
 )
+from tools.vapi_adapter import (
+    VapiAdapter,
+    VapiCallResult,
+    extract_vapi_lead_signals,
+    _turns_to_text as vapi_turns_to_text,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
@@ -50,6 +56,7 @@ BATCHDIALER_WEBHOOK_SECRET = os.getenv("BATCHDIALER_WEBHOOK_SECRET", "")
 LAUNCH_CONTROL_WEBHOOK_SECRET = os.getenv("LAUNCH_CONTROL_WEBHOOK_SECRET", "")
 RETELL_WEBHOOK_SECRET = os.getenv("RETELL_WEBHOOK_SECRET", "")
 AIR_AI_WEBHOOK_SECRET = os.getenv("AIR_AI_WEBHOOK_SECRET", "")
+VAPI_WEBHOOK_SECRET = os.getenv("VAPI_WEBHOOK_SECRET", "")
 
 # ── Dispositions that need immediate hot-lead routing ─────────────────────────
 HOT_DISPOSITIONS = {"HOT", "APPOINTMENT_SET"}
@@ -939,3 +946,286 @@ async def air_ai_call_webhook(
         "lead_id": event.lead_id,
         "is_hot": event.is_hot,
     }
+
+
+# ── VAPI webhook ───────────────────────────────────────────────────────────────
+
+@router.post("/vapi")
+async def vapi_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    x_vapi_secret: str = Header(default=""),
+) -> dict:
+    """
+    VAPI.ai call webhook — handles all event types:
+
+    call-started         → acknowledge (non-final)
+    transcript           → acknowledge (real-time, non-final)
+    function-call        → acknowledge (tool invocation, non-final)
+    call-ended           → run 4-Pillar qualification, trigger HOT/WARM automation
+    end-of-call-report   → alias for call-ended
+
+    VAPI expects 200 immediately; all Supabase writes are backgrounded.
+    Configure the VAPI webhook URL in your VAPI dashboard:
+      Server URL: https://<your-domain>/webhooks/vapi
+      Secret:     set VAPI_WEBHOOK_SECRET in your .env
+    """
+    if VAPI_WEBHOOK_SECRET and x_vapi_secret != VAPI_WEBHOOK_SECRET:
+        raise HTTPException(401, "Invalid VAPI webhook secret")
+
+    payload = await request.json()
+
+    # VAPI wraps events under payload["message"]
+    msg = payload.get("message", payload)
+    msg_type = msg.get("type", "") or payload.get("type", "")
+    call = msg.get("call", {})
+    call_id = call.get("id", "") or msg.get("callId", "")
+    metadata = call.get("metadata", {}) or msg.get("metadata", {})
+    lead_id = metadata.get("lead_id", "")
+
+    logger.info(f"[vapi] Webhook type={msg_type!r} call={call_id} lead={lead_id}")
+
+    # ── Non-final events: acknowledge immediately ─────────────────────────────
+    NON_FINAL = {
+        "call-started", "transcript", "function-call",
+        "assistant-request", "speech-update", "conversation-update", "tool-calls",
+    }
+    if msg_type in NON_FINAL:
+        return {"status": "accepted", "event": msg_type}
+
+    # ── Final event: call-ended / end-of-call-report ──────────────────────────
+    if msg_type in ("call-ended", "end-of-call-report", ""):
+        result = VapiAdapter.parse_webhook(payload)
+        if result is None:
+            return {"status": "ignored", "reason": "unparseable payload"}
+
+        background_tasks.add_task(_handle_vapi_call_result, result)
+
+        return {
+            "status": "accepted",
+            "call_id": result.call_id,
+            "disposition": result.disposition.value,
+            "lead_id": result.lead_id,
+            "is_hot": result.is_hot,
+        }
+
+    logger.debug(f"[vapi] Unhandled message type {msg_type!r}")
+    return {"status": "ignored", "event": msg_type}
+
+
+async def _handle_vapi_call_result(result: VapiCallResult) -> None:
+    """
+    Background task for a completed VAPI call:
+
+    1. Store transcript in call_transcripts
+    2. Run LLM qualification (same qualification_agent as Retell)
+    3. Persist qualification_results
+    4. Insert / update ai_call_records
+    5. Update lead status
+    6. HOT automation: task + notification + SMS
+    7. WARM automation: Launch Control enrollment
+    8. DNC: enforce opt-out if disposition == DNC
+    """
+    sb = _get_supabase()
+    qual_obj = result.qualification  # VapiQualification (pre-extracted by VAPI analysis)
+    provider = "vapi"
+
+    logger.info(
+        f"[{provider}] Processing call {result.call_id} lead={result.lead_id} "
+        f"disposition={result.disposition.value} hot={result.is_hot} "
+        f"duration={result.duration_seconds}s"
+    )
+
+    # ── 1. Store transcript ───────────────────────────────────────────────────
+    if sb and result.transcript and result.lead_id:
+        try:
+            sb.table("call_transcripts").upsert({
+                "call_id":        result.call_id,
+                "lead_id":        result.lead_id,
+                "provider":       provider,
+                "raw_transcript": result.transcript,
+            }, on_conflict="call_id").execute()
+        except Exception as exc:
+            logger.error(f"[{provider}] transcript store failed: {exc}")
+
+    # ── 2. Run LLM qualification ──────────────────────────────────────────────
+    qual = None
+    property_address = result.raw_payload.get("message", result.raw_payload).get(
+        "call", {}
+    ).get("metadata", {}).get("property_address", "")
+    owner_name = result.raw_payload.get("message", result.raw_payload).get(
+        "call", {}
+    ).get("metadata", {}).get("owner_name", "")
+
+    try:
+        qual = extract_vapi_lead_signals(
+            result.transcript or "",
+            property_address=property_address,
+            owner_name=owner_name,
+        )
+        logger.info(
+            f"[{provider}] Qualification: score={qual.qualification_score} "
+            f"class={qual.classification}"
+        )
+    except Exception as exc:
+        logger.error(f"[{provider}] Qualification analysis failed: {exc}")
+
+    # ── 3 & 4. Persist qualification_results + upsert ai_call_records ─────────
+    if sb and result.lead_id:
+        try:
+            if qual:
+                sb.table("qualification_results").insert({
+                    "call_id":              result.call_id,
+                    "lead_id":              result.lead_id,
+                    "timeline":             qual.timeline,
+                    "condition":            qual.condition,
+                    "occupancy":            qual.occupancy,
+                    "asking_price":         qual.asking_price,
+                    "mortgage_balance":     qual.mortgage_balance,
+                    "sentiment":            qual.sentiment,
+                    "expressed_no_interest": qual.expressed_no_interest,
+                    "hung_up":              qual.hung_up,
+                    "named_price":          qual.named_price,
+                    "qualification_score":  qual.qualification_score,
+                    "classification":       qual.classification,
+                    "offer_range_low":      qual.offer_range_low,
+                    "offer_range_high":     qual.offer_range_high,
+                    "raw_signals":          qual.raw_signals if hasattr(qual, "raw_signals") else {},
+                }).execute()
+
+            # VAPI-specific 4-Pillar fields from pre-extracted qual_obj
+            pillar_data: dict = {}
+            if qual_obj:
+                pillar_data = {
+                    "motivation":          qual_obj.motivation,
+                    "is_urgent":           qual_obj.is_urgent,
+                    "timeline_to_sell":    qual_obj.timeline_to_sell,
+                    "property_condition":  qual_obj.property_condition,
+                    "occupancy":           qual_obj.occupancy,
+                    "asking_price":        qual_obj.asking_price,
+                    "mortgage_balance":    qual_obj.mortgage_balance,
+                    "call_notes":          qual_obj.notes,
+                }
+
+            sb.table("ai_call_records").upsert({
+                "call_id":              result.call_id,
+                "lead_id":              result.lead_id,
+                "provider":             provider,
+                "status":               "completed",
+                "disposition":          result.disposition.value,
+                "duration_sec":         result.duration_seconds,
+                "recording_url":        result.recording_url,
+                "transcript":           result.transcript,
+                "qualification_score":  qual.qualification_score if qual else None,
+                "classification":       qual.classification if qual else None,
+                "raw_payload":          result.raw_payload,
+                **pillar_data,
+            }, on_conflict="call_id").execute()
+
+        except Exception as exc:
+            logger.error(f"[{provider}] qualification persist failed: {exc}")
+
+    # ── 5. Update lead status ─────────────────────────────────────────────────
+    DISP_TO_STATUS = {
+        "no_answer":       "no_answer",
+        "voicemail":       "voicemail",
+        "wrong_number":    "dead",
+        "not_interested":  "contacted",
+        "dnc":             "dnc",
+        "callback":        "callback",
+        "warm":            "warm",
+        "hot":             "hot",
+        "appointment_set": "appointment_set",
+    }
+    new_status = DISP_TO_STATUS.get(result.disposition.value, "contacted")
+
+    if sb and result.lead_id:
+        try:
+            lead_resp = (
+                sb.table("leads")
+                .select("contact_attempts, owner_first_name, owner_last_name, property_address, estimated_arv, mao")
+                .eq("id", result.lead_id)
+                .single()
+                .execute()
+            )
+            lead_data = lead_resp.data or {}
+            current_attempts = lead_data.get("contact_attempts", 0)
+
+            update: dict[str, Any] = {
+                "status":             new_status,
+                "last_contact_date":  datetime.now(timezone.utc).date().isoformat(),
+                "contact_attempts":   current_attempts + 1,
+            }
+            if result.is_dnc:
+                update["dnc"] = True
+                update["sms_sequence_active"] = False
+
+            sb.table("leads").update(update).eq("id", result.lead_id).execute()
+
+            # ── 6. HOT automation ─────────────────────────────────────────────
+            if result.is_hot and qual:
+                owner = (
+                    f"{lead_data.get('owner_first_name', '')} "
+                    f"{lead_data.get('owner_last_name', '')}".strip()
+                )
+                address = lead_data.get("property_address", property_address)
+                _trigger_hot_lead_automation(
+                    sb=sb,
+                    lead_id=result.lead_id,
+                    call_id=result.call_id,
+                    address=address,
+                    owner=owner,
+                    qual=qual,
+                    arv=lead_data.get("estimated_arv"),
+                    mao=lead_data.get("mao"),
+                )
+
+            # ── 7. WARM automation ────────────────────────────────────────────
+            elif qual and qual.is_warm and result.lead_id:
+                try:
+                    from tools.launch_control_adapter import LaunchControlAdapter, LaunchControlContact
+                    owner = (
+                        f"{lead_data.get('owner_first_name', '')} "
+                        f"{lead_data.get('owner_last_name', '')}".strip()
+                    )
+                    lc = LaunchControlAdapter()
+                    lc.add_contact_to_campaign(LaunchControlContact(
+                        lead_id=result.lead_id,
+                        first_name=lead_data.get("owner_first_name", ""),
+                        last_name=lead_data.get("owner_last_name", ""),
+                        phone=result.raw_payload.get("message", {}).get("call", {}).get(
+                            "customer", {}
+                        ).get("number", ""),
+                        property_address=lead_data.get("property_address", ""),
+                        campaign_name=settings.launch_control_default_campaign,
+                    ))
+                    logger.info(f"[{provider}] WARM lead {result.lead_id} enrolled in Launch Control")
+                except Exception as exc:
+                    logger.error(f"[{provider}] Launch Control enrollment failed: {exc}")
+
+            # ── 8. DNC enforcement ─────────────────────────────────────────────
+            if result.is_dnc:
+                phone = result.raw_payload.get("message", {}).get("call", {}).get(
+                    "customer", {}
+                ).get("number", "")
+                if phone:
+                    try:
+                        sb.table("dnc_registry").insert({
+                            "phone_number": phone,
+                            "lead_id":      result.lead_id,
+                            "reason":       "call_disposition_dnc",
+                            "source":       provider,
+                        }).execute()
+                    except Exception as exc:
+                        logger.error(f"[{provider}] DNC registry insert failed: {exc}")
+
+        except Exception as exc:
+            logger.error(f"[{provider}] lead update failed: {exc}")
+
+    _audit(sb, "call", result.call_id, "vapi_call_completed", new_value={
+        "disposition": result.disposition.value,
+        "qualification_score": qual.qualification_score if qual else None,
+        "classification": qual.classification if qual else None,
+    }) if sb else None
+
+    logger.info(f"[{provider}] Call {result.call_id} lead {result.lead_id} → {new_status}")

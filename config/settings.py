@@ -123,7 +123,15 @@ class Settings:
     air_ai_from_number: str = os.getenv("AIR_AI_FROM_NUMBER", "")
     air_ai_webhook_secret: str = os.getenv("AIR_AI_WEBHOOK_SECRET", "")
 
-    # AI calling provider selection: "retell" | "air_ai"
+    # VAPI.ai (preferred AI calling provider — $0.07/min vs Retell's $0.11/min)
+    vapi_api_key: str = os.getenv("VAPI_API_KEY", "")
+    # Phone number ID from VAPI dashboard (Settings → Phone Numbers)
+    vapi_phone_number_id: str = os.getenv("VAPI_PHONE_NUMBER_ID", "")
+    # Optional: pre-built assistant ID. Leave blank to use inline system prompt.
+    vapi_assistant_id: str = os.getenv("VAPI_ASSISTANT_ID", "")
+    vapi_webhook_secret: str = os.getenv("VAPI_WEBHOOK_SECRET", "")
+
+    # AI calling provider selection: "vapi" | "retell" | "air_ai"
     ai_calling_provider: str = os.getenv("AI_CALLING_PROVIDER", "retell")
 
     # Webhook secrets (for verifying inbound webhooks)
