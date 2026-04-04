@@ -134,6 +134,16 @@ class Settings:
     # AI calling provider selection: "vapi" | "retell" | "air_ai"
     ai_calling_provider: str = os.getenv("AI_CALLING_PROVIDER", "retell")
 
+    # ── Facebook Lead Ads ─────────────────────────────────────────────────────
+    facebook_app_id: str = os.getenv("FACEBOOK_APP_ID", "")
+    facebook_app_secret: str = os.getenv("FACEBOOK_APP_SECRET", "")
+    # Page or user access token (long-lived, 60-day, or never-expiring system token)
+    facebook_access_token: str = os.getenv("FACEBOOK_ACCESS_TOKEN", "")
+    # Must match the verify token in your Facebook App webhook settings
+    facebook_webhook_verify_token: str = os.getenv("FACEBOOK_WEBHOOK_VERIFY_TOKEN", "")
+    # Format: act_XXXXX or just the numeric ID
+    facebook_ad_account_id: str = os.getenv("FACEBOOK_AD_ACCOUNT_ID", "")
+
     # Webhook secrets (for verifying inbound webhooks)
     batchdialer_webhook_secret: str = os.getenv("BATCHDIALER_WEBHOOK_SECRET", "")
     launch_control_webhook_secret: str = os.getenv("LAUNCH_CONTROL_WEBHOOK_SECRET", "")

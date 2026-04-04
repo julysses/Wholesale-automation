@@ -407,6 +407,100 @@ export interface LandVetting {
   recommendation?: string;
 }
 
+// ── Lead Generation Engine ─────────────────────────────────────────────────────
+
+export interface AdCampaign {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  platform: 'facebook' | 'instagram' | 'google' | 'tiktok';
+  status: 'active' | 'paused' | 'completed' | 'draft';
+  campaign_objective?: string;
+  external_campaign_id?: string;
+  daily_budget?: number;
+  total_spend: number;
+  impressions: number;
+  clicks: number;
+  leads_count: number;
+  cpl?: number;
+  avg_lead_quality_score?: number;
+  target_zip_codes?: string[];
+  target_audience_notes?: string;
+  start_date?: string;
+  end_date?: string;
+  settings?: Record<string, unknown>;
+}
+
+export interface AdCreative {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  campaign_id: string;
+  name: string;
+  headline?: string;
+  primary_text?: string;
+  cta_text?: string;
+  pain_point_angle?: string;
+  image_url?: string;
+  external_ad_id?: string;
+  status: 'active' | 'paused' | 'winner' | 'archived';
+  impressions: number;
+  clicks: number;
+  leads_count: number;
+  total_spend: number;
+  cpl?: number;
+  avg_lead_quality_score?: number;
+  is_winner: boolean;
+}
+
+export interface FormQuestion {
+  id: string;
+  step: number;
+  type: 'radio' | 'text' | 'tel' | 'email' | 'number' | 'checkbox';
+  field_name: string;
+  label: string;
+  placeholder?: string;
+  required: boolean;
+  options?: { value: string; label: string; score_hint?: number }[];
+}
+
+export interface LeadFormConfig {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  slug: string;
+  campaign_id?: string;
+  headline: string;
+  subheadline?: string;
+  brand_color: string;
+  logo_url?: string;
+  thank_you_message?: string;
+  send_confirmation_sms: boolean;
+  send_confirmation_email: boolean;
+  active: boolean;
+  questions: FormQuestion[];
+  redirect_url?: string;
+}
+
+export interface LeadFormSubmission {
+  id: string;
+  created_at: string;
+  form_id: string;
+  lead_id?: string;
+  ip_address?: string;
+  user_agent?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  raw_answers: Record<string, unknown>;
+  computed_motivation_tag?: string;
+  computed_timeline?: string;
+  computed_condition?: string;
+  processing_status: 'pending' | 'processed' | 'failed';
+}
+
 export interface LandComps {
   id: string;
   created_at: string;

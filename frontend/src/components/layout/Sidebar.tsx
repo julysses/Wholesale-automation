@@ -5,13 +5,14 @@ import { useProfile } from '@/hooks/useProfile';
 import {
   LayoutDashboard, Users, GitBranch, Calculator, UserCheck,
   Bot, CheckSquare, BarChart3, ChevronLeft, ChevronRight,
-  Building2, ShieldCheck, Zap, Flame, BookOpen, TreePine, BrainCircuit
+  Building2, ShieldCheck, Zap, Flame, BookOpen, TreePine, BrainCircuit, Megaphone
 } from 'lucide-react';
 
 const mainNav = [
   { path: '/',              label: 'Dashboard',      icon: LayoutDashboard },
   { path: '/leads',         label: 'Leads',          icon: Users },
   { path: '/acquisitions',  label: 'Acquisitions',   icon: Flame },
+  { path: '/lead-gen',      label: 'Lead Engine',    icon: Megaphone },
   { path: '/pipeline',      label: 'Pipeline',       icon: GitBranch },
   { path: '/analyzer',      label: 'Deal Analyzer',  icon: Calculator },
   { path: '/buyers',        label: 'Buyers',         icon: UserCheck },

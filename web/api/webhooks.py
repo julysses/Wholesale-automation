@@ -1229,3 +1229,182 @@ async def _handle_vapi_call_result(result: VapiCallResult) -> None:
     }) if sb else None
 
     logger.info(f"[{provider}] Call {result.call_id} lead {result.lead_id} → {new_status}")
+
+
+# ── Facebook Lead Ads webhooks ─────────────────────────────────────────────────
+
+FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET", "")
+FACEBOOK_WEBHOOK_VERIFY_TOKEN = os.getenv("FACEBOOK_WEBHOOK_VERIFY_TOKEN", "")
+
+
+@router.get("/facebook/lead")
+async def facebook_lead_webhook_verify(
+    hub_mode: str = "",
+    hub_verify_token: str = "",
+    hub_challenge: str = "",
+):
+    """
+    Facebook webhook verification challenge (GET).
+    Facebook sends this when you first subscribe to the leadgen event.
+    """
+    from tools.facebook_ads_adapter import FacebookAdsAdapter
+    adapter = FacebookAdsAdapter(
+        app_secret=FACEBOOK_APP_SECRET,
+        access_token="",
+        webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
+    )
+    challenge = adapter.verify_webhook_challenge(hub_mode, hub_verify_token, hub_challenge)
+    if challenge is None:
+        raise HTTPException(status_code=403, detail="Verification token mismatch")
+    # Facebook expects a plain text integer response
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse(challenge)
+
+
+@router.post("/facebook/lead")
+async def facebook_lead_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    x_hub_signature_256: Optional[str] = Header(None, alias="X-Hub-Signature-256"),
+):
+    """
+    Facebook Lead Ads webhook receiver (POST).
+    Receives leadgen events, fetches field_data from Graph API,
+    and creates a lead in the pipeline.
+    """
+    payload_bytes = await request.body()
+
+    # Verify HMAC signature
+    if FACEBOOK_APP_SECRET:
+        from tools.facebook_ads_adapter import FacebookAdsAdapter
+        adapter = FacebookAdsAdapter(
+            app_secret=FACEBOOK_APP_SECRET,
+            access_token=os.getenv("FACEBOOK_ACCESS_TOKEN", ""),
+            webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
+            ad_account_id=os.getenv("FACEBOOK_AD_ACCOUNT_ID", ""),
+        )
+        sig = x_hub_signature_256 or ""
+        if not adapter.verify_webhook_signature(payload_bytes, sig):
+            raise HTTPException(status_code=403, detail="Invalid Facebook signature")
+    else:
+        # Import adapter for parsing even without signature check
+        from tools.facebook_ads_adapter import FacebookAdsAdapter
+        adapter = FacebookAdsAdapter(
+            app_secret="",
+            access_token=os.getenv("FACEBOOK_ACCESS_TOKEN", ""),
+            webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
+            ad_account_id=os.getenv("FACEBOOK_AD_ACCOUNT_ID", ""),
+        )
+
+    import json as _json
+    try:
+        payload = _json.loads(payload_bytes)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    entries = adapter.parse_lead_webhook(payload)
+    if not entries:
+        return {"received": True, "leads": 0}
+
+    for entry in entries:
+        if entry.leadgen_id:
+            background_tasks.add_task(_process_facebook_lead, entry, adapter)
+
+    return {"received": True, "leads": len(entries)}
+
+
+async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
+    """
+    Background task: fetch FB lead field_data → create lead → run qualification.
+    """
+    from tools.facebook_ads_adapter import normalize_facebook_fields
+    from web.api.lead_forms_api import (
+        _compute_scores_from_answers, _send_hot_lead_notification
+    )
+    from tools.crm import get_supabase_client
+
+    logger.info(f"[Facebook] Processing leadgen_id={entry.leadgen_id}")
+
+    lead_data_raw = adapter.fetch_lead_form_data(entry.leadgen_id)
+    if not lead_data_raw:
+        logger.error(f"[Facebook] Could not fetch lead data for {entry.leadgen_id}")
+        return
+
+    fields = normalize_facebook_fields(lead_data_raw.fields)
+    scores = _compute_scores_from_answers(fields)
+
+    supabase = get_supabase_client()
+
+    # Build lead record
+    lead_payload = {
+        "owner_first_name": fields.get("first_name", ""),
+        "owner_last_name": fields.get("last_name", ""),
+        "owner_phone_1": fields.get("phone", ""),
+        "owner_email": fields.get("email", ""),
+        "property_address": fields.get("property_address", "Unknown"),
+        "city": fields.get("city", ""),
+        "state": fields.get("state", "TX"),
+        "zip_code": fields.get("zip_code", ""),
+        "source": "facebook_lead_ad",
+        "inbound_channel": "facebook_lead_ad",
+        "status": "new",
+        "score_motivation": scores["score_motivation"],
+        "score_timeline": scores["score_timeline"],
+        "score_equity": scores["score_equity"],
+        "score_condition": scores["score_condition"],
+        "score_flexibility": scores["score_flexibility"],
+        "priority_tier": scores["priority_tier"],
+        "motivation_tag": scores["motivation_tag"],
+        "contact_attempts": 0,
+        "sms_sequence_active": False,
+        "email_sequence_active": False,
+        "dnc": False,
+        "internal_notes": f"FB leadgen_id={entry.leadgen_id}",
+    }
+
+    # Try to link to a campaign by external_campaign_id
+    if entry.campaign_id:
+        try:
+            camp = supabase.table("ad_campaigns").select("id").eq(
+                "external_campaign_id", entry.campaign_id
+            ).single().execute()
+            if camp.data:
+                lead_payload["ad_campaign_id"] = camp.data["id"]
+        except Exception:
+            pass
+
+    try:
+        resp = supabase.table("leads").insert(lead_payload).execute()
+        lead_id = resp.data[0]["id"] if resp.data else None
+    except Exception as exc:
+        logger.error(f"[Facebook] Lead insert failed: {exc}")
+        return
+
+    if not lead_id:
+        return
+
+    # Update campaign lead count
+    if lead_payload.get("ad_campaign_id"):
+        try:
+            supabase.rpc("increment_campaign_leads", {
+                "campaign_id": lead_payload["ad_campaign_id"]
+            }).execute()
+        except Exception:
+            pass
+
+    # Run qualification agent
+    try:
+        from agents.qualification_agent import QualificationAgent
+        QualificationAgent().run(lead_id=lead_id)
+    except Exception as exc:
+        logger.error(f"[Facebook] Qualification failed for {lead_id}: {exc}")
+
+    # HOT lead alert
+    total_score = sum([
+        scores["score_motivation"], scores["score_timeline"],
+        scores["score_equity"], scores["score_condition"], scores["score_flexibility"],
+    ])
+    if total_score >= 13:
+        _send_hot_lead_notification(lead_id, fields, total_score)
+
+    logger.info(f"[Facebook] Lead {lead_id} created (score={total_score}, tier={scores['priority_tier']})")

@@ -23,6 +23,8 @@ import { SetupWizard } from '@/pages/SetupWizard';
 import { UserManual } from '@/pages/UserManual';
 import { LandLeads } from '@/pages/LandLeads';
 import { BuyerIntelligence } from '@/pages/BuyerIntelligence';
+import { LeadGenEngine } from '@/pages/LeadGenEngine';
+import { LeadForm } from '@/pages/LeadForm';
 
 // Admin pages
 import { AdminUsers } from '@/pages/admin/Users';
@@ -69,8 +71,9 @@ export default function App() {
           ) : (
             // ── Authenticated routes ──────────────────────────────────────────
             <>
-              {/* Setup wizard — full-screen, no layout wrapper */}
+              {/* Full-screen routes — no layout wrapper */}
               <Route path="/setup" element={<SetupWizard />} />
+              <Route path="/form/:formId" element={<LeadForm />} />
 
               {/* Main app with shared Layout (sidebar + topbar) */}
               <Route element={<Layout />}>
@@ -86,6 +89,7 @@ export default function App() {
                 <Route path="/manual"       element={<UserManual />} />
                 <Route path="/land"         element={<LandLeads />} />
                 <Route path="/buyer-intel"  element={<BuyerIntelligence />} />
+                <Route path="/lead-gen"    element={<LeadGenEngine />} />
                 {/* Admin routes — access enforced inside the page component */}
                 <Route path="/admin/users"  element={<AdminUsers />} />
                 <Route path="*"             element={<Navigate to="/" replace />} />
