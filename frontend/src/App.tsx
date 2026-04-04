@@ -25,6 +25,7 @@ import { LandLeads } from '@/pages/LandLeads';
 import { BuyerIntelligence } from '@/pages/BuyerIntelligence';
 import { LeadGenEngine } from '@/pages/LeadGenEngine';
 import { LeadForm } from '@/pages/LeadForm';
+import { FacebookAdsCommandCenter } from '@/pages/FacebookAdsCommandCenter';
 
 // Admin pages
 import { AdminUsers } from '@/pages/admin/Users';
@@ -90,6 +91,7 @@ export default function App() {
                 <Route path="/land"         element={<LandLeads />} />
                 <Route path="/buyer-intel"  element={<BuyerIntelligence />} />
                 <Route path="/lead-gen"    element={<LeadGenEngine />} />
+                <Route path="/fb-ads"      element={<FacebookAdsCommandCenter />} />
                 {/* Admin routes — access enforced inside the page component */}
                 <Route path="/admin/users"  element={<AdminUsers />} />
                 <Route path="*"             element={<Navigate to="/" replace />} />

@@ -5,7 +5,7 @@ import { useProfile } from '@/hooks/useProfile';
 import {
   LayoutDashboard, Users, GitBranch, Calculator, UserCheck,
   Bot, CheckSquare, BarChart3, ChevronLeft, ChevronRight,
-  Building2, ShieldCheck, Zap, Flame, BookOpen, TreePine, BrainCircuit, Megaphone
+  Building2, ShieldCheck, Zap, Flame, BookOpen, TreePine, BrainCircuit, Megaphone, Target
 } from 'lucide-react';
 
 const mainNav = [
@@ -13,6 +13,7 @@ const mainNav = [
   { path: '/leads',         label: 'Leads',          icon: Users },
   { path: '/acquisitions',  label: 'Acquisitions',   icon: Flame },
   { path: '/lead-gen',      label: 'Lead Engine',    icon: Megaphone },
+  { path: '/fb-ads',        label: 'FB Ads',         icon: Target },
   { path: '/pipeline',      label: 'Pipeline',       icon: GitBranch },
   { path: '/analyzer',      label: 'Deal Analyzer',  icon: Calculator },
   { path: '/buyers',        label: 'Buyers',         icon: UserCheck },

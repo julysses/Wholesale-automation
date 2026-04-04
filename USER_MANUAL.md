@@ -386,3 +386,186 @@ Offer Range = 92–97% of MAO
 | 1 — Proof of Concept | $160–200 | 1 | $10k |
 | 2 — Validation | $400–600 | 2–4 | $20k–40k |
 | 3 — Scale | $1,500–2,000 | 4–8 | $40k–80k |
+
+---
+
+## Module: FB Ads Command Center
+
+**Where:** Sidebar → FB Ads · Route: `/fb-ads`
+
+The FB Ads Command Center is a guided, battle-plan-enforced system for running Facebook Lead Ads targeting motivated home sellers in the DFW market. Every setting is locked to the approved strategy so you can't accidentally misconfigure a campaign.
+
+---
+
+### Sub-module 1 — Campaign Setup Wizard
+
+**Where:** FB Ads → Campaigns → New Campaign
+
+A 6-step wizard that walks you through building a compliant Facebook campaign. You cannot advance past any step until all required fields are complete.
+
+#### Step 1 — Campaign Settings
+- **Objective** and **Special Ad Category: Housing** are locked — required for legal compliance
+- Set your daily budget ($20–$100 — the battle-plan approved range)
+- Enable A/B testing (strongly recommended — allows the system to identify top creatives)
+- Locked fields show a "Battle Plan Enforced" badge; you cannot change them
+
+#### Step 2 — Audience Builder
+Four panels:
+1. **Custom Audiences** — upload CSV lists (pre-foreclosure, probate, tax delinquent, absentee). Auto-named `[Type]-[County]-[YYYY-MM-DD]`. Minimum 100 records required
+2. **Targeting Signals** — 3-tier interest targeting matrix:
+   - **Tier 1 (Distress Signals):** Pre-checked — foreclosure, bankruptcy, divorce, etc. Must have at least one or a custom audience to advance
+   - **Tier 2 (Transition Signals):** Optional — relocation, senior living, etc.
+   - **Tier 3 (Landlord Burnout):** Optional — property management, rental fatigue, etc.
+3. **Demographics** — Homeowners filter locked ON; income range editable; county multi-select for DFW coverage
+4. **Lookalike Readiness** — shows progress toward the 50-lead threshold needed to create a Lookalike Audience
+
+#### Step 3 — Ad Set Configurator
+- One ad set card auto-generated per detected segment (foreclosure, probate, divorce, etc.)
+- Pre-populated with the approved segment headline — editable but validated by the battle plan
+- Copy version switcher (A / B / C) with battle-plan approved copy per segment
+- Audience Network placement locked OFF (excluded from battle plan)
+- Budget allocation per ad set
+
+#### Step 4 — Creative Studio
+Three tabs:
+- **Images** — upload creative with brand palette checklist (Navy #0A1628, Gold #F5A623, White). Checklist enforces: no smiling agents, no luxury homes, real DFW neighborhoods
+- **Copy** — edit the three copy versions (A/B/C) per ad set. Click **Review with Claude** to get a compliance score, flag generic openers, and check for pain-point/local signal/CTA
+- **Video** — specs checklist: 9:16 or 1:1, 15–30 sec, open captions, CTA in final 5 sec
+
+#### Step 5 — Lead Form Builder
+- 5 required fields are locked in: Property Address, Condition, Situation (multi-select), Timeline, Contact Preference
+- Optional fields: email, asking price, occupancy status
+- Full routing map shows how each Situation answer routes to a pipeline segment and Twilio SMS sequence
+
+#### Step 6 — Pre-Flight Checklist
+- Auto-validates every setting across all 5 prior steps
+- Red "NOT READY" banner if any required item fails; green "READY TO LAUNCH" when all pass
+- **Claude Campaign Intelligence** card: click to get AI-estimated CPL range (cold + retargeting) and one specific recommendation before you launch
+- Click **Save Draft** at any step to preserve progress; **Launch** is available only when all checks pass
+
+---
+
+### Sub-module 2 — Active Campaigns Dashboard
+
+**Where:** FB Ads → Campaigns tab
+
+Shows all campaigns with live KPIs pulled from `fb_campaign_performance`:
+- **Status badge**: Active / Draft / Paused
+- **Daily budget**, total **Spend**, **Leads** count
+- **CPL** color-coded: green (≤$35), yellow ($35–$40), red (>$40 = above battle plan threshold)
+- **Contact %** and **Appt %**
+- **Battle Plan Score** (0–100) computed by Claude against all compliance requirements
+
+Actions:
+- **Pause / Activate** toggle
+- **Edit** — reopens the Campaign Wizard in edit mode
+
+---
+
+### Sub-module 3 — Lead Intake Router
+
+**Where:** FB Ads → Lead Router tab
+
+Real-time view of all inbound leads from Facebook Lead Ads (received via the `fb-lead-intake` Edge Function). Refreshes every 30 seconds.
+
+**Summary strip:**
+- HOT count (foreclosure, probate, divorce, taxes)
+- WARM count (tired landlord, relocating)
+- COLD count (just exploring)
+
+**Lead feed** shows each lead with:
+- Segment badge (HOT-URGENT, HOT-ESTATE, WARM-LANDLORD, etc.)
+- SMS sent status (green check = Twilio fired within 60 sec)
+- Contact dot (green = contacted, grey = pending)
+- Appointment dot (green = set, grey = not yet)
+
+**Routing logic** (automatic — no action required):
+| Situation | Segment Tag | Priority |
+|---|---|---|
+| Foreclosure | HOT-URGENT | A |
+| Behind on Taxes | HOT-TAX | A |
+| Probate / Inherited | HOT-ESTATE | A |
+| Divorce | HOT-LEGAL | A |
+| Tired Landlord | WARM-LANDLORD | B |
+| Relocating | WARM-RELOCATION | B |
+| Just Exploring / Other | COLD-NURTURE | C |
+
+---
+
+### Sub-module 4 — Performance Tracker
+
+**Where:** FB Ads → Performance tab
+
+**KPI Strip** (top of page):
+- Total Spend
+- Total Leads
+- Blended CPL (red if > $40 battle plan threshold)
+- Contact Rate (red if < 40%)
+- Appt Rate
+
+**Charts:**
+- CPL by Segment (bar chart) — see which audience segments are most efficient
+- Lead Volume by Day (line chart, last 30 days)
+- Situation Tag Distribution (pie chart) — see what's actually motivating your leads
+- Budget vs Lead Volume (dual-axis) — track spend efficiency over time
+
+**Claude Optimization Alerts:**
+Click **Analyze Now** to send all performance data to Claude. Returns up to 5 alerts:
+- **Urgent** (red): CPL > $40 for 5+ days, requires immediate creative rotation
+- **Warning** (amber): Frequency > 3.0 (audience fatigue), contact rate < 40%
+- **Info** (blue): 50 leads reached (Lookalike audience ready to build), positive trends
+
+---
+
+### Sub-module 5 — Battle Plan Reference Library
+
+**Where:** FB Ads → Battle Plan tab
+
+10 collapsible reference sections covering the complete approved Facebook Ads strategy. Each section has a **"Claude, explain this"** button — click it to get a plain-language explanation of *why* that rule exists and what happens if it's ignored.
+
+Sections:
+1. **Campaign Settings Reference** — locked settings and their legal/strategic rationale
+2. **Targeting Signal Matrix** — all 23 interest signals across 3 tiers
+3. **Segment Headline Library** — all 8 segments with A/B/C copy variants
+4. **Visual Creative Specs** — image/video requirements
+5. **Lead Form Structure** — required fields and answer options
+6. **Routing Map** — situation → segment → Twilio sequence table
+7. **Retargeting Cadence** — Day 1/3/7/14/30 re-engagement sequence
+8. **KPI Targets & Optimization Rules** — thresholds that trigger automated alerts
+9. **Lookalike Build Sequence** — how to scale from 50→200→closed deal audiences
+10. **CAPI Setup Checklist** — Meta Conversions API for privacy-compliant tracking
+
+---
+
+### FB Ads Setup Checklist (First Time)
+
+Complete these before your first campaign:
+
+1. **Run migration 010** in Supabase SQL Editor (`010_fb_ads_command_center.sql`)
+2. **Deploy the Edge Function**: `supabase functions deploy fb-lead-intake`
+3. **Set Edge Function secrets** in Supabase Dashboard → Functions → Secrets:
+   - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
+   - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
+4. **Create a Facebook App** at developers.facebook.com → get App ID + Secret
+5. **Subscribe your app** to your Facebook Page's `leadgen` events
+6. **Set webhook URL** in Facebook App settings: `https://[your-domain]/webhooks/facebook/lead`
+   - Set Verify Token to match `FACEBOOK_WEBHOOK_VERIFY_TOKEN` in your `.env`
+7. **Run the Campaign Setup Wizard** at `/fb-ads` → New Campaign
+8. **Use Facebook's Test Lead tool** (Ads Manager → Testing) to fire a test webhook and confirm a lead appears in the Lead Router tab
+
+### Battle Plan CPL Targets
+
+| Audience Type | Target CPL | Warning Threshold |
+|---|---|---|
+| Cold (custom + interest) | $18–$35 | > $40 |
+| Retargeting | $8–$14 | > $20 |
+| Lookalike 1% | $20–$30 | > $40 |
+
+### Lookalike Trigger Points
+
+| Milestone | Action |
+|---|---|
+| 50 form completions | Enable Lookalike 1% DFW from lead audience |
+| Lookalike enabled | Shift 60% budget to Lookalike, 40% to proven cold creatives |
+| 200 completions | Test Lookalike 2% and 3% tiers |
+| Closed deal contacts | Upload quarterly for "best buyer" lookalikes |

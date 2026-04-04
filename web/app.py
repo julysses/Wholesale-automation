@@ -44,6 +44,7 @@ from web.api import router as ai_router           # noqa: E402
 from web.api.webhooks import router as webhook_router  # noqa: E402
 from web.api.lead_forms_api import router as lead_forms_router  # noqa: E402
 from web.api.buyers_api import router as buyers_router  # noqa: E402
+from web.api.fb_ads_api import router as fb_ads_router  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ app.include_router(ai_router)          # POST /api/ai/*
 app.include_router(webhook_router)     # POST /webhooks/* — dialer + SMS inbound events
 app.include_router(lead_forms_router)  # GET/POST /api/forms/*, /api/lead-gen/*, /api/ai/lead-gen/*
 app.include_router(buyers_router)      # POST/GET /api/buyers/*
+app.include_router(fb_ads_router)      # POST /api/ai/fb-ads/*
 
 # ── Jinja2 templates (legacy pipeline UI at /v1/*) ────────────────────────────
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
