@@ -99,9 +99,9 @@ export function Step4CreativeStudio({ state, onChange, errors }: Props) {
             <h4 className="text-sm font-semibold text-gray-700 mb-2">Brand Palette Reference</h4>
             <div className="flex gap-3">
               {([
-                { color: BRAND_PALETTE.primary, label: 'Primary (Navy)' },
+                { color: BRAND_PALETTE.primary, label: 'Primary (Navy)', border: false },
                 { color: BRAND_PALETTE.text, label: 'Text (White)', border: true },
-                { color: BRAND_PALETTE.cta, label: 'CTA (Gold)' },
+                { color: BRAND_PALETTE.cta, label: 'CTA (Gold)', border: false },
               ] as const).map(({ color, label, border }) => (
                 <div key={label} className="flex items-center gap-2">
                   <div

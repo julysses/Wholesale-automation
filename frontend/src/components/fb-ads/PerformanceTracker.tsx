@@ -166,7 +166,7 @@ export function PerformanceTracker() {
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
-                    <Pie data={situationDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    <Pie data={situationDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
                       {situationDist.map((_, i) => <Cell key={i} fill={SEGMENT_COLORS[i % SEGMENT_COLORS.length]} />)}
                     </Pie>
                     <Tooltip />

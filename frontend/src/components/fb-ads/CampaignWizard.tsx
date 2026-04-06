@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Save, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-import { CAMPAIGN_RULES, DFW_COUNTIES, TIER1_SIGNALS, AUDIENCE_TYPE_TO_SEGMENT } from '@/lib/fb-ads/battlePlanRules';
+import { CAMPAIGN_RULES, DFW_COUNTIES, TIER1_SIGNALS, AUDIENCE_TYPE_TO_SEGMENT, type DFWCounty } from '@/lib/fb-ads/battlePlanRules';
 import { Step1CampaignSettings } from './steps/Step1CampaignSettings';
 import { Step2AudienceBuilder } from './steps/Step2AudienceBuilder';
 import { Step3AdSetConfigurator } from './steps/Step3AdSetConfigurator';
@@ -21,12 +21,12 @@ const STEPS = [
 ];
 
 const today = new Date().toISOString().split('T')[0];
-const defaultTier1 = TIER1_SIGNALS.filter(s => s.defaultOn).map(s => s.id);
+const defaultTier1: string[] = TIER1_SIGNALS.filter(s => s.defaultOn).map(s => s.id);
 
 const INITIAL_STATE = {
   step1: {
     name: '',
-    daily_budget: CAMPAIGN_RULES.DEFAULT_DAILY_BUDGET,
+    daily_budget: CAMPAIGN_RULES.DEFAULT_DAILY_BUDGET as number,
     ab_test_enabled: true,
     start_date: today,
   },
@@ -35,13 +35,13 @@ const INITIAL_STATE = {
     tier1_signals: defaultTier1,
     tier2_signals: [] as string[],
     tier3_signals: [] as string[],
-    counties: ['Dallas', 'Tarrant'] as string[],
+    counties: ['Dallas', 'Tarrant'] as DFWCounty[],
     income_min: 40000,
     income_max: 100000,
   },
   step3: {
     ad_sets: [] as any[],
-    total_budget: CAMPAIGN_RULES.DEFAULT_DAILY_BUDGET,
+    total_budget: CAMPAIGN_RULES.DEFAULT_DAILY_BUDGET as number,
   },
   step4: {
     image_url: '',

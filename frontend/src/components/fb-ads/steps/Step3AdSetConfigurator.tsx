@@ -169,9 +169,9 @@ export function Step3AdSetConfigurator({ state, detectedSegments, onChange, erro
                 </label>
                 <div className="flex gap-3 flex-wrap">
                   {([
-                    { key: 'placement_feed', label: 'Feed', locked: false },
-                    { key: 'placement_marketplace', label: 'Marketplace', locked: false },
-                    { key: 'placement_instagram', label: 'Instagram Feed', locked: false },
+                    { key: 'placement_feed', label: 'Feed', locked: false, lockedOff: false },
+                    { key: 'placement_marketplace', label: 'Marketplace', locked: false, lockedOff: false },
+                    { key: 'placement_instagram', label: 'Instagram Feed', locked: false, lockedOff: false },
                     { key: 'placement_audience_network', label: 'Audience Network', locked: true, lockedOff: true },
                   ] as const).map(({ key, label, locked, lockedOff }) => (
                     <div key={key} className="flex items-center gap-1.5">

@@ -5,9 +5,10 @@ import { claudeAdvisor } from '@/lib/fb-ads/claudeAdvisor';
 import {
   TIER1_SIGNALS, TIER2_SIGNALS, TIER3_SIGNALS,
   SEGMENT_HEADLINES, SEGMENT_COPY_A, SEGMENT_COPY_B, SEGMENT_COPY_C,
-  SEGMENT_LABELS, ROUTING_MAP, RETARGETING_CADENCE, KPI_THRESHOLDS,
-  CAMPAIGN_RULES, type Segment,
+  SEGMENT_LABELS, RETARGETING_CADENCE, KPI_THRESHOLDS,
+  LOOKALIKE_BUDGET_SHIFT_PCT, CAMPAIGN_RULES, type Segment,
 } from '@/lib/fb-ads/battlePlanRules';
+import { ROUTING_MAP } from '@/lib/fb-ads/segmentRouter';
 
 const SEGMENTS = Object.keys(SEGMENT_LABELS) as Segment[];
 
@@ -191,7 +192,7 @@ export function BattlePlanLibrary() {
           <table className="w-full text-xs">
             <thead><tr className="bg-[#0A1628] text-white"><th className="px-3 py-2 text-left rounded-tl-lg">Situation</th><th className="px-3 py-2 text-left">Segment</th><th className="px-3 py-2 text-left rounded-tr-lg">Twilio Sequence</th></tr></thead>
             <tbody>
-              {ROUTING_MAP.map((r, i) => (
+              {ROUTING_MAP.map((r: typeof ROUTING_MAP[number], i: number) => (
                 <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-3 py-2 font-medium text-gray-800">{r.situations}</td>
                   <td className="px-3 py-2"><span className="bg-[#0A1628]/10 text-[#0A1628] px-2 py-0.5 rounded text-xs font-semibold">{r.segment}</span></td>
@@ -225,7 +226,7 @@ export function BattlePlanLibrary() {
             { trigger: `CPL > $${KPI_THRESHOLDS.CPL_WARNING} for 5+ days`, action: 'Flag for creative rotation — CPL above battle plan threshold' },
             { trigger: `Frequency > ${KPI_THRESHOLDS.FREQUENCY_WARNING}`, action: 'Audience fatigue — rotate creative or expand audience' },
             { trigger: `Contact rate < ${KPI_THRESHOLDS.CONTACT_RATE_MIN}%`, action: 'Review Twilio timing — battle plan requires < 60 sec first touch' },
-            { trigger: `${KPI_THRESHOLDS.LOOKALIKE_TRIGGER} leads accumulated`, action: `Shift ${KPI_THRESHOLDS.LOOKALIKE_BUDGET_SHIFT_PCT}% of budget to Lookalike audience` },
+            { trigger: `${KPI_THRESHOLDS.LOOKALIKE_TRIGGER} leads accumulated`, action: `Shift ${LOOKALIKE_BUDGET_SHIFT_PCT}% of budget to Lookalike audience` },
           ].map(({ trigger, action }) => (
             <div key={trigger} className="flex gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
               <AlertIcon />

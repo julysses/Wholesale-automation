@@ -259,7 +259,7 @@ export function LeadGenEngine() {
                   selected={selectedCampaignId === c.id}
                   onSelect={setSelectedCampaignId}
                   syncing={syncingId === c.id}
-                  onToggleStatus={(id, status) => updateCampaign.mutate({ id, updates: { status } })}
+                  onToggleStatus={(id, status) => updateCampaign.mutate({ id, updates: { status: status as 'active' | 'paused' | 'completed' | 'draft' } })}
                   onSyncFacebook={handleSyncFacebook}
                 />
               ))}
@@ -301,7 +301,7 @@ export function LeadGenEngine() {
 
               <AdCreativeABCard
                 creatives={creatives}
-                onToggleStatus={(id, status) => updateCreative.mutate({ id, updates: { status } })}
+                onToggleStatus={(id, status) => updateCreative.mutate({ id, updates: { status: status as 'active' | 'paused' | 'winner' | 'archived' } })}
                 onSetWinner={(id) => {
                   // Clear existing winner first, then set new one
                   creatives.forEach((c) => {
