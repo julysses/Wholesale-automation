@@ -110,13 +110,28 @@ export default function App() {
   useEffect(() => {
     if (configState !== 'ready') return;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
+    // Fallback: if auth doesn't resolve within 5s, treat as unauthenticated (→ login page)
+    const authTimeout = setTimeout(() => setSession(null), 5000);
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        clearTimeout(authTimeout);
+        setSession(session);
+      })
+      .catch(() => {
+        clearTimeout(authTimeout);
+        setSession(null);
+      });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      clearTimeout(authTimeout);
       setSession(session);
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      clearTimeout(authTimeout);
+      subscription.unsubscribe();
+    };
   }, [configState]);
 
   if (configState === 'error') return <ConfigError />;
