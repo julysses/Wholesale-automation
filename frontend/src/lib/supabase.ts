@@ -1,26 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+// Live binding — all importers see the updated client after initSupabase() is called.
+// Do NOT pre-initialize with placeholder values; an invalid client causes auth to hang.
+export let supabase: SupabaseClient = null!;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase environment variables not set. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local');
+export function initSupabase(url: string, anonKey: string): void {
+  supabase = createClient(url, anonKey, {
+    auth: { autoRefreshToken: true, persistSession: true },
+    realtime: { params: { eventsPerSecond: 10 } },
+  });
 }
 
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key',
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10,
-      },
-    },
-  }
-);
-
-export default supabase;
+// Pre-initialize from build-time env vars when available (local dev / Docker).
+// On Railway with nixpacks the VITE_ vars are typically empty; App.tsx fetches
+// them at runtime from /api/config instead.
+const _bakeUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const _bakeKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+if (_bakeUrl && _bakeKey) {
+  initSupabase(_bakeUrl, _bakeKey);
+}
