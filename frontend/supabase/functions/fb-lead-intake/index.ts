@@ -153,25 +153,23 @@ serve(async (req) => {
 
       const leadId = insertedLead.id;
 
-      // Fire Twilio SMS if phone available
-      let smsSent = false;
-      if (phone) {
+      // Fire SMS and create main pipeline lead in parallel
+      const isHot = segmentTag.startsWith('HOT');
+      const smsPromise = (async () => {
+        if (!phone) return false;
         const firstName = (name || '').split(' ')[0] || 'there';
         const smsBody = `Hi ${firstName}, thanks for reaching out. We received your info on ${property_address || 'your property'}. Someone from our team will call you shortly — or reply here if you prefer to text.`;
-
-        smsSent = await sendSMS(phone, smsBody);
-
-        if (smsSent) {
+        const sent = await sendSMS(phone, smsBody);
+        if (sent) {
           await supabase
             .from('fb_leads')
             .update({ twilio_sms_sent: true, twilio_sms_time: new Date().toISOString() })
             .eq('id', leadId);
         }
-      }
+        return sent;
+      })();
 
-      // Also create a lead in the main leads pipeline
-      const isHot = segmentTag.startsWith('HOT');
-      await supabase.from('leads').insert({
+      const pipelinePromise = supabase.from('leads').insert({
         property_address: property_address || 'Unknown',
         owner_first_name: (name || '').split(' ')[0],
         owner_last_name: (name || '').split(' ').slice(1).join(' '),
@@ -192,6 +190,8 @@ serve(async (req) => {
         email_sequence_active: false,
         dnc: false,
       });
+
+      const [smsSent] = await Promise.all([smsPromise, pipelinePromise]);
 
       results.push({ lead_id: leadId, segment_tag: segmentTag, sms_sent: smsSent });
     }

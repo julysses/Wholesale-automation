@@ -1,6 +1,7 @@
 import { Lock, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SITUATION_OPTIONS, ROUTING_MAP, TWILIO_SEQUENCES } from '@/lib/fb-ads/battlePlanRules';
+import { SITUATION_OPTIONS, TWILIO_SEQUENCES } from '@/lib/fb-ads/battlePlanRules';
+import { ROUTING_MAP } from '@/lib/fb-ads/segmentRouter';
 import { BattlePlanCallout } from './Step1CampaignSettings';
 
 interface Step5State {

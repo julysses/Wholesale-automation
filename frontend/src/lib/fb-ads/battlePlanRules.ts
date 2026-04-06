@@ -50,6 +50,20 @@ export const AUDIENCE_TYPES = [
   'Closed Deals',
 ] as const;
 
+// Maps CSV audience type labels to the corresponding Segment key
+export const AUDIENCE_TYPE_TO_SEGMENT: Record<string, Segment> = {
+  'Pre-Foreclosure':  'pre-foreclosure',
+  'Probate':          'probate',
+  'Divorce':          'divorce',
+  'Tax Delinquent':   'tax-delinquent',
+  'Landlord Burnout': 'landlord-burnout',
+  'Code Violation':   'vacant-code-violation',
+  'Vacant':           'vacant-code-violation',
+  'High Equity':      'high-equity',
+  'Absentee Owner':   'pre-foreclosure',
+  'Closed Deals':     'high-equity',
+};
+
 export const AUDIENCE_PRIORITY: Record<string, 'red' | 'orange' | 'yellow'> = {
   'Pre-Foreclosure': 'red',
   'Probate': 'red',

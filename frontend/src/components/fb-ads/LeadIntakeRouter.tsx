@@ -40,7 +40,7 @@ export function LeadIntakeRouter() {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 10000,
+    staleTime: 30000,
     refetchInterval: 30000,
   });
 

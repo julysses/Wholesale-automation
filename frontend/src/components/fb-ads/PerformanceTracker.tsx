@@ -16,12 +16,15 @@ export function PerformanceTracker() {
   const [alerts, setAlerts] = useState<PerformanceAlert[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
 
+  const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
   const { data: perfData = [] } = useQuery({
-    queryKey: ['fb_perf_all'],
+    queryKey: ['fb_perf_30d', since30d],
     queryFn: async () => {
       const { data } = await supabase
         .from('fb_campaign_performance')
         .select('*, fb_campaigns(name), fb_ad_sets(segment)')
+        .gte('date', since30d)
         .order('date', { ascending: true });
       return data || [];
     },
@@ -29,9 +32,12 @@ export function PerformanceTracker() {
   });
 
   const { data: fbLeads = [] } = useQuery({
-    queryKey: ['fb_leads_all'],
+    queryKey: ['fb_leads_30d', since30d],
     queryFn: async () => {
-      const { data } = await supabase.from('fb_leads').select('situations, segment_tag, received_at');
+      const { data } = await supabase
+        .from('fb_leads')
+        .select('situations, segment_tag, received_at')
+        .gte('received_at', since30d);
       return data || [];
     },
     staleTime: 60000,

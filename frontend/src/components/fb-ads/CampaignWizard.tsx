@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Save, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-import { CAMPAIGN_RULES, DFW_COUNTIES, TIER1_SIGNALS } from '@/lib/fb-ads/battlePlanRules';
+import { CAMPAIGN_RULES, DFW_COUNTIES, TIER1_SIGNALS, AUDIENCE_TYPE_TO_SEGMENT } from '@/lib/fb-ads/battlePlanRules';
 import { Step1CampaignSettings } from './steps/Step1CampaignSettings';
 import { Step2AudienceBuilder } from './steps/Step2AudienceBuilder';
 import { Step3AdSetConfigurator } from './steps/Step3AdSetConfigurator';
@@ -138,38 +138,20 @@ export function CampaignWizard({ campaignId, onComplete, onCancel }: Props) {
     }
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (!validate(step)) return;
-    await saveDraft();
     if (step < 6) {
       setStep(s => s + 1);
     } else {
-      if (savedId) onComplete?.(savedId);
+      saveDraft().then(() => { if (savedId) onComplete?.(savedId); });
     }
   };
 
   const handleBack = () => setStep(s => Math.max(1, s - 1));
 
-  const detectedSegments: Segment[] = state.step2.custom_audiences.map((a: any) => {
-    const map: Record<string, Segment> = {
-      'Pre-Foreclosure': 'pre-foreclosure',
-      'Probate': 'probate',
-      'Divorce': 'divorce',
-      'Tax Delinquent': 'tax-delinquent',
-      'Landlord Burnout': 'landlord-burnout',
-      'Vacant': 'vacant-code-violation',
-      'High Equity': 'high-equity',
-    };
-    return map[a.type] || 'pre-foreclosure';
-  }).filter(Boolean);
-
-  const wizardState = {
-    step1: state.step1 as Record<string, unknown>,
-    step2: state.step2 as Record<string, unknown>,
-    step3: state.step3 as Record<string, unknown>,
-    step4: state.step4 as Record<string, unknown>,
-    step5: state.step5 as Record<string, unknown>,
-  };
+  const detectedSegments: Segment[] = state.step2.custom_audiences
+    .map((a: any) => AUDIENCE_TYPE_TO_SEGMENT[a.type] ?? 'pre-foreclosure')
+    .filter(Boolean);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -257,7 +239,7 @@ export function CampaignWizard({ campaignId, onComplete, onCancel }: Props) {
           />
         )}
         {step === 6 && (
-          <Step6PreFlightChecklist wizardState={wizardState} />
+          <Step6PreFlightChecklist wizardState={state as any} />
         )}
       </div>
 

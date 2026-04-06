@@ -52,6 +52,15 @@ def _call(system: str, user: str, model: str = HAIKU, max_tokens: int = 1024) ->
     return raw
 
 
+def _call_json(endpoint: str, system: str, user: str, max_tokens: int = 1024):
+    """Call Claude, parse JSON response, raise HTTP 500 on any failure."""
+    try:
+        return json.loads(_call(system, user, max_tokens=max_tokens))
+    except Exception as exc:
+        logger.error(f"{endpoint} failed: {exc}")
+        raise HTTPException(500, str(exc))
+
+
 # ── Review Ad Copy ─────────────────────────────────────────────────────────────
 
 class ReviewCopyRequest(BaseModel):
@@ -91,12 +100,7 @@ Return ONLY this JSON:
   "score": <0-100>
 }}"""
 
-    try:
-        raw = _call(system, user)
-        return json.loads(raw)
-    except Exception as exc:
-        logger.error(f"review-copy failed: {exc}")
-        raise HTTPException(500, str(exc))
+    return _call_json("review-copy", system, user)
 
 
 # ── Review Headline ────────────────────────────────────────────────────────────
@@ -138,12 +142,7 @@ Return ONLY this JSON:
   "suggestion": "<improved headline if score < 80, else null>"
 }}"""
 
-    try:
-        raw = _call(system, user)
-        return json.loads(raw)
-    except Exception as exc:
-        logger.error(f"review-headline failed: {exc}")
-        raise HTTPException(500, str(exc))
+    return _call_json("review-headline", system, user)
 
 
 # ── Pre-Flight Summary ─────────────────────────────────────────────────────────
@@ -197,12 +196,7 @@ Return ONLY this JSON:
   "recommendation": "<one specific actionable recommendation>"
 }}"""
 
-    try:
-        raw = _call(system, user, max_tokens=512)
-        return json.loads(raw)
-    except Exception as exc:
-        logger.error(f"preflight-summary failed: {exc}")
-        raise HTTPException(500, str(exc))
+    return _call_json("preflight-summary", system, user, max_tokens=512)
 
 
 # ── Performance Alerts ─────────────────────────────────────────────────────────
@@ -244,13 +238,8 @@ Return ONLY a JSON array of alerts:
 
 Return empty array [] if no issues found. Maximum 5 alerts."""
 
-    try:
-        raw = _call(system, user, max_tokens=1024)
-        result = json.loads(raw)
-        return result if isinstance(result, list) else []
-    except Exception as exc:
-        logger.error(f"performance-alerts failed: {exc}")
-        raise HTTPException(500, str(exc))
+    result = _call_json("performance-alerts", system, user, max_tokens=1024)
+    return result if isinstance(result, list) else []
 
 
 # ── Score Campaign ─────────────────────────────────────────────────────────────
@@ -287,12 +276,7 @@ Return ONLY:
   "flags": ["<specific compliance issue>"]
 }}"""
 
-    try:
-        raw = _call(system, user, max_tokens=256)
-        return json.loads(raw)
-    except Exception as exc:
-        logger.error(f"score-campaign failed: {exc}")
-        raise HTTPException(500, str(exc))
+    return _call_json("score-campaign", system, user, max_tokens=256)
 
 
 # ── Explain Section ────────────────────────────────────────────────────────────
@@ -320,9 +304,7 @@ Content:
 Explain WHY this matters and WHAT happens if it's ignored."""
 
     try:
-        raw = _call(system, user, max_tokens=300)
-        # Explanation is plain text
-        return {"explanation": raw}
+        return {"explanation": _call(system, user, max_tokens=300)}
     except Exception as exc:
         logger.error(f"explain-section failed: {exc}")
         raise HTTPException(500, str(exc))
