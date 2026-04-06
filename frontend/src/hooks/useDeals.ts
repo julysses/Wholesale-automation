@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Deal } from '@/types';
 import { useDealStore } from '@/stores/useDealStore';
 import { toast } from 'sonner';
 
 export function useDeals() {
+  const id = useId();
   const setDeals = useDealStore((s) => s.setDeals);
   const qc = useQueryClient();
 
@@ -26,7 +27,7 @@ export function useDeals() {
 
   useEffect(() => {
     const channel = supabase
-      .channel(`deals-realtime-${Math.random()}`)
+      .channel(`deals-realtime-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => {
         qc.invalidateQueries({ queryKey: ['deals'] });
       })

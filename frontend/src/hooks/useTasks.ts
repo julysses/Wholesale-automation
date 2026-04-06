@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Task } from '@/types';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ interface TasksFilter {
 }
 
 export function useTasks(filters: TasksFilter = {}) {
+  const id = useId();
   const { status, priority, type } = filters;
   const qc = useQueryClient();
 
@@ -35,7 +36,7 @@ export function useTasks(filters: TasksFilter = {}) {
 
   useEffect(() => {
     const channel = supabase
-      .channel(`tasks-realtime-${Math.random()}`)
+      .channel(`tasks-realtime-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
         qc.invalidateQueries({ queryKey: ['tasks'] });
       })

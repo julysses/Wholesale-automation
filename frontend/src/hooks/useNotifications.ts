@@ -7,7 +7,7 @@
  *   - Pipeline step completions (skip trace, tier routing, etc.)
  *   - Access approved/denied confirmations (non-admin users)
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useId, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 
@@ -51,6 +51,7 @@ const TOAST_TYPES = new Set([
 ]);
 
 export function useNotifications(): UseNotificationsResult {
+  const id = useId();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +71,7 @@ export function useNotifications(): UseNotificationsResult {
 
     // Subscribe to INSERT events for real-time notifications
     const channel = supabase
-      .channel(`app_notifications-${Math.random()}`)
+      .channel(`app_notifications-${id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'app_notifications' },
