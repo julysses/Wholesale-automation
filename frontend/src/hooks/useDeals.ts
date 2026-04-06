@@ -26,7 +26,7 @@ export function useDeals() {
 
   useEffect(() => {
     const channel = supabase
-      .channel('deals-realtime')
+      .channel(`deals-realtime-${Math.random()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => {
         qc.invalidateQueries({ queryKey: ['deals'] });
       })

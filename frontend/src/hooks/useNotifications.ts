@@ -70,7 +70,7 @@ export function useNotifications(): UseNotificationsResult {
 
     // Subscribe to INSERT events for real-time notifications
     const channel = supabase
-      .channel('app_notifications')
+      .channel(`app_notifications-${Math.random()}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'app_notifications' },

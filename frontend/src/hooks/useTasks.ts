@@ -35,7 +35,7 @@ export function useTasks(filters: TasksFilter = {}) {
 
   useEffect(() => {
     const channel = supabase
-      .channel('tasks-realtime')
+      .channel(`tasks-realtime-${Math.random()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
         qc.invalidateQueries({ queryKey: ['tasks'] });
       })
