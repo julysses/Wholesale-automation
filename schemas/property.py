@@ -41,18 +41,19 @@ class DistressSignal(str, Enum):
 
 
 # ── Blueprint scoring weights (signal only — stacking bonuses added separately) ─
+# Weights must sum to 100; the scoring engine caps the final score at 100.
 SIGNAL_WEIGHTS: dict[DistressSignal, int] = {
-    DistressSignal.ABSENTEE_OWNER:    20,
-    DistressSignal.VACANCY:           25,
-    DistressSignal.PROBATE_INHERITED: 25,
-    DistressSignal.PRE_FORECLOSURE:   20,
-    DistressSignal.TAX_DELINQUENT:    15,
-    DistressSignal.CODE_VIOLATION:    20,
-    DistressSignal.UTILITY_SHUTOFF:   20,
-    DistressSignal.MUNICIPAL_LIEN:    15,
-    DistressSignal.HIGH_EQUITY:       10,
-    DistressSignal.LONG_TERM_OWNER:   10,
-    DistressSignal.OUT_OF_STATE_OWNER:10,
+    DistressSignal.TAX_DELINQUENT:     25,
+    DistressSignal.PROBATE_INHERITED:  20,
+    DistressSignal.HIGH_EQUITY:        20,
+    DistressSignal.VACANCY:            15,
+    DistressSignal.PRE_FORECLOSURE:     5,
+    DistressSignal.ABSENTEE_OWNER:      5,
+    DistressSignal.CODE_VIOLATION:      4,
+    DistressSignal.UTILITY_SHUTOFF:     2,
+    DistressSignal.MUNICIPAL_LIEN:      2,
+    DistressSignal.LONG_TERM_OWNER:     1,
+    DistressSignal.OUT_OF_STATE_OWNER:  1,
 }
 
 # ── Stack definitions with bonus points ─────────────────────────────────────────
