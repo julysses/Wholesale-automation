@@ -5,6 +5,7 @@ import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
 import { OutreachTimeline } from '@/components/leads/OutreachTimeline';
 import { StackBadge } from '@/components/leads/StackBadge';
+import { UnderwriteTab } from '@/components/leads/UnderwriteTab';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -234,6 +235,9 @@ export function Leads() {
                       </div>
                       {lead.skip_traced_at && (
                         <span title="Skip traced" className="text-xs text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 shrink-0">ST</span>
+                      )}
+                      {lead.tags?.includes('btr-eligible') && (
+                        <span title="Build-to-Rent eligible" className="text-xs text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 shrink-0 font-bold">BTR</span>
                       )}
                     </div>
                   </td>
@@ -633,7 +637,7 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
   const updateLead = useUpdateLead();
   const { qualify, loading: aiLoading, result: aiResult } = useLeadQualifier();
   const [form, setForm] = useState<Partial<Lead>>(lead);
-  const [activeTab, setActiveTab] = useState<'details' | 'timeline'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'underwrite'>('details');
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
@@ -654,18 +658,22 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
       <div className="p-6">
         {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-6">
-          {(['details', 'timeline'] as const).map((tab) => (
+          {([
+            { id: 'details',    label: 'Details' },
+            { id: 'underwrite', label: 'Underwrite' },
+            { id: 'timeline',   label: 'Activity Timeline' },
+          ] as const).map(({ id, label }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={id}
+              onClick={() => setActiveTab(id)}
               className={cn(
                 'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
-                activeTab === tab
+                activeTab === id
                   ? 'border-[#1B3A5C] text-[#1B3A5C]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               )}
             >
-              {tab === 'timeline' ? 'Activity Timeline' : 'Details'}
+              {label}
             </button>
           ))}
         </div>
@@ -765,6 +773,9 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
           <Button onClick={handleSave} loading={updateLead.isPending}>Save Changes</Button>
         </div>
         </div>)}
+        {activeTab === 'underwrite' && (
+          <UnderwriteTab lead={lead} />
+        )}
         {activeTab === 'timeline' && (
           <OutreachTimeline leadId={lead.id} />
         )}

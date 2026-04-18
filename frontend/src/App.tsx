@@ -27,6 +27,7 @@ import { BuyerIntelligence } from '@/pages/BuyerIntelligence';
 import { LeadGenEngine } from '@/pages/LeadGenEngine';
 import { LeadForm } from '@/pages/LeadForm';
 import { FacebookAdsCommandCenter } from '@/pages/FacebookAdsCommandCenter';
+import MarketPulsePage from '@/pages/MarketPulse';
 
 // Admin pages
 import { AdminUsers } from '@/pages/admin/Users';
@@ -223,7 +224,8 @@ export default function App() {
                   <Route path="/land"         element={<LandLeads />} />
                   <Route path="/buyer-intel"  element={<BuyerIntelligence />} />
                   <Route path="/lead-gen"     element={<LeadGenEngine />} />
-                  <Route path="/fb-ads"       element={<FacebookAdsCommandCenter />} />
+                  <Route path="/fb-ads"        element={<FacebookAdsCommandCenter />} />
+                  <Route path="/market-pulse" element={<MarketPulsePage />} />
                   <Route path="/admin/users"  element={<AdminUsers />} />
                   <Route path="*"             element={<Navigate to="/" replace />} />
                 </Route>

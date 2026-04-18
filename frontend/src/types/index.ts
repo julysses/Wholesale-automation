@@ -69,6 +69,12 @@ export interface Lead {
   launch_control_id?: string;
   podio_item_id?: string;
   resimpli_lead_id?: string;
+  // RealtyAPI enrichment (migration 011)
+  deal_score?: number;
+  tags?: string[];
+  motivation_score?: number;
+  priority?: boolean;
+  list_price?: number;
 }
 
 export interface Deal {
@@ -180,6 +186,10 @@ export interface Comp {
   distance_miles?: number;
   source?: string;
   notes?: string;
+  // RealtyAPI enrichment (migration 011)
+  similarity_score?: number;
+  raw_payload?: Record<string, unknown>;
+  fetched_at?: string;
 }
 
 export interface AIAgentLog {
@@ -672,4 +682,63 @@ export interface BuyerImportLog {
   errors: Array<{ row: number; error: string }>;
   status: 'pending' | 'processing' | 'complete' | 'failed';
   completed_at?: string;
+}
+
+// ── RealtyAPI Integration Types (migration 011) ───────────────────────────────
+
+export interface PropertyEnrichment {
+  id: string;
+  lead_id: string;
+  address: string;
+  beds?: number;
+  baths?: number;
+  sqft?: number;
+  year_built?: number;
+  lot_size_sqft?: number;
+  last_sale_price?: number;
+  last_sale_date?: string;
+  zestimate?: number;
+  tax_assessment?: number;
+  property_type?: string;
+  zpid?: string;
+  data_source?: string;
+  raw_payload?: Record<string, unknown>;
+  fetched_at: string;
+}
+
+export interface ArvResult {
+  id: string;
+  lead_id: string;
+  arv_low?: number;
+  arv_mid?: number;
+  arv_high?: number;
+  avg_ppsf?: number;
+  comp_count?: number;
+  confidence?: 'high' | 'medium' | 'low';
+  methodology?: string;
+  computed_at: string;
+}
+
+export interface RentalYield {
+  id: string;
+  lead_id: string;
+  ltr_monthly_est?: number;
+  str_monthly_est?: number;
+  str_occupancy?: number;
+  str_adr?: number;
+  gross_yield_ltr?: number;
+  gross_yield_str?: number;
+  fetched_at: string;
+}
+
+export interface MarketPulse {
+  id: string;
+  zip_code: string;
+  median_list_price?: number;
+  median_ppsf?: number;
+  avg_dom?: number;
+  list_to_sale_ratio?: number;
+  price_cut_pct?: number;
+  market_temp?: 'hot' | 'warm' | 'neutral' | 'cool';
+  fetched_at: string;
 }
