@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
@@ -35,6 +36,21 @@ from schemas.deal import Deal, UnderwritingReport
 from schemas.property import PropertyLead
 
 logger = logging.getLogger(__name__)
+
+
+def get_supabase_client() -> Optional[Any]:
+    """Return a Supabase client using service role key, or None if not configured."""
+    url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL", "")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY", "")
+    if not (url and key):
+        return None
+    try:
+        from supabase import create_client
+        return create_client(url, key)
+    except Exception as exc:
+        logger.error(f"[CRM] Supabase init failed: {exc}")
+        return None
+
 
 metadata = MetaData()
 
