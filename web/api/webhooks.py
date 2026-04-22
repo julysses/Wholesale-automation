@@ -24,6 +24,8 @@ Routes:
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 import os
 from datetime import datetime, timezone
@@ -47,6 +49,8 @@ from tools.vapi_adapter import (
     extract_vapi_lead_signals,
     _turns_to_text as vapi_turns_to_text,
 )
+from tools.email_client import EmailClient
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
@@ -57,6 +61,30 @@ LAUNCH_CONTROL_WEBHOOK_SECRET = os.getenv("LAUNCH_CONTROL_WEBHOOK_SECRET", "")
 RETELL_WEBHOOK_SECRET = os.getenv("RETELL_WEBHOOK_SECRET", "")
 AIR_AI_WEBHOOK_SECRET = os.getenv("AIR_AI_WEBHOOK_SECRET", "")
 VAPI_WEBHOOK_SECRET = os.getenv("VAPI_WEBHOOK_SECRET", "")
+
+
+def _verify_hmac_signature(body: bytes, signature: str, secret: str, source: str = "") -> bool:
+    """
+    Verify HMAC-SHA256 hex signature.
+    Logs a warning on every rejected attempt so security events are traceable.
+    """
+    if not secret:
+        return True
+    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    valid = hmac.compare_digest(signature, expected)
+    if not valid:
+        logger.warning(
+            f"[webhook{':' + source if source else ''}] HMAC verification failed — "
+            f"rejected inbound request (sig_prefix={signature[:8]!r})"
+        )
+    return valid
+
+
+def _verify_static_secret(received: str, expected: str) -> bool:
+    """Verify a static secret using constant-time comparison."""
+    if not expected:
+        return True
+    return hmac.compare_digest(received, expected)
 
 # ── Dispositions that need immediate hot-lead routing ─────────────────────────
 HOT_DISPOSITIONS = {"HOT", "APPOINTMENT_SET"}
@@ -264,7 +292,7 @@ async def batchdialer_call_webhook(
     Responds immediately with 200 so BatchDialer doesn't retry.
     All processing happens in the background.
     """
-    if BATCHDIALER_WEBHOOK_SECRET and x_webhook_secret != BATCHDIALER_WEBHOOK_SECRET:
+    if not _verify_static_secret(x_webhook_secret, BATCHDIALER_WEBHOOK_SECRET):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -288,7 +316,7 @@ async def launch_control_reply_webhook(
     Receive an inbound SMS reply from Launch Control (or Zapier bridge).
     Detects opt-out keywords and suppresses the lead.
     """
-    if LAUNCH_CONTROL_WEBHOOK_SECRET and x_webhook_secret != LAUNCH_CONTROL_WEBHOOK_SECRET:
+    if not _verify_static_secret(x_webhook_secret, LAUNCH_CONTROL_WEBHOOK_SECRET):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -397,43 +425,35 @@ async def _handle_ai_call_result(event: AICallResultEvent, provider: str) -> Non
 
         # 3. Create urgent task for HOT / APPOINTMENT_SET
         if event.is_hot:
-            disposition_label = event.disposition.value.replace("_", " ").title()
-            notes_parts = []
-            if qual:
-                if qual.timeline_to_sell:
-                    notes_parts.append(f"Timeline: {qual.timeline_to_sell}")
-                if qual.property_condition:
-                    notes_parts.append(f"Condition: {qual.property_condition}")
-                if qual.occupancy:
-                    notes_parts.append(f"Occupancy: {qual.occupancy}")
-                if qual.mortgage_balance:
-                    notes_parts.append(f"Mortgage: ${qual.mortgage_balance:,.0f}")
-                if qual.asking_price:
-                    notes_parts.append(f"Asking: ${qual.asking_price:,.0f}")
-                if qual.notes:
-                    notes_parts.append(f"Summary: {qual.notes}")
+            from agents.qualification_agent import QualificationResult
 
-            sb.table("tasks").insert({
-                "lead_id":     event.lead_id,
-                "title":       f"🔥 {disposition_label} — AI Call Result",
-                "description": "\n".join(notes_parts) if notes_parts else "Follow up with seller immediately.",
-                "priority":    "high",
-                "status":      "pending",
-                "type":        "acquisition_review",
-            }).execute()
+            # Map QualificationAnswers → QualificationResult
+            q_res = QualificationResult(
+                timeline=qual.timeline_to_sell or "no_timeline",
+                condition=qual.property_condition or "fully_updated",
+                occupancy=qual.occupancy or "owner_occupied",
+                asking_price=qual.asking_price,
+                mortgage_balance=qual.mortgage_balance,
+                summary=qual.notes,
+                classification="HOT" if event.disposition.value == "hot" else "WARM",
+            )
 
-            # Insert acquisition alert notification
-            sb.table("app_notifications").insert({
-                "recipient_role": "admin",
-                "type":           "hot_lead" if event.disposition.value == "hot" else "appointment_set",
-                "title":          f"{'🔥 Hot Lead' if event.disposition.value == 'hot' else '📅 Appointment Set'}",
-                "body":           (
-                    f"AI call completed. {disposition_label}. "
-                    + (f"Seller asking: ${qual.asking_price:,.0f}" if qual and qual.asking_price else "")
-                ).strip(),
-                "action_url":     f"/leads?status={new_status}",
-                "lead_id":        event.lead_id,
-            }).execute()
+            # Fetch lead data for address/owner
+            lead_resp = sb.table("leads").select("property_address, owner_first_name, owner_last_name, estimated_arv, mao").eq("id", event.lead_id).single().execute()
+            l_data = lead_resp.data or {}
+            address = l_data.get("property_address") or ""
+            owner = f"{l_data.get('owner_first_name', '')} {l_data.get('owner_last_name', '')}".strip()
+
+            await _trigger_hot_lead_automation(
+                sb=sb,
+                lead_id=event.lead_id,
+                call_id=event.call_id,
+                address=address,
+                owner=owner,
+                qual=q_res,
+                arv=l_data.get("estimated_arv"),
+                mao=l_data.get("mao"),
+            )
 
         logger.info(f"[Webhook/{provider}] Lead {event.lead_id} → {new_status}")
 
@@ -457,10 +477,16 @@ async def retell_webhook(
 
     Retell expects 200 immediately; all processing is backgrounded.
     """
-    if RETELL_WEBHOOK_SECRET and x_retell_signature != RETELL_WEBHOOK_SECRET:
+    body = await request.body()
+    if not _verify_hmac_signature(body, x_retell_signature, RETELL_WEBHOOK_SECRET, source="retell"):
         raise HTTPException(401, "Invalid Retell webhook signature")
 
-    payload = await request.json()
+    import json as _json
+    try:
+        payload = _json.loads(body)
+    except Exception:
+        raise HTTPException(400, "Invalid JSON payload")
+
     event_type = payload.get("event") or payload.get("event_type", "")
     call_data  = payload.get("call", {})
     call_id    = call_data.get("call_id", "")
@@ -709,7 +735,7 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
 
         # 6. HOT automation
         if qual and qual.is_hot:
-            _trigger_hot_lead_automation(
+            await _trigger_hot_lead_automation(
                 sb=sb,
                 lead_id=event.lead_id,
                 call_id=event.call_id,
@@ -725,7 +751,7 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
             try:
                 lc = LaunchControlAdapter()
                 from tools.launch_control_adapter import LaunchControlContact
-                lc.add_contact_to_campaign(LaunchControlContact(
+                await lc.add_contact_to_campaign(LaunchControlContact(
                     lead_id=event.lead_id,
                     first_name=owner.split()[0] if owner else "",
                     last_name=" ".join(owner.split()[1:]) if owner else "",
@@ -748,7 +774,7 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
         logger.error(f"[retell] call_completed processing failed: {exc}")
 
 
-def _trigger_hot_lead_automation(
+async def _trigger_hot_lead_automation(
     sb: Any,
     lead_id: str,
     call_id: str,
@@ -811,7 +837,7 @@ def _trigger_hot_lead_automation(
         from tools.launch_control_adapter import LaunchControlAdapter, LaunchControlContact
         lc = LaunchControlAdapter()
         hot_campaign = settings.launch_control_default_campaign + " HOT"
-        lc.add_contact_to_campaign(LaunchControlContact(
+        await lc.add_contact_to_campaign(LaunchControlContact(
             lead_id=lead_id,
             first_name=owner.split()[0] if owner else "",
             last_name=" ".join(owner.split()[1:]) if owner else "",
@@ -845,6 +871,21 @@ def _trigger_hot_lead_automation(
         }).execute()
     except Exception as exc:
         logger.error(f"[retell] HOT notification insert failed: {exc}")
+
+    # 5. Email Alert (Immediate)
+    if settings.notification_email:
+        try:
+            email_client = EmailClient()
+            subject = f"🔥 HOT LEAD ALERT — {address}"
+            email_client.send(
+                to_email=settings.notification_email,
+                subject=subject,
+                body=task_description,
+                html_body=f"<h2>{subject}</h2><pre>{task_description}</pre><p><a href='https://wholesale-os.com/acquisitions?lead={lead_id}'>View Lead in Dashboard</a></p>",
+            )
+            logger.info(f"[retell] HOT lead email alert sent to {settings.notification_email}")
+        except Exception as exc:
+            logger.error(f"[retell] HOT lead email alert failed: {exc}")
 
     logger.info(f"[retell] HOT automation complete for lead {lead_id}")
 
@@ -892,16 +933,28 @@ def _audit(
 async def retell_call_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
-    x_webhook_secret: str = Header(default=""),
+    x_retell_signature: str = Header(default="", alias="x-retell-signature"),
+    x_webhook_secret: str = Header(default="", alias="x-webhook-secret"),
 ) -> dict:
     """
     Receive a call event from Retell AI (call_ended or call_analyzed).
     Responds immediately with 200; all Supabase writes happen in the background.
     """
-    if RETELL_WEBHOOK_SECRET and x_webhook_secret != RETELL_WEBHOOK_SECRET:
-        raise HTTPException(401, "Invalid webhook secret")
+    body = await request.body()
+    # Prefer X-Retell-Signature (HMAC); fall back to X-Webhook-Secret (legacy static)
+    sig = x_retell_signature or x_webhook_secret
+    if RETELL_WEBHOOK_SECRET:
+        if not _verify_hmac_signature(body, sig, RETELL_WEBHOOK_SECRET, source="retell/call"):
+            # Legacy fallback: static secret comparison for older integrations
+            if not _verify_static_secret(sig, RETELL_WEBHOOK_SECRET):
+                raise HTTPException(401, "Invalid webhook secret")
 
-    payload = await request.json()
+    import json as _json
+    try:
+        payload = _json.loads(body)
+    except Exception:
+        raise HTTPException(400, "Invalid JSON payload")
+
     event = AICallingAdapter.parse_webhook(payload, provider="retell")
 
     if event is None:
@@ -928,7 +981,7 @@ async def air_ai_call_webhook(
     """
     Receive a call completion event from Air AI.
     """
-    if AIR_AI_WEBHOOK_SECRET and x_webhook_secret != AIR_AI_WEBHOOK_SECRET:
+    if not _verify_static_secret(x_webhook_secret, AIR_AI_WEBHOOK_SECRET):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -970,7 +1023,7 @@ async def vapi_webhook(
       Server URL: https://<your-domain>/webhooks/vapi
       Secret:     set VAPI_WEBHOOK_SECRET in your .env
     """
-    if VAPI_WEBHOOK_SECRET and x_vapi_secret != VAPI_WEBHOOK_SECRET:
+    if not _verify_static_secret(x_vapi_secret, VAPI_WEBHOOK_SECRET):
         raise HTTPException(401, "Invalid VAPI webhook secret")
 
     payload = await request.json()
@@ -1169,7 +1222,7 @@ async def _handle_vapi_call_result(result: VapiCallResult) -> None:
                     f"{lead_data.get('owner_last_name', '')}".strip()
                 )
                 address = lead_data.get("property_address", property_address)
-                _trigger_hot_lead_automation(
+                await _trigger_hot_lead_automation(
                     sb=sb,
                     lead_id=result.lead_id,
                     call_id=result.call_id,
@@ -1189,7 +1242,7 @@ async def _handle_vapi_call_result(result: VapiCallResult) -> None:
                         f"{lead_data.get('owner_last_name', '')}".strip()
                     )
                     lc = LaunchControlAdapter()
-                    lc.add_contact_to_campaign(LaunchControlContact(
+                    await lc.add_contact_to_campaign(LaunchControlContact(
                         lead_id=result.lead_id,
                         first_name=lead_data.get("owner_first_name", ""),
                         last_name=lead_data.get("owner_last_name", ""),

@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from config.settings import settings
+from tools.batchdata_adapter import BatchDataAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,7 @@ class ARVEstimate:
     comp_count: int = 0
     confidence: str = "medium"   # low | medium | high
     notes: str = ""
+    arv_source: str = "heuristic"  # batchdata | heuristic
 
     @property
     def range_str(self) -> str:
@@ -132,6 +134,9 @@ class DealAnalysis:
     exit_strategy: str = "wholesale"     # wholesale | wholetail | novation | investor_resale
     is_viable: bool = True
     weak_deal_reasons: list[str] = field(default_factory=list)
+
+    # ARV data source (propagated from ARVEstimate for easy access)
+    arv_source: str = "heuristic"        # batchdata | heuristic
 
     # LLM notes
     summary: str = ""
@@ -231,6 +236,7 @@ def build_deal_analysis(
     vacancy_months: int = 0,
     comp_count: int = 0,
     arv_notes: str = "",
+    arv_source: str = "heuristic",
     repair_tier_override: str = "",
     assignment_fee: float = ASSIGNMENT_FEE_DEFAULT,
 ) -> DealAnalysis:
@@ -244,6 +250,7 @@ def build_deal_analysis(
     arv = ARVEstimate(
         low=arv_low, mid=arv_mid, high=arv_high,
         comp_count=comp_count, notes=arv_notes,
+        arv_source=arv_source,
     )
 
     tier = repair_tier_override or determine_repair_tier(
@@ -310,6 +317,7 @@ def build_deal_analysis(
         exit_strategy=exit_strategy,
         is_viable=is_viable,
         weak_deal_reasons=reasons,
+        arv_source=arv_source,
         summary=(
             f"ARV: ${arv_low:,.0f}–${arv_high:,.0f} | "
             f"Repairs ({repair.tier_label}): {repair.range_str} | "
@@ -325,8 +333,9 @@ class DealAnalyzerAgent:
     """
     AI Property Deal Analyzer Agent.
 
-    Uses Claude to estimate ARV from property characteristics when no
-    comp data is available, then applies the deterministic PRD formula
+    Uses BatchData as the primary ARV source, falling back to Claude (LLM)
+    to estimate ARV from property characteristics when no
+    real data is available, then applies the deterministic PRD formula
     for repair cost, MAO, and offer range.
 
     Falls back to conservative heuristics if ANTHROPIC_API_KEY is not set.
@@ -369,6 +378,9 @@ Rules:
         else:
             logger.warning(f"[{self.name}] ANTHROPIC_API_KEY not set — using heuristic ARV")
 
+        # BatchData adapter for real-world ARV
+        self.batchdata = BatchDataAdapter()
+
     def analyze(
         self,
         lead_id: str,
@@ -390,19 +402,70 @@ Rules:
         """
         Full deal analysis for one property.
 
-        1. LLM (or heuristic) estimates ARV
-        2. Repair tier determined from condition signals
-        3. PRD formula calculates MAO, offer range, assignment fee
+        1. Try BatchData for real-world ARV
+        2. Fall back to LLM (Claude) if BatchData fails or returns 0
+        3. Fall back to heuristic if LLM is unavailable
+        4. Repair tier determined from condition signals
+        5. PRD formula calculates MAO, offer range, assignment fee
         """
-        if self._client:
-            arv_data = self._llm_arv(
-                property_address, city, state, zip_code,
-                beds, baths, sqft, year_built, condition, tax_assessed_value,
+        arv_data = None
+        arv_source = "heuristic"
+
+        # Step 1: Real comparable sales from BatchData (primary)
+        if self.batchdata:
+            comps = self.batchdata.get_comparable_sales(
+                address=property_address, city=city, state=state,
+                zip_code=zip_code, sqft=sqft, beds=beds, lead_id=lead_id,
             )
-        else:
-            arv_data = self._heuristic_arv(
-                tax_assessed_value, sqft, beds, condition,
+            if comps.success and comps.arv_estimate > 0:
+                arv_mid = comps.arv_estimate
+                arv_data = {
+                    "arv_low":    round(arv_mid * 0.90, -3),
+                    "arv_mid":    round(arv_mid, -3),
+                    "arv_high":   round(arv_mid * 1.10, -3),
+                    "comp_count": comps.comp_count,
+                    "confidence": "high",
+                    "arv_notes":  (
+                        f"ARV from {comps.comp_count} BatchData comps "
+                        f"(median ${arv_mid:,.0f})"
+                    ),
+                }
+                arv_source = "batchdata"
+
+        # Step 1b: Fallback to BatchData property valuation if comps returned nothing
+        if not arv_data and self.batchdata:
+            prop_details = self.batchdata.get_property_details(
+                property_address, city, state, zip_code, lead_id=lead_id
             )
+            if prop_details.success and prop_details.estimated_value > 0:
+                arv_mid = prop_details.estimated_value
+                arv_data = {
+                    "arv_low":    round(arv_mid * 0.90, -3),
+                    "arv_mid":    round(arv_mid, -3),
+                    "arv_high":   round(arv_mid * 1.10, -3),
+                    "comp_count": 0,
+                    "confidence": "medium",
+                    "arv_notes":  f"BatchData AVM estimate: ${arv_mid:,.0f} (no comps)",
+                }
+                arv_source = "batchdata"
+                # Enrich local variables with real property data
+                if prop_details.sqft: sqft = prop_details.sqft
+                if prop_details.beds: beds = prop_details.beds
+                if prop_details.baths: baths = prop_details.baths
+                if prop_details.year_built: year_built = prop_details.year_built
+
+        # Step 2: Fallback to LLM
+        if not arv_data:
+            if self._client:
+                arv_data = self._llm_arv(
+                    property_address, city, state, zip_code,
+                    beds, baths, sqft, year_built, condition, tax_assessed_value,
+                )
+            else:
+                # Step 3: Fallback to heuristic
+                arv_data = self._heuristic_arv(
+                    tax_assessed_value, sqft, beds, condition,
+                )
 
         return build_deal_analysis(
             lead_id=lead_id,
@@ -417,6 +480,7 @@ Rules:
             vacancy_months=vacancy_months,
             comp_count=arv_data.get("comp_count", 0),
             arv_notes=arv_data.get("arv_notes", ""),
+            arv_source=arv_source,
             assignment_fee=assignment_fee,
         )
 
