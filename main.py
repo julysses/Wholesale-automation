@@ -11,6 +11,7 @@ Usage examples:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import sys
@@ -73,27 +74,30 @@ def ingest(
     dry_run: Annotated[bool, typer.Option(help="Parse only, don't save")] = False,
 ) -> None:
     """Ingest and normalize property leads from a data source."""
-    orch = get_orchestrator()
-    crm = get_crm()
+    async def _run():
+        orch = get_orchestrator()
+        crm = get_crm()
 
-    provider = DataProviderFactory.get(source)
-    source_enum = _source_enum(source)
+        provider = DataProviderFactory.get(source)
+        source_enum = _source_enum(source)
 
-    if file:
-        raw_records = provider.fetch(file_path=file)
-    else:
-        console.print("[red]Error: --file is required for CSV sources[/red]")
-        raise typer.Exit(1)
+        if file:
+            raw_records = provider.fetch(file_path=file)
+        else:
+            console.print("[red]Error: --file is required for CSV sources[/red]")
+            raise typer.Exit(1)
 
-    console.print(f"[blue]Ingesting {len(raw_records)} records from {source}...[/blue]")
-    leads = orch.ingest_leads(raw_records, source_enum)
+        console.print(f"[blue]Ingesting {len(raw_records)} records from {source}...[/blue]")
+        leads = orch.ingest_leads(raw_records, source_enum)
 
-    if not dry_run:
-        for lead in leads:
-            crm.save_lead(lead)
+        if not dry_run:
+            for lead in leads:
+                crm.save_lead(lead)
 
-    _print_leads_table(leads)
-    console.print(f"\n[green]✓ {len(leads)} leads ingested[/green]")
+        _print_leads_table(leads)
+        console.print(f"\n[green]✓ {len(leads)} leads ingested[/green]")
+    
+    asyncio.run(_run())
 
 
 @app.command()
@@ -103,48 +107,51 @@ def pipeline(
     json_records: Annotated[Optional[str], typer.Option(help="Inline JSON records")] = None,
 ) -> None:
     """Run the full pipeline: ingest → score → underwrite → outreach drafts."""
-    orch = get_orchestrator()
-    crm = get_crm()
+    async def _run():
+        orch = get_orchestrator()
+        crm = get_crm()
 
-    if file:
-        provider = DataProviderFactory.get(source)
-        raw_records = provider.fetch(file_path=file)
-    elif json_records:
-        raw_records = json.loads(json_records)
-    else:
-        console.print("[red]Error: provide --file or --json-records[/red]")
-        raise typer.Exit(1)
+        if file:
+            provider = DataProviderFactory.get(source)
+            raw_records = provider.fetch(file_path=file)
+        elif json_records:
+            raw_records = json.loads(json_records)
+        else:
+            console.print("[red]Error: provide --file or --json-records[/red]")
+            raise typer.Exit(1)
 
-    source_enum = _source_enum(source)
-    console.print(f"[blue]Running full pipeline on {len(raw_records)} records...[/blue]")
+        source_enum = _source_enum(source)
+        console.print(f"[blue]Running full pipeline on {len(raw_records)} records...[/blue]")
 
-    state = orch.run_full_pipeline(raw_records, source_enum)
+        state = await orch.run_full_pipeline(raw_records, source_enum)
 
-    # Persist everything to CRM
-    for lead in state.raw_leads:
-        crm.save_lead(lead)
-    for deal in state.active_deals:
-        crm.save_deal(deal)
-    for entry in orch.export_audit_log():
-        from schemas.compliance import AuditLogEntry
-        crm.save_audit_entry(AuditLogEntry(**entry))
+        # Persist everything to CRM
+        for lead in state.raw_leads:
+            crm.save_lead(lead)
+        for deal in state.active_deals:
+            crm.save_deal(deal)
+        for entry in orch.export_audit_log():
+            from schemas.compliance import AuditLogEntry
+            crm.save_audit_entry(AuditLogEntry(**entry))
 
-    # Print summary
-    console.print(f"\n[bold green]Pipeline Summary[/bold green]")
-    console.print(f"  Leads ingested:     {len(state.raw_leads)}")
-    console.print(f"  Passed distress:    {len(state.scored_leads)}")
-    console.print(f"  Viable deals:       {len(state.underwriting_reports)}")
-    console.print(f"  Outreach drafted:   {len(state.outreach_messages)}")
-    console.print(f"  Dispo matches:      {len(state.dispo_results)}")
+        # Print summary
+        console.print(f"\n[bold green]Pipeline Summary[/bold green]")
+        console.print(f"  Leads ingested:     {len(state.raw_leads)}")
+        console.print(f"  Passed distress:    {len(state.scored_leads)}")
+        console.print(f"  Viable deals:       {len(state.underwriting_reports)}")
+        console.print(f"  Outreach drafted:   {len(state.outreach_messages)}")
+        console.print(f"  Dispo matches:      {len(state.dispo_results)}")
 
-    if state.dispo_results:
-        console.print("\n[bold]Top Dispo Matches:[/bold]")
-        for result in state.dispo_results:
-            console.print(f"  Deal: {result.lead_address}")
-            if result.top_matches:
-                winner = next((m for m in result.top_matches if m.recommended), None)
-                if winner:
-                    console.print(f"    → Winner: {winner.buyer_name} (score={winner.combined_score:.0f})")
+        if state.dispo_results:
+            console.print("\n[bold]Top Dispo Matches:[/bold]")
+            for result in state.dispo_results:
+                console.print(f"  Deal: {result.lead_address}")
+                if result.top_matches:
+                    winner = next((m for m in result.top_matches if m.recommended), None)
+                    if winner:
+                        console.print(f"    → Winner: {winner.buyer_name} (score={winner.combined_score:.0f})")
+
+    asyncio.run(_run())
 
 
 @app.command()
@@ -299,6 +306,15 @@ def _print_leads_table(leads) -> None:
             "⚑" if lead.flagged else "",
         )
     console.print(table)
+
+
+@app.command()
+def migrate() -> None:
+    """Run database migrations."""
+    from tools.run_migrations import run_migrations
+    console.print("[blue]Running database migrations...[/blue]")
+    run_migrations()
+    console.print("[green]✓ Migrations complete[/green]")
 
 
 if __name__ == "__main__":

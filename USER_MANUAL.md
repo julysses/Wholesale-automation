@@ -225,7 +225,7 @@ You have spoken with at least one HOT lead and confirmed their motivation.
    - Are there any **weak deal reasons**?
 
 ### What the system does
-- Estimates ARV using comparable sales data + Claude AI
+- Estimates ARV using real-world property data from BatchData (falls back to Claude AI if unavailable)
 - Assigns a **repair tier** based on condition signals:
 
 | Tier | Cost/sqft | Condition |

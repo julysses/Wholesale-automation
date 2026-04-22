@@ -130,36 +130,36 @@ class LaunchControlAdapter:
 
     # ── Public interface ──────────────────────────────────────────────────────
 
-    def add_contact_to_campaign(self, contact: LaunchControlContact) -> bool:
+    async def add_contact_to_campaign(self, contact: LaunchControlContact) -> bool:
         """
         Enroll a lead in an SMS campaign.
         Routes to the appropriate mode implementation.
         """
         if self._mode == "zapier_webhook":
-            return self._send_zapier(contact)
+            return await self._send_zapier(contact)
         elif self._mode == "csv_sync":
             return self._append_to_csv_queue(contact)
         elif self._mode == "api_direct":
-            return self._api_add_contact(contact)
+            return await self._api_add_contact(contact)
         else:
             logger.warning(f"[LaunchControl] Unknown mode '{self._mode}' — using csv_sync fallback")
             return self._append_to_csv_queue(contact)
 
-    def stop_campaign_for_lead(self, lead_id: str, phone: str = "") -> bool:
+    async def stop_campaign_for_lead(self, lead_id: str, phone: str = "") -> bool:
         """
         Stop all active SMS campaigns for a lead (called on opt-out or DNC).
         """
         if self._mode == "zapier_webhook":
-            return self._send_zapier_stop(lead_id, phone)
+            return await self._send_zapier_stop(lead_id, phone)
         elif self._mode == "api_direct":
-            return self._api_stop_contact(lead_id)
+            return await self._api_stop_contact(lead_id)
         else:
             logger.info(
                 f"[LaunchControl] csv_sync mode — manually remove lead {lead_id} from campaigns"
             )
             return True
 
-    def mark_opt_out(self, lead_id: str, phone: str, keyword: str = "") -> bool:
+    async def mark_opt_out(self, lead_id: str, phone: str, keyword: str = "") -> bool:
         """
         Hard opt-out: stops campaign + logs to dnc_registry.
         Returns True so callers can chain without checking the return value.
@@ -167,7 +167,7 @@ class LaunchControlAdapter:
         logger.info(
             f"[LaunchControl] OPT-OUT lead={lead_id} phone={phone} keyword='{keyword}'"
         )
-        self.stop_campaign_for_lead(lead_id, phone)
+        await self.stop_campaign_for_lead(lead_id, phone)
         return True
 
     # ── Reply webhook parsing ─────────────────────────────────────────────────
@@ -220,30 +220,27 @@ class LaunchControlAdapter:
     # ── Mode 1: Zapier webhook ────────────────────────────────────────────────
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=16))
-    def _send_zapier(self, contact: LaunchControlContact) -> bool:
+    async def _send_zapier(self, contact: LaunchControlContact) -> bool:
         if not self._zapier_url:
             logger.warning("[LaunchControl] LAUNCH_CONTROL_ZAPIER_HOOK_URL not set — skipping")
             return False
 
-        try:
-            with httpx.Client(timeout=20.0) as client:
-                resp = client.post(self._zapier_url, json=contact.to_dict())
-                resp.raise_for_status()
-            logger.info(
-                f"[LaunchControl] Zapier webhook sent for lead={contact.lead_id} "
-                f"phone={contact.phone}"
-            )
-            return True
-        except Exception as exc:
-            logger.error(f"[LaunchControl] Zapier webhook failed: {exc}")
-            return False
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(self._zapier_url, json=contact.to_dict())
+            resp.raise_for_status()
+        
+        logger.info(
+            f"[LaunchControl] Zapier webhook sent for lead={contact.lead_id} "
+            f"phone={contact.phone}"
+        )
+        return True
 
-    def _send_zapier_stop(self, lead_id: str, phone: str) -> bool:
+    async def _send_zapier_stop(self, lead_id: str, phone: str) -> bool:
         if not self._zapier_url:
             return False
         try:
-            with httpx.Client(timeout=20.0) as client:
-                resp = client.post(
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                resp = await client.post(
                     self._zapier_url,
                     json={"action": "stop_campaign", "lead_id": lead_id, "phone": phone},
                 )
@@ -292,42 +289,40 @@ class LaunchControlAdapter:
 
     # ── Mode 3: Direct API (private — requires account rep) ───────────────────
 
-    def _api_add_contact(self, contact: LaunchControlContact) -> bool:
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=16))
+    async def _api_add_contact(self, contact: LaunchControlContact) -> bool:
         if not self._api_key:
             logger.warning("[LaunchControl] LAUNCH_CONTROL_API_KEY not set — falling back to CSV")
             return self._append_to_csv_queue(contact)
 
-        try:
-            with httpx.Client(timeout=20.0) as client:
-                resp = client.post(
-                    f"{self._base_url}/contacts",
-                    headers={"Authorization": f"Bearer {self._api_key}"},
-                    json={
-                        "firstName": contact.first_name,
-                        "phone":     contact.phone,
-                        "campaign":  contact.campaign_name,
-                        "externalId": contact.lead_id,
-                        "customFields": {
-                            "address": contact.property_address,
-                            "city":    contact.city,
-                            "state":   contact.state,
-                            "zip":     contact.zip_code,
-                        },
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                f"{self._base_url}/contacts",
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                json={
+                    "firstName": contact.first_name,
+                    "phone":     contact.phone,
+                    "campaign":  contact.campaign_name,
+                    "externalId": contact.lead_id,
+                    "customFields": {
+                        "address": contact.property_address,
+                        "city":    contact.city,
+                        "state":   contact.state,
+                        "zip":     contact.zip_code,
                     },
-                )
-                resp.raise_for_status()
-            logger.info(f"[LaunchControl] API: added contact lead={contact.lead_id}")
-            return True
-        except Exception as exc:
-            logger.error(f"[LaunchControl] API add_contact failed: {exc}")
-            return False
+                },
+            )
+            resp.raise_for_status()
+        
+        logger.info(f"[LaunchControl] API: added contact lead={contact.lead_id}")
+        return True
 
-    def _api_stop_contact(self, lead_id: str) -> bool:
+    async def _api_stop_contact(self, lead_id: str) -> bool:
         if not self._api_key:
             return False
         try:
-            with httpx.Client(timeout=20.0) as client:
-                resp = client.delete(
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                resp = await client.delete(
                     f"{self._base_url}/contacts/{lead_id}/campaigns",
                     headers={"Authorization": f"Bearer {self._api_key}"},
                 )

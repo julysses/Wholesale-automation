@@ -215,27 +215,8 @@ class MasterOrchestrator:
 
         results: dict[str, SellerScoreResult] = {}
         for lead in leads:
-            lead_id = str(lead.id)
-            skip = self.state.skip_trace_results.get(lead_id)
-            has_mobile = skip.has_mobile if skip else bool(lead.phone_numbers)
-            has_any_phone = bool(skip.phones if skip else lead.phone_numbers)
-
-            result = self.seller_score.score_lead(
-                lead_id=lead_id,
-                absentee_owner=lead.is_absentee,
-                vacant=lead.is_vacant,
-                tax_delinquent=bool(lead.tax_delinquent_amount and lead.tax_delinquent_amount > 0),
-                pre_foreclosure=DistressSignal.PROBATE_INHERITED in (lead.signals_raw or []),
-                out_of_state_owner=(
-                    lead.owner_mailing_address is not None
-                    and lead.owner_mailing_address.state != lead.address.state
-                ),
-                estimated_equity_pct=lead.estimated_equity_pct,
-                dnc=lead.flagged,
-                has_mobile_phone=has_mobile,
-                has_any_phone=has_any_phone,
-            )
-            results[lead_id] = result
+            result = self.seller_score.score_property_lead(lead)
+            results[str(lead.id)] = result
 
         self.state.seller_scores.update(results)
         tier_counts = {"A": 0, "B": 0, "C": 0, "D": 0}
@@ -255,7 +236,7 @@ class MasterOrchestrator:
 
     # ── Step 2d: Route leads to dialer / SMS / suppress ───────────────────────
 
-    def route_leads(
+    async def route_leads(
         self,
         leads: Optional[list[PropertyLead]] = None,
         dialer_campaign_id: str = "",
@@ -295,7 +276,7 @@ class MasterOrchestrator:
                 )
                 if phone:
                     name_parts = lead.owner_name.split(" ", 1)
-                    contact_id, ok = self.batchdialer.push_lead_to_campaign(
+                    contact_id, ok = await self.batchdialer.push_lead_to_campaign(
                         lead_id=str(lead.id),
                         first_name=name_parts[0],
                         last_name=name_parts[1] if len(name_parts) > 1 else "",
@@ -339,7 +320,7 @@ class MasterOrchestrator:
                         seller_score=score_result.seller_score,
                         priority_tier=score_result.priority_tier,
                     )
-                    ok = self.launch_control.add_contact_to_campaign(contact)
+                    ok = await self.launch_control.add_contact_to_campaign(contact)
                     if ok:
                         logger.info(
                             f"[Orchestrator] Enrolled lead {lead.id} in "
@@ -548,7 +529,7 @@ class MasterOrchestrator:
 
     # ── Full Pipeline ─────────────────────────────────────────────────────────
 
-    def run_full_pipeline(
+    async def run_full_pipeline(
         self,
         raw_records: list[dict[str, Any]],
         source: DataSource,
@@ -580,7 +561,7 @@ class MasterOrchestrator:
         self.apply_seller_scores(leads)
 
         # 2d. Route to dialer / SMS / suppress
-        self.route_leads(leads)
+        await self.route_leads(leads)
 
         # 3. Underwrite
         reports = self.underwrite_leads(scored)

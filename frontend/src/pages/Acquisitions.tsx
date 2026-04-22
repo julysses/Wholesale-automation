@@ -17,7 +17,7 @@ import {
   Flame, TrendingUp, CalendarCheck, Phone, Mic,
   ChevronDown, ChevronUp, AlertTriangle, Clock,
   DollarSign, Home, User, MessageSquare, ExternalLink, Send,
-  BarChart2, Hammer, Lightbulb, ShieldCheck, ArrowRight, Plus, Loader2,
+  BarChart2, Hammer, Lightbulb, ShieldCheck, ArrowRight, Plus, Loader2, Download,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -824,7 +824,7 @@ export function Acquisitions() {
       <StrategyComparisonPanel />
 
       {/* Summary row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         {[
           { label: 'HOT Leads',     value: hotLeads.length,     icon: Flame,        bg: 'bg-red-50',    text: 'text-red-700', border: 'border-red-100' },
           { label: 'WARM Leads',    value: warmLeads.length,    icon: TrendingUp,   bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-100' },
@@ -851,22 +851,23 @@ export function Acquisitions() {
         ))}
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — scrollable on mobile */}
       <div className="border-b border-gray-200">
-        <nav className="flex gap-1">
+        <nav className="flex gap-1 overflow-x-auto scrollbar-none -mb-px">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
+                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0',
                 tab === t.key
                   ? `border-current ${t.color}`
                   : 'border-transparent text-gray-500 hover:text-gray-700',
               )}
             >
               <t.icon className="h-4 w-4" />
-              {t.label}
+              <span className="hidden sm:inline">{t.label}</span>
+              <span className="sm:hidden">{t.label.split(' ')[0]}</span>
               {t.count !== undefined && t.count > 0 && (
                 <span className={cn(
                   'text-xs rounded-full px-1.5 py-0.5 font-bold',

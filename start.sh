@@ -31,6 +31,10 @@ fi
 
 # ── Start server ───────────────────────────────────────────────────────────────
 mkdir -p "$ROOT/logs" "$ROOT/data"
+
+echo "🗄  Running database migrations..."
+python tools/run_migrations.py
+
 PORT="${PORT:-8000}"
 echo ""
 echo "🚀 Starting WholesaleOS on http://localhost:$PORT"

@@ -154,31 +154,27 @@ class BatchDialerAdapter:
     # ── Campaign management ───────────────────────────────────────────────────
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=16))
-    def create_campaign(self, name: str, caller_id: str = "", notes: str = "") -> Optional[str]:
+    async def create_campaign(self, name: str, caller_id: str = "", notes: str = "") -> Optional[str]:
         """Create a new dialer campaign. Returns external campaign_id."""
         if not self._api_key:
             return self._dry_run("create_campaign", name=name).get("id")
 
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                resp = client.post(
-                    f"{self.BASE_URL}/campaigns",
-                    headers=self._headers(),
-                    json={"name": name, "callerId": caller_id, "notes": notes},
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                campaign_id = str(data.get("id", ""))
-                logger.info(f"[BatchDialer] Created campaign '{name}' id={campaign_id}")
-                return campaign_id
-        except Exception as exc:
-            logger.error(f"[BatchDialer] create_campaign failed: {exc}")
-            return None
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{self.BASE_URL}/campaigns",
+                headers=self._headers(),
+                json={"name": name, "callerId": caller_id, "notes": notes},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            campaign_id = str(data.get("id", ""))
+            logger.info(f"[BatchDialer] Created campaign '{name}' id={campaign_id}")
+            return campaign_id
 
     # ── Contact management ────────────────────────────────────────────────────
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=16))
-    def upsert_contact(self, contact: DialerContact) -> Optional[str]:
+    async def upsert_contact(self, contact: DialerContact) -> Optional[str]:
         """
         Create or update a contact in BatchDialer.
         Returns the external contact_id (str) or None on failure.
@@ -187,87 +183,71 @@ class BatchDialerAdapter:
             result = self._dry_run("upsert_contact", phone=contact.phone)
             return result.get("contact_id", f"dry_{contact.internal_lead_id}")
 
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                resp = client.post(
-                    f"{self.BASE_URL}/contacts",
-                    headers=self._headers(),
-                    json=contact.to_payload(),
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                contact_id = str(data.get("id", ""))
-                logger.info(
-                    f"[BatchDialer] Upserted contact lead={contact.internal_lead_id} "
-                    f"contact_id={contact_id}"
-                )
-                return contact_id
-        except Exception as exc:
-            logger.error(f"[BatchDialer] upsert_contact failed: {exc}")
-            return None
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{self.BASE_URL}/contacts",
+                headers=self._headers(),
+                json=contact.to_payload(),
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            contact_id = str(data.get("id", ""))
+            logger.info(
+                f"[BatchDialer] Upserted contact lead={contact.internal_lead_id} "
+                f"contact_id={contact_id}"
+            )
+            return contact_id
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=16))
-    def assign_to_campaign(self, contact_id: str, campaign_id: str) -> bool:
+    async def assign_to_campaign(self, contact_id: str, campaign_id: str) -> bool:
         """Add contact to a campaign list."""
         if not self._api_key:
             self._dry_run("assign_to_campaign", contact_id=contact_id, campaign_id=campaign_id)
             return True
 
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                resp = client.post(
-                    f"{self.BASE_URL}/campaigns/{campaign_id}/contacts",
-                    headers=self._headers(),
-                    json={"contactId": contact_id},
-                )
-                resp.raise_for_status()
-                logger.info(f"[BatchDialer] Assigned contact={contact_id} → campaign={campaign_id}")
-                return True
-        except Exception as exc:
-            logger.error(f"[BatchDialer] assign_to_campaign failed: {exc}")
-            return False
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{self.BASE_URL}/campaigns/{campaign_id}/contacts",
+                headers=self._headers(),
+                json={"contactId": contact_id},
+            )
+            resp.raise_for_status()
+            logger.info(f"[BatchDialer] Assigned contact={contact_id} → campaign={campaign_id}")
+            return True
 
-    def pause_contact(self, contact_id: str) -> bool:
+    async def pause_contact(self, contact_id: str) -> bool:
         """Pause a contact (stops it from being called in active campaigns)."""
         if not self._api_key:
             self._dry_run("pause_contact", contact_id=contact_id)
             return True
 
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                resp = client.patch(
-                    f"{self.BASE_URL}/contacts/{contact_id}",
-                    headers=self._headers(),
-                    json={"status": "paused"},
-                )
-                resp.raise_for_status()
-                return True
-        except Exception as exc:
-            logger.error(f"[BatchDialer] pause_contact failed: {exc}")
-            return False
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.patch(
+                f"{self.BASE_URL}/contacts/{contact_id}",
+                headers=self._headers(),
+                json={"status": "paused"},
+            )
+            resp.raise_for_status()
+            return True
 
-    def mark_dnc(self, contact_id: str) -> bool:
+    async def mark_dnc(self, contact_id: str) -> bool:
         """Mark contact as DNC inside BatchDialer."""
         if not self._api_key:
             self._dry_run("mark_dnc", contact_id=contact_id)
             return True
 
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                resp = client.post(
-                    f"{self.BASE_URL}/contacts/{contact_id}/dnc",
-                    headers=self._headers(),
-                )
-                resp.raise_for_status()
-                logger.info(f"[BatchDialer] Marked DNC: contact={contact_id}")
-                return True
-        except Exception as exc:
-            logger.error(f"[BatchDialer] mark_dnc failed: {exc}")
-            return False
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{self.BASE_URL}/contacts/{contact_id}/dnc",
+                headers=self._headers(),
+            )
+            resp.raise_for_status()
+            logger.info(f"[BatchDialer] Marked DNC: contact={contact_id}")
+            return True
 
     # ── High-level push ───────────────────────────────────────────────────────
 
-    def push_lead_to_campaign(
+    async def push_lead_to_campaign(
         self,
         lead_id: str,
         first_name: str,
@@ -301,11 +281,11 @@ class BatchDialerAdapter:
             tags=tags or [],
             internal_lead_id=lead_id,
         )
-        contact_id = self.upsert_contact(contact)
+        contact_id = await self.upsert_contact(contact)
         if not contact_id:
             return None, False
 
-        assigned = self.assign_to_campaign(contact_id, campaign_id)
+        assigned = await self.assign_to_campaign(contact_id, campaign_id)
         return contact_id, assigned
 
     # ── Webhook parsing ───────────────────────────────────────────────────────

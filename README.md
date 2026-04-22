@@ -10,6 +10,7 @@ An end-to-end wholesale acquisition platform that automates lead scoring, AI voi
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
 - [Environment Variables](#environment-variables)
+- [GitHub PAT Auth (Agent Push)](#github-pat-auth-agent-push)
 - [Database Migrations](#database-migrations)
 - [Deployment](#deployment)
 - [Acquisition Strategies](#acquisition-strategies)
@@ -157,6 +158,29 @@ Open `http://localhost:5173` — register the first user (auto-promoted to admin
 |---|---|
 | `VITE_SUPABASE_URL` | Same Supabase URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon key (public) |
+
+---
+
+## GitHub PAT Auth (Agent Push)
+
+Use PAT-based HTTPS auth for non-interactive `git push` from agent runtime.
+
+1. Inject secrets into runtime environment (not in committed files):
+   - `GITHUB_PAT` (preferred) or `GH_PAT`
+   - Optional `GITHUB_USERNAME` (default is `x-access-token`)
+2. Configure repo-local credential flow and immediately run a safe dry-run push verification:
+
+```bash
+GITHUB_PAT=*** tools/configure_git_pat_credentials.sh
+```
+
+3. Optional: run verification again manually:
+
+```bash
+GITHUB_PAT=*** tools/verify_git_push_dry_run.sh
+```
+
+For rotation/revocation procedure, see `docs/github-pat-auth.md`.
 
 ---
 

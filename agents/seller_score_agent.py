@@ -217,7 +217,7 @@ class SellerScoreAgent:
             lead.owner_mailing_address is not None
             and lead.owner_mailing_address.state != lead.address.state
         )
-        return self.score_lead(
+        result = self.score_lead(
             lead_id=str(lead.id),
             absentee_owner=lead.is_absentee,
             vacant=lead.is_vacant,
@@ -234,6 +234,12 @@ class SellerScoreAgent:
             has_mobile_phone=bool(lead.phone_numbers),
             has_any_phone=bool(lead.phone_numbers),
         )
+        # Write back to lead
+        lead.seller_score = result.seller_score
+        lead.distress_score = result.seller_score
+        lead.stack_name = result.stack_name
+        lead.stack_bonus = result.stack_bonus
+        return result
 
     def score_batch(self, leads: list[PropertyLead]) -> list[SellerScoreResult]:
         """Score a list of PropertyLead objects."""
@@ -242,10 +248,6 @@ class SellerScoreAgent:
 
         for lead in leads:
             result = self.score_property_lead(lead)
-            # Write scores back to lead
-            lead.seller_score = result.seller_score
-            lead.stack_name   = result.stack_name
-            lead.stack_bonus  = result.stack_bonus
             tier_counts[result.priority_tier] += 1
             results.append(result)
 
