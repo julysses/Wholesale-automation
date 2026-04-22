@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import {
   Plus, Upload, Search, ChevronDown, ChevronLeft, ChevronRight,
   MoreHorizontal, Trash2, Bot, ArrowRight, Phone, Mail,
-  MessageSquare, Eye, Ban, PhoneCall, Zap
+  MessageSquare, Eye, Ban, PhoneCall, Zap, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
@@ -100,6 +100,21 @@ const MOTIVATION_OPTIONS = [
   { value: 'inherited', label: 'Inherited/Probate' },
 ];
 
+function downloadCSV(filename: string, rows: Record<string, unknown>[], excludeKeys = ['id']) {
+  if (!rows.length) return;
+  const keys = Object.keys(rows[0]).filter((k) => !excludeKeys.includes(k));
+  const escape = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = [keys.join(','), ...rows.map((r) => keys.map((k) => escape(r[k])).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export function Leads() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -170,7 +185,14 @@ export function Leads() {
           <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} total leads</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" icon={<Download className="h-4 w-4" />}
+            onClick={() => {
+              const date = new Date().toISOString().slice(0, 10);
+              downloadCSV(`leads-${date}.csv`, filteredLeads as unknown as Record<string, unknown>[]);
+            }}>
+            Download CSV
+          </Button>
           <Button variant="outline" size="sm" icon={<Upload className="h-4 w-4" />} onClick={() => setImportOpen(true)}>
             Import CSV
           </Button>

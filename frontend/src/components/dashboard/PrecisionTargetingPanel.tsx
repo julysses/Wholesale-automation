@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils';
 import {
   Target, Layers, TrendingUp, Award, AlertOctagon,
-  ArrowRight, BarChart2, Zap,
+  ArrowRight, BarChart2, Zap, Download,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -231,9 +231,39 @@ export function PrecisionTargetingPanel() {
 
       {/* Stack analytics table */}
       <div>
-        <div className="flex items-center gap-2 mb-3">
-          <BarChart2 className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-700">Deals by List Stack</span>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <BarChart2 className="h-4 w-4 text-gray-400" />
+            <span className="text-sm font-medium text-gray-700">Deals by List Stack</span>
+          </div>
+          {stacks.length > 0 && (
+            <button
+              onClick={() => {
+                const date = new Date().toISOString().slice(0, 10);
+                const rows = stacks.map((s) => ({
+                  stack_name: s.stack_name,
+                  total_leads: s.total_leads,
+                  tier_1_leads: s.tier_1_leads,
+                  converted_leads: s.converted_leads,
+                  conversion_pct: s.conversion_pct,
+                  avg_assignment_fee: s.avg_assignment_fee ?? '',
+                  avg_seller_score: s.avg_seller_score ?? '',
+                }));
+                const keys = Object.keys(rows[0]);
+                const escape = (v: unknown) => { const s = v == null ? '' : String(v); return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s; };
+                const csv = [keys.join(','), ...rows.map((r) => keys.map((k) => escape(r[k as keyof typeof r])).join(','))].join('\n');
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+                a.download = `stack-analytics-${date}.csv`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              <Download className="h-3 w-3" />
+              CSV
+            </button>
+          )}
         </div>
 
         {stacksLoading ? (

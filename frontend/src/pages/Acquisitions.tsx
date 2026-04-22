@@ -733,6 +733,44 @@ function OfferRecCard({ rec }: { rec: OfferRec }) {
   );
 }
 
+// ── CSV helpers ───────────────────────────────────────────────────────────────
+
+function downloadCSV(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  const keys = Object.keys(rows[0]);
+  const escape = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = [keys.join(','), ...rows.map((r) => keys.map((k) => escape(r[k])).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function leadsToCSVRows(leads: AcquisitionLead[]) {
+  return leads.map((l) => ({
+    property_address: l.property_address,
+    city: l.city,
+    state: l.state,
+    zip_code: l.zip_code,
+    owner_name: [l.owner_first_name, l.owner_last_name].filter(Boolean).join(' '),
+    stack_name: l.stack_name ?? '',
+    seller_score: l.seller_score ?? '',
+    classification: l.qual?.classification ?? '',
+    qualification_score: l.qual?.qualification_score ?? '',
+    sentiment: l.qual?.sentiment ?? '',
+    asking_price: l.qual?.asking_price ?? '',
+    offer_range_low: l.qual?.offer_range_low ?? '',
+    offer_range_high: l.qual?.offer_range_high ?? '',
+    estimated_arv: l.estimated_arv ?? '',
+    mao: l.mao ?? '',
+    called_at: l.called_at ?? '',
+  }));
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 type Tab = 'hot' | 'warm' | 'deal_analysis' | 'negotiation' | 'appointments';
@@ -884,6 +922,20 @@ export function Acquisitions() {
       {/* Tab content */}
       {tab === 'hot' && (
         <div className="space-y-3">
+          {!hotLoading && hotLeads.length > 0 && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  const date = new Date().toISOString().slice(0, 10);
+                  downloadCSV(`acquisitions-hot-${date}.csv`, leadsToCSVRows(hotLeads));
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download CSV
+              </button>
+            </div>
+          )}
           {hotLoading && (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
@@ -916,7 +968,17 @@ export function Acquisitions() {
       {tab === 'warm' && (
         <div className="space-y-3">
           {!warmLoading && warmLeads.length > 0 && (
-            <div className="flex justify-end mb-2">
+            <div className="flex justify-end gap-2 mb-2 flex-wrap">
+              <button
+                onClick={() => {
+                  const date = new Date().toISOString().slice(0, 10);
+                  downloadCSV(`acquisitions-warm-${date}.csv`, leadsToCSVRows(warmLeads));
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download CSV
+              </button>
               <button
                 onClick={handleBulkSMS}
                 disabled={bulkSmsLoading}
