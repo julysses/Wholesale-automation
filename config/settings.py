@@ -134,6 +134,10 @@ class Settings:
     # AI calling provider selection: "vapi" | "retell" | "air_ai"
     ai_calling_provider: str = os.getenv("AI_CALLING_PROVIDER", "retell")
 
+    # ── Calendar Integration ──────────────────────────────────────────────────
+    google_calendar_id: str = os.getenv("GOOGLE_CALENDAR_ID", "")
+    calendly_api_key: str = os.getenv("CALENDLY_API_KEY", "")
+
     # ── Facebook Lead Ads ─────────────────────────────────────────────────────
     facebook_app_id: str = os.getenv("FACEBOOK_APP_ID", "")
     facebook_app_secret: str = os.getenv("FACEBOOK_APP_SECRET", "")

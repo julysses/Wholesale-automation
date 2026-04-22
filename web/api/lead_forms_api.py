@@ -331,23 +331,43 @@ async def _process_form_submission(
     logger.info(f"Form submission processed → lead {lead_id} (score={total_score}, tier={scores['priority_tier']})")
 
 
+from tools.email_client import EmailClient
+
 def _send_hot_lead_notification(lead_id: str, answers: dict, score: int):
-    """Send in-app notification for HOT inbound lead."""
+    """Send in-app notification and email alert for HOT inbound lead."""
     supabase = _get_supabase()
     name = f"{answers.get('first_name', '')} {answers.get('last_name', '')}".strip() or "Unknown"
+    address = answers.get('property_address', 'Unknown address')
+    body = (
+        f"Score {score}/15 | {answers.get('motivation', 'unknown')} | "
+        f"{answers.get('timeline', 'unknown')} | {address}"
+    )
+
     try:
         supabase.table("notifications").insert({
             "type": "hot_lead",
             "title": f"HOT Inbound Lead — {name}",
-            "message": (
-                f"Score {score}/15 | {answers.get('motivation', 'unknown')} | "
-                f"{answers.get('timeline', 'unknown')} | {answers.get('property_address', '')}"
-            ),
+            "message": body,
             "lead_id": lead_id,
             "read": False,
         }).execute()
     except Exception as exc:
         logger.warning(f"Could not insert HOT lead notification: {exc}")
+
+    # Email Alert (Immediate)
+    if settings.notification_email:
+        try:
+            email_client = EmailClient()
+            subject = f"🔥 HOT INBOUND LEAD — {address}"
+            email_client.send(
+                to_email=settings.notification_email,
+                subject=subject,
+                body=f"{subject}\n\n{body}\n\nView Lead: https://wholesale-os.com/acquisitions?lead={lead_id}",
+                html_body=f"<h2>{subject}</h2><p>{body}</p><p><a href='https://wholesale-os.com/acquisitions?lead={lead_id}'>View Lead in Dashboard</a></p>",
+            )
+            logger.info(f"HOT lead email alert sent to {settings.notification_email}")
+        except Exception as exc:
+            logger.error(f"HOT lead email alert failed: {exc}")
 
 
 # ── Authenticated campaign/creative/form endpoints ─────────────────────────────

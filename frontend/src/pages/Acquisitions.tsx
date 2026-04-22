@@ -16,8 +16,8 @@ import { cn } from '@/lib/utils';
 import {
   Flame, TrendingUp, CalendarCheck, Phone, Mic,
   ChevronDown, ChevronUp, AlertTriangle, Clock,
-  DollarSign, Home, User, MessageSquare, ExternalLink,
-  BarChart2, Hammer, Lightbulb, ShieldCheck, ArrowRight,
+  DollarSign, Home, User, MessageSquare, ExternalLink, Send,
+  BarChart2, Hammer, Lightbulb, ShieldCheck, ArrowRight, Plus, Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -342,7 +342,7 @@ function TranscriptViewer({ transcript }: { transcript: string }) {
   );
 }
 
-function LeadCard({ lead }: { lead: AcquisitionLead }) {
+function LeadCard({ lead, onSchedule }: { lead: AcquisitionLead; onSchedule?: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const qual = lead.qual;
   const colors = qual ? classificationColor(qual.classification) : classificationColor('COLD');
@@ -497,6 +497,21 @@ function LeadCard({ lead }: { lead: AcquisitionLead }) {
 
           {/* Transcript viewer */}
           {lead.transcript && <TranscriptViewer transcript={lead.transcript} />}
+
+          {onSchedule && (
+            <div className="pt-3 border-t border-gray-100 flex justify-end">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSchedule(lead.id);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white text-[11px] font-bold rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
+              >
+                <CalendarCheck className="h-3.5 w-3.5" />
+                Schedule Appointment
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -724,12 +739,68 @@ type Tab = 'hot' | 'warm' | 'deal_analysis' | 'negotiation' | 'appointments';
 
 export function Acquisitions() {
   const [tab, setTab] = useState<Tab>('hot');
+  const [bulkSmsLoading, setBulkSmsLoading] = useState(false);
+  const [showApptModal, setShowApptModal] = useState(false);
+  const [selectedLeadForAppt, setSelectedLeadForAppt] = useState<string | null>(null);
+  const [newAppt, setNewAppt] = useState({ date: '', time: '', type: 'phone', notes: '' });
+  const [submittingAppt, setSubmittingAppt] = useState(false);
 
   const { data: hotLeads = [], isLoading: hotLoading }    = useAcquisitionLeads('HOT');
-  const { data: warmLeads = [], isLoading: warmLoading }  = useAcquisitionLeads('WARM');
+  const { data: warmLeads = [], isLoading: warmLoading, refetch: refetchWarm }  = useAcquisitionLeads('WARM');
   const { data: deals = [], isLoading: dealsLoading }     = useDealAnalyses();
   const { data: offerRecs = [], isLoading: recsLoading }  = useOfferRecs();
-  const { data: appointments = [] }                       = useAppointments();
+  const { data: appointments = [], refetch: refetchAppts }                       = useAppointments();
+
+  const handleBulkSMS = async () => {
+    if (!confirm(`Are you sure you want to send a follow-up SMS to all ${warmLeads.length} warm leads?`)) return;
+    setBulkSmsLoading(true);
+    try {
+      const resp = await fetch('/api/marketing/bulk-sms-warm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (resp.ok) {
+        alert('Bulk SMS sequence initiated successfully.');
+      } else {
+        alert('Failed to initiate bulk SMS.');
+      }
+    } catch (err) {
+      alert('Error: ' + err);
+    } finally {
+      setBulkSmsLoading(false);
+    }
+  };
+
+  const handleScheduleAppt = async () => {
+    if (!selectedLeadForAppt || !newAppt.date || !newAppt.time) return;
+    setSubmittingAppt(true);
+    try {
+      const scheduledAt = new Date(`${newAppt.date}T${newAppt.time}`);
+      const resp = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: selectedLeadForAppt,
+          scheduled_at: scheduledAt.toISOString(),
+          appointment_type: newAppt.type,
+          notes: newAppt.notes,
+        }),
+      });
+      if (resp.ok) {
+        setShowApptModal(false);
+        setNewAppt({ date: '', time: '', type: 'phone', notes: '' });
+        setSelectedLeadForAppt(null);
+        refetchAppts();
+      } else {
+        alert('Failed to schedule appointment.');
+      }
+    } catch (err) {
+      alert('Error: ' + err);
+    } finally {
+      setSubmittingAppt(false);
+    }
+  };
 
   const tabs: { key: Tab; label: string; icon: React.ElementType; count?: number; color: string }[] = [
     { key: 'hot',          label: 'HOT Leads',      icon: Flame,        count: hotLeads.length,    color: 'text-red-600' },
@@ -828,12 +899,33 @@ export function Acquisitions() {
               </p>
             </div>
           )}
-          {hotLeads.map((lead) => <LeadCard key={lead.id} lead={lead} />)}
+          {hotLeads.map((lead) => (
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              onSchedule={(id) => {
+                setSelectedLeadForAppt(id);
+                setShowApptModal(true);
+              }}
+            />
+          ))}
         </div>
       )}
 
       {tab === 'warm' && (
         <div className="space-y-3">
+          {!warmLoading && warmLeads.length > 0 && (
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={handleBulkSMS}
+                disabled={bulkSmsLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-50"
+              >
+                {bulkSmsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Bulk SMS All Warm Leads
+              </button>
+            </div>
+          )}
           {warmLoading && (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
@@ -850,7 +942,16 @@ export function Acquisitions() {
               </p>
             </div>
           )}
-          {warmLeads.map((lead) => <LeadCard key={lead.id} lead={lead} />)}
+          {warmLeads.map((lead) => (
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              onSchedule={(id) => {
+                setSelectedLeadForAppt(id);
+                setShowApptModal(true);
+              }}
+            />
+          ))}
         </div>
       )}
 
@@ -956,6 +1057,87 @@ export function Acquisitions() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Appointment Modal */}
+      {showApptModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <CalendarCheck className="h-5 w-5 text-teal-600" />
+              Schedule Appointment
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1 capitalize">Property</label>
+                <div className="text-sm font-medium text-gray-900 bg-gray-50 px-3 py-2 rounded-lg border">
+                  {[...hotLeads, ...warmLeads].find(l => l.id === selectedLeadForAppt)?.property_address || 'Selected Lead'}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Date</label>
+                  <input
+                    type="date"
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                    value={newAppt.date}
+                    onChange={(e) => setNewAppt(p => ({ ...p, date: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Time</label>
+                  <input
+                    type="time"
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                    value={newAppt.time}
+                    onChange={(e) => setNewAppt(p => ({ ...p, time: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Type</label>
+                <select
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                  value={newAppt.type}
+                  onChange={(e) => setNewAppt(p => ({ ...p, type: e.target.value }))}
+                >
+                  <option value="phone">Phone Call</option>
+                  <option value="video">Virtual Walkthrough (Video)</option>
+                  <option value="in_person">In-Person Inspection</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Notes (Optional)</label>
+                <textarea
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none resize-none"
+                  rows={3}
+                  placeholder="e.g., Seller wants to show the new roof..."
+                  value={newAppt.notes}
+                  onChange={(e) => setNewAppt(p => ({ ...p, notes: e.target.value }))}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowApptModal(false);
+                    setSelectedLeadForAppt(null);
+                  }}
+                  className="flex-1 px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleScheduleAppt}
+                  disabled={submittingAppt || !newAppt.date || !newAppt.time}
+                  className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {submittingAppt ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
