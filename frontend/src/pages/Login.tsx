@@ -27,7 +27,18 @@ export function Login() {
     }
 
     // Check approval status after sign-in
-    const { data: profile } = await supabase.from('my_profile').select('status, role').single();
+    const { data: profile, error: profileError } = await supabase.from('my_profile').select('status, role').single();
+
+    if (profileError) {
+      // PGRST116 = no rows (profile genuinely missing); anything else is a DB/network error
+      const msg = profileError.code === 'PGRST116'
+        ? 'No profile found for your account. Contact an admin.'
+        : 'Service temporarily unavailable. Please try again in a moment.';
+      toast.error(msg);
+      await supabase.auth.signOut();
+      setLoading(false);
+      return;
+    }
 
     if (!profile) {
       toast.error('Could not load your profile. Contact an admin.');
