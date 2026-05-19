@@ -96,6 +96,7 @@ SELLER_SMS_FIRST_TOUCH_TEMPLATE = (
     "I'm not sure if you'd ever consider selling, but if it's something you're open to "
     "discussing at some point, I'd be happy to share what options exist.\n"
     "No rush at all—just wanted to ask.\n"
+    "Reply STOP to opt out.\n"
     "— {sender_name}"
 )
 
@@ -188,6 +189,8 @@ class SellerOutreachAgent(BaseAgent):
             violations.append(f"banned phrases: {banned}")
         if illegal_local:
             violations.append(f"illegal local language: {illegal_local}")
+        if msg.channel == OutreachChannel.SMS and not self._check_has_opt_out_instruction(body):
+            violations.append("missing SMS opt-out instruction")
 
         if violations:
             reason = " | ".join(violations)
@@ -255,11 +258,6 @@ class SellerOutreachAgent(BaseAgent):
 
         if self._validate_and_block(body, lead, msg):
             return msg
-
-        # Verify opt-out instruction present in follow-ups
-        if is_followup and not self._check_has_opt_out_instruction(body):
-            msg.compliance_notes = "[WARNING] Follow-up missing opt-out instruction"
-            logger.warning(f"[{self.name}] Follow-up missing opt-out for lead {lead.id}")
 
         msg.compliance_cleared = True
         logger.info(f"[{self.name}] SMS drafted for lead {lead.id}, attempt {attempt_number}")

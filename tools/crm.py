@@ -24,6 +24,7 @@ from sqlalchemy import (
     Table,
     Text,
     create_engine,
+    func,
     select,
     update,
 )
@@ -31,7 +32,7 @@ from sqlalchemy.engine import Engine
 
 from config.settings import settings
 from schemas.buyer import BuyerProfile, BuyerQualification
-from schemas.compliance import AuditLogEntry
+from schemas.compliance import AuditLogEntry, OptOutRecord
 from schemas.deal import Deal, UnderwritingReport
 from schemas.property import PropertyLead
 
@@ -109,6 +110,19 @@ audit_log_table = Table(
     Column("input_summary", Text),
     Column("output_summary", Text),
     Column("metadata", JSON),
+)
+
+opt_outs_table = Table(
+    "opt_outs",
+    metadata,
+    Column("id", String, primary_key=True),
+    Column("lead_id", String),
+    Column("phone_or_email", String, nullable=False),
+    Column("opt_out_keyword", String, nullable=False),
+    Column("channel", String),
+    Column("received_at", DateTime),
+    Column("suppressed_at", DateTime),
+    Column("inbound_text", Text),
 )
 
 
@@ -209,6 +223,55 @@ class CRMStore:
             rows = conn.execute(
                 select(buyers_table).where(buyers_table.c.disqualified == False)  # noqa: E712
             ).fetchall()
+            return [dict(r._mapping) for r in rows]
+
+    # ── Opt-Out Suppression ──────────────────────────────────────────────────
+
+    def save_opt_out_record(self, record: OptOutRecord) -> None:
+        """Persist an immutable opt-out record for future suppression checks."""
+        with self._engine.begin() as conn:
+            conn.execute(
+                opt_outs_table.insert().values(
+                    id=str(record.id),
+                    lead_id=str(record.lead_id),
+                    phone_or_email=record.phone_or_email.strip().lower(),
+                    opt_out_keyword=record.opt_out_keyword,
+                    channel=record.channel,
+                    received_at=record.received_at,
+                    suppressed_at=record.suppressed_at,
+                    inbound_text=record.inbound_text,
+                )
+            )
+
+    def is_contact_suppressed(self, contact_identifier: str) -> bool:
+        """Return True when a phone or email has an opt-out record."""
+        normalized = contact_identifier.strip().lower()
+        if not normalized:
+            return False
+        with self._engine.connect() as conn:
+            row = conn.execute(
+                select(opt_outs_table.c.id)
+                .where(func.lower(opt_outs_table.c.phone_or_email) == normalized)
+                .limit(1)
+            ).first()
+            return row is not None
+
+    def get_opt_out_records(
+        self,
+        contact_identifier: Optional[str] = None,
+        limit: int = 500,
+    ) -> list[dict[str, Any]]:
+        """Return persisted opt-out records, newest first."""
+        with self._engine.connect() as conn:
+            query = select(opt_outs_table).order_by(
+                opt_outs_table.c.received_at.desc()
+            ).limit(limit)
+            if contact_identifier:
+                query = query.where(
+                    func.lower(opt_outs_table.c.phone_or_email)
+                    == contact_identifier.strip().lower()
+                )
+            rows = conn.execute(query).fetchall()
             return [dict(r._mapping) for r in rows]
 
     # ── Audit Log ─────────────────────────────────────────────────────────────

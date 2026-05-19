@@ -72,6 +72,11 @@ class TestApprovedTemplates:
         msg = agent.draft_sms(lead, attempt_number=2, has_inbound_reply=False)
         assert "STOP" in msg.body or "stop" in msg.body.lower() or "opt out" in msg.body.lower()
 
+    def test_first_touch_contains_opt_out(self, agent):
+        lead = _make_lead()
+        msg = agent.draft_sms(lead, attempt_number=1)
+        assert "reply stop" in msg.body.lower()
+
 
 # ── Follow-up limit enforcement (Section 4) ───────────────────────────────────
 
@@ -157,6 +162,17 @@ class TestBannedPhraseEnforcement:
             "Hi Maria, I live in the area. Would you be open to a conversation? No rush."
         )
         assert len(banned) == 0
+
+    def test_sms_without_opt_out_is_blocked(self, agent):
+        lead = _make_lead()
+        with patch.object(
+            agent,
+            "_render_first_touch_sms",
+            return_value="Hi Maria, I live in the area and came across your property.",
+        ):
+            msg = agent.draft_sms(lead, attempt_number=1)
+        assert msg.status == OutreachStatus.STOPPED
+        assert "opt-out" in msg.compliance_notes.lower()
 
 
 # ── Opt-out signal detection ──────────────────────────────────────────────────

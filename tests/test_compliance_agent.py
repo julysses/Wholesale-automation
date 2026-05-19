@@ -17,6 +17,7 @@ from config.settings import settings
 from schemas.compliance import ComplianceFlag, ComplianceStatus
 from schemas.outreach import OutreachChannel, OutreachMessage, OutreachStatus
 from schemas.property import DataSource, NormalizedAddress, PropertyLead
+from tools.crm import CRMStore
 
 
 def _make_lead(with_phone: bool = True) -> PropertyLead:
@@ -45,7 +46,7 @@ def _make_message(cleared: bool = True, is_followup: bool = False,
 @pytest.fixture
 def agent():
     with patch("agents.base_agent.anthropic.Anthropic"):
-        return ComplianceLoggingAgent()
+        return ComplianceLoggingAgent(crm_store=CRMStore(database_url="sqlite:///:memory:"))
 
 
 # ── Opt-out keyword detection ─────────────────────────────────────────────────
@@ -124,6 +125,22 @@ class TestOptOutSuppression:
         agent.process_inbound_reply(lead, "STOP", msg, "5551234567")
         # Verify msg is OPTED_OUT, NOT SENT or RESPONDED_POSITIVE
         assert msg.status == OutreachStatus.OPTED_OUT
+
+    def test_opt_out_persists_across_agent_instances(self):
+        crm = CRMStore(database_url="sqlite:///:memory:")
+        lead = _make_lead()
+        msg = _make_message()
+
+        with patch("agents.base_agent.anthropic.Anthropic"):
+            first_agent = ComplianceLoggingAgent(crm_store=crm)
+            second_agent = ComplianceLoggingAgent(crm_store=crm)
+
+        first_agent.process_inbound_reply(lead, "STOP", msg, "5551234567")
+
+        assert second_agent.is_suppressed("5551234567") is True
+        records = second_agent.get_opt_out_records()
+        assert len(records) == 1
+        assert records[0].phone_or_email == "5551234567"
 
 
 # ── Texas scheduling checks ───────────────────────────────────────────────────
@@ -300,6 +317,22 @@ class TestHardBlockFlags:
             )
             check = agent.check_outreach(msg, lead, 0)
         assert ComplianceFlag.INVALID_PHONE in check.flags
+
+    def test_sms_without_opt_out_instruction_is_blocked(self, agent):
+        lead = _make_lead()
+        msg = OutreachMessage(
+            lead_id=lead.id,
+            channel=OutreachChannel.SMS,
+            body="Hi Jane, I live in the area and came across your property.",
+            compliance_cleared=True,
+        )
+        with patch("agents.compliance_logging_agent._texas_now") as mock_now:
+            mock_now.return_value = MagicMock(
+                hour=11, weekday=MagicMock(return_value=1)
+            )
+            check = agent.check_outreach(msg, lead, 0)
+        assert ComplianceFlag.COMPLIANCE_UNCERTAIN in check.flags
+        assert check.auto_halted is True
 
 
 # ── Audit logging ─────────────────────────────────────────────────────────────

@@ -1,5 +1,9 @@
 """Shared pytest fixtures."""
 
+import os
+
+os.environ["DATABASE_URL"] = "sqlite:///./test_wholesale_agency.db"
+
 import pytest
 from unittest.mock import patch, MagicMock
 

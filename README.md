@@ -94,7 +94,10 @@ git clone <repo>
 cd Wholesale-automation
 
 # Backend
-pip install -r requirements.txt
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
 # Frontend
 cd frontend && npm install
@@ -133,6 +136,13 @@ npm run dev
 ```
 
 Open `http://localhost:5173` — register the first user (auto-promoted to admin).
+
+### 5. Run backend tests
+
+```bash
+source .venv/bin/activate
+python -m pytest -q
+```
 
 ---
 

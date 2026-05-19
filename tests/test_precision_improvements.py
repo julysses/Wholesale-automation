@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from tools.batchdata_adapter import BatchDataAdapter, PropertyDetails
+from tools.batchdata_adapter import BatchDataAdapter, CompsResult, PropertyDetails
 from agents.deal_analyzer_agent import DealAnalyzerAgent
 from fastapi.testclient import TestClient
 from web.app import app
@@ -42,6 +42,10 @@ def test_deal_analyzer_uses_batchdata():
     agent = DealAnalyzerAgent()
     # Mock BatchDataAdapter
     agent.batchdata = MagicMock()
+    agent.batchdata.get_comparable_sales.return_value = CompsResult(
+        lead_id="test_lead",
+        success=False,
+    )
     agent.batchdata.get_property_details.return_value = PropertyDetails(
         lead_id="test_lead",
         address="123 Main St",
@@ -65,7 +69,7 @@ def test_deal_analyzer_uses_batchdata():
     
     # ARV mid should be 300,000 as per mock
     assert analysis.arv.mid == 300000
-    assert "Real-world ARV from BatchData" in analysis.arv.notes
+    assert "BatchData AVM estimate" in analysis.arv.notes
 
 def test_rescore_leads_endpoint():
     crm = CRMStore()

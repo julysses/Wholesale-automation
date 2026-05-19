@@ -422,7 +422,18 @@ class MasterOrchestrator:
                 msg = self.seller_outreach.draft_email(lead, attempt_number=prior_attempts + 1)
 
             # Compliance gate
-            check = self.compliance.check_outreach(msg, lead, prior_attempts)
+            contact_identifier = ""
+            if channel == OutreachChannel.SMS and lead.phone_numbers:
+                contact_identifier = lead.phone_numbers[0]
+            elif channel == OutreachChannel.EMAIL and lead.email:
+                contact_identifier = lead.email
+
+            check = self.compliance.check_outreach(
+                msg,
+                lead,
+                prior_attempts,
+                contact_identifier=contact_identifier,
+            )
 
             if check.is_clear:
                 cleared_messages.append(msg)

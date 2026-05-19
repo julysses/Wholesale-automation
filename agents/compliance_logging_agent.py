@@ -89,11 +89,21 @@ class ComplianceLoggingAgent(BaseAgent):
     name = "compliance_logging_agent"
     system_prompt = SystemPrompts.COMPLIANCE_LOGGING
 
-    def __init__(self) -> None:
+    def __init__(self, crm_store: Optional[Any] = None) -> None:
         super().__init__()
         self._audit_log: list[AuditLogEntry] = []
         self._opt_out_records: list[OptOutRecord] = []
         self._suppressed_contacts: set[str] = set()  # phone_or_email strings
+        if crm_store is not None:
+            self._crm = crm_store
+        else:
+            try:
+                from tools.crm import CRMStore
+
+                self._crm = CRMStore()
+            except Exception as exc:
+                logger.warning(f"[{self.name}] Persistent CRM unavailable: {exc}")
+                self._crm = None
 
     # ── Opt-out detection & suppression ──────────────────────────────────────
 
@@ -123,18 +133,21 @@ class ComplianceLoggingAgent(BaseAgent):
         """
         keyword = self.detect_opt_out(reply_text)
         if keyword:
+            normalized_contact = contact_identifier.strip().lower()
             # Suppress the contact permanently
-            self._suppressed_contacts.add(contact_identifier.lower())
+            self._suppressed_contacts.add(normalized_contact)
 
             # Record the opt-out immutably
             record = OptOutRecord(
                 lead_id=lead.id,
-                phone_or_email=contact_identifier,
+                phone_or_email=normalized_contact,
                 opt_out_keyword=keyword,
                 channel=message.channel.value,
                 inbound_text=reply_text[:500],
             )
             self._opt_out_records.append(record)
+            if self._crm is not None:
+                self._crm.save_opt_out_record(record)
 
             # Mark message as opted out
             message.mark_opted_out(keyword, reply_text[:500])
@@ -158,7 +171,14 @@ class ComplianceLoggingAgent(BaseAgent):
 
     def is_suppressed(self, contact_identifier: str) -> bool:
         """Check if a contact has opted out and is suppressed."""
-        return contact_identifier.lower() in self._suppressed_contacts
+        normalized_contact = contact_identifier.strip().lower()
+        if not normalized_contact:
+            return False
+        if normalized_contact in self._suppressed_contacts:
+            return True
+        if self._crm is not None:
+            return self._crm.is_contact_suppressed(normalized_contact)
+        return False
 
     # ── Scheduling checks (Section 5) ────────────────────────────────────────
 
@@ -179,6 +199,14 @@ class ComplianceLoggingAgent(BaseAgent):
         """Detect illegal local-language phrases implying physical observation."""
         lowered = text.lower()
         return [phrase for phrase in ILLEGAL_LOCAL_PHRASES if phrase in lowered]
+
+    def _has_opt_out_instruction(self, text: str) -> bool:
+        """Verify SMS includes a clear opt-out instruction."""
+        lowered = text.lower()
+        return any(
+            phrase in lowered
+            for phrase in ("reply stop", "text stop", "opt out", "unsubscribe")
+        )
 
     # ── Master outreach pre-flight check ─────────────────────────────────────
 
@@ -257,7 +285,14 @@ class ComplianceLoggingAgent(BaseAgent):
                 f"Message contains illegal phrases implying physical observation: {illegal}"
             )
 
-        # 9. Determine final status
+        # 9. SMS opt-out instruction
+        if message.channel.value == "sms" and not self._has_opt_out_instruction(message.body):
+            flags[ComplianceFlag.COMPLIANCE_UNCERTAIN] = (
+                "SMS message is missing a clear opt-out instruction such as "
+                "'Reply STOP to opt out'"
+            )
+
+        # 10. Determine final status
         has_hard_block = any(f in HARD_BLOCK_FLAGS for f in flags)
         if has_hard_block:
             status = ComplianceStatus.BLOCKED
@@ -391,6 +426,11 @@ Return JSON with:
         return list(self._audit_log)
 
     def get_opt_out_records(self) -> list[OptOutRecord]:
+        if self._crm is not None:
+            return [
+                OptOutRecord(**record)
+                for record in self._crm.get_opt_out_records()
+            ]
         return list(self._opt_out_records)
 
     def run(self, *args: Any, **kwargs: Any) -> list[AuditLogEntry]:
