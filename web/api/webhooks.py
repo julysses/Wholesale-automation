@@ -24,6 +24,7 @@ Routes:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import logging
@@ -460,7 +461,7 @@ async def _handle_ai_call_result(event: AICallResultEvent, provider: str) -> Non
             address = l_data.get("property_address") or ""
             owner = f"{l_data.get('owner_first_name', '')} {l_data.get('owner_last_name', '')}".strip()
 
-            await _trigger_hot_lead_automation(
+            _schedule_hot_lead_automation(
                 sb=sb,
                 lead_id=event.lead_id,
                 call_id=event.call_id,
@@ -750,7 +751,7 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
 
         # 6. HOT automation
         if qual and qual.is_hot:
-            await _trigger_hot_lead_automation(
+            _schedule_hot_lead_automation(
                 sb=sb,
                 lead_id=event.lead_id,
                 call_id=event.call_id,
@@ -903,6 +904,42 @@ async def _trigger_hot_lead_automation(
             logger.error(f"[retell] HOT lead email alert failed: {exc}")
 
     logger.info(f"[retell] HOT automation complete for lead {lead_id}")
+
+
+def _schedule_hot_lead_automation(
+    sb: Any,
+    lead_id: str,
+    call_id: str,
+    address: str,
+    owner: str,
+    qual: Any,
+    arv: Optional[float],
+    mao: Optional[float],
+) -> None:
+    """Schedule HOT lead automation without blocking call-result processing."""
+    task = asyncio.create_task(
+        _trigger_hot_lead_automation(
+            sb=sb,
+            lead_id=lead_id,
+            call_id=call_id,
+            address=address,
+            owner=owner,
+            qual=qual,
+            arv=arv,
+            mao=mao,
+        )
+    )
+
+    def _log_failure(done: asyncio.Task) -> None:
+        try:
+            done.result()
+        except Exception as exc:
+            logger.error(
+                f"[retell] HOT automation task failed lead={lead_id} call={call_id}: {exc}"
+            )
+
+    task.add_done_callback(_log_failure)
+    logger.info(f"[retell] HOT automation scheduled for lead {lead_id}")
 
 
 def _get_supabase() -> Optional[Any]:
@@ -1230,7 +1267,7 @@ async def _handle_vapi_call_result(result: VapiCallResult) -> None:
                     f"{lead_data.get('owner_last_name', '')}".strip()
                 )
                 address = lead_data.get("property_address", property_address)
-                await _trigger_hot_lead_automation(
+                _schedule_hot_lead_automation(
                     sb=sb,
                     lead_id=result.lead_id,
                     call_id=result.call_id,

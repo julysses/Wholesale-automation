@@ -33,3 +33,19 @@
 ## Review Notes
 - Focused verification passed with `.venv/bin/python -m pytest -q tests/test_retell_webhook_security.py`: 6 passed.
 - Full verification passed with `.venv/bin/python -m pytest -q`: 115 passed.
+
+---
+
+# HOT Lead Automation Backgrounding
+
+## Checklist
+- [x] Pull latest default branch from GitHub before editing.
+- [x] Inspect Retell, legacy Retell, VAPI, and generic AI call-result HOT automation paths.
+- [x] Replace inline HOT automation awaits with a scheduler helper.
+- [x] Add regression coverage proving the scheduler does not await slow HOT automation work.
+- [x] Run focused and full test verification.
+- [x] Review diff, commit, and push.
+
+## Review Notes
+- Focused verification passed with `.venv/bin/python -m pytest -q tests/test_hot_lead_automation_backgrounding.py tests/test_retell_webhook_security.py`: 7 passed.
+- Full verification passed with `.venv/bin/python -m pytest -q`: 116 passed.
