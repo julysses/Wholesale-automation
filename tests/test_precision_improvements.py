@@ -4,10 +4,17 @@ from tools.batchdata_adapter import BatchDataAdapter, CompsResult, PropertyDetai
 from agents.deal_analyzer_agent import DealAnalyzerAgent
 from fastapi.testclient import TestClient
 from web.app import app
+from web.api.fb_ads_api import ReviewCopyRequest
 from tools.crm import CRMStore
 from schemas.property import PropertyLead, NormalizedAddress, DataSource
 
 client = TestClient(app)
+
+def test_review_copy_request_accepts_copy_alias():
+    body = ReviewCopyRequest(copy="Need help selling?", segment="probate")
+
+    assert body.ad_copy == "Need help selling?"
+    assert body.segment == "probate"
 
 def test_batchdata_get_property_details_mock():
     adapter = BatchDataAdapter()

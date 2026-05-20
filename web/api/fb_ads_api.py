@@ -18,7 +18,7 @@ from typing import Any, Optional
 
 import anthropic
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config.settings import settings
 
@@ -64,7 +64,7 @@ def _call_json(endpoint: str, system: str, user: str, max_tokens: int = 1024):
 # ── Review Ad Copy ─────────────────────────────────────────────────────────────
 
 class ReviewCopyRequest(BaseModel):
-    copy: str
+    ad_copy: str = Field(alias="copy")
     segment: str = "pre-foreclosure"
 
 
@@ -79,7 +79,7 @@ def review_copy(body: ReviewCopyRequest):
     user = f"""Review this Facebook ad copy for the "{body.segment}" segment:
 
 COPY:
-{body.copy}
+{body.ad_copy}
 
 Evaluate:
 1. Does it reference the seller's pain point?
