@@ -15,3 +15,21 @@
 - Verification passed with `.venv/bin/python -m compileall -q agents config orchestrator schemas tools web main.py`.
 - Verification passed with `.venv/bin/python -m pytest -q`: 108 passed, 1 existing warning from `web/api/fb_ads_api.py`.
 - Fixed additional post-pull test drift around distress signal weights, BatchData mocks, and tests accidentally targeting the real `.env` database.
+
+---
+
+# Retell Webhook Signature Verification
+
+## Checklist
+- [x] Pull latest default branch from GitHub before editing.
+- [x] Identify Retell webhook entrypoints and existing signature helpers.
+- [x] Enforce fail-closed HMAC verification for `/webhooks/retell`.
+- [x] Enforce fail-closed HMAC verification for `/webhooks/retell/call`.
+- [x] Reject legacy static-secret Retell requests.
+- [x] Add regression tests for missing config, missing signature, bad signature, valid HMAC, and legacy static-secret rejection.
+- [x] Run focused and full test verification.
+- [x] Review diff, commit, and push.
+
+## Review Notes
+- Focused verification passed with `.venv/bin/python -m pytest -q tests/test_retell_webhook_security.py`: 6 passed.
+- Full verification passed with `.venv/bin/python -m pytest -q`: 115 passed.

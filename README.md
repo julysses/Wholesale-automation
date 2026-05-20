@@ -253,27 +253,23 @@ See [USER_MANUAL.md](USER_MANUAL.md) for the full step-by-step workflow.
 
 ### Backend
 
-1. **Retell webhook signature verification is not enforced.**
-   `_handle_ai_call_result()` in `web/api/webhooks.py` accepts all inbound webhook payloads without verifying the `RETELL_WEBHOOK_SECRET` HMAC header. This is a security gap — any caller who discovers the endpoint URL can inject fake call events.
-   _Fix:_ Add `x-retell-signature` header verification using `hmac.compare_digest` before processing any event.
-
-2. **`_trigger_hot_lead_automation` is synchronous inside an async handler.**
+1. **`_trigger_hot_lead_automation` is synchronous inside an async handler.**
    The function is called with a bare function call (not `await`), but internally makes Supabase REST calls via `httpx`. If the Supabase call is slow, the webhook response may time out (Retell expects a response within 3 seconds).
    _Fix:_ Refactor to `async def` and `await` it, or dispatch to a background task queue.
 
-3. **ARV estimation falls back to a fixed heuristic when Claude is unavailable.**
+2. **ARV estimation falls back to a fixed heuristic when Claude is unavailable.**
    `deal_analyzer_agent.py._heuristic_arv()` returns `sqft * 85` as a market-agnostic placeholder. In high-value or rural markets this can be off by 50%+.
    _Fix:_ Integrate a real comp data source (Zillow API, BatchData, or PropStream) as the primary ARV source and use Claude only for interpretation.
 
-4. **No retry logic on Launch Control SMS failures.**
+3. **No retry logic on Launch Control SMS failures.**
    If the SMS API call fails for a HOT lead, the failure is logged but no retry is attempted. The notification task is still created, but the seller never gets the text.
    _Fix:_ Add `tenacity` retry decorator to the SMS call, or persist failed SMS jobs to a retry queue in Supabase.
 
-5. **`precision_tier` and `priority_rank` are only set at import time.**
+4. **`precision_tier` and `priority_rank` are only set at import time.**
    If additional leads are imported later, existing leads are not re-ranked. A lead that was Tier 2 before a batch of Tier 1 leads is added will stay ranked as Tier 2.
    _Fix:_ Add a re-scoring endpoint (or scheduled job) that recomputes `priority_rank` across all leads in a targeting batch.
 
-6. **Retell `call_transcript` events may arrive out of order.**
+5. **Retell `call_transcript` events may arrive out of order.**
    The webhook handler upserts transcript chunks by `call_id`, but does not sort or merge chunks. If Retell delivers chunks out of order (common on slow networks), the stored transcript may be fragmented.
    _Fix:_ Store chunks with a `sequence_num` and assemble the full transcript only on `call_completed`.
 
@@ -311,7 +307,6 @@ See [USER_MANUAL.md](USER_MANUAL.md) for the full step-by-step workflow.
 
 ### High priority
 
-- [ ] **Webhook signature verification** — enforce HMAC on all Retell inbound events (security, see Known Issue #1)
 - [ ] **Supabase realtime for HOT lead alerts** — replace polling with a live channel subscription so HOT lead notifications appear instantly in the dashboard
 - [ ] **Re-score endpoint** — `POST /api/leads/rescore` recalculates `priority_rank` and `precision_tier` for all leads in a batch after new imports
 - [ ] **ARV comp integration** — replace heuristic ARV with a real data source (BatchData, PropStream, or Zillow)

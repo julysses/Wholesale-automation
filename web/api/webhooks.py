@@ -80,6 +80,22 @@ def _verify_hmac_signature(body: bytes, signature: str, secret: str, source: str
     return valid
 
 
+def _require_hmac_signature(body: bytes, signature: str, secret: str, source: str = "") -> None:
+    """Fail closed unless a configured HMAC-SHA256 signature is valid."""
+    if not secret:
+        logger.error(
+            f"[webhook{':' + source if source else ''}] webhook secret is not configured"
+        )
+        raise HTTPException(503, "Webhook secret not configured")
+    if not signature:
+        logger.warning(
+            f"[webhook{':' + source if source else ''}] missing HMAC signature"
+        )
+        raise HTTPException(401, "Missing webhook signature")
+    if not _verify_hmac_signature(body, signature, secret, source=source):
+        raise HTTPException(401, "Invalid webhook signature")
+
+
 def _verify_static_secret(received: str, expected: str) -> bool:
     """Verify a static secret using constant-time comparison."""
     if not expected:
@@ -478,8 +494,7 @@ async def retell_webhook(
     Retell expects 200 immediately; all processing is backgrounded.
     """
     body = await request.body()
-    if not _verify_hmac_signature(body, x_retell_signature, RETELL_WEBHOOK_SECRET, source="retell"):
-        raise HTTPException(401, "Invalid Retell webhook signature")
+    _require_hmac_signature(body, x_retell_signature, RETELL_WEBHOOK_SECRET, source="retell")
 
     import json as _json
     try:
@@ -934,20 +949,13 @@ async def retell_call_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     x_retell_signature: str = Header(default="", alias="x-retell-signature"),
-    x_webhook_secret: str = Header(default="", alias="x-webhook-secret"),
 ) -> dict:
     """
     Receive a call event from Retell AI (call_ended or call_analyzed).
     Responds immediately with 200; all Supabase writes happen in the background.
     """
     body = await request.body()
-    # Prefer X-Retell-Signature (HMAC); fall back to X-Webhook-Secret (legacy static)
-    sig = x_retell_signature or x_webhook_secret
-    if RETELL_WEBHOOK_SECRET:
-        if not _verify_hmac_signature(body, sig, RETELL_WEBHOOK_SECRET, source="retell/call"):
-            # Legacy fallback: static secret comparison for older integrations
-            if not _verify_static_secret(sig, RETELL_WEBHOOK_SECRET):
-                raise HTTPException(401, "Invalid webhook secret")
+    _require_hmac_signature(body, x_retell_signature, RETELL_WEBHOOK_SECRET, source="retell/call")
 
     import json as _json
     try:
