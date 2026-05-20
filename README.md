@@ -265,10 +265,6 @@ See [USER_MANUAL.md](USER_MANUAL.md) for the full step-by-step workflow.
    If additional leads are imported later, existing leads are not re-ranked. A lead that was Tier 2 before a batch of Tier 1 leads is added will stay ranked as Tier 2.
    _Fix:_ Add a re-scoring endpoint (or scheduled job) that recomputes `priority_rank` across all leads in a targeting batch.
 
-4. **Retell `call_transcript` events may arrive out of order.**
-   The webhook handler upserts transcript chunks by `call_id`, but does not sort or merge chunks. If Retell delivers chunks out of order (common on slow networks), the stored transcript may be fragmented.
-   _Fix:_ Store chunks with a `sequence_num` and assemble the full transcript only on `call_completed`.
-
 ### Frontend
 
 7. **`StrategyComparisonPanel` and `FunnelPanel` sync via `localStorage` + `CustomEvent`.**

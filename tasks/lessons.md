@@ -5,3 +5,4 @@
 - When the project requires Python 3.11 but local `python3` is older, document `python3.11` explicitly and keep Pydantic's annotation backport available for local compatibility.
 - Security-sensitive webhooks must fail closed when their verification secret is missing; an unset secret should never silently disable verification in production paths.
 - Expensive webhook follow-up work should be scheduled behind a small helper with error logging, so call-result persistence and webhook-related background tasks are not coupled to SMS/email latency.
+- Realtime webhook events should preserve provider ordering metadata and reassemble from stored chunks; final payloads can be incomplete even when earlier chunk events had the full conversation.

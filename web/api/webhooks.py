@@ -594,25 +594,212 @@ async def _retell_call_answered(call_id: str, lead_id: str) -> None:
         logger.error(f"[retell] call_answered persistence failed: {exc}")
 
 
+def _turn_to_dict(turn: Any) -> dict[str, Any]:
+    """Serialize a TranscriptTurn-like object for JSONB storage."""
+    return {
+        "role": turn.role,
+        "content": turn.content,
+        "timestamp_ms": turn.timestamp_ms,
+    }
+
+
+def _optional_int(value: Any) -> Optional[int]:
+    """Return an int when Retell sends numeric metadata, otherwise None."""
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _first_present(payload: dict[str, Any], keys: tuple[str, ...]) -> Any:
+    """Return the first present value without treating 0 or empty lists as absent."""
+    for key in keys:
+        if key in payload:
+            return payload[key]
+    return None
+
+
+def _chunk_sort_key(chunk: dict[str, Any]) -> tuple[int, int]:
+    """Sort chunks by explicit sequence, then earliest timestamp."""
+    sequence = _optional_int(chunk.get("sequence_num"))
+    if sequence is None:
+        sequence = 1_000_000
+    first_timestamp = _optional_int(chunk.get("first_timestamp_ms"))
+    if first_timestamp is None:
+        first_timestamp = 1_000_000_000
+    return sequence, first_timestamp
+
+
+def _normalize_transcript_chunk(transcript_chunk: Any) -> dict[str, Any]:
+    """Normalize a realtime transcript payload into an ordered chunk record."""
+    sequence_num = None
+    raw_transcript = transcript_chunk
+    if isinstance(transcript_chunk, dict):
+        sequence_num = _first_present(
+            transcript_chunk,
+            ("sequence_num", "sequence", "chunk_index", "index"),
+        )
+        raw_transcript = _first_present(
+            transcript_chunk,
+            ("transcript", "transcript_chunk", "turns", "messages"),
+        )
+        if raw_transcript is None:
+            raw_transcript = transcript_chunk
+
+    turns = parse_transcript(raw_transcript)
+    first_timestamp = next(
+        (turn.timestamp_ms for turn in turns if turn.timestamp_ms is not None),
+        None,
+    )
+    text = transcript_to_text(turns)
+    fingerprint = hashlib.sha256(text.encode()).hexdigest()
+    return {
+        "sequence_num": _optional_int(sequence_num),
+        "first_timestamp_ms": first_timestamp,
+        "text": text,
+        "turns": [_turn_to_dict(turn) for turn in turns],
+        "fingerprint": fingerprint,
+    }
+
+
+def _chunk_turns(chunk: dict[str, Any]) -> list[Any]:
+    """Return TranscriptTurn-like objects from a stored chunk dict."""
+    from tools.retell_adapter import TranscriptTurn
+
+    return [
+        TranscriptTurn(
+            role=turn.get("role", "unknown"),
+            content=turn.get("content", ""),
+            timestamp_ms=turn.get("timestamp_ms"),
+        )
+        for turn in chunk.get("turns", [])
+    ]
+
+
+def _merge_transcript_chunks(
+    existing_chunks: list[dict[str, Any]],
+    new_chunks: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Dedupe and sort transcript chunks by sequence/timestamp."""
+    by_key: dict[tuple[Any, str], dict[str, Any]] = {}
+    for chunk in existing_chunks + new_chunks:
+        if not chunk.get("text") and not chunk.get("turns"):
+            continue
+        sequence = chunk.get("sequence_num")
+        key = ("sequence", sequence) if sequence is not None else (
+            "fingerprint",
+            chunk.get("fingerprint", ""),
+        )
+        by_key[key] = chunk
+
+    merged = sorted(by_key.values(), key=_chunk_sort_key)
+    for chunk in merged:
+        chunk["turns"] = [_turn_to_dict(turn) for turn in _chunk_turns(chunk)]
+    return merged
+
+
+def _flatten_transcript_chunks(chunks: list[dict[str, Any]]) -> list[Any]:
+    """Return ordered TranscriptTurn-like objects from stored chunk records."""
+    return [
+        turn
+        for chunk in sorted(chunks, key=_chunk_sort_key)
+        for turn in _chunk_turns(chunk)
+    ]
+
+
+def _load_transcript_chunks(sb: Any, call_id: str) -> list[dict[str, Any]]:
+    """Load previously stored realtime transcript chunks for a call."""
+    try:
+        resp = (
+            sb.table("call_transcripts")
+            .select("formatted")
+            .eq("call_id", call_id)
+            .single()
+            .execute()
+        )
+        formatted = (resp.data or {}).get("formatted") or {}
+        if isinstance(formatted, dict):
+            chunks = formatted.get("chunks") or []
+            if isinstance(chunks, list):
+                return chunks
+        if isinstance(formatted, list):
+            text = transcript_to_text(parse_transcript(formatted))
+            return [{
+                "sequence_num": None,
+                "first_timestamp_ms": None,
+                "text": text,
+                "turns": formatted,
+                "fingerprint": hashlib.sha256(text.encode()).hexdigest(),
+            }]
+    except Exception:
+        return []
+    return []
+
+
+def _build_retell_transcript_payload(
+    sb: Any,
+    call_id: str,
+    lead_id: str,
+    raw_transcript: Any,
+) -> dict[str, Any]:
+    """Build the canonical call_transcripts upsert payload for a Retell call."""
+    turns = parse_transcript(raw_transcript)
+    source = "retell_final_payload"
+    chunks: list[dict[str, Any]] = []
+
+    if turns:
+        text = transcript_to_text(turns)
+    elif isinstance(raw_transcript, str) and raw_transcript.strip():
+        text = raw_transcript.strip()
+    else:
+        chunks = _load_transcript_chunks(sb, call_id)
+        turns = _flatten_transcript_chunks(chunks)
+        text = transcript_to_text(turns)
+        source = "retell_realtime_chunks"
+
+    if not text:
+        raise ValueError("no final transcript or realtime chunks available")
+
+    return {
+        "call_id":        call_id,
+        "lead_id":        lead_id or None,
+        "provider":       "retell",
+        "raw_transcript": text,
+        "formatted":      {
+            "source": source,
+            "chunks": chunks,
+            "turns": [_turn_to_dict(turn) for turn in turns] if turns else [],
+        },
+    }
+
+
 async def _retell_transcript_chunk(
     call_id: str,
     lead_id: str,
     transcript_chunk: Any,
 ) -> None:
-    """Append/upsert transcript chunk into call_transcripts."""
+    """Append/upsert transcript chunk into call_transcripts with stable ordering."""
     sb = _get_supabase()
     if not sb:
         return
     try:
-        turns = parse_transcript(transcript_chunk)
-        text  = transcript_to_text(turns)
-        # Upsert by call_id (conflict → update raw_transcript with latest full version)
+        existing_chunks = _load_transcript_chunks(sb, call_id)
+        merged_chunks = _merge_transcript_chunks(
+            existing_chunks,
+            [_normalize_transcript_chunk(transcript_chunk)],
+        )
+        turns = _flatten_transcript_chunks(merged_chunks)
+        text = transcript_to_text(turns)
         sb.table("call_transcripts").upsert({
             "call_id":        call_id,
             "lead_id":        lead_id or None,
             "provider":       "retell",
             "raw_transcript": text,
-            "formatted":      [{"role": t.role, "content": t.content} for t in turns],
+            "formatted":      {
+                "source": "retell_realtime_chunks",
+                "chunks": merged_chunks,
+                "turns": [_turn_to_dict(t) for t in turns],
+            },
         }, on_conflict="call_id").execute()
     except Exception as exc:
         logger.error(f"[retell] transcript_chunk persistence failed: {exc}")
@@ -639,19 +826,15 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
     property_address = metadata.get("property_address", "")
     owner_name = metadata.get("owner_name", "")
 
-    if sb and raw_transcript and event.lead_id:
+    if sb and event.lead_id:
         try:
-            turns = parse_transcript(raw_transcript)
-            text  = transcript_to_text(turns) if turns else (
-                raw_transcript if isinstance(raw_transcript, str) else ""
+            payload = _build_retell_transcript_payload(
+                sb,
+                event.call_id,
+                event.lead_id,
+                raw_transcript,
             )
-            sb.table("call_transcripts").upsert({
-                "call_id":        event.call_id,
-                "lead_id":        event.lead_id or None,
-                "provider":       "retell",
-                "raw_transcript": text,
-                "formatted":      [{"role": t.role, "content": t.content} for t in turns] if turns else [],
-            }, on_conflict="call_id").execute()
+            sb.table("call_transcripts").upsert(payload, on_conflict="call_id").execute()
         except Exception as exc:
             logger.error(f"[retell] final transcript store failed: {exc}")
 

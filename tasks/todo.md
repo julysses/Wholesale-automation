@@ -49,3 +49,21 @@
 ## Review Notes
 - Focused verification passed with `.venv/bin/python -m pytest -q tests/test_hot_lead_automation_backgrounding.py tests/test_retell_webhook_security.py`: 7 passed.
 - Full verification passed with `.venv/bin/python -m pytest -q`: 116 passed.
+
+---
+
+# Retell Transcript Chunk Ordering
+
+## Checklist
+- [x] Pull latest default branch from GitHub before editing.
+- [x] Inspect Retell transcript ingestion and storage paths.
+- [x] Persist realtime transcript chunks in deterministic sequence/timestamp order.
+- [x] Fall back to ordered realtime chunks when final Retell completion lacks a transcript.
+- [x] Add regression tests for out-of-order chunks and completion fallback.
+- [x] Update known issues and lessons.
+- [x] Run focused and full verification.
+- [x] Review diff, commit, and push.
+
+## Review Notes
+- Focused verification passed with `.venv/bin/python -m pytest -q tests/test_retell_transcript_ordering.py`: 3 passed.
+- Full verification passed with `.venv/bin/python -m pytest -q`: 119 passed.
