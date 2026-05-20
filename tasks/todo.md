@@ -67,3 +67,21 @@
 ## Review Notes
 - Focused verification passed with `.venv/bin/python -m pytest -q tests/test_retell_transcript_ordering.py`: 3 passed.
 - Full verification passed with `.venv/bin/python -m pytest -q`: 119 passed.
+
+---
+
+# ARV Fallback Improvements
+
+## Checklist
+- [x] Pull latest default branch from GitHub before editing.
+- [x] Inspect the deal analyzer ARV source order and current fallback behavior.
+- [x] Keep BatchData comps/AVM as the primary real-data path.
+- [x] Replace the final flat sqft fallback with a market-aware fallback using city/state/ZIP signals.
+- [x] Add tests for market-aware fallback behavior and tax-assessment blending.
+- [x] Update known issues and lessons.
+- [x] Run focused and full verification.
+- [x] Review diff, commit, and push.
+
+## Review Notes
+- Focused verification passed with `.venv/bin/python -m pytest -q tests/test_deal_analyzer_arv_fallback.py tests/test_precision_improvements.py`: 7 passed.
+- Full verification passed with `.venv/bin/python -m pytest -q`: 122 passed.

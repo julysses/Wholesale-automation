@@ -253,15 +253,11 @@ See [USER_MANUAL.md](USER_MANUAL.md) for the full step-by-step workflow.
 
 ### Backend
 
-1. **ARV estimation falls back to a fixed heuristic when Claude is unavailable.**
-   `deal_analyzer_agent.py._heuristic_arv()` returns `sqft * 85` as a market-agnostic placeholder. In high-value or rural markets this can be off by 50%+.
-   _Fix:_ Integrate a real comp data source (Zillow API, BatchData, or PropStream) as the primary ARV source and use Claude only for interpretation.
-
-2. **No retry logic on Launch Control SMS failures.**
+1. **No retry logic on Launch Control SMS failures.**
    If the SMS API call fails for a HOT lead, the failure is logged but no retry is attempted. The notification task is still created, but the seller never gets the text.
    _Fix:_ Add `tenacity` retry decorator to the SMS call, or persist failed SMS jobs to a retry queue in Supabase.
 
-3. **`precision_tier` and `priority_rank` are only set at import time.**
+2. **`precision_tier` and `priority_rank` are only set at import time.**
    If additional leads are imported later, existing leads are not re-ranked. A lead that was Tier 2 before a batch of Tier 1 leads is added will stay ranked as Tier 2.
    _Fix:_ Add a re-scoring endpoint (or scheduled job) that recomputes `priority_rank` across all leads in a targeting batch.
 
@@ -301,7 +297,7 @@ See [USER_MANUAL.md](USER_MANUAL.md) for the full step-by-step workflow.
 
 - [ ] **Supabase realtime for HOT lead alerts** — replace polling with a live channel subscription so HOT lead notifications appear instantly in the dashboard
 - [ ] **Re-score endpoint** — `POST /api/leads/rescore` recalculates `priority_rank` and `precision_tier` for all leads in a batch after new imports
-- [ ] **ARV comp integration** — replace heuristic ARV with a real data source (BatchData, PropStream, or Zillow)
+- [ ] **Additional ARV providers** — add PropStream or Zillow as a secondary comp/AVM fallback behind BatchData
 
 ### Medium priority
 

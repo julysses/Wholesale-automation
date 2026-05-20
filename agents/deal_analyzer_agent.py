@@ -65,6 +65,49 @@ INVESTOR_BUY_RATIO_LOW  = 0.70   # conservative
 INVESTOR_BUY_RATIO_HIGH = 0.75   # aggressive
 
 
+# ── Conservative fallback market assumptions ─────────────────────────────────
+
+DEFAULT_MARKET_PPSF = 125.0
+
+STATE_MARKET_PPSF: dict[str, float] = {
+    "TX": 135.0,
+}
+
+CITY_MARKET_PPSF: dict[tuple[str, str], float] = {
+    ("TX", "austin"): 210.0,
+    ("TX", "round rock"): 185.0,
+    ("TX", "cedar park"): 190.0,
+    ("TX", "dallas"): 175.0,
+    ("TX", "fort worth"): 165.0,
+    ("TX", "arlington"): 160.0,
+    ("TX", "plano"): 205.0,
+    ("TX", "frisco"): 220.0,
+    ("TX", "houston"): 155.0,
+    ("TX", "katy"): 170.0,
+    ("TX", "spring"): 150.0,
+    ("TX", "san antonio"): 145.0,
+    ("TX", "new braunfels"): 165.0,
+    ("TX", "el paso"): 130.0,
+    ("TX", "corpus christi"): 135.0,
+    ("TX", "lubbock"): 125.0,
+    ("TX", "waco"): 135.0,
+    ("TX", "mcallen"): 120.0,
+}
+
+ZIP_PREFIX_MARKET_PPSF: dict[tuple[str, str], float] = {
+    ("TX", "787"): 215.0,  # Austin
+    ("TX", "750"): 190.0,  # North Dallas suburbs
+    ("TX", "752"): 175.0,  # Dallas
+    ("TX", "760"): 160.0,  # Arlington / mid-cities
+    ("TX", "761"): 165.0,  # Fort Worth
+    ("TX", "770"): 155.0,  # Houston
+    ("TX", "774"): 165.0,  # Houston suburbs
+    ("TX", "780"): 145.0,  # San Antonio area
+    ("TX", "782"): 145.0,  # San Antonio
+    ("TX", "799"): 130.0,  # El Paso
+}
+
+
 # ── Result dataclasses ────────────────────────────────────────────────────────
 
 @dataclass
@@ -223,6 +266,40 @@ def calculate_mao(
     )
 
 
+def fallback_price_per_sqft(
+    city: str = "",
+    state: str = "TX",
+    zip_code: str = "",
+    beds: int = 0,
+) -> tuple[float, str]:
+    """
+    Conservative fallback price-per-sqft when comp/AVM sources are unavailable.
+
+    This is intentionally a last-resort underwriting guardrail, not a comp model.
+    """
+    normalized_state = (state or "TX").strip().upper()
+    normalized_city = (city or "").strip().lower()
+    zip_prefix = (zip_code or "").strip()[:3]
+
+    source = f"{normalized_state} default"
+    ppsf = STATE_MARKET_PPSF.get(normalized_state, DEFAULT_MARKET_PPSF)
+
+    city_key = (normalized_state, normalized_city)
+    if normalized_city and city_key in CITY_MARKET_PPSF:
+        ppsf = CITY_MARKET_PPSF[city_key]
+        source = f"{city.title()}, {normalized_state}"
+    elif zip_prefix and (normalized_state, zip_prefix) in ZIP_PREFIX_MARKET_PPSF:
+        ppsf = ZIP_PREFIX_MARKET_PPSF[(normalized_state, zip_prefix)]
+        source = f"{normalized_state} ZIP prefix {zip_prefix}"
+
+    if beds >= 4:
+        ppsf *= 1.04
+    elif beds in (1, 2):
+        ppsf *= 0.94
+
+    return ppsf, source
+
+
 def build_deal_analysis(
     lead_id: str,
     property_address: str,
@@ -235,6 +312,7 @@ def build_deal_analysis(
     has_code_violation: bool = False,
     vacancy_months: int = 0,
     comp_count: int = 0,
+    confidence: str = "medium",
     arv_notes: str = "",
     arv_source: str = "heuristic",
     repair_tier_override: str = "",
@@ -249,7 +327,7 @@ def build_deal_analysis(
     """
     arv = ARVEstimate(
         low=arv_low, mid=arv_mid, high=arv_high,
-        comp_count=comp_count, notes=arv_notes,
+        comp_count=comp_count, confidence=confidence, notes=arv_notes,
         arv_source=arv_source,
     )
 
@@ -465,6 +543,7 @@ Rules:
                 # Step 3: Fallback to heuristic
                 arv_data = self._heuristic_arv(
                     tax_assessed_value, sqft, beds, condition,
+                    city=city, state=state, zip_code=zip_code,
                 )
 
         return build_deal_analysis(
@@ -479,6 +558,7 @@ Rules:
             has_code_violation=has_code_violation,
             vacancy_months=vacancy_months,
             comp_count=arv_data.get("comp_count", 0),
+            confidence=arv_data.get("confidence", "medium"),
             arv_notes=arv_data.get("arv_notes", ""),
             arv_source=arv_source,
             assignment_fee=assignment_fee,
@@ -510,7 +590,10 @@ Rules:
             return json.loads(text)
         except Exception as exc:
             logger.error(f"[{self.name}] LLM ARV failed: {exc}")
-            return self._heuristic_arv(tax_assessed, sqft, beds, condition)
+            return self._heuristic_arv(
+                tax_assessed, sqft, beds, condition,
+                city=city, state=state, zip_code=zip_code,
+            )
 
     @staticmethod
     def _heuristic_arv(
@@ -518,17 +601,28 @@ Rules:
         sqft: int,
         beds: int,
         condition: str,
+        city: str = "",
+        state: str = "TX",
+        zip_code: str = "",
     ) -> dict:
         """
-        Conservative ARV heuristic when LLM is unavailable.
-        Tax assessed value in TX is typically 80–95% of market.
+        Conservative ARV heuristic when real data and LLM are unavailable.
+
+        Uses market-aware local assumptions instead of a flat statewide sqft
+        value, and blends tax assessment when both signals are available.
         """
+        ppsf, market_source = fallback_price_per_sqft(city, state, zip_code, beds)
+        market_mid = sqft * ppsf if sqft > 0 else 0
+        tax_mid = tax_assessed * 1.10 if tax_assessed > 0 else 0
+
         if tax_assessed > 0:
-            arv_mid = tax_assessed * 1.10    # 10% above assessment
-        elif sqft > 0:
-            # $120/sqft baseline for Texas secondary markets
-            ppf = 130 if beds >= 4 else 115
-            arv_mid = sqft * ppf
+            if market_mid > 0:
+                lower_bound = market_mid * 0.85
+                arv_mid = max((tax_mid * 0.65) + (market_mid * 0.35), lower_bound)
+            else:
+                arv_mid = tax_mid
+        elif market_mid > 0:
+            arv_mid = market_mid
         else:
             arv_mid = 150_000
 
@@ -551,7 +645,11 @@ Rules:
             "arv_high":  arv_high,
             "comp_count": 0,
             "confidence": "low",
-            "arv_notes": "Heuristic estimate — no LLM available",
+            "arv_notes": (
+                "Market-aware heuristic estimate — no BatchData comps/AVM "
+                f"or LLM available; used {market_source} at ${ppsf:,.0f}/sqft"
+                + (f" blended with tax assessment ${tax_assessed:,.0f}" if tax_mid else "")
+            ),
         }
 
 

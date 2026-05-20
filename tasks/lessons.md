@@ -6,3 +6,4 @@
 - Security-sensitive webhooks must fail closed when their verification secret is missing; an unset secret should never silently disable verification in production paths.
 - Expensive webhook follow-up work should be scheduled behind a small helper with error logging, so call-result persistence and webhook-related background tasks are not coupled to SMS/email latency.
 - Realtime webhook events should preserve provider ordering metadata and reassemble from stored chunks; final payloads can be incomplete even when earlier chunk events had the full conversation.
+- Last-resort valuation heuristics should expose their assumptions in notes and use available local signals; a single default price per sqft is too brittle for underwriting.
