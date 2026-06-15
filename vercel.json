@@ -9,12 +9,6 @@
       "includeFiles": "{web,agents,orchestrator,tools,config,prompts,schemas,data,templates}/**"
     }
   },
-  "crons": [
-    {
-      "path": "/webhooks/_worker/drain",
-      "schedule": "* * * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/:path*",

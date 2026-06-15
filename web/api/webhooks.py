@@ -52,7 +52,11 @@ from tools.vapi_adapter import (
 )
 from tools.email_client import EmailClient
 from config.settings import settings
-from web.api.webhook_queue import enqueue, PENDING_AUTOMATIONS, drain as _drain_queue
+from web.api.webhook_queue import (
+    PENDING_AUTOMATIONS,
+    drain as _drain_queue,
+    _run_job,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
@@ -338,7 +342,7 @@ async def batchdialer_call_webhook(
     logger.debug(f"[Webhook] BatchDialer raw payload: {str(payload)[:200]}")
 
     event = BatchDialerAdapter.parse_call_webhook(payload)
-    enqueue("batchdialer", payload)
+    await _process_inline("batchdialer", payload)
 
     return {"status": "accepted", "disposition": event.disposition, "lead_id": event.lead_id}
 
@@ -359,7 +363,7 @@ async def launch_control_reply_webhook(
     payload = await request.json()
     event = LaunchControlAdapter.parse_reply_webhook(payload)
 
-    enqueue("launch_control", payload)
+    await _process_inline("launch_control", payload)
 
     return {
         "status": "accepted",
@@ -527,17 +531,17 @@ async def retell_webhook(
 
     # ── Event: call started ───────────────────────────────────────────────────
     if event_type in ("call_started", "retell.call.started"):
-        enqueue("retell", payload)
+        await _process_inline("retell", payload)
         return {"status": "accepted", "event": "call_started"}
 
     # ── Event: call answered (seller picked up) ───────────────────────────────
     if event_type in ("call_answered", "retell.call.answered"):
-        enqueue("retell", payload)
+        await _process_inline("retell", payload)
         return {"status": "accepted", "event": "call_answered"}
 
     # ── Event: real-time transcript chunk ─────────────────────────────────────
     if event_type in ("call_transcript", "retell.call.transcript"):
-        enqueue("retell", payload)
+        await _process_inline("retell", payload)
         return {"status": "accepted", "event": "call_transcript"}
 
     # ── Event: call completed (final) ────────────────────────────────────────
@@ -545,7 +549,7 @@ async def retell_webhook(
         "call_ended", "call_analyzed",
         "retell.call.completed", "retell.call.analyzed",
     ):
-        enqueue("retell", payload)
+        await _process_inline("retell", payload)
         return {
             "status": "accepted",
             "event": "call_completed",
@@ -1230,7 +1234,7 @@ async def retell_call_webhook(
         # Non-final event (call_started, etc.) — acknowledge and ignore
         return {"status": "ignored", "reason": "non-final event"}
 
-    enqueue("retell_call", payload)
+    await _process_inline("retell_call", payload)
 
     return {
         "status": "accepted",
@@ -1259,7 +1263,7 @@ async def air_ai_call_webhook(
     if event is None:
         return {"status": "ignored", "reason": "unparseable payload"}
 
-    enqueue("air_ai", payload)
+    await _process_inline("air_ai", payload)
 
     return {
         "status": "accepted",
@@ -1321,7 +1325,7 @@ async def vapi_webhook(
         if result is None:
             return {"status": "ignored", "reason": "unparseable payload"}
 
-        enqueue("vapi", payload)
+        await _process_inline("vapi", payload)
 
         return {
             "status": "accepted",
@@ -1628,9 +1632,9 @@ async def facebook_lead_webhook(
     if not entries:
         return {"received": True, "leads": 0}
 
-    # Enqueue the raw payload once; the worker rebuilds the adapter from env and
-    # re-parses the entries before fetching each lead's field data.
-    enqueue("facebook", payload)
+    # Process inline: rebuild the adapter from env and re-parse the entries
+    # before fetching each lead's field data.
+    await _process_inline("facebook", payload)
 
     return {"received": True, "leads": len(entries)}
 
@@ -1810,6 +1814,34 @@ def get_webhook_processors() -> dict:
         "vapi":           _process_vapi,
         "facebook":       _process_facebook,
     }
+
+
+async def _process_inline(source: str, payload: dict) -> None:
+    """Process a webhook synchronously within the request.
+
+    The Vercel Hobby plan does not allow a minute-level Cron to drain a queue,
+    so each webhook does its work inline and returns 200 afterwards. Every
+    handler is well under the 60s function limit, and HOT-lead automation is
+    awaited via ``_run_job``'s ``PENDING_AUTOMATIONS`` context so it completes
+    before the response is sent (a detached task would die when the serverless
+    function freezes).
+
+    Failures are logged and swallowed so the provider still receives a 200 — it
+    already delivered a valid, signature-verified event, and surfacing a 500
+    would only trigger provider retry storms. This matches the original
+    ``BackgroundTasks`` semantics (errors logged, never surfaced).
+
+    The durable ``webhook_jobs`` queue + ``/_worker/drain`` endpoint remain in
+    the codebase for a future Pro-plan/pg_cron drain, but are off the hot path.
+    """
+    processor = get_webhook_processors().get(source)
+    if processor is None:
+        logger.error(f"[webhook] no inline processor for source={source!r}")
+        return
+    try:
+        await _run_job(processor, payload)
+    except Exception as exc:  # noqa: BLE001 — keep the webhook 200
+        logger.error(f"[webhook] inline processing failed source={source!r}: {exc}")
 
 
 @router.api_route("/_worker/drain", methods=["GET", "POST"])
