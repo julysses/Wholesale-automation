@@ -251,15 +251,24 @@ See [USER_MANUAL.md](USER_MANUAL.md) for the full step-by-step workflow.
 
 ## Known Issues
 
+> **Finalization status (PR #2 — production readiness):** Several items below are now
+> resolved. ✅ Re-score endpoint (`POST /api/leads/rescore`) exists with an import hook.
+> ✅ HOT-lead alerts use a live Supabase realtime channel (`useNotifications.ts`), not
+> polling. ✅ Lead deduplication on import (address-based) added to `CRMStore.save_lead`.
+> ✅ Webhook secret verification hardened (`WEBHOOK_STRICT` fail-closed). ✅ Vercel + CI
+> + CORS lockdown added — see `docs/deployment-vercel.md`. Remaining open items are
+> annotated inline.
+
 ### Backend
 
 1. **No retry logic on Launch Control SMS failures.**
    If the SMS API call fails for a HOT lead, the failure is logged but no retry is attempted. The notification task is still created, but the seller never gets the text.
    _Fix:_ Add `tenacity` retry decorator to the SMS call, or persist failed SMS jobs to a retry queue in Supabase.
+   _Note:_ HOT-lead SMS now correctly resolves the seller phone from the lead record (previously sent with an empty number).
 
-2. **`precision_tier` and `priority_rank` are only set at import time.**
-   If additional leads are imported later, existing leads are not re-ranked. A lead that was Tier 2 before a batch of Tier 1 leads is added will stay ranked as Tier 2.
-   _Fix:_ Add a re-scoring endpoint (or scheduled job) that recomputes `priority_rank` across all leads in a targeting batch.
+2. ✅ **RESOLVED — `precision_tier`/`priority_rank` re-scoring.**
+   `POST /api/leads/rescore` (see `web/api/leads_api.py`) recomputes scores and tiers,
+   with optional `strategy`/`min_score` filters and a `trigger_rescore_after_import` hook.
 
 ### Frontend
 
@@ -271,9 +280,11 @@ See [USER_MANUAL.md](USER_MANUAL.md) for the full step-by-step workflow.
    Running an analysis in `/analyzer` does not appear in `/acquisitions` and vice versa. This can confuse users who expect one unified deal analysis workflow.
    _Fix:_ Both surfaces should query the same `deal_analyses` table; the standalone `/analyzer` page should accept a `leadId` query param to pre-populate from a lead record.
 
-9. **Supabase realtime subscriptions are not used — all panels poll on a fixed interval.**
-   `FunnelPanel` and `PrecisionTargetingPanel` refetch every 60–120 seconds. HOT lead counts and funnel stages can be stale by up to 2 minutes.
-   _Fix:_ Add a `supabase.channel()` subscription on `ai_call_records` INSERT to trigger an immediate query invalidation.
+9. **Partially resolved — Supabase realtime.**
+   ✅ HOT-lead / appointment alerts now arrive instantly via a `supabase.channel()` INSERT
+   subscription on `app_notifications` (`useNotifications.ts`), with toasts.
+   ⚠️ `FunnelPanel` / `PrecisionTargetingPanel` aggregate counts still poll on an interval;
+   add a channel subscription on `ai_call_records` INSERT to invalidate those queries live.
 
 10. **No loading skeleton for `StrategyComparisonPanel` on slow connections.**
     The panel renders nothing until its static data initializes. While the data is hardcoded (not fetched), a flash of empty content is visible on low-end devices.
