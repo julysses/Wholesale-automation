@@ -5,8 +5,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
-      "memory": 1024,
-      "includeFiles": "{web,agents,orchestrator,tools,config,prompts,schemas,data,templates}/**"
+      "includeFiles": "{web,agents,orchestrator,tools,config,schemas,data}/**"
     }
   },
   "rewrites": [
