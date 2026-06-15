@@ -63,6 +63,10 @@ RETELL_WEBHOOK_SECRET = os.getenv("RETELL_WEBHOOK_SECRET", "")
 AIR_AI_WEBHOOK_SECRET = os.getenv("AIR_AI_WEBHOOK_SECRET", "")
 VAPI_WEBHOOK_SECRET = os.getenv("VAPI_WEBHOOK_SECRET", "")
 
+# When true, webhooks whose secret is not configured are rejected (fail closed)
+# instead of accepted. Recommended for production. Default false for local/dev.
+WEBHOOK_STRICT = os.getenv("WEBHOOK_STRICT", "false").lower() == "true"
+
 
 def _verify_hmac_signature(body: bytes, signature: str, secret: str, source: str = "") -> bool:
     """
@@ -97,9 +101,19 @@ def _require_hmac_signature(body: bytes, signature: str, secret: str, source: st
         raise HTTPException(401, "Invalid webhook signature")
 
 
-def _verify_static_secret(received: str, expected: str) -> bool:
-    """Verify a static secret using constant-time comparison."""
+def _verify_static_secret(received: str, expected: str, source: str = "") -> bool:
+    """Verify a static secret using constant-time comparison.
+
+    When no secret is configured the endpoint is unauthenticated. This is allowed
+    for local/dev convenience but logged as a warning; set WEBHOOK_STRICT=true to
+    reject such requests (fail closed) in production.
+    """
     if not expected:
+        label = f":{source}" if source else ""
+        if WEBHOOK_STRICT:
+            logger.error(f"[webhook{label}] secret not configured — rejecting (WEBHOOK_STRICT)")
+            return False
+        logger.warning(f"[webhook{label}] secret not configured — endpoint is UNAUTHENTICATED")
         return True
     return hmac.compare_digest(received, expected)
 
@@ -309,7 +323,7 @@ async def batchdialer_call_webhook(
     Responds immediately with 200 so BatchDialer doesn't retry.
     All processing happens in the background.
     """
-    if not _verify_static_secret(x_webhook_secret, BATCHDIALER_WEBHOOK_SECRET):
+    if not _verify_static_secret(x_webhook_secret, BATCHDIALER_WEBHOOK_SECRET, source="batchdialer"):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -333,7 +347,7 @@ async def launch_control_reply_webhook(
     Receive an inbound SMS reply from Launch Control (or Zapier bridge).
     Detects opt-out keywords and suppresses the lead.
     """
-    if not _verify_static_secret(x_webhook_secret, LAUNCH_CONTROL_WEBHOOK_SECRET):
+    if not _verify_static_secret(x_webhook_secret, LAUNCH_CONTROL_WEBHOOK_SECRET, source="launch_control"):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -1226,7 +1240,7 @@ async def air_ai_call_webhook(
     """
     Receive a call completion event from Air AI.
     """
-    if not _verify_static_secret(x_webhook_secret, AIR_AI_WEBHOOK_SECRET):
+    if not _verify_static_secret(x_webhook_secret, AIR_AI_WEBHOOK_SECRET, source="air_ai"):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -1268,7 +1282,7 @@ async def vapi_webhook(
       Server URL: https://<your-domain>/webhooks/vapi
       Secret:     set VAPI_WEBHOOK_SECRET in your .env
     """
-    if not _verify_static_secret(x_vapi_secret, VAPI_WEBHOOK_SECRET):
+    if not _verify_static_secret(x_vapi_secret, VAPI_WEBHOOK_SECRET, source="vapi"):
         raise HTTPException(401, "Invalid VAPI webhook secret")
 
     payload = await request.json()

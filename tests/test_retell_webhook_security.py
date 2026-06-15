@@ -87,6 +87,23 @@ def test_retell_webhook_accepts_valid_hmac_signature(monkeypatch):
     assert response.json()["status"] == "accepted"
 
 
+def test_static_secret_matches_with_constant_time():
+    assert webhooks._verify_static_secret("s3cret", "s3cret") is True
+    assert webhooks._verify_static_secret("wrong", "s3cret") is False
+
+
+def test_static_secret_unconfigured_allows_by_default(monkeypatch):
+    monkeypatch.setattr(webhooks, "WEBHOOK_STRICT", False)
+    # No expected secret configured → allowed (dev convenience), but warned.
+    assert webhooks._verify_static_secret("anything", "", source="vapi") is True
+
+
+def test_static_secret_unconfigured_rejected_in_strict_mode(monkeypatch):
+    monkeypatch.setattr(webhooks, "WEBHOOK_STRICT", True)
+    # No expected secret + strict mode → fail closed.
+    assert webhooks._verify_static_secret("anything", "", source="vapi") is False
+
+
 def test_retell_call_webhook_rejects_legacy_static_secret(monkeypatch):
     secret = "test-secret"
     monkeypatch.setattr(webhooks, "RETELL_WEBHOOK_SECRET", secret)
