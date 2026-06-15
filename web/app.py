@@ -36,7 +36,10 @@ ROOT = Path(__file__).parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from orchestrator import MasterOrchestrator       # noqa: E402
+# NOTE: MasterOrchestrator is imported lazily inside the two /v1 routes that use
+# it (see v1_ingest / v1_run_pipeline). Importing it at module load pulls the
+# entire 16-agent graph into every cold start; the /api + /webhooks surface this
+# file actually serves on Vercel does not need it.
 from schemas.compliance import AuditLogEntry      # noqa: E402
 from schemas.property import DataSource           # noqa: E402
 from tools.crm import CRMStore                    # noqa: E402
@@ -194,6 +197,7 @@ def v1_ingest_leads(
         if not records:
             error = "CSV file is empty or has no data rows."
         else:
+            from orchestrator import MasterOrchestrator  # lazy: heavy agent graph
             leads_out = MasterOrchestrator().ingest_leads(records, _source_enum(source))
             new_count = sum(1 for lead in leads_out if crm.save_lead(lead, dedup=True))
             dup_count = len(leads_out) - new_count
@@ -229,6 +233,7 @@ def v1_run_pipeline(
         if not records:
             error = "CSV file is empty."
         else:
+            from orchestrator import MasterOrchestrator  # lazy: heavy agent graph
             orch  = MasterOrchestrator()
             state = orch.run_full_pipeline(records, _source_enum(source))
             for lead in state.raw_leads:   crm.save_lead(lead, dedup=True)

@@ -52,9 +52,15 @@ from tools.vapi_adapter import (
 )
 from tools.email_client import EmailClient
 from config.settings import settings
+from web.api.webhook_queue import enqueue, PENDING_AUTOMATIONS, drain as _drain_queue
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
+
+# Optional shared secret for the queue-drain endpoint. When set, the Vercel Cron
+# must present it as `Authorization: Bearer <CRON_SECRET>` (Vercel injects this
+# automatically when CRON_SECRET is configured in the project).
+CRON_SECRET = os.getenv("CRON_SECRET", "")
 
 # ── Optional webhook secret verification ──────────────────────────────────────
 BATCHDIALER_WEBHOOK_SECRET = os.getenv("BATCHDIALER_WEBHOOK_SECRET", "")
@@ -332,7 +338,7 @@ async def batchdialer_call_webhook(
     logger.debug(f"[Webhook] BatchDialer raw payload: {str(payload)[:200]}")
 
     event = BatchDialerAdapter.parse_call_webhook(payload)
-    background_tasks.add_task(_handle_call_result, event)
+    enqueue("batchdialer", payload)
 
     return {"status": "accepted", "disposition": event.disposition, "lead_id": event.lead_id}
 
@@ -353,13 +359,7 @@ async def launch_control_reply_webhook(
     payload = await request.json()
     event = LaunchControlAdapter.parse_reply_webhook(payload)
 
-    background_tasks.add_task(
-        _handle_sms_reply,
-        event.lead_id,
-        event.phone_number,
-        event.body,
-        event.is_opt_out,
-    )
+    enqueue("launch_control", payload)
 
     return {
         "status": "accepted",
@@ -527,18 +527,17 @@ async def retell_webhook(
 
     # ── Event: call started ───────────────────────────────────────────────────
     if event_type in ("call_started", "retell.call.started"):
-        background_tasks.add_task(_retell_call_started, call_id, lead_id, metadata, payload)
+        enqueue("retell", payload)
         return {"status": "accepted", "event": "call_started"}
 
     # ── Event: call answered (seller picked up) ───────────────────────────────
     if event_type in ("call_answered", "retell.call.answered"):
-        background_tasks.add_task(_retell_call_answered, call_id, lead_id)
+        enqueue("retell", payload)
         return {"status": "accepted", "event": "call_answered"}
 
     # ── Event: real-time transcript chunk ─────────────────────────────────────
     if event_type in ("call_transcript", "retell.call.transcript"):
-        transcript_chunk = call_data.get("transcript", [])
-        background_tasks.add_task(_retell_transcript_chunk, call_id, lead_id, transcript_chunk)
+        enqueue("retell", payload)
         return {"status": "accepted", "event": "call_transcript"}
 
     # ── Event: call completed (final) ────────────────────────────────────────
@@ -546,9 +545,7 @@ async def retell_webhook(
         "call_ended", "call_analyzed",
         "retell.call.completed", "retell.call.analyzed",
     ):
-        event = AICallingAdapter.parse_webhook(payload, provider="retell")
-        if event:
-            background_tasks.add_task(_retell_call_completed, event, payload)
+        enqueue("retell", payload)
         return {
             "status": "accepted",
             "event": "call_completed",
@@ -1130,19 +1127,32 @@ def _schedule_hot_lead_automation(
     arv: Optional[float],
     mao: Optional[float],
 ) -> None:
-    """Schedule HOT lead automation without blocking call-result processing."""
-    task = asyncio.create_task(
-        _trigger_hot_lead_automation(
-            sb=sb,
-            lead_id=lead_id,
-            call_id=call_id,
-            address=address,
-            owner=owner,
-            qual=qual,
-            arv=arv,
-            mao=mao,
-        )
+    """Schedule HOT lead automation without blocking call-result processing.
+
+    On a persistent server this detaches the work with ``asyncio.create_task``.
+    Inside the serverless queue worker (``drain``) a detached task would die when
+    the function returns, so when ``PENDING_AUTOMATIONS`` is active we hand the
+    coroutine to the worker to await instead.
+    """
+    coro = _trigger_hot_lead_automation(
+        sb=sb,
+        lead_id=lead_id,
+        call_id=call_id,
+        address=address,
+        owner=owner,
+        qual=qual,
+        arv=arv,
+        mao=mao,
     )
+
+    pending = PENDING_AUTOMATIONS.get()
+    if pending is not None:
+        # Running under the queue worker — let it await the coroutine.
+        pending.append(coro)
+        logger.info(f"[retell] HOT automation queued for worker, lead {lead_id}")
+        return
+
+    task = asyncio.create_task(coro)
 
     def _log_failure(done: asyncio.Task) -> None:
         try:
@@ -1220,7 +1230,7 @@ async def retell_call_webhook(
         # Non-final event (call_started, etc.) — acknowledge and ignore
         return {"status": "ignored", "reason": "non-final event"}
 
-    background_tasks.add_task(_handle_ai_call_result, event, "retell")
+    enqueue("retell_call", payload)
 
     return {
         "status": "accepted",
@@ -1249,7 +1259,7 @@ async def air_ai_call_webhook(
     if event is None:
         return {"status": "ignored", "reason": "unparseable payload"}
 
-    background_tasks.add_task(_handle_ai_call_result, event, "air_ai")
+    enqueue("air_ai", payload)
 
     return {
         "status": "accepted",
@@ -1311,7 +1321,7 @@ async def vapi_webhook(
         if result is None:
             return {"status": "ignored", "reason": "unparseable payload"}
 
-        background_tasks.add_task(_handle_vapi_call_result, result)
+        enqueue("vapi", payload)
 
         return {
             "status": "accepted",
@@ -1618,9 +1628,9 @@ async def facebook_lead_webhook(
     if not entries:
         return {"received": True, "leads": 0}
 
-    for entry in entries:
-        if entry.leadgen_id:
-            background_tasks.add_task(_process_facebook_lead, entry, adapter)
+    # Enqueue the raw payload once; the worker rebuilds the adapter from env and
+    # re-parses the entries before fetching each lead's field data.
+    enqueue("facebook", payload)
 
     return {"received": True, "leads": len(entries)}
 
@@ -1720,3 +1730,104 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         _send_hot_lead_notification(lead_id, fields, total_score)
 
     logger.info(f"[Facebook] Lead {lead_id} created (score={total_score}, tier={scores['priority_tier']})")
+
+
+# ── Queue processors (serverless) ─────────────────────────────────────────────
+# Each processor re-parses the raw provider payload that the webhook route stored
+# in webhook_jobs and awaits the real handler. The route already verified the
+# signature before enqueuing, so processors trust the stored payload.
+
+async def _process_batchdialer(payload: dict) -> None:
+    event = BatchDialerAdapter.parse_call_webhook(payload)
+    await _handle_call_result(event)
+
+
+async def _process_launch_control(payload: dict) -> None:
+    event = LaunchControlAdapter.parse_reply_webhook(payload)
+    await _handle_sms_reply(event.lead_id, event.phone_number, event.body, event.is_opt_out)
+
+
+async def _process_retell(payload: dict) -> None:
+    event_type = payload.get("event") or payload.get("event_type", "")
+    call_data = payload.get("call", {})
+    call_id = call_data.get("call_id", "")
+    metadata = call_data.get("metadata", {})
+    lead_id = metadata.get("lead_id", "")
+
+    if event_type in ("call_started", "retell.call.started"):
+        await _retell_call_started(call_id, lead_id, metadata, payload)
+    elif event_type in ("call_answered", "retell.call.answered"):
+        await _retell_call_answered(call_id, lead_id)
+    elif event_type in ("call_transcript", "retell.call.transcript"):
+        await _retell_transcript_chunk(call_id, lead_id, call_data.get("transcript", []))
+    elif event_type in (
+        "call_ended", "call_analyzed", "retell.call.completed", "retell.call.analyzed",
+    ):
+        event = AICallingAdapter.parse_webhook(payload, provider="retell")
+        if event:
+            await _retell_call_completed(event, payload)
+
+
+async def _process_retell_call(payload: dict) -> None:
+    event = AICallingAdapter.parse_webhook(payload, provider="retell")
+    if event is not None:
+        await _handle_ai_call_result(event, "retell")
+
+
+async def _process_air_ai(payload: dict) -> None:
+    event = AICallingAdapter.parse_webhook(payload, provider="air_ai")
+    if event is not None:
+        await _handle_ai_call_result(event, "air_ai")
+
+
+async def _process_vapi(payload: dict) -> None:
+    result = VapiAdapter.parse_webhook(payload)
+    if result is not None:
+        await _handle_vapi_call_result(result)
+
+
+async def _process_facebook(payload: dict) -> None:
+    from tools.facebook_ads_adapter import FacebookAdsAdapter
+    adapter = FacebookAdsAdapter(
+        app_secret=FACEBOOK_APP_SECRET,
+        access_token=os.getenv("FACEBOOK_ACCESS_TOKEN", ""),
+        webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
+        ad_account_id=os.getenv("FACEBOOK_AD_ACCOUNT_ID", ""),
+    )
+    for entry in adapter.parse_lead_webhook(payload):
+        if entry.leadgen_id:
+            await _process_facebook_lead(entry, adapter)
+
+
+def get_webhook_processors() -> dict:
+    """Map webhook_jobs.source → async processor. Used by the queue drainer."""
+    return {
+        "batchdialer":    _process_batchdialer,
+        "launch_control": _process_launch_control,
+        "retell":         _process_retell,
+        "retell_call":    _process_retell_call,
+        "air_ai":         _process_air_ai,
+        "vapi":           _process_vapi,
+        "facebook":       _process_facebook,
+    }
+
+
+@router.api_route("/_worker/drain", methods=["GET", "POST"])
+async def drain_webhook_queue(
+    request: Request,
+    authorization: str = Header(default=""),
+    x_worker_secret: str = Header(default=""),
+    limit: int = 10,
+) -> dict:
+    """
+    Process pending webhook jobs. Invoked once a minute by Vercel Cron
+    (configured in vercel.json). When CRON_SECRET is set, Vercel sends it as
+    `Authorization: Bearer <CRON_SECRET>`; we also accept an `x-worker-secret`
+    header for manual/local invocation.
+    """
+    if CRON_SECRET:
+        bearer = authorization[7:] if authorization.lower().startswith("bearer ") else ""
+        if not (hmac.compare_digest(bearer, CRON_SECRET)
+                or hmac.compare_digest(x_worker_secret, CRON_SECRET)):
+            raise HTTPException(401, "Unauthorized")
+    return await _drain_queue(limit=limit)
