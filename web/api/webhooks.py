@@ -1033,17 +1033,34 @@ async def _trigger_hot_lead_automation(
 
     # 3. Trigger SMS (immediate — Day 1)
     try:
-        from tools.launch_control_adapter import LaunchControlAdapter, LaunchControlContact
-        lc = LaunchControlAdapter()
-        hot_campaign = settings.launch_control_default_campaign + " HOT"
-        await lc.add_contact_to_campaign(LaunchControlContact(
-            lead_id=lead_id,
-            first_name=owner.split()[0] if owner else "",
-            last_name=" ".join(owner.split()[1:]) if owner else "",
-            phone="",  # fetched from lead record
-            property_address=address,
-            campaign_name=hot_campaign,
-        ))
+        # Resolve the seller's phone from the lead record (primary number).
+        lead_phone = ""
+        try:
+            lead_resp = (
+                sb.table("leads")
+                .select("owner_phone_1")
+                .eq("id", lead_id)
+                .single()
+                .execute()
+            )
+            lead_phone = (lead_resp.data or {}).get("owner_phone_1") or ""
+        except Exception as exc:
+            logger.warning(f"[retell] HOT SMS could not resolve lead phone for {lead_id}: {exc}")
+
+        if not lead_phone:
+            logger.warning(f"[retell] HOT SMS skipped — no phone on lead {lead_id}")
+        else:
+            from tools.launch_control_adapter import LaunchControlAdapter, LaunchControlContact
+            lc = LaunchControlAdapter()
+            hot_campaign = settings.launch_control_default_campaign + " HOT"
+            await lc.add_contact_to_campaign(LaunchControlContact(
+                lead_id=lead_id,
+                first_name=owner.split()[0] if owner else "",
+                last_name=" ".join(owner.split()[1:]) if owner else "",
+                phone=lead_phone,
+                property_address=address,
+                campaign_name=hot_campaign,
+            ))
     except Exception as exc:
         logger.error(f"[retell] HOT SMS trigger failed: {exc}")
 
