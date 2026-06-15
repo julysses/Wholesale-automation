@@ -195,9 +195,12 @@ def v1_ingest_leads(
             error = "CSV file is empty or has no data rows."
         else:
             leads_out = MasterOrchestrator().ingest_leads(records, _source_enum(source))
-            for lead in leads_out:
-                crm.save_lead(lead)
-            message = f"Ingested {len(leads_out)} lead(s) from {file.filename}"
+            new_count = sum(1 for lead in leads_out if crm.save_lead(lead, dedup=True))
+            dup_count = len(leads_out) - new_count
+            message = (
+                f"Ingested {new_count} new lead(s) from {file.filename}"
+                + (f" ({dup_count} duplicate(s) updated)" if dup_count else "")
+            )
     except Exception as exc:
         logger.exception("Ingest failed")
         error = str(exc)
@@ -228,7 +231,7 @@ def v1_run_pipeline(
         else:
             orch  = MasterOrchestrator()
             state = orch.run_full_pipeline(records, _source_enum(source))
-            for lead in state.raw_leads:   crm.save_lead(lead)
+            for lead in state.raw_leads:   crm.save_lead(lead, dedup=True)
             for deal in state.active_deals: crm.save_deal(deal)
             for entry in orch.export_audit_log():
                 crm.save_audit_entry(AuditLogEntry(**entry))

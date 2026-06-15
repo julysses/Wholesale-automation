@@ -90,12 +90,23 @@ def ingest(
         console.print(f"[blue]Ingesting {len(raw_records)} records from {source}...[/blue]")
         leads = orch.ingest_leads(raw_records, source_enum)
 
+        new_count = 0
+        dup_count = 0
         if not dry_run:
             for lead in leads:
-                crm.save_lead(lead)
+                if crm.save_lead(lead, dedup=True):
+                    new_count += 1
+                else:
+                    dup_count += 1
 
         _print_leads_table(leads)
-        console.print(f"\n[green]✓ {len(leads)} leads ingested[/green]")
+        if dry_run:
+            console.print(f"\n[green]✓ {len(leads)} leads parsed (dry run)[/green]")
+        else:
+            console.print(
+                f"\n[green]✓ {new_count} new leads ingested"
+                f"{f', {dup_count} duplicates updated' if dup_count else ''}[/green]"
+            )
     
     asyncio.run(_run())
 
@@ -125,9 +136,9 @@ def pipeline(
 
         state = await orch.run_full_pipeline(raw_records, source_enum)
 
-        # Persist everything to CRM
+        # Persist everything to CRM (dedup leads by address)
         for lead in state.raw_leads:
-            crm.save_lead(lead)
+            crm.save_lead(lead, dedup=True)
         for deal in state.active_deals:
             crm.save_deal(deal)
         for entry in orch.export_audit_log():

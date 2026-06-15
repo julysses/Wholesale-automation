@@ -133,3 +133,29 @@ class TestCRMStore:
         all_leads = crm.get_all_leads()
         assert len(all_leads) == 1
         assert all_leads[0]["distress_score"] == 75
+
+    def test_dedup_on_import_collapses_same_address(self, crm):
+        first = _make_lead()
+        second = _make_lead()  # same address, different id
+        assert first.id != second.id
+
+        assert crm.save_lead(first, dedup=True) is True    # new
+        assert crm.save_lead(second, dedup=True) is False  # duplicate updated
+
+        all_leads = crm.get_all_leads()
+        assert len(all_leads) == 1
+        # The original row id is preserved
+        assert str(all_leads[0]["id"]) == str(first.id)
+
+    def test_dedup_disabled_allows_duplicates(self, crm):
+        crm.save_lead(_make_lead())  # default dedup=False
+        crm.save_lead(_make_lead())
+        assert len(crm.get_all_leads()) == 2
+
+    def test_find_lead_by_address_case_insensitive(self, crm):
+        lead = _make_lead()
+        crm.save_lead(lead)
+        found = crm.find_lead_by_address(lead.address.full.upper())
+        assert found is not None
+        assert str(found["id"]) == str(lead.id)
+        assert crm.find_lead_by_address("999 Nowhere Ave") is None

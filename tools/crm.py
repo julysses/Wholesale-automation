@@ -137,21 +137,57 @@ class CRMStore:
 
     # ── Leads ─────────────────────────────────────────────────────────────────
 
-    def save_lead(self, lead: PropertyLead) -> None:
+    def find_lead_by_address(self, address_full: str) -> Optional[dict[str, Any]]:
+        """Return an existing lead row matching the given address (case/whitespace
+        insensitive), or None. Used for deduplication on import."""
+        if not address_full or not address_full.strip():
+            return None
+        norm = address_full.strip().lower()
+        with self._engine.connect() as conn:
+            row = conn.execute(
+                select(leads_table).where(
+                    func.lower(func.trim(leads_table.c.address_full)) == norm
+                )
+            ).first()
+            return dict(row._mapping) if row else None
+
+    def save_lead(self, lead: PropertyLead, dedup: bool = False) -> bool:
+        """Persist a lead.
+
+        When ``dedup`` is True and a lead with the same address already exists, the
+        existing record is updated in place (its id and created_at are preserved)
+        instead of creating a duplicate row.
+
+        Returns True if a new lead was inserted, False if an existing one was updated.
+        """
+        is_new = True
+        lead_id = str(lead.id)
+        created_at = lead.created_at
+        data = lead.model_dump(mode="json")
+
+        if dedup:
+            existing = self.find_lead_by_address(lead.address.full)
+            if existing and str(existing.get("id")) != lead_id:
+                lead_id = str(existing["id"])
+                created_at = existing.get("created_at") or created_at
+                data["id"] = lead_id   # keep embedded JSON id aligned with the row id
+                is_new = False
+
         with self._engine.begin() as conn:
             conn.execute(
                 leads_table.insert().prefix_with("OR REPLACE").values(
-                    id=str(lead.id),
+                    id=lead_id,
                     address_full=lead.address.full,
                     owner_name=lead.owner_name,
                     source=lead.source.value,
                     distress_score=lead.distress_score,
                     flagged=lead.flagged,
-                    data=lead.model_dump(mode="json"),
-                    created_at=lead.created_at,
+                    data=data,
+                    created_at=created_at,
                     updated_at=lead.updated_at,
                 )
             )
+        return is_new
 
     def get_lead(self, lead_id: str) -> Optional[dict[str, Any]]:
         with self._engine.connect() as conn:
