@@ -128,15 +128,15 @@ async def get_form_config(form_id: str):
         resp = supabase.table("lead_form_configs").select("*").eq("id", form_id).eq("active", True).single().execute()
         if resp.data:
             return resp.data
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("[lead_forms] config lookup by id %s failed: %s", form_id, exc)
 
     try:
         resp = supabase.table("lead_form_configs").select("*").eq("slug", form_id).eq("active", True).single().execute()
         if resp.data:
             return resp.data
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("[lead_forms] config lookup by slug %s failed: %s", form_id, exc)
 
     raise HTTPException(status_code=404, detail="Form not found or inactive")
 
@@ -168,14 +168,14 @@ async def submit_form(
     try:
         resp = supabase.table("lead_form_configs").select("*").eq("slug", form_id).eq("active", True).single().execute()
         form_config = resp.data
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("[lead_forms] submit config lookup by slug %s failed: %s", form_id, exc)
     if not form_config:
         try:
             resp = supabase.table("lead_form_configs").select("*").eq("id", form_id).eq("active", True).single().execute()
             form_config = resp.data
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("[lead_forms] submit config lookup by id %s failed: %s", form_id, exc)
     if not form_config:
         raise HTTPException(status_code=404, detail="Form not found")
 

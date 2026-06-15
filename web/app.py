@@ -60,6 +60,11 @@ app = FastAPI(
 )
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
+# By default the API is open (allow_origins=["*"]) so embedded /api/forms/* widgets
+# can be called from any landing-page domain. Auth is via Supabase JWT bearer tokens
+# (not cookies), so credentials are disabled and "*" is safe for that surface.
+# For a locked-down deployment (e.g. SPA on Vercel, API on Railway) set CORS_STRICT=true
+# and provide CORS_ORIGINS; Vercel preview domains (*.vercel.app) are allowed via regex.
 _cors_origins = [
     o.strip()
     for o in os.getenv(
@@ -68,14 +73,24 @@ _cors_origins = [
     ).split(",")
     if o.strip()
 ]
-app.add_middleware(
-    CORSMiddleware,
-    # Allow * so embedded /api/forms/* can be called from any landing page domain
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
-    allow_headers=["*"],
-)
+_cors_strict = os.getenv("CORS_STRICT", "false").lower() == "true"
+if _cors_strict:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_origin_regex=r"https://.*\.vercel\.app",
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_headers=["*"],
+    )
 
 # ── AI endpoints (used by React/WholesaleOS) ───────────────────────────────────
 app.include_router(ai_router)          # POST /api/ai/*

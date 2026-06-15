@@ -58,7 +58,9 @@ class Settings:
     twilio_auth_token: str = os.getenv("TWILIO_AUTH_TOKEN", "")
     twilio_from_number: str = os.getenv("TWILIO_FROM_NUMBER", "")
     telnyx_api_key: str = os.getenv("TELNYX_API_KEY", "")
+    telnyx_from_number: str = os.getenv("TELNYX_FROM_NUMBER", "")
     messagebird_api_key: str = os.getenv("MESSAGEBIRD_API_KEY", "")
+    messagebird_originator: str = os.getenv("MESSAGEBIRD_ORIGINATOR", "Texas Wholesale")
 
     # Email provider (SendGrid, Mailgun, Instantly)
     email_provider: str = os.getenv("EMAIL_PROVIDER", "sendgrid")

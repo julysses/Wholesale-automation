@@ -185,8 +185,11 @@ class SMSClient:
         import telnyx  # type: ignore
 
         telnyx.api_key = settings.telnyx_api_key
+        if not settings.telnyx_from_number:
+            logger.error("[SMSClient] TELNYX_FROM_NUMBER not configured")
+            return False
         result = telnyx.Message.create(
-            from_="+1XXXXXXXXXX",  # configure from number in settings
+            from_=settings.telnyx_from_number,
             to=to_number,
             text=message.body,
         )
@@ -200,7 +203,7 @@ class SMSClient:
 
         client = messagebird.Client(settings.messagebird_api_key)
         result = client.message_create(
-            "Texas Wholesale",
+            settings.messagebird_originator,
             [to_number],
             message.body,
         )
