@@ -50,9 +50,26 @@ Supabase pg_cron/pg_net ─► Edge Functions (PR #1 enrichment/ARV) ─► Post
    - Launch Control: `https://<backend>/webhooks/launch_control/reply`
    - Facebook Lead Ads: `https://<backend>/webhooks/facebook/lead`
 
-5. **Lock down CORS**: set `CORS_STRICT=true` and `CORS_ORIGINS=https://<your-vercel-domain>`
-   on the backend. `*.vercel.app` preview domains are allowed automatically.
+5. **Lock down CORS + webhooks**: set `CORS_STRICT=true` and
+   `CORS_ORIGINS=https://<your-vercel-domain>` on the backend (`*.vercel.app` preview
+   domains are allowed automatically). Also set `WEBHOOK_STRICT=true` so inbound webhooks
+   whose secret is not configured are rejected (fail closed) instead of accepted.
 
-6. **Supabase / PR #1**: apply migrations (incl. `011_realtyapi_integration.sql`) and deploy
-   the Edge Functions; set `REALTYAPI_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_URL`,
+6. **Supabase / PR #1**: apply migrations **in numeric order**, then deploy the Edge
+   Functions; set `REALTYAPI_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_URL`,
    `SUPABASE_SERVICE_ROLE_KEY` as Functions secrets. Enable `pg_net` + `pg_cron`.
+
+   Migration ordering matters — `011_realtyapi_integration.sql` (from PR #1) creates the
+   `trigger_enrich_lead()` function + `enrich_lead_on_insert` trigger, and
+   `012_enrich_rate_guard.sql` redefines that function to honor an `app.enrich_on_insert`
+   kill-switch. **Run 011 before 012.** When merging the two PRs, land PR #1 first (it
+   provides 011) or apply both migrations together — never apply 012 alone.
+
+   Before any bulk CSV import, disable the per-INSERT enrichment fan-out so thousands of
+   rows don't each fire a RealtyAPI + Claude call:
+
+   ```sql
+   ALTER DATABASE postgres SET app.enrich_on_insert = 'false';  -- before bulk import
+   -- ... run the import ...
+   ALTER DATABASE postgres SET app.enrich_on_insert = 'true';   -- re-enable, then backfill
+   ```
