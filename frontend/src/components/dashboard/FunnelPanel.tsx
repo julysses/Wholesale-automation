@@ -188,9 +188,9 @@ function FunnelStage({ icon, label, actual, target, ratio, color, bgColor, borde
           </div>
           <span className="text-xs text-gray-500">
             <span className={`font-bold ${isOnTrack ? 'text-green-600' : 'text-gray-700'}`}>
-              {actual.toLocaleString()}
+              {(actual ?? 0).toLocaleString()}
             </span>
-            <span className="text-gray-400"> / {target.toLocaleString()}</span>
+            <span className="text-gray-400"> / {(target ?? 0).toLocaleString()}</span>
           </span>
         </div>
         <div className="h-1.5 bg-white/50 rounded-full overflow-hidden">
@@ -275,7 +275,15 @@ export function FunnelPanel() {
           appointments_completed: appts.filter((a: any) => a.status === 'completed').length,
         };
       }
-      return data as FunnelMetrics;
+      const d = data as any;
+      return {
+        total_calls:            d.total_calls            ?? 0,
+        conversations:          d.conversations          ?? 0,
+        interested:             d.interested             ?? 0,
+        hot_leads:              d.hot_leads              ?? 0,
+        appointments:           d.appointments           ?? 0,
+        appointments_completed: d.appointments_completed ?? d.contracts_closed ?? 0,
+      } as FunnelMetrics;
     },
     staleTime: 120000,
   });
