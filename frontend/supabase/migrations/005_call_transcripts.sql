@@ -104,6 +104,9 @@ CREATE INDEX IF NOT EXISTS audit_logs_occurred_at_idx ON audit_logs(occurred_at 
 
 -- ── 5. Update funnel_metrics view (new targets: 30k → 6 contracts) ────────────
 
+-- Drop first: this redefinition reorders columns (adds warm_leads before
+-- hot_leads), which CREATE OR REPLACE VIEW cannot do (ERROR 42P16).
+DROP VIEW IF EXISTS funnel_metrics;
 CREATE OR REPLACE VIEW funnel_metrics AS
 SELECT
   -- Lead pool

@@ -1,20 +1,14 @@
 -- =====================================================================
--- WholesaleOS — complete database setup  (v2: clean reset)
+-- WholesaleOS — complete database setup  (v3: clean reset + view-drop fix)
 -- Run this ONCE in the Supabase Dashboard → SQL Editor (project
 -- dvzhzlipbwzzcliujzyz), then create your admin user.
 --
--- The project's public schema was only PARTIALLY applied (e.g. `leads`
--- existed but `profiles` did not), so re-running migrations collided
--- ("policy already exists"). This script wipes the empty public schema and
--- rebuilds it from scratch, then applies migrations 001–010 + 013 in order.
--- Migrations 011/012 belong to the unmerged RealtyAPI PR and are omitted.
---
--- SAFE: confirmed there is no application data to keep. Supabase internals
--- live in other schemas (auth, storage, extensions, …) and are untouched.
+-- Wipes the partially-applied public schema and rebuilds it from migrations
+-- 001–010 + 013 in order. (011/012 belong to the unmerged RealtyAPI PR.)
+-- SAFE: confirmed no application data to keep; only the public schema is
+-- touched (Supabase auth/storage/extensions schemas are untouched).
 -- =====================================================================
 
--- 0) Clean slate. Dropping public CASCADE also removes the orphaned
---    handle_new_user() function + its on_auth_user_created trigger.
 drop schema if exists public cascade;
 create schema public;
 grant all   on schema public to postgres;
@@ -985,6 +979,9 @@ CREATE INDEX IF NOT EXISTS audit_logs_occurred_at_idx ON audit_logs(occurred_at 
 
 -- ── 5. Update funnel_metrics view (new targets: 30k → 6 contracts) ────────────
 
+-- Drop first: this redefinition reorders columns (adds warm_leads before
+-- hot_leads), which CREATE OR REPLACE VIEW cannot do (ERROR 42P16).
+DROP VIEW IF EXISTS funnel_metrics;
 CREATE OR REPLACE VIEW funnel_metrics AS
 SELECT
   -- Lead pool
@@ -2267,8 +2264,7 @@ COMMENT ON TABLE webhook_jobs IS
 -- END 013_webhook_jobs.sql
 
 -- =====================================================================
--- Final grants: let the API roles reach the new tables. RLS (enabled by the
--- migrations) still restricts WHICH ROWS each role can see.
+-- Final grants: API roles can reach the tables; RLS still gates rows.
 -- =====================================================================
 grant all on all tables    in schema public to anon, authenticated, service_role;
 grant all on all sequences in schema public to anon, authenticated, service_role;
