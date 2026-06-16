@@ -1,21 +1,26 @@
 -- =====================================================================
--- WholesaleOS — complete database setup
+-- WholesaleOS — complete database setup  (v2: clean reset)
 -- Run this ONCE in the Supabase Dashboard → SQL Editor (project
 -- dvzhzlipbwzzcliujzyz), then create your admin user.
 --
--- It applies migrations 001–010 + 013 in order. Migrations 011/012 belong
--- to the unmerged RealtyAPI PR and are intentionally omitted.
+-- The project's public schema was only PARTIALLY applied (e.g. `leads`
+-- existed but `profiles` did not), so re-running migrations collided
+-- ("policy already exists"). This script wipes the empty public schema and
+-- rebuilds it from scratch, then applies migrations 001–010 + 013 in order.
+-- Migrations 011/012 belong to the unmerged RealtyAPI PR and are omitted.
 --
--- Why this is needed: the project's public schema was never applied, but an
--- orphaned on_auth_user_created trigger remained — it tried to INSERT INTO a
--- non-existent "profiles" table, so every signup failed with
--- "Database error creating new user". We drop that orphan first, then build
--- the real schema (which recreates the trigger correctly).
+-- SAFE: confirmed there is no application data to keep. Supabase internals
+-- live in other schemas (auth, storage, extensions, …) and are untouched.
 -- =====================================================================
 
--- 0) Remove the orphaned signup trigger + function from the prior partial setup.
-drop trigger if exists on_auth_user_created on auth.users;
-drop function if exists public.handle_new_user() cascade;
+-- 0) Clean slate. Dropping public CASCADE also removes the orphaned
+--    handle_new_user() function + its on_auth_user_created trigger.
+drop schema if exists public cascade;
+create schema public;
+grant all   on schema public to postgres;
+grant all   on schema public to public;
+grant usage on schema public to anon, authenticated, service_role;
+drop trigger if exists on_auth_user_created on auth.users;  -- belt-and-suspenders
 
 
 -- ============================================================
@@ -2260,3 +2265,11 @@ COMMENT ON TABLE webhook_jobs IS
   'Durable queue for inbound provider webhooks under serverless (Vercel) hosting. Drained by POST /webhooks/_worker/drain via Vercel Cron.';
 
 -- END 013_webhook_jobs.sql
+
+-- =====================================================================
+-- Final grants: let the API roles reach the new tables. RLS (enabled by the
+-- migrations) still restricts WHICH ROWS each role can see.
+-- =====================================================================
+grant all on all tables    in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+grant all on all functions in schema public to anon, authenticated, service_role;
