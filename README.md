@@ -153,6 +153,7 @@ python -m pytest -q
 | Variable | Description |
 |---|---|
 | `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase anon key fallback for `/api/config` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (bypasses RLS for webhooks) |
 | `RETELL_API_KEY` | Retell AI API key |
 | `RETELL_AGENT_ID` | Retell agent ID to use for outbound calls |
@@ -168,6 +169,11 @@ python -m pytest -q
 |---|---|
 | `VITE_SUPABASE_URL` | Same Supabase URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon key (public) |
+
+`/api/config` prefers the `VITE_` names and falls back to `SUPABASE_URL` /
+`SUPABASE_ANON_KEY`. In Vercel, make sure the project URL resolves in DNS; if the
+Supabase project is paused, deleted, or the ref is wrong, the login page will show
+a Supabase Auth connectivity error.
 
 ---
 

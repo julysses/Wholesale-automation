@@ -12,7 +12,8 @@ Production (single process):
 
 Environment variables (see .env.example):
     ANTHROPIC_API_KEY, DATABASE_URL, CORS_ORIGINS,
-    VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY  ← used by /api/config
+    VITE_SUPABASE_URL/SUPABASE_URL,
+    VITE_SUPABASE_ANON_KEY/SUPABASE_ANON_KEY  ← used by /api/config
 """
 
 from __future__ import annotations
@@ -154,8 +155,16 @@ def frontend_config() -> dict:
     Eliminates the need to bake VITE_ vars into the frontend build image.
     """
     return {
-        "supabase_url":      os.getenv("VITE_SUPABASE_URL", ""),
-        "supabase_anon_key": os.getenv("VITE_SUPABASE_ANON_KEY", ""),
+        "supabase_url": (
+            os.getenv("VITE_SUPABASE_URL")
+            or os.getenv("SUPABASE_URL")
+            or ""
+        ).strip(),
+        "supabase_anon_key": (
+            os.getenv("VITE_SUPABASE_ANON_KEY")
+            or os.getenv("SUPABASE_ANON_KEY")
+            or ""
+        ).strip(),
     }
 
 
