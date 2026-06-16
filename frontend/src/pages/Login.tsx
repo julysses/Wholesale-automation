@@ -7,6 +7,19 @@ import { Building2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from 'sonner';
 
+function getLoginErrorMessage(message: string): string {
+  const normalized = message.toLowerCase();
+  const isNetworkFailure =
+    normalized.includes('load failed') ||
+    normalized.includes('failed to fetch') ||
+    normalized.includes('networkerror') ||
+    normalized.includes('fetch failed');
+
+  if (!isNetworkFailure) return message;
+
+  return 'Could not reach Supabase Auth. Check that the Supabase project is active and VITE_SUPABASE_URL points to the correct project.';
+}
+
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,7 +34,7 @@ export function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      toast.error(error.message);
+      toast.error(getLoginErrorMessage(error.message));
       setLoading(false);
       return;
     }

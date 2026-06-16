@@ -85,3 +85,27 @@
 ## Review Notes
 - Focused verification passed with `.venv/bin/python -m pytest -q tests/test_deal_analyzer_arv_fallback.py tests/test_precision_improvements.py`: 7 passed.
 - Full verification passed with `.venv/bin/python -m pytest -q`: 122 passed.
+
+---
+
+# Production Sign-In Load Failure
+
+## Checklist
+- [x] Pull latest tracked branch from GitHub before editing.
+- [x] Reproduce or inspect the production login/config failure path.
+- [x] Identify the root cause in the frontend/API auth bootstrap.
+- [x] Implement the smallest production-safe fix.
+- [x] Add focused regression coverage where practical.
+- [x] Run build/test verification.
+- [x] Review diff, commit, and push.
+
+## Review Notes
+- User confirmed `https://github.com/julysses/Wholesale-automation` is the correct repo.
+- Screenshot shows the React sign-in page at `wholesale-automation.vercel.app` with a `Load failed` toast after sign-in.
+- Production `/api/config` returns Supabase project ref `dvzhzlipbwzzcliujzyz`; `/api/health` is healthy.
+- Direct auth call to `https://dvzhzlipbwzzcliujzyz.supabase.co` fails DNS resolution, while `https://supabase.com` resolves. This points to a wrong, paused, deleted, or otherwise inactive Supabase project ref in Vercel env.
+- Vercel CLI is installed but not authenticated in this shell, so deployed env vars could not be changed directly.
+- Code fix: `/api/config` now falls back to `SUPABASE_URL` / `SUPABASE_ANON_KEY`, trims env values, and the login page shows a specific Supabase Auth connectivity error instead of raw `Load failed`.
+- Verification passed with `.venv/bin/python -m pytest -q tests/test_frontend_config.py`: 2 passed.
+- Verification passed with `npm run build` in `frontend`.
+- Verification passed with `.venv/bin/python -m pytest -q`: 130 passed.

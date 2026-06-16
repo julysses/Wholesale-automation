@@ -39,8 +39,9 @@ Supabase pg_cron/pg_net ─► Edge Functions (PR #1 enrichment/ARV) ─► Post
    Railway host. Commit.
 
 3. **Deploy the frontend** (Vercel): import the repo. Build settings come from `vercel.json`.
-   Set Vercel env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Deploy a
-   preview, smoke-test, then promote to production.
+   Set Vercel env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The runtime
+   `/api/config` endpoint also accepts `SUPABASE_URL` and `SUPABASE_ANON_KEY` as
+   fallbacks. Deploy a preview, smoke-test, then promote to production.
 
 4. **Point webhook providers directly at the backend host** (NOT through Vercel) so signed
    request bodies are byte-preserved:
