@@ -5,7 +5,7 @@ import { useProfile } from '@/hooks/useProfile';
 import {
   LayoutDashboard, Users, GitBranch, Calculator, UserCheck,
   Bot, CheckSquare, BarChart3, ChevronLeft, ChevronRight,
-  Building2, ShieldCheck, Zap, Flame, BookOpen, TreePine, BrainCircuit, Megaphone, Target
+  Building2, ShieldCheck, Zap, Flame, BookOpen, TreePine, BrainCircuit, Megaphone, Target, TrendingUp
 } from 'lucide-react';
 
 const mainNav = [
@@ -22,6 +22,7 @@ const mainNav = [
   { path: '/tasks',         label: 'Tasks',          icon: CheckSquare },
   { path: '/reports',       label: 'Reports',        icon: BarChart3 },
   { path: '/land',          label: 'Vacant Land',    icon: TreePine },
+  { path: '/market-pulse',  label: 'Market Pulse',   icon: TrendingUp },
   { path: '/manual',        label: 'User Manual',    icon: BookOpen },
 ];
 
