@@ -225,6 +225,19 @@ function WelcomeStep({ onNext, onSkip }: StepProps) {
 function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
   const [key, setKey] = useState(saved['anthropic_api_key'] ?? '');
   const [status, setStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+
+  const markVerified = async (k: string) => {
+    setStatus('ok');
+    setErrorDetail(null);
+    toast.success('API key verified with Anthropic');
+    saveAppSettings({ anthropic_api_key: k })
+      .then(() => toast.success('Key saved'))
+      .catch((err: any) => toast.warning(
+        `Key verified, but Supabase save failed: ${err?.message ?? 'unknown error'}. Vercel env vars remain active.`,
+      ));
+    await onAutoComplete?.();
+  };
 
   const testConnection = async () => {
     const k = key.trim();
@@ -233,6 +246,7 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
       return;
     }
     setStatus('testing');
+    setErrorDetail(null);
     try {
       // Test the pasted key DIRECTLY against Anthropic from the browser.
       // The dangerous-direct-browser-access header enables CORS on Anthropic's
@@ -253,25 +267,44 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
         }),
       });
       if (resp.ok) {
-        setStatus('ok');
-        toast.success('API key verified with Anthropic');
-        saveAppSettings({ anthropic_api_key: k })
-          .then(() => toast.success('Key saved'))
-          .catch((err: any) => toast.warning(
-            `Key verified, but Supabase save failed: ${err?.message ?? 'unknown error'}. Vercel env vars remain active.`,
-          ));
-        await onAutoComplete?.();
-      } else if (resp.status === 401) {
-        setStatus('error');
-        toast.error('Anthropic rejected this key (401) — copy it again from the Anthropic console');
-      } else {
-        const body = await resp.json().catch(() => null);
-        setStatus('error');
-        toast.error(`Anthropic returned ${resp.status}: ${body?.error?.message ?? 'unexpected error'}`);
+        await markVerified(k);
+        return;
       }
-    } catch {
+      const body = await resp.json().catch(() => null);
+      const msg: string = body?.error?.message ?? 'unexpected error';
+      if (resp.status === 401) {
+        setErrorDetail(
+          'Anthropic rejected this key as invalid (401). Re-copy it from console.anthropic.com → API Keys — it should start with "sk-ant-". If you just created it, make sure you copied the full key before closing the dialog.',
+        );
+      } else if (resp.status === 400 && /credit|billing|balance/i.test(msg)) {
+        setErrorDetail(
+          'Your key is VALID, but your Anthropic account has no API credits. API usage is billed separately from a Claude.ai subscription — go to console.anthropic.com → Plans & Billing and purchase API credits, then re-test.',
+        );
+      } else if (resp.status === 429) {
+        setErrorDetail('Anthropic rate limit hit (429) — wait a minute and re-test.');
+      } else {
+        setErrorDetail(`Anthropic returned ${resp.status}: ${msg}`);
+      }
       setStatus('error');
-      toast.error('Could not reach api.anthropic.com — check your internet connection');
+    } catch {
+      // Direct browser call blocked (network filter, extension, or CORS issue) —
+      // fall back to testing the same key through our backend.
+      try {
+        const r = await fetch('/api/ai/test-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: k }),
+        });
+        if (r.ok) {
+          await markVerified(k);
+          return;
+        }
+        const b = await r.json().catch(() => null);
+        setErrorDetail(`Backend key test failed (${r.status}): ${b?.detail ?? 'unknown error'}`);
+      } catch {
+        setErrorDetail('Could not reach api.anthropic.com or the backend. Check your internet connection, or disable ad-blockers/VPN filters for this site and re-test.');
+      }
+      setStatus('error');
     }
   };
 
@@ -294,6 +327,11 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
         wasSaved={!!saved['anthropic_api_key']}
       />
       <StatusBar status={status} onTest={testConnection} testLabel="Test AI Connection" />
+      {errorDetail && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 leading-relaxed">
+          {errorDetail}
+        </div>
+      )}
       <div className="flex gap-3">
         <Button variant="outline" onClick={onSkip} className="flex-1"><SkipForward className="h-4 w-4 mr-1" /> Skip</Button>
         <Button onClick={() => onNext(key.trim() ? { anthropic_api_key: key } : {})} className="flex-1" disabled={status === 'testing'}>
