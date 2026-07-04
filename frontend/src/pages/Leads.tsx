@@ -138,13 +138,21 @@ export function Leads() {
   const createDeal = useCreateDeal();
   const [logActivityLead, setLogActivityLead] = useState<Lead | null>(null);
 
-  // Open the Add Lead modal when arriving via the TopBar "Add Lead" button (?add=1)
+  // Open the Add Lead modal (?add=1, from the TopBar button) or the CSV import
+  // modal (?import=1, from the PropStream pull guide) when arriving via deep link
   useEffect(() => {
+    let changed = false;
     if (searchParams.get('add') === '1') {
       setAddOpen(true);
       searchParams.delete('add');
-      setSearchParams(searchParams, { replace: true });
+      changed = true;
     }
+    if (searchParams.get('import') === '1') {
+      setImportOpen(true);
+      searchParams.delete('import');
+      changed = true;
+    }
+    if (changed) setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, Circle, Lock, ChevronDown, ChevronUp, ArrowRight, BookOpen, Zap } from 'lucide-react';
 import { useWorkflowStep, WORKFLOW_STEPS } from '@/hooks/useWorkflowStep';
+import { PropStreamPullGuide } from '@/components/dashboard/PropStreamPullGuide';
 
 const STEP_DETAILS: Record<number, { what: string; system: string }> = {
   1:  { what: 'Register, run the 7 database migrations in Supabase SQL Editor, and save your API keys in the Setup Wizard.',
@@ -168,6 +169,8 @@ export function WorkflowGuide() {
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">System does automatically</p>
                         <p className="text-sm text-gray-500 leading-relaxed">{detail.system}</p>
                       </div>
+                      {/* Step 3: strategy-specific PropStream pull instructions */}
+                      {step.number === 3 && <PropStreamPullGuide />}
                       {/* CTA */}
                       {(isActive || isDone) && (
                         <Link
