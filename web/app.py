@@ -106,6 +106,22 @@ app.include_router(marketing_router)   # POST /api/marketing/*
 app.include_router(leads_router)       # POST /api/leads/*
 app.include_router(appointments_router) # POST /api/appointments/*
 
+# ── Load settings from Supabase app_settings (env vars take priority) ─────────
+# Runs once per cold start. Fills in any blank env-var settings from the
+# app_settings table — lets the Setup Wizard persist config without a redeploy.
+try:
+    _sb_url = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL", "")
+    _sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    if _sb_url and _sb_key:
+        from supabase import create_client as _create_client
+        _sb = _create_client(_sb_url, _sb_key)
+        _rows = _sb.table("app_settings").select("key,value").execute()
+        if _rows.data:
+            from config.settings import load_settings_from_rows
+            load_settings_from_rows(_rows.data)
+except Exception:
+    pass  # env vars already loaded; Supabase table is optional
+
 # ── Jinja2 templates (legacy pipeline UI at /v1/*) ────────────────────────────
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 

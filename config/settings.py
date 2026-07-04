@@ -167,3 +167,15 @@ class Settings:
 
 
 settings = Settings()
+
+
+def load_settings_from_rows(rows: list) -> None:
+    """Override settings from app_settings table rows [{key, value}].
+    Env vars take priority — only fills in blanks."""
+    for row in rows:
+        attr = row.get("key", "").lower()
+        val = row.get("value", "")
+        if not val:
+            continue
+        if hasattr(settings, attr) and not getattr(settings, attr):
+            setattr(settings, attr, val)
