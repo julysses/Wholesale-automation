@@ -180,11 +180,12 @@ interface StepProps {
   onNext: (values?: Record<string, string>) => void;
   onSkip: () => void;
   saved: Record<string, string>;
+  onAutoComplete?: () => Promise<void>;
 }
 
 // ── Step components ───────────────────────────────────────────────────────────
 
-function WelcomeStep({ onNext }: StepProps) {
+function WelcomeStep({ onNext, onSkip }: StepProps) {
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-[#1B3A5C] to-[#2a5580] rounded-2xl p-6 text-white">
@@ -214,25 +215,34 @@ function WelcomeStep({ onNext }: StepProps) {
       <Button onClick={() => onNext()} className="w-full" size="lg">
         Start Setup <ChevronRight className="h-4 w-4 ml-1" />
       </Button>
+      <button onClick={onSkip} className="text-xs text-gray-400 hover:text-gray-600 w-full text-center">
+        Skip for now
+      </button>
     </div>
   );
 }
 
-function AnthropicStep({ onNext, onSkip, saved }: StepProps) {
+function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
   const [key, setKey] = useState(saved['anthropic_api_key'] ?? '');
   const [status, setStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
 
   const testConnection = async () => {
+    if (!key.trim()) {
+      toast.error('Enter your API key first');
+      return;
+    }
     setStatus('testing');
     try {
-      const resp = await fetch('/api/ai/qualify-lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ property_address: 'Test 123 Main St', city: 'Austin' }),
-      });
-      setStatus(resp.ok ? 'ok' : 'error');
-      if (resp.ok) toast.success('Anthropic connection verified');
-      else toast.error('Anthropic API test failed — check your key');
+      await saveAppSettings({ anthropic_api_key: key });
+      const resp = await fetch('/api/ai/test');
+      if (resp.ok) {
+        setStatus('ok');
+        toast.success('Anthropic connection verified');
+        await onAutoComplete?.();
+      } else {
+        setStatus('error');
+        toast.error('Anthropic API test failed — check your key');
+      }
     } catch {
       setStatus('error');
       toast.error('Could not reach the API');
@@ -254,6 +264,7 @@ function AnthropicStep({ onNext, onSkip, saved }: StepProps) {
       />
       <StatusBar status={status} onTest={testConnection} testLabel="Test AI Connection" />
       <div className="flex gap-3">
+        <Button variant="outline" onClick={onSkip} className="flex-1"><SkipForward className="h-4 w-4 mr-1" /> Skip</Button>
         <Button onClick={() => onNext({ anthropic_api_key: key })} className="flex-1" disabled={status === 'testing'}>
           {status === 'ok' ? 'Verified — Next' : 'Save & Next'} <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
@@ -262,7 +273,7 @@ function AnthropicStep({ onNext, onSkip, saved }: StepProps) {
   );
 }
 
-function AgencyStep({ onNext, saved }: StepProps) {
+function AgencyStep({ onNext, onSkip, saved }: StepProps) {
   const [vals, setVals] = useState({
     agency_name:         saved['agency_name']         ?? '',
     agency_contact_name: saved['agency_contact_name'] ?? '',
@@ -280,9 +291,12 @@ function AgencyStep({ onNext, saved }: StepProps) {
       <KeyField envKey="AGENCY_CONTACT_NAME" label="Contact First Name" description="First name used in SMS templates" example="Alex" isSecret={false} value={vals.agency_contact_name} onChange={set('agency_contact_name')} wasSaved={!!saved['agency_contact_name']} />
       <KeyField envKey="AGENCY_PHONE" label="Call-back Phone" description="E.164 format, e.g. +15125550100" example="+15125550100" isSecret={false} value={vals.agency_phone} onChange={set('agency_phone')} wasSaved={!!saved['agency_phone']} />
       <KeyField envKey="AGENCY_STATE" label="State Code" description="Two-letter state, e.g. TX" example="TX" isSecret={false} value={vals.agency_state} onChange={set('agency_state')} wasSaved={!!saved['agency_state']} />
-      <Button onClick={() => onNext(vals)} className="w-full">
-        Save & Next <ChevronRight className="h-4 w-4 ml-1" />
-      </Button>
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={onSkip} className="flex-1"><SkipForward className="h-4 w-4 mr-1" /> Skip</Button>
+        <Button onClick={() => onNext(vals)} className="flex-1">
+          Save & Next <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -552,6 +566,10 @@ export function SetupWizard() {
     if (currentIdx < STEPS.length - 1) setCurrentIdx(currentIdx + 1);
   }, [currentIdx]);
 
+  const handleAutoComplete = useCallback(async () => {
+    await markStep(STEPS[currentIdx].id);
+  }, [currentIdx]);
+
   const step = STEPS[currentIdx];
   const StepContent = step.content;
   const progress = Math.round((completedSteps.size / STEPS.length) * 100);
@@ -612,7 +630,7 @@ export function SetupWizard() {
           {settingsLoaded ? (
             // key forces re-mount when savedSettings first loads so useState
             // initializers in each step receive the correct pre-filled values
-            <StepContent key={step.id} onNext={handleNext} onSkip={handleSkip} saved={savedSettings} />
+            <StepContent key={step.id} onNext={handleNext} onSkip={handleSkip} saved={savedSettings} onAutoComplete={handleAutoComplete} />
           ) : (
             <div className="flex items-center justify-center py-12">
               <div className="h-6 w-6 border-2 border-[#1B3A5C] border-t-transparent rounded-full animate-spin" />

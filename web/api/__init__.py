@@ -313,3 +313,17 @@ Return top 5 matches. Consider: buy-box fit (zip/price/type), close speed, relia
     except Exception as exc:
         logger.exception("match-buyers failed")
         raise HTTPException(500, str(exc))
+
+
+# ── 5. Lightweight connectivity test ──────────────────────────────────────────
+
+@router.get("/test")
+def test_anthropic_connection() -> dict:
+    """1-token Haiku ping — confirms the API key authenticates. Used by the Setup Wizard."""
+    client = _get_client()  # raises 503 if key missing
+    client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1,
+        messages=[{"role": "user", "content": "ping"}],
+    )
+    return {"ok": True}
