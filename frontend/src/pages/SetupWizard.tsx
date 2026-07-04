@@ -87,12 +87,13 @@ function TextInput({
 
 function KeyField({
   envKey, label, description, example, docsUrl, docsLabel, isSecret = true, isFlag,
-  value, onChange,
+  value, onChange, wasSaved,
 }: {
   envKey: string; label: string; description: string; example: string;
   docsUrl?: string; docsLabel?: string; isSecret?: boolean; isFlag?: boolean;
-  value: string; onChange: (v: string) => void;
+  value: string; onChange: (v: string) => void; wasSaved?: boolean;
 }) {
+  const savedFromDb = wasSaved && value !== '';
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
       <div className="px-4 py-3 space-y-2">
@@ -115,7 +116,7 @@ function KeyField({
         )}
         {value && (
           <p className="text-xs text-green-600 flex items-center gap-1">
-            <CheckCircle className="h-3 w-3" /> Entered
+            <CheckCircle className="h-3 w-3" /> {savedFromDb ? 'Previously saved' : 'Entered'}
           </p>
         )}
       </div>
@@ -249,6 +250,7 @@ function AnthropicStep({ onNext, onSkip, saved }: StepProps) {
         docsLabel="Get key"
         value={key}
         onChange={setKey}
+        wasSaved={!!saved['anthropic_api_key']}
       />
       <StatusBar status={status} onTest={testConnection} testLabel="Test AI Connection" />
       <div className="flex gap-3">
@@ -274,10 +276,10 @@ function AgencyStep({ onNext, saved }: StepProps) {
       <p className="text-sm text-gray-600">
         These values appear in all outreach messages sent on your behalf.
       </p>
-      <KeyField envKey="AGENCY_NAME" label="Agency Name" description="Your company or brand name" example="Texas Wholesale Solutions" isSecret={false} value={vals.agency_name} onChange={set('agency_name')} />
-      <KeyField envKey="AGENCY_CONTACT_NAME" label="Contact First Name" description="First name used in SMS templates" example="Alex" isSecret={false} value={vals.agency_contact_name} onChange={set('agency_contact_name')} />
-      <KeyField envKey="AGENCY_PHONE" label="Call-back Phone" description="E.164 format, e.g. +15125550100" example="+15125550100" isSecret={false} value={vals.agency_phone} onChange={set('agency_phone')} />
-      <KeyField envKey="AGENCY_STATE" label="State Code" description="Two-letter state, e.g. TX" example="TX" isSecret={false} value={vals.agency_state} onChange={set('agency_state')} />
+      <KeyField envKey="AGENCY_NAME" label="Agency Name" description="Your company or brand name" example="Texas Wholesale Solutions" isSecret={false} value={vals.agency_name} onChange={set('agency_name')} wasSaved={!!saved['agency_name']} />
+      <KeyField envKey="AGENCY_CONTACT_NAME" label="Contact First Name" description="First name used in SMS templates" example="Alex" isSecret={false} value={vals.agency_contact_name} onChange={set('agency_contact_name')} wasSaved={!!saved['agency_contact_name']} />
+      <KeyField envKey="AGENCY_PHONE" label="Call-back Phone" description="E.164 format, e.g. +15125550100" example="+15125550100" isSecret={false} value={vals.agency_phone} onChange={set('agency_phone')} wasSaved={!!saved['agency_phone']} />
+      <KeyField envKey="AGENCY_STATE" label="State Code" description="Two-letter state, e.g. TX" example="TX" isSecret={false} value={vals.agency_state} onChange={set('agency_state')} wasSaved={!!saved['agency_state']} />
       <Button onClick={() => onNext(vals)} className="w-full">
         Save & Next <ChevronRight className="h-4 w-4 ml-1" />
       </Button>
@@ -496,6 +498,7 @@ export function SetupWizard() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [savedSettings, setSavedSettings] = useState<Record<string, string>>({});
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -503,17 +506,23 @@ export function SetupWizard() {
       fetchAppSettings(),
     ]).then(([checklistRes, appSettings]) => {
       const data = checklistRes.data ?? [];
-      const done = new Set(data.filter(r => r.completed || r.skipped).map(r => r.step));
+      const done = new Set(data.filter((r: any) => r.completed || r.skipped).map((r: any) => r.step as string));
       setCompletedSteps(done);
       setSavedSettings(appSettings);
+      setSettingsLoaded(true);
       const firstIncomplete = STEPS.findIndex(s => !done.has(s.id));
       if (firstIncomplete > 0) setCurrentIdx(firstIncomplete);
     });
   }, []);
 
   const markStep = async (stepId: string, skipped = false) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     await supabase.from('setup_checklist').upsert({
-      step: stepId, completed: !skipped, skipped,
+      user_id: user.id,
+      step: stepId,
+      completed: !skipped,
+      skipped,
       completed_at: new Date().toISOString(),
     }, { onConflict: 'user_id,step' });
     setCompletedSteps(prev => new Set([...prev, stepId]));
@@ -600,7 +609,15 @@ export function SetupWizard() {
             <span className="text-xs text-gray-400">Step {currentIdx + 1} of {STEPS.length}</span>
             {step.optional && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Optional</span>}
           </div>
-          <StepContent onNext={handleNext} onSkip={handleSkip} saved={savedSettings} />
+          {settingsLoaded ? (
+            // key forces re-mount when savedSettings first loads so useState
+            // initializers in each step receive the correct pre-filled values
+            <StepContent key={step.id} onNext={handleNext} onSkip={handleSkip} saved={savedSettings} />
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 border-2 border-[#1B3A5C] border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
           {currentIdx > 0 && (
             <button onClick={() => setCurrentIdx(currentIdx - 1)} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 mt-4">
               <ChevronLeft className="h-3.5 w-3.5" /> Back
