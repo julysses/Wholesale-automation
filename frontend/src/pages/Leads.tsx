@@ -138,6 +138,16 @@ export function Leads() {
   const createDeal = useCreateDeal();
   const [logActivityLead, setLogActivityLead] = useState<Lead | null>(null);
 
+  // Open the Add Lead modal when arriving via the TopBar "Add Lead" button (?add=1)
+  useEffect(() => {
+    if (searchParams.get('add') === '1') {
+      setAddOpen(true);
+      searchParams.delete('add');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   // Filter leads by tier client-side (Supabase query doesn't include tier filter yet)
   const filteredLeads = tier ? leads.filter((l) => l.priority_tier === tier) : leads;
 

@@ -114,7 +114,8 @@ export function CampaignWizard({ campaignId, onComplete, onCancel }: Props) {
     return Object.keys(errs).length === 0;
   };
 
-  const saveDraft = async () => {
+  // Returns the campaign id so callers don't depend on the (async) savedId state
+  const saveDraft = async (): Promise<string | undefined> => {
     setSaving(true);
     try {
       const payload = {
@@ -129,10 +130,11 @@ export function CampaignWizard({ campaignId, onComplete, onCancel }: Props) {
       };
       if (savedId) {
         await supabase.from('fb_campaigns').update(payload).eq('id', savedId);
-      } else {
-        const { data } = await supabase.from('fb_campaigns').insert(payload).select().single();
-        if (data?.id) setSavedId(data.id);
+        return savedId;
       }
+      const { data } = await supabase.from('fb_campaigns').insert(payload).select().single();
+      if (data?.id) setSavedId(data.id);
+      return data?.id;
     } finally {
       setSaving(false);
     }
@@ -143,7 +145,7 @@ export function CampaignWizard({ campaignId, onComplete, onCancel }: Props) {
     if (step < 6) {
       setStep(s => s + 1);
     } else {
-      saveDraft().then(() => { if (savedId) onComplete?.(savedId); });
+      saveDraft().then((id) => { if (id) onComplete?.(id); });
     }
   };
 
@@ -187,7 +189,7 @@ export function CampaignWizard({ campaignId, onComplete, onCancel }: Props) {
               disabled={s.num > step}
             >
               {s.num < step ? <CheckCircle className="h-3.5 w-3.5 inline text-green-500" /> : s.num}
-              {' '}{!['lg', 'xl'].includes('') ? s.label : ''}
+              {' '}{s.label}
             </button>
           ))}
         </div>

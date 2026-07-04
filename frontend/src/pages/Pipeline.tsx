@@ -36,9 +36,12 @@ const COLUMNS = [
 export function Pipeline() {
   const { data: deals = [], isLoading } = useDeals();
   const updateDeal = useUpdateDeal();
+  const createDeal = useCreateDeal();
   const { moveDealStage } = useDealStore();
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [newDealOpen, setNewDealOpen] = useState(false);
+  const [newDeal, setNewDeal] = useState<Partial<Deal>>({ stage: 'offer_made' });
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Deal>>({});
 
@@ -101,6 +104,16 @@ export function Pipeline() {
     setModalOpen(false);
   };
 
+  const handleCreateDeal = async () => {
+    if (!newDeal.deal_name?.trim()) {
+      toast.error('Enter a deal name (usually the property address)');
+      return;
+    }
+    await createDeal.mutateAsync(newDeal);
+    setNewDealOpen(false);
+    setNewDeal({ stage: 'offer_made' });
+  };
+
   const activeDeal = activeDragId ? deals.find((d) => d.id === activeDragId) : null;
 
   // Use stored deals for optimistic updates
@@ -119,6 +132,9 @@ export function Pipeline() {
             {formatCurrency(pipelineDeals.reduce((s, d) => s + (d.assignment_fee || 0), 0))} in fees
           </p>
         </div>
+        <Button onClick={() => setNewDealOpen(true)} icon={<Plus className="h-4 w-4" />}>
+          New Deal
+        </Button>
       </div>
 
       {isLoading ? (
@@ -159,6 +175,34 @@ export function Pipeline() {
           </DragOverlay>
         </DndContext>
       )}
+
+      {/* New Deal Modal */}
+      <Modal open={newDealOpen} onClose={() => setNewDealOpen(false)} title="New Deal" size="lg">
+        <div className="p-6 space-y-4">
+          <Input label="Deal Name / Property Address" value={newDeal.deal_name || ''}
+            onChange={(e) => setNewDeal({ ...newDeal, deal_name: e.target.value })}
+            placeholder="e.g. 123 Main St, Dallas TX" />
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Stage" value={newDeal.stage || 'offer_made'}
+              onChange={(e) => setNewDeal({ ...newDeal, stage: e.target.value })}
+              options={COLUMNS.map((c) => ({ value: c.id, label: c.title }))} />
+            <Input label="Contract Price" type="number" value={newDeal.contract_price || ''}
+              onChange={(e) => setNewDeal({ ...newDeal, contract_price: Number(e.target.value) })} />
+            <Input label="Assignment Fee" type="number" value={newDeal.assignment_fee || ''}
+              onChange={(e) => setNewDeal({ ...newDeal, assignment_fee: Number(e.target.value) })} />
+            <Input label="Closing Date" type="date" value={newDeal.closing_date || ''}
+              onChange={(e) => setNewDeal({ ...newDeal, closing_date: e.target.value })} />
+          </div>
+          <Textarea label="Notes" value={newDeal.notes || ''} rows={2}
+            onChange={(e) => setNewDeal({ ...newDeal, notes: e.target.value })} />
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setNewDealOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateDeal} loading={createDeal.isPending} icon={<Plus className="h-4 w-4" />}>
+              Create Deal
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Deal Detail Modal */}
       {selectedDeal && (

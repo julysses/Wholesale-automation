@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { KPICard } from '@/components/dashboard/KPICard';
@@ -17,6 +19,18 @@ import { Link as RouterLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 export function Dashboard() {
+  // Scroll to the panel named in the URL hash (e.g. /#strategy from the
+  // workflow guide's "Choose on Dashboard" CTA)
+  const location = useLocation();
+  useEffect(() => {
+    if (!location.hash) return;
+    const el = document.getElementById(location.hash.slice(1));
+    if (el) {
+      // slight delay so panels below the fold have rendered
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+  }, [location.hash]);
+
   // KPI data
   const { data: kpiData } = useQuery({
     queryKey: ['kpi'],
@@ -211,13 +225,19 @@ export function Dashboard() {
           </div>
 
           {/* Acquisition Funnel */}
-          <FunnelPanel />
+          <div id="funnel" className="scroll-mt-4">
+            <FunnelPanel />
+          </div>
 
           {/* Precision Targeting */}
-          <PrecisionTargetingPanel />
+          <div id="precision" className="scroll-mt-4">
+            <PrecisionTargetingPanel />
+          </div>
 
           {/* Strategy Comparison */}
-          <StrategyComparisonPanel />
+          <div id="strategy" className="scroll-mt-4">
+            <StrategyComparisonPanel />
+          </div>
 
           {/* Deals by Stage */}
           <DealsByStage />

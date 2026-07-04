@@ -371,18 +371,18 @@ function StrategyCard({
           </span>
         </div>
 
-        {/* Select button */}
+        {/* Select button — stays clickable when active so the default-highlighted
+            strategy can still be confirmed (persisted) on first use */}
         <button
           onClick={onSelect}
           className={cn(
             'w-full rounded-xl py-2.5 text-sm font-semibold transition-all',
             isActive
-              ? strategy.key === 'mass'      ? 'bg-gray-800 text-white cursor-default'
-                : strategy.key === 'precision' ? 'bg-blue-600 text-white cursor-default'
-                : 'bg-emerald-600 text-white cursor-default'
+              ? strategy.key === 'mass'      ? 'bg-gray-800 text-white'
+                : strategy.key === 'precision' ? 'bg-blue-600 text-white'
+                : 'bg-emerald-600 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
           )}
-          disabled={isActive}
         >
           {isActive ? '✓ Active Strategy' : `Use ${strategy.label}`}
         </button>

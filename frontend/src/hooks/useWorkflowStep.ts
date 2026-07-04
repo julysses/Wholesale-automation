@@ -6,8 +6,12 @@
  * completion status of every step, and the next step to act on.
  */
 
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+
+// Same key StrategyComparisonPanel / FunnelPanel write to
+const STRATEGY_STORAGE_KEY = 'acquisition_strategy';
 
 export interface WorkflowStep {
   number: number;
@@ -30,8 +34,8 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
     number: 2,
     title: 'Choose Your Strategy',
     description: 'Pick Mass Outreach, Precision Targeting, or Stack-First Hybrid.',
-    path: '/',
-    cta: 'Choose on Dashboard',
+    path: '/#strategy',
+    cta: 'Open Strategy Selector',
   },
   {
     number: 3,
@@ -44,8 +48,8 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
     number: 4,
     title: 'Review Precision Targeting',
     description: 'Confirm your Top 2,000 priority list is ready before dialing.',
-    path: '/',
-    cta: 'Review on Dashboard',
+    path: '/#precision',
+    cta: 'Open Precision Panel',
   },
   {
     number: 5,
@@ -58,7 +62,7 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
     number: 6,
     title: 'Monitor Call Activity',
     description: 'Watch funnel progress and contact rates as calls go out.',
-    path: '/',
+    path: '/#funnel',
     cta: 'View Funnel',
   },
   {
@@ -184,10 +188,6 @@ export function useWorkflowStep(): WorkflowProgress {
         supabase.from('deals').select('id', { count: 'exact', head: true }),
       ]);
 
-      const strategyChosen = Boolean(
-        typeof window !== 'undefined' && localStorage.getItem('wholesaleStrategy')
-      );
-
       return {
         hasLeads:        (leadsRes.count ?? 0) > 0,
         hasTieredLeads:  (tieredLeadsRes.count ?? 0) > 0,
@@ -198,10 +198,23 @@ export function useWorkflowStep(): WorkflowProgress {
         hasOfferRecs:    (offerRecsRes.count ?? 0) > 0,
         hasAppointments: (appointmentsRes.count ?? 0) > 0,
         hasDeals:        (dealsRes.count ?? 0) > 0,
-        strategyChosen,
+        strategyChosen: false, // overridden below from localStorage
       };
     },
   });
+
+  // Strategy choice lives in localStorage (written by StrategyComparisonPanel /
+  // FunnelPanel under 'acquisition_strategy'). Track it reactively so the
+  // workflow advances the moment the user clicks a strategy — no refetch needed.
+  const [strategyChosen, setStrategyChosen] = useState<boolean>(() => {
+    try { return Boolean(localStorage.getItem(STRATEGY_STORAGE_KEY)); }
+    catch { return false; }
+  });
+  useEffect(() => {
+    const handler = () => setStrategyChosen(true);
+    window.addEventListener('strategyChange', handler);
+    return () => window.removeEventListener('strategyChange', handler);
+  }, []);
 
   const fallback: CheckData = {
     hasLeads: false, hasTieredLeads: false, hasCalls: false,
@@ -210,7 +223,7 @@ export function useWorkflowStep(): WorkflowProgress {
     strategyChosen: false,
   };
 
-  const d = data ?? fallback;
+  const d = { ...(data ?? fallback), strategyChosen };
   const currentStep = resolveCurrentStep(d);
   const completedSteps = buildCompletedSet(d, currentStep);
   const pct = Math.round((completedSteps.size / WORKFLOW_STEPS.length) * 100);

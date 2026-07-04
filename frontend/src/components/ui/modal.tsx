@@ -44,7 +44,7 @@ export function Modal({ open, onClose, title, children, size = 'md', className }
           className
         )}
       >
-        {title && (
+        {title ? (
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
             <button
@@ -54,6 +54,14 @@ export function Modal({ open, onClose, title, children, size = 'md', className }
               <X className="h-5 w-5" />
             </button>
           </div>
+        ) : (
+          // No title — still give the user a visible close control
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 z-10 p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
         )}
         <div className="overflow-y-auto max-h-[80vh]">
           {children}
