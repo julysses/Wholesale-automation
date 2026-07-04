@@ -226,15 +226,22 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
   const [key, setKey] = useState(saved['anthropic_api_key'] ?? '');
   const [status, setStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
 
+  // Pre-warm the Vercel serverless function when this step loads so the
+  // 10-second cold-start doesn't eat into the connection-test window.
+  useEffect(() => { fetch('/api/health').catch(() => {}); }, []);
+
   const testConnection = async () => {
     if (!key.trim()) {
       toast.error('Enter your API key first');
       return;
     }
     setStatus('testing');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 9000);
     try {
       await saveAppSettings({ anthropic_api_key: key });
-      const resp = await fetch('/api/ai/test');
+      const resp = await fetch('/api/ai/test', { signal: controller.signal });
+      clearTimeout(timer);
       if (resp.ok) {
         setStatus('ok');
         toast.success('Anthropic connection verified');
@@ -243,9 +250,15 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
         setStatus('error');
         toast.error('Anthropic API test failed — check your key');
       }
-    } catch {
-      setStatus('error');
-      toast.error('Could not reach the API');
+    } catch (e: any) {
+      clearTimeout(timer);
+      if (e?.name === 'AbortError') {
+        setStatus('error');
+        toast.error('Server is warming up — try again in a moment');
+      } else {
+        setStatus('error');
+        toast.error('Could not reach the API');
+      }
     }
   };
 
