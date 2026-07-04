@@ -225,58 +225,67 @@ function WelcomeStep({ onNext, onSkip }: StepProps) {
 function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
   const [key, setKey] = useState(saved['anthropic_api_key'] ?? '');
   const [status, setStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
-  const [warmedUp, setWarmedUp] = useState(false);
-
-  // Pre-warm the Vercel serverless function immediately. The Test button stays
-  // disabled (showing "Warming up…") until this resolves so the Haiku call
-  // never competes with a cold start inside the 10-second limit.
-  useEffect(() => {
-    fetch('/api/health').then(() => setWarmedUp(true)).catch(() => setWarmedUp(true));
-  }, []);
 
   const testConnection = async () => {
+    const k = key.trim();
+    if (!k) {
+      toast.error('Paste your Anthropic API key first');
+      return;
+    }
     setStatus('testing');
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
     try {
-      // Use the env-var key already in Vercel — it's the authoritative key
-      // and avoids spinning up a second Anthropic client on the warm function.
-      const resp = await fetch('/api/ai/test', { signal: controller.signal });
-      clearTimeout(timer);
+      // Test the pasted key DIRECTLY against Anthropic from the browser.
+      // The dangerous-direct-browser-access header enables CORS on Anthropic's
+      // side; this bypasses our serverless function entirely, so no cold-start
+      // or 10-second Vercel timeout can interfere with the result.
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': k,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'ping' }],
+        }),
+      });
       if (resp.ok) {
-        if (key.trim()) {
-          await saveAppSettings({ anthropic_api_key: key }).catch(() => {});
-        }
         setStatus('ok');
-        toast.success('Anthropic connection verified');
+        toast.success('API key verified with Anthropic');
+        saveAppSettings({ anthropic_api_key: k })
+          .then(() => toast.success('Key saved'))
+          .catch((err: any) => toast.warning(
+            `Key verified, but Supabase save failed: ${err?.message ?? 'unknown error'}. Vercel env vars remain active.`,
+          ));
         await onAutoComplete?.();
-      } else if (resp.status === 503) {
+      } else if (resp.status === 401) {
         setStatus('error');
-        toast.error('ANTHROPIC_API_KEY not set in Vercel — add it in your Vercel project settings');
+        toast.error('Anthropic rejected this key (401) — copy it again from the Anthropic console');
       } else {
+        const body = await resp.json().catch(() => null);
         setStatus('error');
-        toast.error('Anthropic API test failed — check the key in Vercel env vars');
+        toast.error(`Anthropic returned ${resp.status}: ${body?.error?.message ?? 'unexpected error'}`);
       }
-    } catch (e: any) {
-      clearTimeout(timer);
+    } catch {
       setStatus('error');
-      toast.error(
-        e?.name === 'AbortError'
-          ? 'Request timed out — try again'
-          : 'Could not reach the API',
-      );
+      toast.error('Could not reach api.anthropic.com — check your internet connection');
     }
   };
 
   return (
     <div className="space-y-5">
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
-        If you already added <code className="font-mono">ANTHROPIC_API_KEY</code> to your Vercel environment variables, just click <strong>Test AI Connection</strong> to confirm it's working — no need to re-enter it here.
+        The test sends your key straight to Anthropic's API from this browser — a
+        green check means the key itself is valid. The same key in your Vercel
+        environment variables powers the backend.
       </div>
       <KeyField
         envKey="ANTHROPIC_API_KEY"
-        label="Anthropic API Key (optional override)"
-        description="Paste here to save to Supabase as a fallback. Leave blank if already set in Vercel."
+        label="Anthropic API Key"
+        description="Powers all AI agents: lead scoring, offer generation, and outreach drafting."
         example="sk-ant-api03-..."
         docsUrl="https://console.anthropic.com/account/keys"
         docsLabel="Get key"
@@ -284,20 +293,7 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
         onChange={setKey}
         wasSaved={!!saved['anthropic_api_key']}
       />
-      <div className="flex items-center gap-3">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={testConnection}
-          loading={status === 'testing' || !warmedUp}
-          disabled={!warmedUp || status === 'testing'}
-          icon={<RefreshCw className="h-4 w-4" />}
-        >
-          {!warmedUp ? 'Warming up…' : 'Test AI Connection'}
-        </Button>
-        {status === 'ok' && <span className="text-sm text-green-600 font-medium flex items-center gap-1"><CheckCircle className="h-4 w-4" /> Connected</span>}
-        {status === 'error' && <span className="text-sm text-red-600 font-medium flex items-center gap-1"><AlertCircle className="h-4 w-4" /> Failed</span>}
-      </div>
+      <StatusBar status={status} onTest={testConnection} testLabel="Test AI Connection" />
       <div className="flex gap-3">
         <Button variant="outline" onClick={onSkip} className="flex-1"><SkipForward className="h-4 w-4 mr-1" /> Skip</Button>
         <Button onClick={() => onNext(key.trim() ? { anthropic_api_key: key } : {})} className="flex-1" disabled={status === 'testing'}>
@@ -476,7 +472,9 @@ function TestStep({ onNext }: StepProps) {
     try { const r = await fetch('/api/health'); next.health = r.ok ? 'ok' : 'error'; } catch { next.health = 'error'; }
     try { const { error } = await supabase.from('leads').select('id').limit(1); next.supabase = error ? 'error' : 'ok'; } catch { next.supabase = 'error'; }
     try {
-      const r = await fetch('/api/ai/qualify-lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ property_address: '123 Main St', city: 'Austin' }) });
+      // Lightweight 1-token ping — the full qualify-lead call can exceed the
+      // 10-second Vercel Hobby function limit on a cold start.
+      const r = await fetch('/api/ai/test');
       next.ai = r.ok ? 'ok' : 'error';
     } catch { next.ai = 'error'; }
     setResults(next);
@@ -551,11 +549,12 @@ export function SetupWizard() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('setup_checklist').select('step,completed,skipped').catch(() => ({ data: [] as any[] })),
+      Promise.resolve(supabase.from('setup_checklist').select('step,completed,skipped'))
+        .catch(() => ({ data: [] as any[] })),
       fetchAppSettings().catch(() => ({} as Record<string, string>)),
     ]).then(([checklistRes, appSettings]) => {
       const data = (checklistRes as any).data ?? [];
-      const done = new Set(data.filter((r: any) => r.completed || r.skipped).map((r: any) => r.step as string));
+      const done = new Set<string>(data.filter((r: any) => r.completed || r.skipped).map((r: any) => r.step as string));
       setCompletedSteps(done);
       setSavedSettings(appSettings as Record<string, string>);
       setSettingsLoaded(true);
@@ -586,7 +585,9 @@ export function SetupWizard() {
       // Vercel env vars are the primary source; this write is supplemental.
       saveAppSettings(values)
         .then(() => setSavedSettings(prev => ({ ...prev, ...values })))
-        .catch(() => toast.warning('Settings not saved to Supabase — Vercel env vars remain active'));
+        .catch((err: any) => toast.warning(
+          `Settings not saved to Supabase (${err?.message ?? 'unknown error'}) — Vercel env vars remain active`,
+        ));
     }
     try { await markStep(STEPS[currentIdx].id); } catch { /* non-blocking */ }
     if (currentIdx < STEPS.length - 1) {
