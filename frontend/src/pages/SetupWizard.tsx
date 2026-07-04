@@ -239,26 +239,36 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 9000);
     try {
-      await saveAppSettings({ anthropic_api_key: key });
-      const resp = await fetch('/api/ai/test', { signal: controller.signal });
+      // POST the entered key directly — the backend tests it without touching the
+      // global client, so we validate exactly what the user pasted.
+      const resp = await fetch('/api/ai/test-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+        signal: controller.signal,
+      });
       clearTimeout(timer);
       if (resp.ok) {
+        // Key is valid — persist it (best-effort; failure doesn't block UX)
+        await saveAppSettings({ anthropic_api_key: key }).catch(() => {});
         setStatus('ok');
         toast.success('Anthropic connection verified');
         await onAutoComplete?.();
+      } else if (resp.status === 401) {
+        setStatus('error');
+        toast.error('Invalid API key — verify it in the Anthropic console');
       } else {
         setStatus('error');
         toast.error('Anthropic API test failed — check your key');
       }
     } catch (e: any) {
       clearTimeout(timer);
-      if (e?.name === 'AbortError') {
-        setStatus('error');
-        toast.error('Server is warming up — try again in a moment');
-      } else {
-        setStatus('error');
-        toast.error('Could not reach the API');
-      }
+      setStatus('error');
+      toast.error(
+        e?.name === 'AbortError'
+          ? 'Server is warming up — try again in a moment'
+          : 'Could not reach the API',
+      );
     }
   };
 

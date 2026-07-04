@@ -319,11 +319,37 @@ Return top 5 matches. Consider: buy-box fit (zip/price/type), close speed, relia
 
 @router.get("/test")
 def test_anthropic_connection() -> dict:
-    """1-token Haiku ping — confirms the API key authenticates. Used by the Setup Wizard."""
+    """1-token Haiku ping using the env-var key. Used as a backend health check."""
     client = _get_client()  # raises 503 if key missing
     client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1,
         messages=[{"role": "user", "content": "ping"}],
     )
+    return {"ok": True}
+
+
+class TestKeyRequest(BaseModel):
+    key: str
+
+
+@router.post("/test-key")
+def test_api_key(body: TestKeyRequest) -> dict:
+    """Test a caller-supplied API key directly. Creates a local client (does not update the
+    global singleton) so the Setup Wizard can validate the key the user just entered."""
+    k = body.key.strip()
+    if not k:
+        raise HTTPException(400, detail="No key provided")
+    try:
+        local_client = anthropic.Anthropic(api_key=k)
+        local_client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1,
+            messages=[{"role": "user", "content": "ping"}],
+        )
+    except anthropic.AuthenticationError:
+        raise HTTPException(401, detail="Invalid API key")
+    except Exception as exc:
+        logger.warning("test-key: unexpected error: %s", exc)
+        raise HTTPException(500, detail=str(exc))
     return {"ok": True}
