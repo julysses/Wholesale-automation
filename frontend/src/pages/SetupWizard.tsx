@@ -539,43 +539,44 @@ export function SetupWizard() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('setup_checklist').select('step,completed,skipped'),
-      fetchAppSettings(),
+      supabase.from('setup_checklist').select('step,completed,skipped').catch(() => ({ data: [] as any[] })),
+      fetchAppSettings().catch(() => ({} as Record<string, string>)),
     ]).then(([checklistRes, appSettings]) => {
-      const data = checklistRes.data ?? [];
+      const data = (checklistRes as any).data ?? [];
       const done = new Set(data.filter((r: any) => r.completed || r.skipped).map((r: any) => r.step as string));
       setCompletedSteps(done);
-      setSavedSettings(appSettings);
+      setSavedSettings(appSettings as Record<string, string>);
       setSettingsLoaded(true);
       const firstIncomplete = STEPS.findIndex(s => !done.has(s.id));
       if (firstIncomplete > 0) setCurrentIdx(firstIncomplete);
-    });
+    }).catch(() => setSettingsLoaded(true));
   }, []);
 
   const markStep = async (stepId: string, skipped = false) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from('setup_checklist').upsert({
-      user_id: user.id,
-      step: stepId,
-      completed: !skipped,
-      skipped,
-      completed_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,step' });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('setup_checklist').upsert({
+          user_id: user.id,
+          step: stepId,
+          completed: !skipped,
+          skipped,
+          completed_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,step' });
+      }
+    } catch { /* non-blocking — local state still updates */ }
     setCompletedSteps(prev => new Set([...prev, stepId]));
   };
 
   const handleNext = useCallback(async (values?: Record<string, string>) => {
     if (values && Object.keys(values).length > 0) {
-      try {
-        await saveAppSettings(values);
-        setSavedSettings(prev => ({ ...prev, ...values }));
-      } catch (err) {
-        toast.error('Failed to save settings — check Supabase connection');
-        return;
-      }
+      // Fire-and-forget — Supabase failure must NOT block navigation.
+      // Vercel env vars are the primary source; this write is supplemental.
+      saveAppSettings(values)
+        .then(() => setSavedSettings(prev => ({ ...prev, ...values })))
+        .catch(() => toast.warning('Settings not saved to Supabase — Vercel env vars remain active'));
     }
-    await markStep(STEPS[currentIdx].id);
+    try { await markStep(STEPS[currentIdx].id); } catch { /* non-blocking */ }
     if (currentIdx < STEPS.length - 1) {
       setCurrentIdx(currentIdx + 1);
     } else {
