@@ -225,48 +225,44 @@ function WelcomeStep({ onNext, onSkip }: StepProps) {
 function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
   const [key, setKey] = useState(saved['anthropic_api_key'] ?? '');
   const [status, setStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+  const [warmedUp, setWarmedUp] = useState(false);
 
-  // Pre-warm the Vercel serverless function when this step loads so the
-  // 10-second cold-start doesn't eat into the connection-test window.
-  useEffect(() => { fetch('/api/health').catch(() => {}); }, []);
+  // Pre-warm the Vercel serverless function immediately. The Test button stays
+  // disabled (showing "Warming up…") until this resolves so the Haiku call
+  // never competes with a cold start inside the 10-second limit.
+  useEffect(() => {
+    fetch('/api/health').then(() => setWarmedUp(true)).catch(() => setWarmedUp(true));
+  }, []);
 
   const testConnection = async () => {
-    if (!key.trim()) {
-      toast.error('Enter your API key first');
-      return;
-    }
     setStatus('testing');
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 9000);
+    const timer = setTimeout(() => controller.abort(), 8000);
     try {
-      // POST the entered key directly — the backend tests it without touching the
-      // global client, so we validate exactly what the user pasted.
-      const resp = await fetch('/api/ai/test-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key }),
-        signal: controller.signal,
-      });
+      // Use the env-var key already in Vercel — it's the authoritative key
+      // and avoids spinning up a second Anthropic client on the warm function.
+      const resp = await fetch('/api/ai/test', { signal: controller.signal });
       clearTimeout(timer);
       if (resp.ok) {
-        // Key is valid — persist it (best-effort; failure doesn't block UX)
-        await saveAppSettings({ anthropic_api_key: key }).catch(() => {});
+        if (key.trim()) {
+          await saveAppSettings({ anthropic_api_key: key }).catch(() => {});
+        }
         setStatus('ok');
         toast.success('Anthropic connection verified');
         await onAutoComplete?.();
-      } else if (resp.status === 401) {
+      } else if (resp.status === 503) {
         setStatus('error');
-        toast.error('Invalid API key — verify it in the Anthropic console');
+        toast.error('ANTHROPIC_API_KEY not set in Vercel — add it in your Vercel project settings');
       } else {
         setStatus('error');
-        toast.error('Anthropic API test failed — check your key');
+        toast.error('Anthropic API test failed — check the key in Vercel env vars');
       }
     } catch (e: any) {
       clearTimeout(timer);
       setStatus('error');
       toast.error(
         e?.name === 'AbortError'
-          ? 'Server is warming up — try again in a moment'
+          ? 'Request timed out — try again'
           : 'Could not reach the API',
       );
     }
@@ -274,10 +270,13 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
 
   return (
     <div className="space-y-5">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+        If you already added <code className="font-mono">ANTHROPIC_API_KEY</code> to your Vercel environment variables, just click <strong>Test AI Connection</strong> to confirm it's working — no need to re-enter it here.
+      </div>
       <KeyField
         envKey="ANTHROPIC_API_KEY"
-        label="Anthropic API Key"
-        description="Powers all AI agents: lead scoring, offer generation, and outreach drafting."
+        label="Anthropic API Key (optional override)"
+        description="Paste here to save to Supabase as a fallback. Leave blank if already set in Vercel."
         example="sk-ant-api03-..."
         docsUrl="https://console.anthropic.com/account/keys"
         docsLabel="Get key"
@@ -285,10 +284,23 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
         onChange={setKey}
         wasSaved={!!saved['anthropic_api_key']}
       />
-      <StatusBar status={status} onTest={testConnection} testLabel="Test AI Connection" />
+      <div className="flex items-center gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={testConnection}
+          loading={status === 'testing' || !warmedUp}
+          disabled={!warmedUp || status === 'testing'}
+          icon={<RefreshCw className="h-4 w-4" />}
+        >
+          {!warmedUp ? 'Warming up…' : 'Test AI Connection'}
+        </Button>
+        {status === 'ok' && <span className="text-sm text-green-600 font-medium flex items-center gap-1"><CheckCircle className="h-4 w-4" /> Connected</span>}
+        {status === 'error' && <span className="text-sm text-red-600 font-medium flex items-center gap-1"><AlertCircle className="h-4 w-4" /> Failed</span>}
+      </div>
       <div className="flex gap-3">
         <Button variant="outline" onClick={onSkip} className="flex-1"><SkipForward className="h-4 w-4 mr-1" /> Skip</Button>
-        <Button onClick={() => onNext({ anthropic_api_key: key })} className="flex-1" disabled={status === 'testing'}>
+        <Button onClick={() => onNext(key.trim() ? { anthropic_api_key: key } : {})} className="flex-1" disabled={status === 'testing'}>
           {status === 'ok' ? 'Verified — Next' : 'Save & Next'} <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       </div>
