@@ -329,6 +329,74 @@ def test_anthropic_connection() -> dict:
     return {"ok": True}
 
 
+# ── 6. CSV column mapper (list merge tool) ────────────────────────────────────
+
+class MapColumnsRequest(BaseModel):
+    headers: list[str]
+    samples: list[list[str]] = []
+
+
+@router.post("/map-columns")
+def map_columns(body: MapColumnsRequest) -> dict:
+    """Map arbitrary CSV headers (PropStream, county rolls, XLeads, …) to the
+    canonical lead schema. Used by the frontend Master List Builder so users can
+    drop lists with any column naming and get a clean merge."""
+    client = _get_client()
+    system = (
+        "You map spreadsheet columns from real-estate lead lists to a canonical schema. "
+        "Output ONLY valid JSON, no prose or markdown."
+    )
+    user = f"""Map these CSV columns to canonical lead fields.
+
+COLUMNS (index: header):
+{json.dumps(list(enumerate(body.headers)), default=str)}
+
+SAMPLE ROWS (for disambiguation):
+{json.dumps(body.samples[:3], default=str)}
+
+Canonical fields:
+property_address (the SITUS/property street address — NOT the owner mailing address),
+city, state, zip_code, owner_first_name, owner_last_name,
+owner_full_name (only if one column holds the complete name),
+owner_phone_1, owner_email, bedrooms, bathrooms, sqft, asking_price
+
+Return ONLY this JSON (omit fields with no matching column):
+{{"mapping": {{"<canonical_field>": <column index integer>}}}}"""
+
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=400,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            parts = raw.split("```")
+            raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
+        result = json.loads(raw)
+        mapping = result.get("mapping", {})
+        # Validate: only known fields, indices in range
+        valid_fields = {
+            "property_address", "city", "state", "zip_code", "owner_first_name",
+            "owner_last_name", "owner_full_name", "owner_phone_1", "owner_email",
+            "bedrooms", "bathrooms", "sqft", "asking_price",
+        }
+        clean = {
+            k: int(v) for k, v in mapping.items()
+            if k in valid_fields and isinstance(v, (int, float, str))
+            and str(v).lstrip("-").isdigit() and 0 <= int(v) < len(body.headers)
+        }
+        return {"mapping": clean}
+    except json.JSONDecodeError as exc:
+        raise HTTPException(502, f"Claude returned invalid JSON: {exc}")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("map-columns failed")
+        raise HTTPException(500, str(exc))
+
+
 class TestKeyRequest(BaseModel):
     key: str
 

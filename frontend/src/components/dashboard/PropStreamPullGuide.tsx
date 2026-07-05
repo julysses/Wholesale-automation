@@ -201,12 +201,22 @@ export function PropStreamPullGuide() {
         </div>
 
         {/* CTA */}
-        <Link
-          to="/leads?import=1"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold bg-[#E8720C] text-white hover:bg-[#d4660b] transition-colors"
-        >
-          Import the CSV <ArrowRight className="h-4 w-4" />
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to="/leads?import=1"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold bg-[#E8720C] text-white hover:bg-[#d4660b] transition-colors"
+          >
+            Import the CSV <ArrowRight className="h-4 w-4" />
+          </Link>
+          {spec.quickLists.length > 1 && (
+            <Link
+              to="/master-list"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              Pulled multiple lists? Merge &amp; dedupe first <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ import { UserManual } from '@/pages/UserManual';
 import { LandLeads } from '@/pages/LandLeads';
 import { BuyerIntelligence } from '@/pages/BuyerIntelligence';
 import { LeadGenEngine } from '@/pages/LeadGenEngine';
+import { MasterListBuilder } from '@/pages/MasterListBuilder';
 import { LeadForm } from '@/pages/LeadForm';
 import { FacebookAdsCommandCenter } from '@/pages/FacebookAdsCommandCenter';
 
@@ -212,6 +213,7 @@ export default function App() {
                 <Route element={<Layout />}>
                   <Route path="/"             element={<Dashboard />} />
                   <Route path="/leads"        element={<Leads />} />
+                  <Route path="/master-list"  element={<MasterListBuilder />} />
                   <Route path="/pipeline"     element={<Pipeline />} />
                   <Route path="/analyzer"     element={<DealAnalyzer />} />
                   <Route path="/buyers"       element={<Buyers />} />
