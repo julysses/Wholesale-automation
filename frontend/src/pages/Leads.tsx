@@ -24,9 +24,9 @@ import {
   MessageSquare, Eye, Ban, PhoneCall, Zap, Download, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
-import Papa from 'papaparse';
 import { supabase } from '@/lib/supabase';
 import { parseCombinedAddress } from '@/lib/masterList';
+import { parseSpreadsheet, isSupportedFile } from '@/lib/parseFile';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
@@ -577,10 +577,11 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
+  const [dataRows, setDataRows] = useState<string[][]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ imported: number; errors: number } | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  const [mapStatus, setMapStatus] = useState<'idle' | 'mapping' | 'done'>('idle');
+  const [mapStatus, setMapStatus] = useState<'idle' | 'parsing' | 'mapping' | 'done'>('idle');
   const [mappedBy, setMappedBy] = useState<'claude' | 'heuristic' | null>(null);
   const [defaultCity, setDefaultCity] = useState('');
   const [defaultState, setDefaultState] = useState('TX');
@@ -588,46 +589,59 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [claudeNotes, setClaudeNotes] = useState('');
 
   const reset = () => {
-    setFile(null); setResult(null); setHeaders([]); setPreview([]);
+    setFile(null); setResult(null); setHeaders([]); setPreview([]); setDataRows([]);
     setMapping({}); setMapStatus('idle'); setMappedBy(null); setDefaultCity('');
     setDefaultState('TX'); setAddressCombined(false); setClaudeNotes('');
   };
 
-  const handleFile = (f: File) => {
+  const handleFile = async (f: File) => {
+    if (!isSupportedFile(f.name)) {
+      toast.error('Please drop a .csv or Excel (.xlsx/.xls) file');
+      return;
+    }
     setFile(f);
-    setMapStatus('idle');
     setMappedBy(null);
     setAddressCombined(false);
     setClaudeNotes('');
-    Papa.parse(f, {
-      header: false,
-      preview: 6,
-      skipEmptyLines: true,
-      complete: async (res) => {
-        const rows = res.data as string[][];
-        if (rows.length === 0) return;
-        setHeaders(rows[0]);
-        setPreview(rows.slice(1, 5));
-        setMapStatus('mapping');
-        // Let Claude review the file and produce the full data-management plan
-        // (column mapping + combined-address detection + inferred city/state).
-        // Fall back to local heuristics if Claude is unreachable.
-        const samples = rows.slice(1, 4);
-        const plan = await claudeMap(rows[0], samples);
-        if (plan && plan.mapping['property_address'] !== undefined) {
-          setMapping(plan.mapping);
-          setMappedBy('claude');
-          setAddressCombined(plan.addressCombined);
-          if (plan.defaultCity) setDefaultCity(plan.defaultCity);
-          if (plan.defaultState) setDefaultState(plan.defaultState);
-          setClaudeNotes(plan.notes);
-        } else {
-          setMapping(heuristicMap(rows[0]));
-          setMappedBy('heuristic');
-        }
-        setMapStatus('done');
-      },
-    });
+    setMapStatus('parsing');
+
+    let rows: string[][];
+    try {
+      rows = await parseSpreadsheet(f); // handles CSV + Excel uniformly
+    } catch {
+      toast.error(`Couldn't read ${f.name} — is it a valid CSV or Excel file?`);
+      setMapStatus('idle');
+      return;
+    }
+    if (rows.length < 2) {
+      toast.error('That file has no data rows');
+      setMapStatus('idle');
+      return;
+    }
+
+    const hdr = rows[0].map((h) => String(h ?? ''));
+    const body = rows.slice(1);
+    setHeaders(hdr);
+    setDataRows(body);
+    setPreview(body.slice(0, 4));
+    setMapStatus('mapping');
+
+    // Let Claude review the file and produce the full data-management plan
+    // (column mapping + combined-address detection + inferred city/state).
+    // Fall back to local heuristics if Claude is unreachable.
+    const plan = await claudeMap(hdr, body.slice(0, 3));
+    if (plan && plan.mapping['property_address'] !== undefined) {
+      setMapping(plan.mapping);
+      setMappedBy('claude');
+      setAddressCombined(plan.addressCombined);
+      if (plan.defaultCity) setDefaultCity(plan.defaultCity);
+      if (plan.defaultState) setDefaultState(plan.defaultState);
+      setClaudeNotes(plan.notes);
+    } else {
+      setMapping(heuristicMap(hdr));
+      setMappedBy('heuristic');
+    }
+    setMapStatus('done');
   };
 
   const buildRecord = (row: string[]): Record<string, string | number> | null => {
@@ -680,26 +694,17 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
     setImporting(true);
     let imported = 0, errors = 0, skipped = 0;
 
-    await new Promise<void>((resolve) => {
-      Papa.parse(file, {
-        header: false,
-        skipEmptyLines: true,
-        complete: async (res) => {
-          const rows = (res.data as string[][]).slice(1);
-          const CHUNK = 100;
-          for (let i = 0; i < rows.length; i += CHUNK) {
-            const built = rows.slice(i, i + CHUNK).map(buildRecord);
-            const chunk = built.filter((r): r is Record<string, string | number> => r !== null);
-            skipped += built.length - chunk.length;
-            if (chunk.length === 0) continue;
-            const { error } = await supabase.from('leads').insert(chunk);
-            if (error) errors += chunk.length;
-            else imported += chunk.length;
-          }
-          resolve();
-        },
-      });
-    });
+    // Rows were already parsed on drop (CSV or Excel) — reuse them, no re-parse.
+    const CHUNK = 100;
+    for (let i = 0; i < dataRows.length; i += CHUNK) {
+      const built = dataRows.slice(i, i + CHUNK).map(buildRecord);
+      const chunk = built.filter((r): r is Record<string, string | number> => r !== null);
+      skipped += built.length - chunk.length;
+      if (chunk.length === 0) continue;
+      const { error } = await supabase.from('leads').insert(chunk);
+      if (error) errors += chunk.length;
+      else imported += chunk.length;
+    }
 
     setImporting(false);
     setResult({ imported, errors: errors + skipped });
@@ -725,16 +730,21 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
               onClick={() => document.getElementById('csv-input')?.click()}
             >
               <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <p className="font-medium text-gray-700">{file ? file.name : 'Drop CSV here or click to browse'}</p>
-              <p className="text-xs text-gray-400 mt-1">PropStream, county tax/foreclosure rolls, XLeads — any column layout</p>
-              <input id="csv-input" type="file" accept=".csv" className="hidden"
+              <p className="font-medium text-gray-700">{file ? file.name : 'Drop a CSV or Excel file here or click to browse'}</p>
+              <p className="text-xs text-gray-400 mt-1">PropStream, county tax/foreclosure rolls, XLeads — CSV or Excel, any column layout</p>
+              <input id="csv-input" type="file" accept=".csv,.xlsx,.xls,.xlsm" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
             </div>
 
-            {/* Mapping status */}
+            {/* Status */}
+            {mapStatus === 'parsing' && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <RefreshCw className="h-4 w-4 animate-spin" /> Reading the file…
+              </div>
+            )}
             {mapStatus === 'mapping' && (
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <RefreshCw className="h-4 w-4 animate-spin" /> Claude is reading your columns…
+                <RefreshCw className="h-4 w-4 animate-spin" /> Claude is reviewing your columns…
               </div>
             )}
 

@@ -14,8 +14,8 @@
 
 import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import Papa from 'papaparse';
 import { toast } from 'sonner';
+import { parseSpreadsheet, isSupportedFile } from '@/lib/parseFile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -71,17 +71,6 @@ async function mapColumnsWithClaude(headers: string[], samples: string[][]): Pro
   }
 }
 
-function parseCSVFile(file: File): Promise<string[][]> {
-  return new Promise((resolve, reject) => {
-    Papa.parse(file, {
-      header: false,
-      skipEmptyLines: true,
-      complete: (res) => resolve(res.data as string[][]),
-      error: reject,
-    });
-  });
-}
-
 export function MasterListBuilder() {
   const [files, setFiles] = useState<SourceFile[]>([]);
   const [merged, setMerged] = useState<MergedRow[] | null>(null);
@@ -89,18 +78,18 @@ export function MasterListBuilder() {
   const [importing, setImporting] = useState(false);
 
   const addFiles = useCallback(async (fileList: FileList | File[]) => {
-    const csvFiles = Array.from(fileList).filter((f) => f.name.toLowerCase().endsWith('.csv'));
-    if (csvFiles.length === 0) {
-      toast.error('Only .csv files are supported');
+    const supported = Array.from(fileList).filter((f) => isSupportedFile(f.name));
+    if (supported.length === 0) {
+      toast.error('Drop .csv or Excel (.xlsx/.xls) files');
       return;
     }
     setMerged(null); // adding a new list invalidates any previous merge result
 
-    for (const file of csvFiles) {
+    for (const file of supported) {
       const id = `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       let allRows: string[][];
       try {
-        allRows = await parseCSVFile(file);
+        allRows = await parseSpreadsheet(file); // handles CSV + Excel uniformly
       } catch {
         toast.error(`Couldn't parse ${file.name}`);
         continue;
@@ -113,7 +102,7 @@ export function MasterListBuilder() {
       const rows = allRows.slice(1).filter((r) => r.some((c) => c && c.trim()));
 
       const placeholder: SourceFile = {
-        id, label: file.name.replace(/\.csv$/i, ''), fileName: file.name,
+        id, label: file.name.replace(/\.(csv|xlsx|xls|xlsm)$/i, ''), fileName: file.name,
         headers, rows, mapping: {}, addressCombined: false, defaultCity: '',
         defaultState: '', status: 'mapping', mappedBy: null,
       };
@@ -262,10 +251,10 @@ export function MasterListBuilder() {
         onClick={() => document.getElementById('master-list-input')?.click()}
       >
         <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-        <p className="font-medium text-gray-700">Drop CSV files here or click to browse</p>
-        <p className="text-xs text-gray-400 mt-1">Drop multiple files at once — any column layout, any source</p>
+        <p className="font-medium text-gray-700">Drop CSV or Excel files here or click to browse</p>
+        <p className="text-xs text-gray-400 mt-1">Drop multiple files at once — CSV or Excel, any column layout, any source</p>
         <input
-          id="master-list-input" type="file" accept=".csv" multiple className="hidden"
+          id="master-list-input" type="file" accept=".csv,.xlsx,.xls,.xlsm" multiple className="hidden"
           onChange={(e) => { if (e.target.files?.length) addFiles(e.target.files); e.target.value = ''; }}
         />
       </div>
