@@ -7,10 +7,10 @@
  * with a prominent CTA. Future steps are shown as locked/dimmed.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, Circle, Lock, ChevronDown, ChevronUp, ArrowRight, BookOpen, Zap } from 'lucide-react';
-import { useWorkflowStep, WORKFLOW_STEPS } from '@/hooks/useWorkflowStep';
+import { useWorkflowStep, WORKFLOW_STEPS, getManualComplete, toggleManualComplete } from '@/hooks/useWorkflowStep';
 import { PropStreamPullGuide } from '@/components/dashboard/PropStreamPullGuide';
 
 const STEP_DETAILS: Record<number, { what: string; system: string }> = {
@@ -42,6 +42,14 @@ export function WorkflowGuide() {
   const { currentStep, completedSteps, pct, isLoading } = useWorkflowStep();
   const [expanded, setExpanded] = useState(true);
   const [openDetail, setOpenDetail] = useState<number | null>(currentStep);
+
+  // Track manually-ticked steps so the checkbox reflects state immediately
+  const [manualComplete, setManualComplete] = useState<Set<number>>(() => getManualComplete());
+  useEffect(() => {
+    const handler = () => setManualComplete(getManualComplete());
+    window.addEventListener('workflowManualChange', handler);
+    return () => window.removeEventListener('workflowManualChange', handler);
+  }, []);
 
   if (isLoading) return null;
 
@@ -171,19 +179,34 @@ export function WorkflowGuide() {
                       </div>
                       {/* Step 3: strategy-specific PropStream pull instructions */}
                       {step.number === 3 && <PropStreamPullGuide />}
-                      {/* CTA */}
-                      {(isActive || isDone) && (
-                        <Link
-                          to={step.path}
-                          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                            isActive
-                              ? 'bg-[#E8720C] text-white hover:bg-[#d4660b]'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {step.cta} <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      )}
+                      {/* CTA row */}
+                      <div className="flex flex-wrap items-center gap-3">
+                        {(isActive || isDone) && (
+                          <Link
+                            to={step.path}
+                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                              isActive
+                                ? 'bg-[#E8720C] text-white hover:bg-[#d4660b]'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {step.cta} <ArrowRight className="h-4 w-4" />
+                          </Link>
+                        )}
+                        {/* Manual completion — lets users tick off steps that have no
+                            clean data signal (e.g. reviewing the priority list) */}
+                        {step.number !== 1 && (
+                          <label className="inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={manualComplete.has(step.number)}
+                              onChange={() => toggleManualComplete(step.number)}
+                              className="h-4 w-4 rounded border-gray-300 text-[#1B3A5C] focus:ring-[#1B3A5C]"
+                            />
+                            Mark this step complete
+                          </label>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

@@ -116,18 +116,20 @@ interface StatCardProps {
 }
 
 function StatCard({ label, value, sub, icon: Icon, color, bg, border }: StatCardProps) {
+  // Vertical layout: icon + number on one row, label on its own full-width row
+  // below so long labels wrap instead of truncating in a narrow column.
   return (
-    <div className={cn('rounded-xl border p-4 flex items-start gap-3', bg, border)}>
-      <div className={cn('p-2 rounded-lg bg-white/70 shrink-0', color)}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div>
-        <p className={cn('text-xl font-bold', color)}>
+    <div className={cn('rounded-xl border p-3 min-w-0', bg, border)}>
+      <div className="flex items-center gap-2 mb-1.5">
+        <div className={cn('p-1.5 rounded-lg bg-white/70 shrink-0', color)}>
+          <Icon className="h-3.5 w-3.5" />
+        </div>
+        <p className={cn('text-lg font-bold leading-none truncate', color)}>
           {typeof value === 'number' ? value.toLocaleString() : value}
         </p>
-        <p className="text-xs text-gray-600 font-medium">{label}</p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
+      <p className="text-xs text-gray-600 font-medium leading-tight">{label}</p>
+      {sub && <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{sub}</p>}
     </div>
   );
 }
@@ -154,15 +156,15 @@ export function PrecisionTargetingPanel() {
         </span>
       </div>
 
-      {/* Lead pipeline stats */}
+      {/* Lead pipeline stats — 2×2 so cards stay wide and readable in the sidebar */}
       {summaryLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <StatCard
             label="Imported Leads" value={summary?.total_imported ?? 0}
             icon={Layers} color="text-blue-700" bg="bg-blue-50" border="border-blue-100"
@@ -283,62 +285,48 @@ export function PrecisionTargetingPanel() {
               return (
                 <div
                   key={row.stack_name}
-                  className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  className="p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
-                  {/* Stack name */}
-                  <div className="flex-1 min-w-0">
+                  {/* Row 1: name + deal count */}
+                  <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-gray-800 truncate">
                       {row.stack_name}
                     </p>
-                    <p className="text-xs text-gray-400">
-                      {row.total_leads.toLocaleString()} leads
-                      {row.tier_1_leads > 0 && (
-                        <span className="ml-1 text-red-600 font-semibold">
-                          · {row.tier_1_leads} Tier 1
-                        </span>
-                      )}
-                    </p>
-                  </div>
-
-                  {/* Conversion bar */}
-                  <div className="w-20 shrink-0">
-                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={cn(
-                          'h-full rounded-full',
-                          convPct > 1 ? 'bg-green-500'
-                          : convPct > 0.5 ? 'bg-yellow-400'
-                          : 'bg-gray-300',
-                        )}
-                        style={{ width: `${Math.min(100, convPct * 20)}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5 text-right">
-                      {convPct.toFixed(1)}% conv.
-                    </p>
-                  </div>
-
-                  {/* Avg fee */}
-                  <div className="text-right shrink-0 w-20">
-                    {row.avg_assignment_fee ? (
-                      <p className="text-sm font-semibold text-green-700">
-                        {formatCurrency(row.avg_assignment_fee)}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-gray-400">No deals yet</p>
-                    )}
-                    <p className="text-xs text-gray-400">avg fee</p>
-                  </div>
-
-                  {/* Converted count */}
-                  <div className="text-right shrink-0">
-                    <p className={cn(
-                      'text-sm font-bold',
+                    <span className={cn(
+                      'text-sm font-bold shrink-0',
                       row.converted_leads > 0 ? 'text-blue-700' : 'text-gray-400',
                     )}>
-                      {row.converted_leads}
-                    </p>
-                    <p className="text-xs text-gray-400">deals</p>
+                      {row.converted_leads} {row.converted_leads === 1 ? 'deal' : 'deals'}
+                    </span>
+                  </div>
+
+                  {/* Row 2: conversion bar spanning full width */}
+                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1.5">
+                    <div
+                      className={cn(
+                        'h-full rounded-full',
+                        convPct > 1 ? 'bg-green-500'
+                        : convPct > 0.5 ? 'bg-yellow-400'
+                        : 'bg-gray-300',
+                      )}
+                      style={{ width: `${Math.min(100, convPct * 20)}%` }}
+                    />
+                  </div>
+
+                  {/* Row 3: stats line — wraps cleanly instead of overflowing */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-xs text-gray-500">
+                    <span>{row.total_leads.toLocaleString()} leads</span>
+                    {row.tier_1_leads > 0 && (
+                      <span className="text-red-600 font-semibold">{row.tier_1_leads} Tier 1</span>
+                    )}
+                    <span>{convPct.toFixed(1)}% conv.</span>
+                    <span className="ml-auto">
+                      {row.avg_assignment_fee ? (
+                        <span className="text-green-700 font-semibold">{formatCurrency(row.avg_assignment_fee)} avg fee</span>
+                      ) : (
+                        <span className="text-gray-400">No deals yet</span>
+                      )}
+                    </span>
                   </div>
                 </div>
               );

@@ -129,35 +129,45 @@ interface CheckData {
   strategyChosen: boolean;
 }
 
-function resolveCurrentStep(d: CheckData): number {
-  // Walk forward — the first step NOT complete is the current one
-  if (!d.strategyChosen)    return 2;   // setup (step 1) always passes if logged in
-  if (!d.hasLeads)          return 3;
-  if (!d.hasTieredLeads)    return 4;
-  if (!d.hasCalls)          return 5;
-  if (!d.hasManyCalls)      return 6;
-  if (!d.hasHotLeads)       return 7;
-  if (!d.hasDealAnalyses)   return 8;
-  if (!d.hasOfferRecs)      return 9;
-  if (!d.hasAppointments)   return 10;
-  if (!d.hasDeals)          return 11;
-  return 11; // all done — stay on step 11
+// Whether a step is complete based purely on live Supabase data.
+function dataDone(step: number, d: CheckData): boolean {
+  switch (step) {
+    case 1:  return true; // setup — complete if they're logged in
+    case 2:  return d.strategyChosen;
+    case 3:  return d.hasLeads;
+    case 4:  return d.hasTieredLeads;
+    case 5:  return d.hasCalls;
+    case 6:  return d.hasManyCalls;
+    case 7:  return d.hasHotLeads;
+    case 8:  return d.hasDealAnalyses;
+    case 9:  return d.hasOfferRecs;
+    case 10: return d.hasAppointments;
+    case 11: return d.hasDeals;
+    default: return false;
+  }
 }
 
-function buildCompletedSet(d: CheckData, current: number): Set<number> {
-  const done = new Set<number>();
-  done.add(1); // step 1 = setup = always complete if they're logged in
-  if (current > 2)  done.add(2);
-  if (current > 3)  done.add(3);
-  if (current > 4)  done.add(4);
-  if (current > 5)  done.add(5);
-  if (current > 6)  done.add(6);
-  if (current > 7)  done.add(7);
-  if (current > 8)  done.add(8);
-  if (current > 9)  done.add(9);
-  if (current > 10) done.add(10);
-  if (d.hasDeals)   done.add(11);
-  return done;
+// ── Manual step completion ────────────────────────────────────────────────────
+// Some steps (e.g. reviewing the priority list) have no clean data signal, so
+// users can tick them off by hand. Stored in localStorage, reactive via event.
+const MANUAL_KEY = 'workflow_manual_complete';
+
+export function getManualComplete(): Set<number> {
+  try {
+    const raw = localStorage.getItem(MANUAL_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr.filter((n: unknown) => typeof n === 'number') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function toggleManualComplete(step: number): void {
+  const s = getManualComplete();
+  if (s.has(step)) s.delete(step);
+  else s.add(step);
+  try { localStorage.setItem(MANUAL_KEY, JSON.stringify([...s])); } catch { /* ignore */ }
+  window.dispatchEvent(new CustomEvent('workflowManualChange'));
 }
 
 export function useWorkflowStep(): WorkflowProgress {
@@ -216,6 +226,14 @@ export function useWorkflowStep(): WorkflowProgress {
     return () => window.removeEventListener('strategyChange', handler);
   }, []);
 
+  // Manually-ticked steps (reactive)
+  const [manual, setManual] = useState<Set<number>>(() => getManualComplete());
+  useEffect(() => {
+    const handler = () => setManual(getManualComplete());
+    window.addEventListener('workflowManualChange', handler);
+    return () => window.removeEventListener('workflowManualChange', handler);
+  }, []);
+
   const fallback: CheckData = {
     hasLeads: false, hasTieredLeads: false, hasCalls: false,
     hasManyCalls: false, hasHotLeads: false, hasDealAnalyses: false,
@@ -224,8 +242,18 @@ export function useWorkflowStep(): WorkflowProgress {
   };
 
   const d = { ...(data ?? fallback), strategyChosen };
-  const currentStep = resolveCurrentStep(d);
-  const completedSteps = buildCompletedSet(d, currentStep);
+
+  // A step is complete if the data says so OR the user ticked it manually.
+  const completedSteps = new Set<number>();
+  for (let step = 1; step <= WORKFLOW_STEPS.length; step++) {
+    if (dataDone(step, d) || manual.has(step)) completedSteps.add(step);
+  }
+  // Current step = the first one not yet complete (linear walk).
+  let currentStep = WORKFLOW_STEPS.length;
+  for (let step = 1; step <= WORKFLOW_STEPS.length; step++) {
+    if (!completedSteps.has(step)) { currentStep = step; break; }
+  }
+
   const pct = Math.round((completedSteps.size / WORKFLOW_STEPS.length) * 100);
   const activeStep = WORKFLOW_STEPS[currentStep - 1];
   const nextStep = currentStep < WORKFLOW_STEPS.length ? WORKFLOW_STEPS[currentStep] : null;
