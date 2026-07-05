@@ -11,8 +11,10 @@
 
 export const CANONICAL_FIELDS = [
   'property_address', 'city', 'state', 'zip_code',
-  'owner_first_name', 'owner_last_name', 'owner_phone_1', 'owner_email',
-  'bedrooms', 'bathrooms', 'sqft', 'asking_price',
+  'owner_first_name', 'owner_last_name',
+  'owner_phone_1', 'owner_phone_2', 'owner_phone_3', 'owner_email',
+  'owner_mailing_address',
+  'property_type', 'bedrooms', 'bathrooms', 'sqft', 'year_built', 'asking_price',
 ] as const;
 
 export type CanonicalField = (typeof CANONICAL_FIELDS)[number];
@@ -24,32 +26,27 @@ export const FIELD_LABELS: Record<CanonicalField, string> = {
   zip_code: 'Zip',
   owner_first_name: 'Owner First Name',
   owner_last_name: 'Owner Last Name',
-  owner_phone_1: 'Phone',
+  owner_phone_1: 'Phone 1',
+  owner_phone_2: 'Phone 2 (skip trace)',
+  owner_phone_3: 'Phone 3 (skip trace)',
   owner_email: 'Email',
+  owner_mailing_address: 'Mailing Address',
+  property_type: 'Property Type',
   bedrooms: 'Bedrooms',
   bathrooms: 'Bathrooms',
   sqft: 'SqFt',
+  year_built: 'Year Built',
   asking_price: 'Asking Price',
 };
 
-export interface MergedRow {
-  property_address: string;
-  city: string;
-  state: string;
-  zip_code: string;
-  owner_first_name: string;
-  owner_last_name: string;
-  owner_phone_1: string;
-  owner_email: string;
-  bedrooms: string;
-  bathrooms: string;
-  sqft: string;
-  asking_price: string;
+export type MergedRow = {
+  [K in CanonicalField]: string;
+} & {
   /** Which source lists this address appeared on */
   sources: string[];
   /** How many of the dropped lists contained this address — the "stack" */
   stack_count: number;
-}
+};
 
 // Common street-suffix abbreviations, standardized during dedup matching so
 // "123 Main St" and "123 Main Street" collapse to the same key.
@@ -125,6 +122,17 @@ function firstNonEmpty(...vals: (string | undefined)[]): string {
  * inserts it. If it's a duplicate, fills any blank fields from the new row
  * and bumps the stack count + source list.
  */
+function normalizeField(field: CanonicalField, value: string): string {
+  const v = (value || '').trim();
+  if (!v) return '';
+  if (field === 'state') return v.toUpperCase().slice(0, 2);
+  if (field === 'zip_code') return normalizeZip(v);
+  if (field === 'owner_phone_1' || field === 'owner_phone_2' || field === 'owner_phone_3') {
+    return v.replace(/[^\d+]/g, '');
+  }
+  return v;
+}
+
 export function mergeRowInto(
   acc: Map<string, MergedRow>,
   raw: Record<string, string>,
@@ -133,22 +141,14 @@ export function mergeRowInto(
   const address = (raw.property_address || '').trim();
   if (!address) return; // unusable without an address
 
-  const incoming: Omit<MergedRow, 'sources' | 'stack_count'> = {
-    property_address: address,
-    city: (raw.city || '').trim(),
-    state: (raw.state || '').trim().toUpperCase().slice(0, 2),
-    zip_code: normalizeZip(raw.zip_code || ''),
-    owner_first_name: (raw.owner_first_name || '').trim(),
-    owner_last_name: (raw.owner_last_name || '').trim(),
-    owner_phone_1: (raw.owner_phone_1 || '').replace(/[^\d+]/g, ''),
-    owner_email: (raw.owner_email || '').trim(),
-    bedrooms: (raw.bedrooms || '').trim(),
-    bathrooms: (raw.bathrooms || '').trim(),
-    sqft: (raw.sqft || '').trim(),
-    asking_price: (raw.asking_price || '').trim(),
-  };
+  // Build the incoming row field-by-field so every canonical field (including
+  // skip-trace phones/mailing address) is carried through automatically.
+  const incoming = {} as Record<CanonicalField, string>;
+  for (const field of CANONICAL_FIELDS) {
+    incoming[field] = normalizeField(field, raw[field] ?? '');
+  }
 
-  const key = dedupeKey(incoming);
+  const key = dedupeKey({ property_address: incoming.property_address, zip_code: incoming.zip_code });
   const existing = acc.get(key);
 
   if (!existing) {
@@ -156,24 +156,17 @@ export function mergeRowInto(
     return;
   }
 
-  // Duplicate — fill gaps from the new row, keep the more complete address,
-  // and count this as an additional stack hit (only once per source list).
-  const merged: MergedRow = {
-    property_address: firstNonEmpty(existing.property_address, incoming.property_address),
-    city: firstNonEmpty(existing.city, incoming.city),
-    state: firstNonEmpty(existing.state, incoming.state),
-    zip_code: firstNonEmpty(existing.zip_code, incoming.zip_code),
-    owner_first_name: firstNonEmpty(existing.owner_first_name, incoming.owner_first_name),
-    owner_last_name: firstNonEmpty(existing.owner_last_name, incoming.owner_last_name),
-    owner_phone_1: firstNonEmpty(existing.owner_phone_1, incoming.owner_phone_1),
-    owner_email: firstNonEmpty(existing.owner_email, incoming.owner_email),
-    bedrooms: firstNonEmpty(existing.bedrooms, incoming.bedrooms),
-    bathrooms: firstNonEmpty(existing.bathrooms, incoming.bathrooms),
-    sqft: firstNonEmpty(existing.sqft, incoming.sqft),
-    asking_price: firstNonEmpty(existing.asking_price, incoming.asking_price),
-    sources: existing.sources.includes(sourceLabel) ? existing.sources : [...existing.sources, sourceLabel],
-    stack_count: existing.sources.includes(sourceLabel) ? existing.stack_count : existing.stack_count + 1,
-  };
+  // Duplicate — fill any blank field from the new row (so skip-trace data on
+  // one list backfills a property that came from another), keep the more
+  // complete values, and count this as an additional stack hit (once per list).
+  const merged = { ...existing } as MergedRow;
+  for (const field of CANONICAL_FIELDS) {
+    merged[field] = firstNonEmpty(existing[field], incoming[field]);
+  }
+  if (!existing.sources.includes(sourceLabel)) {
+    merged.sources = [...existing.sources, sourceLabel];
+    merged.stack_count = existing.stack_count + 1;
+  }
   acc.set(key, merged);
 }
 
@@ -207,20 +200,28 @@ export function downloadCSV(filename: string, csv: string): void {
  *  fails (no API key, network) so the tool still works without it. */
 export function heuristicMapColumns(headers: string[]): Record<CanonicalField, number> {
   const map: Partial<Record<CanonicalField, number>> = {};
+  // Phones are numbered so multiple skip-trace phone columns land in _1/_2/_3
+  const phones: number[] = [];
   headers.forEach((h, i) => {
     const n = h.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    if (!map.property_address && (n.includes('situs') || n.includes('property_address') || (n.includes('address') && !n.includes('mail') && !n.includes('owner')))) map.property_address = i;
-    if (!map.city && n.includes('city')) map.city = i;
-    if (!map.state && (n === 'state' || n.endsWith('_state'))) map.state = i;
-    if (!map.zip_code && n.includes('zip')) map.zip_code = i;
+    if (!map.property_address && (n.includes('situs') || n.includes('property_address') || n.includes('parcel_addr') || (n.includes('address') && !n.includes('mail') && !n.includes('owner')))) map.property_address = i;
+    if (!map.owner_mailing_address && (n.includes('mail') && n.includes('addr'))) map.owner_mailing_address = i;
+    if (!map.city && (n.includes('city') || n.includes('muni'))) map.city = i;
+    if (!map.state && (n === 'state' || n.endsWith('_state') || n.includes('_st'))) map.state = i;
+    if (!map.zip_code && (n.includes('zip') || n.includes('postal'))) map.zip_code = i;
     if (!map.owner_first_name && (n.includes('first_name') || n.includes('owner_1_first'))) map.owner_first_name = i;
-    if (!map.owner_last_name && (n.includes('last_name') || n.includes('owner_1_last'))) map.owner_last_name = i;
-    if (!map.owner_phone_1 && n.includes('phone')) map.owner_phone_1 = i;
+    if (!map.owner_last_name && (n.includes('last_name') || n.includes('owner_1_last') || n.includes('surname'))) map.owner_last_name = i;
+    if ((n.includes('phone') || n.includes('mobile') || n.includes('cell')) && phones.length < 3) phones.push(i);
     if (!map.owner_email && n.includes('email')) map.owner_email = i;
+    if (!map.property_type && (n.includes('property_type') || n.includes('prop_type') || n.includes('land_use'))) map.property_type = i;
     if (!map.bedrooms && (n.includes('bed') || n === 'br')) map.bedrooms = i;
     if (!map.bathrooms && (n.includes('bath') || n === 'ba')) map.bathrooms = i;
-    if (!map.sqft && (n.includes('sqft') || n.includes('sq_ft') || n.includes('square_feet'))) map.sqft = i;
+    if (!map.sqft && (n.includes('sqft') || n.includes('sq_ft') || n.includes('square_feet') || n.includes('living_area'))) map.sqft = i;
+    if (!map.year_built && (n.includes('year_built') || n.includes('yr_built') || n === 'yearbuilt')) map.year_built = i;
     if (!map.asking_price && (n.includes('asking') || n.includes('list_price') || n === 'price')) map.asking_price = i;
   });
+  if (phones[0] !== undefined) map.owner_phone_1 = phones[0];
+  if (phones[1] !== undefined) map.owner_phone_2 = phones[1];
+  if (phones[2] !== undefined) map.owner_phone_3 = phones[2];
   return map as Record<CanonicalField, number>;
 }

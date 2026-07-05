@@ -13,17 +13,18 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { parseSpreadsheet, isSupportedFile } from '@/lib/parseFile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
 import {
   Upload, X, Sparkles, Layers, Download, ArrowRight,
   FileText, Loader2, CheckCircle2, AlertTriangle, Database,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useMasterListStore, type SourceFile } from '@/stores/useMasterListStore';
 import {
   CANONICAL_FIELDS, FIELD_LABELS, type CanonicalField, type MergedRow,
   mergeRowInto, toCSV, downloadCSV, heuristicMapColumns, parseCombinedAddress,
@@ -34,20 +35,6 @@ interface ClaudePlan {
   addressCombined: boolean;
   defaultCity: string;
   defaultState: string;
-}
-
-interface SourceFile {
-  id: string;
-  label: string;
-  fileName: string;
-  headers: string[];
-  rows: string[][]; // data rows, no header
-  mapping: Partial<Record<CanonicalField, number>>;
-  addressCombined: boolean;
-  defaultCity: string;
-  defaultState: string;
-  status: 'mapping' | 'mapped' | 'error';
-  mappedBy: 'claude' | 'heuristic' | null;
 }
 
 async function mapColumnsWithClaude(headers: string[], samples: string[][]): Promise<ClaudePlan | null> {
@@ -71,9 +58,19 @@ async function mapColumnsWithClaude(headers: string[], samples: string[][]): Pro
   }
 }
 
+// Numeric leads columns — clean "$120,000"/"3 br" style values before insert
+const NUMERIC_LEAD_FIELDS = new Set(['bedrooms', 'bathrooms', 'sqft', 'year_built', 'asking_price']);
+function toNum(v: string): number | null {
+  if (!v) return null;
+  const n = Number(String(v).replace(/[^0-9.]/g, ''));
+  return Number.isNaN(n) ? null : n;
+}
+
 export function MasterListBuilder() {
-  const [files, setFiles] = useState<SourceFile[]>([]);
-  const [merged, setMerged] = useState<MergedRow[] | null>(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  // Persisted across navigation so switching screens doesn't wipe the work
+  const { files, merged, setFiles, setMerged, setImported, clearAll } = useMasterListStore();
   const [merging, setMerging] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -193,6 +190,7 @@ export function MasterListBuilder() {
     if (!merged) return;
     setImporting(true);
     let imported = 0, errors = 0;
+    let firstError = '';
     const CHUNK = 100;
     for (let i = 0; i < merged.length; i += CHUNK) {
       const chunk = merged.slice(i, i + CHUNK)
@@ -205,22 +203,40 @@ export function MasterListBuilder() {
           owner_first_name: r.owner_first_name || null,
           owner_last_name: r.owner_last_name || null,
           owner_phone_1: r.owner_phone_1 || null,
+          owner_phone_2: r.owner_phone_2 || null,   // skip-trace
+          owner_phone_3: r.owner_phone_3 || null,   // skip-trace
           owner_email: r.owner_email || null,
-          bedrooms: r.bedrooms ? Number(r.bedrooms) || null : null,
-          bathrooms: r.bathrooms ? Number(r.bathrooms) || null : null,
-          sqft: r.sqft ? Number(r.sqft) || null : null,
-          asking_price: r.asking_price ? Number(r.asking_price) || null : null,
+          owner_mailing_address: r.owner_mailing_address || null,
+          property_type: r.property_type || null,
+          bedrooms: toNum(r.bedrooms),
+          bathrooms: toNum(r.bathrooms),
+          sqft: toNum(r.sqft),
+          year_built: toNum(r.year_built),
+          asking_price: toNum(r.asking_price),
           source: r.sources.join(' | ').slice(0, 250),
           status: 'new',
         }));
       if (chunk.length === 0) continue;
       const { error } = await supabase.from('leads').insert(chunk);
-      if (error) errors += chunk.length;
+      if (error) { errors += chunk.length; if (!firstError) firstError = error.message; }
       else imported += chunk.length;
     }
     setImporting(false);
-    if (imported > 0) toast.success(`${imported.toLocaleString()} leads imported`);
-    if (errors > 0) toast.error(`${errors.toLocaleString()} rows failed to import`);
+
+    if (imported > 0) {
+      setImported(true);
+      // Force the Leads page to refetch so the new rows are visible immediately
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['kpi'] });
+      queryClient.invalidateQueries({ queryKey: ['workflow_progress'] });
+      toast.success(`${imported.toLocaleString()} leads saved — opening Leads…`);
+      // Take the user to the Leads page so they SEE the data land
+      setTimeout(() => navigate('/leads'), 800);
+    }
+    if (errors > 0) {
+      // Surface the real Supabase reason instead of a generic count
+      toast.error(`${errors.toLocaleString()} rows failed${firstError ? `: ${firstError}` : ''}`);
+    }
   };
 
   const stackBreakdown = merged ? {
@@ -231,16 +247,26 @@ export function MasterListBuilder() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Layers className="h-6 w-6 text-[#1B3A5C]" />
-          Master List Builder
-        </h1>
-        <p className="text-gray-500 text-sm mt-0.5">
-          Drop every list you pulled — PropStream, county rolls, XLeads — and get back
-          one deduped master list. Claude maps each file's columns automatically;
-          addresses that appear on multiple lists are flagged as a stack.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Layers className="h-6 w-6 text-[#1B3A5C]" />
+            Master List Builder
+          </h1>
+          <p className="text-gray-500 text-sm mt-0.5">
+            Drop every list you pulled — PropStream, county rolls, skip-trace exports — and get
+            back one deduped master list. Claude maps each file's columns (including all
+            skip-trace phones and mailing address); addresses on multiple lists are flagged as a stack.
+          </p>
+        </div>
+        {files.length > 0 && (
+          <button
+            onClick={() => { clearAll(); toast.success('Cleared — start fresh'); }}
+            className="shrink-0 text-xs text-gray-400 hover:text-red-600 mt-1"
+          >
+            Start over
+          </button>
+        )}
       </div>
 
       {/* Drop zone */}

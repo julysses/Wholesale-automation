@@ -363,9 +363,13 @@ SAMPLE ROWS (index-aligned to the columns above):
 Canonical fields:
 - property_address: the SITUS / physical property street address — NOT the owner's mailing address
 - city, state, zip_code
+- owner_mailing_address: the owner's mailing address if separate from the property
 - owner_first_name, owner_last_name
 - owner_full_name: use ONLY if a single column holds the whole name
-- owner_phone_1, owner_email, bedrooms, bathrooms, sqft, asking_price
+- owner_phone_1, owner_phone_2, owner_phone_3: map multiple phone columns (skip-trace
+  lists often have several) into these in order
+- owner_email
+- property_type, bedrooms, bathrooms, sqft, year_built, asking_price
 
 Decide:
 1. Which column index maps to each canonical field (omit fields with no match).
@@ -398,9 +402,10 @@ Return ONLY this JSON:
         result = json.loads(raw)
         mapping = result.get("mapping", {})
         valid_fields = {
-            "property_address", "city", "state", "zip_code", "owner_first_name",
-            "owner_last_name", "owner_full_name", "owner_phone_1", "owner_email",
-            "bedrooms", "bathrooms", "sqft", "asking_price",
+            "property_address", "city", "state", "zip_code", "owner_mailing_address",
+            "owner_first_name", "owner_last_name", "owner_full_name",
+            "owner_phone_1", "owner_phone_2", "owner_phone_3", "owner_email",
+            "property_type", "bedrooms", "bathrooms", "sqft", "year_built", "asking_price",
         }
         clean = {
             k: int(v) for k, v in mapping.items()

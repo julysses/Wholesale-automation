@@ -510,34 +510,44 @@ function LeadFormModal({ open, onClose, lead }: { open: boolean; onClose: () => 
 // it is split into first/last at import time and never inserted as a column.
 const MAP_FIELDS = [
   'property_address', 'city', 'state', 'zip_code', 'owner_full_name',
-  'owner_first_name', 'owner_last_name', 'owner_phone_1', 'owner_email',
-  'source', 'motivation_tag', 'bedrooms', 'bathrooms', 'sqft', 'asking_price',
+  'owner_first_name', 'owner_last_name',
+  'owner_phone_1', 'owner_phone_2', 'owner_phone_3', 'owner_email',
+  'owner_mailing_address', 'source', 'motivation_tag',
+  'property_type', 'bedrooms', 'bathrooms', 'sqft', 'year_built', 'asking_price',
 ];
-const NUMERIC_FIELDS = new Set(['bedrooms', 'bathrooms', 'sqft', 'asking_price']);
+const NUMERIC_FIELDS = new Set(['bedrooms', 'bathrooms', 'sqft', 'year_built', 'asking_price']);
 
 // Offline fallback mapper — covers PropStream, county tax/foreclosure rolls,
 // and XLeads column conventions (situs/parcel/site address, muni city, etc.)
 function heuristicMap(headers: string[]): Record<string, string> {
   const m: Record<string, string> = {};
   const set = (f: string, i: number) => { if (m[f] === undefined) m[f] = String(i); };
+  const phones: number[] = [];
   headers.forEach((h, i) => {
     const n = (h || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
     // Property (situs) address — exclude owner/mailing address
     if (/situs|parcel|property|site/.test(n) && n.includes('addr')) set('property_address', i);
     else if (n === 'address' || n === 'property_address' || (n.includes('addr') && !n.includes('mail') && !n.includes('owner'))) set('property_address', i);
+    if (n.includes('mail') && n.includes('addr')) set('owner_mailing_address', i);
     if (n.includes('city') || n.includes('muni')) set('city', i);
     if (n === 'state' || n.endsWith('_state') || n.includes('_st') || /situs_st|property_st/.test(n)) set('state', i);
     if (n.includes('zip') || n.includes('postal')) set('zip_code', i);
     if (n.includes('first')) set('owner_first_name', i);
     if (n.includes('last') || n.includes('surname')) set('owner_last_name', i);
     if (n.includes('name') && !n.includes('first') && !n.includes('last') && (n.includes('owner') || n === 'name')) set('owner_full_name', i);
-    if (n.includes('phone') || n.includes('mobile') || n.includes('cell')) set('owner_phone_1', i);
+    // Collect up to 3 phone columns (skip-trace lists carry several)
+    if ((n.includes('phone') || n.includes('mobile') || n.includes('cell')) && phones.length < 3) phones.push(i);
     if (n.includes('email')) set('owner_email', i);
+    if (n.includes('property_type') || n.includes('prop_type') || n.includes('land_use')) set('property_type', i);
     if (n.includes('bed') || n === 'br') set('bedrooms', i);
     if (n.includes('bath') || n === 'ba') set('bathrooms', i);
-    if (n.includes('sqft') || n.includes('square') || n === 'sq_ft') set('sqft', i);
+    if (n.includes('sqft') || n.includes('square') || n === 'sq_ft' || n.includes('living_area')) set('sqft', i);
+    if (n.includes('year_built') || n.includes('yr_built') || n === 'yearbuilt') set('year_built', i);
     if (n.includes('asking') || n.includes('list_price') || n === 'price') set('asking_price', i);
   });
+  if (phones[0] !== undefined) set('owner_phone_1', phones[0]);
+  if (phones[1] !== undefined) set('owner_phone_2', phones[1]);
+  if (phones[2] !== undefined) set('owner_phone_3', phones[2]);
   return m;
 }
 
