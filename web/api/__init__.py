@@ -338,35 +338,56 @@ class MapColumnsRequest(BaseModel):
 
 @router.post("/map-columns")
 def map_columns(body: MapColumnsRequest) -> dict:
-    """Map arbitrary CSV headers (PropStream, county rolls, XLeads, …) to the
-    canonical lead schema. Used by the frontend Master List Builder so users can
-    drop lists with any column naming and get a clean merge."""
+    """Have Claude review an arbitrary lead list (PropStream, county tax /
+    foreclosure rolls, XLeads, …) and figure out how to reshape it into the
+    canonical lead schema. Returns not just a column mapping but the data-management
+    plan: whether the address column is a combined "addr, city, state zip" string
+    that must be split, and the city/state to backfill when the list omits them
+    (common for single-county rolls). The frontend applies this plan deterministically
+    to every row."""
     client = _get_client()
     system = (
-        "You map spreadsheet columns from real-estate lead lists to a canonical schema. "
-        "Output ONLY valid JSON, no prose or markdown."
+        "You are a data-cleaning assistant for a real-estate wholesaling CRM. You review "
+        "messy lead lists from any source and decide how to reshape them into the app's "
+        "schema. You handle PropStream exports, county tax-delinquent and pre-foreclosure "
+        "rolls, probate lists, and skip-trace exports. Output ONLY valid JSON, no prose or markdown."
     )
-    user = f"""Map these CSV columns to canonical lead fields.
+    user = f"""Review this lead list and produce a plan to load it into the canonical schema.
 
 COLUMNS (index: header):
 {json.dumps(list(enumerate(body.headers)), default=str)}
 
-SAMPLE ROWS (for disambiguation):
-{json.dumps(body.samples[:3], default=str)}
+SAMPLE ROWS (index-aligned to the columns above):
+{json.dumps(body.samples[:4], default=str)}
 
 Canonical fields:
-property_address (the SITUS/property street address — NOT the owner mailing address),
-city, state, zip_code, owner_first_name, owner_last_name,
-owner_full_name (only if one column holds the complete name),
-owner_phone_1, owner_email, bedrooms, bathrooms, sqft, asking_price
+- property_address: the SITUS / physical property street address — NOT the owner's mailing address
+- city, state, zip_code
+- owner_first_name, owner_last_name
+- owner_full_name: use ONLY if a single column holds the whole name
+- owner_phone_1, owner_email, bedrooms, bathrooms, sqft, asking_price
 
-Return ONLY this JSON (omit fields with no matching column):
-{{"mapping": {{"<canonical_field>": <column index integer>}}}}"""
+Decide:
+1. Which column index maps to each canonical field (omit fields with no match).
+2. address_combined: true if the property_address column ALSO contains city/state/zip
+   inline (e.g. "123 Main St, Dallas, TX 75201"). If true, the app will split it.
+3. default_city / default_state: if this looks like a single-city or single-county list
+   and the rows have no usable city column, infer the city and 2-letter state from the
+   sample data (e.g. county seat). Leave blank if you can't tell.
+
+Return ONLY this JSON:
+{{
+  "mapping": {{"<canonical_field>": <column index integer>}},
+  "address_combined": <true|false>,
+  "default_city": "<city or empty string>",
+  "default_state": "<2-letter state or empty string>",
+  "notes": "<one short sentence on what you did, for the user>"
+}}"""
 
     try:
         msg = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=400,
+            max_tokens=600,
             system=system,
             messages=[{"role": "user", "content": user}],
         )
@@ -376,7 +397,6 @@ Return ONLY this JSON (omit fields with no matching column):
             raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
         result = json.loads(raw)
         mapping = result.get("mapping", {})
-        # Validate: only known fields, indices in range
         valid_fields = {
             "property_address", "city", "state", "zip_code", "owner_first_name",
             "owner_last_name", "owner_full_name", "owner_phone_1", "owner_email",
@@ -387,7 +407,13 @@ Return ONLY this JSON (omit fields with no matching column):
             if k in valid_fields and isinstance(v, (int, float, str))
             and str(v).lstrip("-").isdigit() and 0 <= int(v) < len(body.headers)
         }
-        return {"mapping": clean}
+        return {
+            "mapping": clean,
+            "address_combined": bool(result.get("address_combined", False)),
+            "default_city": str(result.get("default_city", "") or "").strip()[:80],
+            "default_state": str(result.get("default_state", "") or "").strip().upper()[:2],
+            "notes": str(result.get("notes", "") or "").strip()[:200],
+        }
     except json.JSONDecodeError as exc:
         raise HTTPException(502, f"Claude returned invalid JSON: {exc}")
     except HTTPException:

@@ -21,11 +21,12 @@ import { cn } from '@/lib/utils';
 import {
   Plus, Upload, Search, ChevronDown, ChevronLeft, ChevronRight,
   MoreHorizontal, Trash2, Bot, ArrowRight, Phone, Mail,
-  MessageSquare, Eye, Ban, PhoneCall, Zap, Download
+  MessageSquare, Eye, Ban, PhoneCall, Zap, Download, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { supabase } from '@/lib/supabase';
+import { parseCombinedAddress } from '@/lib/masterList';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
@@ -505,56 +506,179 @@ function LeadFormModal({ open, onClose, lead }: { open: boolean; onClose: () => 
 }
 
 // ─── Import CSV Modal ─────────────────────────────────────────────────────────
+// Fields the user can map a column to. owner_full_name is a virtual field —
+// it is split into first/last at import time and never inserted as a column.
+const MAP_FIELDS = [
+  'property_address', 'city', 'state', 'zip_code', 'owner_full_name',
+  'owner_first_name', 'owner_last_name', 'owner_phone_1', 'owner_email',
+  'source', 'motivation_tag', 'bedrooms', 'bathrooms', 'sqft', 'asking_price',
+];
+const NUMERIC_FIELDS = new Set(['bedrooms', 'bathrooms', 'sqft', 'asking_price']);
+
+// Offline fallback mapper — covers PropStream, county tax/foreclosure rolls,
+// and XLeads column conventions (situs/parcel/site address, muni city, etc.)
+function heuristicMap(headers: string[]): Record<string, string> {
+  const m: Record<string, string> = {};
+  const set = (f: string, i: number) => { if (m[f] === undefined) m[f] = String(i); };
+  headers.forEach((h, i) => {
+    const n = (h || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+    // Property (situs) address — exclude owner/mailing address
+    if (/situs|parcel|property|site/.test(n) && n.includes('addr')) set('property_address', i);
+    else if (n === 'address' || n === 'property_address' || (n.includes('addr') && !n.includes('mail') && !n.includes('owner'))) set('property_address', i);
+    if (n.includes('city') || n.includes('muni')) set('city', i);
+    if (n === 'state' || n.endsWith('_state') || n.includes('_st') || /situs_st|property_st/.test(n)) set('state', i);
+    if (n.includes('zip') || n.includes('postal')) set('zip_code', i);
+    if (n.includes('first')) set('owner_first_name', i);
+    if (n.includes('last') || n.includes('surname')) set('owner_last_name', i);
+    if (n.includes('name') && !n.includes('first') && !n.includes('last') && (n.includes('owner') || n === 'name')) set('owner_full_name', i);
+    if (n.includes('phone') || n.includes('mobile') || n.includes('cell')) set('owner_phone_1', i);
+    if (n.includes('email')) set('owner_email', i);
+    if (n.includes('bed') || n === 'br') set('bedrooms', i);
+    if (n.includes('bath') || n === 'ba') set('bathrooms', i);
+    if (n.includes('sqft') || n.includes('square') || n === 'sq_ft') set('sqft', i);
+    if (n.includes('asking') || n.includes('list_price') || n === 'price') set('asking_price', i);
+  });
+  return m;
+}
+
+interface MapPlan {
+  mapping: Record<string, string>;
+  addressCombined: boolean;
+  defaultCity: string;
+  defaultState: string;
+  notes: string;
+}
+
+async function claudeMap(headers: string[], samples: string[][]): Promise<MapPlan | null> {
+  try {
+    const res = await fetch('/api/ai/map-columns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ headers, samples }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.mapping || Object.keys(data.mapping).length === 0) return null;
+    const mapping: Record<string, string> = {};
+    Object.entries(data.mapping).forEach(([k, v]) => { mapping[k] = String(v); });
+    return {
+      mapping,
+      addressCombined: !!data.address_combined,
+      defaultCity: data.default_city || '',
+      defaultState: data.default_state || '',
+      notes: data.notes || '',
+    };
+  } catch {
+    return null;
+  }
+}
+
 function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ imported: number; errors: number } | null>(null);
-
-  const DB_FIELDS = [
-    'property_address', 'city', 'state', 'zip_code', 'owner_first_name',
-    'owner_last_name', 'owner_phone_1', 'owner_email', 'source', 'motivation_tag',
-    'bedrooms', 'bathrooms', 'sqft', 'asking_price',
-  ];
-
   const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [mapStatus, setMapStatus] = useState<'idle' | 'mapping' | 'done'>('idle');
+  const [mappedBy, setMappedBy] = useState<'claude' | 'heuristic' | null>(null);
+  const [defaultCity, setDefaultCity] = useState('');
+  const [defaultState, setDefaultState] = useState('TX');
+  const [addressCombined, setAddressCombined] = useState(false);
+  const [claudeNotes, setClaudeNotes] = useState('');
+
+  const reset = () => {
+    setFile(null); setResult(null); setHeaders([]); setPreview([]);
+    setMapping({}); setMapStatus('idle'); setMappedBy(null); setDefaultCity('');
+    setDefaultState('TX'); setAddressCombined(false); setClaudeNotes('');
+  };
 
   const handleFile = (f: File) => {
     setFile(f);
+    setMapStatus('idle');
+    setMappedBy(null);
+    setAddressCombined(false);
+    setClaudeNotes('');
     Papa.parse(f, {
       header: false,
       preview: 6,
-      complete: (res) => {
+      skipEmptyLines: true,
+      complete: async (res) => {
         const rows = res.data as string[][];
-        if (rows.length > 0) {
-          setHeaders(rows[0]);
-          setPreview(rows.slice(1, 5));
-          // Auto-map common headers
-          const autoMap: Record<string, string> = {};
-          rows[0].forEach((h, i) => {
-            const normalized = h.toLowerCase().replace(/[^a-z0-9]/g, '_');
-            if (DB_FIELDS.includes(normalized)) autoMap[normalized] = String(i);
-            if (normalized.includes('address') && !autoMap['property_address']) autoMap['property_address'] = String(i);
-            if (normalized.includes('first') && !autoMap['owner_first_name']) autoMap['owner_first_name'] = String(i);
-            if (normalized.includes('last') && !autoMap['owner_last_name']) autoMap['owner_last_name'] = String(i);
-            if (normalized.includes('phone') && !autoMap['owner_phone_1']) autoMap['owner_phone_1'] = String(i);
-            if (normalized.includes('city') && !autoMap['city']) autoMap['city'] = String(i);
-            if (normalized.includes('zip') && !autoMap['zip_code']) autoMap['zip_code'] = String(i);
-          });
-          setMapping(autoMap);
+        if (rows.length === 0) return;
+        setHeaders(rows[0]);
+        setPreview(rows.slice(1, 5));
+        setMapStatus('mapping');
+        // Let Claude review the file and produce the full data-management plan
+        // (column mapping + combined-address detection + inferred city/state).
+        // Fall back to local heuristics if Claude is unreachable.
+        const samples = rows.slice(1, 4);
+        const plan = await claudeMap(rows[0], samples);
+        if (plan && plan.mapping['property_address'] !== undefined) {
+          setMapping(plan.mapping);
+          setMappedBy('claude');
+          setAddressCombined(plan.addressCombined);
+          if (plan.defaultCity) setDefaultCity(plan.defaultCity);
+          if (plan.defaultState) setDefaultState(plan.defaultState);
+          setClaudeNotes(plan.notes);
+        } else {
+          setMapping(heuristicMap(rows[0]));
+          setMappedBy('heuristic');
         }
+        setMapStatus('done');
       },
     });
   };
 
+  const buildRecord = (row: string[]): Record<string, string | number> | null => {
+    const rec: Record<string, string | number> = { status: 'new' };
+    Object.entries(mapping).forEach(([field, colIdx]) => {
+      if (colIdx === '' || colIdx == null) return;
+      const val = row[Number(colIdx)]?.trim();
+      if (!val) return;
+      if (field === 'owner_full_name') {
+        const parts = val.split(/\s+/);
+        if (!rec.owner_first_name) rec.owner_first_name = parts[0];
+        if (rec.owner_last_name === undefined && parts.length > 1) rec.owner_last_name = parts.slice(1).join(' ');
+      } else if (NUMERIC_FIELDS.has(field)) {
+        const num = Number(val.replace(/[^0-9.]/g, ''));
+        if (!Number.isNaN(num)) rec[field] = num;
+      } else {
+        rec[field] = val;
+      }
+    });
+    // Claude flagged the address column as a combined "addr, city, state zip"
+    // string — split it and fill any fields not already mapped separately.
+    if (addressCombined && typeof rec.property_address === 'string') {
+      const p = parseCombinedAddress(rec.property_address);
+      if (p.street) rec.property_address = p.street;
+      if (!rec.city && p.city) rec.city = p.city;
+      if (!rec.state && p.state) rec.state = p.state;
+      if (!rec.zip_code && p.zip) rec.zip_code = p.zip;
+    }
+    // City & state are NOT NULL in the DB — backfill from the defaults so
+    // single-county lists (which often omit a per-row city) still import.
+    if (!rec.city && defaultCity.trim()) rec.city = defaultCity.trim();
+    if (!rec.state) rec.state = (defaultState.trim() || 'TX').toUpperCase().slice(0, 2);
+    if (!rec.property_address || !rec.city) return null;
+    return rec;
+  };
+
+  const hasAddr = mapping['property_address'] !== undefined && mapping['property_address'] !== '';
+  const hasCity = (mapping['city'] !== undefined && mapping['city'] !== '') || defaultCity.trim() !== '';
+
   const handleImport = async () => {
-    if (!file || !mapping['property_address'] || !mapping['city']) {
-      toast.error('Must map "property_address" and "city" columns');
+    if (!file) return;
+    if (!hasAddr) {
+      toast.error('Map the Property Address column — it\'s required');
+      return;
+    }
+    if (!hasCity) {
+      toast.error('This list has no City column mapped. Enter a Default City below (e.g. the county seat) so rows can import.');
       return;
     }
     setImporting(true);
-    let imported = 0, errors = 0;
+    let imported = 0, errors = 0, skipped = 0;
 
     await new Promise<void>((resolve) => {
       Papa.parse(file, {
@@ -564,14 +688,10 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
           const rows = (res.data as string[][]).slice(1);
           const CHUNK = 100;
           for (let i = 0; i < rows.length; i += CHUNK) {
-            const chunk = rows.slice(i, i + CHUNK).map((row) => {
-              const record: Record<string, string | number> = { status: 'new', state: 'TX' };
-              Object.entries(mapping).forEach(([field, colIdx]) => {
-                const val = row[Number(colIdx)]?.trim();
-                if (val) record[field] = val;
-              });
-              return record;
-            }).filter((r) => r.property_address && r.city);
+            const built = rows.slice(i, i + CHUNK).map(buildRecord);
+            const chunk = built.filter((r): r is Record<string, string | number> => r !== null);
+            skipped += built.length - chunk.length;
+            if (chunk.length === 0) continue;
             const { error } = await supabase.from('leads').insert(chunk);
             if (error) errors += chunk.length;
             else imported += chunk.length;
@@ -582,18 +702,18 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
     });
 
     setImporting(false);
-    setResult({ imported, errors });
+    setResult({ imported, errors: errors + skipped });
   };
 
   return (
-    <Modal open={open} onClose={() => { onClose(); setFile(null); setResult(null); }} title="Import Leads from CSV" size="xl">
+    <Modal open={open} onClose={() => { onClose(); reset(); }} title="Import Leads from CSV" size="xl">
       <div className="p-6 space-y-5">
         {result ? (
           <div className="text-center py-8 space-y-3">
             <div className="text-5xl">✅</div>
-            <p className="text-xl font-bold text-gray-900">{result.imported} leads imported</p>
-            {result.errors > 0 && <p className="text-sm text-red-500">{result.errors} rows had errors</p>}
-            <Button onClick={() => { onClose(); setFile(null); setResult(null); }}>Done</Button>
+            <p className="text-xl font-bold text-gray-900">{result.imported.toLocaleString()} leads imported</p>
+            {result.errors > 0 && <p className="text-sm text-red-500">{result.errors.toLocaleString()} rows skipped (missing address or city)</p>}
+            <Button onClick={() => { onClose(); reset(); }}>Done</Button>
           </div>
         ) : (
           <>
@@ -606,20 +726,62 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
             >
               <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
               <p className="font-medium text-gray-700">{file ? file.name : 'Drop CSV here or click to browse'}</p>
-              <p className="text-xs text-gray-400 mt-1">CSV format, any column order</p>
+              <p className="text-xs text-gray-400 mt-1">PropStream, county tax/foreclosure rolls, XLeads — any column layout</p>
               <input id="csv-input" type="file" accept=".csv" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
             </div>
 
-            {headers.length > 0 && (
+            {/* Mapping status */}
+            {mapStatus === 'mapping' && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <RefreshCw className="h-4 w-4 animate-spin" /> Claude is reading your columns…
+              </div>
+            )}
+
+            {headers.length > 0 && mapStatus === 'done' && (
               <>
+                {mappedBy === 'claude' ? (
+                  <div className="bg-green-50 border border-green-100 rounded-lg p-2.5 space-y-1">
+                    <p className="text-xs text-green-700 flex items-center gap-1.5 font-medium">
+                      <Zap className="h-3.5 w-3.5" /> Claude reviewed and mapped this list — adjust anything below if needed.
+                    </p>
+                    {claudeNotes && <p className="text-xs text-green-600 pl-5">{claudeNotes}</p>}
+                    {addressCombined && (
+                      <p className="text-xs text-green-600 pl-5">
+                        Detected a combined address column — city, state, and zip will be split out automatically.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-600 flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5" /> Auto-detected columns (offline). Double-check the mapping below.
+                  </p>
+                )}
+
+                {/* Default City / State — used to backfill county lists that omit city */}
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-blue-900 mb-2">
+                    Default City / State — applied to any row missing its own value (required for county lists without a city column)
+                  </p>
+                  <div className="flex gap-3">
+                    <Input placeholder="Default city (e.g. Dallas)" value={defaultCity}
+                      onChange={(e) => setDefaultCity(e.target.value)} className="flex-1" />
+                    <Input placeholder="State" value={defaultState}
+                      onChange={(e) => setDefaultState(e.target.value)} className="w-24" />
+                  </div>
+                </div>
+
                 {/* Column mapping */}
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Map CSV columns to database fields</p>
                   <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                    {DB_FIELDS.map((field) => (
+                    {MAP_FIELDS.map((field) => (
                       <div key={field} className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 w-36 shrink-0">{field}</span>
+                        <span className="text-xs text-gray-500 w-36 shrink-0">
+                          {field}
+                          {field === 'property_address' && <span className="text-red-500"> *</span>}
+                          {field === 'city' && <span className="text-red-500"> *</span>}
+                        </span>
                         <select
                           value={mapping[field] ?? ''}
                           onChange={(e) => setMapping({ ...mapping, [field]: e.target.value })}
@@ -627,7 +789,7 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
                         >
                           <option value="">— skip —</option>
                           {headers.map((h, i) => (
-                            <option key={i} value={String(i)}>{h} (col {i + 1})</option>
+                            <option key={i} value={String(i)}>{h || `Column ${i + 1}`} (col {i + 1})</option>
                           ))}
                         </select>
                       </div>
@@ -653,10 +815,12 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
                   </div>
                 )}
 
-                <div className="flex justify-end gap-3">
-                  <Button variant="outline" onClick={onClose}>Cancel</Button>
-                  <Button onClick={handleImport} loading={importing} icon={<Upload className="h-4 w-4" />}>
-                    Import {file ? '' : 'CSV'}
+                <div className="flex items-center justify-end gap-3">
+                  {!hasAddr && <span className="text-xs text-red-500 mr-auto">Map the Property Address column to continue</span>}
+                  {hasAddr && !hasCity && <span className="text-xs text-amber-600 mr-auto">Map a City column or set a Default City</span>}
+                  <Button variant="outline" onClick={() => { onClose(); reset(); }}>Cancel</Button>
+                  <Button onClick={handleImport} loading={importing} disabled={!hasAddr || !hasCity} icon={<Upload className="h-4 w-4" />}>
+                    Import Leads
                   </Button>
                 </div>
               </>

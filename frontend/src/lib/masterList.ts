@@ -72,6 +72,39 @@ function normalizeZip(raw: string): string {
   return (raw || '').trim().slice(0, 5);
 }
 
+/**
+ * Split a combined "123 Main St, Dallas, TX 75201" string into parts. Used when
+ * Claude flags a list's address column as containing the whole address inline
+ * (common in county rolls). Best-effort — returns whatever it can parse.
+ */
+export function parseCombinedAddress(raw: string): { street: string; city: string; state: string; zip: string } {
+  const original = (raw || '').trim();
+  let rest = original;
+
+  const zip = (rest.match(/\b(\d{5})(?:-\d{4})?\s*$/) || [])[1] || '';
+  rest = rest.replace(/\b\d{5}(?:-\d{4})?\s*$/, '').trim().replace(/,\s*$/, '');
+
+  // Only treat a trailing 2-letter token as a state if it's anchored by a comma,
+  // or a zip was present (structured tail). Prevents "...Address" → state "SS".
+  const stateMatch = rest.match(/,\s*([A-Za-z]{2})\s*$/) || (zip ? rest.match(/\s+([A-Za-z]{2})\s*$/) : null);
+  let state = '';
+  if (stateMatch) {
+    state = stateMatch[1].toUpperCase();
+    rest = rest.slice(0, stateMatch.index).trim().replace(/,\s*$/, '');
+  }
+
+  const parts = rest.split(',').map((s) => s.trim()).filter(Boolean);
+  let street = '';
+  let city = '';
+  if (parts.length >= 2) {
+    city = parts[parts.length - 1];
+    street = parts.slice(0, parts.length - 1).join(', ');
+  } else {
+    street = parts[0] || original;
+  }
+  return { street, city, state, zip };
+}
+
 /** Dedup key: normalized address + zip. Falls back to address-only if zip is missing
  *  (still catches most PropStream-vs-county duplicates within one target area). */
 export function dedupeKey(row: { property_address: string; zip_code: string }): string {

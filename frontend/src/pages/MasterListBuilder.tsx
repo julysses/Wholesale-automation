@@ -26,8 +26,15 @@ import {
 import { supabase } from '@/lib/supabase';
 import {
   CANONICAL_FIELDS, FIELD_LABELS, type CanonicalField, type MergedRow,
-  mergeRowInto, toCSV, downloadCSV, heuristicMapColumns,
+  mergeRowInto, toCSV, downloadCSV, heuristicMapColumns, parseCombinedAddress,
 } from '@/lib/masterList';
+
+interface ClaudePlan {
+  mapping: Partial<Record<CanonicalField, number>>;
+  addressCombined: boolean;
+  defaultCity: string;
+  defaultState: string;
+}
 
 interface SourceFile {
   id: string;
@@ -36,11 +43,14 @@ interface SourceFile {
   headers: string[];
   rows: string[][]; // data rows, no header
   mapping: Partial<Record<CanonicalField, number>>;
+  addressCombined: boolean;
+  defaultCity: string;
+  defaultState: string;
   status: 'mapping' | 'mapped' | 'error';
   mappedBy: 'claude' | 'heuristic' | null;
 }
 
-async function mapColumnsWithClaude(headers: string[], samples: string[][]): Promise<Partial<Record<CanonicalField, number>> | null> {
+async function mapColumnsWithClaude(headers: string[], samples: string[][]): Promise<ClaudePlan | null> {
   try {
     const res = await fetch('/api/ai/map-columns', {
       method: 'POST',
@@ -48,8 +58,14 @@ async function mapColumnsWithClaude(headers: string[], samples: string[][]): Pro
       body: JSON.stringify({ headers, samples }),
     });
     if (!res.ok) return null;
-    const { mapping } = await res.json();
-    return mapping ?? null;
+    const data = await res.json();
+    if (!data.mapping) return null;
+    return {
+      mapping: data.mapping,
+      addressCombined: !!data.address_combined,
+      defaultCity: data.default_city || '',
+      defaultState: data.default_state || '',
+    };
   } catch {
     return null;
   }
@@ -98,19 +114,25 @@ export function MasterListBuilder() {
 
       const placeholder: SourceFile = {
         id, label: file.name.replace(/\.csv$/i, ''), fileName: file.name,
-        headers, rows, mapping: {}, status: 'mapping', mappedBy: null,
+        headers, rows, mapping: {}, addressCombined: false, defaultCity: '',
+        defaultState: '', status: 'mapping', mappedBy: null,
       };
       setFiles((prev) => [...prev, placeholder]);
 
       const samples = rows.slice(0, 3);
-      const claudeMapping = await mapColumnsWithClaude(headers, samples);
-      const mapping = claudeMapping && Object.keys(claudeMapping).length > 0
-        ? claudeMapping
-        : heuristicMapColumns(headers);
-      const mappedBy = claudeMapping && Object.keys(claudeMapping).length > 0 ? 'claude' : 'heuristic';
+      const plan = await mapColumnsWithClaude(headers, samples);
+      const usedClaude = !!plan && Object.keys(plan.mapping).length > 0;
+      const mapping = usedClaude ? plan!.mapping : heuristicMapColumns(headers);
 
       setFiles((prev) => prev.map((f) => f.id === id
-        ? { ...f, mapping, mappedBy, status: mapping.property_address !== undefined ? 'mapped' : 'error' }
+        ? {
+            ...f, mapping,
+            addressCombined: usedClaude ? plan!.addressCombined : false,
+            defaultCity: usedClaude ? plan!.defaultCity : '',
+            defaultState: usedClaude ? plan!.defaultState : '',
+            mappedBy: usedClaude ? 'claude' : 'heuristic',
+            status: mapping.property_address !== undefined ? 'mapped' : 'error',
+          }
         : f));
     }
   }, []);
@@ -152,6 +174,18 @@ export function MasterListBuilder() {
           const idx = f.mapping[field];
           if (idx !== undefined) raw[field] = row[idx] ?? '';
         });
+        // Claude flagged this list's address as a combined string — split it
+        // and fill any parts not already mapped separately.
+        if (f.addressCombined && raw.property_address) {
+          const p = parseCombinedAddress(raw.property_address);
+          if (p.street) raw.property_address = p.street;
+          if (!raw.city && p.city) raw.city = p.city;
+          if (!raw.state && p.state) raw.state = p.state;
+          if (!raw.zip_code && p.zip) raw.zip_code = p.zip;
+        }
+        // Backfill city/state from Claude's inferred defaults for single-county lists
+        if (!raw.city && f.defaultCity) raw.city = f.defaultCity;
+        if (!raw.state && f.defaultState) raw.state = f.defaultState;
         mergeRowInto(acc, raw, f.label);
       }
     }
