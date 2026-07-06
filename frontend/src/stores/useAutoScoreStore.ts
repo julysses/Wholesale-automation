@@ -37,6 +37,10 @@ interface BatchResult {
 }
 
 const BATCH_SIZE = 20;
+// Concurrent workers pulling off the shared queue — cuts wall-clock time for
+// large imports (e.g. 17k leads = ~850 batches) roughly N-fold over a single
+// sequential loop, without needing a server-side job queue.
+const CONCURRENCY = 4;
 
 interface AutoScoreStore {
   scoring: boolean;
@@ -81,10 +85,7 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
       tierCounts: { HOT: 0, WARM: 0, COLD: 0 }, cancelRequested: false,
     });
 
-    while (pendingQueue.length > 0) {
-      if (get().cancelRequested) break;
-      const batch = pendingQueue.splice(0, BATCH_SIZE);
-
+    const processBatch = async (batch: ScorableLead[]) => {
       try {
         const res = await fetch('/api/ai/qualify-leads-batch', {
           method: 'POST',
@@ -104,7 +105,7 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
 
         if (!res.ok) {
           set((s) => ({ done: s.done + batch.length, failed: s.failed + batch.length }));
-          continue;
+          return;
         }
 
         const { results } = (await res.json()) as { results: BatchResult[] };
@@ -117,6 +118,9 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
           score_flexibility: r.score_flexibility,
           ai_qualification_summary: r.qualification_summary,
           status: r.tier === 'HOT' ? 'qualified_hot' : r.tier === 'WARM' ? 'qualified_warm' : 'qualified_cold',
+          // Feeds the Precision Targeting Panel + Step 4 workflow completion,
+          // both of which key off leads.precision_tier being non-null.
+          precision_tier: r.tier === 'HOT' ? 1 : r.tier === 'WARM' ? 2 : 3,
         }));
         if (rows.length > 0) {
           // Upsert-by-id only touches the columns provided here — property_address,
@@ -135,6 +139,26 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
       } catch {
         set((s) => ({ done: s.done + batch.length, failed: s.failed + batch.length }));
       }
+    };
+
+    // Fixed pool of workers pulling batches off the shared queue, instead of
+    // one batch at a time — lets large imports (17k+ leads) finish in a
+    // fraction of the time a single sequential loop would take.
+    const runWorker = async () => {
+      while (pendingQueue.length > 0) {
+        if (get().cancelRequested) break;
+        const batch = pendingQueue.splice(0, BATCH_SIZE);
+        if (batch.length === 0) break;
+        await processBatch(batch);
+      }
+    };
+
+    await Promise.all(Array.from({ length: CONCURRENCY }, () => runWorker()));
+
+    // priority_rank is a global ordering over every tiered lead, so it has to
+    // be recomputed once at the end rather than per-batch.
+    if (!get().cancelRequested) {
+      await supabase.rpc('recompute_priority_ranks');
     }
 
     set({ scoring: false });
