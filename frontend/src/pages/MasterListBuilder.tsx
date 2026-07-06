@@ -23,9 +23,7 @@ import {
   Upload, X, Sparkles, Layers, Download, ArrowRight,
   FileText, Loader2, CheckCircle2, AlertTriangle, Database,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { useMasterListStore, type SourceFile } from '@/stores/useMasterListStore';
-import { useAutoScoreStore, type ScorableLead } from '@/stores/useAutoScoreStore';
 import {
   CANONICAL_FIELDS, FIELD_LABELS, type CanonicalField, type MergedRow,
   mergeRowInto, toCSV, downloadCSV, heuristicMapColumns, parseCombinedAddress,
@@ -57,14 +55,6 @@ async function mapColumnsWithClaude(headers: string[], samples: string[][]): Pro
   } catch {
     return null;
   }
-}
-
-// Numeric leads columns — clean "$120,000"/"3 br" style values before insert
-const NUMERIC_LEAD_FIELDS = new Set(['bedrooms', 'bathrooms', 'sqft', 'year_built', 'asking_price']);
-function toNum(v: string): number | null {
-  if (!v) return null;
-  const n = Number(String(v).replace(/[^0-9.]/g, ''));
-  return Number.isNaN(n) ? null : n;
 }
 
 export function MasterListBuilder() {
@@ -190,61 +180,54 @@ export function MasterListBuilder() {
   const handleImportToLeads = async () => {
     if (!merged) return;
     setImporting(true);
-    let imported = 0, errors = 0;
-    let firstError = '';
-    const scorable: ScorableLead[] = [];
-    const CHUNK = 100;
-    for (let i = 0; i < merged.length; i += CHUNK) {
-      const chunk = merged.slice(i, i + CHUNK)
+
+    try {
+      const rows = merged
         .filter((r) => r.property_address && r.city)
         .map((r) => ({
-          property_address: r.property_address,
-          city: r.city,
-          state: r.state || 'TX',
-          zip_code: r.zip_code || null,
-          owner_first_name: r.owner_first_name || null,
-          owner_last_name: r.owner_last_name || null,
-          owner_phone_1: r.owner_phone_1 || null,
-          owner_phone_2: r.owner_phone_2 || null,   // skip-trace
-          owner_phone_3: r.owner_phone_3 || null,   // skip-trace
-          owner_email: r.owner_email || null,
-          owner_mailing_address: r.owner_mailing_address || null,
-          property_type: r.property_type || null,
-          bedrooms: toNum(r.bedrooms),
-          bathrooms: toNum(r.bathrooms),
-          sqft: toNum(r.sqft),
-          year_built: toNum(r.year_built),
-          asking_price: toNum(r.asking_price),
+          ...CANONICAL_FIELDS.reduce<Record<string, string>>((acc, field) => {
+            acc[field] = r[field] || '';
+            return acc;
+          }, {}),
+          sources: r.sources,
           source: r.sources.join(' | ').slice(0, 250),
-          status: 'new',
+          stack_count: r.stack_count,
         }));
-      if (chunk.length === 0) continue;
-      const { data, error } = await supabase.from('leads').insert(chunk)
-        .select('id, property_address, city, state, owner_first_name, owner_last_name');
-      if (error) { errors += chunk.length; if (!firstError) firstError = error.message; }
-      else {
-        imported += chunk.length;
-        if (data) scorable.push(...(data as ScorableLead[]));
-      }
-    }
-    setImporting(false);
 
-    if (imported > 0) {
+      const res = await fetch('/api/ai/import-master-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows, score_with_claude: true }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Import failed');
+      }
+
+      const result = await res.json() as {
+        imported: number;
+        updated: number;
+        skipped: number;
+        scored: number;
+        consolidated_rows: number;
+      };
+      const saved = result.imported + result.updated;
+
       setImported(true);
-      // Force the Leads page to refetch so the new rows are visible immediately
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['kpi'] });
       queryClient.invalidateQueries({ queryKey: ['workflow_progress'] });
-      toast.success(`${imported.toLocaleString()} leads saved — opening Leads…`);
-      // Claude automatically scores every freshly imported lead in the
-      // background — no manual "qualify" click needed. Runs across navigation.
-      if (scorable.length > 0) useAutoScoreStore.getState().start(scorable);
-      // Take the user to the Leads page so they SEE the data land
+      toast.success(
+        `${saved.toLocaleString()} leads saved (${result.imported.toLocaleString()} new, `
+        + `${result.updated.toLocaleString()} updated); Claude scored ${result.scored.toLocaleString()}`
+      );
       setTimeout(() => navigate('/leads'), 800);
-    }
-    if (errors > 0) {
-      // Surface the real Supabase reason instead of a generic count
-      toast.error(`${errors.toLocaleString()} rows failed${firstError ? `: ${firstError}` : ''}`);
+      if (result.skipped > 0) toast.warning(`${result.skipped.toLocaleString()} rows skipped`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setImporting(false);
     }
   };
 

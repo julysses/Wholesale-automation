@@ -1,3 +1,23 @@
+# Claude Consolidated Lead Import
+
+## Checklist
+- [x] Pull latest tracked branch from GitHub before editing.
+- [x] Inspect current CSV/master-list upload, Claude mapping, scoring, and Supabase insert paths.
+- [x] Add backend import endpoint that upserts/consolidates uploaded rows instead of raw inserting duplicates.
+- [x] Run Claude batch qualification during import and persist scores, statuses, and precision tiers.
+- [x] Update the Master List Builder to call the backend import endpoint and show imported/updated/scored counts.
+- [x] Add focused regression tests for consolidation and scoring persistence.
+- [x] Run verification, review diff, commit, and push.
+
+## Review Notes
+- Current React upload flows insert directly into Supabase and bypass backend consolidation.
+- The pulled branch already added Claude column mapping and a frontend background scorer; this update moves final import/consolidation/ranking server-side.
+- Focused backend verification passed with `.venv/bin/python -m pytest -q tests/test_master_list_import.py`: 1 passed.
+- Full backend verification passed with `.venv/bin/python -m pytest -q`: 131 passed.
+- Frontend verification passed with `npm run build` after refreshing locked dependencies with `npm ci`.
+
+---
+
 # Wholesale Automation Compliance Fixes
 
 ## Checklist

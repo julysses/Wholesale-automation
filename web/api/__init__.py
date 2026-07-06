@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 import anthropic
@@ -227,6 +228,281 @@ Return ONLY a JSON array with exactly one object per input lead."""
     except Exception as exc:
         logger.exception("qualify-leads-batch failed")
         raise HTTPException(500, str(exc))
+
+
+# ── 1c. Consolidated Master List Import ───────────────────────────────────────
+
+IMPORT_FIELDS = {
+    "property_address", "city", "state", "zip_code",
+    "owner_first_name", "owner_last_name",
+    "owner_phone_1", "owner_phone_2", "owner_phone_3", "owner_email",
+    "owner_mailing_address", "property_type", "bedrooms", "bathrooms",
+    "sqft", "year_built", "asking_price", "source", "status",
+}
+
+NUMERIC_IMPORT_FIELDS = {"bedrooms", "bathrooms", "sqft", "year_built", "asking_price"}
+PHONE_IMPORT_FIELDS = {"owner_phone_1", "owner_phone_2", "owner_phone_3"}
+
+
+class ImportLeadRow(BaseModel):
+    property_address: str
+    city: str | None = None
+    state: str | None = "TX"
+    zip_code: str | None = None
+    owner_first_name: str | None = None
+    owner_last_name: str | None = None
+    owner_phone_1: str | None = None
+    owner_phone_2: str | None = None
+    owner_phone_3: str | None = None
+    owner_email: str | None = None
+    owner_mailing_address: str | None = None
+    property_type: str | None = None
+    bedrooms: int | float | str | None = None
+    bathrooms: int | float | str | None = None
+    sqft: int | float | str | None = None
+    year_built: int | float | str | None = None
+    asking_price: int | float | str | None = None
+    source: str | None = None
+    stack_count: int | None = None
+    sources: list[str] | None = None
+    model_config = {"extra": "allow"}
+
+
+class ImportMasterListRequest(BaseModel):
+    rows: list[ImportLeadRow]
+    score_with_claude: bool = True
+
+
+def _clean_import_value(field: str, value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+    if field == "state":
+        return str(value).strip().upper()[:2] or "TX"
+    if field == "zip_code":
+        z = re.sub(r"\D", "", str(value))
+        return z[:5] or None
+    if field in PHONE_IMPORT_FIELDS:
+        phone = re.sub(r"[^\d+]", "", str(value))
+        return phone or None
+    if field in NUMERIC_IMPORT_FIELDS:
+        cleaned = re.sub(r"[^0-9.]", "", str(value))
+        if not cleaned:
+            return None
+        num = float(cleaned)
+        if field in {"bedrooms", "sqft", "year_built"}:
+            return int(num)
+        return num
+    return value
+
+
+def _normalize_import_address(raw: str) -> str:
+    s = (raw or "").lower().strip()
+    s = re.sub(r"[.,#]", " ", s)
+    s = re.sub(r"\s+", " ", s)
+    suffixes = {
+        "street": "st", "avenue": "ave", "drive": "dr", "lane": "ln", "road": "rd",
+        "court": "ct", "boulevard": "blvd", "place": "pl", "circle": "cir",
+        "trail": "trl", "parkway": "pkwy", "highway": "hwy", "terrace": "ter",
+        "square": "sq", "loop": "lp",
+    }
+    return " ".join(suffixes.get(part, part) for part in s.split()).strip()
+
+
+def _lead_import_key(row: dict[str, Any]) -> str:
+    address = _normalize_import_address(str(row.get("property_address") or ""))
+    zip_code = str(row.get("zip_code") or "").strip()[:5]
+    return f"{address}|{zip_code}" if zip_code else address
+
+
+def _payload_from_import_row(row: ImportLeadRow) -> dict[str, Any]:
+    raw = row.model_dump(exclude_none=True)
+    payload: dict[str, Any] = {}
+    for field in IMPORT_FIELDS:
+        if field in raw:
+            payload[field] = _clean_import_value(field, raw[field])
+    if not payload.get("state"):
+        payload["state"] = "TX"
+    if not payload.get("status"):
+        payload["status"] = "new"
+    sources = row.sources or []
+    if sources:
+        payload["source"] = " | ".join(sources)[:250]
+    if row.stack_count:
+        note = f"Imported stack_count={row.stack_count}"
+        payload["internal_notes"] = note
+    return {k: v for k, v in payload.items() if v is not None}
+
+
+def _merge_payloads(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(existing)
+    for field, value in incoming.items():
+        if value in (None, ""):
+            continue
+        if field == "source" and existing.get("source"):
+            current = [s.strip() for s in str(existing["source"]).split("|") if s.strip()]
+            added = [s.strip() for s in str(value).split("|") if s.strip()]
+            merged["source"] = " | ".join(dict.fromkeys(current + added))[:250]
+        elif field == "internal_notes" and existing.get("internal_notes"):
+            if str(value) not in str(existing["internal_notes"]):
+                merged["internal_notes"] = f"{existing['internal_notes']}\n{value}"
+        elif existing.get(field) in (None, ""):
+            merged[field] = value
+    return {k: v for k, v in merged.items() if k in IMPORT_FIELDS or k == "internal_notes"}
+
+
+def _score_imported_leads_with_claude(leads: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    if not leads:
+        return {}
+    client = _get_client()
+    scored: dict[str, dict[str, Any]] = {}
+    keys = ["score_motivation", "score_timeline", "score_equity", "score_condition", "score_flexibility"]
+    system = (
+        "You are an expert Texas real estate wholesaler. Rank and qualify uploaded lead lists. "
+        "Score EVERY lead in the provided array. Output ONLY a valid JSON array, no prose or markdown."
+    )
+    for i in range(0, len(leads), MAX_BATCH_LEADS):
+        batch = leads[i:i + MAX_BATCH_LEADS]
+        user = f"""Score and rank these consolidated wholesale real estate leads.
+
+LEADS:
+{json.dumps(batch, default=str, indent=2)}
+
+For EACH lead, return:
+{{
+  "lead_id": "<same lead_id>",
+  "score_motivation": <1-3>,
+  "score_timeline": <1-3>,
+  "score_equity": <1-3>,
+  "score_condition": <1-3>,
+  "score_flexibility": <1-3>,
+  "qualification_summary": "<1-2 sentence summary>",
+  "recommended_next_action": "<specific next action>"
+}}
+
+Return ONLY a JSON array with exactly one object per input lead."""
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=4096,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            parts = raw.split("```")
+            raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
+        results = json.loads(raw)
+        if not isinstance(results, list):
+            raise ValueError("Claude did not return a JSON array")
+        for result in results:
+            if not isinstance(result, dict) or "lead_id" not in result:
+                continue
+            lead_id = str(result["lead_id"])
+            clean_scores = {k: max(1, min(3, int(result.get(k, 1)))) for k in keys}
+            total = sum(clean_scores.values())
+            tier = "HOT" if total >= 13 else "WARM" if total >= 8 else "COLD"
+            scored[lead_id] = {
+                **clean_scores,
+                "ai_qualification_summary": str(result.get("qualification_summary", ""))[:500],
+                "status": "qualified_hot" if tier == "HOT" else "qualified_warm" if tier == "WARM" else "qualified_cold",
+                "precision_tier": 1 if tier == "HOT" else 2 if tier == "WARM" else 3,
+            }
+    return scored
+
+
+@router.post("/import-master-list")
+def import_master_list(body: ImportMasterListRequest) -> dict:
+    """Consolidate an uploaded master list into Supabase, then have Claude rank
+    the saved leads. The browser sends already mapped rows; the backend owns the
+    final de-duplication/upsert and scoring write so imports do not create raw
+    duplicate CRM records."""
+    if not body.rows:
+        raise HTTPException(400, detail="No rows provided")
+
+    from tools.crm import get_supabase_client
+
+    supabase = get_supabase_client()
+    if supabase is None:
+        raise HTTPException(503, detail="Supabase service role is not configured")
+
+    incoming_by_key: dict[str, dict[str, Any]] = {}
+    skipped = 0
+    for row in body.rows:
+        payload = _payload_from_import_row(row)
+        if not payload.get("property_address") or not payload.get("city"):
+            skipped += 1
+            continue
+        key = _lead_import_key(payload)
+        if not key:
+            skipped += 1
+            continue
+        incoming_by_key[key] = _merge_payloads(incoming_by_key.get(key, {}), payload)
+
+    if not incoming_by_key:
+        raise HTTPException(400, detail="No importable rows with property_address and city")
+
+    existing_resp = supabase.table("leads").select(
+        "id,property_address,city,state,zip_code,owner_first_name,owner_last_name,"
+        "owner_phone_1,owner_phone_2,owner_phone_3,owner_email,owner_mailing_address,"
+        "property_type,bedrooms,bathrooms,sqft,year_built,asking_price,source,status,internal_notes"
+    ).execute()
+    existing_rows = existing_resp.data or []
+    existing_by_key = {_lead_import_key(row): row for row in existing_rows if row.get("property_address")}
+
+    imported = 0
+    updated = 0
+    saved_for_scoring: list[dict[str, Any]] = []
+
+    for key, incoming in incoming_by_key.items():
+        existing = existing_by_key.get(key)
+        if existing:
+            lead_id = existing["id"]
+            update_payload = _merge_payloads(existing, incoming)
+            supabase.table("leads").update(update_payload).eq("id", lead_id).execute()
+            saved = {**existing, **update_payload, "id": lead_id}
+            updated += 1
+        else:
+            insert_resp = supabase.table("leads").insert(incoming).execute()
+            data = insert_resp.data or []
+            if not data:
+                skipped += 1
+                continue
+            saved = data[0]
+            lead_id = saved["id"]
+            imported += 1
+        saved_for_scoring.append({
+            "lead_id": str(lead_id),
+            "property_address": saved.get("property_address", ""),
+            "city": saved.get("city"),
+            "state": saved.get("state"),
+            "owner_first_name": saved.get("owner_first_name"),
+            "owner_last_name": saved.get("owner_last_name"),
+            "source": saved.get("source"),
+        })
+
+    scored_count = 0
+    if body.score_with_claude and saved_for_scoring:
+        scored = _score_imported_leads_with_claude(saved_for_scoring)
+        for lead_id, score_payload in scored.items():
+            supabase.table("leads").update(score_payload).eq("id", lead_id).execute()
+        scored_count = len(scored)
+        try:
+            supabase.rpc("recompute_priority_ranks").execute()
+        except Exception:
+            logger.exception("Failed to recompute priority ranks after import")
+
+    return {
+        "status": "ok",
+        "input_rows": len(body.rows),
+        "consolidated_rows": len(incoming_by_key),
+        "imported": imported,
+        "updated": updated,
+        "skipped": skipped,
+        "scored": scored_count,
+    }
 
 
 # ── 2. Offer Generator ─────────────────────────────────────────────────────────
