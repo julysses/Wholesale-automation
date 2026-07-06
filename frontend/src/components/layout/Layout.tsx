@@ -2,6 +2,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { StepBanner } from '@/components/StepBanner';
+import { AutoScoreStatusBar } from '@/components/AutoScoreStatusBar';
 import { useUIStore } from '@/stores/useUIStore';
 import { cn } from '@/lib/utils';
 import { Toaster } from 'sonner';
@@ -27,6 +28,7 @@ export function Layout() {
         </div>
       </main>
       <Toaster position="top-right" richColors />
+      <AutoScoreStatusBar />
     </div>
   );
 }

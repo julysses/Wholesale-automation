@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { parseCombinedAddress } from '@/lib/masterList';
 import { parseSpreadsheet, isSupportedFile } from '@/lib/parseFile';
+import { useAutoScoreStore, type ScorableLead } from '@/stores/useAutoScoreStore';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
@@ -703,6 +704,7 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
     }
     setImporting(true);
     let imported = 0, errors = 0, skipped = 0;
+    const scorable: ScorableLead[] = [];
 
     // Rows were already parsed on drop (CSV or Excel) — reuse them, no re-parse.
     const CHUNK = 100;
@@ -711,13 +713,23 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
       const chunk = built.filter((r): r is Record<string, string | number> => r !== null);
       skipped += built.length - chunk.length;
       if (chunk.length === 0) continue;
-      const { error } = await supabase.from('leads').insert(chunk);
+      const { data, error } = await supabase.from('leads').insert(chunk)
+        .select('id, property_address, city, state, owner_first_name, owner_last_name, motivation_tag');
       if (error) errors += chunk.length;
-      else imported += chunk.length;
+      else {
+        imported += chunk.length;
+        if (data) scorable.push(...(data as ScorableLead[]));
+      }
     }
 
     setImporting(false);
     setResult({ imported, errors: errors + skipped });
+
+    // Claude automatically scores every freshly imported lead in the
+    // background — no manual "qualify" click needed. Runs across navigation.
+    if (scorable.length > 0) {
+      useAutoScoreStore.getState().start(scorable);
+    }
   };
 
   return (

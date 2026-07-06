@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useMasterListStore, type SourceFile } from '@/stores/useMasterListStore';
+import { useAutoScoreStore, type ScorableLead } from '@/stores/useAutoScoreStore';
 import {
   CANONICAL_FIELDS, FIELD_LABELS, type CanonicalField, type MergedRow,
   mergeRowInto, toCSV, downloadCSV, heuristicMapColumns, parseCombinedAddress,
@@ -191,6 +192,7 @@ export function MasterListBuilder() {
     setImporting(true);
     let imported = 0, errors = 0;
     let firstError = '';
+    const scorable: ScorableLead[] = [];
     const CHUNK = 100;
     for (let i = 0; i < merged.length; i += CHUNK) {
       const chunk = merged.slice(i, i + CHUNK)
@@ -217,9 +219,13 @@ export function MasterListBuilder() {
           status: 'new',
         }));
       if (chunk.length === 0) continue;
-      const { error } = await supabase.from('leads').insert(chunk);
+      const { data, error } = await supabase.from('leads').insert(chunk)
+        .select('id, property_address, city, state, owner_first_name, owner_last_name');
       if (error) { errors += chunk.length; if (!firstError) firstError = error.message; }
-      else imported += chunk.length;
+      else {
+        imported += chunk.length;
+        if (data) scorable.push(...(data as ScorableLead[]));
+      }
     }
     setImporting(false);
 
@@ -230,6 +236,9 @@ export function MasterListBuilder() {
       queryClient.invalidateQueries({ queryKey: ['kpi'] });
       queryClient.invalidateQueries({ queryKey: ['workflow_progress'] });
       toast.success(`${imported.toLocaleString()} leads saved — opening Leads…`);
+      // Claude automatically scores every freshly imported lead in the
+      // background — no manual "qualify" click needed. Runs across navigation.
+      if (scorable.length > 0) useAutoScoreStore.getState().start(scorable);
       // Take the user to the Leads page so they SEE the data land
       setTimeout(() => navigate('/leads'), 800);
     }

@@ -127,6 +127,108 @@ Tier rules: HOT if total >= 13, WARM if total >= 8, COLD otherwise."""
         raise HTTPException(500, str(exc))
 
 
+# ── 1b. Batch Lead Qualifier (auto-score after import) ────────────────────────
+
+class BatchLeadInput(BaseModel):
+    lead_id: str
+    property_address: str = ""
+    city: str | None = None
+    state: str | None = None
+    owner_first_name: str | None = None
+    owner_last_name: str | None = None
+    motivation_tag: str | None = None
+    seller_notes: str | None = None
+    model_config = {"extra": "allow"}
+
+
+class QualifyLeadsBatchRequest(BaseModel):
+    leads: list[BatchLeadInput]
+
+
+MAX_BATCH_LEADS = 25
+
+
+@router.post("/qualify-leads-batch")
+def qualify_leads_batch(body: QualifyLeadsBatchRequest) -> dict:
+    """Score up to MAX_BATCH_LEADS leads in a single Claude call. Used by the
+    frontend's auto-scoring loop that runs after a CSV/Excel import so freshly
+    loaded leads get scored without a human clicking through them one at a time."""
+    if not body.leads:
+        raise HTTPException(400, detail="No leads provided")
+    if len(body.leads) > MAX_BATCH_LEADS:
+        raise HTTPException(400, detail=f"Max {MAX_BATCH_LEADS} leads per batch call")
+
+    client = _get_client()
+    leads_payload = [lead.model_dump(exclude_none=True) for lead in body.leads]
+
+    system = (
+        "You are an expert Texas real estate wholesaler with 15+ years of experience "
+        "identifying motivated sellers. Score EVERY lead in the provided array. "
+        "Output ONLY a valid JSON array, no prose or markdown."
+    )
+    user = f"""Score each of these wholesale real estate leads on 5 factors, 1 (weak) to 3 (strong).
+
+LEADS:
+{json.dumps(leads_payload, default=str, indent=2)}
+
+For EACH lead in the array, return one object (match by lead_id):
+{{
+  "lead_id": "<same lead_id from input>",
+  "score_motivation": <1-3>,
+  "score_timeline": <1-3>,
+  "score_equity": <1-3>,
+  "score_condition": <1-3>,
+  "score_flexibility": <1-3>,
+  "qualification_summary": "<1-2 sentence summary>",
+  "recommended_next_action": "<specific, actionable next step>"
+}}
+
+Return ONLY a JSON array with exactly one object per input lead."""
+
+    try:
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=4096,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            parts = raw.split("```")
+            raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
+        results = json.loads(raw)
+        if not isinstance(results, list):
+            raise ValueError("Claude did not return a JSON array")
+
+        keys = ["score_motivation", "score_timeline", "score_equity", "score_condition", "score_flexibility"]
+        out = []
+        for r in results:
+            if not isinstance(r, dict) or "lead_id" not in r:
+                continue
+            total = sum(int(r.get(k, 1)) for k in keys)
+            tier = "HOT" if total >= 13 else "WARM" if total >= 8 else "COLD"
+            out.append({
+                "lead_id": r["lead_id"],
+                "score_motivation": int(r.get("score_motivation", 1)),
+                "score_timeline": int(r.get("score_timeline", 1)),
+                "score_equity": int(r.get("score_equity", 1)),
+                "score_condition": int(r.get("score_condition", 1)),
+                "score_flexibility": int(r.get("score_flexibility", 1)),
+                "total_score": total,
+                "tier": tier,
+                "qualification_summary": str(r.get("qualification_summary", ""))[:500],
+                "recommended_next_action": str(r.get("recommended_next_action", ""))[:300],
+            })
+        return {"results": out}
+    except json.JSONDecodeError as exc:
+        raise HTTPException(502, f"Claude returned invalid JSON: {exc}")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("qualify-leads-batch failed")
+        raise HTTPException(500, str(exc))
+
+
 # ── 2. Offer Generator ─────────────────────────────────────────────────────────
 
 class GenerateOfferRequest(BaseModel):
