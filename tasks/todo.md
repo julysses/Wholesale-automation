@@ -17,6 +17,7 @@
 - Focused backend verification passed with `.venv/bin/python -m pytest -q tests/test_master_list_import.py`: 3 passed.
 - Full backend verification passed with `.venv/bin/python -m pytest -q`: 133 passed.
 - Frontend verification passed with `npm run build`.
+- Production `/api/ai/lead-scoring-status` confirmed `17,332` leads and `0` persisted scores before backfill; a 50-lead batch timed out, while a 5-lead batch succeeded and persisted 5 COLD scores. Default server batch size was reduced to 25 and bulk scoring switched to Claude Haiku for timeout-safe processing.
 
 ---
 

@@ -39,7 +39,7 @@ const EMPTY_PROGRESS: ScoringProgress = {
   complete: false,
 };
 
-const SERVER_BATCH_SIZE = 50;
+const SERVER_BATCH_SIZE = 25;
 
 interface AutoScoreStore {
   scoring: boolean;

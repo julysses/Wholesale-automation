@@ -147,8 +147,8 @@ class QualifyLeadsBatchRequest(BaseModel):
 
 
 MAX_BATCH_LEADS = 25
-DEFAULT_SCORE_BATCH_SIZE = 50
-MAX_SCORE_BATCH_SIZE = 100
+DEFAULT_SCORE_BATCH_SIZE = 25
+MAX_SCORE_BATCH_SIZE = MAX_BATCH_LEADS
 
 SCORING_SELECT_COLUMNS = (
     "id,property_address,city,state,zip_code,owner_first_name,owner_last_name,"
@@ -256,7 +256,7 @@ Return ONLY a JSON array with exactly one object per input lead."""
 
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-haiku-4-5-20251001",
             max_tokens=4096,
             system=system,
             messages=[{"role": "user", "content": user}],
@@ -459,7 +459,7 @@ For EACH lead, return:
 
 Return ONLY a JSON array with exactly one object per input lead."""
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-haiku-4-5-20251001",
             max_tokens=4096,
             system=system,
             messages=[{"role": "user", "content": user}],
