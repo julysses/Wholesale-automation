@@ -4,12 +4,14 @@ import { TopBar } from './TopBar';
 import { StepBanner } from '@/components/StepBanner';
 import { AutoScoreStatusBar } from '@/components/AutoScoreStatusBar';
 import { useUIStore } from '@/stores/useUIStore';
+import { useResumeAutoScore } from '@/hooks/useResumeAutoScore';
 import { cn } from '@/lib/utils';
 import { Toaster } from 'sonner';
 
 export function Layout() {
   const { sidebarCollapsed } = useUIStore();
   const navigate = useNavigate();
+  useResumeAutoScore();
 
   return (
     <div className="min-h-screen bg-[#F2F4F6]">

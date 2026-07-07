@@ -1,3 +1,46 @@
+# Server-Side Claude Lead Scoring Reconciler
+
+## Checklist
+- [x] Pull latest tracked branch from GitHub before editing.
+- [x] Add backend database-backed scoring status endpoint.
+- [x] Add backend resumable unscored-lead scoring endpoint.
+- [x] Persist Claude score, HOT/WARM/COLD status, precision tier, and reason summary to Supabase.
+- [x] Replace browser-owned auto-scoring queue with backend polling/retry flow.
+- [x] Update import flow to trigger server-side scoring reconciliation.
+- [x] Add focused regression tests for status, scoring persistence, and resume behavior.
+- [x] Run frontend/backend verification.
+- [x] Review diff, commit, and push.
+
+## Review Notes
+- Production screenshot shows old browser-owned scorer froze at `180 / 17,332`; local commit `33f98f1` already fixed new master-list imports but not the existing unscored backlog.
+- Existing `ai_qualification_summary` column will store Claude's "why" without a migration.
+- Focused backend verification passed with `.venv/bin/python -m pytest -q tests/test_master_list_import.py`: 3 passed.
+- Full backend verification passed with `.venv/bin/python -m pytest -q`: 133 passed.
+- Frontend verification passed with `npm run build`.
+- Production `/api/ai/lead-scoring-status` confirmed `17,332` leads and `0` persisted scores before backfill; a 50-lead batch timed out, while a 5-lead batch succeeded and persisted 5 COLD scores. Default server batch size was reduced to 25 and bulk scoring switched to Claude Haiku for timeout-safe processing.
+
+---
+
+# Claude Consolidated Lead Import
+
+## Checklist
+- [x] Pull latest tracked branch from GitHub before editing.
+- [x] Inspect current CSV/master-list upload, Claude mapping, scoring, and Supabase insert paths.
+- [x] Add backend import endpoint that upserts/consolidates uploaded rows instead of raw inserting duplicates.
+- [x] Run Claude batch qualification during import and persist scores, statuses, and precision tiers.
+- [x] Update the Master List Builder to call the backend import endpoint and show imported/updated/scored counts.
+- [x] Add focused regression tests for consolidation and scoring persistence.
+- [x] Run verification, review diff, commit, and push.
+
+## Review Notes
+- Current React upload flows insert directly into Supabase and bypass backend consolidation.
+- The pulled branch already added Claude column mapping and a frontend background scorer; this update moves final import/consolidation/ranking server-side.
+- Focused backend verification passed with `.venv/bin/python -m pytest -q tests/test_master_list_import.py`: 1 passed.
+- Full backend verification passed with `.venv/bin/python -m pytest -q`: 131 passed.
+- Frontend verification passed with `npm run build` after refreshing locked dependencies with `npm ci`.
+
+---
+
 # Wholesale Automation Compliance Fixes
 
 ## Checklist
