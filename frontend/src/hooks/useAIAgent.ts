@@ -72,6 +72,10 @@ export function useLeadQualifier() {
               : data.tier === 'WARM'
               ? 'qualified_warm'
               : 'qualified_cold',
+          // Tier A = Hot, Tier B = Warm, Tier C = Cold — keeps this in sync with
+          // the distress-signal scorer so the Leads page Tier column/filter
+          // (which reads priority_tier) works for AI-qualified leads too.
+          priority_tier: data.tier === 'HOT' ? 'A' : data.tier === 'WARM' ? 'B' : 'C',
         },
       });
     } catch (e) {

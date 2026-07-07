@@ -203,6 +203,7 @@ def test_import_master_list_consolidates_updates_and_scores():
     assert existing["source"] == "old_list | tax delinquent | vacant"
     assert existing["score_motivation"] == 3
     assert existing["precision_tier"] == 1
+    assert existing["priority_tier"] == "A"
 
     inserted = next(row for row in fake_db.rows if row["id"] == "new-1")
     assert inserted["property_address"] == "500 New Ave"
@@ -269,4 +270,43 @@ def test_score_unscored_leads_persists_scores_reason_and_progress():
     assert lead["score_motivation"] == 3
     assert lead["ai_qualification_summary"] == "Strong consolidated lead."
     assert lead["precision_tier"] == 1
+    assert lead["priority_tier"] == "A"
     assert "recompute_priority_ranks" in fake_db.rpcs
+
+
+class FakeClaudeTruncated:
+    """Simulates a response cut off mid-JSON by an undersized max_tokens budget."""
+
+    class Messages:
+        def create(self, **kwargs):
+            return type(
+                "Msg",
+                (),
+                {"content": [type("Content", (), {"text": '[{"lead_id": "lead-1", "score_motiv'})()]},
+            )()
+
+    messages = Messages()
+
+
+def test_score_unscored_leads_surfaces_claude_failure_as_502():
+    fake_db = FakeSupabase([
+        {
+            "id": "lead-1",
+            "property_address": "1 A St",
+            "city": "Dallas",
+            "state": "TX",
+            "status": "new",
+            "score_motivation": None,
+        },
+    ])
+
+    with patch("tools.crm.get_supabase_client", return_value=fake_db), patch(
+        "web.api._get_client", return_value=FakeClaudeTruncated()
+    ):
+        response = client.post("/api/ai/score-unscored-leads", json={"batch_size": 10})
+
+    assert response.status_code == 502
+    assert "Claude scoring failed" in response.json()["detail"]
+    # The lead must stay unscored rather than get a partial/corrupt update.
+    lead = next(row for row in fake_db.rows if row["id"] == "lead-1")
+    assert lead["score_motivation"] is None

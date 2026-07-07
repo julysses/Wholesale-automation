@@ -427,6 +427,20 @@ def _merge_payloads(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[
     return {k: v for k, v in merged.items() if k in IMPORT_FIELDS or k == "internal_notes"}
 
 
+# Tier alignment used everywhere Claude scores a lead:
+#   HOT  -> priority_tier "A" (matches the distress-signal scorer's Tier A / 90+)
+#   WARM -> priority_tier "B" (matches Tier B / 70-89)
+#   COLD -> priority_tier "C" (matches Tier C / 50-69)
+# This keeps the Leads page's Tier column/filter (which reads priority_tier)
+# in sync regardless of which scoring path produced the tier.
+TIER_TO_PRIORITY_TIER = {"HOT": "A", "WARM": "B", "COLD": "C"}
+
+# Bounded via max_tokens below so a full 25-lead batch (summary + next action
+# per lead) can't get cut off mid-JSON, which previously caused
+# json.JSONDecodeError on every retry of that batch.
+SCORING_MAX_TOKENS = 8192
+
+
 def _score_imported_leads_with_claude(leads: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     if not leads:
         return {}
@@ -436,7 +450,9 @@ def _score_imported_leads_with_claude(leads: list[dict[str, Any]]) -> dict[str, 
     system = (
         "You are an expert Texas real estate wholesaler. Rank and qualify uploaded lead lists. "
         "Score EVERY lead in the provided array. Output ONLY a valid JSON array, no prose or markdown. "
-        "The qualification_summary MUST explain why the lead is HOT, WARM, or COLD using only the evidence provided."
+        "The qualification_summary MUST explain why the lead is HOT, WARM, or COLD using only the evidence provided. "
+        "Keep qualification_summary under 160 characters and recommended_next_action under 100 characters "
+        "so the full array fits the response budget."
     )
     for i in range(0, len(leads), MAX_BATCH_LEADS):
         batch = leads[i:i + MAX_BATCH_LEADS]
@@ -453,24 +469,31 @@ For EACH lead, return:
   "score_equity": <1-3>,
   "score_condition": <1-3>,
   "score_flexibility": <1-3>,
-  "qualification_summary": "<1-2 sentence reason explaining the HOT/WARM/COLD classification>",
-  "recommended_next_action": "<specific next action>"
+  "qualification_summary": "<reason for the HOT/WARM/COLD classification, under 160 chars>",
+  "recommended_next_action": "<specific next action, under 100 chars>"
 }}
 
 Return ONLY a JSON array with exactly one object per input lead."""
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=4096,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"):
-            parts = raw.split("```")
-            raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
-        results = json.loads(raw)
-        if not isinstance(results, list):
-            raise ValueError("Claude did not return a JSON array")
+        try:
+            msg = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=SCORING_MAX_TOKENS,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+            )
+            raw = msg.content[0].text.strip()
+            if raw.startswith("```"):
+                parts = raw.split("```")
+                raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
+            results = json.loads(raw)
+            if not isinstance(results, list):
+                raise ValueError("Claude did not return a JSON array")
+        except Exception as exc:
+            logger.exception(
+                "Claude scoring batch failed (leads %s-%s of %s)", i, i + len(batch), len(leads)
+            )
+            raise RuntimeError(f"Claude scoring failed on batch starting at lead {i}: {exc}") from exc
+
         for result in results:
             if not isinstance(result, dict) or "lead_id" not in result:
                 continue
@@ -483,6 +506,7 @@ Return ONLY a JSON array with exactly one object per input lead."""
                 "ai_qualification_summary": str(result.get("qualification_summary", ""))[:500],
                 "status": "qualified_hot" if tier == "HOT" else "qualified_warm" if tier == "WARM" else "qualified_cold",
                 "precision_tier": 1 if tier == "HOT" else 2 if tier == "WARM" else 3,
+                "priority_tier": TIER_TO_PRIORITY_TIER[tier],
             }
     return scored
 
@@ -519,7 +543,11 @@ def score_unscored_leads(body: ScoreUnscoredLeadsRequest = ScoreUnscoredLeadsReq
         return {"status": "complete", "processed": 0, "scored": 0, "progress": _lead_scoring_status(supabase)}
 
     scoring_payload = [_lead_to_scoring_payload(lead) for lead in leads]
-    scored = _score_imported_leads_with_claude(scoring_payload)
+    try:
+        scored = _score_imported_leads_with_claude(scoring_payload)
+    except Exception as exc:
+        logger.exception("score-unscored-leads: Claude scoring failed")
+        raise HTTPException(502, detail=f"Claude scoring failed: {exc}")
 
     for lead_id, score_payload in scored.items():
         supabase.table("leads").update(score_payload).eq("id", lead_id).execute()
@@ -609,15 +637,26 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
         })
 
     scored_count = 0
+    scoring_error: str | None = None
     if body.score_with_claude and saved_for_scoring:
-        scored = _score_imported_leads_with_claude(saved_for_scoring)
-        for lead_id, score_payload in scored.items():
-            supabase.table("leads").update(score_payload).eq("id", lead_id).execute()
-        scored_count = len(scored)
+        # The rows above are already committed to Supabase, so a Claude failure
+        # here must not turn a successful import into a 500 — it just means the
+        # leads stay unscored and the frontend's auto-score loop will pick them
+        # up on its next pass (they're indistinguishable from "unscored").
         try:
-            supabase.rpc("recompute_priority_ranks").execute()
-        except Exception:
-            logger.exception("Failed to recompute priority ranks after import")
+            scored = _score_imported_leads_with_claude(saved_for_scoring)
+            for lead_id, score_payload in scored.items():
+                supabase.table("leads").update(score_payload).eq("id", lead_id).execute()
+            scored_count = len(scored)
+        except Exception as exc:
+            logger.exception("import-master-list: Claude scoring failed after import")
+            scoring_error = str(exc)
+
+        if scored_count:
+            try:
+                supabase.rpc("recompute_priority_ranks").execute()
+            except Exception:
+                logger.exception("Failed to recompute priority ranks after import")
 
     return {
         "status": "ok",
@@ -627,6 +666,7 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
         "updated": updated,
         "skipped": skipped,
         "scored": scored_count,
+        "scoring_error": scoring_error,
     }
 
 
