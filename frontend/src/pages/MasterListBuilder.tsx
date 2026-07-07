@@ -24,6 +24,7 @@ import {
   FileText, Loader2, CheckCircle2, AlertTriangle, Database,
 } from 'lucide-react';
 import { useMasterListStore, type SourceFile } from '@/stores/useMasterListStore';
+import { useAutoScoreStore } from '@/stores/useAutoScoreStore';
 import {
   CANONICAL_FIELDS, FIELD_LABELS, type CanonicalField, type MergedRow,
   mergeRowInto, toCSV, downloadCSV, heuristicMapColumns, parseCombinedAddress,
@@ -197,7 +198,7 @@ export function MasterListBuilder() {
       const res = await fetch('/api/ai/import-master-list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows, score_with_claude: true }),
+        body: JSON.stringify({ rows, score_with_claude: false }),
       });
 
       if (!res.ok) {
@@ -220,8 +221,9 @@ export function MasterListBuilder() {
       queryClient.invalidateQueries({ queryKey: ['workflow_progress'] });
       toast.success(
         `${saved.toLocaleString()} leads saved (${result.imported.toLocaleString()} new, `
-        + `${result.updated.toLocaleString()} updated); Claude scored ${result.scored.toLocaleString()}`
+        + `${result.updated.toLocaleString()} updated); Claude scoring queued`
       );
+      useAutoScoreStore.getState().start();
       setTimeout(() => navigate('/leads'), 800);
       if (result.skipped > 0) toast.warning(`${result.skipped.toLocaleString()} rows skipped`);
     } catch (err) {

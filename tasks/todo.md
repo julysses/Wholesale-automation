@@ -1,3 +1,25 @@
+# Server-Side Claude Lead Scoring Reconciler
+
+## Checklist
+- [x] Pull latest tracked branch from GitHub before editing.
+- [x] Add backend database-backed scoring status endpoint.
+- [x] Add backend resumable unscored-lead scoring endpoint.
+- [x] Persist Claude score, HOT/WARM/COLD status, precision tier, and reason summary to Supabase.
+- [x] Replace browser-owned auto-scoring queue with backend polling/retry flow.
+- [x] Update import flow to trigger server-side scoring reconciliation.
+- [x] Add focused regression tests for status, scoring persistence, and resume behavior.
+- [x] Run frontend/backend verification.
+- [x] Review diff, commit, and push.
+
+## Review Notes
+- Production screenshot shows old browser-owned scorer froze at `180 / 17,332`; local commit `33f98f1` already fixed new master-list imports but not the existing unscored backlog.
+- Existing `ai_qualification_summary` column will store Claude's "why" without a migration.
+- Focused backend verification passed with `.venv/bin/python -m pytest -q tests/test_master_list_import.py`: 3 passed.
+- Full backend verification passed with `.venv/bin/python -m pytest -q`: 133 passed.
+- Frontend verification passed with `npm run build`.
+
+---
+
 # Claude Consolidated Lead Import
 
 ## Checklist

@@ -7,6 +7,7 @@ import Papa from 'papaparse';
 import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAutoScoreStore } from '@/stores/useAutoScoreStore';
 
 interface LeadImportModalProps {
   open: boolean;
@@ -135,6 +136,7 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
       setResult({ imported, skipped, errors });
       qc.invalidateQueries({ queryKey: ['leads'] });
       toast.success(`Imported ${imported} leads`);
+      if (imported > 0) useAutoScoreStore.getState().start();
     } catch (e) {
       toast.error('Import failed');
     } finally {

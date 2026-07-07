@@ -147,6 +147,74 @@ class QualifyLeadsBatchRequest(BaseModel):
 
 
 MAX_BATCH_LEADS = 25
+DEFAULT_SCORE_BATCH_SIZE = 50
+MAX_SCORE_BATCH_SIZE = 100
+
+SCORING_SELECT_COLUMNS = (
+    "id,property_address,city,state,zip_code,owner_first_name,owner_last_name,"
+    "owner_mailing_address,source,motivation_tag,seller_notes,asking_price,"
+    "estimated_equity_pct,loan_balance,estimated_arv"
+)
+
+
+def _supabase_or_503() -> Any:
+    from tools.crm import get_supabase_client
+
+    supabase = get_supabase_client()
+    if supabase is None:
+        raise HTTPException(503, detail="Supabase service role is not configured")
+    return supabase
+
+
+def _count_leads(supabase: Any, *, status: str | None = None, unscored: bool = False) -> int:
+    query = supabase.table("leads").select("id", count="exact")
+    if status:
+        query = query.eq("status", status)
+    if unscored:
+        query = query.is_("score_motivation", "null")
+    resp = query.execute()
+    count = getattr(resp, "count", None)
+    if count is not None:
+        return int(count)
+    return len(resp.data or [])
+
+
+def _lead_scoring_status(supabase: Any) -> dict[str, int | bool]:
+    total = _count_leads(supabase)
+    unscored = _count_leads(supabase, unscored=True)
+    hot = _count_leads(supabase, status="qualified_hot")
+    warm = _count_leads(supabase, status="qualified_warm")
+    cold = _count_leads(supabase, status="qualified_cold")
+    scored = max(0, total - unscored)
+    return {
+        "total": total,
+        "scored": scored,
+        "unscored": unscored,
+        "hot": hot,
+        "warm": warm,
+        "cold": cold,
+        "complete": unscored == 0,
+    }
+
+
+def _lead_to_scoring_payload(lead: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "lead_id": str(lead.get("id") or lead.get("lead_id")),
+        "property_address": lead.get("property_address", ""),
+        "city": lead.get("city"),
+        "state": lead.get("state"),
+        "zip_code": lead.get("zip_code"),
+        "owner_first_name": lead.get("owner_first_name"),
+        "owner_last_name": lead.get("owner_last_name"),
+        "owner_mailing_address": lead.get("owner_mailing_address"),
+        "source": lead.get("source"),
+        "motivation_tag": lead.get("motivation_tag"),
+        "seller_notes": lead.get("seller_notes"),
+        "asking_price": lead.get("asking_price"),
+        "estimated_equity_pct": lead.get("estimated_equity_pct"),
+        "loan_balance": lead.get("loan_balance"),
+        "estimated_arv": lead.get("estimated_arv"),
+    }
 
 
 @router.post("/qualify-leads-batch")
@@ -273,6 +341,11 @@ class ImportMasterListRequest(BaseModel):
     score_with_claude: bool = True
 
 
+class ScoreUnscoredLeadsRequest(BaseModel):
+    batch_size: int = DEFAULT_SCORE_BATCH_SIZE
+    rescore_existing: bool = False
+
+
 def _clean_import_value(field: str, value: Any) -> Any:
     if value is None:
         return None
@@ -362,7 +435,8 @@ def _score_imported_leads_with_claude(leads: list[dict[str, Any]]) -> dict[str, 
     keys = ["score_motivation", "score_timeline", "score_equity", "score_condition", "score_flexibility"]
     system = (
         "You are an expert Texas real estate wholesaler. Rank and qualify uploaded lead lists. "
-        "Score EVERY lead in the provided array. Output ONLY a valid JSON array, no prose or markdown."
+        "Score EVERY lead in the provided array. Output ONLY a valid JSON array, no prose or markdown. "
+        "The qualification_summary MUST explain why the lead is HOT, WARM, or COLD using only the evidence provided."
     )
     for i in range(0, len(leads), MAX_BATCH_LEADS):
         batch = leads[i:i + MAX_BATCH_LEADS]
@@ -379,7 +453,7 @@ For EACH lead, return:
   "score_equity": <1-3>,
   "score_condition": <1-3>,
   "score_flexibility": <1-3>,
-  "qualification_summary": "<1-2 sentence summary>",
+  "qualification_summary": "<1-2 sentence reason explaining the HOT/WARM/COLD classification>",
   "recommended_next_action": "<specific next action>"
 }}
 
@@ -411,6 +485,57 @@ Return ONLY a JSON array with exactly one object per input lead."""
                 "precision_tier": 1 if tier == "HOT" else 2 if tier == "WARM" else 3,
             }
     return scored
+
+
+@router.get("/lead-scoring-status")
+def lead_scoring_status() -> dict:
+    """Return database-backed Claude scoring progress for the Leads table."""
+    supabase = _supabase_or_503()
+    return _lead_scoring_status(supabase)
+
+
+@router.post("/score-unscored-leads")
+def score_unscored_leads(body: ScoreUnscoredLeadsRequest = ScoreUnscoredLeadsRequest()) -> dict:
+    """Score one durable batch of leads from Supabase and persist results.
+
+    This is intentionally bounded so the frontend can call it repeatedly without
+    relying on a fragile in-memory browser queue or one long serverless request.
+    """
+    supabase = _supabase_or_503()
+    batch_size = max(1, min(MAX_SCORE_BATCH_SIZE, int(body.batch_size or DEFAULT_SCORE_BATCH_SIZE)))
+
+    query = (
+        supabase.table("leads")
+        .select(SCORING_SELECT_COLUMNS)
+        .order("created_at", desc=False)
+        .limit(batch_size)
+    )
+    if not body.rescore_existing:
+        query = query.is_("score_motivation", "null")
+
+    resp = query.execute()
+    leads = resp.data or []
+    if not leads:
+        return {"status": "complete", "processed": 0, "scored": 0, "progress": _lead_scoring_status(supabase)}
+
+    scoring_payload = [_lead_to_scoring_payload(lead) for lead in leads]
+    scored = _score_imported_leads_with_claude(scoring_payload)
+
+    for lead_id, score_payload in scored.items():
+        supabase.table("leads").update(score_payload).eq("id", lead_id).execute()
+
+    if scored:
+        try:
+            supabase.rpc("recompute_priority_ranks").execute()
+        except Exception:
+            logger.exception("Failed to recompute priority ranks after scoring batch")
+
+    return {
+        "status": "ok",
+        "processed": len(leads),
+        "scored": len(scored),
+        "progress": _lead_scoring_status(supabase),
+    }
 
 
 @router.post("/import-master-list")
