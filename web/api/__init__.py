@@ -179,16 +179,17 @@ For EACH lead in the array, return one object (match by lead_id):
   "score_equity": <1-3>,
   "score_condition": <1-3>,
   "score_flexibility": <1-3>,
-  "qualification_summary": "<1-2 sentence summary>",
-  "recommended_next_action": "<specific, actionable next step>"
+  "qualification_summary": "<one concise sentence, under 20 words>",
+  "recommended_next_action": "<one short, specific next step>"
 }}
 
-Return ONLY a JSON array with exactly one object per input lead."""
+Return ONLY a JSON array with exactly one object per input lead. Keep every string field
+short — brevity matters more than detail here since this is a bulk batch pass."""
 
     try:
         msg = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=4096,
+            max_tokens=3200,
             system=system,
             messages=[{"role": "user", "content": user}],
         )
