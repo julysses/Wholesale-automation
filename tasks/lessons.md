@@ -9,3 +9,4 @@
 - Last-resort valuation heuristics should expose their assumptions in notes and use available local signals; a single default price per sqft is too brittle for underwriting.
 - A Safari `Load failed` toast during Supabase login can be a DNS-level project-host failure; verify `/api/config`, then test the returned `*.supabase.co` auth host directly before changing app auth logic.
 - Large Claude scoring jobs must be database-backed and resumable; browser-owned in-memory queues can freeze on mobile sleep, refresh, serverless errors, or tab throttling and strand Supabase updates.
+- Long-running AI scoring batches should return partial success and quarantine bad rows; a single malformed lead or provider exception should not 500 the whole database-backed backlog.

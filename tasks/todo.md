@@ -1,3 +1,22 @@
+# Claude Scoring 500 Hardening
+
+## Checklist
+- [x] Pull latest tracked branch before editing.
+- [x] Confirm production status: `305 / 17,332` scored, `15 HOT`, `62 WARM`, `228 COLD`, `17,027` unscored.
+- [x] Make scoring batches tolerant of Claude/Supabase failures.
+- [x] Quarantine repeatedly failing single leads as `scoring_error`.
+- [x] Report failed rows in backend status and frontend progress.
+- [x] Add regression tests for mixed success/failure batches.
+- [x] Run frontend/backend verification.
+- [x] Review diff, commit, and push.
+
+## Review Notes
+- Current production failure is not lost progress; it is a 500 from the scoring batch request that pauses the frontend.
+- Backend now splits failed Claude batches into single-lead retries, persists successful scores, and marks only repeatedly failing rows as `scoring_error`.
+- Verification: `.venv/bin/python -m pytest -q tests/test_master_list_import.py`, `.venv/bin/python -m pytest -q`, and `npm run build` all pass.
+
+---
+
 # Server-Side Claude Lead Scoring Reconciler
 
 ## Checklist

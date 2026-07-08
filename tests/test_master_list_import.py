@@ -45,6 +45,10 @@ class FakeLeadTable:
         self._filters.append(("eq", field, value))
         return self
 
+    def neq(self, field, value):
+        self._filters.append(("neq", field, value))
+        return self
+
     def is_(self, field, value):
         self._filters.append(("is", field, value))
         return self
@@ -62,6 +66,8 @@ class FakeLeadTable:
             for op, field, value in self._filters:
                 if op == "eq":
                     rows = [row for row in rows if row.get(field) == value]
+                elif op == "neq":
+                    rows = [row for row in rows if row.get(field) != value]
                 elif op == "is" and value == "null":
                     rows = [row for row in rows if row.get(field) is None]
             count = len(rows)
@@ -128,6 +134,38 @@ class FakeClaude:
                     "score_flexibility": 2,
                     "qualification_summary": "Strong consolidated lead.",
                     "recommended_next_action": "Call first.",
+                }
+                for lead_id in lead_ids
+            ]
+            return type(
+                "Msg",
+                (),
+                {"content": [type("Content", (), {"text": json.dumps(payload)})()]},
+            )()
+
+    messages = Messages()
+
+
+class FailingForLeadClaude:
+    class Messages:
+        def create(self, **kwargs):
+            user = kwargs["messages"][0]["content"]
+            if '"lead_id": "bad-lead"' in user:
+                raise RuntimeError("Claude refused this row")
+            lead_ids = list(dict.fromkeys(
+                lead_id
+                for lead_id in re.findall(r'"lead_id":\s*"([^"]+)"', user)
+                if not lead_id.startswith("<")
+            ))
+            payload = [
+                {
+                    "lead_id": lead_id,
+                    "score_motivation": 3,
+                    "score_timeline": 3,
+                    "score_equity": 3,
+                    "score_condition": 2,
+                    "score_flexibility": 2,
+                    "qualification_summary": "Strong consolidated lead.",
                 }
                 for lead_id in lead_ids
             ]
@@ -225,6 +263,7 @@ def test_lead_scoring_status_uses_database_counts():
         "total": 3,
         "scored": 2,
         "unscored": 1,
+        "failed": 0,
         "hot": 1,
         "warm": 1,
         "cold": 0,
@@ -262,6 +301,7 @@ def test_score_unscored_leads_persists_scores_reason_and_progress():
     assert data["processed"] == 1
     assert data["scored"] == 1
     assert data["progress"]["unscored"] == 0
+    assert data["progress"]["failed"] == 0
     assert data["progress"]["hot"] == 1
 
     lead = next(row for row in fake_db.rows if row["id"] == "lead-1")
@@ -270,3 +310,47 @@ def test_score_unscored_leads_persists_scores_reason_and_progress():
     assert lead["ai_qualification_summary"] == "Strong consolidated lead."
     assert lead["precision_tier"] == 1
     assert "recompute_priority_ranks" in fake_db.rpcs
+
+
+def test_score_unscored_leads_quarantines_bad_leads_without_500():
+    fake_db = FakeSupabase([
+        {
+            "id": "good-lead",
+            "property_address": "1 A St",
+            "city": "Dallas",
+            "state": "TX",
+            "status": "new",
+            "score_motivation": None,
+        },
+        {
+            "id": "bad-lead",
+            "property_address": "2 B St",
+            "city": "Dallas",
+            "state": "TX",
+            "status": "new",
+            "score_motivation": None,
+            "internal_notes": "existing note",
+        },
+    ])
+
+    with patch("tools.crm.get_supabase_client", return_value=fake_db), patch(
+        "web.api._get_client", return_value=FailingForLeadClaude()
+    ):
+        response = client.post("/api/ai/score-unscored-leads", json={"batch_size": 10})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["processed"] == 2
+    assert data["scored"] == 1
+    assert data["failed"] == 1
+    assert data["progress"]["unscored"] == 0
+    assert data["progress"]["failed"] == 1
+
+    good = next(row for row in fake_db.rows if row["id"] == "good-lead")
+    bad = next(row for row in fake_db.rows if row["id"] == "bad-lead")
+    assert good["status"] == "qualified_hot"
+    assert good["score_motivation"] == 3
+    assert bad["status"] == "scoring_error"
+    assert bad["score_motivation"] is None
+    assert "existing note" in bad["internal_notes"]
+    assert "Claude scoring error" in bad["internal_notes"]

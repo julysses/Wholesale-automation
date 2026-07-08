@@ -153,7 +153,7 @@ MAX_SCORE_BATCH_SIZE = MAX_BATCH_LEADS
 SCORING_SELECT_COLUMNS = (
     "id,property_address,city,state,zip_code,owner_first_name,owner_last_name,"
     "owner_mailing_address,source,motivation_tag,seller_notes,asking_price,"
-    "estimated_equity_pct,loan_balance,estimated_arv"
+    "estimated_equity_pct,loan_balance,estimated_arv,status,internal_notes"
 )
 
 
@@ -166,12 +166,20 @@ def _supabase_or_503() -> Any:
     return supabase
 
 
-def _count_leads(supabase: Any, *, status: str | None = None, unscored: bool = False) -> int:
+def _count_leads(
+    supabase: Any,
+    *,
+    status: str | None = None,
+    unscored: bool = False,
+    exclude_status: str | None = None,
+) -> int:
     query = supabase.table("leads").select("id", count="exact")
     if status:
         query = query.eq("status", status)
     if unscored:
         query = query.is_("score_motivation", "null")
+    if exclude_status:
+        query = query.neq("status", exclude_status)
     resp = query.execute()
     count = getattr(resp, "count", None)
     if count is not None:
@@ -181,15 +189,17 @@ def _count_leads(supabase: Any, *, status: str | None = None, unscored: bool = F
 
 def _lead_scoring_status(supabase: Any) -> dict[str, int | bool]:
     total = _count_leads(supabase)
-    unscored = _count_leads(supabase, unscored=True)
+    failed = _count_leads(supabase, status="scoring_error")
+    unscored = _count_leads(supabase, unscored=True, exclude_status="scoring_error")
     hot = _count_leads(supabase, status="qualified_hot")
     warm = _count_leads(supabase, status="qualified_warm")
     cold = _count_leads(supabase, status="qualified_cold")
-    scored = max(0, total - unscored)
+    scored = max(0, total - unscored - failed)
     return {
         "total": total,
         "scored": scored,
         "unscored": unscored,
+        "failed": failed,
         "hot": hot,
         "warm": warm,
         "cold": cold,
@@ -344,6 +354,7 @@ class ImportMasterListRequest(BaseModel):
 class ScoreUnscoredLeadsRequest(BaseModel):
     batch_size: int = DEFAULT_SCORE_BATCH_SIZE
     rescore_existing: bool = False
+    include_errors: bool = False
 
 
 def _clean_import_value(field: str, value: Any) -> Any:
@@ -487,6 +498,78 @@ Return ONLY a JSON array with exactly one object per input lead."""
     return scored
 
 
+def _append_scoring_note(existing: str | None, reason: str) -> str:
+    note = f"Claude scoring error: {reason[:300]}"
+    if existing and note not in existing:
+        return f"{existing}\n{note}"[:4000]
+    return existing or note
+
+
+def _mark_scoring_error(supabase: Any, lead: dict[str, Any], reason: str) -> None:
+    lead_id = str(lead.get("id") or lead.get("lead_id"))
+    supabase.table("leads").update({
+        "status": "scoring_error",
+        "internal_notes": _append_scoring_note(lead.get("internal_notes"), reason),
+    }).eq("id", lead_id).execute()
+
+
+def _persist_scored_lead(supabase: Any, lead_id: str, score_payload: dict[str, Any]) -> None:
+    supabase.table("leads").update(score_payload).eq("id", lead_id).execute()
+
+
+def _score_and_persist_batch(
+    supabase: Any,
+    leads: list[dict[str, Any]],
+    *,
+    allow_split: bool = True,
+) -> tuple[int, int]:
+    """Score a batch and persist all successful rows.
+
+    Returns (scored_count, failed_count). If a multi-lead Claude call fails,
+    split to single-lead calls so one malformed row does not block the backlog.
+    """
+    if not leads:
+        return 0, 0
+
+    scoring_payload = [_lead_to_scoring_payload(lead) for lead in leads]
+    try:
+        scored = _score_imported_leads_with_claude(scoring_payload)
+        scored_count = 0
+        failed_count = 0
+        for lead in leads:
+            lead_id = str(lead.get("id"))
+            score_payload = scored.get(lead_id)
+            if not score_payload:
+                _mark_scoring_error(supabase, lead, "Claude did not return a score for this lead")
+                failed_count += 1
+                continue
+            try:
+                _persist_scored_lead(supabase, lead_id, score_payload)
+                scored_count += 1
+            except Exception as exc:
+                logger.exception("Failed to persist Claude score for lead %s", lead_id)
+                _mark_scoring_error(supabase, lead, f"Supabase update failed: {exc}")
+                failed_count += 1
+        return scored_count, failed_count
+    except Exception as exc:
+        if allow_split and len(leads) > 1:
+            logger.warning("Claude batch failed; retrying as single-lead calls: %s", exc)
+            scored_total = 0
+            failed_total = 0
+            for lead in leads:
+                scored_one, failed_one = _score_and_persist_batch(
+                    supabase, [lead], allow_split=False
+                )
+                scored_total += scored_one
+                failed_total += failed_one
+            return scored_total, failed_total
+
+        logger.exception("Claude scoring failed for lead batch")
+        for lead in leads:
+            _mark_scoring_error(supabase, lead, str(exc))
+        return 0, len(leads)
+
+
 @router.get("/lead-scoring-status")
 def lead_scoring_status() -> dict:
     """Return database-backed Claude scoring progress for the Leads table."""
@@ -512,19 +595,28 @@ def score_unscored_leads(body: ScoreUnscoredLeadsRequest = ScoreUnscoredLeadsReq
     )
     if not body.rescore_existing:
         query = query.is_("score_motivation", "null")
+    if not body.include_errors:
+        query = query.neq("status", "scoring_error")
 
     resp = query.execute()
     leads = resp.data or []
     if not leads:
-        return {"status": "complete", "processed": 0, "scored": 0, "progress": _lead_scoring_status(supabase)}
+        return {
+            "status": "complete",
+            "processed": 0,
+            "scored": 0,
+            "failed": 0,
+            "progress": _lead_scoring_status(supabase),
+        }
 
-    scoring_payload = [_lead_to_scoring_payload(lead) for lead in leads]
-    scored = _score_imported_leads_with_claude(scoring_payload)
+    scored_count = 0
+    failed_count = 0
+    for i in range(0, len(leads), 5):
+        scored_part, failed_part = _score_and_persist_batch(supabase, leads[i:i + 5])
+        scored_count += scored_part
+        failed_count += failed_part
 
-    for lead_id, score_payload in scored.items():
-        supabase.table("leads").update(score_payload).eq("id", lead_id).execute()
-
-    if scored:
+    if scored_count:
         try:
             supabase.rpc("recompute_priority_ranks").execute()
         except Exception:
@@ -533,7 +625,8 @@ def score_unscored_leads(body: ScoreUnscoredLeadsRequest = ScoreUnscoredLeadsReq
     return {
         "status": "ok",
         "processed": len(leads),
-        "scored": len(scored),
+        "scored": scored_count,
+        "failed": failed_count,
         "progress": _lead_scoring_status(supabase),
     }
 

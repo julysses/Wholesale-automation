@@ -23,6 +23,7 @@ interface ScoringProgress {
   total: number;
   scored: number;
   unscored: number;
+  failed: number;
   hot: number;
   warm: number;
   cold: number;
@@ -33,6 +34,7 @@ const EMPTY_PROGRESS: ScoringProgress = {
   total: 0,
   scored: 0,
   unscored: 0,
+  failed: 0,
   hot: 0,
   warm: 0,
   cold: 0,
@@ -68,6 +70,7 @@ function applyProgress(set: (partial: Partial<AutoScoreStore>) => void, progress
   set({
     total: progress.total,
     done: progress.scored,
+    failed: progress.failed,
     tierCounts: { HOT: progress.hot, WARM: progress.warm, COLD: progress.cold },
   });
 }
@@ -112,16 +115,13 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
         const result = await fetchJson<{
           processed: number;
           scored: number;
+          failed: number;
           progress: ScoringProgress;
         }>('/api/ai/score-unscored-leads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ batch_size: SERVER_BATCH_SIZE }),
         });
-
-        if (result.processed > 0 && result.scored < result.processed) {
-          set((s) => ({ failed: s.failed + (result.processed - result.scored) }));
-        }
 
         progress = result.progress || EMPTY_PROGRESS;
         applyProgress(set, progress);

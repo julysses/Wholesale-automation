@@ -23,9 +23,10 @@ export function AutoScoreStatusBar() {
         tierCounts.HOT > 0 && `${tierCounts.HOT} HOT`,
         tierCounts.WARM > 0 && `${tierCounts.WARM} WARM`,
         tierCounts.COLD > 0 && `${tierCounts.COLD} COLD`,
+        failed > 0 && `${failed} failed`,
       ].filter(Boolean).join(' · ');
       if (failed > 0) {
-        toast.warning(`Claude scored ${done - failed}/${total} leads (${failed} skipped)${parts ? ` — ${parts}` : ''}`);
+        toast.warning(`Claude scored ${done}/${total} leads (${failed} failed)${parts ? ` — ${parts}` : ''}`);
       } else {
         toast.success(`Claude scored ${done.toLocaleString()} leads${parts ? ` — ${parts}` : ''}`);
       }
@@ -79,6 +80,7 @@ export function AutoScoreStatusBar() {
         <span>
           {tierCounts.HOT > 0 && <span className="text-red-600 font-semibold mr-1.5">{tierCounts.HOT} HOT</span>}
           {tierCounts.WARM > 0 && <span className="text-amber-600 font-semibold">{tierCounts.WARM} WARM</span>}
+          {failed > 0 && <span className="text-rose-600 font-semibold ml-1.5">{failed} failed</span>}
         </span>
       </div>
       {isPaused && (
