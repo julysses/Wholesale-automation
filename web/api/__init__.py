@@ -146,8 +146,14 @@ class QualifyLeadsBatchRequest(BaseModel):
     leads: list[BatchLeadInput]
 
 
-MAX_BATCH_LEADS = 25
-DEFAULT_SCORE_BATCH_SIZE = 25
+# Kept small so a single Claude call finishes well inside typical serverless
+# / reverse-proxy request timeouts (10-30s). A 25-lead batch could take long
+# enough to generate that the connection got dropped mid-request, which shows
+# up client-side as a bare "Load failed" fetch error rather than an HTTP
+# response — there's no status code to catch because the request never
+# completed.
+MAX_BATCH_LEADS = 10
+DEFAULT_SCORE_BATCH_SIZE = 10
 MAX_SCORE_BATCH_SIZE = MAX_BATCH_LEADS
 
 SCORING_SELECT_COLUMNS = (

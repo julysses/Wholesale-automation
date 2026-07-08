@@ -39,7 +39,28 @@ const EMPTY_PROGRESS: ScoringProgress = {
   complete: false,
 };
 
-const SERVER_BATCH_SIZE = 25;
+// Kept in sync with the backend's MAX_SCORE_BATCH_SIZE (web/api/__init__.py).
+// A larger batch makes each Claude call take long enough that mobile networks
+// or a proxy timeout can drop the connection mid-request — surfacing as a
+// bare "Load failed" fetch error with no HTTP status to retry against.
+const SERVER_BATCH_SIZE = 10;
+
+const NETWORK_RETRY_ATTEMPTS = 3;
+const NETWORK_RETRY_BASE_DELAY_MS = 1000;
+
+function isNetworkError(err: unknown): boolean {
+  // fetch() rejects (rather than resolving with a non-ok response) when the
+  // request never completed — dropped connection, offline, CORS, etc.
+  // Browsers word this differently: Safari/WebKit says "Load failed",
+  // Chrome/Firefox say "Failed to fetch" / "NetworkError when attempting...".
+  if (!(err instanceof TypeError)) return false;
+  const msg = err.message.toLowerCase();
+  return msg.includes('load failed') || msg.includes('failed to fetch') || msg.includes('network');
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 interface AutoScoreStore {
   scoring: boolean;
@@ -109,15 +130,20 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
       }
 
       while (!progress.complete && !get().cancelRequested) {
-        const result = await fetchJson<{
-          processed: number;
-          scored: number;
-          progress: ScoringProgress;
-        }>('/api/ai/score-unscored-leads', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ batch_size: SERVER_BATCH_SIZE }),
-        });
+        type ScoreBatchResult = { processed: number; scored: number; progress: ScoringProgress };
+        let result: ScoreBatchResult | undefined;
+        for (let attempt = 0; !result; attempt++) {
+          try {
+            result = await fetchJson<ScoreBatchResult>('/api/ai/score-unscored-leads', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ batch_size: SERVER_BATCH_SIZE }),
+            });
+          } catch (err) {
+            if (!isNetworkError(err) || attempt >= NETWORK_RETRY_ATTEMPTS - 1) throw err;
+            await sleep(NETWORK_RETRY_BASE_DELAY_MS * 2 ** attempt);
+          }
+        }
 
         if (result.processed > 0 && result.scored < result.processed) {
           set((s) => ({ failed: s.failed + (result.processed - result.scored) }));
