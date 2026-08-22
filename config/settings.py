@@ -112,6 +112,9 @@ class Settings:
     # Notifications
     slack_webhook_url: str = os.getenv("SLACK_WEBHOOK_URL", "")
     notification_email: str = os.getenv("NOTIFICATION_EMAIL", "")
+    # Owner/team phone number for immediate SMS alerts on new inbound leads
+    # (speed-to-lead — see _send_lead_pipeline_sms in web/api/lead_forms_api.py)
+    owner_alert_phone_number: str = os.getenv("OWNER_ALERT_PHONE_NUMBER", "")
 
     # Retell AI (primary AI calling provider)
     retell_api_key: str = os.getenv("RETELL_API_KEY", "")

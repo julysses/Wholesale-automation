@@ -25,7 +25,7 @@ Authenticated:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -299,6 +299,21 @@ async def _process_form_submission(
         except Exception as exc:
             logger.error(f"Failed to link submission to lead: {exc}")
 
+    # Speed-to-lead SMS: confirmation text to the seller (if opted in) plus an
+    # immediate internal alert to the owner, on every new web-form lead —
+    # not gated on score, unlike the HOT-lead escalation below. Runs first,
+    # right after the lead exists, so it isn't delayed by the agent calls.
+    if lead_id:
+        try:
+            _send_lead_pipeline_sms(
+                lead_id=lead_id,
+                answers=answers,
+                phone=phone,
+                property_address=property_address,
+            )
+        except Exception as exc:
+            logger.error(f"Speed-to-lead SMS failed for lead {lead_id}: {exc}")
+
     # Run qualification agent
     if lead_id:
         try:
@@ -332,9 +347,91 @@ async def _process_form_submission(
 
 
 from tools.email_client import EmailClient
+from tools.sms_client import SMSClient
+from schemas.outreach import OutreachChannel, OutreachMessage
+
+
+def _send_lead_pipeline_sms(lead_id: str, answers: dict, phone: str, property_address: str):
+    """
+    Speed-to-lead SMS for every new web-form lead (target: <60s end to end).
+
+    - Dedup: if a lead with the same phone + property address already exists
+      from the last 30 days, skip the seller's own confirmation text and send
+      the owner a low-priority "repeat inquiry" note instead (don't
+      double-alert on repeat submissions).
+    - Otherwise: text the seller a confirmation (only if they opted in via
+      sms_opt_in, and the lead isn't DNC-flagged), and always text the owner
+      an immediate new-lead alert.
+
+    Uses SMSClient, which enforces the standard compliance guards (allowed
+    hours, weekend block, valid-number check). Both messages are marked
+    is_inbound_reply=True since they're a direct response to the seller's
+    own form submission, not an outbound marketing touch.
+    """
+    from config.settings import settings
+
+    supabase = _get_supabase()
+    name = answers.get("first_name", "").strip() or "there"
+    owner_phone = settings.owner_alert_phone_number
+    sms_client = SMSClient()
+
+    def _send(to_number: str, body: str) -> None:
+        if not to_number:
+            return
+        message = OutreachMessage(
+            lead_id=lead_id,
+            channel=OutreachChannel.SMS,
+            body=body,
+            is_inbound_reply=True,
+            compliance_cleared=True,
+        )
+        sms_client.send(message, to_number)
+
+    is_duplicate = False
+    if phone and property_address:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        try:
+            dup_resp = (
+                supabase.table("leads")
+                .select("id")
+                .eq("owner_phone_1", phone)
+                .eq("property_address", property_address)
+                .gte("created_at", cutoff)
+                .neq("id", lead_id)
+                .limit(1)
+                .execute()
+            )
+            is_duplicate = bool(dup_resp.data)
+        except Exception as exc:
+            logger.warning(f"Dedup lookup failed for lead {lead_id}: {exc}")
+
+    if is_duplicate:
+        _send(
+            owner_phone,
+            f"Repeat inquiry: {name} — {property_address} ({phone}). Already in the system.",
+        )
+        return
+
+    dnc = False
+    try:
+        lead_resp = supabase.table("leads").select("dnc").eq("id", lead_id).single().execute()
+        dnc = bool(lead_resp.data and lead_resp.data.get("dnc"))
+    except Exception as exc:
+        logger.warning(f"DNC lookup failed for lead {lead_id}: {exc}")
+
+    if answers.get("sms_opt_in") and phone and not dnc:
+        _send(
+            phone,
+            f"Hi {name}, thanks for reaching out to Hilltop Home Co. about "
+            f"{property_address}. We'll be in touch shortly — reply here anytime with questions.",
+        )
+
+    _send(owner_phone, f"🔔 New lead: {name} — {property_address} — {phone}. Source: web_form.")
+
 
 def _send_hot_lead_notification(lead_id: str, answers: dict, score: int):
     """Send in-app notification and email alert for HOT inbound lead."""
+    from config.settings import settings
     supabase = _get_supabase()
     name = f"{answers.get('first_name', '')} {answers.get('last_name', '')}".strip() or "Unknown"
     address = answers.get('property_address', 'Unknown address')
@@ -344,12 +441,13 @@ def _send_hot_lead_notification(lead_id: str, answers: dict, score: int):
     )
 
     try:
-        supabase.table("notifications").insert({
+        supabase.table("app_notifications").insert({
+            "recipient_role": "admin",
             "type": "hot_lead",
-            "title": f"HOT Inbound Lead — {name}",
-            "message": body,
+            "title": f"🔥 HOT Inbound Lead — {name}",
+            "body": body,
+            "action_url": "/acquisitions",
             "lead_id": lead_id,
-            "read": False,
         }).execute()
     except Exception as exc:
         logger.warning(f"Could not insert HOT lead notification: {exc}")
