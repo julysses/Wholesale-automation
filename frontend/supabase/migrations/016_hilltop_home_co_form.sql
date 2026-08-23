@@ -12,6 +12,17 @@
 -- this regardless of the `required` flag here, which the backend does not
 -- itself enforce) differ from the generic form.
 --
+-- The website form itself is a single scrolling page, not a step-gated
+-- wizard — the questions[].step numbers below are kept only as the
+-- backend's own record of which fields are grouped together, not an
+-- actual UI step sequence.
+--
+-- expected_range is a new question (price-band select) replacing the old
+-- free-text asking_price question — a band doesn't map to the single
+-- numeric asking_price column _compute_scores_from_answers() writes, so
+-- it's captured in raw_answers for the team's reference but intentionally
+-- not wired into the scoring math.
+--
 -- NOTE: the phone number below is a placeholder — replace with the real
 -- Hilltop Home Co. business line before this form goes live.
 
@@ -33,6 +44,14 @@ INSERT INTO lead_form_configs (
         {"id":"step1_last_name","step":1,"type":"text","field_name":"last_name","label":"Your Last Name (optional)","required":false},
         {"id":"step1_phone","step":1,"type":"tel","field_name":"phone","label":"Best Phone Number","required":true},
         {"id":"step1_email","step":1,"type":"email","field_name":"email","label":"Email (optional)","required":false},
+        {"id":"step1_expected_range","step":1,"type":"radio","field_name":"expected_range","label":"What price range are you expecting?","required":false,"options":[
+            {"value":"under_150k","label":"Under $150K"},
+            {"value":"150k_250k","label":"$150K – $250K"},
+            {"value":"250k_350k","label":"$250K – $350K"},
+            {"value":"350k_500k","label":"$350K – $500K"},
+            {"value":"500k_plus","label":"$500K+"},
+            {"value":"not_sure","label":"Not sure"}
+        ]},
         {"id":"step2_motivation","step":2,"type":"radio","field_name":"motivation","label":"Why are you looking to sell?","required":true,"options":[
             {"value":"foreclosure","label":"Behind on payments / facing foreclosure","score_hint":3},
             {"value":"divorce","label":"Going through a divorce","score_hint":3},
@@ -58,7 +77,6 @@ INSERT INTO lead_form_configs (
             {"value":"tenant","label":"Yes, tenant occupied","score_hint":0},
             {"value":"vacant","label":"No, it is vacant","score_hint":1}
         ]},
-        {"id":"step4_asking_price","step":4,"type":"number","field_name":"asking_price","label":"Do you have a price in mind? (optional)","placeholder":"Leave blank if unsure","required":false},
         {"id":"step4_sms_opt_in","step":4,"type":"checkbox","field_name":"sms_opt_in","label":"By checking this box, I agree to receive text messages from Hilltop Home Co. about my property inquiry. Message and data rates may apply. Reply STOP to opt out.","required":true}
     ]'::JSONB
 ) ON CONFLICT (slug) DO NOTHING;
