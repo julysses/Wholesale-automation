@@ -17,5 +17,6 @@ export function initSupabase(url: string, anonKey: string): void {
 const _bakeUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const _bakeKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 if (_bakeUrl && _bakeKey) {
-  initSupabase(_bakeUrl, _bakeKey);
+  try { initSupabase(_bakeUrl.trim(), _bakeKey.trim()); }
+  catch { /* Runtime configuration can recover from invalid build-time values. */ }
 }

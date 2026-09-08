@@ -93,7 +93,13 @@ def test_rescore_leads_endpoint():
     crm.save_lead(lead)
     
     # 2. Call the rescore endpoint
-    response = client.post("/api/leads/rescore")
+    from web.auth import require_operator
+    from web.app import app
+    app.dependency_overrides[require_operator] = lambda: None
+    try:
+        response = client.post("/api/leads/rescore")
+    finally:
+        app.dependency_overrides.pop(require_operator, None)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"

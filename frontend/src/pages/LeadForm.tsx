@@ -105,7 +105,7 @@ export function LeadForm() {
   const validate = (step: number) => {
     const errs: Record<string, string> = {};
     for (const q of stepGroups[step] || []) {
-      if (q.required && !answers[q.field_name]) {
+      if (q.required && (q.type === 'checkbox' ? answers[q.field_name] !== 'true' : !answers[q.field_name]?.trim())) {
         errs[q.field_name] = 'This field is required';
       }
       if (q.type === 'tel' && answers[q.field_name]) {
@@ -163,8 +163,8 @@ export function LeadForm() {
       } else {
         setSubmitted(true);
       }
-    } catch (e: any) {
-      setSubmitError(e.message || 'Something went wrong. Please call us directly.');
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : 'Something went wrong. Please call us directly.');
     } finally {
       setSubmitting(false);
     }
@@ -336,7 +336,7 @@ function QuestionField({
           className="mt-0.5 h-4 w-4 rounded"
           style={{ accentColor: brandColor }}
         />
-        <span className="text-sm text-gray-700">{question.label}</span>
+        <span className="text-sm text-gray-700">{question.label}{error && <span className="block text-xs text-red-500 mt-1">{error}</span>}</span>
       </label>
     );
   }

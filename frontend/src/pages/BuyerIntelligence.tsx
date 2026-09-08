@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * BuyerIntelligence — Investor Buyer Intelligence Engine (IBIE) Dashboard.
  *
@@ -180,7 +181,7 @@ export function BuyerIntelligence() {
   const handleRescore = async () => {
     setRescoring(true);
     try {
-      await fetch('/api/buyers/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      await apiFetch('/api/buyers/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
       toast.success('Re-scoring queued — refresh in 30 seconds');
     } catch {
       toast.error('Re-score failed');

@@ -23,3 +23,11 @@ def test_frontend_config_falls_back_to_standard_supabase_names(monkeypatch):
         "supabase_url": "https://backend-project.supabase.co",
         "supabase_anon_key": "backend-anon",
     }
+
+
+def test_blank_vite_values_do_not_hide_backend_config(monkeypatch):
+    monkeypatch.setenv("VITE_SUPABASE_URL", "   ")
+    monkeypatch.setenv("VITE_SUPABASE_ANON_KEY", "   ")
+    monkeypatch.setenv("SUPABASE_URL", "https://backend.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "backend-key")
+    assert frontend_config() == {"supabase_url": "https://backend.supabase.co", "supabase_anon_key": "backend-key"}

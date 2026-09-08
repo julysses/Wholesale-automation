@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * useAutoScoreStore — database-backed Claude lead scoring progress.
  *
@@ -42,6 +43,7 @@ const EMPTY_PROGRESS: ScoringProgress = {
 };
 
 const SERVER_BATCH_SIZE = 25;
+let scoringGeneration = 0;
 
 interface AutoScoreStore {
   scoring: boolean;
@@ -58,7 +60,7 @@ interface AutoScoreStore {
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const res = await apiFetch(url, init);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `Request failed (${res.status})`);
@@ -84,7 +86,10 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
   tierCounts: { HOT: 0, WARM: 0, COLD: 0 },
   cancelRequested: false,
 
-  cancel: () => set({ cancelRequested: true, scoring: false }),
+  cancel: () => {
+    scoringGeneration++;
+    set({ cancelRequested: true, scoring: false });
+  },
   dismiss: () => set({
     total: 0,
     done: 0,
@@ -94,18 +99,21 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
   }),
 
   refreshStatus: async () => {
+    const generation = scoringGeneration;
     const progress = await fetchJson<ScoringProgress>('/api/ai/lead-scoring-status');
-    applyProgress(set, progress);
+    if (generation === scoringGeneration) applyProgress(set, progress);
     return progress;
   },
 
   start: async () => {
     if (get().scoring) return;
+    const generation = ++scoringGeneration;
 
     set({ scoring: true, failed: 0, error: null, cancelRequested: false });
 
     try {
       let progress = await get().refreshStatus();
+      if (generation !== scoringGeneration) return;
       if (progress.complete) {
         set({ scoring: false });
         return;
@@ -123,6 +131,7 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
           body: JSON.stringify({ batch_size: SERVER_BATCH_SIZE }),
         });
 
+        if (generation !== scoringGeneration) return;
         progress = result.progress || EMPTY_PROGRESS;
         applyProgress(set, progress);
 
@@ -131,6 +140,7 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
 
       set({ scoring: false });
     } catch (err) {
+      if (generation !== scoringGeneration) return;
       set({
         scoring: false,
         error: err instanceof Error ? err.message : 'Claude scoring failed',

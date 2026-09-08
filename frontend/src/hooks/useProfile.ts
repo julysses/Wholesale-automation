@@ -3,6 +3,7 @@
  * Provides helpers: isAdmin, isApproved, isPending.
  */
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
 export interface UserProfile {
@@ -26,29 +27,34 @@ interface UseProfileResult {
 }
 
 export function useProfile(): UseProfileResult {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetch = async () => {
-    setLoading(true);
-    const { data } = await supabase.from('my_profile').select('*').single();
-    setProfile(data ?? null);
-    setLoading(false);
-  };
-
+  const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
-    fetch();
-    // Re-fetch when auth state changes (e.g. after approval toast arrives)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => fetch());
-    return () => subscription.unsubscribe();
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (active) setUserId(data.session?.user.id ?? null);
+    });
+    // Keep this callback synchronous: querying Supabase here can deadlock auth.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user.id ?? null);
+    });
+    return () => { active = false; subscription.unsubscribe(); };
   }, []);
-
+  const query = useQuery({
+    queryKey: ['profile', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('my_profile').select('*').single();
+      if (error) throw error;
+      return data as UserProfile;
+    },
+  });
+  const profile = query.data ?? null;
   return {
     profile,
-    loading,
-    isAdmin:    profile?.role === 'admin',
+    loading: query.isLoading,
+    isAdmin: profile?.role === 'admin' && profile.status === 'approved',
     isApproved: profile?.status === 'approved',
-    isPending:  profile?.status === 'pending',
-    refetch:    fetch,
+    isPending: profile?.status === 'pending',
+    refetch: () => { void query.refetch(); },
   };
 }

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 import { useState } from 'react';
 import { Sparkles, AlertTriangle, ArrowRight, Copy, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -53,7 +54,7 @@ export function AdOptimizationPanel() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch('/api/ai/lead-gen/optimize', { method: 'POST' });
+      const resp = await apiFetch('/api/ai/lead-gen/optimize', { method: 'POST' });
       if (!resp.ok) throw new Error(await resp.text());
       const data = await resp.json();
       setReport(data);
@@ -68,7 +69,7 @@ export function AdOptimizationPanel() {
     setGenerating(true);
     setError(null);
     try {
-      const resp = await fetch('/api/ai/lead-gen/copy-variants', {
+      const resp = await apiFetch('/api/ai/lead-gen/copy-variants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pain_point_angle: selectedAngle, num_variants: 5 }),

@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -52,6 +52,7 @@ from web.api.fb_ads_api import router as fb_ads_router  # noqa: E402
 from web.api.marketing_api import router as marketing_router  # noqa: E402
 from web.api.leads_api import router as leads_router          # noqa: E402
 from web.api.appointments_api import router as appointments_router  # noqa: E402
+from web.auth import require_operator  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url=None,
     redoc_url=None,
+    dependencies=[Depends(require_operator)],
 )
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
@@ -172,13 +174,13 @@ def frontend_config() -> dict:
     """
     return {
         "supabase_url": (
-            os.getenv("VITE_SUPABASE_URL")
-            or os.getenv("SUPABASE_URL")
+            os.getenv("VITE_SUPABASE_URL", "").strip()
+            or os.getenv("SUPABASE_URL", "").strip()
             or ""
         ).strip(),
         "supabase_anon_key": (
-            os.getenv("VITE_SUPABASE_ANON_KEY")
-            or os.getenv("SUPABASE_ANON_KEY")
+            os.getenv("VITE_SUPABASE_ANON_KEY", "").strip()
+            or os.getenv("SUPABASE_ANON_KEY", "").strip()
             or ""
         ).strip(),
     }

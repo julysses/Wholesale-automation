@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,54 +24,21 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return toast.error('Enter email and password');
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      toast.error(getLoginErrorMessage(error.message));
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) toast.error(getLoginErrorMessage(error.message));
+      // App checks approval before mounting any dashboard or background scorer.
+    } catch (error) {
+      toast.error(getLoginErrorMessage(error instanceof Error ? error.message : 'Sign-in failed. Please retry.'));
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Check approval status after sign-in
-    const { data: profile } = await supabase.from('my_profile').select('status, role').single();
-
-    if (!profile) {
-      toast.error('Could not load your profile. Contact an admin.');
-      await supabase.auth.signOut();
-      setLoading(false);
-      return;
-    }
-
-    if (profile.status === 'pending') {
-      await supabase.auth.signOut();
-      toast.error('Your account is awaiting admin approval. Check back soon.');
-      setLoading(false);
-      return;
-    }
-
-    if (profile.status === 'denied') {
-      await supabase.auth.signOut();
-      toast.error('Your access request was not approved. Contact your admin.');
-      setLoading(false);
-      return;
-    }
-
-    if (profile.status === 'suspended') {
-      await supabase.auth.signOut();
-      toast.error('Your account has been suspended. Contact your admin.');
-      setLoading(false);
-      return;
-    }
-
-    // Approved — let auth state change redirect via App.tsx
-    setLoading(false);
   };
 
   return (

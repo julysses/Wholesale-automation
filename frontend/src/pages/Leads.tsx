@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity } from '@/hooks/useLeads';
@@ -562,7 +563,7 @@ interface MapPlan {
 
 async function claudeMap(headers: string[], samples: string[][]): Promise<MapPlan | null> {
   try {
-    const res = await fetch('/api/ai/map-columns', {
+    const res = await apiFetch('/api/ai/map-columns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ headers, samples }),
