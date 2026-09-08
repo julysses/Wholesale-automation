@@ -1,6 +1,7 @@
 # Final readiness review — 2026-09-08
 
 Branch: `codex/final-readiness`. Base: `ff676ba`.
+Review: [PR #5](https://github.com/julysses/Wholesale-automation/pull/5). Application fixes pushed in `852b07f` and `3db2469`.
 
 ## Baseline
 - Latest default branch pulled before work.
@@ -20,7 +21,8 @@ Branch: `codex/final-readiness`. Base: `ff676ba`.
 - [x] Review frontend workflow errors and improve release checks.
 - [x] Run backend (162 passing), frontend DOM regression tests (16 passing), production build, lint-regression gate, and dependency audit (zero vulnerabilities).
 - [ ] Complete browser visual QA; local browser preview blocked by client.
-- [ ] Update release documentation, commit, push, and create a reviewable PR.
+- [x] Update release documentation, commit, push, and create a reviewable PR.
+- [x] Verify GitHub backend/frontend CI and Vercel preview checks pass for application commit `3db2469`.
 
 ## Release gates
 - [x] Resume existing Supabase project with user approval.
@@ -35,3 +37,4 @@ Branch: `codex/final-readiness`. Base: `ff676ba`.
 - Frontend dependency audit reports zero vulnerabilities after locked dependency updates and maintained SheetJS installation.
 - Lint gate blocks new findings; 181 old errors and 5 warnings remain explicitly tracked.
 - Browser client blocked the local visual preview; frontend DOM regression coverage is passing. Visual and real-provider acceptance remain release gates.
+- Next: review and merge PR #5, verify production deployment, then complete approved-account and desktop/mobile acceptance. Application changes have not been merged or promoted by this review.

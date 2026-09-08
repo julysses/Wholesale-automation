@@ -2,6 +2,8 @@
 
 The release fixes seller intake, operator access, and analysis persistence. Application changes are on `codex/final-readiness`; production uses them only after merge/deployment. The Supabase restoration and access-policy migration have already been applied with owner approval.
 
+Review and deployment tracking: [PR #5](https://github.com/julysses/Wholesale-automation/pull/5). GitHub backend/frontend CI and the Vercel preview check passed for application commit `3db2469`.
+
 ## Fixed
 
 - Public `/form/:formId` pages work independently of operator sign-in and runtime auth configuration.
