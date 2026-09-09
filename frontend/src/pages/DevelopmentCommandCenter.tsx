@@ -98,6 +98,21 @@ export function DevelopmentCommandCenter({ userId }: { userId: string }) {
   const [tab, setTab] = useState<Tab>('overview');
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [localSaveError, setLocalSaveError] = useState(false);
+  const validationError = useMemo(() => {
+    try {
+      parseWorkspace(workspace);
+      return null;
+    } catch {
+      for (const item of workspace.projects) {
+        if (!Number.isFinite(item.sf) || item.sf <= 0) return `${item.name}: Finished SF must be greater than zero.`;
+        if (!Number.isInteger(item.units) || item.units < 1) return `${item.name}: Units must be a whole number of at least one.`;
+      }
+      if (workspace.cash.some(item => !Number.isInteger(item.week) || item.week < 1 || item.week > 13)) return 'Cash timing: Week must be a whole number from 1 through 13.';
+      if (workspace.cash.some(item => !Number.isFinite(item.amount) || item.amount < 0)) return 'Cash timing: Amount must be a finite, nonnegative number.';
+      return 'The workspace contains an invalid value. Check the entered fields before saving.';
+    }
+  }, [workspace]);
   const importRef = useRef<HTMLInputElement>(null);
   const project = workspace.projects.find(item => item.id === activeId) ?? workspace.projects[0];
   const settings = workspace.settings;
@@ -127,11 +142,16 @@ export function DevelopmentCommandCenter({ userId }: { userId: string }) {
     return () => { live = false; };
   }, [userId, storageKey]);
 
+  useEffect(() => {
+    if (!dirty || validationError) return;
+    try { localStorage.setItem(storageKey, JSON.stringify(workspace)); setLocalSaveError(false); }
+    catch { setLocalSaveError(true); }
+  }, [workspace, dirty, storageKey, validationError]);
+
   const mutate = (fn: (current: DevelopmentWorkspace) => DevelopmentWorkspace) => {
     revision.current += 1;
     setWorkspace(current => {
       const next = fn(current);
-      localStorage.setItem(storageKey, JSON.stringify(next));
       return next;
     });
     setDirty(true);
@@ -142,18 +162,24 @@ export function DevelopmentCommandCenter({ userId }: { userId: string }) {
   const updateSettings = (patch: Partial<DevelopmentSettings>) => mutate(current => ({ ...current, settings: { ...current.settings, ...patch } }));
 
   const save = async () => {
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
     setSaving(true);
     const savingRevision = revision.current;
-    localStorage.setItem(storageKey, JSON.stringify(workspace));
     try {
+      const validatedWorkspace = parseWorkspace(workspace);
+      try { localStorage.setItem(storageKey, JSON.stringify(validatedWorkspace)); setLocalSaveError(false); }
+      catch { setLocalSaveError(true); }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || user.id !== userId) throw new Error('Your account changed. Reload before saving.');
-      const { error } = await supabase.from('development_workspaces').upsert({ user_id: user.id, workspace, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      const { error } = await supabase.from('development_workspaces').upsert({ user_id: user.id, workspace: validatedWorkspace, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
       if (error) throw error;
       if (revision.current === savingRevision) setDirty(false);
       toast.success('Development workspace saved');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Saved locally; cloud sync failed');
+      toast.error(error instanceof Error ? error.message : 'Cloud save failed; export your work before closing');
     } finally { setSaving(false); }
   };
   const addProject = () => {
@@ -184,6 +210,10 @@ export function DevelopmentCommandCenter({ userId }: { userId: string }) {
   const updateGate = (gate: DevelopmentGate) => updateProject({ gates: project.gates.map(item => item.id === gate.id ? gate : item) });
 
   return <div className="space-y-5">
+    {validationError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      {validationError} These edits are kept on this page. Correct them before saving; the last valid saved copy is unchanged.
+    </div>}
+    {localSaveError && <div role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-800">Browser storage is unavailable. Changes remain in this tab; save to the cloud or export before closing.</div>}
     <div className="rounded-xl bg-[#9D1C20] px-5 py-5 text-white shadow-sm">
       <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
         <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-xl font-black text-[#9D1C20]">H.</div>
