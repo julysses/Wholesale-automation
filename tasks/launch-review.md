@@ -19,7 +19,10 @@ Working branch: `codex/launch-readiness-audit`.
 - [x] Lint gate passed (157 existing findings); frontend dependency audit returned zero findings.
 - [x] Perform public-form desktop/mobile browser checks and production read-only checks.
 - [x] Push reviewed code fixes through `f90002f` and document precise release gates.
-- [ ] Publish review report and draft PR; confirm final remote checks.
+- [x] Publish [draft PR #7](https://github.com/julysses/Wholesale-automation/pull/7).
+      Backend/frontend CI and Vercel preview passed for `7acd6fd` (all code fixes).
+- [x] Check branch preview: health 200, protected API 401, login/public form load,
+      no observed form browser errors. No form submission or signed-in acceptance.
 
 ## Next release steps — still open
 

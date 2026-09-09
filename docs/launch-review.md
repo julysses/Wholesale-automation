@@ -3,6 +3,9 @@
 Review date: September 8, 2026 (America/Chicago). Base: `4ae6ee3` on
 `claude/ai-wholesaling-agency-KkDF1`. Fix branch: `codex/launch-readiness-audit`.
 
+Review package: [draft pull request #7](https://github.com/julysses/Wholesale-automation/pull/7).
+Preview: [audit branch](https://wholesale-automation-git-codex-launch-13c233-julysses-projects.vercel.app).
+
 **Release decision: ready for staging acceptance, not cleared for production launch.**
 The review found and repaired material workflow failures. Passing automated tests
 does not establish that live credentials, external delivery, approved-user database
@@ -51,8 +54,9 @@ The dependency upgrade addresses [GHSA-82fw-gwwq-j7x9](https://github.com/adviso
 - Frontend dependency audit returned zero known vulnerabilities. Python dependencies
   remain lower-bound requirements without a lockfile; no complete Python advisory
   scan or reproducible dependency snapshot was established by this review.
-- GitHub backend/frontend checks and Vercel deployment succeeded on the preceding
-  pushed fix commit; final branch checks will be recorded after the remaining fixes.
+- GitHub backend/frontend checks (push and PR runs) and the Vercel preview deployment
+  **passed for `7acd6fd`**, which contains all reviewed code changes. The PR is
+  mergeable and remains a draft. Subsequent report-only commits do not change code.
 - Regression coverage includes actual UI form edits, nullable date updates, failed
   mutations, paging below a server cap, incomplete outreach batches, provider signature
   rejection, duplicate completion callbacks, failed claims and startup failures.
@@ -67,6 +71,11 @@ The dependency upgrade addresses [GHSA-82fw-gwwq-j7x9](https://github.com/adviso
 - Public `/api/health` returned 200; unauthenticated scoring status returned 401.
 - The production login page rendered. An approved operator login was requested in
   the Chrome **Wholesale QA** tab and has not been supplied for acceptance testing.
+- The branch preview initially required Vercel authentication. Authorized temporary
+  access through the connected account allowed its login and public form to load.
+  Preview health returned 200, protected scoring status returned 401 without an app
+  session, and the loaded preview form reported no browser error logs. The preview
+  login was left ready for approved-operator acceptance. No form was submitted.
 - Public `/form/hilltop-home-co` loaded. Empty required fields displayed validation;
   all four steps were exercised with dummy entries, including a 390-by-844 mobile
   viewport. Final consent/submission was not sent. Observed browser error logs were
