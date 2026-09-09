@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { AdCampaign, AdCreative, LeadFormConfig, LeadFormSubmission } from '@/types';
@@ -166,7 +167,7 @@ export function useLeadGenKPIs() {
   return useQuery<LeadGenKPIs>({
     queryKey: ['lead_gen_kpis'],
     queryFn: async () => {
-      const resp = await fetch('/api/lead-gen/kpis');
+      const resp = await apiFetch('/api/lead-gen/kpis');
       if (!resp.ok) throw new Error('Failed to fetch KPIs');
       return resp.json();
     },

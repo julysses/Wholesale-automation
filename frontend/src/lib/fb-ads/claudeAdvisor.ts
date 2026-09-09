@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * Claude Advisor — all Anthropic API calls for the FB Ads Command Center.
  * Routes through the FastAPI backend at /api/ai/fb-ads/*
@@ -45,7 +46,7 @@ export interface CopyReview {
 }
 
 async function callApi<T>(endpoint: string, body: unknown): Promise<T> {
-  const resp = await fetch(`/api/ai/fb-ads/${endpoint}`, {
+  const resp = await apiFetch(`/api/ai/fb-ads/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

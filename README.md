@@ -1,5 +1,7 @@
 # WholesaleOS — AI-Powered Real Estate Wholesale Automation
 
+> Current release review and remaining gates: [Final readiness review](docs/final-readiness-review.md).
+
 An end-to-end wholesale acquisition platform that automates lead scoring, AI voice dialing, seller qualification, deal analysis, and negotiation intelligence — driving 2–8 contracts/month from a precision-targeted list.
 
 ---
@@ -65,7 +67,7 @@ An end-to-end wholesale acquisition platform that automates lead scoring, AI voi
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui |
 | State / Data | TanStack Query v5, Zustand, Supabase JS |
 | Charts | Recharts |
 | Backend | FastAPI, Python 3.11, Uvicorn/Gunicorn |
@@ -282,9 +284,8 @@ See [USER_MANUAL.md](USER_MANUAL.md) for the full step-by-step workflow.
    This works within a single browser tab but does not sync across multiple open tabs or devices. If a user has the dashboard open on two screens and selects a different strategy on each, they show different data.
    _Fix:_ Persist the selected strategy in the `profiles` table and read it via Supabase on mount.
 
-8. **`DealAnalyzer` page (`/analyzer`) and the Deal Analysis tab in `Acquisitions` are separate UI surfaces with no data link.**
-   Running an analysis in `/analyzer` does not appear in `/acquisitions` and vice versa. This can confuse users who expect one unified deal analysis workflow.
-   _Fix:_ Both surfaces should query the same `deal_analyses` table; the standalone `/analyzer` page should accept a `leadId` query param to pre-populate from a lead record.
+8. **Partially resolved — shared deal analysis.**
+   The standalone analyzer now saves into `deal_analyses`, so its saved analyses appear in Acquisitions. AI recommendations use the authenticated backend and report failures explicitly. Lead-link prefill and reopening saved analyses remain roadmap work.
 
 9. **Partially resolved — Supabase realtime.**
    ✅ HOT-lead / appointment alerts now arrive instantly via a `supabase.channel()` INSERT
@@ -312,8 +313,8 @@ See [USER_MANUAL.md](USER_MANUAL.md) for the full step-by-step workflow.
 
 ### High priority
 
-- [ ] **Supabase realtime for HOT lead alerts** — replace polling with a live channel subscription so HOT lead notifications appear instantly in the dashboard
-- [ ] **Re-score endpoint** — `POST /api/leads/rescore` recalculates `priority_rank` and `precision_tier` for all leads in a batch after new imports
+- [x] **Supabase realtime for HOT lead alerts** — replace polling with a live channel subscription so HOT lead notifications appear instantly in the dashboard
+- [x] **Re-score endpoint** — `POST /api/leads/rescore` recalculates `priority_rank` and `precision_tier` for all leads in a batch after new imports
 - [ ] **Additional ARV providers** — add PropStream or Zillow as a secondary comp/AVM fallback behind BatchData
 
 ### Medium priority

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * Acquisitions Dashboard
  *
@@ -793,7 +794,7 @@ export function Acquisitions() {
     if (!confirm(`Are you sure you want to send a follow-up SMS to all ${warmLeads.length} warm leads?`)) return;
     setBulkSmsLoading(true);
     try {
-      const resp = await fetch('/api/marketing/bulk-sms-warm', {
+      const resp = await apiFetch('/api/marketing/bulk-sms-warm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -815,7 +816,7 @@ export function Acquisitions() {
     setSubmittingAppt(true);
     try {
       const scheduledAt = new Date(`${newAppt.date}T${newAppt.time}`);
-      const resp = await fetch('/api/appointments', {
+      const resp = await apiFetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -15,3 +15,4 @@ build/
 .nixpacks/
 .railway/
 data/*.db
+frontend/supabase/.temp/

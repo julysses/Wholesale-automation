@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * DealMatchingPanel — match buyers to a deal and launch outreach.
  *
@@ -56,7 +57,7 @@ export function DealMatchingPanel({ dealId: propDealId, onSelectBuyers, compact 
     setMatches([]);
     setSelectedIds(new Set());
     try {
-      const resp = await fetch('/api/buyers/match', {
+      const resp = await apiFetch('/api/buyers/match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

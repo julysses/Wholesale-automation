@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * MasterListBuilder
  *
@@ -39,7 +40,7 @@ interface ClaudePlan {
 
 async function mapColumnsWithClaude(headers: string[], samples: string[][]): Promise<ClaudePlan | null> {
   try {
-    const res = await fetch('/api/ai/map-columns', {
+    const res = await apiFetch('/api/ai/map-columns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ headers, samples }),
@@ -195,7 +196,7 @@ export function MasterListBuilder() {
           stack_count: r.stack_count,
         }));
 
-      const res = await fetch('/api/ai/import-master-list', {
+      const res = await apiFetch('/api/ai/import-master-list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rows, score_with_claude: false }),

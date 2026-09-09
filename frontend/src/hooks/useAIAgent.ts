@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * AI Agent hooks — calls our FastAPI Python backend (/api/ai/*) instead of
  * Supabase Edge Functions.  The Python agents use Claude claude-sonnet-4-6 and
@@ -16,7 +17,7 @@ import type {
 const API_BASE = '/api/ai';
 
 async function callAgent<T>(endpoint: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}/${endpoint}`, {
+  const res = await apiFetch(`${API_BASE}/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

@@ -1,4 +1,6 @@
+import { apiFetch } from '@/lib/api';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   Megaphone, TrendingUp, DollarSign, Users, Flame, Target, Plus, Loader2, RefreshCw
 } from 'lucide-react';
@@ -60,8 +62,10 @@ export function LeadGenEngine() {
   const handleSyncFacebook = async (id: string) => {
     setSyncingId(id);
     try {
-      await fetch(`/api/lead-gen/campaigns/${id}/sync-facebook`, { method: 'POST' });
+      await apiFetch(`/api/lead-gen/campaigns/${id}/sync-facebook`, { method: 'POST' });
       updateCampaign.mutate({ id, updates: {} }); // trigger refetch
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Campaign sync failed');
     } finally {
       setSyncingId(null);
     }

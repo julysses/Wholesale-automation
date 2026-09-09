@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * SetupWizard — guided configuration walkthrough.
  *
@@ -290,7 +291,7 @@ function AnthropicStep({ onNext, onSkip, saved, onAutoComplete }: StepProps) {
       // Direct browser call blocked (network filter, extension, or CORS issue) —
       // fall back to testing the same key through our backend.
       try {
-        const r = await fetch('/api/ai/test-key', {
+        const r = await apiFetch('/api/ai/test-key', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key: k }),
@@ -512,7 +513,7 @@ function TestStep({ onNext }: StepProps) {
     try {
       // Lightweight 1-token ping — the full qualify-lead call can exceed the
       // 10-second Vercel Hobby function limit on a cold start.
-      const r = await fetch('/api/ai/test');
+      const r = await apiFetch('/api/ai/test');
       next.ai = r.ok ? 'ok' : 'error';
     } catch { next.ai = 'error'; }
     setResults(next);

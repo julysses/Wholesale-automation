@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * OutreachLauncher — SMS and email blast to matched buyer IDs.
  *
@@ -101,7 +102,7 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
         custom_message:  channel === 'sms' ? smsBody : '',
       };
 
-      const resp = await fetch(endpoint, {
+      const resp = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

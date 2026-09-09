@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -8,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Plus, Trash2, Calculator, TrendingUp, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useLeads, useUpdateLead } from '@/hooks/useLeads';
+import { useLeads } from '@/hooks/useLeads';
 
 interface Comp {
   address: string;
@@ -56,23 +58,44 @@ export function DealAnalyzer() {
   const [saveLeadId, setSaveLeadId] = useState('');
   const [savingToLead, setSavingToLead] = useState(false);
   const { data: leadsData } = useLeads({ pageSize: 200 });
-  const updateLead = useUpdateLead();
+  const queryClient = useQueryClient();
   const allLeads = leadsData?.data ?? [];
 
   const handleSaveToLead = async () => {
     if (!saveLeadId) return toast.error('Select a lead to save to');
     if (arv === 0) return toast.error('Calculate ARV first');
     setSavingToLead(true);
-    await updateLead.mutateAsync({
-      id: saveLeadId,
-      updates: {
-        estimated_arv: arv,
-        estimated_repairs: estimatedRepairs,
-        mao: mao > 0 ? mao : undefined,
-      },
-    });
-    setSavingToLead(false);
-    toast.success('Analysis saved to lead');
+    try {
+      // One durable analysis write also updates the lead through the existing
+      // deal_analysis_sync trigger, so Acquisitions sees the same analysis.
+      const { error } = await supabase.from('deal_analyses').insert({
+        lead_id: saveLeadId,
+        arv_low: arv, arv_mid: arv, arv_high: arv,
+        arv_confidence: 'low',
+        arv_comp_count: comps.filter(c => c.sale_price > 0 && c.sqft > 0).length,
+        arv_notes: 'Operator-entered comparable analysis; values are estimates.',
+        repair_tier: condition === 'cosmetic' ? 'light' : condition === 'full_renovation' ? 'heavy' : 'moderate',
+        repair_cost_low: estimatedRepairs, repair_cost_mid: estimatedRepairs, repair_cost_high: estimatedRepairs,
+        assignment_fee: assignmentFee,
+        mao,
+        offer_range_low: Math.max(0, mao * 0.9), offer_range_high: Math.max(0, mao),
+        is_viable: mao > 0,
+        summary: aiRec || 'Manual comparable and repair analysis.',
+      }).select('id').single();
+      if (error) throw error;
+      const { error: repairError } = await supabase.from('leads')
+        .update({ estimated_repairs: estimatedRepairs }).eq('id', saveLeadId).select('id').single();
+      if (repairError) throw new Error('Analysis saved, but the lead repair estimate could not be updated. Please retry.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['leads'] }),
+        queryClient.invalidateQueries({ queryKey: ['deal_analyses'] }),
+      ]);
+      toast.success('Analysis saved to lead and Acquisitions');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save analysis. Please retry.');
+    } finally {
+      setSavingToLead(false);
+    }
   };
 
   // Calculate ARV from comps
@@ -112,22 +135,17 @@ export function DealAnalyzer() {
     }
     setLoadingAi(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-offer', {
-        body: {
-          property_address: address || 'Subject Property',
-          arv,
-          repair_estimate: estimatedRepairs,
-          mao,
-          ai_qualification_summary: '',
-          motivation_tag: '',
-        }
+      const response = await apiFetch('/api/ai/generate-offer', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_address: address || 'Subject Property', arv, repair_estimate: estimatedRepairs, mao }),
       });
-      if (error) throw error;
-      // Extract recommendation text
-      const rec = data?.recommendation || data?.options?.[0]?.pitch || 'Based on the analysis, this deal has solid fundamentals. Consider presenting a quick-close cash offer to maximize seller response.';
+      const data = await response.json();
+      const rec = data?.recommendation || data?.options?.[0]?.pitch;
+      if (typeof rec !== 'string' || !rec.trim()) throw new Error('No recommendation was returned.');
       setAiRec(rec);
-    } catch {
-      setAiRec('Unable to generate AI recommendation at this time. Your numbers look solid—consider presenting the deal at or near MAO with a 14-day close to motivate the seller.');
+    } catch (error) {
+      setAiRec('');
+      toast.error(error instanceof Error ? error.message : 'Unable to generate an AI recommendation. Please retry.');
     } finally {
       setLoadingAi(false);
     }
@@ -147,7 +165,7 @@ export function DealAnalyzer() {
 
   const updateComp = (i: number, field: keyof Comp, value: string | number) => {
     const updated = [...comps];
-    (updated[i] as any)[field] = value;
+    updated[i] = { ...updated[i], [field]: value };
     setComps(updated);
   };
 

@@ -8,12 +8,9 @@
 import { useEffect } from 'react';
 import { useAutoScoreStore } from '@/stores/useAutoScoreStore';
 
-let hasResumed = false;
-
 export function useResumeAutoScore() {
   useEffect(() => {
-    if (hasResumed) return;
-    hasResumed = true;
+    let active = true;
 
     (async () => {
       const store = useAutoScoreStore.getState();
@@ -21,12 +18,13 @@ export function useResumeAutoScore() {
 
       try {
         const status = await store.refreshStatus();
-        if (!status.complete && status.unscored > 0) {
+        if (active && !status.complete && status.unscored > 0) {
           store.start();
         }
       } catch {
         // The visible status bar will surface errors once the user retries.
       }
     })();
+    return () => { active = false; useAutoScoreStore.getState().cancel(); };
   }, []);
 }

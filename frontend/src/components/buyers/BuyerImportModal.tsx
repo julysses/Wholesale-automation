@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * BuyerImportModal — CSV upload for county records / PropStream lists.
  *
@@ -106,7 +107,7 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
       form.append('cash_only', String(cashOnly));
       form.append('entities_only', String(entitiesOnly));
 
-      const resp = await fetch('/api/buyers/import', {
+      const resp = await apiFetch('/api/buyers/import', {
         method: 'POST',
         body: form,
       });

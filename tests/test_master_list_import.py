@@ -1,10 +1,19 @@
 import json
 import re
+import pytest
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from web.app import app
+from web.auth import require_operator
+
+
+@pytest.fixture(autouse=True)
+def approved_operator():
+    app.dependency_overrides[require_operator] = lambda: None
+    yield
+    app.dependency_overrides.pop(require_operator, None)
 
 
 client = TestClient(app)

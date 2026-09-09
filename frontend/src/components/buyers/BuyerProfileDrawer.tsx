@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 /**
  * BuyerProfileDrawer — slide-in panel with full buyer detail.
  *
@@ -67,7 +68,7 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
   const loadTransactions = async (buyerId: string) => {
     setTxLoading(true);
     try {
-      const resp = await fetch(`/api/buyers/${buyerId}/transactions`);
+      const resp = await apiFetch(`/api/buyers/${buyerId}/transactions`);
       if (resp.ok) {
         const data = await resp.json();
         setTransactions(data.transactions || []);
@@ -83,7 +84,7 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
     if (!buyer?.id) return;
     setClassifying(true);
     try {
-      await fetch(`/api/buyers/${buyer.id}/classify`, { method: 'POST' });
+      await apiFetch(`/api/buyers/${buyer.id}/classify`, { method: 'POST' });
       toast.success('Classification queued — refresh in a moment');
       onUpdated?.();
     } catch {

@@ -25,6 +25,8 @@ Authenticated:
 from __future__ import annotations
 
 import logging
+import math
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -39,7 +41,44 @@ router = APIRouter(tags=["Lead Generation"])
 # ── Supabase client (lazy import to avoid circular deps) ───────────────────────
 def _get_supabase():
     from tools.crm import get_supabase_client
-    return get_supabase_client()
+    client = get_supabase_client()
+    if client is None:
+        raise HTTPException(503, "Form service is temporarily unavailable")
+    return client
+
+
+def _validate_answers(questions: list[dict], answers: dict) -> dict:
+    """Validate configured fields on the server, including checkbox consent."""
+    cleaned = {}
+    for question in questions:
+        field = question["field_name"]
+        value = answers.get(field, "")
+        if not isinstance(value, (str, bool, int, float)):
+            raise HTTPException(422, f"Invalid value for {question['label']}")
+        kind = question.get("type", "text")
+        if kind == "checkbox":
+            value = "true" if value is True or value == "true" else ""
+        else:
+            value = str(value).strip()
+        if question.get("required") and not value:
+            raise HTTPException(422, f"{question['label']} is required")
+        if len(value) > 5000:
+            raise HTTPException(422, f"{question['label']} is too long")
+        if value and kind == "tel" and not re.fullmatch(r"1?\d{10}", re.sub(r"\D", "", value)):
+            raise HTTPException(422, "Enter a valid US phone number")
+        if value and kind == "email" and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value):
+            raise HTTPException(422, "Enter a valid email address")
+        if value and kind == "radio" and value not in {str(o["value"]) for o in question.get("options", [])}:
+            raise HTTPException(422, f"Choose a valid option for {question['label']}")
+        if value and kind == "number":
+            try:
+                valid_number = math.isfinite(float(value)) and float(value) >= 0
+            except ValueError:
+                valid_number = False
+            if not valid_number:
+                raise HTTPException(422, f"Enter a valid number for {question['label']}")
+        cleaned[field] = value
+    return cleaned
 
 
 # ── Score mapping helpers ──────────────────────────────────────────────────────
@@ -179,7 +218,7 @@ async def submit_form(
     if not form_config:
         raise HTTPException(status_code=404, detail="Form not found")
 
-    answers = body.answers
+    answers = _validate_answers(form_config.get("questions", []), body.answers)
     scores = _compute_scores_from_answers(answers)
 
     # Insert submission record
@@ -201,7 +240,10 @@ async def submit_form(
         submission_id = sub_resp.data[0]["id"] if sub_resp.data else None
     except Exception as exc:
         logger.error(f"Failed to insert form submission: {exc}")
-        submission_id = None
+        raise HTTPException(503, "We could not save your inquiry. Please try again.")
+
+    if not submission_id:
+        raise HTTPException(503, "We could not save your inquiry. Please try again.")
 
     # Process lead in background
     background_tasks.add_task(
