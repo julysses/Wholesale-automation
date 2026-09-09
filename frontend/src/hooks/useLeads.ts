@@ -6,13 +6,15 @@ import { toast } from 'sonner';
 interface LeadsFilter {
   status?: string;
   source?: string;
+  tier?: string;
+  motivation?: string;
   search?: string;
   page?: number;
   pageSize?: number;
 }
 
 export function useLeads(filters: LeadsFilter = {}) {
-  const { status, source, search, page = 1, pageSize = 50 } = filters;
+  const { status, source, tier, motivation, search, page = 1, pageSize = 50 } = filters;
 
   return useQuery({
     queryKey: ['leads', filters],
@@ -25,6 +27,8 @@ export function useLeads(filters: LeadsFilter = {}) {
 
       if (status) query = query.eq('status', status);
       if (source) query = query.eq('source', source);
+      if (tier) query = query.eq('priority_tier', tier);
+      if (motivation) query = query.eq('motivation_tag', motivation);
       if (search) {
         query = query.or(
           `property_address.ilike.%${search}%,owner_first_name.ilike.%${search}%,owner_last_name.ilike.%${search}%,owner_phone_1.ilike.%${search}%`

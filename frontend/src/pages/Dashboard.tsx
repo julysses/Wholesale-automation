@@ -1,5 +1,8 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { queryAll } from '@/lib/queryAll';
+import { localDateKey } from '@/lib/utils';
+import type { Deal } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { KPICard } from '@/components/dashboard/KPICard';
@@ -33,23 +36,17 @@ export function Dashboard() {
   }, [location.hash]);
 
   // KPI data
-  const { data: kpiData } = useQuery({
+  const { data: kpiData, error: kpiError, refetch: retryKpis } = useQuery({
     queryKey: ['kpi'],
     queryFn: async () => {
       const [leadsRes, dealsRes] = await Promise.all([
-        supabase.from('leads').select('id, status, created_at'),
-        supabase.from('deals').select('id, stage, assignment_fee, closing_date, actual_close_date, contract_price'),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).not('status', 'in', '(dead,dnc,under_contract)'),
+        queryAll<Pick<Deal, 'id' | 'stage' | 'assignment_fee' | 'closing_date' | 'actual_close_date' | 'contract_price'>>((from, to) => supabase.from('deals').select('id, stage, assignment_fee, closing_date, actual_close_date, contract_price').order('id').range(from, to)),
       ]);
 
-      const leads = (leadsRes.data ?? []) as Array<{ id: string; status: string; created_at: string }>;
-      const deals = (dealsRes.data ?? []) as Array<{
-        id: string; stage: string; assignment_fee: number | null; closing_date: string | null;
-        actual_close_date: string | null; contract_price: number | null;
-      }>;
-
-      const activeLeads = leads.filter(l =>
-        !['dead', 'dnc', 'under_contract'].includes(l.status)
-      ).length;
+      if (leadsRes.error) throw leadsRes.error;
+      const deals = dealsRes;
+      const activeLeads = leadsRes.count ?? 0;
 
       const underContract = deals.filter(d =>
         !['closed', 'cancelled'].includes(d.stage)
@@ -57,9 +54,9 @@ export function Dashboard() {
       const underContractValue = underContract.reduce((sum, deal) => sum + (deal.contract_price || 0), 0);
 
       const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const monthStart = localDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
       const closedThisMonth = deals.filter(deal =>
-        deal.stage === 'closed' && Boolean(deal.actual_close_date && deal.actual_close_date >= monthStart)
+        deal.stage === 'closed' && Boolean(deal.actual_close_date && deal.actual_close_date >= monthStart && deal.actual_close_date <= localDateKey(now))
       );
       const closedFees = closedThisMonth.reduce((sum, deal) => sum + (deal.assignment_fee || 0), 0);
 
@@ -91,6 +88,7 @@ export function Dashboard() {
       {/* Getting Started Guide */}
       <WorkflowGuide />
 
+      {kpiError && <div role="alert" className="rounded-lg bg-red-50 p-3 text-red-700">Dashboard totals could not be loaded. <button className="underline" onClick={() => retryKpis()}>Retry</button></div>}
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KPICard

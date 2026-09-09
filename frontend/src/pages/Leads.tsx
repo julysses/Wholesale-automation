@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api';
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity } from '@/hooks/useLeads';
 import { useLeadQualifier } from '@/hooks/useAIAgent';
@@ -119,6 +120,7 @@ function downloadCSV(filename: string, rows: Record<string, unknown>[], excludeK
 }
 
 export function Leads() {
+  const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [status, setStatus] = useState(searchParams.get('status') || '');
@@ -131,7 +133,7 @@ export function Leads() {
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const { data, isLoading } = useLeads({ status, source, search, page, pageSize: 50 });
+  const { data, isLoading, error: loadError, refetch } = useLeads({ status, source, tier, motivation, search, page, pageSize: 50 });
   const leads = data?.data ?? [];
   const total = data?.count ?? 0;
   const totalPages = Math.ceil(total / 50);
@@ -159,14 +161,15 @@ export function Leads() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Filter leads by tier client-side (Supabase query doesn't include tier filter yet)
-  const filteredLeads = tier ? leads.filter((l) => l.priority_tier === tier) : leads;
+  const filteredLeads = leads;
 
   const handlePushToDialer = async (lead: Lead) => {
     if (!confirm(`Push ${lead.property_address} to BatchDialer?`)) return;
     try {
-      await supabase.from('leads').update({ status: 'ready_for_dialer' }).eq('id', lead.id);
-      toast.success('Lead marked ready for dialer — push will run on next sync');
+      const { error, data: saved } = await supabase.from('leads').update({ status: 'ready_for_dialer' }).eq('id', lead.id).select('id').single();
+      if (error || !saved) throw error || new Error('Lead update was not saved');
+      await qc.invalidateQueries({ queryKey: ['leads'] });
+      toast.success('Lead marked ready for dialer');
     } catch {
       toast.error('Failed to update lead status');
     }
@@ -175,11 +178,13 @@ export function Leads() {
   const handleEnrollSMS = async (lead: Lead) => {
     if (!confirm(`Enroll ${lead.property_address} in Launch Control SMS nurture?`)) return;
     try {
-      await supabase.from('leads').update({
+      const { error, data: saved } = await supabase.from('leads').update({
         status: 'sms_nurture',
         sms_sequence_active: true,
-      }).eq('id', lead.id);
-      toast.success('Lead enrolled in SMS nurture');
+      }).eq('id', lead.id).select('id').single();
+      if (error || !saved) throw error || new Error('Lead update was not saved');
+      await qc.invalidateQueries({ queryKey: ['leads'] });
+      toast.success('Lead marked for SMS nurture');
     } catch {
       toast.error('Failed to enroll lead in SMS nurture');
     }
@@ -236,7 +241,7 @@ export function Leads() {
           />
         </div>
         <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} options={STATUS_OPTIONS} className="w-44" />
-        <Select value={tier} onChange={(e) => { setTier(e.target.value); }} options={TIER_OPTIONS} className="w-36" />
+        <Select value={tier} onChange={(e) => { setTier(e.target.value); setPage(1); }} options={TIER_OPTIONS} className="w-36" />
         <Select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} options={SOURCE_OPTIONS} className="w-36" />
         <Select value={motivation} onChange={(e) => { setMotivation(e.target.value); setPage(1); }} options={MOTIVATION_OPTIONS} className="w-40" />
       </div>
@@ -255,7 +260,9 @@ export function Leads() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
+              {loadError ? (
+                <tr><td colSpan={10} className="p-6 text-center text-red-700" role="alert">Could not load leads. <button onClick={() => refetch()} className="underline">Retry</button></td></tr>
+              ) : isLoading ? (
                 <tr><td colSpan={10} className="px-4 py-6"><TableSkeleton rows={8} cols={8} /></td></tr>
               ) : filteredLeads.length === 0 ? (
                 <tr>
@@ -586,12 +593,13 @@ async function claudeMap(headers: string[], samples: string[][]): Promise<MapPla
 }
 
 function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [dataRows, setDataRows] = useState<string[][]>([]);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ imported: number; errors: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; errors: number; skipped: number; message?: string } | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [mapStatus, setMapStatus] = useState<'idle' | 'parsing' | 'mapping' | 'done'>('idle');
   const [mappedBy, setMappedBy] = useState<'claude' | 'heuristic' | null>(null);
@@ -691,7 +699,7 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
   };
 
   const hasAddr = mapping['property_address'] !== undefined && mapping['property_address'] !== '';
-  const hasCity = (mapping['city'] !== undefined && mapping['city'] !== '') || defaultCity.trim() !== '';
+  const hasCity = addressCombined || (mapping['city'] !== undefined && mapping['city'] !== '') || defaultCity.trim() !== '';
 
   const handleImport = async () => {
     if (!file) return;
@@ -707,29 +715,31 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
     let imported = 0, errors = 0, skipped = 0;
     const scorable: ScorableLead[] = [];
 
-    // Rows were already parsed on drop (CSV or Excel) — reuse them, no re-parse.
-    const CHUNK = 100;
-    for (let i = 0; i < dataRows.length; i += CHUNK) {
-      const built = dataRows.slice(i, i + CHUNK).map(buildRecord);
-      const chunk = built.filter((r): r is Record<string, string | number> => r !== null);
-      skipped += built.length - chunk.length;
-      if (chunk.length === 0) continue;
-      const { data, error } = await supabase.from('leads').insert(chunk)
-        .select('id, property_address, city, state, owner_first_name, owner_last_name, motivation_tag');
-      if (error) errors += chunk.length;
-      else {
-        imported += chunk.length;
-        if (data) scorable.push(...(data as ScorableLead[]));
+    try {
+      const CHUNK = 100;
+      for (let i = 0; i < dataRows.length; i += CHUNK) {
+        const built = dataRows.slice(i, i + CHUNK).map(buildRecord);
+        const chunk = built.filter((r): r is Record<string, string | number> => r !== null);
+        skipped += built.length - chunk.length;
+        if (chunk.length === 0) continue;
+        const { data, error } = await supabase.from('leads').insert(chunk)
+          .select('id, property_address, city, state, owner_first_name, owner_last_name, motivation_tag');
+        if (error || !data || data.length !== chunk.length) {
+          errors += chunk.length;
+          // Stop after a failed write; repeatedly retrying the whole file can duplicate saved rows.
+          setResult({ imported, errors, skipped, message: error?.message || 'The database did not confirm all rows. Import stopped; review saved leads before retrying.' });
+          return;
+        }
+        imported += data.length;
+        scorable.push(...(data as ScorableLead[]));
       }
-    }
-
-    setImporting(false);
-    setResult({ imported, errors: errors + skipped });
-
-    // Claude automatically scores every freshly imported lead in the
-    // background — no manual "qualify" click needed. Runs across navigation.
-    if (scorable.length > 0) {
-      useAutoScoreStore.getState().start(scorable);
+      setResult({ imported, errors, skipped });
+    } catch (error) {
+      setResult({ imported, errors, skipped, message: error instanceof Error ? error.message : 'Import interrupted. Review saved leads before retrying.' });
+    } finally {
+      setImporting(false);
+      if (imported > 0) await qc.invalidateQueries({ queryKey: ['leads'] });
+      if (scorable.length > 0) void useAutoScoreStore.getState().start(scorable);
     }
   };
 
@@ -738,9 +748,11 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
       <div className="p-6 space-y-5">
         {result ? (
           <div className="text-center py-8 space-y-3">
-            <div className="text-5xl">✅</div>
+            <div className="text-5xl">{result.errors || result.message ? '⚠️' : '✅'}</div>
             <p className="text-xl font-bold text-gray-900">{result.imported.toLocaleString()} leads imported</p>
-            {result.errors > 0 && <p className="text-sm text-red-500">{result.errors.toLocaleString()} rows skipped (missing address or city)</p>}
+            {result.skipped > 0 && <p className="text-sm text-amber-700">{result.skipped.toLocaleString()} rows skipped (missing address or city)</p>}
+            {result.errors > 0 && <p className="text-sm text-red-600">{result.errors.toLocaleString()} rows were not confirmed saved.</p>}
+            {result.message && <p role="alert" className="text-sm text-red-600">{result.message} Import stopped. Review saved leads before retrying.</p>}
             <Button onClick={() => { onClose(); reset(); }}>Done</Button>
           </div>
         ) : (

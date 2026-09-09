@@ -13,7 +13,7 @@ import { Sparkles, X, Flame, AlertTriangle, RotateCw } from 'lucide-react';
 import { useAutoScoreStore } from '@/stores/useAutoScoreStore';
 
 export function AutoScoreStatusBar() {
-  const { scoring, total, done, failed, error, tierCounts, start, cancel, dismiss } = useAutoScoreStore();
+  const { scoring, total, done, failed, error, cancelRequested, tierCounts, start, cancel, dismiss } = useAutoScoreStore();
   const wasScoring = useRef(false);
 
   // Fire a one-time summary toast the moment scoring finishes
@@ -25,14 +25,18 @@ export function AutoScoreStatusBar() {
         tierCounts.COLD > 0 && `${tierCounts.COLD} COLD`,
         failed > 0 && `${failed} failed`,
       ].filter(Boolean).join(' · ');
-      if (failed > 0) {
+      if (error) {
+        toast.error(`Scoring paused: ${error}`);
+      } else if (cancelRequested || done + failed < total) {
+        toast.info(`Scoring stopped at ${done}/${total} leads`);
+      } else if (failed > 0) {
         toast.warning(`Claude scored ${done}/${total} leads (${failed} failed)${parts ? ` — ${parts}` : ''}`);
       } else {
         toast.success(`Claude scored ${done.toLocaleString()} leads${parts ? ` — ${parts}` : ''}`);
       }
     }
     wasScoring.current = scoring;
-  }, [scoring, total, done, failed, tierCounts]);
+  }, [scoring, total, done, failed, error, cancelRequested, tierCounts]);
 
   if (!scoring && total === 0 && !error) return null;
 
@@ -50,7 +54,7 @@ export function AutoScoreStatusBar() {
           <Flame className="h-4 w-4 text-green-600 shrink-0" />
         )}
         <p className="text-xs font-semibold text-gray-800 flex-1">
-          {isPaused ? 'Claude scoring paused' : scoring ? 'Claude is scoring leads…' : 'Scoring complete'}
+          {isPaused ? 'Claude scoring paused' : scoring ? 'Claude is scoring leads…' : cancelRequested || done + failed < total ? 'Scoring stopped' : failed ? 'Scoring finished with errors' : 'Scoring complete'}
         </p>
         {isPaused && (
           <button

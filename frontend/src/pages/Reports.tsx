@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { queryAll } from '@/lib/queryAll';
+import { localDateKey } from '@/lib/utils';
+import type { Deal, Lead, Buyer } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -41,49 +44,44 @@ export function Reports() {
   const [dateFrom, dateTo] = getDateRange(range);
 
   // Deals data
-  const { data: dealsData } = useQuery({
+  const { data: dealsData, error: dealsError } = useQuery({
     queryKey: ['reports', 'deals', range],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('deals')
-        .select('*')
-        .gte('created_at', dateFrom)
-        .lte('created_at', dateTo);
-      return data || [];
+      return queryAll<Deal>((from, to) => supabase.from('deals').select('*')
+        .order('id').range(from, to));
     },
     staleTime: 60000,
   });
 
   // Leads data
-  const { data: leadsData } = useQuery({
+  const { data: leadsData, error: leadsError } = useQuery({
     queryKey: ['reports', 'leads', range],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('leads')
-        .select('*')
-        .gte('created_at', dateFrom)
-        .lte('created_at', dateTo);
-      return data || [];
+      return queryAll<Pick<Lead, 'id' | 'source' | 'status'>>((from, to) => supabase.from('leads')
+        .select('id, source, status').gte('created_at', dateFrom).lte('created_at', dateTo)
+        .order('id').range(from, to));
     },
     staleTime: 60000,
   });
 
   // Buyers data
-  const { data: buyersData } = useQuery({
+  const { data: buyersData, error: buyersError } = useQuery({
     queryKey: ['reports', 'buyers'],
     queryFn: async () => {
-      const { data } = await supabase.from('buyers').select('*');
-      return data || [];
+      return queryAll<Buyer>((from, to) => supabase.from('buyers').select('*').order('id').range(from, to));
     },
     staleTime: 60000,
   });
 
-  const deals = dealsData || [];
+  const allDeals = dealsData || [];
+  const deals = allDeals.filter(deal => deal.created_at >= dateFrom && deal.created_at <= dateTo);
   const leads = leadsData || [];
   const buyers = buyersData || [];
 
+  if (dealsError || leadsError || buyersError) return <div role="alert" className="rounded-lg bg-red-50 p-6 text-red-700">Reports could not be loaded. Refresh to retry; no totals are available.</div>;
+
   // Deal performance
-  const closedDeals = deals.filter((d: any) => d.stage === 'closed');
+  const closedDeals = allDeals.filter(d => d.stage === 'closed' && d.actual_close_date && d.actual_close_date >= localDateKey(new Date(dateFrom)) && d.actual_close_date <= localDateKey(new Date(dateTo)));
   const totalFees = closedDeals.reduce((s: number, d: any) => s + (d.assignment_fee || 0), 0);
   const avgFee = closedDeals.length > 0 ? totalFees / closedDeals.length : 0;
   const avgDaysToClose = closedDeals.length > 0
@@ -94,17 +92,19 @@ export function Reports() {
     : 0;
 
   // Monthly deals chart (last 6 months)
+  const closedHistory = allDeals.filter(d => d.stage === 'closed' && d.actual_close_date);
   const monthlyDeals = Array.from({ length: 6 }, (_, i) => {
     const d = new Date();
+    d.setDate(1);
     d.setMonth(d.getMonth() - (5 - i));
     const month = d.toLocaleString('en-US', { month: 'short' });
     const year = d.getFullYear();
-    const monthStart = new Date(year, d.getMonth(), 1).toISOString();
-    const monthEnd = new Date(year, d.getMonth() + 1, 0).toISOString();
-    const count = closedDeals.filter((deal: any) =>
+    const monthStart = localDateKey(new Date(year, d.getMonth(), 1));
+    const monthEnd = localDateKey(new Date(year, d.getMonth() + 1, 0));
+    const count = closedHistory.filter((deal: any) =>
       deal.actual_close_date >= monthStart && deal.actual_close_date <= monthEnd
     ).length;
-    const fees = closedDeals
+    const fees = closedHistory
       .filter((deal: any) => deal.actual_close_date >= monthStart && deal.actual_close_date <= monthEnd)
       .reduce((s: number, d: any) => s + (d.assignment_fee || 0), 0);
     return { month, count, fees };
@@ -124,9 +124,9 @@ export function Reports() {
   // Funnel conversion
   const funnelStages = [
     { label: 'Total Leads', count: leads.length },
-    { label: 'Qualified', count: leads.filter((l: any) => ['qualified_hot', 'qualified_warm', 'qualified_cold'].includes(l.status)).length },
-    { label: 'Offer Made', count: leads.filter((l: any) => l.status === 'offer_made').length + deals.filter((d: any) => d.stage === 'offer_made').length },
-    { label: 'Under Contract', count: deals.filter((d: any) => !['cancelled'].includes(d.stage)).length },
+    { label: 'Qualified', count: leads.filter((l: any) => ['hot', 'warm', 'qualified_hot', 'qualified_warm', 'qualified_cold'].includes(l.status)).length },
+    { label: 'Offer Made', count: new Set([...leads.filter(l => l.status === 'offer_made').map(l => l.id), ...deals.filter(d => d.stage === 'offer_made').map(d => d.lead_id)]).size },
+    { label: 'Under Contract', count: deals.filter((d: any) => !['offer_made', 'cancelled'].includes(d.stage)).length },
     { label: 'Closed', count: closedDeals.length },
   ];
 

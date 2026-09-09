@@ -20,9 +20,17 @@ export function formatNumber(value?: number | null): string {
   return new Intl.NumberFormat('en-US').format(value);
 }
 
+export function parseCalendarDate(value: string): Date {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`) : new Date(value);
+}
+
+export function localDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 export function formatDate(date?: string | null): string {
   if (!date) return '—';
-  return new Date(date).toLocaleDateString('en-US', {
+  return parseCalendarDate(date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -42,11 +50,11 @@ export function formatDateTime(date?: string | null): string {
 
 export function daysUntil(date?: string | null): number | null {
   if (!date) return null;
-  const target = new Date(date);
+  const target = parseCalendarDate(date);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   target.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.round((Date.UTC(target.getFullYear(), target.getMonth(), target.getDate()) - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
 }
 
 export function daysAgo(date?: string | null): number | null {
