@@ -7,7 +7,7 @@ Working branch: `codex/launch-readiness-audit`.
 
 - [x] Locate repository, clone current default, pull before edits.
 - [x] Independently review frontend, backend, security and deployment configuration.
-- [x] Open deployed login in Chrome; approved-account acceptance pending.
+- [x] Connect the user's signed-in approved-admin Chrome session.
 - [x] Correct buyer/task/pipeline CRUD, dates and drag/drop with regression tests.
 - [x] Correct lead pagination, error reporting, imports and scoring completion states.
 - [x] Correct backend messaging contracts, import deduplication and form processing.
@@ -20,17 +20,20 @@ Working branch: `codex/launch-readiness-audit`.
 - [x] Perform public-form desktop/mobile browser checks and production read-only checks.
 - [x] Push reviewed code fixes through `f90002f` and document precise release gates.
 - [x] Publish [draft PR #7](https://github.com/julysses/Wholesale-automation/pull/7).
-      Backend/frontend CI and Vercel preview passed for `7acd6fd` (all code fixes).
+      Backend/frontend CI and Vercel preview passed for the initial repair set.
 - [x] Check branch preview: health 200, protected API 401, login/public form load,
-      no observed form browser errors. No form submission or signed-in acceptance.
+      no observed form browser errors. No public form submission.
+- [x] Fix and retest signed-in lead editing, Add Lead reset, Buyer zero values,
+      admin navigation and explicit scoring intent on `7d4d5e5`.
+- [x] Verify buyer/task/lead/deal workflows, pipeline pointer drag, Reports and
+      Development validation/save/local reload. Remove all five fixtures exactly.
+- [x] GitHub backend/frontend checks and Vercel preview passed for `7d4d5e5`.
 
 ## Next release steps — still open
 
-- [ ] Finish signed-in acceptance on the updated preview. Chrome is now connected
-      with an approved admin account. Buyer create/edit/clear, task create/edit/time/
-      completion/filter, lead create/search, linked deal create/edit/stage, Reports,
-      Buyer Intel deal selection, and Development invalid-save rejection/save/local
-      reload passed. Retest lead editing and admin navigation after the new fixes.
+- [ ] Extended staging acceptance: real lower-role session; Development cloud-only
+      cold load and import/export restoration; native task date clearing. The core
+      signed-in workflows and new lead/admin/scoring fixes have passed in Chrome.
 - [ ] Validate/apply `20260909023229_protect_public_intake.sql` through release process.
       Live anonymous insert policies remain unchanged until rollout.
 - [ ] Confirm intended launch providers and authorize controlled test-recipient
@@ -80,10 +83,10 @@ DNC, AI calling paused, both sequences false and five non-null score fields.
 
 | Entity | Exact UUID | State |
 | --- | --- | --- |
-| Buyer | `79f7c18c-730b-495e-b938-65be0e318bf5` | Active for acceptance; cleanup pending |
-| Task | `13057387-b141-4b17-860d-dc7fda915f6b` | Completed test; cleanup pending |
-| Lead | `5073377f-a6a7-4473-a04b-36b87a4814d7` | Guarded test; fixed-edit retest pending |
-| Deal | `d03056e4-419f-481b-baa0-69f36268c53b` | Under Contract test; cleanup pending |
+| Buyer | `79f7c18c-730b-495e-b938-65be0e318bf5` | Deleted; create/edit/clear/zero checks passed |
+| Task | `13057387-b141-4b17-860d-dc7fda915f6b` | Deleted; create/edit/complete/filter passed |
+| Lead | `5073377f-a6a7-4473-a04b-36b87a4814d7` | Deleted; corrected edit saved/reopened with guards intact |
+| Deal | `d03056e4-419f-481b-baa0-69f36268c53b` | Deleted; stage edit and pointer drag persisted |
 | Development cloud row | `553cab1d-0c43-4c62-bf37-99d48106137b` | Deleted with ID, owner and JSON-hash guard |
 
 Development baseline had zero cloud rows. Finished SF 0 was rejected; restored 2800,
@@ -93,4 +96,10 @@ This does not prove cloud-only cold loading or import/export round-trip fidelity
 Task due time 2026-09-10 14:30 CDT persisted as 19:30 UTC; completion timestamp verified.
 Native date-segment clearing was not conclusively exercised in Chrome; NULL clearing
 has automated regression coverage. Related lead/deal/buyer tables had no fixture rows
-at the pre-cleanup inspection. Recheck before exact-ID deletion.
+at the pre-cleanup inspection. All deletions returned the intended UUIDs; final counts
+are 17,332 leads and zero buyers/deals/tasks/cloud workspaces, with no QA lead marker.
+Old-build automatic scoring reached 516 including the QA fixture; it remained stable
+through fixed-build retests. After removing the manually scored fixture, 515 production
+leads are scored. Fixed-build reload and admin navigation did not start scoring.
+Browser errors observed after the corrected reload: none. Mobile Buyer modal footer
+was reachable at 390-by-844; viewport restored. Preview remains available in Chrome.

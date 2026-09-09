@@ -6,7 +6,7 @@ Review date: September 8, 2026 (America/Chicago). Base: `4ae6ee3` on
 Review package: [draft pull request #7](https://github.com/julysses/Wholesale-automation/pull/7).
 Preview: [audit branch](https://wholesale-automation-git-codex-launch-13c233-julysses-projects.vercel.app).
 
-**Release decision: signed-in acceptance underway; not cleared for production launch.**
+**Release decision: core signed-in workflows verified on preview; not cleared for production launch.**
 The review found and repaired material workflow failures. Passing automated tests
 does not establish that live credentials, external delivery, approved-user database
 access or production migrations work. The remaining release gates below require
@@ -60,8 +60,8 @@ The dependency upgrade addresses [GHSA-82fw-gwwq-j7x9](https://github.com/adviso
 - Frontend dependency audit returned zero known vulnerabilities. Python dependencies
   remain lower-bound requirements without a lockfile; no complete Python advisory
   scan or reproducible dependency snapshot was established by this review.
-- GitHub backend/frontend checks (push and PR runs) and Vercel passed for `b34d3e5`.
-  Additional signed-in acceptance fixes are being verified before the next push.
+- GitHub backend/frontend checks (push and PR runs) and Vercel **passed for `7d4d5e5`**,
+  including all signed-in acceptance fixes. The draft PR remains unmerged.
 - Regression coverage includes actual UI form edits, nullable date updates, failed
   mutations, paging below a server cap, incomplete outreach batches, provider signature
   rejection, duplicate completion callbacks, failed claims and startup failures.
@@ -96,15 +96,21 @@ The dependency upgrade addresses [GHSA-82fw-gwwq-j7x9](https://github.com/adviso
 - Buyer creation, editing company/ZIP/maximum price, reopening, and clearing minimum
   price passed against the live database. An initial automation fill failed to trigger
   React; real keyboard clearing persisted NULL. That first result was not a DB defect.
+  On the fixed build, saving zero and reopening preserved `0`. At 390-by-844, the buyer
+  modal fit the viewport and its scrollable footer/Cancel control were reachable.
 - Task creation, local due-time editing, completion timestamp and Completed filtering
   passed. September 10 at 2:30 PM CDT persisted as 19:30 UTC. Native date-segment
   clearing remains browser-unverified; explicit NULL clearing is regression-tested.
 - A contact-free DNC lead was created and found through search. Five non-null scores,
   calling pause and disabled sequences protected that fixture. Lead View/Edit exposed
-  the generated-column failure above; retest the fixed preview before closing this item.
+  the generated-column failure above. Retesting `7d4d5e5` successfully saved/reopened
+  Internal Notes; the database confirmed the new text and unchanged score/DNC/sequence
+  guards. Cancelling Add Lead then reopening showed a blank address, as intended.
 - New Deal selected that lead and persisted its required foreign key, $100,000 contract
   and $5,000 fee. Editing to Under Contract and $6,500 fee passed. Reports showed one
   active deal and $6,500 pipeline value; Buyer Intel selected the same property/price.
+  Pointer dragging into Marketing to Buyers persisted that stage in the database and
+  survived the preview reload.
   No matching, outreach or qualification action was started for these fixtures.
 - Development rejected Finished SF 0 without creating a cloud row. Restoring 2800
   allowed a successful save and database verification; navigating away/back preserved
@@ -112,24 +118,33 @@ The dependency upgrade addresses [GHSA-82fw-gwwq-j7x9](https://github.com/adviso
   the original absence. The displayed local default draft remains intact. This proves
   save plus local reload, not cloud-only cold load or import/export round-trip fidelity.
 - Manage Users repeatedly redirected this approved admin to Dashboard. The async
-  profile-loading fix is pending browser retest. Lower-role denial is covered by
-  automated tests/source review, not a second live user session. Development RLS
+  profile-loading fix passed in Chrome: User Management loaded the approved admin row
+  without redirecting. No permissions or account status were changed. Lower-role denial
+  is covered by automated tests/source review, not a second live user session. Development RLS
   enforces ownership but currently does not require approved account status.
 - Existing mount-triggered scoring ran during sign-in and restarted during the admin
   route redirect. It was cancelled when observed; an accepted server batch can finish.
-  Visible progress rose from 405 to 466 while navigation was tested. Do not claim zero
-  provider execution in this session. The new mount behavior prevents further implicit
-  starts. No SMS, email, phone call or ad action was intentionally initiated.
+  Visible progress rose from 405 to 516 by the time accepted batches finished (including
+  one manually scored QA fixture). Do not claim zero provider execution in this session.
+  After loading the fixed preview, progress remained 516 through admin navigation and
+  form tests; the explicit remaining-backlog button appeared and scoring stayed stopped.
+  After fixture cleanup, the database held 515 scored production leads. No SMS, email,
+  phone call or ad action was intentionally initiated.
+- All five acceptance fixtures were removed by exact ID and marker/owner guards.
+  Related activity, outreach, notification and agent-log checks found no fixture rows.
+  Final counts: 17,332 leads; zero buyers, deals, tasks and cloud development workspaces;
+  no QA-marker lead remained. Buyer UI reloaded to zero records. The corrected build's
+  observed browser error log was empty. Temporary viewport override was reset.
 
 ## Remaining release gates
 
 1. **Schema rollout:** validate the public-intake migration in staging; reconcile
    deployed schema and migration histories, then apply through the normal release
    process. Confirm anonymous direct writes fail and API submissions still work.
-2. **Complete acceptance:** retest the new lead/admin/scoring fixes on the updated
-   preview and clean up the remaining fixtures. Separately verify lower-role access,
-   development cloud-only loading/import-export restoration and pipeline pointer drag
-   on staging; current browser evidence covers stage editing, not pointer dragging.
+2. **Extended acceptance:** core CRUD, pipeline pointer movement, reports, positive
+   admin access and the new fixes passed on preview; fixtures are cleaned up. Separately
+   verify lower-role access with a real second session, development cloud-only cold
+   loading/import-export restoration, and native task-date clearing on staging.
 3. **Enabled integrations:** identify the providers intended for launch and verify
    credentials, provider callbacks, test-recipient SMS/email, call qualification,
    opt-out suppression and provider logs. Obtain explicit authorization before
@@ -154,11 +169,13 @@ imports during launch; this review did not run an import against the live databa
 
 ## Resume and verification
 
-The connected Chrome preview is authenticated. Use its existing signed-in tab for the
-new-build retests, then perform exact fixture cleanup. Live schema inspection found
+The connected Chrome preview is authenticated. Core retests and fixture cleanup are
+complete on `7d4d5e5`. Continue with the remaining release gates above; do not recreate
+the removed fixtures unless a new failing check requires them. Live schema inspection found
 only the lead updated-at trigger active and no insert-enrichment settings. Recheck
 after migrations: the repository's enrichment trigger is not currently active in the
-inspected database. Do not reload the old build before the scoring-intent fix is ready.
+inspected database. Production still has the old mount-triggered scoring behavior
+until the reviewed branch is released.
 
 See `tasks/launch-review.md` for current progress and `docs/deployment-vercel.md`
 for actual hosting topology and recovery behavior. Do not use older readiness reports
