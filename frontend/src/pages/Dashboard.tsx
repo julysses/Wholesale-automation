@@ -9,12 +9,13 @@ import { DealsByStage } from '@/components/dashboard/DealsByStage';
 import { FunnelPanel } from '@/components/dashboard/FunnelPanel';
 import { PrecisionTargetingPanel } from '@/components/dashboard/PrecisionTargetingPanel';
 import { StrategyComparisonPanel } from '@/components/dashboard/StrategyComparisonPanel';
+import { DevelopmentPortfolioPanel } from '@/components/dashboard/DevelopmentPortfolioPanel';
 import { WorkflowGuide } from '@/components/WorkflowGuide';
 import { useHotLeads } from '@/hooks/useLeads';
 import { useUpcomingClosings } from '@/hooks/useDeals';
 import { useTodayTasks } from '@/hooks/useTasks';
-import { formatCurrency, formatDate, daysUntil, getScoreBadgeClass, getPriorityClass } from '@/lib/utils';
-import { Users, FileText, DollarSign, TrendingUp, Link } from 'lucide-react';
+import { formatCurrency, daysUntil, getScoreBadgeClass, getPriorityClass } from '@/lib/utils';
+import { Users, FileText, DollarSign, TrendingUp } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -40,26 +41,29 @@ export function Dashboard() {
         supabase.from('deals').select('id, stage, assignment_fee, closing_date, actual_close_date, contract_price'),
       ]);
 
-      const leads = leadsRes.data ?? [];
-      const deals = dealsRes.data ?? [];
+      const leads = (leadsRes.data ?? []) as Array<{ id: string; status: string; created_at: string }>;
+      const deals = (dealsRes.data ?? []) as Array<{
+        id: string; stage: string; assignment_fee: number | null; closing_date: string | null;
+        actual_close_date: string | null; contract_price: number | null;
+      }>;
 
-      const activeLeads = leads.filter((l: any) =>
+      const activeLeads = leads.filter(l =>
         !['dead', 'dnc', 'under_contract'].includes(l.status)
       ).length;
 
-      const underContract = deals.filter((d: any) =>
+      const underContract = deals.filter(d =>
         !['closed', 'cancelled'].includes(d.stage)
       );
-      const underContractValue = underContract.reduce((s: number, d: any) => s + (d.contract_price || 0), 0);
+      const underContractValue = underContract.reduce((sum, deal) => sum + (deal.contract_price || 0), 0);
 
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const closedThisMonth = deals.filter((d: any) =>
-        d.stage === 'closed' && d.actual_close_date >= monthStart
+      const closedThisMonth = deals.filter(deal =>
+        deal.stage === 'closed' && Boolean(deal.actual_close_date && deal.actual_close_date >= monthStart)
       );
-      const closedFees = closedThisMonth.reduce((s: number, d: any) => s + (d.assignment_fee || 0), 0);
+      const closedFees = closedThisMonth.reduce((sum, deal) => sum + (deal.assignment_fee || 0), 0);
 
-      const pipelineValue = underContract.reduce((s: number, d: any) => s + (d.assignment_fee || 0), 0);
+      const pipelineValue = underContract.reduce((sum, deal) => sum + (deal.assignment_fee || 0), 0);
 
       return {
         activeLeads,
@@ -116,6 +120,9 @@ export function Dashboard() {
           color="purple"
         />
       </div>
+
+      {/* Wholesale-to-development portfolio bridge */}
+      <DevelopmentPortfolioPanel />
 
       {/* Main content */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
