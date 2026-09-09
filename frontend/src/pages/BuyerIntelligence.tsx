@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { BuyerScoreRing, BuyerScoreBadge } from '@/components/buyers/BuyerScoreRing';
 import { BuyerImportModal } from '@/components/buyers/BuyerImportModal';
 import { DealMatchingPanel } from '@/components/buyers/DealMatchingPanel';
-import { OutreachLauncher } from '@/components/buyers/OutreachLauncher';
+import { OutreachLauncher, type DealContext } from '@/components/buyers/OutreachLauncher';
 import { BuyerProfileDrawer } from '@/components/buyers/BuyerProfileDrawer';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, formatDate, phoneFormat } from '@/lib/utils';
@@ -145,7 +145,7 @@ export function BuyerIntelligence() {
   const [importOpen, setImportOpen] = useState(false);
   const [activeBuyer, setActiveBuyer] = useState<IBIEBuyer | null>(null);
   const [matchSelectedIds, setMatchSelectedIds] = useState<string[]>([]);
-  const [matchDeal, setMatchDeal] = useState<Record<string, any>>({});
+  const [matchDeal, setMatchDeal] = useState<DealContext>({});
 
   const loadBuyers = useCallback(async () => {
     setLoading(true);
@@ -437,8 +437,13 @@ export function BuyerIntelligence() {
               <Zap className="h-5 w-5 text-[#E8720C]" /> Match Buyers to Deal
             </h2>
             <DealMatchingPanel
-              onSelectBuyers={(ids) => {
+              onDealChange={() => {
+                setMatchSelectedIds([]);
+                setMatchDeal({});
+              }}
+              onSelectBuyers={(ids, deal) => {
                 setMatchSelectedIds(ids);
+                setMatchDeal(deal);
                 toast.success(`${ids.length} buyers selected for outreach`);
               }}
             />
@@ -455,6 +460,7 @@ export function BuyerIntelligence() {
               </div>
             ) : (
               <OutreachLauncher
+                key={JSON.stringify([matchDeal, matchSelectedIds])}
                 buyerIds={matchSelectedIds}
                 deal={matchDeal}
                 onSent={() => {

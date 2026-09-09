@@ -23,7 +23,7 @@ export function useDeals() {
     queryFn: async () => {
       const deals = await queryAll<Deal>((from, to) => supabase
         .from('deals')
-        .select('*, lead:leads(property_address, city, state, zip_code), buyer:buyers(first_name, last_name)')
+        .select('*, lead:leads(property_address, city, state, zip_code, property_type, bedrooms, bathrooms), buyer:buyers(first_name, last_name)')
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
         .range(from, to));

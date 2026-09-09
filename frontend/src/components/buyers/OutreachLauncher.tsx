@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { MessageSquare, Mail, Send, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface DealContext {
+export interface DealContext {
   deal_id?: string;
   property_address?: string;
   zip_code?: string;
@@ -168,7 +168,7 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
           />
           <p className="text-xs text-gray-400 text-right">{smsBody.length}/160 chars</p>
           <p className="text-xs text-gray-400">
-            Personalization: buyer's first name is automatically prepended by the system.
+            This message is sent to each selected buyer. Reply STOP instructions are included automatically.
           </p>
         </div>
       )}
@@ -195,7 +195,7 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
             rows={10}
           />
           <p className="text-xs text-gray-400">
-            HTML formatting is supported. An unsubscribe footer is automatically appended.
+            Plain text with line breaks is supported. Review the full message before sending.
           </p>
         </div>
       )}

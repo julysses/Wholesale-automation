@@ -5,10 +5,11 @@ import { apiFetch } from '@/lib/api';
  * Props:
  *   dealId?       — pre-select a specific deal
  *   standalone?   — true = render as full panel, false = embed in page
- *   onSelectBuyers(ids) — callback when user clicks "Send to Selected"
+ *   onSelectBuyers(ids, deal) — selected recipients with the matched deal
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { DealContext } from './OutreachLauncher';
 import { useDeals } from '@/hooks/useDeals';
 import { BuyerScoreBadge } from './BuyerScoreRing';
 import { Button } from '@/components/ui/button';
@@ -35,11 +36,12 @@ interface MatchResult {
 
 interface DealMatchingPanelProps {
   dealId?: string;
-  onSelectBuyers?: (ids: string[]) => void;
+  onSelectBuyers?: (ids: string[], deal: DealContext) => void;
+  onDealChange?: () => void;
   compact?: boolean;
 }
 
-export function DealMatchingPanel({ dealId: propDealId, onSelectBuyers, compact = false }: DealMatchingPanelProps) {
+export function DealMatchingPanel({ dealId: propDealId, onSelectBuyers, onDealChange, compact = false }: DealMatchingPanelProps) {
   const { data: deals = [] } = useDeals();
   const [selectedDealId, setSelectedDealId] = useState(propDealId || '');
   const [matches, setMatches] = useState<MatchResult[]>([]);
@@ -47,18 +49,39 @@ export function DealMatchingPanel({ dealId: propDealId, onSelectBuyers, compact 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
   const [totalMatches, setTotalMatches] = useState(0);
+  const matchGeneration = useRef(0);
+  const matchRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    matchGeneration.current += 1;
+    matchRequest.current?.abort();
+  }, []);
 
   const activeDeal = deals.find((d) => d.id === selectedDealId);
   const displayMatches = showAll ? matches : matches.slice(0, 20);
 
-  const handleMatch = async () => {
-    if (!activeDeal) return toast.error('Select a deal first');
-    setLoading(true);
+  const clearMatches = () => {
+    matchGeneration.current += 1;
+    matchRequest.current?.abort();
     setMatches([]);
     setSelectedIds(new Set());
+    setTotalMatches(0);
+    setShowAll(false);
+    setLoading(false);
+    onDealChange?.();
+  };
+
+  const handleMatch = async () => {
+    if (!activeDeal) return toast.error('Select a deal first');
+    clearMatches();
+    const generation = matchGeneration.current;
+    const controller = new AbortController();
+    matchRequest.current = controller;
+    setLoading(true);
     try {
       const resp = await apiFetch('/api/buyers/match', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           deal_id:       activeDeal.id,
@@ -71,13 +94,14 @@ export function DealMatchingPanel({ dealId: propDealId, onSelectBuyers, compact 
       });
       if (!resp.ok) throw new Error(await resp.text());
       const data = await resp.json();
+      if (generation !== matchGeneration.current) return;
       setMatches(data.matches || []);
       setTotalMatches(data.total_matches || 0);
       toast.success(`${data.total_matches} buyers matched`);
     } catch (err) {
-      toast.error(`Matching failed: ${err}`);
+      if (generation === matchGeneration.current) toast.error(`Matching failed: ${err}`);
     } finally {
-      setLoading(false);
+      if (generation === matchGeneration.current) setLoading(false);
     }
   };
 
@@ -94,7 +118,18 @@ export function DealMatchingPanel({ dealId: propDealId, onSelectBuyers, compact 
 
   const handleSendSelected = () => {
     if (selectedIds.size === 0) return toast.error('Select at least one buyer');
-    onSelectBuyers?.(Array.from(selectedIds));
+    if (!activeDeal) return toast.error('Select a deal first');
+    onSelectBuyers?.(Array.from(selectedIds), {
+      deal_id: activeDeal.id,
+      property_address: activeDeal.lead?.property_address,
+      zip_code: activeDeal.lead?.zip_code,
+      price: activeDeal.buyer_price ?? activeDeal.contract_price,
+      arv: activeDeal.arv,
+      assignment_fee: activeDeal.assignment_fee,
+      property_type: activeDeal.lead?.property_type,
+      beds: activeDeal.lead?.bedrooms,
+      baths: activeDeal.lead?.bathrooms,
+    });
   };
 
   return (
@@ -105,7 +140,10 @@ export function DealMatchingPanel({ dealId: propDealId, onSelectBuyers, compact 
           <Select
             label={compact ? undefined : 'Select Deal'}
             value={selectedDealId}
-            onChange={(e) => setSelectedDealId(e.target.value)}
+            onChange={(e) => {
+              clearMatches();
+              setSelectedDealId(e.target.value);
+            }}
             options={deals
               .filter((d) => !['closed', 'cancelled'].includes(d.stage))
               .map((d) => ({
