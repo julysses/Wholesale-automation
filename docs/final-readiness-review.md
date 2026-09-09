@@ -1,6 +1,6 @@
 # Readiness review — September 8, 2026
 
-The release fixes seller intake, operator access, and analysis persistence. Application changes are on `codex/final-readiness`; production uses them only after merge/deployment. The Supabase restoration and access-policy migration have already been applied with owner approval.
+The release fixes seller intake, operator access, and analysis persistence. PR #5 was merged with owner approval as `0009efa`, and its Vercel production deployment succeeded. The Supabase restoration and access-policy migration have also been applied with owner approval.
 
 Review and deployment tracking: [PR #5](https://github.com/julysses/Wholesale-automation/pull/5). GitHub backend/frontend CI and the Vercel preview check passed for application commit `3db2469`.
 
@@ -29,7 +29,7 @@ Review and deployment tracking: [PR #5](https://github.com/julysses/Wholesale-au
 
 ## Release / resume checklist
 
-1. Merge the reviewed PR and verify the resulting Vercel deployment. Application API protection is **not live** until this deployment succeeds.
+1. Completed: PR #5 merged and Vercel production deployment verified. Live health and Hilltop form configuration return 200; anonymous scoring-status access returns 401. Two Railway deployments succeeded; `practical-youthfulness - web` was still pending at handoff.
 2. The new `20260908200130_approval_access_repair.sql` migration is already applied to project `dvzhzlipbwzzcliujzyz`. For a new environment, run all supplied migrations in filename order, including this one; the older `setup_all.sql` does not include subsequent migrations.
 3. Use an approved operator account to verify sign-in, dashboard loading, imports, scoring and analysis saves on the deployed version. Confirm an incognito seller-form link stays on the form and anonymous operational APIs return 401.
 4. Finish desktop/mobile visual QA and a controlled integration test of the messaging providers before calling the whole platform final.

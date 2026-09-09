@@ -37,4 +37,7 @@ Review: [PR #5](https://github.com/julysses/Wholesale-automation/pull/5). Applic
 - Frontend dependency audit reports zero vulnerabilities after locked dependency updates and maintained SheetJS installation.
 - Lint gate blocks new findings; 181 old errors and 5 warnings remain explicitly tracked.
 - Browser client blocked the local visual preview; frontend DOM regression coverage is passing. Visual and real-provider acceptance remain release gates.
-- Next: review and merge PR #5, verify production deployment, then complete approved-account and desktop/mobile acceptance. Application changes have not been merged or promoted by this review.
+- PR #5 merged with owner approval on September 8, 2026 (America/Chicago), merge commit `0009efab38f6ee303cbf951479639e0ef516b8bc`. Default branch pulled locally.
+- Merge-commit backend/frontend CI and Vercel production deployment passed. Live checks: health 200, Hilltop form configuration 200, seller form HTML 200, anonymous scoring-status request 401. These are HTTP checks, not completed visual or signed-in acceptance.
+- Two Railway deployment statuses succeeded; `practical-youthfulness - web` was still pending at handoff.
+- Next: complete approved-account and desktop/mobile acceptance and confirm the remaining Railway deployment status.
