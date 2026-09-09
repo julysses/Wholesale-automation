@@ -26,8 +26,10 @@ Working branch: `codex/launch-readiness-audit`.
 
 ## Next release steps — still open
 
-- [ ] Approved operator signs in to the Chrome Wholesale QA tab; run signed-in
-      CRUD, role and development-workspace acceptance on preview/staging.
+- [ ] Resolve browser session sharing, then run signed-in CRUD, role and
+      development-workspace acceptance on preview/staging. User reports being signed
+      in; the connected Chrome preview still displays login. Browser identification
+      has been requested. Do not ask for credentials or claim an authenticated pass.
 - [ ] Validate/apply `20260909023229_protect_public_intake.sql` through release process.
       Live anonymous insert policies remain unchanged until rollout.
 - [ ] Confirm intended launch providers and authorize controlled test-recipient
@@ -44,3 +46,18 @@ No real SMS, email, calls or ads are sent by this review. Tests mock external ac
 Production database changes and merging/deployment are separate from the review branch.
 Existing readiness notes are context, not evidence that current workflows pass.
 Confirmed findings and validation are recorded in `docs/launch-review.md`.
+
+## Acceptance safeguards verified on resumption
+
+- Live lead triggers currently contain only `leads_updated_at`; the repository's
+  enrichment-on-insert trigger is not active in the inspected database. Relevant
+  enrichment settings are absent. Recheck after any migration rollout.
+- 16,952 leads were unscored at inspection. `useResumeAutoScore` starts scoring on
+  authenticated layout mount when backlog exists. Do not interpret DNC/paused flags
+  as scoring suppression or use repeated reloads as a harmless acceptance action.
+- Buyer/task writes have no provider-send triggers in the supplied source. Leave
+  disposable buyer contact fields blank; collect UUIDs for exact cleanup. Task/deal
+  pages lack delete controls, so arrange exact-ID cleanup before creating fixtures.
+- Export the existing development workspace before editing, then restore both its
+  cloud data and local draft. Do not overwrite an operator's existing work.
+- No acceptance fixtures or provider requests were created by the resumed checks.

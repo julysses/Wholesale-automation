@@ -114,6 +114,15 @@ size are follow-up efficiency work, with no claim of measured production speedup
 
 ## Resume and verification
 
+On the signed-in acceptance follow-up, the user reported login success but the
+connected Chrome preview still showed the login screen. Browser/session identification
+is pending; authenticated acceptance has not been claimed. Additional read-only
+database inspection found only the lead updated-at trigger active, no configured
+insert-enrichment settings and 16,952 unscored leads. The frontend automatically
+starts scoring on authenticated layout mount when backlog exists, so login/reload
+can initiate paid provider work. Review that behavior before repeating acceptance
+reloads. No disposable records or provider calls were created by these resumed checks.
+
 See `tasks/launch-review.md` for current progress and `docs/deployment-vercel.md`
 for actual hosting topology and recovery behavior. Do not use older readiness reports
 as evidence that these current gates passed.
