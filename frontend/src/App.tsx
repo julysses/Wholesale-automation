@@ -248,7 +248,7 @@ function OperatorApp() {
           <Route path="/buyer-intel"  element={<BuyerIntelligence />} />
           <Route path="/lead-gen"     element={<LeadGenEngine />} />
           <Route path="/fb-ads"       element={<FacebookAdsCommandCenter />} />
-          <Route path="/development"  element={<DevelopmentCommandCenter />} />
+          <Route path="/development"  element={<DevelopmentCommandCenter key={session.user.id} userId={session.user.id} />} />
           <Route path="*"             element={<Navigate to="/" replace />} />
         </Route>
       </Route>

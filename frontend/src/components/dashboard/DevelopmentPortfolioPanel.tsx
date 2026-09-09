@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Building2, Landmark, WalletCards } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { calculateProject, portfolioEquityNeed, recommendedExit, type DevelopmentWorkspace } from '@/lib/developmentEngine';
+import { calculateProject, portfolioEquityNeed, recommendedExit, parseWorkspace } from '@/lib/developmentEngine';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
@@ -16,7 +16,7 @@ export function DevelopmentPortfolioPanel() {
         if (error.code === '42P01' || error.code === 'PGRST205') return null;
         throw error;
       }
-      return data?.workspace as DevelopmentWorkspace | null;
+      return data?.workspace ? parseWorkspace(data.workspace) : null;
     },
     staleTime: 60_000,
     retry: false,
@@ -51,7 +51,7 @@ export function DevelopmentPortfolioPanel() {
       <Summary icon={<Building2 className="h-5 w-5" />} label="Active projects" value={`${active.length}`} note={`${passing} clear at least one exit`} />
       <Summary icon={<Building2 className="h-5 w-5" />} label="Spec builds" value={`${specCount}`} note={`${workspace.settings.maxSpecs} project cap`} />
       <Summary icon={<Landmark className="h-5 w-5" />} label="Build to rent" value={`${btrCount}`} note="Debt sized by LTV, LTC and DSCR" />
-      <Summary icon={<WalletCards className="h-5 w-5" />} label="Future equity need" value={currency.format(equityNeed)} note={`${currency.format(workspace.settings.liquidity - workspace.settings.monthlyOverhead * workspace.settings.reserveMonths - equityNeed)} unallocated headroom`} />
+      <Summary icon={<WalletCards className="h-5 w-5" />} label="Future equity need" value={currency.format(equityNeed)} note={`${currency.format(workspace.settings.liquidity - workspace.settings.monthlyOverhead * workspace.settings.reserveMonths - equityNeed)} headroom before cash timing`} />
     </div>
     {active.length > 0 && <div className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">
       Selected policy: {workspace.settings.posture}. Latest active recommendation: {recommendedExit(active[0], workspace.settings)}.

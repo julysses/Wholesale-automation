@@ -266,7 +266,7 @@ export function calculateProject(project: DevelopmentProject, settings: Developm
     annualCashFlow, cashOnCash, retainedEquity, refinanceInjection,
     costPerSf: project.sf > 0 ? totalCost / project.sf : 0,
     pricePerSf: project.sf > 0 ? stressedArv / project.sf : 0,
-    rentPerSf: project.sf > 0 ? project.rentPerUnit / project.sf : 0,
+    rentPerSf: project.sf > 0 ? project.rentPerUnit * project.units * priceFactor / project.sf : 0,
     costToComplete: rows.reduce((sum, row) => sum + Math.max(0, row.forecast - row.incurred), 0),
     unpaidCost: rows.reduce((sum, row) => sum + Math.max(0, row.incurred - row.paid), 0),
     salePass: saleMargin >= settings.minSaleMargin,
@@ -295,4 +295,61 @@ export function portfolioEquityNeed(workspace: DevelopmentWorkspace): number {
       const metrics = calculateProject(project, workspace.settings);
       return sum + Math.max(0, metrics.equityRequired + (project.mode === 'BTR' ? metrics.refinanceInjection : 0) - project.equityFunded);
     }, 0);
+}
+
+export function workspaceStorageKey(userId: string): string {
+  if (!userId) throw new Error('Operator ID is required');
+  return `hilltop-development-workspace-v1:${userId}`;
+}
+
+// Validate all required fields before using local, cloud, or imported data.
+export function parseWorkspace(value: unknown): DevelopmentWorkspace {
+  const invalid = () => { throw new Error('Invalid development workspace'); };
+  const shape = (input: unknown, template: unknown): void => {
+    if (Array.isArray(template)) {
+      if (!Array.isArray(input)) return invalid();
+      input.forEach(item => shape(item, template[0]));
+    } else if (template !== null && typeof template === 'object') {
+      if (!input || typeof input !== 'object' || Array.isArray(input)) return invalid();
+      for (const [key, sample] of Object.entries(template)) shape((input as Record<string, unknown>)[key], sample);
+    } else if (typeof input !== typeof template || (typeof input === 'number' && !Number.isFinite(input))) invalid();
+  };
+  const template = createWorkspace();
+  template.cash = [{ id: '', title: '', week: 1, amount: 0, kind: 'Payment', confirmed: false }];
+  shape(value, template);
+  const workspace = value as DevelopmentWorkspace;
+  if (workspace.schema !== 1 || !workspace.projects.length) invalid();
+  const uniqueIds = (rows: { id: string }[]) => {
+    if (rows.some(row => !row.id) || new Set(rows.map(row => row.id)).size !== rows.length) invalid();
+  };
+  uniqueIds(workspace.projects); uniqueIds(workspace.cash);
+  if (!['Cash generation', 'Balanced growth', 'Asset accumulation'].includes(workspace.settings.posture)) invalid();
+  for (const project of workspace.projects) {
+    if (!['Spec', 'BTR'].includes(project.mode) || !['Screen', 'Diligence', 'Preconstruction', 'Construction', 'Sale / Lease-up', 'Closed', 'Stabilized', 'Pass'].includes(project.stage)) invalid();
+    if (project.leadId !== undefined && typeof project.leadId !== 'string') invalid();
+    if (project.sf <= 0 || project.units < 1 || !Number.isInteger(project.units) || !project.costs.length) invalid();
+    uniqueIds(project.costs); uniqueIds(project.gates);
+    if (project.costs.some(row => !['Land', 'Hard', 'Soft', 'Contingency'].includes(row.group))) invalid();
+    if (project.gates.some(row => !['Open', 'In progress', 'Complete', 'Blocked'].includes(row.status))) invalid();
+  }
+  if (workspace.cash.some(row => !['Receipt', 'Payment'].includes(row.kind) || !Number.isInteger(row.week) || row.week < 1 || row.week > 13 || row.amount < 0)) invalid();
+  return workspace;
+}
+
+export function rentPerUnitFromSf(rentPerSf: number, sf: number, units: number): number {
+  return units > 0 ? rentPerSf * sf / units : 0;
+}
+
+export function treasuryForecast(workspace: DevelopmentWorkspace) {
+  let closing = workspace.settings.liquidity;
+  let lowest = closing;
+  const weeks = Array.from({ length: 13 }, (_, index) => {
+    const items = workspace.cash.filter(item => item.confirmed && item.week === index + 1);
+    const receipts = items.filter(item => item.kind === 'Receipt').reduce((sum, item) => sum + item.amount, 0);
+    const payments = items.filter(item => item.kind === 'Payment').reduce((sum, item) => sum + item.amount, 0);
+    closing += receipts - payments;
+    lowest = Math.min(lowest, closing);
+    return { week: index + 1, receipts, payments, closing };
+  });
+  return { weeks, closing, lowest };
 }

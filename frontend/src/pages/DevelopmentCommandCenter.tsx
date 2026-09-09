@@ -11,12 +11,12 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
   calculateProject, createProject, createWorkspace, portfolioEquityNeed, recommendedExit,
+  parseWorkspace, workspaceStorageKey, treasuryForecast, rentPerUnitFromSf,
   type CashItem, type DevelopmentCost, type DevelopmentGate, type DevelopmentProject,
   type DevelopmentSettings, type DevelopmentWorkspace,
 } from '@/lib/developmentEngine';
 
 type Tab = 'overview' | 'spec' | 'btr' | 'costs' | 'delivery' | 'acquisitions' | 'capital' | 'plan';
-const STORAGE_KEY = 'hilltop-development-workspace-v1';
 const tabs: Array<[Tab, string, React.ElementType]> = [
   ['overview', 'Command Center', BarChart3], ['spec', 'Spec Build', Building2],
   ['btr', 'Build to Rent', Landmark], ['costs', 'Cost Control', Calculator],
@@ -88,9 +88,11 @@ function editableCost(project: DevelopmentProject, sf: number, row: DevelopmentC
   </tr>;
 }
 
-export function DevelopmentCommandCenter() {
+export function DevelopmentCommandCenter({ userId }: { userId: string }) {
+  const storageKey = workspaceStorageKey(userId);
+  const revision = useRef(0);
   const [workspace, setWorkspace] = useState<DevelopmentWorkspace>(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '') as DevelopmentWorkspace; } catch { return createWorkspace(); }
+    try { return parseWorkspace(JSON.parse(localStorage.getItem(storageKey) || '')); } catch { return createWorkspace(); }
   });
   const [activeId, setActiveId] = useState(workspace.projects[0]?.id ?? '');
   const [tab, setTab] = useState<Tab>('overview');
@@ -102,27 +104,34 @@ export function DevelopmentCommandCenter() {
   const metrics = useMemo(() => calculateProject(project, settings), [project, settings]);
   const stress = useMemo(() => calculateProject(project, settings, true), [project, settings]);
   const developmentNeed = useMemo(() => portfolioEquityNeed(workspace), [workspace]);
+  const treasury = useMemo(() => treasuryForecast(workspace), [workspace]);
   const protectedReserve = settings.monthlyOverhead * settings.reserveMonths;
   const headroom = settings.liquidity - protectedReserve - developmentNeed;
 
   useEffect(() => {
     let live = true;
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      const { data: saved } = await supabase.from('development_workspaces').select('workspace').eq('user_id', data.user.id).maybeSingle();
-      if (live && saved?.workspace?.projects?.length) {
-        setWorkspace(saved.workspace as DevelopmentWorkspace);
-        setActiveId(saved.workspace.projects[0].id);
+    // An operator's local draft takes precedence over the last cloud save.
+    let hasDraft = false;
+    try { parseWorkspace(JSON.parse(localStorage.getItem(storageKey) || '')); hasDraft = true; } catch { /* no valid draft */ }
+    const initialRevision = revision.current;
+    void (async () => {
+      const { data: saved, error } = await supabase.from('development_workspaces').select('workspace').eq('user_id', userId).maybeSingle();
+      if (!live || hasDraft || revision.current !== initialRevision || error || !saved) return;
+      try {
+        const loaded = parseWorkspace(saved.workspace);
+        setWorkspace(loaded);
+        setActiveId(loaded.projects[0].id);
         setDirty(false);
-      }
-    }).catch(() => undefined);
+      } catch { toast.error('Cloud workspace is invalid; your local workspace is unchanged.'); }
+    })().catch(() => undefined);
     return () => { live = false; };
-  }, []);
+  }, [userId, storageKey]);
 
   const mutate = (fn: (current: DevelopmentWorkspace) => DevelopmentWorkspace) => {
+    revision.current += 1;
     setWorkspace(current => {
       const next = fn(current);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(storageKey, JSON.stringify(next));
       return next;
     });
     setDirty(true);
@@ -134,13 +143,14 @@ export function DevelopmentCommandCenter() {
 
   const save = async () => {
     setSaving(true);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
+    const savingRevision = revision.current;
+    localStorage.setItem(storageKey, JSON.stringify(workspace));
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Sign in is required to sync this workspace.');
+      if (!user || user.id !== userId) throw new Error('Your account changed. Reload before saving.');
       const { error } = await supabase.from('development_workspaces').upsert({ user_id: user.id, workspace, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
       if (error) throw error;
-      setDirty(false);
+      if (revision.current === savingRevision) setDirty(false);
       toast.success('Development workspace saved');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Saved locally; cloud sync failed');
@@ -165,8 +175,7 @@ export function DevelopmentCommandCenter() {
   const importWorkspace = async (file?: File) => {
     if (!file) return;
     try {
-      const parsed = JSON.parse(await file.text()) as DevelopmentWorkspace;
-      if (parsed.schema !== 1 || !parsed.projects?.length) throw new Error('Invalid workspace');
+      const parsed = parseWorkspace(JSON.parse(await file.text()));
       mutate(() => parsed); setActiveId(parsed.projects[0].id); toast.success('Workspace imported');
     } catch { toast.error('Choose a valid Hilltop development JSON export'); }
   };
@@ -252,7 +261,7 @@ export function DevelopmentCommandCenter() {
         {tab === 'btr' && <>
           <Section title="Build-to-rent underwriting" subtitle="Permanent debt is the lowest amount supported by LTV, LTC and DSCR.">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="NOI" value={money(metrics.noi)} /><Metric label="Permanent loan" value={money(metrics.permanentLoan)} note={`${metrics.limitingConstraint} constrained`} /><Metric label="DSCR" value={multiple(metrics.dscr)} note={`${settings.minDscr.toFixed(2)}x hurdle`} bad={(metrics.dscr ?? 0) < settings.minDscr} /><Metric label="Cash-on-cash" value={pct(metrics.cashOnCash)} note={`${money(metrics.retainedEquity)} retained`} bad={(metrics.cashOnCash ?? 0) < settings.minCashOnCash} /></div>
-            <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6"><NumberField label="Monthly rent / unit" value={project.rentPerUnit} onChange={rentPerUnit => updateProject({ rentPerUnit })} /><NumberField label="Rent / SF" value={metrics.rentPerSf} step={.01} onChange={value => updateProject({ rentPerUnit: value * project.sf })} /><NumberField label="Vacancy" value={project.vacancyPct} step={.1} onChange={vacancyPct => updateProject({ vacancyPct })} suffix="%" /><NumberField label="Management" value={project.managementPct} step={.1} onChange={managementPct => updateProject({ managementPct })} suffix="%" /><NumberField label="Repairs" value={project.repairsPct} step={.1} onChange={repairsPct => updateProject({ repairsPct })} suffix="%" /><NumberField label="Rental value" value={project.rentalValue} onChange={rentalValue => updateProject({ rentalValue })} /></div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6"><NumberField label="Monthly rent / unit" value={project.rentPerUnit} onChange={rentPerUnit => updateProject({ rentPerUnit })} /><NumberField label="Rent / SF" value={metrics.rentPerSf} step={.01} onChange={value => updateProject({ rentPerUnit: rentPerUnitFromSf(value, project.sf, project.units) })} /><NumberField label="Vacancy" value={project.vacancyPct} step={.1} onChange={vacancyPct => updateProject({ vacancyPct })} suffix="%" /><NumberField label="Management" value={project.managementPct} step={.1} onChange={managementPct => updateProject({ managementPct })} suffix="%" /><NumberField label="Repairs" value={project.repairsPct} step={.1} onChange={repairsPct => updateProject({ repairsPct })} suffix="%" /><NumberField label="Rental value" value={project.rentalValue} onChange={rentalValue => updateProject({ rentalValue })} /></div>
             <div className="mt-3 grid gap-3 md:grid-cols-3 xl:grid-cols-6"><NumberField label="Annual taxes" value={project.annualTaxes} onChange={annualTaxes => updateProject({ annualTaxes })} /><NumberField label="Insurance" value={project.annualInsurance} onChange={annualInsurance => updateProject({ annualInsurance })} /><NumberField label="Annual CapEx" value={project.annualCapex} onChange={annualCapex => updateProject({ annualCapex })} /><NumberField label="Permanent rate" value={project.permanentRate} step={.25} onChange={permanentRate => updateProject({ permanentRate })} suffix="%" /><NumberField label="Refi LTV" value={project.refinanceLtv} onChange={refinanceLtv => updateProject({ refinanceLtv })} suffix="%" /><NumberField label="Refi LTC" value={project.refinanceLtc} onChange={refinanceLtc => updateProject({ refinanceLtc })} suffix="%" /></div>
           </Section>
           <Section title="Refinance bridge"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Construction payoff" value={money(metrics.constructionLoan)} /><Metric label="Net permanent proceeds" value={money(metrics.permanentLoan * (1 - project.refinanceFeesPct / 100) - project.refinanceReserve)} /><Metric label="Cash injection at refi" value={money(metrics.refinanceInjection)} bad={metrics.refinanceInjection > 0} /><Metric label="Annual cash flow" value={money(metrics.annualCashFlow)} bad={metrics.annualCashFlow <= 0} /></div></Section>
@@ -287,10 +296,12 @@ export function DevelopmentCommandCenter() {
 
         {tab === 'capital' && <>
           <Section title="Portfolio constraints"><div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6"><NumberField label="Unrestricted liquidity" value={settings.liquidity} onChange={liquidity => updateSettings({ liquidity })} /><NumberField label="Monthly overhead" value={settings.monthlyOverhead} onChange={monthlyOverhead => updateSettings({ monthlyOverhead })} /><NumberField label="Reserve months" value={settings.reserveMonths} onChange={reserveMonths => updateSettings({ reserveMonths })} /><NumberField label="Max specs" value={settings.maxSpecs} onChange={maxSpecs => updateSettings({ maxSpecs })} /><NumberField label="Max starts" value={settings.maxStarts} onChange={maxStarts => updateSettings({ maxStarts })} /><NumberField label="Equity funded" value={project.equityFunded} onChange={equityFunded => updateProject({ equityFunded })} /></div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Protected overhead" value={money(protectedReserve)} /><Metric label="Active development need" value={money(developmentNeed)} /><Metric label="Unallocated headroom" value={money(headroom)} bad={headroom < 0} /><Metric label="Active starts" value={`${workspace.projects.filter(p => p.included && ['Preconstruction','Construction'].includes(p.stage)).length} / ${settings.maxStarts}`} /></div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Protected overhead" value={money(protectedReserve)} /><Metric label="Active development need" value={money(developmentNeed)} /><Metric label="Headroom before cash timing" value={money(headroom)} bad={headroom < 0} /><Metric label="Active starts" value={`${workspace.projects.filter(p => p.included && ['Preconstruction','Construction'].includes(p.stage)).length} / ${settings.maxStarts}`} /></div>
           </Section>
           <Section title="Downside policy"><div className="grid gap-3 md:grid-cols-4"><NumberField label="Price / rent decline" value={settings.stressPricePct} onChange={stressPricePct => updateSettings({ stressPricePct })} suffix="%" /><NumberField label="Non-land cost increase" value={settings.stressCostPct} onChange={stressCostPct => updateSettings({ stressCostPct })} suffix="%" /><NumberField label="Rate increase" value={settings.stressRatePoints} step={.25} onChange={stressRatePoints => updateSettings({ stressRatePoints })} suffix="pts" /><NumberField label="Delay" value={settings.stressDelayMonths} onChange={stressDelayMonths => updateSettings({ stressDelayMonths })} suffix="mo" /></div></Section>
-          <Section title="13-week treasury" action={<Button size="sm" onClick={() => { const item: CashItem = { id: crypto.randomUUID(), title: 'New cash item', week: 1, amount: 0, kind: 'Payment', confirmed: false }; mutate(current => ({ ...current, cash: [...current.cash, item] })); }} icon={<Plus className="h-4 w-4" />}>Cash item</Button>}>
+          <Section title="13-week treasury" subtitle="Projected bank cash includes confirmed entries only. Enter all expected payments and receipts, including overhead and project draws. Unscheduled items are excluded; this is separate from lifetime project funding needs." action={<Button size="sm" onClick={() => { const item: CashItem = { id: crypto.randomUUID(), title: 'New cash item', week: 1, amount: 0, kind: 'Payment', confirmed: false }; mutate(current => ({ ...current, cash: [...current.cash, item] })); }} icon={<Plus className="h-4 w-4" />}>Cash item</Button>}>
+            <div className="mb-4 grid gap-3 sm:grid-cols-3"><Metric label="Week 13 cash" value={money(treasury.closing)} bad={treasury.closing < protectedReserve} /><Metric label="Lowest projected cash" value={money(treasury.lowest)} bad={treasury.lowest < protectedReserve} /><Metric label="Minimum cash above reserve" value={money(treasury.lowest - protectedReserve)} bad={treasury.lowest < protectedReserve} /></div>
+            <div className="mb-4 overflow-x-auto"><table className="w-full text-sm"><thead><tr><th>Week</th><th>Receipts</th><th>Payments</th><th>Closing cash</th></tr></thead><tbody>{treasury.weeks.map(week => <tr key={week.week} className="border-t text-center"><td>{week.week}</td><td>{money(week.receipts)}</td><td>{money(week.payments)}</td><td>{money(week.closing)}</td></tr>)}</tbody></table></div>
             <div className="space-y-2">{workspace.cash.map(item => <div key={item.id} className="grid gap-2 rounded border p-2 md:grid-cols-[2fr_90px_130px_1fr_120px_40px]">
               <Input aria-label="Cash item description" value={item.title} onChange={e => mutate(current => ({ ...current, cash: current.cash.map(row => row.id === item.id ? { ...row, title: e.target.value } : row) }))} />
               <input aria-label="Cash item week" type="number" min="1" max="13" value={item.week} onChange={e => mutate(current => ({ ...current, cash: current.cash.map(row => row.id === item.id ? { ...row, week: +e.target.value } : row) }))} className="rounded border px-2" />
