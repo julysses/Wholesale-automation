@@ -33,13 +33,14 @@ class FakeLeadTable:
         self._eq = None
         self._filters = []
         self._limit = None
+        self._range = None
 
     def select(self, *_args, **kwargs):
         self._op = "select"
         self._count_exact = kwargs.get("count") == "exact"
         return self
 
-    def insert(self, payload):
+    def insert(self, payload, **_kwargs):
         self._op = "insert"
         self._payload = payload
         return self
@@ -65,6 +66,10 @@ class FakeLeadTable:
     def order(self, *_args, **_kwargs):
         return self
 
+    def range(self, start, end):
+        self._range = (start, end)
+        return self
+
     def limit(self, value):
         self._limit = value
         return self
@@ -82,12 +87,19 @@ class FakeLeadTable:
             count = len(rows)
             if self._limit is not None:
                 rows = rows[: self._limit]
+            if self._range is not None:
+                start, end = self._range
+                rows = rows[start:end + 1]
             return FakeResponse(rows, count=count)
         if self._op == "insert":
-            row = {"id": f"new-{self.db.next_id}", **self._payload}
-            self.db.next_id += 1
-            self.db.rows.append(row)
-            return FakeResponse([dict(row)])
+            payloads = self._payload if isinstance(self._payload, list) else [self._payload]
+            inserted = []
+            for payload in payloads:
+                row = {"id": f"new-{self.db.next_id}", **payload}
+                self.db.next_id += 1
+                self.db.rows.append(row)
+                inserted.append(dict(row))
+            return FakeResponse(inserted)
         if self._op == "update":
             field, value = self._eq
             for row in self.db.rows:

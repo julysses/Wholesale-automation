@@ -1,7 +1,8 @@
 import { apiFetch } from '@/lib/api';
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity } from '@/hooks/useLeads';
+import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity, type LeadWrite } from '@/hooks/useLeads';
 import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
 import { OutreachTimeline } from '@/components/leads/OutreachTimeline';
@@ -119,6 +120,7 @@ function downloadCSV(filename: string, rows: Record<string, unknown>[], excludeK
 }
 
 export function Leads() {
+  const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [status, setStatus] = useState(searchParams.get('status') || '');
@@ -131,7 +133,7 @@ export function Leads() {
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const { data, isLoading } = useLeads({ status, source, search, page, pageSize: 50 });
+  const { data, isLoading, error: loadError, refetch } = useLeads({ status, source, tier, motivation, search, page, pageSize: 50 });
   const leads = data?.data ?? [];
   const total = data?.count ?? 0;
   const totalPages = Math.ceil(total / 50);
@@ -159,14 +161,15 @@ export function Leads() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Filter leads by tier client-side (Supabase query doesn't include tier filter yet)
-  const filteredLeads = tier ? leads.filter((l) => l.priority_tier === tier) : leads;
+  const filteredLeads = leads;
 
   const handlePushToDialer = async (lead: Lead) => {
     if (!confirm(`Push ${lead.property_address} to BatchDialer?`)) return;
     try {
-      await supabase.from('leads').update({ status: 'ready_for_dialer' }).eq('id', lead.id);
-      toast.success('Lead marked ready for dialer — push will run on next sync');
+      const { error, data: saved } = await supabase.from('leads').update({ status: 'ready_for_dialer' }).eq('id', lead.id).select('id').single();
+      if (error || !saved) throw error || new Error('Lead update was not saved');
+      await qc.invalidateQueries({ queryKey: ['leads'] });
+      toast.success('Lead marked ready for dialer');
     } catch {
       toast.error('Failed to update lead status');
     }
@@ -175,11 +178,13 @@ export function Leads() {
   const handleEnrollSMS = async (lead: Lead) => {
     if (!confirm(`Enroll ${lead.property_address} in Launch Control SMS nurture?`)) return;
     try {
-      await supabase.from('leads').update({
+      const { error, data: saved } = await supabase.from('leads').update({
         status: 'sms_nurture',
         sms_sequence_active: true,
-      }).eq('id', lead.id);
-      toast.success('Lead enrolled in SMS nurture');
+      }).eq('id', lead.id).select('id').single();
+      if (error || !saved) throw error || new Error('Lead update was not saved');
+      await qc.invalidateQueries({ queryKey: ['leads'] });
+      toast.success('Lead marked for SMS nurture');
     } catch {
       toast.error('Failed to enroll lead in SMS nurture');
     }
@@ -236,7 +241,7 @@ export function Leads() {
           />
         </div>
         <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} options={STATUS_OPTIONS} className="w-44" />
-        <Select value={tier} onChange={(e) => { setTier(e.target.value); }} options={TIER_OPTIONS} className="w-36" />
+        <Select value={tier} onChange={(e) => { setTier(e.target.value); setPage(1); }} options={TIER_OPTIONS} className="w-36" />
         <Select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} options={SOURCE_OPTIONS} className="w-36" />
         <Select value={motivation} onChange={(e) => { setMotivation(e.target.value); setPage(1); }} options={MOTIVATION_OPTIONS} className="w-40" />
       </div>
@@ -255,7 +260,9 @@ export function Leads() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
+              {loadError ? (
+                <tr><td colSpan={10} className="p-6 text-center text-red-700" role="alert">Could not load leads. <button onClick={() => refetch()} className="underline">Retry</button></td></tr>
+              ) : isLoading ? (
                 <tr><td colSpan={10} className="px-4 py-6"><TableSkeleton rows={8} cols={8} /></td></tr>
               ) : filteredLeads.length === 0 ? (
                 <tr>
@@ -406,7 +413,7 @@ export function Leads() {
       </div>
 
       {/* Modals */}
-      <LeadFormModal open={addOpen} onClose={() => setAddOpen(false)} />
+      {addOpen && <LeadFormModal open onClose={() => setAddOpen(false)} />}
       <ImportCSVModal open={importOpen} onClose={() => setImportOpen(false)} />
       {logActivityLead && (
         <LogActivityModal lead={logActivityLead} onClose={() => setLogActivityLead(null)} />
@@ -586,12 +593,13 @@ async function claudeMap(headers: string[], samples: string[][]): Promise<MapPla
 }
 
 function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [dataRows, setDataRows] = useState<string[][]>([]);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ imported: number; errors: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; errors: number; skipped: number; message?: string } | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [mapStatus, setMapStatus] = useState<'idle' | 'parsing' | 'mapping' | 'done'>('idle');
   const [mappedBy, setMappedBy] = useState<'claude' | 'heuristic' | null>(null);
@@ -691,7 +699,7 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
   };
 
   const hasAddr = mapping['property_address'] !== undefined && mapping['property_address'] !== '';
-  const hasCity = (mapping['city'] !== undefined && mapping['city'] !== '') || defaultCity.trim() !== '';
+  const hasCity = addressCombined || (mapping['city'] !== undefined && mapping['city'] !== '') || defaultCity.trim() !== '';
 
   const handleImport = async () => {
     if (!file) return;
@@ -707,29 +715,31 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
     let imported = 0, errors = 0, skipped = 0;
     const scorable: ScorableLead[] = [];
 
-    // Rows were already parsed on drop (CSV or Excel) — reuse them, no re-parse.
-    const CHUNK = 100;
-    for (let i = 0; i < dataRows.length; i += CHUNK) {
-      const built = dataRows.slice(i, i + CHUNK).map(buildRecord);
-      const chunk = built.filter((r): r is Record<string, string | number> => r !== null);
-      skipped += built.length - chunk.length;
-      if (chunk.length === 0) continue;
-      const { data, error } = await supabase.from('leads').insert(chunk)
-        .select('id, property_address, city, state, owner_first_name, owner_last_name, motivation_tag');
-      if (error) errors += chunk.length;
-      else {
-        imported += chunk.length;
-        if (data) scorable.push(...(data as ScorableLead[]));
+    try {
+      const CHUNK = 100;
+      for (let i = 0; i < dataRows.length; i += CHUNK) {
+        const built = dataRows.slice(i, i + CHUNK).map(buildRecord);
+        const chunk = built.filter((r): r is Record<string, string | number> => r !== null);
+        skipped += built.length - chunk.length;
+        if (chunk.length === 0) continue;
+        const { data, error } = await supabase.from('leads').insert(chunk)
+          .select('id, property_address, city, state, owner_first_name, owner_last_name, motivation_tag');
+        if (error || !data || data.length !== chunk.length) {
+          errors += chunk.length;
+          // Stop after a failed write; repeatedly retrying the whole file can duplicate saved rows.
+          setResult({ imported, errors, skipped, message: error?.message || 'The database did not confirm all rows. Import stopped; review saved leads before retrying.' });
+          return;
+        }
+        imported += data.length;
+        scorable.push(...(data as ScorableLead[]));
       }
-    }
-
-    setImporting(false);
-    setResult({ imported, errors: errors + skipped });
-
-    // Claude automatically scores every freshly imported lead in the
-    // background — no manual "qualify" click needed. Runs across navigation.
-    if (scorable.length > 0) {
-      useAutoScoreStore.getState().start(scorable);
+      setResult({ imported, errors, skipped });
+    } catch (error) {
+      setResult({ imported, errors, skipped, message: error instanceof Error ? error.message : 'Import interrupted. Review saved leads before retrying.' });
+    } finally {
+      setImporting(false);
+      if (imported > 0) await qc.invalidateQueries({ queryKey: ['leads'] });
+      if (scorable.length > 0) void useAutoScoreStore.getState().start(scorable);
     }
   };
 
@@ -738,9 +748,11 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
       <div className="p-6 space-y-5">
         {result ? (
           <div className="text-center py-8 space-y-3">
-            <div className="text-5xl">✅</div>
+            <div className="text-5xl">{result.errors || result.message ? '⚠️' : '✅'}</div>
             <p className="text-xl font-bold text-gray-900">{result.imported.toLocaleString()} leads imported</p>
-            {result.errors > 0 && <p className="text-sm text-red-500">{result.errors.toLocaleString()} rows skipped (missing address or city)</p>}
+            {result.skipped > 0 && <p className="text-sm text-amber-700">{result.skipped.toLocaleString()} rows skipped (missing address or city)</p>}
+            {result.errors > 0 && <p className="text-sm text-red-600">{result.errors.toLocaleString()} rows were not confirmed saved.</p>}
+            {result.message && <p role="alert" className="text-sm text-red-600">{result.message} Import stopped. Review saved leads before retrying.</p>}
             <Button onClick={() => { onClose(); reset(); }}>Done</Button>
           </div>
         ) : (
@@ -866,16 +878,48 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 // ─── Lead Detail Drawer ───────────────────────────────────────────────────────
+const LEAD_SCORE_FIELDS = [
+  ['Motivation', 'score_motivation'], ['Timeline', 'score_timeline'],
+  ['Equity', 'score_equity'], ['Condition', 'score_condition'],
+  ['Flexibility', 'score_flexibility'],
+] as const;
+
+type LeadDrawerEdits = Pick<LeadWrite,
+  'property_address' | 'city' | 'zip_code' | 'owner_first_name' | 'owner_last_name' |
+  'owner_phone_1' | 'owner_email' | 'status' | 'motivation_tag' | 'asking_price' |
+  'estimated_equity_pct' | 'next_follow_up_date' | 'seller_notes' | 'internal_notes' |
+  'score_motivation' | 'score_timeline' | 'score_equity' | 'score_condition' | 'score_flexibility'
+>;
+
 function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const updateLead = useUpdateLead();
   const { qualify, loading: aiLoading, result: aiResult } = useLeadQualifier();
-  const [form, setForm] = useState<Partial<Lead>>(lead);
+  const [edits, setEdits] = useState<LeadDrawerEdits>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const form = { ...lead, ...edits };
   const [activeTab, setActiveTab] = useState<'details' | 'timeline'>('details');
-  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+  const set = <K extends keyof LeadDrawerEdits>(key: K, value: LeadDrawerEdits[K]) => {
+    setSaveError(null);
+    setEdits((current) => {
+      const next = { ...current };
+      if (value === lead[key]) delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  };
+  const totalScore = LEAD_SCORE_FIELDS.reduce((sum, [, key]) => sum + (form[key] ?? 0), 0);
 
   const handleSave = async () => {
-    await updateLead.mutateAsync({ id: lead.id, updates: form });
-    onClose();
+    setSaveError(null);
+    try {
+      if (Object.keys(edits).length) {
+        await updateLead.mutateAsync({ id: lead.id, updates: edits });
+      }
+      onClose();
+    } catch (error) {
+      setSaveError(error && typeof error === 'object' && 'message' in error
+        ? String(error.message) : 'Unable to save lead. Please try again.');
+    }
   };
 
   const handleQualify = () =>
@@ -883,7 +927,7 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
       lead_id: lead.id,
       property_address: lead.property_address,
       seller_notes: form.seller_notes || '',
-      estimated_equity_pct: form.estimated_equity_pct,
+      estimated_equity_pct: form.estimated_equity_pct ?? undefined,
     });
 
   return (
@@ -911,23 +955,17 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
         <div className="bg-gray-50 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold text-gray-700">Qualification Score</p>
-            <span className={cn('px-3 py-1 rounded-full text-sm font-bold', getScoreBadgeClass(form.total_score))}>
-              {form.total_score ?? 0} / 15
+            <span className={cn('px-3 py-1 rounded-full text-sm font-bold', getScoreBadgeClass(totalScore))}>
+              {totalScore} / 15
             </span>
           </div>
           <div className="grid grid-cols-5 gap-3">
-            {[
-              ['Motivation', 'score_motivation'],
-              ['Timeline', 'score_timeline'],
-              ['Equity', 'score_equity'],
-              ['Condition', 'score_condition'],
-              ['Flexibility', 'score_flexibility'],
-            ].map(([label, key]) => (
+            {LEAD_SCORE_FIELDS.map(([label, key]) => (
               <div key={key} className="text-center">
                 <p className="text-xs text-gray-500 mb-1">{label}</p>
                 <div className="flex gap-1 justify-center">
                   {[1, 2, 3].map((v) => (
-                    <button key={v} onClick={() => set(key, v)}
+                    <button key={v} aria-label={`${label} score ${v}`} onClick={() => set(key, v)}
                       className={cn('w-7 h-7 rounded text-xs font-bold border transition-colors',
                         (form as Record<string, unknown>)[key] === v
                           ? 'bg-[#1B3A5C] text-white border-[#1B3A5C]'
@@ -957,9 +995,9 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
             options={STATUS_OPTIONS.filter(o => o.value)} />
           <Select label="Motivation" value={form.motivation_tag || ''} onChange={(e) => set('motivation_tag', e.target.value)}
             options={MOTIVATION_OPTIONS.filter(o => o.value)} placeholder="Select motivation" />
-          <Input label="Asking Price" type="number" value={form.asking_price || ''} onChange={(e) => set('asking_price', Number(e.target.value))} />
-          <Input label="Est. Equity %" type="number" value={form.estimated_equity_pct || ''} onChange={(e) => set('estimated_equity_pct', Number(e.target.value))} />
-          <Input label="Next Follow-up" type="date" value={form.next_follow_up_date || ''} onChange={(e) => set('next_follow_up_date', e.target.value)} />
+          <Input label="Asking Price" type="number" value={form.asking_price ?? ''} onChange={(e) => set('asking_price', e.target.value === '' ? null : Number(e.target.value))} />
+          <Input label="Est. Equity %" type="number" value={form.estimated_equity_pct ?? ''} onChange={(e) => set('estimated_equity_pct', e.target.value === '' ? null : Number(e.target.value))} />
+          <Input label="Next Follow-up" type="date" value={form.next_follow_up_date || ''} onChange={(e) => set('next_follow_up_date', e.target.value || null)} />
         </div>
 
         <Textarea label="Seller Notes" value={form.seller_notes || ''} onChange={(e) => set('seller_notes', e.target.value)} rows={3} />
@@ -997,6 +1035,7 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
           )}
         </div>
 
+        {saveError && <p role="alert" className="text-sm text-red-600">Unable to save lead: {saveError}</p>}
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} loading={updateLead.isPending}>Save Changes</Button>

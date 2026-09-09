@@ -48,6 +48,7 @@ async def create_appointment(body: CreateAppointmentRequest):
             raise exc
         raise HTTPException(status_code=500, detail=str(exc))
 
+    calendar_sync = "failed"
     # 2. Sync to Calendar
     try:
         # Fetch lead address for calendar entry
@@ -55,13 +56,14 @@ async def create_appointment(body: CreateAppointmentRequest):
         address = lead_resp.data.get("property_address", "Unknown Property") if lead_resp.data else "Unknown Property"
         
         calendar = CalendarAdapter()
-        calendar.sync_deal_milestones(
+        synced = calendar.sync_deal_milestones(
             deal_id=body.lead_id, # using lead_id as deal_id for now
             address=address,
             milestones={f"Appointment ({body.appointment_type})": body.scheduled_at}
         )
+        calendar_sync = "synced" if synced else calendar.status
     except Exception as exc:
         logger.warning(f"Calendar sync failed: {exc}")
         # We don't fail the whole request if calendar sync fails
 
-    return appointment
+    return {**appointment, "calendar_sync": calendar_sync}

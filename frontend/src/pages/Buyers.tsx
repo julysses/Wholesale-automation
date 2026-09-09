@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer } from '@/hooks/useBuyers';
+import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer, type BuyerWrite } from '@/hooks/useBuyers';
 import { useBuyerMatcher } from '@/hooks/useAIAgent';
 import { useDeals } from '@/hooks/useDeals';
 import { Modal } from '@/components/ui/modal';
@@ -33,7 +33,7 @@ export function Buyers() {
   const [matchOpen, setMatchOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const { data: buyers = [], isLoading } = useBuyers({ search, tier: tier || undefined });
+  const { data: buyers = [], isLoading, error: buyersError, refetch } = useBuyers({ search, tier: tier || undefined });
   const deleteBuyer = useDeleteBuyer();
 
   return (
@@ -85,6 +85,11 @@ export function Buyers() {
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr><td colSpan={13} className="px-4 py-6"><TableSkeleton rows={6} cols={7} /></td></tr>
+              ) : buyersError ? (
+                <tr><td colSpan={13} className="px-4 py-8 text-center">
+                  <p role="alert" className="text-red-600">Unable to load buyers: {buyersError.message}</p>
+                  <Button variant="outline" size="sm" onClick={() => void refetch()}>Retry</Button>
+                </td></tr>
               ) : buyers.length === 0 ? (
                 <tr>
                   <td colSpan={13} className="px-4 py-16 text-center">
@@ -126,7 +131,7 @@ export function Buyers() {
                   <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{formatDate(buyer.last_contact_date)}</td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="relative">
-                      <button onClick={() => setOpenMenuId(openMenuId === buyer.id ? null : buyer.id)}
+                      <button aria-label={`Actions for ${buyer.first_name} ${buyer.last_name}`} onClick={() => setOpenMenuId(openMenuId === buyer.id ? null : buyer.id)}
                         className="p-1 rounded hover:bg-gray-100 text-gray-400">
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
@@ -151,7 +156,7 @@ export function Buyers() {
         </div>
       </div>
 
-      <BuyerFormModal open={addOpen || !!editBuyer} buyer={editBuyer} onClose={() => { setAddOpen(false); setEditBuyer(null); }} />
+      {(addOpen || editBuyer) && <BuyerFormModal key={editBuyer?.id ?? 'new'} open buyer={editBuyer} onClose={() => { setAddOpen(false); setEditBuyer(null); }} />}
       <BuyerMatchModal open={matchOpen} onClose={() => setMatchOpen(false)} />
     </div>
   );
@@ -172,13 +177,13 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
     source: buyer?.source || '',
     tier: buyer?.tier || 'C',
     target_zips_str: (buyer?.target_zips || []).join(', '),
-    min_price: buyer?.min_price || '',
-    max_price: buyer?.max_price || '',
+    min_price: buyer?.min_price?.toString() ?? '',
+    max_price: buyer?.max_price?.toString() ?? '',
     strategy: buyer?.strategy || [] as string[],
     property_types: buyer?.property_types || [] as string[],
-    close_speed_days: buyer?.close_speed_days || '',
+    close_speed_days: buyer?.close_speed_days?.toString() ?? '',
     pof_verified: buyer?.pof_verified || false,
-    pof_amount: buyer?.pof_amount || '',
+    pof_amount: buyer?.pof_amount?.toString() ?? '',
     notes: buyer?.notes || '',
   });
 
@@ -191,21 +196,28 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.first_name || !form.last_name) return toast.error('Name required');
-    const payload = {
-      ...form,
-      target_zips: form.target_zips_str.split(',').map((z) => z.trim()).filter(Boolean),
-      min_price: form.min_price ? Number(form.min_price) : null,
-      max_price: form.max_price ? Number(form.max_price) : null,
-      close_speed_days: form.close_speed_days ? Number(form.close_speed_days) : null,
-      pof_amount: form.pof_amount ? Number(form.pof_amount) : null,
+    if (!form.first_name.trim() || !form.last_name.trim()) return toast.error('Name required');
+    const { target_zips_str, ...fields } = form;
+    const payload: BuyerWrite = {
+      ...fields,
+      first_name: form.first_name.trim(),
+      last_name: form.last_name.trim(),
+      target_zips: target_zips_str.split(',').map((z) => z.trim()).filter(Boolean),
+      min_price: form.min_price === '' ? null : Number(form.min_price),
+      max_price: form.max_price === '' ? null : Number(form.max_price),
+      close_speed_days: form.close_speed_days === '' ? null : Number(form.close_speed_days),
+      pof_amount: form.pof_amount === '' ? null : Number(form.pof_amount),
     };
-    if (isEdit && buyer) {
-      await updateBuyer.mutateAsync({ id: buyer.id, updates: payload as Partial<Buyer> });
-    } else {
-      await createBuyer.mutateAsync(payload as Partial<Buyer>);
+    try {
+      if (isEdit && buyer) {
+        await updateBuyer.mutateAsync({ id: buyer.id, updates: payload });
+      } else {
+        await createBuyer.mutateAsync(payload);
+      }
+      onClose();
+    } catch {
+      // The mutation reports the error; retain the entered values for retry.
     }
-    onClose();
   };
 
   return (
@@ -272,7 +284,7 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
           </div>
         </div>
 
-        <Textarea label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
+        <Textarea id="buyer-notes" label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
 
         <div className="flex justify-end gap-3">
           <Button variant="outline" type="button" onClick={onClose}>Cancel</Button>

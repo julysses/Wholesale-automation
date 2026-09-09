@@ -5,6 +5,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+cd "$ROOT"
+
 # ── Check .env ─────────────────────────────────────────────────────────────────
 if [ ! -f "$ROOT/.env" ]; then
   echo "⚠  No .env found. Copying from .env.example..."
@@ -21,7 +23,7 @@ pip install -q -r "$ROOT/requirements.txt"
 if [ ! -d "$ROOT/frontend/dist" ]; then
   echo "🏗  Building React frontend..."
   cd "$ROOT/frontend"
-  npm install --prefer-offline
+  npm ci --prefer-offline
   npm run build
   cd "$ROOT"
 else

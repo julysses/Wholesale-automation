@@ -54,6 +54,9 @@ interface AutoScoreStore {
   tierCounts: { HOT: number; WARM: number; COLD: number };
   cancelRequested: boolean;
   refreshStatus: () => Promise<ScoringProgress>;
+  // Starts the entire database backlog. The legacy import argument is accepted
+  // for compatibility but does not restrict which leads the backend selects.
+  // Loading a page never starts a run; imports or an explicit UI action do.
   start: (leads?: ScorableLead[]) => Promise<void>;
   cancel: () => void;
   dismiss: () => void;

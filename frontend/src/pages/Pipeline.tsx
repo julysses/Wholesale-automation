@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useDeals, useUpdateDeal, useCreateDeal } from '@/hooks/useDeals';
+import { useDeals, useUpdateDeal, useCreateDeal, type DealWrite } from '@/hooks/useDeals';
+import { useLeads } from '@/hooks/useLeads';
 import { useDealStore } from '@/stores/useDealStore';
 import { KanbanColumn } from '@/components/pipeline/KanbanColumn';
 import { Modal } from '@/components/ui/modal';
@@ -8,12 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { Deal } from '@/types';
-import { formatCurrency, formatDate, daysUntil, getStageLabel } from '@/lib/utils';
+import { formatCurrency, daysUntil } from '@/lib/utils';
+import { localDateString } from '@/lib/taskDates';
 import { cn } from '@/lib/utils';
 import {
   DndContext,
   type DragEndEvent,
-  type DragOverEvent,
   type DragStartEvent,
   PointerSensor,
   useSensor,
@@ -21,7 +22,7 @@ import {
   closestCorners,
   DragOverlay,
 } from '@dnd-kit/core';
-import { Plus, X, Calendar, DollarSign } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 const COLUMNS = [
@@ -34,16 +35,23 @@ const COLUMNS = [
 ];
 
 export function Pipeline() {
-  const { data: deals = [], isLoading } = useDeals();
+  const { data: deals = [], isLoading, error: dealsError, refetch } = useDeals();
   const updateDeal = useUpdateDeal();
   const createDeal = useCreateDeal();
   const { moveDealStage } = useDealStore();
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [newDealOpen, setNewDealOpen] = useState(false);
-  const [newDeal, setNewDeal] = useState<Partial<Deal>>({ stage: 'offer_made' });
+  const [newDeal, setNewDeal] = useState<DealWrite>({ stage: 'offer_made' });
+  const [leadSearch, setLeadSearch] = useState('');
+  const [leadPage, setLeadPage] = useState(1);
+  const { data: leadData, isLoading: leadsLoading, error: leadsError } = useLeads({ search: leadSearch, page: leadPage, pageSize: 50 });
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Deal>>({});
+  const [editForm, setEditForm] = useState<DealWrite>({});
+
+  // Read the same optimistic state that the columns display.
+  const { deals: storedDeals } = useDealStore();
+  const displayDeals = storedDeals.length > 0 ? storedDeals : deals;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -55,24 +63,29 @@ export function Pipeline() {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveDragId(null);
+    if (updateDeal.isPending) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
     const dealId = active.id as string;
-    const targetStage = over.id as string;
+    const targetId = over.id as string;
+    const targetStage = COLUMNS.some((c) => c.id === targetId)
+      ? targetId
+      : displayDeals.find((d) => d.id === targetId)?.stage;
+    if (!targetStage) return;
 
-    // Only move if dropped on a column (not another card)
-    const isColumn = COLUMNS.some((c) => c.id === targetStage);
-    if (!isColumn) return;
-
-    const deal = deals.find((d) => d.id === dealId);
+    const deal = displayDeals.find((d) => d.id === dealId);
     if (!deal || deal.stage === targetStage) return;
 
     // Optimistic update
     moveDealStage(dealId, targetStage);
 
     try {
-      await updateDeal.mutateAsync({ id: dealId, updates: { stage: targetStage } });
+      await updateDeal.mutateAsync({ id: dealId, updates: {
+        stage: targetStage,
+        ...(targetStage === 'closed' ? { actual_close_date: deal.actual_close_date || localDateString() }
+          : deal.stage === 'closed' ? { actual_close_date: null } : {}),
+      } });
     } catch {
       // Rollback
       moveDealStage(dealId, deal.stage);
@@ -91,6 +104,7 @@ export function Pipeline() {
       buyer_price: deal.buyer_price,
       closing_date: deal.closing_date,
       contract_date: deal.contract_date,
+      actual_close_date: deal.actual_close_date,
       notes: deal.notes,
       stage: deal.stage,
       title_company: deal.title_company,
@@ -100,25 +114,44 @@ export function Pipeline() {
 
   const handleSave = async () => {
     if (!selectedDeal) return;
-    await updateDeal.mutateAsync({ id: selectedDeal.id, updates: editForm });
-    setModalOpen(false);
+    try {
+      await updateDeal.mutateAsync({ id: selectedDeal.id, updates: {
+        ...editForm,
+        actual_close_date: editForm.stage === 'closed'
+          ? editForm.actual_close_date || localDateString()
+          : null,
+      } });
+      setModalOpen(false);
+    } catch {
+      // Keep the draft open; the mutation reports the failed save.
+    }
   };
 
   const handleCreateDeal = async () => {
+    if (!newDeal.lead_id) {
+      toast.error('Select the lead for this deal');
+      return;
+    }
     if (!newDeal.deal_name?.trim()) {
       toast.error('Enter a deal name (usually the property address)');
       return;
     }
-    await createDeal.mutateAsync(newDeal);
-    setNewDealOpen(false);
-    setNewDeal({ stage: 'offer_made' });
+    try {
+      await createDeal.mutateAsync({
+        ...newDeal,
+        deal_name: newDeal.deal_name.trim(),
+        ...(newDeal.stage === 'closed' ? { actual_close_date: localDateString() } : {}),
+      });
+      setNewDealOpen(false);
+      setNewDeal({ stage: 'offer_made' });
+      setLeadSearch('');
+      setLeadPage(1);
+    } catch {
+      // Keep the form and selected lead available for retry.
+    }
   };
 
   const activeDeal = activeDragId ? deals.find((d) => d.id === activeDragId) : null;
-
-  // Use stored deals for optimistic updates
-  const { deals: storedDeals } = useDealStore();
-  const displayDeals = storedDeals.length > 0 ? storedDeals : deals;
 
   const pipelineDeals = displayDeals.filter((d) => !['cancelled'].includes(d.stage));
 
@@ -132,12 +165,17 @@ export function Pipeline() {
             {formatCurrency(pipelineDeals.reduce((s, d) => s + (d.assignment_fee || 0), 0))} in fees
           </p>
         </div>
-        <Button onClick={() => setNewDealOpen(true)} icon={<Plus className="h-4 w-4" />}>
+        <Button onClick={() => { setNewDeal({ stage: 'offer_made' }); setLeadSearch(''); setLeadPage(1); setNewDealOpen(true); }} icon={<Plus className="h-4 w-4" />}>
           New Deal
         </Button>
       </div>
 
-      {isLoading ? (
+      {dealsError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <p role="alert" className="text-red-700">Unable to load deals: {dealsError.message}</p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>Retry</Button>
+        </div>
+      ) : isLoading ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {COLUMNS.map((col) => (
             <div key={col.id} className="w-72 shrink-0 h-64 bg-gray-100 rounded-xl animate-pulse" />
@@ -149,6 +187,7 @@ export function Pipeline() {
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveDragId(null)}
         >
           <div className="flex gap-4 overflow-x-auto pb-4">
             {COLUMNS.map((col) => (
@@ -179,6 +218,28 @@ export function Pipeline() {
       {/* New Deal Modal */}
       <Modal open={newDealOpen} onClose={() => setNewDealOpen(false)} title="New Deal" size="lg">
         <div className="p-6 space-y-4">
+          <Input label="Find Lead" value={leadSearch}
+            onChange={(e) => { setLeadSearch(e.target.value); setLeadPage(1); }} placeholder="Search address, owner or phone" />
+          <Select label="Lead *" value={newDeal.lead_id || ''}
+            onChange={(e) => {
+              const lead = leadData?.data.find((item) => item.id === e.target.value);
+              setNewDeal({ ...newDeal, lead_id: e.target.value,
+                deal_name: lead?.property_address || newDeal.deal_name,
+                contract_price: lead?.offer_price ?? lead?.mao ?? undefined,
+                arv: lead?.estimated_arv, repair_estimate: lead?.estimated_repairs,
+              });
+            }}
+            options={[
+              ...(newDeal.lead_id && !leadData?.data.some((lead) => lead.id === newDeal.lead_id)
+                ? [{ value: newDeal.lead_id, label: newDeal.deal_name || 'Selected lead' }] : []),
+              ...(leadData?.data ?? []).map((lead) => ({ value: lead.id, label: `${lead.property_address}, ${lead.city}` })),
+            ]} placeholder={leadsLoading ? 'Loading leads…' : 'Choose a lead'} />
+          {leadsError && <p role="alert" className="text-sm text-red-600">Unable to load leads: {leadsError.message}</p>}
+          {(leadData?.count ?? 0) > 50 && <div className="flex items-center gap-3 text-sm">
+            <Button variant="outline" size="sm" disabled={leadPage === 1} onClick={() => setLeadPage((page) => page - 1)}>Previous leads</Button>
+            <span>Page {leadPage} of {Math.ceil((leadData?.count ?? 0) / 50)}</span>
+            <Button variant="outline" size="sm" disabled={leadPage * 50 >= (leadData?.count ?? 0)} onClick={() => setLeadPage((page) => page + 1)}>Next leads</Button>
+          </div>}
           <Input label="Deal Name / Property Address" value={newDeal.deal_name || ''}
             onChange={(e) => setNewDeal({ ...newDeal, deal_name: e.target.value })}
             placeholder="e.g. 123 Main St, Dallas TX" />
@@ -191,7 +252,7 @@ export function Pipeline() {
             <Input label="Assignment Fee" type="number" value={newDeal.assignment_fee || ''}
               onChange={(e) => setNewDeal({ ...newDeal, assignment_fee: Number(e.target.value) })} />
             <Input label="Closing Date" type="date" value={newDeal.closing_date || ''}
-              onChange={(e) => setNewDeal({ ...newDeal, closing_date: e.target.value })} />
+              onChange={(e) => setNewDeal({ ...newDeal, closing_date: e.target.value || null })} />
           </div>
           <Textarea label="Notes" value={newDeal.notes || ''} rows={2}
             onChange={(e) => setNewDeal({ ...newDeal, notes: e.target.value })} />
@@ -254,15 +315,18 @@ export function Pipeline() {
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Contract Date" type="date"
                   value={editForm.contract_date || ''}
-                  onChange={(e) => setEditForm({ ...editForm, contract_date: e.target.value })} />
+                  onChange={(e) => setEditForm({ ...editForm, contract_date: e.target.value || null })} />
                 <Input label="Closing Date" type="date"
                   value={editForm.closing_date || ''}
-                  onChange={(e) => setEditForm({ ...editForm, closing_date: e.target.value })} />
+                  onChange={(e) => setEditForm({ ...editForm, closing_date: e.target.value || null })} />
+                {editForm.stage === 'closed' && <Input label="Actual Close Date" type="date"
+                  value={editForm.actual_close_date || localDateString()}
+                  onChange={(e) => setEditForm({ ...editForm, actual_close_date: e.target.value || null })} />}
               </div>
               {editForm.closing_date && (
                 <div className={cn(
                   'mt-2 text-sm font-medium',
-                  daysUntil(editForm.closing_date) !== null && (daysUntil(editForm.closing_date) || 99) <= 7
+                  daysUntil(editForm.closing_date) !== null && (daysUntil(editForm.closing_date) ?? 99) <= 7
                     ? 'text-red-600' : 'text-gray-500'
                 )}>
                   {(() => {

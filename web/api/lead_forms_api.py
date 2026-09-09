@@ -198,7 +198,7 @@ async def submit_form(
     Public — submit lead qualification form.
     Creates a lead_form_submission, then in background:
     - creates a leads row
-    - runs qualification + scoring agents
+    - persists the deterministic form qualification scores and classification
     """
     supabase = _get_supabase()
 
@@ -291,6 +291,12 @@ async def _process_form_submission(
         except (ValueError, TypeError):
             pass
 
+    total_score = sum(scores[field] for field in (
+        "score_motivation", "score_timeline", "score_equity",
+        "score_condition", "score_flexibility",
+    ))
+    classification = "hot" if total_score >= 13 else "warm" if total_score >= 8 else "cold"
+
     lead_data = {
         "property_address": property_address or answers.get("property_address", "Unknown"),
         "city": city or "",
@@ -302,7 +308,15 @@ async def _process_form_submission(
         "owner_email": answers.get("email", ""),
         "source": "web_form",
         "inbound_channel": "web_form",
-        "status": "new",
+        "status": f"qualified_{classification}",
+        "precision_tier": {"hot": 1, "warm": 2, "cold": 3}[classification],
+        "ai_qualification_summary": (
+            f"Form-answer qualification: {classification.upper()} ({total_score}/15). "
+            f"Motivation: {answers.get('motivation', 'not provided')}; "
+            f"timeline: {answers.get('timeline', 'not provided')}; "
+            f"condition: {answers.get('condition', 'not provided')}. "
+            "Equity and flexibility use neutral defaults pending verification."
+        ),
         "score_motivation": scores["score_motivation"],
         "score_timeline": scores["score_timeline"],
         "score_equity": scores["score_equity"],
@@ -324,6 +338,8 @@ async def _process_form_submission(
     try:
         lead_resp = supabase.table("leads").insert(lead_data).execute()
         lead_id = lead_resp.data[0]["id"] if lead_resp.data else None
+        if not lead_id:
+            raise RuntimeError("Lead insert returned no saved lead")
     except Exception as exc:
         logger.error(f"Failed to create lead from form submission: {exc}")
         if submission_id:
@@ -356,29 +372,11 @@ async def _process_form_submission(
         except Exception as exc:
             logger.error(f"Speed-to-lead SMS failed for lead {lead_id}: {exc}")
 
-    # Run qualification agent
-    if lead_id:
-        try:
-            from agents.qualification_agent import QualificationAgent
-            agent = QualificationAgent()
-            agent.run(lead_id=lead_id)
-        except Exception as exc:
-            logger.error(f"Qualification agent failed for lead {lead_id}: {exc}")
-
-    # Run seller score agent
-    if lead_id:
-        try:
-            from agents.seller_score_agent import SellerScoreAgent
-            agent = SellerScoreAgent()
-            agent.run(lead_id=lead_id)
-        except Exception as exc:
-            logger.error(f"Seller score agent failed for lead {lead_id}: {exc}")
+    # Form answers are scored above by _compute_scores_from_answers. Transcript
+    # qualification and the separate distress-stacking agent require different
+    # inputs; neither exposes a run(lead_id=...) method.
 
     # HOT lead notification (A-tier or score >= 13)
-    total_score = (
-        scores["score_motivation"] + scores["score_timeline"] +
-        scores["score_equity"] + scores["score_condition"] + scores["score_flexibility"]
-    )
     if total_score >= 13 and lead_id:
         try:
             _send_hot_lead_notification(lead_id, answers, total_score)

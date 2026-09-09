@@ -1,76 +1,81 @@
-# Deployment — Vercel (frontend) + persistent backend host
+# Deployment and operational release checks
 
-WholesaleOS uses a **hybrid** deployment. The React SPA is served by **Vercel**;
-the FastAPI backend (webhooks + AI agents + background tasks) runs on a
-**persistent host** (Railway is preconfigured via `railway.toml` / `Dockerfile`);
-Supabase provides Postgres + Edge Functions + `pg_cron`.
+Reviewed September 8, 2026. The committed `vercel.json` serves the React build and
+routes both `/api/*` and `/webhooks/*` to `api/index.py` using Vercel's Python
+runtime. It does not proxy to Railway. `railway.toml`, `Dockerfile` and `start.sh`
+are alternative persistent-host entry points; their presence does not establish
+that such a host is deployed.
 
-## Why not 100% on Vercel?
+## Configuration
 
-Vercel serverless functions are terminated when the HTTP response returns and have
-a 60–300s max duration. This breaks two things the app depends on:
+- Set `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY` for the API.
+  Browser configuration uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, or
+  the equivalent public values from `/api/config`. Never expose the service role
+  key through a `VITE_*` variable.
+- Set `WEBHOOK_STRICT=true` and configure the secret for each enabled provider.
+  Retell verifies its timestamped signature using `RETELL_WEBHOOK_SECRET` when
+  provided, otherwise `RETELL_API_KEY`; the configured value must be the API key
+  designated by Retell for webhook verification. Facebook needs its app secret
+  and verification token. Test callbacks from enabled providers before routing
+  real leads. A successful health check does not test these credentials.
+- Use `CORS_STRICT=true` with the intended `CORS_ORIGINS` if the browser and API
+  use different origins. Inspect the application's existing preview-origin
+  allowance before treating CORS as an origin allowlist.
+- Set `CRON_SECRET` only if using the authenticated webhook drain endpoint.
+  There is no webhook-drain cron schedule in the committed Vercel configuration.
 
-- **Webhook background work** — `web/api/webhooks.py` responds `200` immediately, then
-  finishes qualification/HOT-lead automation in FastAPI `BackgroundTasks` /
-  `asyncio.create_task`. On serverless that work is killed mid-flight.
-- **Long agent pipelines** — `orchestrator/master_orchestrator.py` `run_full_pipeline`
-  is a minutes-long blocking chain that exceeds serverless limits.
+## Schema rollout
 
-So the backend stays on an always-on host. Vercel hosts the SPA and proxies `/api/*`
-to that host via `vercel.json` rewrites (keeps the SPA's same-origin relative
-`fetch('/api/...')` calls working with no code change).
+`tools/run_migrations.py` requires a PostgreSQL `DATABASE_URL`; `SUPABASE_URL` is
+an HTTP endpoint and cannot substitute for it. The runner loads the repository
+`.env`, honors existing environment values, and stops startup on a migration
+failure. Vercel's Python entry point does not run this script automatically.
 
-## Topology
+The script records applied filenames in `_migrations`, independently of the
+Supabase CLI migration history. Before starting it against an existing database,
+reconcile the actual schema and both histories; do not blindly replay historical
+migrations. Keep migration 011 before 012. Validate changes against a staging
+database and follow the project's normal backup and migration rollout process.
 
-```
-Browser ─► Vercel SPA ──/api/* rewrite──► Railway FastAPI ──► Supabase Postgres
-Providers ─webhooks (point DIRECTLY at Railway)──────────► Railway FastAPI
-Supabase pg_cron/pg_net ─► Edge Functions (PR #1 enrichment/ARV) ─► Postgres
-```
+`20260909023229_protect_public_intake.sql` removes anonymous INSERT access from
+`lead_form_submissions` and `fb_leads`. The supported public submission API uses
+the service role after validation and rate limiting. After applying the migration,
+verify that direct anonymous database inserts fail and an approved test submission
+through the API succeeds. This review created the migration but did not apply it.
 
-## Steps
+Before large imports, inspect the deployed `app.enrich_on_insert` setting and the
+011/012 trigger configuration so import volume does not unexpectedly fan out paid
+enrichment requests. Reconcile and backfill enrichment deliberately.
 
-1. **Deploy the backend** (Railway): it builds from the repo `Dockerfile` / `railway.toml`.
-   Set all env vars from `.env.example` (Anthropic, Supabase service-role, every
-   `*_WEBHOOK_SECRET`, provider keys). Use the Supabase **pooled Postgres**
-   `DATABASE_URL`, not SQLite. Note the public URL, e.g. `https://wholesaleos-api.up.railway.app`.
+## Webhook execution and recovery
 
-2. **Configure `vercel.json`**: replace `REPLACE_WITH_BACKEND_HOST` (two places) with the
-   Railway host. Commit.
+Current routes await processing inline before responding. Escaped processing
+errors return 503. Request duration and external-provider latency therefore remain
+release checks; neither the repository nor a unit test proves that every real
+call completes inside the deployed function's duration limit.
 
-3. **Deploy the frontend** (Vercel): import the repo. Build settings come from `vercel.json`.
-   Set Vercel env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The runtime
-   `/api/config` endpoint also accepts `SUPABASE_URL` and `SUPABASE_ANON_KEY` as
-   fallbacks. Deploy a preview, smoke-test, then promote to production.
+Retell completion events require the existing `webhook_jobs` table (migration
+013). Event receipt rows retain ended/analyzed payloads. A separate deterministic
+call-ID receipt grants one completion attempt across retries and both routes.
+An ended callback without usable transcript data defers lead automation. Completed
+claims skip repeated side effects; failed or interrupted claims remain parked.
 
-4. **Point webhook providers directly at the backend host** (NOT through Vercel) so signed
-   request bodies are byte-preserved:
-   - Retell: `https://<backend>/webhooks/retell`
-   - VAPI: `https://<backend>/webhooks/vapi`
-   - BatchDialer: `https://<backend>/webhooks/batchdialer/call`
-   - Launch Control: `https://<backend>/webhooks/launch_control/reply`
-   - Facebook Lead Ads: `https://<backend>/webhooks/facebook/lead`
+For a failed/processing completion receipt, inspect its `last_error`, call record,
+qualification, task and outreach/provider history. Determine which actions already
+succeeded, repair only the missing actions, and reconcile the receipt deliberately.
+Do not delete the receipt or reset it to pending and assume replay is safe: an
+external send may already have succeeded. This prevents duplicate attempts but
+does not guarantee delivery or provide automatic recovery.
 
-5. **Lock down CORS + webhooks**: set `CORS_STRICT=true` and
-   `CORS_ORIGINS=https://<your-vercel-domain>` on the backend (`*.vercel.app` preview
-   domains are allowed automatically). Also set `WEBHOOK_STRICT=true` so inbound webhooks
-   whose secret is not configured are rejected (fail closed) instead of accepted.
+`/webhooks/_worker/drain` processes pending queue entries only. It does not recover
+parked completion claims, and its existence is not evidence that a worker or
+scheduler is running. Some other provider handlers still catch failures internally;
+acceptance testing and monitoring must cover every integration enabled at launch.
 
-6. **Supabase / PR #1**: apply migrations **in numeric order**, then deploy the Edge
-   Functions; set `REALTYAPI_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_URL`,
-   `SUPABASE_SERVICE_ROLE_KEY` as Functions secrets. Enable `pg_net` + `pg_cron`.
+## Required release evidence
 
-   Migration ordering matters — `011_realtyapi_integration.sql` (from PR #1) creates the
-   `trigger_enrich_lead()` function + `enrich_lead_on_insert` trigger, and
-   `012_enrich_rate_guard.sql` redefines that function to honor an `app.enrich_on_insert`
-   kill-switch. **Run 011 before 012.** When merging the two PRs, land PR #1 first (it
-   provides 011) or apply both migrations together — never apply 012 alone.
-
-   Before any bulk CSV import, disable the per-INSERT enrichment fan-out so thousands of
-   rows don't each fire a RealtyAPI + Claude call:
-
-   ```sql
-   ALTER DATABASE postgres SET app.enrich_on_insert = 'false';  -- before bulk import
-   -- ... run the import ...
-   ALTER DATABASE postgres SET app.enrich_on_insert = 'true';   -- re-enable, then backfill
-   ```
+Follow `docs/launch-review.md` for the review results and outstanding gates:
+approved-account CRUD/browser acceptance, staging migration verification, enabled
+provider round trips, duration/recovery checks, and post-deployment smoke tests.
+Calendar records currently save locally; external calendar synchronization is
+explicitly reported as unavailable and must not be advertised as working.

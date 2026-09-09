@@ -137,9 +137,11 @@ async def drain(limit: int = 10) -> dict:
 
         # Claim the job so a concurrent drain doesn't double-process it.
         try:
-            sb.table(WEBHOOK_JOBS_TABLE).update(
+            claimed = sb.table(WEBHOOK_JOBS_TABLE).update(
                 {"status": "processing", "attempts": attempts}
             ).eq("id", job_id).eq("status", "pending").execute()
+            if not claimed.data:
+                continue  # Another worker already owns this job.
         except Exception as exc:  # noqa: BLE001
             logger.error("[webhook-queue] failed to claim job %s: %s", job_id, exc)
             continue

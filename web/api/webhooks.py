@@ -29,10 +29,13 @@ import hashlib
 import hmac
 import logging
 import os
+import re
+import time
+from uuid import NAMESPACE_URL, uuid5
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from tools.batchdialer_adapter import BatchDialerAdapter, CallResultEvent
@@ -73,30 +76,32 @@ RETELL_WEBHOOK_SECRET = os.getenv("RETELL_WEBHOOK_SECRET", "")
 AIR_AI_WEBHOOK_SECRET = os.getenv("AIR_AI_WEBHOOK_SECRET", "")
 VAPI_WEBHOOK_SECRET = os.getenv("VAPI_WEBHOOK_SECRET", "")
 
-# When true, webhooks whose secret is not configured are rejected (fail closed)
-# instead of accepted. Recommended for production. Default false for local/dev.
-WEBHOOK_STRICT = os.getenv("WEBHOOK_STRICT", "false").lower() == "true"
+# Missing secrets fail closed by default. WEBHOOK_STRICT=false is an explicit
+# local-development opt-out for static-secret provider integrations.
+WEBHOOK_STRICT = os.getenv("WEBHOOK_STRICT", "true").lower() == "true"
+
+
+def _webhook_setting(name: str) -> str:
+    """Resolve settings loaded after module import, with environment values first."""
+    return str(globals().get(name, "") or getattr(settings, name.lower(), "") or "")
 
 
 def _verify_hmac_signature(body: bytes, signature: str, secret: str, source: str = "") -> bool:
-    """
-    Verify HMAC-SHA256 hex signature.
-    Logs a warning on every rejected attempt so security events are traceable.
-    """
-    if not secret:
-        return True
-    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    valid = hmac.compare_digest(signature, expected)
-    if not valid:
-        logger.warning(
-            f"[webhook{':' + source if source else ''}] HMAC verification failed — "
-            f"rejected inbound request (sig_prefix={signature[:8]!r})"
-        )
-    return valid
+    """Verify Retell's timestamped raw-body HMAC and reject replayed deliveries."""
+    match = re.fullmatch(r"v=(\d{1,16}),d=([0-9a-fA-F]{64})", signature)
+    if not secret or not match:
+        return False
+    timestamp, received = match.groups()
+    if abs(int(time.time() * 1000) - int(timestamp)) > 5 * 60 * 1000:
+        return False
+    expected = hmac.new(
+        secret.encode(), body + timestamp.encode(), hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(received.lower(), expected)
 
 
 def _require_hmac_signature(body: bytes, signature: str, secret: str, source: str = "") -> None:
-    """Fail closed unless a configured HMAC-SHA256 signature is valid."""
+    """Fail closed unless Retell's timestamped signature is valid."""
     if not secret:
         logger.error(
             f"[webhook{':' + source if source else ''}] webhook secret is not configured"
@@ -114,9 +119,8 @@ def _require_hmac_signature(body: bytes, signature: str, secret: str, source: st
 def _verify_static_secret(received: str, expected: str, source: str = "") -> bool:
     """Verify a static secret using constant-time comparison.
 
-    When no secret is configured the endpoint is unauthenticated. This is allowed
-    for local/dev convenience but logged as a warning; set WEBHOOK_STRICT=true to
-    reject such requests (fail closed) in production.
+    Missing secrets are rejected by default. Explicit WEBHOOK_STRICT=false
+    allows local development without a provider secret and logs a warning.
     """
     if not expected:
         label = f":{source}" if source else ""
@@ -333,7 +337,7 @@ async def batchdialer_call_webhook(
     Responds immediately with 200 so BatchDialer doesn't retry.
     All processing happens in the background.
     """
-    if not _verify_static_secret(x_webhook_secret, BATCHDIALER_WEBHOOK_SECRET, source="batchdialer"):
+    if not _verify_static_secret(x_webhook_secret, _webhook_setting("BATCHDIALER_WEBHOOK_SECRET"), source="batchdialer"):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -357,7 +361,7 @@ async def launch_control_reply_webhook(
     Receive an inbound SMS reply from Launch Control (or Zapier bridge).
     Detects opt-out keywords and suppresses the lead.
     """
-    if not _verify_static_secret(x_webhook_secret, LAUNCH_CONTROL_WEBHOOK_SECRET, source="launch_control"):
+    if not _verify_static_secret(x_webhook_secret, _webhook_setting("LAUNCH_CONTROL_WEBHOOK_SECRET"), source="launch_control"):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -513,7 +517,7 @@ async def retell_webhook(
     Retell expects 200 immediately; all processing is backgrounded.
     """
     body = await request.body()
-    _require_hmac_signature(body, x_retell_signature, RETELL_WEBHOOK_SECRET, source="retell")
+    _require_hmac_signature(body, x_retell_signature, _webhook_setting("RETELL_WEBHOOK_SECRET") or settings.retell_api_key, source="retell")
 
     import json as _json
     try:
@@ -727,7 +731,7 @@ def _load_transcript_chunks(sb: Any, call_id: str) -> list[dict[str, Any]]:
     try:
         resp = (
             sb.table("call_transcripts")
-            .select("formatted")
+            .select("formatted,raw_transcript")
             .eq("call_id", call_id)
             .single()
             .execute()
@@ -735,8 +739,14 @@ def _load_transcript_chunks(sb: Any, call_id: str) -> list[dict[str, Any]]:
         formatted = (resp.data or {}).get("formatted") or {}
         if isinstance(formatted, dict):
             chunks = formatted.get("chunks") or []
-            if isinstance(chunks, list):
+            if isinstance(chunks, list) and chunks:
                 return chunks
+            turns = formatted.get("turns") or []
+            text = (resp.data or {}).get("raw_transcript") or transcript_to_text(parse_transcript(turns))
+            if text:
+                return [{"sequence_num": None, "first_timestamp_ms": None,
+                         "text": text, "turns": turns or [_turn_to_dict(t) for t in parse_transcript(text)],
+                         "fingerprint": hashlib.sha256(text.encode()).hexdigest()}]
         if isinstance(formatted, list):
             text = transcript_to_text(parse_transcript(formatted))
             return [{
@@ -820,38 +830,174 @@ async def _retell_transcript_chunk(
         logger.error(f"[retell] transcript_chunk persistence failed: {exc}")
 
 
-async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) -> None:
-    """
-    Full processing pipeline for a completed Retell call:
-    1. Store final transcript in call_transcripts
-    2. Run LLM qualification analysis (extract_lead_signals)
-    3. Persist qualification_results
-    4. Update ai_call_records with qual_score + classification
-    5. Update lead status
-    6. HOT automation: create task, pause dialing, trigger SMS, send notification
-    7. WARM automation: enroll in Launch Control Day-1 sequence
-    8. Write audit log
-    """
-    sb = _get_supabase()
+def _retell_receipt_id(call_id: str, kind: str) -> str:
+    return str(uuid5(NAMESPACE_URL, f"wholesaleos:retell:{call_id}:{kind}"))
 
-    # 1. Store final transcript
+
+def _claim_retell_completion(sb: Any, call_id: str, raw_payload: dict) -> Optional[str]:
+    """Claim one attempt per call across ended/analyzed callbacks and retries.
+
+    Failed attempts remain parked: replaying a partially completed external send
+    automatically would violate the at-most-once guarantee.
+    """
+    receipt_id = _retell_receipt_id(call_id, "completion")
+    claimed = sb.table("webhook_jobs").upsert({
+        "id": receipt_id, "source": "retell", "payload": raw_payload,
+        "status": "processing", "attempts": 1,
+    }, on_conflict="id", ignore_duplicates=True).execute()
+    if claimed.data:
+        return receipt_id
+    rows = sb.table("webhook_jobs").select("status").eq("id", receipt_id).limit(1).execute().data
+    if rows and rows[0].get("status") == "done":
+        return None
+    # Includes an empty result: an unconfirmed insert is not a successful claim.
+    raise RuntimeError("Retell completion is in progress or requires operator recovery")
+
+
+def _retell_nonconversation_status(event: AICallResultEvent, call_data: dict) -> Optional[str]:
+    disposition = event.disposition.value
+    if disposition in {"no_answer", "voicemail"}:
+        return disposition
+    return {
+        "dial_no_answer": "no_answer", "dial_busy": "no_answer",
+        "dial_failed": "no_answer", "voicemail_reached": "voicemail",
+    }.get(call_data.get("disconnection_reason", ""))
+
+
+def _refine_retell_lead_status(sb: Any, event: AICallResultEvent) -> None:
+    """Apply analyzed provider outcomes without recounting calls or regressing deals."""
+    new_status = {
+        "appointment_set": "appointment_set", "callback": "callback",
+        "wrong_number": "dead", "not_interested": "contacted",
+        "hot": "hot", "warm": "warm", "no_answer": "no_answer", "voicemail": "voicemail",
+    }.get(event.disposition.value)
+    if not new_status or not event.lead_id:
+        return
+    rows = sb.table("leads").select("status").eq("id", event.lead_id).limit(1).execute().data
+    current_status = rows[0].get("status") if rows else None
+    if current_status in {"contacted", "hot", "warm", "callback", "no_answer", "voicemail"}:
+        sb.table("leads").update({"status": new_status}).eq("id", event.lead_id).eq("status", current_status).execute()
+
+
+def _record_retell_nonconversation(sb: Any, event: AICallResultEvent, status: str) -> None:
+    lead = sb.table("leads").select("contact_attempts").eq("id", event.lead_id).single().execute().data
+    if not lead:
+        raise RuntimeError("Retell lead could not be found")
+    saved = sb.table("leads").update({
+        "status": status, "contact_attempts": (lead.get("contact_attempts") or 0) + 1,
+        "last_contact_date": datetime.now(timezone.utc).date().isoformat(),
+    }).eq("id", event.lead_id).execute()
+    if not saved.data:
+        raise RuntimeError("Retell call outcome was not confirmed")
+
+
+async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) -> None:
+    """Persist each final event, then permit only one completion attempt per call."""
+    sb = _get_supabase()
+    if sb is None:
+        raise RuntimeError("Supabase is required to persist Retell completion")
+    if not event.call_id:
+        raise ValueError("Retell completion requires a call ID")
     call_data = raw_payload.get("call", {})
-    raw_transcript = call_data.get("transcript")
-    metadata = call_data.get("metadata", {})
+    event_type = raw_payload.get("event") or raw_payload.get("event_type") or "completion"
+    received_at = datetime.now(timezone.utc).isoformat()
+    # These completed receipt rows archive provider details only. The distinct
+    # completion receipt below tracks the one attempt to perform side effects.
+    archived = sb.table("webhook_jobs").upsert({
+        "id": _retell_receipt_id(event.call_id, f"event:{event_type}"),
+        "source": "retell", "payload": raw_payload, "status": "done",
+        "processed_at": received_at,
+    }, on_conflict="id").execute()
+    if not archived.data:
+        raise RuntimeError("Retell event persistence was not confirmed")
+
+    existing = sb.table("ai_call_records").select("raw_payload,transcript").eq("call_id", event.call_id).limit(1).execute().data
+    previous = existing[0] if existing else {}
+    previous_event = (previous.get("raw_payload") or {}).get("event") or (previous.get("raw_payload") or {}).get("event_type")
+    analyzed = event_type in {"call_analyzed", "retell.call.analyzed"}
+    keep_previous_analysis = previous_event in {"call_analyzed", "retell.call.analyzed"} and not analyzed
+    transcript = previous.get("transcript", "") if keep_previous_analysis else ""
+    try:
+        transcript_payload = _build_retell_transcript_payload(
+            sb, event.call_id, event.lead_id, call_data.get("transcript"),
+        )
+    except ValueError:
+        transcript_payload = None
+    if transcript_payload and not keep_previous_analysis:
+        transcript = transcript_payload["raw_transcript"]
+        stored = sb.table("call_transcripts").upsert(transcript_payload, on_conflict="call_id").execute()
+        if not stored.data:
+            raise RuntimeError("Retell transcript persistence was not confirmed")
+
+    record = {
+        "call_id": event.call_id, "lead_id": event.lead_id or None,
+        "provider": "retell", "phone_number": call_data.get("to_number", ""),
+        "status": "completed",
+        "raw_payload": previous.get("raw_payload") if keep_previous_analysis else raw_payload,
+    }
+    if not keep_previous_analysis:
+        record["disposition"] = (_retell_nonconversation_status(event, call_data) if not transcript else None) or event.disposition.value
+        if "duration_ms" in call_data:
+            record["duration_sec"] = event.duration_seconds
+        if getattr(event, "recording_url", None):
+            record["recording_url"] = event.recording_url
+        answers = getattr(event, "qualification", None)
+        if analyzed and answers:
+            for column, value in {
+                "timeline_to_sell": answers.timeline_to_sell,
+                "property_condition": answers.property_condition,
+                "occupancy": answers.occupancy,
+                "asking_price": answers.asking_price,
+                "mortgage_balance": answers.mortgage_balance,
+                "call_notes": answers.notes,
+            }.items():
+                if value is not None and value != "":
+                    record[column] = value
+    if transcript:
+        record["transcript"] = transcript
+    stored = sb.table("ai_call_records").upsert(record, on_conflict="call_id").execute()
+    if not stored.data:
+        raise RuntimeError("Retell call persistence was not confirmed")
+    if not event.lead_id:
+        return  # Preserve unlinked provider calls without attempting lead automation.
+    nonconversation_status = _retell_nonconversation_status(event, call_data)
+    if not transcript and not nonconversation_status:
+        if event_type in {"call_ended", "retell.call.completed"}:
+            return  # The analyzed callback can supply the final conversation.
+        raise RuntimeError("Retell analyzed call has no usable transcript")
+
+    receipt_id = _claim_retell_completion(sb, event.call_id, raw_payload)
+    if receipt_id is None:
+        if analyzed:
+            _refine_retell_lead_status(sb, event)
+        return
+    try:
+        async def complete(_payload: dict) -> None:
+            if transcript:
+                await _run_retell_completion(sb, event, raw_payload, transcript)
+            else:
+                _record_retell_nonconversation(sb, event, nonconversation_status)
+        await _run_job(complete, raw_payload)
+        stored = sb.table("webhook_jobs").update({
+            "status": "done", "processed_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", receipt_id).execute()
+        if not stored.data:
+            raise RuntimeError("Retell completion status was not confirmed")
+    except Exception as exc:
+        try:
+            sb.table("webhook_jobs").update({
+                "status": "failed", "last_error": str(exc)[:2000],
+            }).eq("id", receipt_id).execute()
+        except Exception:
+            logger.exception("Could not park failed Retell completion receipt")
+        raise
+
+
+async def _run_retell_completion(sb: Any, event: AICallResultEvent, raw_payload: dict, raw_transcript: str) -> None:
+    """Run qualification and lead automation after acquiring a durable call claim."""
+    metadata = raw_payload.get("call", {}).get("metadata", {})
     property_address = metadata.get("property_address", "")
     owner_name = metadata.get("owner_name", "")
-
-    if sb and event.lead_id:
-        try:
-            payload = _build_retell_transcript_payload(
-                sb,
-                event.call_id,
-                event.lead_id,
-                raw_transcript,
-            )
-            sb.table("call_transcripts").upsert(payload, on_conflict="call_id").execute()
-        except Exception as exc:
-            logger.error(f"[retell] final transcript store failed: {exc}")
 
     # 2. Run LLM qualification
     qual = None
@@ -867,6 +1013,7 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
         )
     except Exception as exc:
         logger.error(f"[retell] Qualification analysis failed: {exc}")
+        raise
 
     # 3 & 4. Persist qualification_results + update ai_call_records
     qual_record_id = None
@@ -893,6 +1040,8 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
                 "key_quotes":          qual.key_quotes,
             }).execute()
             qual_record_id = (qual_resp.data or [{}])[0].get("id")
+            if not qual_record_id:
+                raise RuntimeError("Retell qualification persistence was not confirmed")
 
             # Update ai_call_records
             sb.table("ai_call_records").update({
@@ -910,6 +1059,7 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
             }).eq("call_id", event.call_id).execute()
         except Exception as exc:
             logger.error(f"[retell] Qual persistence failed: {exc}")
+            raise
 
     if not sb or not event.lead_id:
         return
@@ -927,6 +1077,11 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
             "appointment_set": "appointment_set",
         }
         new_status = DISP_TO_STATUS.get(event.disposition.value, "contacted")
+        if event.disposition.value == "unknown":
+            if qual and qual.is_hot:
+                new_status = "hot"
+            elif qual and qual.is_warm:
+                new_status = "warm"
 
         lead_resp = sb.table("leads").select("contact_attempts,property_address,owner_first_name,owner_last_name,estimated_arv,mao").eq("id", event.lead_id).single().execute()
         lead_data = lead_resp.data or {}
@@ -960,22 +1115,25 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
                 mao=mao,
             )
 
-        # 7. WARM automation — enroll in Launch Control Day-1 SMS sequence
-        elif qual and qual.is_warm and event.lead_id:
-            try:
-                lc = LaunchControlAdapter()
-                from tools.launch_control_adapter import LaunchControlContact
-                await lc.add_contact_to_campaign(LaunchControlContact(
+        # 7. WARM automation — only attempt a configured SMS integration.
+        elif qual and qual.is_warm and event.lead_id and _launch_control_configured():
+            lc = LaunchControlAdapter()
+            from tools.launch_control_adapter import LaunchControlContact
+            phone = event.raw_payload.get("call", {}).get("to_number", "")
+            if phone:
+                enrolled = await lc.add_contact_to_campaign(LaunchControlContact(
                     lead_id=event.lead_id,
                     first_name=owner.split()[0] if owner else "",
-                    last_name=" ".join(owner.split()[1:]) if owner else "",
-                    phone=event.raw_payload.get("call", {}).get("to_number", ""),
+                    city="",
+                    phone=phone,
                     property_address=address,
                     campaign_name=settings.launch_control_default_campaign,
                 ))
-                logger.info(f"[retell] WARM lead {event.lead_id} enrolled in Launch Control")
-            except Exception as exc:
-                logger.error(f"[retell] Launch Control enrollment failed: {exc}")
+                if not enrolled:
+                    raise RuntimeError("Configured WARM SMS enrollment failed")
+                logger.info("Retell WARM lead enrolled in Launch Control")
+            else:
+                logger.warning("Retell WARM SMS skipped: no contact phone")
 
         # 8. Audit log
         _audit(sb, "call", event.call_id, "call_completed", new_value={
@@ -986,6 +1144,17 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
 
     except Exception as exc:
         logger.error(f"[retell] call_completed processing failed: {exc}")
+        raise
+
+
+def _launch_control_configured() -> bool:
+    if settings.launch_control_mode == "csv_sync":
+        return True
+    if settings.launch_control_mode == "api_direct":
+        return bool(settings.launch_control_api_key)
+    if settings.launch_control_mode == "zapier_webhook":
+        return bool(settings.launch_control_zapier_hook_url)
+    return False
 
 
 async def _trigger_hot_lead_automation(
@@ -1005,6 +1174,8 @@ async def _trigger_hot_lead_automation(
     3. Trigger SMS follow-up via Launch Control
     4. Send push notification to admin
     """
+    errors: list[str] = []
+
     # 1. Create acquisition task
     asking_str = f"${qual.asking_price:,.0f}" if qual.asking_price else "Unknown"
     offer_str  = (
@@ -1029,7 +1200,7 @@ async def _trigger_hot_lead_automation(
         + (f"Key quotes:\n" + "\n".join(f'  • "{q}"' for q in qual.key_quotes[:3]) if qual.key_quotes else "")
     )
     try:
-        sb.table("tasks").insert({
+        task_result = sb.table("tasks").insert({
             "lead_id":     lead_id,
             "title":       f"🔥 HOT LEAD — {address}",
             "description": task_description,
@@ -1037,51 +1208,48 @@ async def _trigger_hot_lead_automation(
             "status":      "pending",
             "type":        "acquisition_review",
         }).execute()
+        if not task_result.data:
+            raise RuntimeError("Task persistence was not confirmed")
     except Exception as exc:
+        errors.append("task creation")
         logger.error(f"[retell] HOT task creation failed: {exc}")
 
     # 2. Pause AI dialing (already set on lead — confirm here)
     try:
-        sb.table("leads").update({"ai_calling_paused": True}).eq("id", lead_id).execute()
+        pause_result = sb.table("leads").update({"ai_calling_paused": True}).eq("id", lead_id).execute()
+        if not pause_result.data:
+            raise RuntimeError("Dialing pause was not confirmed")
     except Exception as exc:
+        errors.append("dialing pause")
         logger.error(f"[retell] Pause dialing update failed: {exc}")
 
-    # 3. Trigger SMS (immediate — Day 1)
-    try:
-        # Resolve the seller's phone from the lead record (primary number).
-        lead_phone = ""
+    # 3. Attempt SMS only when its provider is configured and a phone is present.
+    if _launch_control_configured():
         try:
-            lead_resp = (
-                sb.table("leads")
-                .select("owner_phone_1")
-                .eq("id", lead_id)
-                .single()
-                .execute()
-            )
+            lead_resp = sb.table("leads").select("owner_phone_1").eq("id", lead_id).single().execute()
             lead_phone = (lead_resp.data or {}).get("owner_phone_1") or ""
+            if lead_phone:
+                from tools.launch_control_adapter import LaunchControlContact
+                lc = LaunchControlAdapter()
+                enrolled = await lc.add_contact_to_campaign(LaunchControlContact(
+                    lead_id=lead_id,
+                    first_name=owner.split()[0] if owner else "",
+                    city="",
+                    phone=lead_phone,
+                    property_address=address,
+                    campaign_name=settings.launch_control_default_campaign + " HOT",
+                ))
+                if not enrolled:
+                    raise RuntimeError("SMS enrollment was not confirmed")
+            else:
+                logger.warning("Retell HOT SMS skipped: no contact phone")
         except Exception as exc:
-            logger.warning(f"[retell] HOT SMS could not resolve lead phone for {lead_id}: {exc}")
-
-        if not lead_phone:
-            logger.warning(f"[retell] HOT SMS skipped — no phone on lead {lead_id}")
-        else:
-            from tools.launch_control_adapter import LaunchControlAdapter, LaunchControlContact
-            lc = LaunchControlAdapter()
-            hot_campaign = settings.launch_control_default_campaign + " HOT"
-            await lc.add_contact_to_campaign(LaunchControlContact(
-                lead_id=lead_id,
-                first_name=owner.split()[0] if owner else "",
-                last_name=" ".join(owner.split()[1:]) if owner else "",
-                phone=lead_phone,
-                property_address=address,
-                campaign_name=hot_campaign,
-            ))
-    except Exception as exc:
-        logger.error(f"[retell] HOT SMS trigger failed: {exc}")
+            errors.append("SMS enrollment")
+            logger.error(f"[retell] HOT SMS trigger failed: {exc}")
 
     # 4. Push notification (DB insert — picked up by useNotifications real-time)
     try:
-        sb.table("app_notifications").insert({
+        notification_result = sb.table("app_notifications").insert({
             "recipient_role": "admin",
             "type":           "hot_lead",
             "title":          f"🔥 HOT Lead — {address}",
@@ -1100,23 +1268,35 @@ async def _trigger_hot_lead_automation(
                 "offer_range_high":    qual.offer_range_high,
             },
         }).execute()
+        if not notification_result.data:
+            raise RuntimeError("Notification persistence was not confirmed")
     except Exception as exc:
+        errors.append("in-app notification")
         logger.error(f"[retell] HOT notification insert failed: {exc}")
 
-    # 5. Email Alert (Immediate)
+    # 5. Email remains optional. A dry run is not claimed as a delivered alert.
     if settings.notification_email:
         try:
             email_client = EmailClient()
-            subject = f"🔥 HOT LEAD ALERT — {address}"
-            email_client.send(
-                to_email=settings.notification_email,
-                subject=subject,
-                body=task_description,
-                html_body=f"<h2>{subject}</h2><pre>{task_description}</pre><p><a href='https://wholesale-os.com/acquisitions?lead={lead_id}'>View Lead in Dashboard</a></p>",
-            )
-            logger.info(f"[retell] HOT lead email alert sent to {settings.notification_email}")
+            if email_client._configured:
+                subject = f"🔥 HOT LEAD ALERT — {address}"
+                sent = email_client.send(
+                    to_email=settings.notification_email,
+                    subject=subject,
+                    body=task_description,
+                    html_body=f"<h2>{subject}</h2><pre>{task_description}</pre>",
+                )
+                if not sent:
+                    raise RuntimeError("Email delivery was not confirmed")
+                logger.info("Retell HOT lead email alert sent")
+            else:
+                logger.info("Retell HOT email skipped: provider not configured")
         except Exception as exc:
+            errors.append("email alert")
             logger.error(f"[retell] HOT lead email alert failed: {exc}")
+
+    if errors:
+        raise RuntimeError("HOT automation failed: " + "; ".join(errors))
 
     logger.info(f"[retell] HOT automation complete for lead {lead_id}")
 
@@ -1220,7 +1400,7 @@ async def retell_call_webhook(
     Responds immediately with 200; all Supabase writes happen in the background.
     """
     body = await request.body()
-    _require_hmac_signature(body, x_retell_signature, RETELL_WEBHOOK_SECRET, source="retell/call")
+    _require_hmac_signature(body, x_retell_signature, _webhook_setting("RETELL_WEBHOOK_SECRET") or settings.retell_api_key, source="retell/call")
 
     import json as _json
     try:
@@ -1254,7 +1434,7 @@ async def air_ai_call_webhook(
     """
     Receive a call completion event from Air AI.
     """
-    if not _verify_static_secret(x_webhook_secret, AIR_AI_WEBHOOK_SECRET, source="air_ai"):
+    if not _verify_static_secret(x_webhook_secret, _webhook_setting("AIR_AI_WEBHOOK_SECRET"), source="air_ai"):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -1296,7 +1476,7 @@ async def vapi_webhook(
       Server URL: https://<your-domain>/webhooks/vapi
       Secret:     set VAPI_WEBHOOK_SECRET in your .env
     """
-    if not _verify_static_secret(x_vapi_secret, VAPI_WEBHOOK_SECRET, source="vapi"):
+    if not _verify_static_secret(x_vapi_secret, _webhook_setting("VAPI_WEBHOOK_SECRET"), source="vapi"):
         raise HTTPException(401, "Invalid VAPI webhook secret")
 
     payload = await request.json()
@@ -1565,9 +1745,9 @@ FACEBOOK_WEBHOOK_VERIFY_TOKEN = os.getenv("FACEBOOK_WEBHOOK_VERIFY_TOKEN", "")
 
 @router.get("/facebook/lead")
 async def facebook_lead_webhook_verify(
-    hub_mode: str = "",
-    hub_verify_token: str = "",
-    hub_challenge: str = "",
+    hub_mode: str = Query(default="", alias="hub.mode"),
+    hub_verify_token: str = Query(default="", alias="hub.verify_token"),
+    hub_challenge: str = Query(default="", alias="hub.challenge"),
 ):
     """
     Facebook webhook verification challenge (GET).
@@ -1575,10 +1755,12 @@ async def facebook_lead_webhook_verify(
     """
     from tools.facebook_ads_adapter import FacebookAdsAdapter
     adapter = FacebookAdsAdapter(
-        app_secret=FACEBOOK_APP_SECRET,
+        app_secret=_webhook_setting("FACEBOOK_APP_SECRET"),
         access_token="",
-        webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
+        webhook_verify_token=_webhook_setting("FACEBOOK_WEBHOOK_VERIFY_TOKEN"),
     )
+    if not _webhook_setting("FACEBOOK_WEBHOOK_VERIFY_TOKEN"):
+        raise HTTPException(503, "Webhook verification token not configured")
     challenge = adapter.verify_webhook_challenge(hub_mode, hub_verify_token, hub_challenge)
     if challenge is None:
         raise HTTPException(status_code=403, detail="Verification token mismatch")
@@ -1600,27 +1782,18 @@ async def facebook_lead_webhook(
     """
     payload_bytes = await request.body()
 
-    # Verify HMAC signature
-    if FACEBOOK_APP_SECRET:
-        from tools.facebook_ads_adapter import FacebookAdsAdapter
-        adapter = FacebookAdsAdapter(
-            app_secret=FACEBOOK_APP_SECRET,
-            access_token=os.getenv("FACEBOOK_ACCESS_TOKEN", ""),
-            webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
-            ad_account_id=os.getenv("FACEBOOK_AD_ACCOUNT_ID", ""),
-        )
-        sig = x_hub_signature_256 or ""
-        if not adapter.verify_webhook_signature(payload_bytes, sig):
-            raise HTTPException(status_code=403, detail="Invalid Facebook signature")
-    else:
-        # Import adapter for parsing even without signature check
-        from tools.facebook_ads_adapter import FacebookAdsAdapter
-        adapter = FacebookAdsAdapter(
-            app_secret="",
-            access_token=os.getenv("FACEBOOK_ACCESS_TOKEN", ""),
-            webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
-            ad_account_id=os.getenv("FACEBOOK_AD_ACCOUNT_ID", ""),
-        )
+    # Facebook lead ingestion always requires a configured signing secret.
+    if not _webhook_setting("FACEBOOK_APP_SECRET"):
+        raise HTTPException(503, "Webhook secret not configured")
+    from tools.facebook_ads_adapter import FacebookAdsAdapter
+    adapter = FacebookAdsAdapter(
+        app_secret=_webhook_setting("FACEBOOK_APP_SECRET"),
+        access_token=settings.facebook_access_token,
+        webhook_verify_token=_webhook_setting("FACEBOOK_WEBHOOK_VERIFY_TOKEN"),
+        ad_account_id=settings.facebook_ad_account_id,
+    )
+    if not adapter.verify_webhook_signature(payload_bytes, x_hub_signature_256 or ""):
+        raise HTTPException(403, "Invalid Facebook signature")
 
     import json as _json
     try:
@@ -1653,16 +1826,18 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
 
     lead_data_raw = adapter.fetch_lead_form_data(entry.leadgen_id)
     if not lead_data_raw:
-        logger.error(f"[Facebook] Could not fetch lead data for {entry.leadgen_id}")
-        return
+        raise RuntimeError("Facebook lead data could not be fetched")
 
     fields = normalize_facebook_fields(lead_data_raw.fields)
     scores = _compute_scores_from_answers(fields)
 
     supabase = get_supabase_client()
+    if supabase is None:
+        raise RuntimeError("Supabase is required to persist Facebook leads")
 
     # Build lead record
     lead_payload = {
+        "id": str(uuid5(NAMESPACE_URL, f"wholesaleos:facebook:lead:{entry.leadgen_id}")),
         "owner_first_name": fields.get("first_name", ""),
         "owner_last_name": fields.get("last_name", ""),
         "owner_phone_1": fields.get("phone", ""),
@@ -1699,15 +1874,21 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         except Exception:
             pass
 
-    try:
-        resp = supabase.table("leads").insert(lead_payload).execute()
-        lead_id = resp.data[0]["id"] if resp.data else None
-    except Exception as exc:
-        logger.error(f"[Facebook] Lead insert failed: {exc}")
+    # Recognize previously imported records from before deterministic IDs.
+    existing = supabase.table("leads").select("id").eq(
+        "internal_notes", lead_payload["internal_notes"],
+    ).limit(1).execute().data
+    if existing:
         return
-
-    if not lead_id:
-        return
+    resp = supabase.table("leads").upsert(
+        lead_payload, on_conflict="id", ignore_duplicates=True,
+    ).execute()
+    if not resp.data:
+        existing = supabase.table("leads").select("id").eq("id", lead_payload["id"]).limit(1).execute().data
+        if existing:
+            return  # A concurrent or retried delivery already saved the lead.
+        raise RuntimeError("Facebook lead persistence was not confirmed")
+    lead_id = resp.data[0]["id"]
 
     # Update campaign lead count
     if lead_payload.get("ad_campaign_id"):
@@ -1718,12 +1899,7 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         except Exception:
             pass
 
-    # Run qualification agent
-    try:
-        from agents.qualification_agent import QualificationAgent
-        QualificationAgent().run(lead_id=lead_id)
-    except Exception as exc:
-        logger.error(f"[Facebook] Qualification failed for {lead_id}: {exc}")
+    # Form answers were deterministically scored before insertion above.
 
     # HOT lead alert
     total_score = sum([
@@ -1775,7 +1951,7 @@ async def _process_retell(payload: dict) -> None:
 async def _process_retell_call(payload: dict) -> None:
     event = AICallingAdapter.parse_webhook(payload, provider="retell")
     if event is not None:
-        await _handle_ai_call_result(event, "retell")
+        await _retell_call_completed(event, payload)
 
 
 async def _process_air_ai(payload: dict) -> None:
@@ -1793,10 +1969,10 @@ async def _process_vapi(payload: dict) -> None:
 async def _process_facebook(payload: dict) -> None:
     from tools.facebook_ads_adapter import FacebookAdsAdapter
     adapter = FacebookAdsAdapter(
-        app_secret=FACEBOOK_APP_SECRET,
-        access_token=os.getenv("FACEBOOK_ACCESS_TOKEN", ""),
-        webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
-        ad_account_id=os.getenv("FACEBOOK_AD_ACCOUNT_ID", ""),
+        app_secret=_webhook_setting("FACEBOOK_APP_SECRET"),
+        access_token=settings.facebook_access_token,
+        webhook_verify_token=_webhook_setting("FACEBOOK_WEBHOOK_VERIFY_TOKEN"),
+        ad_account_id=settings.facebook_ad_account_id,
     )
     for entry in adapter.parse_lead_webhook(payload):
         if entry.leadgen_id:
@@ -1817,31 +1993,20 @@ def get_webhook_processors() -> dict:
 
 
 async def _process_inline(source: str, payload: dict) -> None:
-    """Process a webhook synchronously within the request.
+    """Await processing and return retryable failure when an error escapes.
 
-    The Vercel Hobby plan does not allow a minute-level Cron to drain a queue,
-    so each webhook does its work inline and returns 200 afterwards. Every
-    handler is well under the 60s function limit, and HOT-lead automation is
-    awaited via ``_run_job``'s ``PENDING_AUTOMATIONS`` context so it completes
-    before the response is sent (a detached task would die when the serverless
-    function freezes).
-
-    Failures are logged and swallowed so the provider still receives a 200 — it
-    already delivered a valid, signature-verified event, and surfacing a 500
-    would only trigger provider retry storms. This matches the original
-    ``BackgroundTasks`` semantics (errors logged, never surfaced).
-
-    The durable ``webhook_jobs`` queue + ``/_worker/drain`` endpoint remain in
-    the codebase for a future Pro-plan/pg_cron drain, but are off the hot path.
+    Retell completion receipts guard repeated side effects. Other processors
+    retain their existing nested error handling; this is not a durable worker.
     """
     processor = get_webhook_processors().get(source)
     if processor is None:
-        logger.error(f"[webhook] no inline processor for source={source!r}")
-        return
+        logger.error("No webhook processor for source=%s", source)
+        raise HTTPException(503, "Webhook processor unavailable", headers={"Retry-After": "30"})
     try:
         await _run_job(processor, payload)
-    except Exception as exc:  # noqa: BLE001 — keep the webhook 200
-        logger.error(f"[webhook] inline processing failed source={source!r}: {exc}")
+    except Exception as exc:
+        logger.exception("Webhook processing failed source=%s", source)
+        raise HTTPException(503, "Webhook processing failed; retry later", headers={"Retry-After": "30"}) from exc
 
 
 @router.api_route("/_worker/drain", methods=["GET", "POST"])
@@ -1849,7 +2014,7 @@ async def drain_webhook_queue(
     request: Request,
     authorization: str = Header(default=""),
     x_worker_secret: str = Header(default=""),
-    limit: int = 10,
+    limit: int = Query(default=10, ge=1, le=100),
 ) -> dict:
     """
     Process pending webhook jobs. Invoked once a minute by Vercel Cron
@@ -1857,9 +2022,10 @@ async def drain_webhook_queue(
     `Authorization: Bearer <CRON_SECRET>`; we also accept an `x-worker-secret`
     header for manual/local invocation.
     """
-    if CRON_SECRET:
-        bearer = authorization[7:] if authorization.lower().startswith("bearer ") else ""
-        if not (hmac.compare_digest(bearer, CRON_SECRET)
-                or hmac.compare_digest(x_worker_secret, CRON_SECRET)):
-            raise HTTPException(401, "Unauthorized")
+    if not CRON_SECRET:
+        raise HTTPException(503, "Worker secret not configured")
+    bearer = authorization[7:] if authorization.lower().startswith("bearer ") else ""
+    if not (hmac.compare_digest(bearer, CRON_SECRET)
+            or hmac.compare_digest(x_worker_secret, CRON_SECRET)):
+        raise HTTPException(401, "Unauthorized")
     return await _drain_queue(limit=limit)

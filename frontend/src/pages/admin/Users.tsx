@@ -24,7 +24,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 export function AdminUsers() {
-  const { isAdmin, loading: profileLoading } = useProfile();
+  const { isAdmin, loading: profileLoading, error: profileError, refetch: retryProfile } = useProfile();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,10 +35,10 @@ export function AdminUsers() {
   const [denyReason, setDenyReason] = useState('');
 
   useEffect(() => {
-    if (!profileLoading && !isAdmin) {
-      navigate('/');
+    if (!profileLoading && !profileError && !isAdmin) {
+      navigate('/', { replace: true });
     }
-  }, [isAdmin, profileLoading, navigate]);
+  }, [isAdmin, profileLoading, profileError, navigate]);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -50,7 +50,9 @@ export function AdminUsers() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    if (!profileLoading && !profileError && isAdmin) void fetchUsers();
+  }, [fetchUsers, isAdmin, profileLoading, profileError]);
 
   const setStatus = async (userId: string, status: string, reason?: string) => {
     setActionLoading(userId);
@@ -102,6 +104,13 @@ export function AdminUsers() {
   if (profileLoading) {
     return <div className="p-8 text-center text-gray-400">Loading...</div>;
   }
+  if (profileError) {
+    return <div role="alert" className="p-8 text-center space-y-3">
+      <p>We could not verify your administrator access. Please retry.</p>
+      <button onClick={retryProfile} className="underline">Retry access check</button>
+    </div>;
+  }
+  if (!isAdmin) return null;
 
   return (
     <div className="space-y-5">

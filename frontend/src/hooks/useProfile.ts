@@ -20,6 +20,7 @@ export interface UserProfile {
 interface UseProfileResult {
   profile: UserProfile | null;
   loading: boolean;
+  error: string | null;
   isAdmin: boolean;
   isApproved: boolean;
   isPending: boolean;
@@ -27,14 +28,20 @@ interface UseProfileResult {
 }
 
 export function useProfile(): UseProfileResult {
-  const [userId, setUserId] = useState<string | null>(null);
+  // undefined means authentication is still initializing; null means signed out.
+  const [userId, setUserId] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     let active = true;
+    let receivedAuthEvent = false;
     void supabase.auth.getSession().then(({ data }) => {
-      if (active) setUserId(data.session?.user.id ?? null);
+      if (active && !receivedAuthEvent) setUserId(data.session?.user.id ?? null);
+    }).catch(() => {
+      if (active && !receivedAuthEvent) setUserId(null);
     });
     // Keep this callback synchronous: querying Supabase here can deadlock auth.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      receivedAuthEvent = true;
       setUserId(session?.user.id ?? null);
     });
     return () => { active = false; subscription.unsubscribe(); };
@@ -51,7 +58,8 @@ export function useProfile(): UseProfileResult {
   const profile = query.data ?? null;
   return {
     profile,
-    loading: query.isLoading,
+    loading: userId === undefined || (!!userId && query.isPending),
+    error: query.error?.message ?? null,
     isAdmin: profile?.role === 'admin' && profile.status === 'approved',
     isApproved: profile?.status === 'approved',
     isPending: profile?.status === 'pending',

@@ -1,4 +1,5 @@
 import os
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -173,12 +174,23 @@ settings = Settings()
 
 
 def load_settings_from_rows(rows: list) -> None:
-    """Override settings from app_settings table rows [{key, value}].
-    Env vars take priority — only fills in blanks."""
+    """Load typed saved settings, preserving explicitly configured environment values."""
     for row in rows:
-        attr = row.get("key", "").lower()
-        val = row.get("value", "")
-        if not val:
+        attr = str(row.get("key", "")).lower()
+        value = row.get("value", "")
+        value_type = Settings.__annotations__.get(attr)
+        if value_type is None or value is None or str(value).strip() == "":
             continue
-        if hasattr(settings, attr) and not getattr(settings, attr):
-            setattr(settings, attr, val)
+        if os.getenv(attr.upper(), "").strip():
+            continue
+        try:
+            if value_type is bool:
+                normalized = str(value).strip().lower()
+                if normalized not in {"true", "false", "1", "0"}:
+                    raise ValueError("invalid boolean")
+                value = normalized in {"true", "1"}
+            else:
+                value = value_type(value)
+            setattr(settings, attr, value)
+        except (TypeError, ValueError):
+            logging.getLogger(__name__).warning("Ignoring invalid saved setting %s", attr)

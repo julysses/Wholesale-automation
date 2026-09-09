@@ -1,7 +1,7 @@
 import { useDeals } from '@/hooks/useDeals';
-import { useLeads } from '@/hooks/useLeads';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { getStageLabel } from '@/lib/utils';
 
 const STAGES = [
   'new', 'contacted', 'responding', 'offer_made',
@@ -26,17 +26,17 @@ const LABELS: Record<string, string> = {
 };
 
 export function PipelineChart() {
-  const { data: leadsData } = useLeads();
-  const { data: deals } = useDeals();
-
-  const leads = leadsData?.data ?? [];
-
-  // Count leads by status
-  const counts: Record<string, number> = {};
-  STAGES.forEach((s) => (counts[s] = 0));
-  leads.forEach((l) => {
-    if (counts[l.status] !== undefined) counts[l.status]++;
+  const { data: leadCounts, error } = useQuery({
+    queryKey: ['lead-stage-counts'],
+    queryFn: async () => Object.fromEntries(await Promise.all(STAGES.map(async stage => {
+      const { count, error } = await supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', stage);
+      if (error) throw error;
+      return [stage, count ?? 0];
+    }))),
+    staleTime: 60000,
   });
+  const { data: deals, error: dealsError } = useDeals();
+  const counts: Record<string, number> = Object.fromEntries(STAGES.map(stage => [stage, leadCounts?.[stage] ?? 0]));
 
   // Count deals by stage
   const dealStages = ['offer_made', 'under_contract', 'marketing_to_buyers', 'buyer_found', 'assigned', 'closed'];
@@ -46,17 +46,16 @@ export function PipelineChart() {
   });
 
   const chartData = STAGES.map((stage, i) => ({
+    stage,
     name: LABELS[stage] || stage,
     count: counts[stage] || 0,
     color: COLORS[i],
-  })).filter((d) => d.count > 0 || ['new', 'offer_made', 'closed'].includes(
-    STAGES[STAGES.indexOf(d.name)] || ''
-  ));
+  })).filter((d) => d.count > 0 || ['new', 'offer_made', 'closed'].includes(d.stage));
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
       <h3 className="text-base font-semibold text-gray-900 mb-4">Pipeline by Stage</h3>
-      <ResponsiveContainer width="100%" height={220}>
+      {error || dealsError ? <p role="alert" className="text-sm text-red-700">Pipeline counts could not be loaded.</p> : <ResponsiveContainer width="100%" height={220}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={false} />
           <XAxis type="number" tick={{ fontSize: 12 }} />
@@ -76,7 +75,7 @@ export function PipelineChart() {
             ))}
           </Bar>
         </BarChart>
-      </ResponsiveContainer>
+      </ResponsiveContainer>}
     </div>
   );
 }

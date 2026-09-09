@@ -291,8 +291,16 @@ function ApprovalGate({ userId }: { userId: string }) {
 }
 
 function AdminGate({ userId }: { userId: string }) {
-  const { data } = useAccessProfile(userId);
-  return data?.role === 'admin' ? <Outlet /> : <Navigate to="/" replace />;
+  const profile = useAccessProfile(userId);
+  if (profile.isPending) return <Spinner />;
+  if (profile.isError) {
+    return <div role="alert" className="p-8 text-center space-y-3">
+      <p>We could not verify your administrator access. Please retry.</p>
+      <button onClick={() => profile.refetch()} className="underline">Retry access check</button>
+    </div>;
+  }
+  return profile.data?.role === 'admin' && profile.data.status === 'approved'
+    ? <Outlet /> : <Navigate to="/" replace />;
 }
 
 export default function App() {

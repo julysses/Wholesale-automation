@@ -20,6 +20,9 @@ import {
   DollarSign, Home, User, MessageSquare, ExternalLink, Send,
   BarChart2, Hammer, Lightbulb, ShieldCheck, ArrowRight, Plus, Loader2, Download,
 } from 'lucide-react';
+import { queryAll, queryByIds } from '@/lib/queryAll';
+import { latestByLead } from '@/lib/qualificationHistory';
+import { sendOutreachBatches, outreachResultText, type OutreachSummary } from '@/lib/outreachBatches';
 import { formatDistanceToNow } from 'date-fns';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -125,71 +128,38 @@ interface OfferRec {
 
 function useAcquisitionLeads(classification: CallClassification) {
   return useQuery<AcquisitionLead[]>({
-    queryKey: ['acquisition_leads', classification],
+    queryKey: ['acquisition_leads'],
+    select: rows => rows.filter(row => row.qual?.classification === classification),
     queryFn: async () => {
-      // Get qualification results for this classification, newest first
-      const { data: quals, error } = await supabase
-        .from('qualification_results')
-        .select('*')
-        .eq('classification', classification)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error || !quals?.length) return [];
-
-      // Gather unique lead_ids
-      const leadIds = [...new Set(quals.map((q) => q.lead_id).filter(Boolean))];
-      if (!leadIds.length) return [];
-
-      const { data: leads } = await supabase
-        .from('leads')
-        .select('id, property_address, city, state, zip_code, owner_first_name, owner_last_name, seller_score, estimated_arv, mao, stack_name')
-        .in('id', leadIds);
-
-      // Get latest call record per lead
-      const { data: calls } = await supabase
-        .from('ai_call_records')
-        .select('lead_id, call_id, disposition, recording_url, duration_sec, created_at')
-        .in('lead_id', leadIds)
-        .order('created_at', { ascending: false });
-
-      // Get transcripts
-      const callIds = (calls ?? []).map((c) => c.call_id);
-      const { data: transcripts } = callIds.length
-        ? await supabase
-            .from('call_transcripts')
-            .select('call_id, raw_transcript')
-            .in('call_id', callIds)
-        : { data: [] };
+      // Pick each seller's latest result before filtering; old HOT results must not resurface.
+      const history = await queryAll<QualResult>((from, to) => supabase
+        .from('qualification_results').select('*')
+        .order('created_at', { ascending: false }).order('id').range(from, to));
+      const quals = latestByLead(history).filter(q => ['HOT', 'WARM'].includes(q.classification));
+      if (!quals.length) return [];
+      const leadIds = quals.map(q => q.lead_id).filter((id): id is string => !!id);
+      type CallRow = { lead_id: string; call_id: string; disposition: string; recording_url: string | null; duration_sec: number | null; created_at: string };
+      const [leads, calls] = await Promise.all([
+        queryByIds<AcquisitionLead>(leadIds, (ids, from, to) => supabase.from('leads')
+          .select('id, property_address, city, state, zip_code, owner_first_name, owner_last_name, seller_score, estimated_arv, mao, stack_name')
+          .in('id', ids).order('id').range(from, to)),
+        queryByIds<CallRow>(quals.map(q => q.call_id).filter(Boolean), (ids, from, to) => supabase.from('ai_call_records')
+          .select('lead_id, call_id, disposition, recording_url, duration_sec, created_at')
+          .in('call_id', ids).order('created_at', { ascending: false }).order('call_id').range(from, to)),
+      ]);
+      const transcripts = await queryByIds<{ call_id: string; raw_transcript: string }>(calls.map(c => c.call_id), (ids, from, to) => supabase
+        .from('call_transcripts').select('call_id, raw_transcript').in('call_id', ids).order('call_id').range(from, to));
 
       const transcriptMap = Object.fromEntries(
         (transcripts ?? []).map((t) => [t.call_id, t.raw_transcript])
       );
 
-      // Latest call per lead
-      type CallRow = { lead_id: string; call_id: string; disposition: string; recording_url: string | null; duration_sec: number | null; created_at: string };
-      const latestCall = Object.fromEntries(
-        (calls ?? []).reduce<[string, CallRow][]>((acc, c) => {
-          if (!acc.find(([id]) => id === c.lead_id)) {
-            acc.push([c.lead_id, c as CallRow]);
-          }
-          return acc;
-        }, [])
-      );
-
-      // Latest qual per lead
-      const latestQual = Object.fromEntries(
-        quals.reduce<[string, QualResult][]>((acc, q) => {
-          if (q.lead_id && !acc.find(([id]) => id === q.lead_id)) {
-            acc.push([q.lead_id, q]);
-          }
-          return acc;
-        }, [])
-      );
+      const callById = new Map(calls.map(call => [call.call_id, call]));
+      const latestQual = new Map(quals.map(qual => [qual.lead_id, qual]));
 
       return (leads ?? []).map((lead) => {
-        const call = latestCall[lead.id];
-        const qual = latestQual[lead.id];
+        const qual = latestQual.get(lead.id);
+        const call = qual ? callById.get(qual.call_id) : undefined;
         return {
           ...lead,
           latest_call_id: call?.call_id,
@@ -213,22 +183,24 @@ function useDealAnalyses() {
   return useQuery<DealAnalysis[]>({
     queryKey: ['deal_analyses'],
     queryFn: async () => {
-      const { data: analyses } = await supabase
+      const { data: analyses, error } = await supabase
         .from('deal_analyses')
         .select('*')
         .eq('is_viable', true)
         .order('analyzed_at', { ascending: false })
         .limit(30);
+      if (error) throw error;
       if (!analyses?.length) return [];
 
       const leadIds = [...new Set(analyses.map((a) => a.lead_id).filter(Boolean))];
-      const { data: leads } = leadIds.length
+      const { data: leads, error: leadsError } = leadIds.length
         ? await supabase
             .from('leads')
             .select('id, property_address, owner_first_name, owner_last_name')
             .in('id', leadIds)
-        : { data: [] };
+        : { data: [], error: null };
 
+      if (leadsError) throw leadsError;
       const leadMap = Object.fromEntries((leads ?? []).map((l) => [l.id, l]));
       return analyses.map((a) => {
         const l = leadMap[a.lead_id ?? ''];
@@ -247,21 +219,23 @@ function useOfferRecs() {
   return useQuery<OfferRec[]>({
     queryKey: ['offer_recommendations'],
     queryFn: async () => {
-      const { data: recs } = await supabase
+      const { data: recs, error } = await supabase
         .from('offer_recommendations')
         .select('*')
         .order('generated_at', { ascending: false })
         .limit(20);
+      if (error) throw error;
       if (!recs?.length) return [];
 
       const leadIds = [...new Set(recs.map((r) => r.lead_id).filter(Boolean))];
-      const { data: leads } = leadIds.length
+      const { data: leads, error: leadsError } = leadIds.length
         ? await supabase
             .from('leads')
             .select('id, property_address, owner_first_name, owner_last_name')
             .in('id', leadIds)
-        : { data: [] };
+        : { data: [], error: null };
 
+      if (leadsError) throw leadsError;
       const leadMap = Object.fromEntries((leads ?? []).map((l) => [l.id, l]));
       return recs.map((r) => {
         const l = leadMap[r.lead_id ?? ''];
@@ -280,13 +254,14 @@ function useAppointments() {
   return useQuery<Appointment[]>({
     queryKey: ['upcoming_appointments'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('appointments')
         .select('*, lead:lead_id(property_address, owner_first_name, owner_last_name)')
         .in('status', ['scheduled', 'confirmed'])
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(20);
+      if (error) throw error;
       return (data ?? []) as Appointment[];
     },
     staleTime: 60000,
@@ -779,33 +754,26 @@ type Tab = 'hot' | 'warm' | 'deal_analysis' | 'negotiation' | 'appointments';
 export function Acquisitions() {
   const [tab, setTab] = useState<Tab>('hot');
   const [bulkSmsLoading, setBulkSmsLoading] = useState(false);
+  const [bulkSmsResult, setBulkSmsResult] = useState<OutreachSummary | null>(null);
   const [showApptModal, setShowApptModal] = useState(false);
   const [selectedLeadForAppt, setSelectedLeadForAppt] = useState<string | null>(null);
   const [newAppt, setNewAppt] = useState({ date: '', time: '', type: 'phone', notes: '' });
   const [submittingAppt, setSubmittingAppt] = useState(false);
 
-  const { data: hotLeads = [], isLoading: hotLoading }    = useAcquisitionLeads('HOT');
-  const { data: warmLeads = [], isLoading: warmLoading, refetch: refetchWarm }  = useAcquisitionLeads('WARM');
-  const { data: deals = [], isLoading: dealsLoading }     = useDealAnalyses();
-  const { data: offerRecs = [], isLoading: recsLoading }  = useOfferRecs();
-  const { data: appointments = [], refetch: refetchAppts }                       = useAppointments();
+  const { data: hotLeads = [], isLoading: hotLoading, error: hotError }    = useAcquisitionLeads('HOT');
+  const { data: warmLeads = [], isLoading: warmLoading, error: warmError, refetch: refetchWarm }  = useAcquisitionLeads('WARM');
+  const { data: deals = [], isLoading: dealsLoading, error: dealsError }     = useDealAnalyses();
+  const { data: offerRecs = [], isLoading: recsLoading, error: recsError }  = useOfferRecs();
+  const { data: appointments = [], error: apptsError, refetch: refetchAppts }                       = useAppointments();
 
   const handleBulkSMS = async () => {
+    if (bulkSmsLoading || bulkSmsResult || !warmLeads.length) return;
     if (!confirm(`Are you sure you want to send a follow-up SMS to all ${warmLeads.length} warm leads?`)) return;
     setBulkSmsLoading(true);
     try {
-      const resp = await apiFetch('/api/marketing/bulk-sms-warm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (resp.ok) {
-        alert('Bulk SMS sequence initiated successfully.');
-      } else {
-        alert('Failed to initiate bulk SMS.');
-      }
-    } catch (err) {
-      alert('Error: ' + err);
+      const result = await sendOutreachBatches('/api/marketing/bulk-sms-warm', 'lead_ids', warmLeads.map(lead => lead.id));
+      setBulkSmsResult(result);
+      alert(`SMS results: ${outreachResultText(result)}`);
     } finally {
       setBulkSmsLoading(false);
     }
@@ -827,6 +795,8 @@ export function Acquisitions() {
         }),
       });
       if (resp.ok) {
+        const saved = await resp.json();
+        if (saved.calendar_sync !== 'synced') alert('Appointment saved in WholesaleOS. External calendar sync is unavailable; add it to your calendar manually.');
         setShowApptModal(false);
         setNewAppt({ date: '', time: '', type: 'phone', notes: '' });
         setSelectedLeadForAppt(null);
@@ -851,6 +821,7 @@ export function Acquisitions() {
 
   return (
     <div className="space-y-5">
+      {(hotError || warmError || dealsError || recsError || apptsError) && <div role="alert" className="rounded-lg bg-red-50 p-3 text-red-700">Some acquisition data could not be loaded. Refresh before acting on these results.</div>}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Acquisitions</h1>
@@ -968,6 +939,9 @@ export function Acquisitions() {
 
       {tab === 'warm' && (
         <div className="space-y-3">
+          {bulkSmsResult && <div role={bulkSmsResult.interrupted ? 'alert' : 'status'} className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+            {outreachResultText(bulkSmsResult)} Bulk sending is locked for this page visit. Review activity before starting a new selection.
+          </div>}
           {!warmLoading && warmLeads.length > 0 && (
             <div className="flex justify-end gap-2 mb-2 flex-wrap">
               <button
@@ -982,7 +956,7 @@ export function Acquisitions() {
               </button>
               <button
                 onClick={handleBulkSMS}
-                disabled={bulkSmsLoading}
+                disabled={bulkSmsLoading || !!bulkSmsResult}
                 className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-50"
               >
                 {bulkSmsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

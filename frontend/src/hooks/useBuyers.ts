@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Buyer } from '@/types';
 import { toast } from 'sonner';
+import { queryAll } from '@/lib/queryAll';
 
 interface BuyersFilter {
   search?: string;
@@ -9,28 +10,36 @@ interface BuyersFilter {
   active?: boolean;
 }
 
+export type BuyerWrite = Omit<Partial<Buyer>, 'min_price' | 'max_price' | 'close_speed_days' | 'pof_amount'> & {
+  min_price?: number | null;
+  max_price?: number | null;
+  close_speed_days?: number | null;
+  pof_amount?: number | null;
+};
+
 export function useBuyers(filters: BuyersFilter = {}) {
   const { search, tier, active } = filters;
 
   return useQuery({
     queryKey: ['buyers', filters],
     queryFn: async () => {
-      let query = supabase
-        .from('buyers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      return queryAll<Buyer>((from, to) => {
+        let query = supabase
+          .from('buyers')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false });
 
-      if (tier) query = query.eq('tier', tier);
-      if (active !== undefined) query = query.eq('active', active);
-      if (search) {
-        query = query.or(
-          `first_name.ilike.%${search}%,last_name.ilike.%${search}%,company.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
-        );
-      }
+        if (tier) query = query.eq('tier', tier);
+        if (active !== undefined) query = query.eq('active', active);
+        if (search) {
+          query = query.or(
+            `first_name.ilike.%${search}%,last_name.ilike.%${search}%,company.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
+          );
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as Buyer[];
+        return query.range(from, to);
+      });
     },
     staleTime: 60000,
   });
@@ -39,7 +48,7 @@ export function useBuyers(filters: BuyersFilter = {}) {
 export function useCreateBuyer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (buyer: Partial<Buyer>) => {
+    mutationFn: async (buyer: BuyerWrite) => {
       const { data, error } = await supabase
         .from('buyers')
         .insert(buyer)
@@ -59,7 +68,7 @@ export function useCreateBuyer() {
 export function useUpdateBuyer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Buyer> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: BuyerWrite }) => {
       const { data, error } = await supabase
         .from('buyers')
         .update(updates)

@@ -436,8 +436,8 @@ function RetellStep({ onNext, onSkip, saved }: StepProps) {
       <KeyField envKey="RETELL_API_KEY" label="Retell API Key" description="From Retell dashboard → Settings → API Keys" example="key_..." docsUrl="https://app.retellai.com" docsLabel="Dashboard" value={vals.retell_api_key} onChange={set('retell_api_key')} />
       <KeyField envKey="RETELL_AGENT_ID" label="Agent ID" description="The ID of your Retell voice agent" example="agent_..." isSecret={false} value={vals.retell_agent_id} onChange={set('retell_agent_id')} />
       <KeyField envKey="RETELL_FROM_NUMBER" label="From Number" description="E.164 phone number registered in Retell" example="+15125550100" isSecret={false} value={vals.retell_from_number} onChange={set('retell_from_number')} />
-      <KeyField envKey="RETELL_WEBHOOK_SECRET" label="Webhook Secret" description="Set in Retell → Webhooks (verifies inbound events)" example="whsec_..." value={vals.retell_webhook_secret} onChange={set('retell_webhook_secret')} />
-      <WebhookCard path="/webhooks/retell/call_ended" label="Retell webhook URL:" />
+      <KeyField envKey="RETELL_WEBHOOK_SECRET" label="Webhook Verification API Key" description="Use the API key designated in Retell for webhook verification. Leave blank to use the Retell API Key above." example="Retell webhook verification API key" value={vals.retell_webhook_secret} onChange={set('retell_webhook_secret')} />
+      <WebhookCard path="/webhooks/retell" label="Retell webhook URL:" />
       <div className="flex gap-3">
         <Button variant="outline" onClick={onSkip} className="flex-1"><SkipForward className="h-4 w-4 mr-1" /> Skip</Button>
         <Button onClick={() => onNext(vals)} className="flex-1">Save & Next <ChevronRight className="h-4 w-4 ml-1" /></Button>

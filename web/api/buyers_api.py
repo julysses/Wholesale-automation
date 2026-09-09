@@ -15,12 +15,15 @@ Routes (all under /api/buyers):
 from __future__ import annotations
 
 import io
+import html
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from tools.buyer_intelligence_engine import (
@@ -69,6 +72,7 @@ class OutreachRequest(BaseModel):
     baths: float = 0.0
     condition: str = ""
     custom_message: str = ""         # overrides template if provided
+    custom_subject: str = ""
 
 
 class ClassifyRequest(BaseModel):
@@ -417,30 +421,36 @@ def match_deal_to_buyers(req: MatchRequest) -> dict:
 
 @router.post("/outreach/sms")
 async def send_sms_blast(req: OutreachRequest, background_tasks: BackgroundTasks) -> dict:
-    """Send a deal-blast SMS to the specified buyer IDs."""
-    background_tasks.add_task(_send_sms_blast, req)
-    return {
-        "status": "queued",
-        "recipient_count": len(req.buyer_ids),
-        "message": "SMS blast queued for delivery",
-    }
+    """Complete a bounded batch and report actual provider results."""
+    if not req.buyer_ids or len(req.buyer_ids) > 25:
+        raise HTTPException(422, "Send between 1 and 25 buyer IDs per batch.")
+    return await run_in_threadpool(_send_sms_blast, req)
 
 
-async def _send_sms_blast(req: OutreachRequest) -> None:
+def _send_sms_blast(req: OutreachRequest) -> dict:
     sb = _get_supabase()
+    if sb is None:
+        raise HTTPException(503, "Database not configured")
     from tools.sms_client import SMSClient
+    from schemas.outreach import OutreachChannel, OutreachMessage
+    from web.api.marketing_api import _contact_suppressed
     sms = SMSClient()
+    counts = {"sent_count": 0, "failed_count": 0, "skipped_count": 0, "dry_run_count": 0, "log_failed_count": 0}
+    buyer_ids = list(dict.fromkeys(req.buyer_ids))
 
-    for buyer_id in req.buyer_ids:
+    for buyer_id in buyer_ids:
+        delivery_recorded = False
         try:
             if sb:
-                buyer_resp = sb.table("buyers").select("first_name,last_name,phone,sms_opt_in").eq("id", buyer_id).single().execute()
+                buyer_resp = sb.table("buyers").select("first_name,last_name,phone,sms_opt_in,active").eq("id", buyer_id).single().execute()
                 buyer = buyer_resp.data or {}
             else:
                 buyer = {}
 
             phone = buyer.get("phone", "")
-            if not phone or not buyer.get("sms_opt_in", True):
+            if (not phone or buyer.get("sms_opt_in") is not True or buyer.get("active") is False
+                    or _contact_suppressed(sb, phone)):
+                counts["skipped_count"] += 1
                 continue
 
             name = f"{buyer.get('first_name','')} {buyer.get('last_name','')}".strip()
@@ -453,8 +463,16 @@ async def _send_sms_blast(req: OutreachRequest) -> None:
                 baths=req.baths,
             )
 
-            result = sms.send(to=phone, body=body)
-            status = "sent" if result else "failed"
+            if not re.search(r"reply\s+stop\b", body, re.IGNORECASE):
+                body += " Reply STOP to opt out."
+            message = OutreachMessage(
+                lead_id=buyer_id, channel=OutreachChannel.SMS,
+                body=body, compliance_cleared=True,
+            )
+            result = sms.send(message, phone)
+            status = "dry_run" if result and message.a2p_provider.endswith(":dry-run") else "sent" if result else "failed"
+            counts[f"{status}_count"] += 1
+            delivery_recorded = True
 
             if sb:
                 sb.table("buyer_outreach_log").insert({
@@ -464,43 +482,59 @@ async def _send_sms_blast(req: OutreachRequest) -> None:
                     "status":       status,
                     "body":         body,
                     "to_address":   phone,
-                    "provider":     "twilio",
+                    "provider":     message.a2p_provider or sms._provider,
                 }).execute()
 
                 # Update ignore count if this is a re-blast (not first contact)
-                sb.table("buyers").update({
-                    "last_contact_date": datetime.now(timezone.utc).date().isoformat()
-                }).eq("id", buyer_id).execute()
+                if status == "sent":
+                    sb.table("buyers").update({
+                        "last_contact_date": datetime.now(timezone.utc).date().isoformat()
+                    }).eq("id", buyer_id).execute()
 
         except Exception as exc:
+            counts["log_failed_count" if delivery_recorded else "failed_count"] += 1
             logger.error(f"[buyers_api/sms] Send to {buyer_id} failed: {exc}")
+
+    return {
+        "status": "partial" if counts["failed_count"] or counts["log_failed_count"] else "complete",
+        "recipient_count": len(buyer_ids),
+        **counts,
+    }
 
 
 @router.post("/outreach/email")
 async def send_email_blast(req: OutreachRequest, background_tasks: BackgroundTasks) -> dict:
-    """Send a deal-blast email to the specified buyer IDs."""
-    background_tasks.add_task(_send_email_blast, req)
-    return {
-        "status": "queued",
-        "recipient_count": len(req.buyer_ids),
-        "message": "Email blast queued for delivery",
-    }
+    """Send a bounded batch and preserve the operator's edited subject/body."""
+    if not req.buyer_ids or len(req.buyer_ids) > 25:
+        raise HTTPException(422, "Send between 1 and 25 buyer IDs per batch.")
+    return await run_in_threadpool(_send_email_blast, req)
 
 
-async def _send_email_blast(req: OutreachRequest) -> None:
+def _send_email_blast(req: OutreachRequest) -> dict:
     sb = _get_supabase()
+    if sb is None:
+        raise HTTPException(503, "Database not configured")
     from config.settings import settings
+    from tools.email_client import EmailClient
+    email = EmailClient()
+    counts = {"sent_count": 0, "failed_count": 0, "skipped_count": 0, "dry_run_count": 0, "log_failed_count": 0}
+    buyer_ids = list(dict.fromkeys(req.buyer_ids))
 
-    for buyer_id in req.buyer_ids:
+    for buyer_id in buyer_ids:
+        delivery_recorded = False
         try:
             if sb:
-                buyer_resp = sb.table("buyers").select("first_name,last_name,email,email_opt_in").eq("id", buyer_id).single().execute()
+                buyer_resp = sb.table("buyers").select("first_name,last_name,email,email_opt_in,active").eq("id", buyer_id).single().execute()
                 buyer = buyer_resp.data or {}
             else:
                 buyer = {}
 
             email_addr = buyer.get("email", "")
-            if not email_addr or not buyer.get("email_opt_in", True):
+            if not email_addr or buyer.get("email_opt_in") is not True or buyer.get("active") is False:
+                counts["skipped_count"] += 1
+                continue
+            if sb.table("dnc_registry").select("id").eq("email", email_addr.strip().lower()).limit(1).execute().data:
+                counts["skipped_count"] += 1
                 continue
 
             name = f"{buyer.get('first_name','')} {buyer.get('last_name','')}".strip()
@@ -519,21 +553,16 @@ async def _send_email_blast(req: OutreachRequest) -> None:
                 agency_name=settings.agency_name or "Texas Wholesale Solutions",
             )
 
-            status = "sent"
-            try:
-                import sendgrid
-                from sendgrid.helpers.mail import Mail
-                sg = sendgrid.SendGridAPIClient(api_key=settings.sendgrid_api_key)
-                mail = Mail(
-                    from_email=settings.from_email,
-                    to_emails=email_addr,
-                    subject=subject,
-                    html_content=html_body,
-                )
-                sg.send(mail)
-            except Exception as exc:
-                logger.error(f"[buyers_api/email] SendGrid failed: {exc}")
-                status = "failed"
+            subject = req.custom_subject or subject
+            if req.custom_message:
+                plain_body = req.custom_message
+                html_body = "<p>" + html.escape(plain_body).replace("\n", "<br>\n") + "</p>"
+            else:
+                plain_body = html.unescape(re.sub(r"<[^>]+>", "", html_body))
+            sent = email.send(to_email=email_addr, subject=subject, body=plain_body, html_body=html_body)
+            status = "dry_run" if sent and not email._configured else "sent" if sent else "failed"
+            counts[f"{status}_count"] += 1
+            delivery_recorded = True
 
             if sb:
                 sb.table("buyer_outreach_log").insert({
@@ -544,11 +573,21 @@ async def _send_email_blast(req: OutreachRequest) -> None:
                     "subject":    subject,
                     "body":       html_body,
                     "to_address": email_addr,
-                    "provider":   "sendgrid",
+                    "provider":   email._provider,
                 }).execute()
+                if status == "sent":
+                    sb.table("buyers").update({
+                        "last_contact_date": datetime.now(timezone.utc).date().isoformat()
+                    }).eq("id", buyer_id).execute()
 
         except Exception as exc:
+            counts["log_failed_count" if delivery_recorded else "failed_count"] += 1
             logger.error(f"[buyers_api/email] Send to {buyer_id} failed: {exc}")
+
+    return {
+        "status": "partial" if counts["failed_count"] or counts["log_failed_count"] else "complete",
+        "recipient_count": len(buyer_ids), **counts,
+    }
 
 
 @router.get("/{buyer_id}/transactions")

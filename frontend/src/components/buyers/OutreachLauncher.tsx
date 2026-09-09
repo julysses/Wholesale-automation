@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api';
+import { sendOutreachBatches, outreachResultText, type OutreachSummary } from '@/lib/outreachBatches';
 /**
  * OutreachLauncher — SMS and email blast to matched buyer IDs.
  *
@@ -14,10 +14,10 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { MessageSquare, Mail, Send, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, Mail, Send, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface DealContext {
+export interface DealContext {
   deal_id?: string;
   property_address?: string;
   zip_code?: string;
@@ -79,13 +79,13 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
   const [emailSubject, setEmailSubject] = useState(() => defaultEmailSubject(deal));
   const [emailBody, setEmailBody] = useState(() => defaultEmailBody(deal));
   const [status, setStatus] = useState<Status>('idle');
-  const [sentCount, setSentCount] = useState(0);
+  const [summary, setSummary] = useState<OutreachSummary | null>(null);
 
   const handleSend = async () => {
     if (buyerIds.length === 0) return toast.error('No buyers selected');
+    if (status !== 'idle') return;
+    if (!(channel === 'sms' ? smsBody.trim() : emailBody.trim()) || (channel === 'email' && !emailSubject.trim())) return toast.error('Enter a message and, for email, a subject.');
     setStatus('sending');
-
-    try {
       const endpoint = `/api/buyers/outreach/${channel}`;
       const payload = {
         buyer_ids:       buyerIds,
@@ -99,36 +99,29 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
         beds:            deal.beds || 0,
         baths:           deal.baths || 0,
         condition:       deal.condition || '',
-        custom_message:  channel === 'sms' ? smsBody : '',
+        custom_message:  channel === 'sms' ? smsBody : emailBody,
+        custom_subject: channel === 'email' ? emailSubject : undefined,
       };
 
-      const resp = await apiFetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!resp.ok) throw new Error(await resp.text());
-
-      setSentCount(buyerIds.length);
+      const result = await sendOutreachBatches(endpoint, 'buyer_ids', buyerIds, payload);
+      setSummary(result);
       setStatus('done');
-      toast.success(`${channel.toUpperCase()} blast queued for ${buyerIds.length} buyers`);
-      onSent?.();
-    } catch (err) {
-      toast.error(`Send failed: ${err}`);
-      setStatus('idle');
-    }
+      if (result.interrupted) toast.error(outreachResultText(result));
+      else if (result.failed || result.dryRun || result.logFailed || result.skipped) toast.warning(outreachResultText(result));
+      else toast.success(outreachResultText(result));
   };
 
-  if (status === 'done') {
+  if (status === 'done' && summary) {
     return (
       <div className="flex flex-col items-center gap-3 py-6">
-        <CheckCircle2 className="h-12 w-12 text-green-500" />
+        {summary.interrupted || summary.failed || summary.logFailed || summary.dryRun
+          ? <AlertTriangle className="h-12 w-12 text-amber-600" />
+          : <CheckCircle2 className="h-12 w-12 text-green-500" />}
         <p className="font-semibold text-gray-700">
-          {channel.toUpperCase()} blast sent to {sentCount} buyers
+          {channel.toUpperCase()} results
         </p>
-        <Button variant="outline" size="sm" onClick={() => setStatus('idle')}>
-          Send Another
-        </Button>
+        <p role={summary.interrupted ? 'alert' : 'status'} className="text-sm text-gray-600">{outreachResultText(summary)}</p>
+        {onSent && <Button variant="outline" size="sm" onClick={onSent}>Review outreach activity</Button>}
       </div>
     );
   }
@@ -141,6 +134,7 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
           <button
             key={ch}
             onClick={() => setChannel(ch)}
+            disabled={status === 'sending'}
             className={cn(
               'flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors',
               channel === ch
@@ -167,13 +161,14 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
           <Textarea
             label="SMS Message"
             value={smsBody}
+            disabled={status === 'sending'}
             onChange={(e) => setSmsBody(e.target.value)}
             rows={3}
             placeholder="Your message…"
           />
           <p className="text-xs text-gray-400 text-right">{smsBody.length}/160 chars</p>
           <p className="text-xs text-gray-400">
-            Personalization: buyer's first name is automatically prepended by the system.
+            This message is sent to each selected buyer. Reply STOP instructions are included automatically.
           </p>
         </div>
       )}
@@ -182,9 +177,11 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
       {channel === 'email' && (
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+            <label htmlFor="buyer-outreach-subject" className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
             <input
+              id="buyer-outreach-subject"
               type="text"
+              disabled={status === 'sending'}
               value={emailSubject}
               onChange={(e) => setEmailSubject(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A5C]"
@@ -193,11 +190,12 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
           <Textarea
             label="Email Body"
             value={emailBody}
+            disabled={status === 'sending'}
             onChange={(e) => setEmailBody(e.target.value)}
             rows={10}
           />
           <p className="text-xs text-gray-400">
-            HTML formatting is supported. An unsubscribe footer is automatically appended.
+            Plain text with line breaks is supported. Review the full message before sending.
           </p>
         </div>
       )}

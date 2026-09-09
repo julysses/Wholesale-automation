@@ -16,11 +16,9 @@ this plan; see ``web/api/webhooks.py`` (``_process_inline``). A durable
 ``webhook_jobs`` queue + ``/_worker/drain`` endpoint remain in the codebase for a
 future Pro-plan/pg_cron drain, but are off the request hot path.
 
-Self-diagnosing: if importing the real app raises during cold start (the usual
-cause of an opaque ``FUNCTION_INVOCATION_FAILED``), ``_load_app`` returns a
-minimal fallback app that renders the traceback as a readable 500 instead of
-crashing the function — so the error is visible in the browser without log
-access.
+If importing the real app raises during cold start, ``_load_app`` logs the full
+exception server-side and returns a minimal service-unavailable app. Responses
+never expose startup diagnostics, which may contain configuration credentials.
 
 IMPORTANT: ``app`` must be assigned at module top level (``app = _load_app()``).
 The @vercel/python builder finds the entrypoint by statically scanning for a
@@ -30,8 +28,8 @@ builder fail with "Could not find a top-level app".
 
 from __future__ import annotations
 
+import logging
 import sys
-import traceback
 from pathlib import Path
 
 # Ensure the repo root is importable when Vercel invokes this file from api/.
@@ -41,25 +39,25 @@ if str(ROOT) not in sys.path:
 
 
 def _load_app():
-    """Return the real FastAPI app, or a self-diagnosing fallback on failure."""
+    """Return the real FastAPI app, or a generic fallback on startup failure."""
     try:
         from web.app import app as real_app
         return real_app
-    except Exception:  # noqa: BLE001 — surface the import error instead of crashing
-        boot_traceback = traceback.format_exc()
+    except Exception:  # noqa: BLE001 — keep diagnostics in server logs
+        logging.getLogger(__name__).exception("Backend import failed during cold start")
 
         from fastapi import FastAPI
         from fastapi.responses import PlainTextResponse
 
-        fallback = FastAPI()
+        fallback = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
         @fallback.api_route(
-            "/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"]
+            "/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
         )
         def _boot_error(path: str) -> PlainTextResponse:
             return PlainTextResponse(
-                "backend import failed during cold start:\n\n" + boot_traceback,
-                status_code=500,
+                "Service temporarily unavailable. Please try again later.",
+                status_code=503,
             )
 
         return fallback

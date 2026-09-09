@@ -3,9 +3,8 @@ FROM node:20-alpine AS frontend-build
 
 WORKDIR /build
 
-COPY frontend/package.json ./
-# Use npm install (no lockfile committed) — pin with --save-exact in dev
-RUN npm install --prefer-offline
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --prefer-offline
 
 COPY frontend/ ./
 

@@ -3,6 +3,13 @@ import { useEffect, useId } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Task } from '@/types';
 import { toast } from 'sonner';
+import { localDayBounds } from '@/lib/taskDates';
+import { queryAll } from '@/lib/queryAll';
+
+export type TaskWrite = Omit<Partial<Task>, 'due_date' | 'completed_at'> & {
+  due_date?: string | null;
+  completed_at?: string | null;
+};
 
 interface TasksFilter {
   status?: string;
@@ -18,18 +25,19 @@ export function useTasks(filters: TasksFilter = {}) {
   const query = useQuery({
     queryKey: ['tasks', filters],
     queryFn: async () => {
-      let query = supabase
-        .from('tasks')
-        .select('*, lead:leads(property_address), deal:deals(deal_name)')
-        .order('due_date', { ascending: true, nullsFirst: false });
+      return queryAll<Task>((from, to) => {
+        let query = supabase
+          .from('tasks')
+          .select('*, lead:leads(property_address), deal:deals(deal_name)')
+          .order('due_date', { ascending: true, nullsFirst: false })
+          .order('id', { ascending: true });
 
-      if (status) query = query.eq('status', status);
-      if (priority) query = query.eq('priority', priority);
-      if (type) query = query.eq('type', type);
+        if (status) query = query.eq('status', status);
+        if (priority) query = query.eq('priority', priority);
+        if (type) query = query.eq('type', type);
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as Task[];
+        return query.range(from, to);
+      });
     },
     staleTime: 30000,
   });
@@ -42,26 +50,28 @@ export function useTasks(filters: TasksFilter = {}) {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [qc]);
+  }, [qc, id]);
 
   return query;
 }
 
 export function useTodayTasks() {
-  const today = new Date().toISOString().split('T')[0];
+  const [today, tomorrow] = localDayBounds();
 
   return useQuery({
-    queryKey: ['tasks', 'today'],
+    queryKey: ['tasks', 'today', today.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
         .select('*, lead:leads(property_address)')
-        .gte('due_date', today + 'T00:00:00')
-        .lte('due_date', today + 'T23:59:59')
+        .gte('due_date', today.toISOString())
+        .lt('due_date', tomorrow.toISOString())
         .neq('status', 'completed')
+        .neq('status', 'cancelled')
         .order('priority', { ascending: true });
       if (error) throw error;
-      return data as Task[];
+      const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      return (data as Task[]).sort((a, b) => (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3));
     },
     staleTime: 30000,
   });
@@ -70,7 +80,7 @@ export function useTodayTasks() {
 export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (task: Partial<Task>) => {
+    mutationFn: async (task: TaskWrite) => {
       const { data, error } = await supabase
         .from('tasks')
         .insert(task)
@@ -90,7 +100,7 @@ export function useCreateTask() {
 export function useUpdateTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Task> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: TaskWrite }) => {
       const { data, error } = await supabase
         .from('tasks')
         .update(updates)
