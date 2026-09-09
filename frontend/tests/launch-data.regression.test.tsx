@@ -2,7 +2,7 @@ import { act, render, renderHook, screen, waitFor } from '@testing-library/react
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
-import { queryAll } from '@/lib/queryAll';
+import { queryAll, queryByIds } from '@/lib/queryAll';
 import { latestByLead } from '@/lib/qualificationHistory';
 import { formatDate, daysUntil } from '@/lib/utils';
 
@@ -28,6 +28,14 @@ it('reads beyond a server row cap without skipping or duplicating records', asyn
 
 it('rejects a later query failure instead of returning a partial total', async () => {
   await expect(queryAll(async from => from === 0 ? { data: [{ id: 1 }], error: null } : { data: null, error: { message: 'connection lost' } })).rejects.toThrow('connection lost');
+});
+
+it('bounds related-record filters and paginates within every ID batch', async () => {
+  const ids = Array.from({ length: 250 }, (_, id) => String(id));
+  const page = vi.fn(async (batch: string[], from: number) => ({ data: batch.slice(from, from + 20), error: null }));
+  expect(await queryByIds([...ids, ids[0]], page)).toEqual(ids);
+  expect(Math.max(...page.mock.calls.map(([batch]) => batch.length))).toBe(100);
+  expect(await queryByIds([], page)).toEqual([]);
 });
 
 it('does not revive an old HOT qualification after a seller becomes COLD', () => {
