@@ -29,10 +29,12 @@ import hashlib
 import hmac
 import logging
 import os
+import re
+import time
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from tools.batchdialer_adapter import BatchDialerAdapter, CallResultEvent
@@ -73,30 +75,32 @@ RETELL_WEBHOOK_SECRET = os.getenv("RETELL_WEBHOOK_SECRET", "")
 AIR_AI_WEBHOOK_SECRET = os.getenv("AIR_AI_WEBHOOK_SECRET", "")
 VAPI_WEBHOOK_SECRET = os.getenv("VAPI_WEBHOOK_SECRET", "")
 
-# When true, webhooks whose secret is not configured are rejected (fail closed)
-# instead of accepted. Recommended for production. Default false for local/dev.
-WEBHOOK_STRICT = os.getenv("WEBHOOK_STRICT", "false").lower() == "true"
+# Missing secrets fail closed by default. WEBHOOK_STRICT=false is an explicit
+# local-development opt-out for static-secret provider integrations.
+WEBHOOK_STRICT = os.getenv("WEBHOOK_STRICT", "true").lower() == "true"
+
+
+def _webhook_setting(name: str) -> str:
+    """Resolve settings loaded after module import, with environment values first."""
+    return str(globals().get(name, "") or getattr(settings, name.lower(), "") or "")
 
 
 def _verify_hmac_signature(body: bytes, signature: str, secret: str, source: str = "") -> bool:
-    """
-    Verify HMAC-SHA256 hex signature.
-    Logs a warning on every rejected attempt so security events are traceable.
-    """
-    if not secret:
-        return True
-    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    valid = hmac.compare_digest(signature, expected)
-    if not valid:
-        logger.warning(
-            f"[webhook{':' + source if source else ''}] HMAC verification failed — "
-            f"rejected inbound request (sig_prefix={signature[:8]!r})"
-        )
-    return valid
+    """Verify Retell's timestamped raw-body HMAC and reject replayed deliveries."""
+    match = re.fullmatch(r"v=(\d{1,16}),d=([0-9a-fA-F]{64})", signature)
+    if not secret or not match:
+        return False
+    timestamp, received = match.groups()
+    if abs(int(time.time() * 1000) - int(timestamp)) > 5 * 60 * 1000:
+        return False
+    expected = hmac.new(
+        secret.encode(), body + timestamp.encode(), hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(received.lower(), expected)
 
 
 def _require_hmac_signature(body: bytes, signature: str, secret: str, source: str = "") -> None:
-    """Fail closed unless a configured HMAC-SHA256 signature is valid."""
+    """Fail closed unless Retell's timestamped signature is valid."""
     if not secret:
         logger.error(
             f"[webhook{':' + source if source else ''}] webhook secret is not configured"
@@ -114,9 +118,8 @@ def _require_hmac_signature(body: bytes, signature: str, secret: str, source: st
 def _verify_static_secret(received: str, expected: str, source: str = "") -> bool:
     """Verify a static secret using constant-time comparison.
 
-    When no secret is configured the endpoint is unauthenticated. This is allowed
-    for local/dev convenience but logged as a warning; set WEBHOOK_STRICT=true to
-    reject such requests (fail closed) in production.
+    Missing secrets are rejected by default. Explicit WEBHOOK_STRICT=false
+    allows local development without a provider secret and logs a warning.
     """
     if not expected:
         label = f":{source}" if source else ""
@@ -333,7 +336,7 @@ async def batchdialer_call_webhook(
     Responds immediately with 200 so BatchDialer doesn't retry.
     All processing happens in the background.
     """
-    if not _verify_static_secret(x_webhook_secret, BATCHDIALER_WEBHOOK_SECRET, source="batchdialer"):
+    if not _verify_static_secret(x_webhook_secret, _webhook_setting("BATCHDIALER_WEBHOOK_SECRET"), source="batchdialer"):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -357,7 +360,7 @@ async def launch_control_reply_webhook(
     Receive an inbound SMS reply from Launch Control (or Zapier bridge).
     Detects opt-out keywords and suppresses the lead.
     """
-    if not _verify_static_secret(x_webhook_secret, LAUNCH_CONTROL_WEBHOOK_SECRET, source="launch_control"):
+    if not _verify_static_secret(x_webhook_secret, _webhook_setting("LAUNCH_CONTROL_WEBHOOK_SECRET"), source="launch_control"):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -513,7 +516,7 @@ async def retell_webhook(
     Retell expects 200 immediately; all processing is backgrounded.
     """
     body = await request.body()
-    _require_hmac_signature(body, x_retell_signature, RETELL_WEBHOOK_SECRET, source="retell")
+    _require_hmac_signature(body, x_retell_signature, _webhook_setting("RETELL_WEBHOOK_SECRET") or settings.retell_api_key, source="retell")
 
     import json as _json
     try:
@@ -849,6 +852,7 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
                 event.lead_id,
                 raw_transcript,
             )
+            raw_transcript = payload["raw_transcript"]
             sb.table("call_transcripts").upsert(payload, on_conflict="call_id").execute()
         except Exception as exc:
             logger.error(f"[retell] final transcript store failed: {exc}")
@@ -1220,7 +1224,7 @@ async def retell_call_webhook(
     Responds immediately with 200; all Supabase writes happen in the background.
     """
     body = await request.body()
-    _require_hmac_signature(body, x_retell_signature, RETELL_WEBHOOK_SECRET, source="retell/call")
+    _require_hmac_signature(body, x_retell_signature, _webhook_setting("RETELL_WEBHOOK_SECRET") or settings.retell_api_key, source="retell/call")
 
     import json as _json
     try:
@@ -1254,7 +1258,7 @@ async def air_ai_call_webhook(
     """
     Receive a call completion event from Air AI.
     """
-    if not _verify_static_secret(x_webhook_secret, AIR_AI_WEBHOOK_SECRET, source="air_ai"):
+    if not _verify_static_secret(x_webhook_secret, _webhook_setting("AIR_AI_WEBHOOK_SECRET"), source="air_ai"):
         raise HTTPException(401, "Invalid webhook secret")
 
     payload = await request.json()
@@ -1296,7 +1300,7 @@ async def vapi_webhook(
       Server URL: https://<your-domain>/webhooks/vapi
       Secret:     set VAPI_WEBHOOK_SECRET in your .env
     """
-    if not _verify_static_secret(x_vapi_secret, VAPI_WEBHOOK_SECRET, source="vapi"):
+    if not _verify_static_secret(x_vapi_secret, _webhook_setting("VAPI_WEBHOOK_SECRET"), source="vapi"):
         raise HTTPException(401, "Invalid VAPI webhook secret")
 
     payload = await request.json()
@@ -1565,9 +1569,9 @@ FACEBOOK_WEBHOOK_VERIFY_TOKEN = os.getenv("FACEBOOK_WEBHOOK_VERIFY_TOKEN", "")
 
 @router.get("/facebook/lead")
 async def facebook_lead_webhook_verify(
-    hub_mode: str = "",
-    hub_verify_token: str = "",
-    hub_challenge: str = "",
+    hub_mode: str = Query(default="", alias="hub.mode"),
+    hub_verify_token: str = Query(default="", alias="hub.verify_token"),
+    hub_challenge: str = Query(default="", alias="hub.challenge"),
 ):
     """
     Facebook webhook verification challenge (GET).
@@ -1575,10 +1579,12 @@ async def facebook_lead_webhook_verify(
     """
     from tools.facebook_ads_adapter import FacebookAdsAdapter
     adapter = FacebookAdsAdapter(
-        app_secret=FACEBOOK_APP_SECRET,
+        app_secret=_webhook_setting("FACEBOOK_APP_SECRET"),
         access_token="",
-        webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
+        webhook_verify_token=_webhook_setting("FACEBOOK_WEBHOOK_VERIFY_TOKEN"),
     )
+    if not _webhook_setting("FACEBOOK_WEBHOOK_VERIFY_TOKEN"):
+        raise HTTPException(503, "Webhook verification token not configured")
     challenge = adapter.verify_webhook_challenge(hub_mode, hub_verify_token, hub_challenge)
     if challenge is None:
         raise HTTPException(status_code=403, detail="Verification token mismatch")
@@ -1600,27 +1606,18 @@ async def facebook_lead_webhook(
     """
     payload_bytes = await request.body()
 
-    # Verify HMAC signature
-    if FACEBOOK_APP_SECRET:
-        from tools.facebook_ads_adapter import FacebookAdsAdapter
-        adapter = FacebookAdsAdapter(
-            app_secret=FACEBOOK_APP_SECRET,
-            access_token=os.getenv("FACEBOOK_ACCESS_TOKEN", ""),
-            webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
-            ad_account_id=os.getenv("FACEBOOK_AD_ACCOUNT_ID", ""),
-        )
-        sig = x_hub_signature_256 or ""
-        if not adapter.verify_webhook_signature(payload_bytes, sig):
-            raise HTTPException(status_code=403, detail="Invalid Facebook signature")
-    else:
-        # Import adapter for parsing even without signature check
-        from tools.facebook_ads_adapter import FacebookAdsAdapter
-        adapter = FacebookAdsAdapter(
-            app_secret="",
-            access_token=os.getenv("FACEBOOK_ACCESS_TOKEN", ""),
-            webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
-            ad_account_id=os.getenv("FACEBOOK_AD_ACCOUNT_ID", ""),
-        )
+    # Facebook lead ingestion always requires a configured signing secret.
+    if not _webhook_setting("FACEBOOK_APP_SECRET"):
+        raise HTTPException(503, "Webhook secret not configured")
+    from tools.facebook_ads_adapter import FacebookAdsAdapter
+    adapter = FacebookAdsAdapter(
+        app_secret=_webhook_setting("FACEBOOK_APP_SECRET"),
+        access_token=settings.facebook_access_token,
+        webhook_verify_token=_webhook_setting("FACEBOOK_WEBHOOK_VERIFY_TOKEN"),
+        ad_account_id=settings.facebook_ad_account_id,
+    )
+    if not adapter.verify_webhook_signature(payload_bytes, x_hub_signature_256 or ""):
+        raise HTTPException(403, "Invalid Facebook signature")
 
     import json as _json
     try:
@@ -1793,10 +1790,10 @@ async def _process_vapi(payload: dict) -> None:
 async def _process_facebook(payload: dict) -> None:
     from tools.facebook_ads_adapter import FacebookAdsAdapter
     adapter = FacebookAdsAdapter(
-        app_secret=FACEBOOK_APP_SECRET,
-        access_token=os.getenv("FACEBOOK_ACCESS_TOKEN", ""),
-        webhook_verify_token=FACEBOOK_WEBHOOK_VERIFY_TOKEN,
-        ad_account_id=os.getenv("FACEBOOK_AD_ACCOUNT_ID", ""),
+        app_secret=_webhook_setting("FACEBOOK_APP_SECRET"),
+        access_token=settings.facebook_access_token,
+        webhook_verify_token=_webhook_setting("FACEBOOK_WEBHOOK_VERIFY_TOKEN"),
+        ad_account_id=settings.facebook_ad_account_id,
     )
     for entry in adapter.parse_lead_webhook(payload):
         if entry.leadgen_id:
@@ -1849,7 +1846,7 @@ async def drain_webhook_queue(
     request: Request,
     authorization: str = Header(default=""),
     x_worker_secret: str = Header(default=""),
-    limit: int = 10,
+    limit: int = Query(default=10, ge=1, le=100),
 ) -> dict:
     """
     Process pending webhook jobs. Invoked once a minute by Vercel Cron
@@ -1857,9 +1854,10 @@ async def drain_webhook_queue(
     `Authorization: Bearer <CRON_SECRET>`; we also accept an `x-worker-secret`
     header for manual/local invocation.
     """
-    if CRON_SECRET:
-        bearer = authorization[7:] if authorization.lower().startswith("bearer ") else ""
-        if not (hmac.compare_digest(bearer, CRON_SECRET)
-                or hmac.compare_digest(x_worker_secret, CRON_SECRET)):
-            raise HTTPException(401, "Unauthorized")
+    if not CRON_SECRET:
+        raise HTTPException(503, "Worker secret not configured")
+    bearer = authorization[7:] if authorization.lower().startswith("bearer ") else ""
+    if not (hmac.compare_digest(bearer, CRON_SECRET)
+            or hmac.compare_digest(x_worker_secret, CRON_SECRET)):
+        raise HTTPException(401, "Unauthorized")
     return await _drain_queue(limit=limit)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import time
 
 from fastapi.testclient import TestClient
 
@@ -27,7 +28,9 @@ def _body() -> bytes:
 
 
 def _signature(body: bytes, secret: str) -> str:
-    return hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    timestamp = str(int(time.time() * 1000))
+    digest = hmac.new(secret.encode(), body + timestamp.encode(), hashlib.sha256).hexdigest()
+    return f"v={timestamp},d={digest}"
 
 
 def test_retell_webhook_fails_closed_without_configured_secret(monkeypatch):
