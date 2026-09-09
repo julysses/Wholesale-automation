@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Buyer } from '@/types';
 import { toast } from 'sonner';
+import { queryAll } from '@/lib/queryAll';
 
 interface BuyersFilter {
   search?: string;
@@ -15,22 +16,23 @@ export function useBuyers(filters: BuyersFilter = {}) {
   return useQuery({
     queryKey: ['buyers', filters],
     queryFn: async () => {
-      let query = supabase
-        .from('buyers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      return queryAll<Buyer>((from, to) => {
+        let query = supabase
+          .from('buyers')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false });
 
-      if (tier) query = query.eq('tier', tier);
-      if (active !== undefined) query = query.eq('active', active);
-      if (search) {
-        query = query.or(
-          `first_name.ilike.%${search}%,last_name.ilike.%${search}%,company.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
-        );
-      }
+        if (tier) query = query.eq('tier', tier);
+        if (active !== undefined) query = query.eq('active', active);
+        if (search) {
+          query = query.or(
+            `first_name.ilike.%${search}%,last_name.ilike.%${search}%,company.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
+          );
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as Buyer[];
+        return query.range(from, to);
+      });
     },
     staleTime: 60000,
   });
