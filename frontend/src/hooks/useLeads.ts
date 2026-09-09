@@ -13,6 +13,12 @@ interface LeadsFilter {
   pageSize?: number;
 }
 
+export type LeadWrite = Omit<Partial<Lead>, 'asking_price' | 'estimated_equity_pct' | 'next_follow_up_date'> & {
+  asking_price?: number | null;
+  estimated_equity_pct?: number | null;
+  next_follow_up_date?: string | null;
+};
+
 export function useLeads(filters: LeadsFilter = {}) {
   const { status, source, tier, motivation, search, page = 1, pageSize = 50 } = filters;
 
@@ -101,7 +107,7 @@ export function useCreateLead() {
 export function useUpdateLead() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Lead> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: LeadWrite }) => {
       const { data, error } = await supabase
         .from('leads')
         .update(updates)

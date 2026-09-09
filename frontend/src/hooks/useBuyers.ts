@@ -10,6 +10,13 @@ interface BuyersFilter {
   active?: boolean;
 }
 
+export type BuyerWrite = Omit<Partial<Buyer>, 'min_price' | 'max_price' | 'close_speed_days' | 'pof_amount'> & {
+  min_price?: number | null;
+  max_price?: number | null;
+  close_speed_days?: number | null;
+  pof_amount?: number | null;
+};
+
 export function useBuyers(filters: BuyersFilter = {}) {
   const { search, tier, active } = filters;
 
@@ -41,7 +48,7 @@ export function useBuyers(filters: BuyersFilter = {}) {
 export function useCreateBuyer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (buyer: Partial<Buyer>) => {
+    mutationFn: async (buyer: BuyerWrite) => {
       const { data, error } = await supabase
         .from('buyers')
         .insert(buyer)
@@ -61,7 +68,7 @@ export function useCreateBuyer() {
 export function useUpdateBuyer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Buyer> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: BuyerWrite }) => {
       const { data, error } = await supabase
         .from('buyers')
         .update(updates)

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer } from '@/hooks/useBuyers';
+import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer, type BuyerWrite } from '@/hooks/useBuyers';
 import { useBuyerMatcher } from '@/hooks/useAIAgent';
 import { useDeals } from '@/hooks/useDeals';
 import { Modal } from '@/components/ui/modal';
@@ -177,13 +177,13 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
     source: buyer?.source || '',
     tier: buyer?.tier || 'C',
     target_zips_str: (buyer?.target_zips || []).join(', '),
-    min_price: buyer?.min_price || '',
-    max_price: buyer?.max_price || '',
+    min_price: buyer?.min_price?.toString() ?? '',
+    max_price: buyer?.max_price?.toString() ?? '',
     strategy: buyer?.strategy || [] as string[],
     property_types: buyer?.property_types || [] as string[],
-    close_speed_days: buyer?.close_speed_days || '',
+    close_speed_days: buyer?.close_speed_days?.toString() ?? '',
     pof_verified: buyer?.pof_verified || false,
-    pof_amount: buyer?.pof_amount || '',
+    pof_amount: buyer?.pof_amount?.toString() ?? '',
     notes: buyer?.notes || '',
   });
 
@@ -198,21 +198,21 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
     e.preventDefault();
     if (!form.first_name.trim() || !form.last_name.trim()) return toast.error('Name required');
     const { target_zips_str, ...fields } = form;
-    const payload = {
+    const payload: BuyerWrite = {
       ...fields,
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
       target_zips: target_zips_str.split(',').map((z) => z.trim()).filter(Boolean),
-      min_price: form.min_price ? Number(form.min_price) : null,
-      max_price: form.max_price ? Number(form.max_price) : null,
-      close_speed_days: form.close_speed_days ? Number(form.close_speed_days) : null,
-      pof_amount: form.pof_amount ? Number(form.pof_amount) : null,
+      min_price: form.min_price === '' ? null : Number(form.min_price),
+      max_price: form.max_price === '' ? null : Number(form.max_price),
+      close_speed_days: form.close_speed_days === '' ? null : Number(form.close_speed_days),
+      pof_amount: form.pof_amount === '' ? null : Number(form.pof_amount),
     };
     try {
       if (isEdit && buyer) {
-        await updateBuyer.mutateAsync({ id: buyer.id, updates: payload as Partial<Buyer> });
+        await updateBuyer.mutateAsync({ id: buyer.id, updates: payload });
       } else {
-        await createBuyer.mutateAsync(payload as Partial<Buyer>);
+        await createBuyer.mutateAsync(payload);
       }
       onClose();
     } catch {

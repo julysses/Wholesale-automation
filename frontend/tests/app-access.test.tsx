@@ -25,6 +25,8 @@ vi.mock('@/components/layout/Layout', async () => {
 });
 vi.mock('@/pages/Dashboard', () => ({ Dashboard: () => <h1>Dashboard test</h1> }));
 vi.mock('@/pages/Login', () => ({ Login: () => <h1>Sign in test</h1> }));
+vi.mock('@/pages/admin/Users', () => ({ AdminUsers: () => <h1>Admin users route</h1> }));
+vi.mock('@/pages/SetupWizard', () => ({ SetupWizard: () => <h1>Admin setup route</h1> }));
 import App from '@/App';
 
 beforeEach(() => {
@@ -81,4 +83,27 @@ it('does not turn StrictMode cleanup into a configuration error', async () => {
   render(<StrictMode><App /></StrictMode>);
   await waitFor(() => expect(screen.getByText('Sign in test')).toBeInTheDocument());
   expect(screen.queryByText('App Configuration Error')).not.toBeInTheDocument();
+});
+
+
+it.each(['/admin/users', '/setup'])('rejects approved regular users from %s', async path => {
+  state.client = client;
+  state.session = { user: { id: 'regular-route-user' }, access_token: 'test-token' };
+  state.profile = { status: 'approved', role: 'user' };
+  window.history.replaceState({}, '', path);
+  render(<App />);
+  expect(await screen.findByText('Dashboard test')).toBeInTheDocument();
+  expect(window.location.pathname).toBe('/');
+  expect(screen.queryByText('Admin users route')).not.toBeInTheDocument();
+  expect(screen.queryByText('Admin setup route')).not.toBeInTheDocument();
+});
+
+it.each([['/admin/users', 'Admin users route'], ['/setup', 'Admin setup route']])('allows approved administrators on %s', async (path, heading) => {
+  state.client = client;
+  state.session = { user: { id: 'admin-route-user' }, access_token: 'test-token' };
+  state.profile = { status: 'approved', role: 'admin' };
+  window.history.replaceState({}, '', path);
+  render(<App />);
+  expect(await screen.findByText(heading)).toBeInTheDocument();
+  expect(window.location.pathname).toBe(path);
 });

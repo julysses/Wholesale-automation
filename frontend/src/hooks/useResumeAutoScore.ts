@@ -1,8 +1,8 @@
 /**
  * useResumeAutoScore
  *
- * On app load, resume any unscored lead backlog through the backend scorer.
- * Progress is based on Supabase counts, not a browser-owned lead queue.
+ * On app load, read durable scoring progress without starting paid AI work.
+ * Imports and the explicit scoring action own the decision to start a run.
  */
 
 import { useEffect } from 'react';
@@ -10,21 +10,12 @@ import { useAutoScoreStore } from '@/stores/useAutoScoreStore';
 
 export function useResumeAutoScore() {
   useEffect(() => {
-    let active = true;
-
-    (async () => {
-      const store = useAutoScoreStore.getState();
-      if (store.scoring) return;
-
-      try {
-        const status = await store.refreshStatus();
-        if (active && !status.complete && status.unscored > 0) {
-          store.start();
-        }
-      } catch {
-        // The visible status bar will surface errors once the user retries.
-      }
-    })();
-    return () => { active = false; useAutoScoreStore.getState().cancel(); };
+    const store = useAutoScoreStore.getState();
+    if (!store.scoring) {
+      void store.refreshStatus().catch(() => {
+        // Status retrieval alone must never fall back to starting AI work.
+      });
+    }
+    return () => { useAutoScoreStore.getState().cancel(); };
   }, []);
 }

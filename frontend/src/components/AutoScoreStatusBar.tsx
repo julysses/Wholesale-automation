@@ -1,10 +1,8 @@
 /**
  * AutoScoreStatusBar
  *
- * Floating progress pill visible from any page while Claude is auto-scoring
- * freshly imported leads (frontend/src/stores/useAutoScoreStore.ts). Mounted
- * once in the app shell so the loop's progress stays visible no matter which
- * screen the user navigates to.
+ * Floating status and explicit start control for the database scoring backlog.
+ * Mounted once in the app shell so progress stays visible across pages.
  */
 
 import { useEffect, useRef } from 'react';
@@ -42,6 +40,8 @@ export function AutoScoreStatusBar() {
 
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const isPaused = !!error && !scoring;
+  const remaining = Math.max(0, total - done - failed);
+  const canStart = !scoring && remaining > 0;
 
   return (
     <div className="fixed bottom-4 right-4 z-40 bg-white rounded-xl shadow-lg border border-gray-200 p-3 w-72">
@@ -54,17 +54,8 @@ export function AutoScoreStatusBar() {
           <Flame className="h-4 w-4 text-green-600 shrink-0" />
         )}
         <p className="text-xs font-semibold text-gray-800 flex-1">
-          {isPaused ? 'Claude scoring paused' : scoring ? 'Claude is scoring leads…' : cancelRequested || done + failed < total ? 'Scoring stopped' : failed ? 'Scoring finished with errors' : 'Scoring complete'}
+          {isPaused ? 'Claude scoring paused' : scoring ? 'Claude is scoring leads…' : cancelRequested && remaining > 0 ? 'Scoring stopped' : remaining > 0 ? 'Unscored leads' : failed ? 'Scoring finished with errors' : 'Scoring complete'}
         </p>
-        {isPaused && (
-          <button
-            onClick={() => start()}
-            className="p-0.5 rounded hover:bg-gray-100 text-gray-500 hover:text-[#1B3A5C] shrink-0"
-            title="Retry scoring"
-          >
-            <RotateCw className="h-3.5 w-3.5" />
-          </button>
-        )}
         <button
           onClick={scoring ? cancel : dismiss}
           className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 shrink-0"
@@ -89,6 +80,18 @@ export function AutoScoreStatusBar() {
       </div>
       {isPaused && (
         <p className="mt-1.5 text-[11px] text-amber-700 line-clamp-2">{error}</p>
+      )}
+      {canStart && (
+        <div className="mt-2 border-t border-gray-100 pt-2">
+          <button
+            onClick={() => { void start(); }}
+            className="flex w-full items-center justify-center gap-1.5 rounded bg-[#1B3A5C] px-2 py-1.5 text-xs font-semibold text-white hover:bg-[#254d77]"
+          >
+            <RotateCw className="h-3.5 w-3.5" />
+            Score {remaining.toLocaleString()} remaining leads
+          </button>
+          <p className="mt-1 text-[11px] text-gray-500">Uses Claude to score the entire unscored backlog.</p>
+        </div>
       )}
     </div>
   );
