@@ -153,13 +153,15 @@ async def test_losing_queue_claim_does_not_process_job(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_completed_call_qualifies_from_saved_realtime_chunks(monkeypatch):
-    from tests.test_retell_transcript_ordering import FakeSupabase, _chunk
-    sb = FakeSupabase()
+    from tests.test_retell_transcript_ordering import _chunk
+    from tests.test_webhook_completion_delivery import MemoryDB
+    sb = MemoryDB()
     monkeypatch.setattr(webhooks, "_get_supabase", lambda: sb)
     await webhooks._retell_transcript_chunk("call-1", "lead-1", _chunk(1, "user", "I need to sell this month.", 1000))
     # Stop qualification after recording its input; all persistence is the in-memory fake.
     qualify = MagicMock(side_effect=RuntimeError("isolated qualification failure"))
     monkeypatch.setattr(webhooks, "extract_lead_signals", qualify)
     event = SimpleNamespace(call_id="call-1", lead_id="lead-1", disposition=SimpleNamespace(value="not_interested"))
-    await webhooks._retell_call_completed(event, {"call": {"call_id": "call-1", "metadata": {}}})
+    with pytest.raises(RuntimeError, match="isolated qualification failure"):
+        await webhooks._retell_call_completed(event, {"call": {"call_id": "call-1", "metadata": {}}})
     assert qualify.call_args.args[0] == "Seller: I need to sell this month."
