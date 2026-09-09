@@ -31,6 +31,7 @@ const LeadGenEngine = lazy(() => import('@/pages/LeadGenEngine').then(m => ({ de
 const MasterListBuilder = lazy(() => import('@/pages/MasterListBuilder').then(m => ({ default: m.MasterListBuilder })));
 const LeadForm = lazy(() => import('@/pages/LeadForm').then(m => ({ default: m.LeadForm })));
 const FacebookAdsCommandCenter = lazy(() => import('@/pages/FacebookAdsCommandCenter').then(m => ({ default: m.FacebookAdsCommandCenter })));
+const DevelopmentCommandCenter = lazy(() => import('@/pages/DevelopmentCommandCenter').then(m => ({ default: m.DevelopmentCommandCenter })));
 
 // Admin pages
 const AdminUsers = lazy(() => import('@/pages/admin/Users').then(m => ({ default: m.AdminUsers })));
@@ -247,6 +248,7 @@ function OperatorApp() {
           <Route path="/buyer-intel"  element={<BuyerIntelligence />} />
           <Route path="/lead-gen"     element={<LeadGenEngine />} />
           <Route path="/fb-ads"       element={<FacebookAdsCommandCenter />} />
+          <Route path="/development"  element={<DevelopmentCommandCenter key={session.user.id} userId={session.user.id} />} />
           <Route path="*"             element={<Navigate to="/" replace />} />
         </Route>
       </Route>
