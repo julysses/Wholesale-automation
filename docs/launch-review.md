@@ -167,6 +167,13 @@ the imported lead-ID argument does not scope backend work. The explicit status-b
 action now states that scope. Validate the intended import/scoring policy before bulk
 imports during launch; this review did not run an import against the live database.
 
+The September 9 completion plan adds concrete integration acceptance requirements in
+`tasks/launch-review.md`: direct SMS/buyer STOP synchronization is not established;
+the implemented email adapter supports SendGrid/Mailgun; an unused frontend Retell
+call-initiation helper references an absent API endpoint. Choose launch channels and
+resolve the relevant paths before enabling them. Setup instructions now use the
+registered `/webhooks/retell` callback and designated verification API key.
+
 ## Resume and verification
 
 The connected Chrome preview is authenticated. Core retests and fixture cleanup are

@@ -59,9 +59,9 @@ Confirmed findings and validation are recorded in `docs/launch-review.md`.
 - Live lead triggers currently contain only `leads_updated_at`; the repository's
   enrichment-on-insert trigger is not active in the inspected database. Relevant
   enrichment settings are absent. Recheck after any migration rollout.
-- 16,952 leads were unscored at inspection. `useResumeAutoScore` starts scoring on
-  authenticated layout mount when backlog exists. Do not interpret DNC/paused flags
-  as scoring suppression or use repeated reloads as a harmless acceptance action.
+- 16,952 leads were unscored at the initial inspection. The old production build
+  starts scoring on authenticated layout mount; the reviewed preview now only reads
+  status. Do not interpret DNC/paused flags as scoring suppression on the old build.
 - Buyer/task writes have no provider-send triggers in the supplied source. Leave
   disposable buyer contact fields blank; collect UUIDs for exact cleanup. Task/deal
   pages lack delete controls, so arrange exact-ID cleanup before creating fixtures.
@@ -103,3 +103,51 @@ through fixed-build retests. After removing the manually scored fixture, 515 pro
 leads are scored. Fixed-build reload and admin navigation did not start scoring.
 Browser errors observed after the corrected reload: none. Mobile Buyer modal footer
 was reachable at 390-by-844; viewport restored. Preview remains available in Chrome.
+
+## Completion sequence — September 9
+
+Latest published review head `ac8bc85`: all GitHub/Vercel checks green and PR mergeable;
+still draft/unmerged. Supabase currently lists no development branches. Its recorded
+migration history does not yet include `protect_public_intake`; do not blindly replay
+historical migrations into this existing database.
+
+1. **Choose the launch channels.** User selection is pending: calls/text/email,
+   core CRM/scoring first, or all integrations including Facebook. Validate only the
+   selected providers; keep unverified integrations out of the launch workflow.
+2. **Finish isolated acceptance.** Establish a disposable staging database/environment
+   with an approved test account and a regular user. Verify the intake policy migration,
+   direct anonymous-write rejection, authorized public API intake, role restrictions,
+   Development cold loading/import-export restoration and native task date clearing.
+   Existing preview points at the live database; it is not an isolated data sandbox.
+3. **Exercise the chosen integrations.** Obtain one controlled phone/email recipient
+   and authorization for the exact messages/call before sending. Confirm receipt,
+   provider status, callback processing, STOP/opt-out suppression, retry/duplicate
+   handling, webhook duration and recovery. Route every automated test follow-up to
+   approved test recipients and keep bulk jobs disabled.
+4. **Release.** After gates pass, prepare the exact production migration, deployment
+   and rollback steps for approval; apply only reconciled migrations and merge PR #7.
+   Confirm the resulting production deployment contains the reviewed commit. Repeat
+   health/auth/intake/core-workflow checks and check production errors before opening
+   live outreach. Use a small controlled initial run before bulk imports/outreach.
+
+Source checks while preparing this sequence found the Setup Wizard's Retell callback
+URL did not match a registered backend route. It now uses `/webhooks/retell` and the
+designated verification API key; the environment template agrees. Typecheck and lint
+gate pass. The wizard's general Run Checks do not establish SMS/email/call delivery.
+
+Integration-specific gaps to resolve after channel selection:
+
+- Inbound STOP handling was found for Launch Control leads only. Direct-provider SMS
+  and buyer opt-out synchronization require an implemented/tested path or verified
+  bridge before those workflows launch; provider blocking alone does not prove shared
+  application DNC state.
+- Email adapter supports SendGrid/Mailgun; do not assume displayed Instantly setup
+  means the email adapter supports it.
+- An unused frontend call helper references an absent `/api/calls/retell` endpoint.
+  Do not promise that call-initiation path. Retell callback acceptance can originate
+  in the provider dashboard using a disposable lead reference.
+- External calendar synchronization remains unavailable. Import auto-scoring still
+  covers the entire unscored backlog and needs an explicit launch policy.
+
+No provider messages/calls, new billable database branch, schema rollout or production
+release was performed while preparing this completion sequence.
