@@ -398,8 +398,12 @@ def _normalize_import_address(raw: str) -> str:
 
 def _lead_import_key(row: dict[str, Any]) -> str:
     address = _normalize_import_address(str(row.get("property_address") or ""))
+    city = " ".join(str(row.get("city") or "").lower().split())
+    state = str(row.get("state") or "TX").strip().upper()
     zip_code = str(row.get("zip_code") or "").strip()[:5]
-    return f"{address}|{zip_code}" if zip_code else address
+    # A street address is not unique across cities. Prefer locality so adding a
+    # previously missing ZIP does not create another copy of the same property.
+    return f"{address}|{city}|{state}" if city else f"{address}|{zip_code}|{state}"
 
 
 def _payload_from_import_row(row: ImportLeadRow) -> dict[str, Any]:
@@ -662,35 +666,59 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
     if not incoming_by_key:
         raise HTTPException(400, detail="No importable rows with property_address and city")
 
-    existing_resp = supabase.table("leads").select(
+    existing_columns = (
         "id,property_address,city,state,zip_code,owner_first_name,owner_last_name,"
         "owner_phone_1,owner_phone_2,owner_phone_3,owner_email,owner_mailing_address,"
         "property_type,bedrooms,bathrooms,sqft,year_built,asking_price,source,status,internal_notes"
-    ).execute()
-    existing_rows = existing_resp.data or []
+    )
+    existing_rows = []
+    offset = 0
+    # PostgREST caps a response even when no limit is requested. Keep reading
+    # until an empty page; advancing by the actual page length also supports
+    # installations whose configured cap is smaller than our requested page.
+    while True:
+        page = (
+            supabase.table("leads").select(existing_columns)
+            .order("id").range(offset, offset + 999).execute().data or []
+        )
+        if not page:
+            break
+        existing_rows.extend(page)
+        offset += len(page)
     existing_by_key = {_lead_import_key(row): row for row in existing_rows if row.get("property_address")}
 
     imported = 0
     updated = 0
     saved_for_scoring: list[dict[str, Any]] = []
 
+    saved_rows: list[dict[str, Any]] = []
+    new_rows: list[dict[str, Any]] = []
     for key, incoming in incoming_by_key.items():
         existing = existing_by_key.get(key)
         if existing:
             lead_id = existing["id"]
             update_payload = _merge_payloads(existing, incoming)
-            supabase.table("leads").update(update_payload).eq("id", lead_id).execute()
+            changes = {k: v for k, v in update_payload.items() if v != existing.get(k)}
+            if changes:
+                supabase.table("leads").update(changes).eq("id", lead_id).execute()
             saved = {**existing, **update_payload, "id": lead_id}
             updated += 1
+            saved_rows.append(saved)
         else:
-            insert_resp = supabase.table("leads").insert(incoming).execute()
-            data = insert_resp.data or []
-            if not data:
-                skipped += 1
-                continue
-            saved = data[0]
-            lead_id = saved["id"]
-            imported += 1
+            new_rows.append(incoming)
+
+    # A large upload should not require one network round trip per new lead.
+    # Use default_to_null=False so omitted fields retain database defaults.
+    for start in range(0, len(new_rows), 250):
+        batch = new_rows[start:start + 250]
+        data = supabase.table("leads").insert(batch, default_to_null=False).execute().data or []
+        if len(data) != len(batch):
+            raise HTTPException(503, "Import could not confirm all saved rows. Retry the upload to reconcile it.")
+        saved_rows.extend(data)
+        imported += len(data)
+
+    for saved in saved_rows:
+        lead_id = saved["id"]
         saved_for_scoring.append({
             "lead_id": str(lead_id),
             "property_address": saved.get("property_address", ""),
