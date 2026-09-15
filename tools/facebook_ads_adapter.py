@@ -266,6 +266,11 @@ FACEBOOK_FIELD_MAP: dict[str, str] = {
     "asking_price": "asking_price",
     "price": "asking_price",
     "occupancy": "occupancy",
+    # Explicit SMS consent question used by the Hilltop lead form. Seller
+    # confirmation messages remain disabled unless this field is affirmative.
+    "sms_opt_in": "sms_opt_in",
+    "sms_consent": "sms_opt_in",
+    "text_message_consent": "sms_opt_in",
 }
 
 
