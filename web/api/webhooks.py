@@ -1818,7 +1818,9 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
     """
     from tools.facebook_ads_adapter import normalize_facebook_fields
     from web.api.lead_forms_api import (
-        _compute_scores_from_answers, _send_hot_lead_notification
+        _compute_scores_from_answers,
+        _send_hot_lead_notification,
+        _send_lead_pipeline_sms,
     )
     from tools.crm import get_supabase_client
 
@@ -1898,6 +1900,17 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
             }).execute()
         except Exception:
             pass
+
+    # Give every new native Facebook lead the same immediate owner alert as a
+    # website lead. A seller confirmation is sent only when the Facebook form
+    # includes an affirmative SMS-consent answer.
+    _send_lead_pipeline_sms(
+        lead_id=lead_id,
+        answers=fields,
+        phone=fields.get("phone", ""),
+        property_address=fields.get("property_address", "Unknown"),
+        source="facebook_lead_ad",
+    )
 
     # Form answers were deterministically scored before insertion above.
 
