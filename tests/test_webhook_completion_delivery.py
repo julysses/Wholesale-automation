@@ -199,15 +199,37 @@ async def test_facebook_fetch_failure_escapes():
 @pytest.mark.asyncio
 async def test_facebook_retry_creates_one_lead_without_invalid_qualification_call(monkeypatch):
     from tools import crm
+    from web.api import lead_forms_api
     db = MemoryDB()
     monkeypatch.setattr(crm, "get_supabase_client", lambda: db)
+    speed_to_lead = MagicMock()
+    monkeypatch.setattr(lead_forms_api, "_send_lead_pipeline_sms", speed_to_lead)
     adapter = MagicMock()
-    adapter.fetch_lead_form_data.return_value = SimpleNamespace(fields={"full_name": "Test Seller"})
+    adapter.fetch_lead_form_data.return_value = SimpleNamespace(fields={
+        "full_name": "Test Seller",
+        "phone_number": "+12145550123",
+        "street_address": "100 Test St",
+        "sms_consent": "yes",
+    })
     entry = SimpleNamespace(leadgen_id="fb-1", campaign_id="")
     await webhooks._process_facebook_lead(entry, adapter)
     await webhooks._process_facebook_lead(entry, adapter)
     imported = [r for r in db.tables["leads"].values() if r.get("internal_notes") == "FB leadgen_id=fb-1"]
     assert len(imported) == 1
+    speed_to_lead.assert_called_once_with(
+        lead_id=imported[0]["id"],
+        answers={
+            "full_name": "Test Seller",
+            "first_name": "Test",
+            "last_name": "Seller",
+            "phone": "+12145550123",
+            "property_address": "100 Test St",
+            "sms_opt_in": "yes",
+        },
+        phone="+12145550123",
+        property_address="100 Test St",
+        source="facebook_lead_ad",
+    )
 
 
 @pytest.mark.asyncio
