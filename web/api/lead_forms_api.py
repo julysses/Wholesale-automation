@@ -391,7 +391,13 @@ from tools.sms_client import SMSClient
 from schemas.outreach import OutreachChannel, OutreachMessage
 
 
-def _send_lead_pipeline_sms(lead_id: str, answers: dict, phone: str, property_address: str):
+def _send_lead_pipeline_sms(
+    lead_id: str,
+    answers: dict,
+    phone: str,
+    property_address: str,
+    source: str = "web_form",
+):
     """
     Speed-to-lead SMS for every new web-form lead (target: <60s end to end).
 
@@ -459,14 +465,18 @@ def _send_lead_pipeline_sms(lead_id: str, answers: dict, phone: str, property_ad
     except Exception as exc:
         logger.warning(f"DNC lookup failed for lead {lead_id}: {exc}")
 
-    if answers.get("sms_opt_in") and phone and not dnc:
+    raw_sms_opt_in = answers.get("sms_opt_in")
+    sms_opted_in = raw_sms_opt_in is True or str(raw_sms_opt_in).strip().lower() in {
+        "1", "true", "yes", "on", "agree", "agreed", "opted_in",
+    }
+    if sms_opted_in and phone and not dnc:
         _send(
             phone,
             f"Hi {name}, thanks for reaching out to Hilltop Home Co. about "
             f"{property_address}. We'll be in touch shortly — reply here anytime with questions.",
         )
 
-    _send(owner_phone, f"🔔 New lead: {name} — {property_address} — {phone}. Source: web_form.")
+    _send(owner_phone, f"🔔 New lead: {name} — {property_address} — {phone}. Source: {source}.")
 
 
 def _send_hot_lead_notification(lead_id: str, answers: dict, score: int):
