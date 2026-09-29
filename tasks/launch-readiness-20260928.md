@@ -1,7 +1,19 @@
 # Launch readiness continuation — September 28, 2026
 
 Working branch: `codex/hilltop-launch-hardening`; review: PR #9.
-Decision: **blocked for live launch** until database connectivity and integration acceptance pass.
+Decision: **database connectivity recovered; live launch remains gated** by intake security and integration acceptance.
+
+## Latest checkpoint — Pro and Micro recovery
+
+- User upgraded the organization to Pro and asked to continue recovery. Dashboard still showed Nano. Reviewed Nano-to-Micro change: same $0.01344/hour rate and **+$0.00/month**; applied only the Micro change. Spend cap and 8 GB disk remained unchanged. The resize completed and dashboard confirmed `t4g.micro`, Micro selected, 1 GB memory.
+- A simple SQL query first succeeded before the resize, after the user's Pro upgrade; therefore the exact cause/timing of recovery cannot be attributed exclusively to Micro. Post-resize queries, migration history and security advisor checks also succeeded.
+- Active `hilltop-home-co` form exists, ID `81f518b4-b115-4d6b-b339-d70d2c5d0d03`. Production form API returned HTTP 200 in 8.57 seconds initially, then 200 in 0.84 seconds on recheck. Browser rendered the headline and step-one fields. No form was submitted and no provider messages were sent.
+- Health returned 200; unauthenticated scoring-status returned 401. Active-session inspection returned no other active queries at the sampled instant. This is point-in-time recovery evidence, not a load or soak test.
+- Supabase history still lacks `protect_public_intake`. Verified both `public_insert_submissions` and `anon_insert_fb_leads` policies still permit anonymous INSERT. Apply the reconciled migration after isolated acceptance of the service-role intake path.
+- Security advisor returned seven mutable function-search-path warnings, anonymous access to `is_approved`, authenticated security-definer notices for approval/admin helpers, and disabled leaked-password protection. The service-only `webhook_jobs` RLS/no-policy notice is informational; do not add public policies just to silence it. Review function bodies/permissions before changing helpers.
+- PR #9 remains open; its current code checks and Vercel preview passed. No production code release, database migration, password change or support-ticket closure occurred. Earlier outage/support notes below are historical and superseded by these recovery checks.
+
+Security remediation references: https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable and https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
 
 ## Completed this session
 
@@ -22,7 +34,7 @@ Decision: **blocked for live launch** until database connectivity and integratio
 
 With explicit user authorization, submitted Supabase support request for `dvzhzlipbwzzcliujzyz`. Category: Database unresponsive; service: Database; severity: Normal (system impaired). Subject: `wholesale-automation database unreachable after restart — SQL timeout/ECONNREFUSED`. Supabase confirmed **Support request sent** and **Your ticket has been logged for wholesale-automation**; reply destination is `julyssesd@gmail.com`. No ticket number was displayed. Optional human/AI project-access grant was disabled. Await support response; submission is not evidence of database recovery.
 
-1. Investigate the persistent post-restart database connection refusal with Supabase support. Network-ban status is unavailable. After recovery, verify SQL and migration/advisor access plus public form lookup. Do not replay migrations or recreate form records while connectivity is broken.
+1. Database query and form-read recovery are verified above. Retain the support case for root-cause analysis; no closure or further message was sent. Continue with the security/intake acceptance steps below, and recheck latency under controlled load before launch.
 2. Reconcile current database policies/history against pending public-intake migration; use isolated acceptance before any rollout.
 3. Trace the separate Netlify website intake into this CRM; verify contact number and optional SMS consent.
 4. Finish durable submission recovery, operator role acceptance, owner assignment/alerts, and explicitly authorized provider delivery and STOP tests.
