@@ -272,6 +272,16 @@ export function Leads() {
         <Select value={motivation} onChange={(e) => { setMotivation(e.target.value); setPage(1); }} options={MOTIVATION_OPTIONS} className="w-40" />
       </div>
 
+      {(retention === 'delete_now' || retention === 'delete_soon') && total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>
+            {total.toLocaleString()} lead{total === 1 ? '' : 's'} {retention === 'delete_now' ? 'are past their delete date' : 'reach their delete date within 30 days'}.
+            Delete them one at a time here, or in bulk by rule.
+          </span>
+          <Button size="sm" variant="outline" onClick={() => setListsOpen(true)}>Bulk cleanup by rule</Button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -385,9 +395,18 @@ export function Leads() {
                     {(() => {
                       const r = retentionBadge(lead);
                       return r ? (
-                        <span title={r.title} className={cn('inline-flex flex-col rounded border px-2 py-0.5 text-xs leading-tight', RETENTION_TONE_CLASS[r.tone])}>
-                          <span className="font-semibold">{r.label}</span>
-                          {r.sub && <span className="opacity-80">{r.sub}</span>}
+                        <span className="inline-flex items-center gap-2">
+                          <span title={r.title} className={cn('inline-flex flex-col rounded border px-2 py-0.5 text-xs leading-tight', RETENTION_TONE_CLASS[r.tone])}>
+                            <span className="font-semibold">{r.label}</span>
+                            {r.sub && <span className="opacity-80">{r.sub}</span>}
+                          </span>
+                          {r.label === 'Delete now' && (
+                            <button type="button" title="Delete this lead"
+                              className="inline-flex items-center gap-1 rounded border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                              onClick={(e) => { e.stopPropagation(); if (confirm(`Delete ${lead.property_address}? This cannot be undone.`)) deleteLead.mutate(lead.id); }}>
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </button>
+                          )}
                         </span>
                       ) : <span className="text-gray-300">—</span>;
                     })()}

@@ -9,6 +9,11 @@ CREATE TABLE IF NOT EXISTS public.lead_lists (
   row_count   INT NOT NULL DEFAULT 0
 );
 
+-- New tables in this project get no default grants: the API (service_role) and the app
+-- (authenticated, still gated by the RLS policies below) need them explicitly.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.lead_lists TO authenticated;
+GRANT ALL ON public.lead_lists TO service_role;
+
 ALTER TABLE public.lead_lists ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS authenticated_full_access ON public.lead_lists;
 CREATE POLICY authenticated_full_access ON public.lead_lists FOR ALL TO authenticated USING (TRUE);
