@@ -38,6 +38,15 @@ class DB(MemoryDB):
     def table(self, name):
         return Query(self, name)
 
+    def rpc(self, name, payload):
+        assert name == "intake_phone_status"
+        # SQL normalization and registry matching are covered by isolated PostgreSQL tests.
+        return SimpleNamespace(execute=lambda: SimpleNamespace(data={
+            "suppressed": any(row.get("dnc") is True for row in self.tables.get("leads", {}).values()),
+            "duplicate": False,
+        }))
+
+
 
 @pytest.fixture
 def pipeline(monkeypatch):
@@ -150,3 +159,12 @@ def test_default_twilio_dependency_and_dispatch_contract(monkeypatch):
     assert SMSClient()._send_twilio(message, SELLER) is True
     assert message.a2p_provider == "twilio"
     sdk.messages.create.assert_called_once()
+
+
+@pytest.mark.parametrize("status", [None, {}, {"suppressed": "false", "duplicate": False}])
+def test_unconfirmed_phone_status_blocks_seller(pipeline, monkeypatch, status):
+    db, client = pipeline
+    monkeypatch.setattr(db, "rpc", lambda *_: SimpleNamespace(execute=lambda: SimpleNamespace(data=status)))
+    run()
+    assert [call.args[1] for call in client.send.call_args_list] == [OWNER]
+    assert receipt(db)["metadata"]["seller_sms"] == "suppression_check_failed"

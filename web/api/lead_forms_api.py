@@ -445,14 +445,14 @@ def _send_lead_pipeline_sms(
     if opted_in and phone:
         try:
             current = supabase.table("leads").select("dnc").eq("id", lead_id).single().execute()
-            suppressed = supabase.table("leads").select("id").eq("owner_phone_1", phone).eq("dnc", True).limit(1).execute()
-            cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-            duplicate = (supabase.table("leads").select("id").eq("owner_phone_1", phone)
-                         .eq("property_address", property_address).gte("created_at", cutoff)
-                         .neq("id", lead_id).limit(1).execute())
-            is_duplicate = bool(duplicate.data)
+            status = supabase.rpc("intake_phone_status", {
+                "p_phone": phone, "p_lead": lead_id, "p_property": property_address,
+            }).execute().data
+            if not isinstance(status, dict) or not all(isinstance(status.get(key), bool) for key in ("suppressed", "duplicate")):
+                raise RuntimeError("Suppression status was not confirmed")
+            is_duplicate = status["duplicate"]
             seller_allowed = bool(current.data and current.data.get("dnc") is False
-                                  and not suppressed.data and not is_duplicate)
+                                  and not status["suppressed"] and not is_duplicate)
             outcomes["seller_sms"] = "suppressed_or_duplicate" if not seller_allowed else "not_attempted"
         except Exception:
             outcomes["seller_sms"] = "suppression_check_failed"
