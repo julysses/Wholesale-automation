@@ -18,6 +18,10 @@ Decision: **blocked for live launch** until database connectivity and integratio
 
 ## Resume steps
 
+### Support escalation submitted
+
+With explicit user authorization, submitted Supabase support request for `dvzhzlipbwzzcliujzyz`. Category: Database unresponsive; service: Database; severity: Normal (system impaired). Subject: `wholesale-automation database unreachable after restart — SQL timeout/ECONNREFUSED`. Supabase confirmed **Support request sent** and **Your ticket has been logged for wholesale-automation**; reply destination is `julyssesd@gmail.com`. No ticket number was displayed. Optional human/AI project-access grant was disabled. Await support response; submission is not evidence of database recovery.
+
 1. Investigate the persistent post-restart database connection refusal with Supabase support. Network-ban status is unavailable. After recovery, verify SQL and migration/advisor access plus public form lookup. Do not replay migrations or recreate form records while connectivity is broken.
 2. Reconcile current database policies/history against pending public-intake migration; use isolated acceptance before any rollout.
 3. Trace the separate Netlify website intake into this CRM; verify contact number and optional SMS consent.
