@@ -13,6 +13,8 @@ Decision: **blocked for live launch** until database connectivity and integratio
 - User initiated the Supabase restart. Dashboard and connector confirmed RESTARTING; the lifecycle API subsequently returned ACTIVE_HEALTHY, but the dashboard showed Unhealthy.
 - Post-restart SQL failed twice with ECONNREFUSED to the database host on port 5432. At 2026-09-29 01:02 UTC, production form lookup still returned 404. Recovery is not established.
 - Database observability could not load connection/disk/network metrics. Network restrictions page states all IP addresses can access the database; banned-IP retrieval failed with `Failed to fetch (api.supabase.com)` and directs the operator to support. No restrictions, passwords, compute sizes, or data were changed.
+- Follow-up investigation: SQL again timed out. Postgres logs now returned authentication and statement timeout records. Infrastructure displayed 100% CPU, 46% memory and 100% disk I/O on Nano, with 0.31 GB used of 8 GB; exact metric time window and causality remain unconfirmed. Scaling requires a paid plan.
+- Inspected managed upgrade: stable version 17.6.1.166 is offered alongside a preview; confirmation warns of up to one hour offline and no downgrade. Cancelled without applying because backup and preflight verification are unavailable. Support form is open with the correct wholesale project selected; authorization to send the prepared recovery request is pending. No support request has been sent.
 
 ## Resume steps
 
