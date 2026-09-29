@@ -1,6 +1,6 @@
 # WholesaleOS — AI-Powered Real Estate Wholesale Automation
 
-> Current release review and remaining gates: [Final readiness review](docs/final-readiness-review.md).
+> Current release review and evidence: [Launch review](docs/launch-review.md).
 
 An end-to-end wholesale acquisition platform that automates lead scoring, AI voice dialing, seller qualification, deal analysis, and negotiation intelligence — driving 2–8 contracts/month from a precision-targeted list.
 
@@ -9,6 +9,7 @@ An end-to-end wholesale acquisition platform that automates lead scoring, AI voi
 ## Table of Contents
 
 - [Architecture](#architecture)
+- [Launch Readiness](#launch-readiness)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
 - [Environment Variables](#environment-variables)
@@ -18,6 +19,59 @@ An end-to-end wholesale acquisition platform that automates lead scoring, AI voi
 - [Acquisition Strategies](#acquisition-strategies)
 - [Known Issues](#known-issues)
 - [Polish / Roadmap Items](#polish--roadmap-items)
+
+---
+
+## Launch Readiness
+
+Last verified: **September 15, 2026**. The merged launch-readiness repair is live
+in Vercel and `/api/health` returns 200. The full Hilltop workflow is **not yet
+cleared for launch**.
+
+### Confirmed ready
+
+- Production contains the merged workflow, access-control, webhook and recovery
+  repairs from PR #7.
+- Core signed-in CRUD, pipeline movement, reports, positive admin access and
+  Development save/local reload passed the recorded preview acceptance.
+- The backend suite passes: **230 tests**. Focused provider/webhook coverage passes:
+  **36 tests**.
+- The frontend's Supabase URL and anonymous key are available through
+  `/api/config`.
+
+### Launch blockers
+
+| Area | Current evidence | Required completion |
+|---|---|---|
+| Hilltop website | `https://hilltophome.co` returned 502 during acceptance | Restore the production site, then complete mobile browser QA and a controlled live submission |
+| Public Hilltop form | `/api/forms/hilltop-home-co` returned 404 after the database lookup | Restore or activate the `hilltop-home-co` form config and confirm its SMS-consent field |
+| Facebook Lead Ads | Production reports both webhook verification token and app secret as unconfigured | Set `FACEBOOK_WEBHOOK_VERIFY_TOKEN`, `FACEBOOK_APP_SECRET`, `FACEBOOK_ACCESS_TOKEN` and the intended account/page/form IDs; subscribe `leadgen`; verify signed delivery and duplicate handling |
+| Retell calls | Production reports the Retell webhook verification secret/API key as unconfigured | Configure the designated verification key and callback, then verify a controlled call, callback, duration, retry and parked-failure recovery |
+| SMS and owner alerts | No authorized production round trip has confirmed delivery | Set a separate business sender and `OWNER_ALERT_PHONE_NUMBER`; verify seller consent, owner receipt, STOP/DNC synchronization and provider logs |
+| Email | Adapter supports SendGrid or Mailgun; production delivery is unverified | Choose/configure one supported provider and verify receipt, failure reporting and suppression behavior |
+| Database security | `20260909023229_protect_public_intake.sql` has not been verified through an isolated staging rollout | Reconcile migration histories, test the migration in staging, confirm anonymous direct inserts fail and validated API intake succeeds, then apply through the release process |
+| Roles and workspace | Approved-admin acceptance passed previously; a fresh admin session, lower-role session and extended workspace checks remain open | Verify real lower-role denial, Development cloud-only cold load, import/export restoration and native task-date clearing |
+| Webhook operations | Current handlers execute inline and no scheduler/worker deployment is confirmed | Measure provider callback duration on the production host and document deliberate recovery for interrupted or partially completed jobs |
+| Final deployment | Provider and staging gates remain open | Deploy the accepted commit, repeat health/auth/intake/core-workflow smoke tests and review production errors before enabling live campaigns |
+
+Native Facebook leads now share the website lead's speed-to-lead path: each new
+lead produces an owner alert, while a seller confirmation is allowed only with
+an affirmative SMS-consent answer. The launch still depends on the production
+credentials and controlled provider round trips above.
+
+External calendar synchronization remains unavailable and must stay outside the
+launch feature set. Bulk imports can still initiate scoring across the full
+unscored backlog; define the launch policy before importing production lists.
+
+### Completion order
+
+1. Restore the Hilltop site and active public form.
+2. Create an isolated staging environment and complete the migration, role and
+   workspace checks.
+3. Configure Facebook, SMS, email and Retell using controlled test recipients.
+4. Complete signed provider round trips, STOP/DNC checks and webhook recovery.
+5. Deploy the accepted release and repeat production smoke tests before opening
+   campaigns or bulk outreach.
 
 ---
 
@@ -164,6 +218,11 @@ python -m pytest -q
 | `ANTHROPIC_API_KEY` | Claude API key for qualification + deal analysis |
 | `LAUNCH_CONTROL_API_KEY` | Launch Control SMS key |
 | `LAUNCH_CONTROL_FROM_NUMBER` | SMS sender number |
+| `OWNER_ALERT_PHONE_NUMBER` | Separate internal number that receives every new-lead alert |
+| `FACEBOOK_APP_SECRET` | Meta app secret used to verify signed Lead Ads callbacks |
+| `FACEBOOK_WEBHOOK_VERIFY_TOKEN` | Token configured identically in Meta and WholesaleOS for webhook subscription |
+| `FACEBOOK_ACCESS_TOKEN` | Token used to retrieve submitted Lead Ads field data |
+| `FACEBOOK_AD_ACCOUNT_ID` | Meta ad account used for campaign synchronization |
 
 ### Frontend (`frontend/.env`)
 
