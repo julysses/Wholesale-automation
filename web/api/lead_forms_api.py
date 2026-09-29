@@ -28,6 +28,7 @@ import logging
 import math
 import re
 from datetime import datetime, timedelta, timezone
+from html import escape
 from typing import Any, Optional
 from uuid import UUID, NAMESPACE_URL, uuid5
 
@@ -234,9 +235,8 @@ async def submit_form(
     if not submission_id:
         raise HTTPException(503, "We could not save your inquiry. Please try again.")
 
-    # Process lead in background
-    background_tasks.add_task(
-        _process_form_submission,
+    # Finish durable CRM work before acknowledging the inquiry.
+    await _process_form_submission(
         form_config=form_config,
         answers=answers,
         scores=scores,
@@ -257,8 +257,9 @@ async def _process_form_submission(
     scores: dict,
     submission_id: Optional[str],
     utm_campaign: Optional[str],
+    deliver_notifications: bool = True,
 ):
-    """Background: create lead from form submission, run qualification pipeline."""
+    """Persist lead and task atomically, then attempt optional notifications."""
     supabase = _get_supabase()
 
     # Build lead record from answers
@@ -271,6 +272,9 @@ async def _process_form_submission(
 
     # Phone normalization
     phone = answers.get("phone", "").strip()
+    digits = re.sub(r"\D", "", phone)
+    if re.fullmatch(r"1?\d{10}", digits):
+        phone = "+1" + digits[-10:]
 
     asking_price = None
     raw_price = answers.get("asking_price")
@@ -324,27 +328,26 @@ async def _process_form_submission(
     if form_config.get("campaign_id"):
         lead_data["ad_campaign_id"] = form_config["campaign_id"]
 
+    created = True
     try:
-        lead_resp = supabase.table("leads").insert(lead_data).execute()
-        lead_id = lead_resp.data[0]["id"] if lead_resp.data else None
-        if not lead_id:
-            raise RuntimeError("Lead insert returned no saved lead")
-    except Exception as exc:
-        logger.error(f"Failed to create lead from form submission: {exc}")
         if submission_id:
-            supabase.table("lead_form_submissions").update(
-                {"processing_status": "failed"}
-            ).eq("id", submission_id).execute()
-        return
+            result = supabase.rpc("finalize_form_submission", {
+                "p_submission_id": submission_id, "p_lead": lead_data,
+            }).execute().data
+            lead_id = result.get("lead_id") if isinstance(result, dict) else None
+            created = bool(result.get("created")) if isinstance(result, dict) else False
+        else:
+            lead_resp = supabase.table("leads").insert(lead_data).execute()
+            lead_id = lead_resp.data[0]["id"] if lead_resp.data else None
+        if not lead_id:
+            raise RuntimeError("Lead finalization returned no saved lead")
+    except Exception:
+        logger.exception("Failed to finalize saved form inquiry %s", submission_id)
+        # The pending receipt remains recoverable; do not advise a duplicate submission.
+        raise HTTPException(503, "Your inquiry was saved, but follow-up is delayed. Please contact us before resubmitting.") from None
 
-    # Link submission → lead
-    if submission_id and lead_id:
-        try:
-            supabase.table("lead_form_submissions").update(
-                {"lead_id": lead_id, "processing_status": "processed"}
-            ).eq("id", submission_id).execute()
-        except Exception as exc:
-            logger.error(f"Failed to link submission to lead: {exc}")
+    if not deliver_notifications or not created:
+        return lead_id
 
     # Speed-to-lead SMS: confirmation text to the seller (if opted in) plus an
     # immediate internal alert to the owner, on every new web-form lead —
@@ -354,7 +357,7 @@ async def _process_form_submission(
         try:
             _send_lead_pipeline_sms(
                 lead_id=lead_id,
-                answers=answers,
+                answers={**answers, "sms_opt_in": answers.get("sms_opt_in") if form_config.get("send_confirmation_sms", True) else False},
                 phone=phone,
                 property_address=property_address,
             )
@@ -373,6 +376,7 @@ async def _process_form_submission(
             logger.error(f"HOT lead notification failed: {exc}")
 
     logger.info(f"Form submission processed → lead {lead_id} (score={total_score}, tier={scores['priority_tier']})")
+    return lead_id
 
 
 from tools.email_client import EmailClient
@@ -506,8 +510,8 @@ def _send_hot_lead_notification(lead_id: str, answers: dict, score: int):
             email_client.send(
                 to_email=settings.notification_email,
                 subject=subject,
-                body=f"{subject}\n\n{body}\n\nView Lead: https://wholesale-os.com/acquisitions?lead={lead_id}",
-                html_body=f"<h2>{subject}</h2><p>{body}</p><p><a href='https://wholesale-os.com/acquisitions?lead={lead_id}'>View Lead in Dashboard</a></p>",
+                body=f"{subject}\n\n{body}\n\nView Lead: https://wholesale-automation.vercel.app/acquisitions?lead={lead_id}",
+                html_body=f"<h2>{escape(subject)}</h2><p>{escape(body)}</p><p><a href='https://wholesale-automation.vercel.app/acquisitions?lead={lead_id}'>View Lead in Dashboard</a></p>",
             )
             logger.info(f"HOT lead email alert sent to {settings.notification_email}")
         except Exception as exc:
@@ -616,6 +620,25 @@ async def update_form(form_id: str, body: dict):
     supabase = _get_supabase()
     resp = supabase.table("lead_form_configs").update(body).eq("id", form_id).execute()
     return resp.data[0] if resp.data else {}
+
+
+@router.post("/api/lead-gen/submissions/{submission_id}/recover")
+async def recover_form_submission(submission_id: UUID, request: Request):
+    """Admin recovery creates CRM records only; never replays provider sends."""
+    supabase = _get_supabase()
+    user_id = getattr(request.state, "user_id", None)
+    profile = supabase.table("profiles").select("role,status").eq("id", user_id).limit(1).execute().data if user_id else []
+    if not profile or profile[0].get("role") != "admin" or profile[0].get("status") != "approved":
+        raise HTTPException(403, "Administrator access required")
+    rows = supabase.table("lead_form_submissions").select("*").eq("id", str(submission_id)).limit(1).execute().data
+    if not rows:
+        raise HTTPException(404, "Submission not found")
+    receipt = rows[0]
+    answers = receipt.get("raw_answers") or {}
+    # Process the stored, previously validated receipt even if its form was disabled.
+    lead_id = await _process_form_submission({}, answers, _compute_scores_from_answers(answers),
+        str(submission_id), receipt.get("utm_campaign"), deliver_notifications=False)
+    return {"success": True, "lead_id": lead_id, "provider_messages_replayed": False}
 
 
 @router.get("/api/lead-gen/submissions")

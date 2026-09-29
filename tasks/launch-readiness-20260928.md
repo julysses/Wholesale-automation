@@ -13,9 +13,12 @@ Confirmed scope: website/Facebook intake, personal follow-up, automated SMS, ema
 - [x] Live form SMS checkbox made optional; remaining question order/settings preserved.
 - [x] Supabase leaked-password protection enabled; security advisor confirms warning cleared.
 - [x] Isolated PGlite role checks passed for public-intake restriction and security/consent migration. This is an isolated SQL test, not a full restored staging system.
-- [ ] Apply public-intake restriction after verifying production server credential path. Existing migration tested: anon writes denied, service-role writes and operator reads preserved.
-- [ ] Website candidate: correct phone, optional consent, explicit receipt checks and bounded requests; Next 15.5.26/React19 security upgrade, PostCSS8.5.28 override. Initial production build/type/lint passed and audit0; final build pending after route updates. Branch codex/launch-intake-fixes.
-- [ ] Durable intake/recovery, assigned owner task, phone-normalized suppression, form confirmation setting respected.
+- [x] Applied public-intake restriction after controlled live inquiry produced a linked CRM lead. Both direct anonymous REST inserts now fail 401/42501; a second server inquiry returned200 and produced a processed receipt/linked lead. Test receipts 81a6b3a0-0391-4bcf-b733-9c173cc4cd06 and 4951f89d-e2f1-4e04-aef5-46322afb5a5c use authorized Julio contacts and are clearly marked LAUNCH TEST; SMS consent false.
+- [x] Website candidate pushed (not released), HilltopHome PR3, commit87deb6e: correct phone, optional consent, explicit receipt checks and bounded requests; Next 15.5.26/React19 security upgrade, PostCSS8.5.28 override. Final production build, form-validation tests, type/lint passed and audit0. Branch codex/launch-intake-fixes.
+- [x] Durable SQL finalizer installed: receipt lock, atomic lead/task/processed receipt, service-role-only execution. Isolated role/idempotency/rollback tests passed. Live service-role replay of second test receipt created exactly one assigned Julio task without provider messages.
+- [x] Backend candidate awaits finalization before success and adds admin-only recovery without provider replay, canonical new phone storage, respects send_confirmation_sms, corrects/escapes hot-alert links/content. Backend257 tests passed; not deployed yet.
+- [x] Discovered missing service_role SELECT on app_settings; granted it and verified finalizer works under that role. Saved agency name/contact/phone, owner alert phone/email and approved owner ID. Environment overrides still require deployment verification.
+- [ ] Complete normalized cross-channel suppression and delivery acceptance.
 - [ ] Approved/pending/operator role acceptance and admin helper guard checks.
 - [ ] Production deployment/settings: Vercel login requested. Connector get_project has schema mismatch; CLI uncredentialed. No secrets requested in chat.
 - [ ] Controlled SMS delivery + STOP/after-hours acceptance, email delivery, AI call/recording/webhook acceptance at authorized contacts.
@@ -23,7 +26,7 @@ Confirmed scope: website/Facebook intake, personal follow-up, automated SMS, ema
 - [ ] Website release + CRM PR9 release, live browser/API acceptance, HTTPS/phone check.
 - [ ] Backup/restore evidence, monitoring/recovery runbook, final go/no-go.
 
-Security advisor after live changes: remaining warnings are three intentionally authenticated SECURITY DEFINER helpers (admin role/status setters and is_approved); acceptance of guards pending. webhook_jobs no-policy info reflects service-only access. No provider sends or ad activation performed in this checkpoint.
+Security advisor after live changes: remaining warnings are three intentionally authenticated SECURITY DEFINER helpers (admin role/status setters and is_approved); acceptance of guards pending. webhook_jobs no-policy info reflects service-only access. No deliberate provider sends or ad activation performed in this checkpoint. Two authorized no-SMS-consent public inquiries were submitted; provider delivery has not been certified. Live thank-you message corrected to (214)701-0100.
 
 ## Latest checkpoint — Pro and Micro recovery
 
