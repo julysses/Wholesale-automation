@@ -42,7 +42,8 @@ const EMPTY_PROGRESS: ScoringProgress = {
   complete: false,
 };
 
-const SERVER_BATCH_SIZE = 25;
+// Rules-engine scoring is CPU-only server side, so large batches are cheap.
+const SERVER_BATCH_SIZE = 1000;
 let scoringGeneration = 0;
 
 interface AutoScoreStore {
@@ -146,7 +147,7 @@ export const useAutoScoreStore = create<AutoScoreStore>((set, get) => ({
       if (generation !== scoringGeneration) return;
       set({
         scoring: false,
-        error: err instanceof Error ? err.message : 'Claude scoring failed',
+        error: err instanceof Error ? err.message : 'Lead scoring failed',
       });
     }
   },

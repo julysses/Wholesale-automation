@@ -78,7 +78,7 @@ it('reports a scoring error without a success toast', () => {
   useAutoScoreStore.setState({ scoring: true, total: 10, done: 2 });
   render(<AutoScoreStatusBar />);
   act(() => useAutoScoreStore.setState({ scoring: false, error: 'Provider unavailable' }));
-  expect(screen.getByText('Claude scoring paused')).toBeInTheDocument();
+  expect(screen.getByText('Scoring paused')).toBeInTheDocument();
   expect(mocks.success).not.toHaveBeenCalled();
   expect(mocks.error).toHaveBeenCalledWith('Scoring paused: Provider unavailable');
 });

@@ -32,7 +32,7 @@ it('only reads an unscored backlog on mount and starts work from the explicit ac
 
   const view = render(<ScoringShell />);
   const start = await screen.findByRole('button', { name: 'Score 90 remaining leads' });
-  expect(screen.getByText('Uses Claude to score the entire unscored backlog.')).toBeInTheDocument();
+  expect(screen.getByText('Scores the entire unscored backlog instantly with the rules engine.')).toBeInTheDocument();
   view.rerender(<ScoringShell />);
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(fetcher).toHaveBeenCalledWith('/api/ai/lead-scoring-status', undefined);
@@ -41,7 +41,7 @@ it('only reads an unscored backlog on mount and starts work from the explicit ac
   fireEvent.click(start);
   await waitFor(() => expect(screen.getByText('Scoring complete')).toBeInTheDocument());
   expect(posts()).toEqual([['/api/ai/score-unscored-leads', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batch_size: 25 }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batch_size: 1000 }),
   }]]);
 });
 

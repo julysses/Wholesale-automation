@@ -247,7 +247,7 @@ def test_import_master_list_consolidates_updates_and_scores():
     with patch("tools.crm.get_supabase_client", return_value=fake_db), patch(
         "web.api._get_client", return_value=FakeClaude()
     ):
-        response = client.post("/api/ai/import-master-list", json={"rows": rows})
+        response = client.post("/api/ai/import-master-list", json={"rows": rows, "engine": "ai"})
 
     assert response.status_code == 200
     data = response.json()
@@ -315,7 +315,7 @@ def test_score_unscored_leads_persists_scores_reason_and_progress():
     with patch("tools.crm.get_supabase_client", return_value=fake_db), patch(
         "web.api._get_client", return_value=FakeClaude()
     ):
-        response = client.post("/api/ai/score-unscored-leads", json={"batch_size": 10})
+        response = client.post("/api/ai/score-unscored-leads", json={"batch_size": 10, "engine": "ai"})
 
     assert response.status_code == 200
     data = response.json()
@@ -357,7 +357,7 @@ def test_score_unscored_leads_quarantines_bad_leads_without_500():
     with patch("tools.crm.get_supabase_client", return_value=fake_db), patch(
         "web.api._get_client", return_value=FailingForLeadClaude()
     ):
-        response = client.post("/api/ai/score-unscored-leads", json={"batch_size": 10})
+        response = client.post("/api/ai/score-unscored-leads", json={"batch_size": 10, "engine": "ai"})
 
     assert response.status_code == 200
     data = response.json()
@@ -375,3 +375,17 @@ def test_score_unscored_leads_quarantines_bad_leads_without_500():
     assert bad["score_motivation"] is None
     assert "existing note" in bad["internal_notes"]
     assert "Claude scoring error" in bad["internal_notes"]
+
+
+def test_import_with_list_name_survives_missing_lead_lists_table_and_scores_with_rules():
+    """Deploy-order safety: API live before the lead_lists migration must still import + score."""
+    fake_db = FakeSupabase([])
+    rows = [{"property_address": "500 New Ave", "city": "Dallas", "state": "TX",
+             "sources": ["probate", "tax delinquent"], "stack_count": 2}]
+    with patch("tools.crm.get_supabase_client", return_value=fake_db):
+        response = client.post("/api/ai/import-master-list", json={"rows": rows, "list_name": "Probate roll"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["imported"] == 1 and data["scored"] == 1 and data["list_id"] is None
+    saved = fake_db.rows[0]
+    assert saved["status"].startswith("qualified_") and saved["score_motivation"] == 3

@@ -13,7 +13,7 @@ Responsibilities:
   5. Score decay     (weekly: ignoring 5+ outreach → score drops)
   6. Batch re-score  (run over all buyers, update Supabase in bulk)
 
-Score formula (PRD spec):
+Score formula (PRD spec; frequency/volume use a concave curve, see _frequency_score):
   score =
     (purchase_frequency * 0.30) +   # deals last 12 months → 0-100
     (recency_weight     * 0.25) +   # last purchase date   → 0-100
@@ -22,6 +22,7 @@ Score formula (PRD spec):
     (price_alignment    * 0.10)     # avg price vs our range → 0-100
 
 Engagement adjustments (applied after base score):
+  +5 pof_verified, +3/+5 for ≤14/≤7-day close (max +10 readiness)
   +5  per closed deal with us
   +3  per positive response (interested / callback)
   -2  per ignored outreach (capped at -20 from ignores)
@@ -63,8 +64,7 @@ W_PRICE_ALIGN = 0.10
 
 # Segmentation constants
 FLIPPER_PRICE_CAP     = 300_000
-INSTITUTIONAL_PRICE   = 500_000
-INSTITUTIONAL_DEALS   = 10
+INSTITUTIONAL_DEALS   = 10    # 12-mo purchases (or all-time closes) to count as volume buyer
 PORTFOLIO_LANDLORD_MIN = 10
 
 # Engagement deltas
@@ -72,13 +72,33 @@ DELTA_CLOSED_DEAL  = 5.0
 DELTA_RESPONDED    = 3.0
 DELTA_IGNORED      = -2.0
 MAX_IGNORE_PENALTY = -20.0
+MAX_ENGAGEMENT_DELTA = 30.0
+MIN_ENGAGEMENT_DELTA = -30.0
+MAX_READINESS_BONUS = 10.0
+
+# Large single-family-rental / iBuyer operators buy in bulk at $150-450k, so
+# institutional status is volume-based (or a known operator), not price-based.
+KNOWN_INSTITUTIONAL_NAMES = (
+    "opendoor", "offerpad", "invitation homes", "american homes 4 rent",
+    "progress residential", "tricon", "front yard", "vinebrook", "pretium",
+    "mynd", "reven housing", "sfr3", "roofstock", "zillow offers", "redfin now",
+    "knock", "orchard", "homevestors",
+)
 
 
 # ── Score factor functions ────────────────────────────────────────────────────
 
+FREQUENCY_CAP = 24     # deals/yr that earns full marks (institutional pace)
+VOLUME_CAP = 50        # all-time deals that earns full marks
+
+
 def _frequency_score(purchases_12mo: int) -> float:
-    """Normalize purchases in last 12 months against a cap of 12 deals/year."""
-    return min(purchases_12mo / 12 * 100, 100.0)
+    """
+    Concave curve against FREQUENCY_CAP deals/yr so casual buyers separate from
+    real volume buyers (1→20, 6→50, 12→71, 24+→100) instead of a linear ramp that
+    tops out at 12 and can't tell a hobby flipper from a 40-deal/yr operator.
+    """
+    return min(math.sqrt(max(purchases_12mo, 0) / FREQUENCY_CAP) * 100, 100.0)
 
 
 def _recency_score(last_purchase_date: Optional[date]) -> float:
@@ -112,9 +132,23 @@ def _cash_score(is_cash_buyer: bool) -> float:
     return 100.0 if is_cash_buyer else 0.0
 
 
-def _volume_score(all_time_deals: int, cap: int = 20) -> float:
-    """Normalize total all-time deals against a cap of 20."""
-    return min(all_time_deals / cap * 100, 100.0)
+def _volume_score(all_time_deals: int, cap: int = VOLUME_CAP) -> float:
+    """Concave normalization of all-time deals against ``cap``."""
+    return min(math.sqrt(max(all_time_deals, 0) / cap) * 100, 100.0)
+
+
+def _readiness_bonus(buyer: dict[str, Any]) -> float:
+    """
+    Up to +10 for what actually makes a buyer close a wholesale assignment:
+    verified proof of funds (+5) and fast close speed (≤7 days +5, ≤14 days +3).
+    """
+    bonus = 0.0
+    if buyer.get("pof_verified"):
+        bonus += 5.0
+    days = _safe_float(buyer.get("close_speed_days"))
+    if days is not None and days > 0:
+        bonus += 5.0 if days <= 7 else 3.0 if days <= 14 else 0.0
+    return min(bonus, MAX_READINESS_BONUS)
 
 
 def _price_alignment_score(
@@ -157,7 +191,10 @@ def compute_ibie_score(
     avg_price        = _safe_float(buyer.get("avg_purchase_price"))
     last_buy_raw     = buyer.get("last_purchase_date")
     ignore_count     = int(buyer.get("outreach_ignore_count") or 0)
-    engagement_delta = float(buyer.get("engagement_delta") or 0.0)
+    engagement_delta = max(
+        MIN_ENGAGEMENT_DELTA,
+        min(MAX_ENGAGEMENT_DELTA, float(buyer.get("engagement_delta") or 0.0)),
+    )
 
     # Parse last_purchase_date
     last_purchase: Optional[date] = None
@@ -181,7 +218,7 @@ def compute_ibie_score(
 
     # Engagement adjustment: ignore penalty capped at MAX_IGNORE_PENALTY
     ignore_penalty = max(ignore_count * DELTA_IGNORED, MAX_IGNORE_PENALTY)
-    adjusted = base + engagement_delta + ignore_penalty
+    adjusted = base + engagement_delta + ignore_penalty + _readiness_bonus(buyer)
 
     return round(max(0.0, min(100.0, adjusted)), 2)
 
@@ -236,7 +273,15 @@ def compute_tags(buyer: dict[str, Any]) -> list[str]:
             tags.append("small_landlord")
 
     # Institutional
-    if avg_price > INSTITUTIONAL_PRICE and deals > INSTITUTIONAL_DEALS:
+    name_blob = " ".join(
+        str(buyer.get(k) or "").lower() for k in ("entity_name", "company", "first_name", "last_name")
+    )
+    if (
+        purchases >= INSTITUTIONAL_DEALS
+        or deals > INSTITUTIONAL_DEALS
+        or buyer_type == "institutional"
+        or any(n in name_blob for n in KNOWN_INSTITUTIONAL_NAMES)
+    ):
         tags.append("institutional")
 
     # Activity tags

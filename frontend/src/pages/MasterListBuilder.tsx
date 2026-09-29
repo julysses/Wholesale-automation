@@ -199,7 +199,12 @@ export function MasterListBuilder() {
       const res = await apiFetch('/api/ai/import-master-list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows, score_with_claude: false }),
+        body: JSON.stringify({
+          rows,
+          score_with_claude: false,
+          list_name: `Master list ${new Date().toISOString().slice(0, 10)}`,
+          filename: 'master-list',
+        }),
       });
 
       if (!res.ok) {
@@ -222,7 +227,7 @@ export function MasterListBuilder() {
       queryClient.invalidateQueries({ queryKey: ['workflow_progress'] });
       toast.success(
         `${saved.toLocaleString()} leads saved (${result.imported.toLocaleString()} new, `
-        + `${result.updated.toLocaleString()} updated); Claude scoring queued`
+        + `${result.updated.toLocaleString()} updated); scoring started`
       );
       useAutoScoreStore.getState().start();
       setTimeout(() => navigate('/leads'), 800);

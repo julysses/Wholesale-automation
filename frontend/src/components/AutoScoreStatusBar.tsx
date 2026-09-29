@@ -28,9 +28,9 @@ export function AutoScoreStatusBar() {
       } else if (cancelRequested || done + failed < total) {
         toast.info(`Scoring stopped at ${done}/${total} leads`);
       } else if (failed > 0) {
-        toast.warning(`Claude scored ${done}/${total} leads (${failed} failed)${parts ? ` — ${parts}` : ''}`);
+        toast.warning(`Scored ${done}/${total} leads (${failed} failed)${parts ? ` — ${parts}` : ''}`);
       } else {
-        toast.success(`Claude scored ${done.toLocaleString()} leads${parts ? ` — ${parts}` : ''}`);
+        toast.success(`Scored ${done.toLocaleString()} leads${parts ? ` — ${parts}` : ''}`);
       }
     }
     wasScoring.current = scoring;
@@ -54,7 +54,7 @@ export function AutoScoreStatusBar() {
           <Flame className="h-4 w-4 text-green-600 shrink-0" />
         )}
         <p className="text-xs font-semibold text-gray-800 flex-1">
-          {isPaused ? 'Claude scoring paused' : scoring ? 'Claude is scoring leads…' : cancelRequested && remaining > 0 ? 'Scoring stopped' : remaining > 0 ? 'Unscored leads' : failed ? 'Scoring finished with errors' : 'Scoring complete'}
+          {isPaused ? 'Scoring paused' : scoring ? 'Scoring leads…' : cancelRequested && remaining > 0 ? 'Scoring stopped' : remaining > 0 ? 'Unscored leads' : failed ? 'Scoring finished with errors' : 'Scoring complete'}
         </p>
         <button
           onClick={scoring ? cancel : dismiss}
@@ -90,7 +90,7 @@ export function AutoScoreStatusBar() {
             <RotateCw className="h-3.5 w-3.5" />
             Score {remaining.toLocaleString()} remaining leads
           </button>
-          <p className="mt-1 text-[11px] text-gray-500">Uses Claude to score the entire unscored backlog.</p>
+          <p className="mt-1 text-[11px] text-gray-500">Scores the entire unscored backlog instantly with the rules engine.</p>
         </div>
       )}
     </div>
