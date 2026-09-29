@@ -43,10 +43,14 @@ def _count(supabase: Any, list_id: str, *, unworked_only: bool = False, unscored
 @router.get("")
 def list_lead_lists() -> dict:
     supabase = _supabase()
-    lists = (
-        supabase.table("lead_lists").select("id,name,filename,created_at,row_count")
-        .order("created_at", desc=True).execute().data or []
-    )
+    try:
+        lists = (
+            supabase.table("lead_lists").select("id,name,filename,created_at,row_count")
+            .order("created_at", desc=True).execute().data or []
+        )
+    except Exception as exc:
+        logger.exception("Could not read lead_lists")
+        raise HTTPException(503, detail=f"Could not read lists (database permission or migration issue): {exc}")
     out = []
     for row in lists:
         lead_id = str(row["id"])
