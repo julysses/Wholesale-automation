@@ -15,7 +15,7 @@ Reviewed: September 28, 2026, America/Chicago. Planning baseline: Day 0 = Septem
 | Website form | Public JavaScript posts to same-site `/api/get-offer`; client validation says SMS consent is required | Trace the Netlify endpoint through to the CRM; allow an inquiry without mandatory marketing/text enrollment |
 | Privacy page | Published policy lists SMS STOP/HELP, service providers, and retention | Review accuracy against actual configuration and provider requirements; publication alone is not approval |
 | CRM process | `/api/health` returned 200; unauthenticated scoring-status route returned 401 | Process responds and this protected route rejects anonymous access; health endpoint does not check database connectivity |
-| Form configuration | Read-only `/api/forms/hilltop-home-co` request exceeded a 30-second timeout | Intake remains a launch blocker; a timeout is not proof that the form record is missing |
+| Form configuration | Initial read-only request timed out at 30 seconds; a longer check returned HTTP 404, `Form not found or inactive`, after 39.54 seconds | Intake remains a launch blocker; source catches database lookup exceptions and returns 404, so missing/inactive config versus failed queries is unresolved |
 | Database | Supabase lists project `dvzhzlipbwzzcliujzyz` as ACTIVE_HEALTHY, but SQL and migration-history inspection timed out | Provider status is not evidence that application queries, policies, or schema are working |
 | Production version | Vercel lists production deployment `dpl_GfuX95BKyZ2G1cjaYpsZoSqBsb5s`, READY, commit `2d67db1` | PR #7 repairs are in the listed production deployment |
 | Facebook follow-up change | PR #8 remains OPEN at `dfdb630`; its recorded CI checks succeeded and preview is READY | Facebook owner-alert and affirmative-consent changes are not in the production branch |
@@ -140,13 +140,13 @@ If these are not met by October 28, use a narrower tested launch scope or move t
 
 ## 8. Resume checkpoint and progress log
 
-**Completed September 28:** located and pulled current repository; inspected production source and PR #8; verified website HTTPS/browser rendering and placeholder number; checked health/auth boundaries and deployment history; attempted read-only database/form inspection; reviewed public client consent behavior; created this plan.
+**Completed September 28:** located and pulled current repository; inspected production source and PR #8; verified website HTTPS/browser rendering and placeholder number; checked health/auth boundaries and deployment history; attempted read-only database inspection and observed delayed form-config HTTP 404; reviewed public client consent behavior; created this plan.
 
 **First next action:** diagnose A03 using read-only production logs and database connectivity, then identify the website repository and Netlify `/api/get-offer` handler for A04. Do not infer the website's backend destination from branding or from the separate CRM form endpoint.
 
 **Decisions pending from Julio:** exact ad date; website vs native lead form (or both); personal vs automated follow-up; confirmed business number; primary/backup owner; ad spending cap; authorized provider test contacts when tests are staged.
 
-**Technical handoff:** repository `julysses/Wholesale-automation`; default branch `claude/ai-wholesaling-agency-KkDF1`; production reviewed at `2d67db1`; open Facebook PR #8 at `dfdb630`; Supabase project `dvzhzlipbwzzcliujzyz`. Existing untracked `docs/deployment-vercel 2.md` was left untouched. Plan-only update should be committed on a separate branch and pushed, without changing production code or merging PR #8.
+**Technical handoff:** repository `julysses/Wholesale-automation`; default branch `claude/ai-wholesaling-agency-KkDF1`; production reviewed at `2d67db1`; open Facebook PR #8 at `dfdb630`; Supabase project `dvzhzlipbwzzcliujzyz`. Existing untracked `docs/deployment-vercel 2.md` was left untouched. Plan is tracked at `docs/hilltop-30-day-launch-plan.md` on branch `codex/hilltop-30-day-launch-plan`, separately from production. Production code and PR #8 were not changed by this review.
 
 Update this file after each work session: item ID, date, result, evidence, commit/deployment, unresolved issue and next exact action. Mark complete only when acceptance evidence exists. Refresh the user-facing output copy from the tracked repository plan so the two stay aligned.
 
