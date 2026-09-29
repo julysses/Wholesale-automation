@@ -121,5 +121,7 @@ def rescore_lead_list(list_id: str) -> dict:
     from web.api import ScoreUnscoredLeadsRequest, _score_batch_rules
 
     supabase = _supabase()
+    from web.api import _score_via_sql
+
     body = ScoreUnscoredLeadsRequest(rescore_existing=True, include_errors=True, list_id=list_id)
-    return {"status": "ok", **_score_batch_rules(supabase, body, 100_000)}
+    return {"status": "ok", **(_score_via_sql(supabase, body) or _score_batch_rules(supabase, body, 100_000))}
