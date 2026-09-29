@@ -195,3 +195,38 @@ def test_rules_scoring_keeps_paging_when_server_caps_rows_per_page():
     with patch("web.api._supabase_or_503", return_value=db):
         r = client.post("/api/ai/score-unscored-leads", json={"batch_size": 1000}).json()
     assert r["processed"] == 450 and r["progress"]["unscored"] == 0
+
+
+def test_scoring_uses_single_sql_call_and_falls_back_when_function_missing():
+    from unittest.mock import patch
+
+    class SqlDB(DB):
+        def __init__(self, tables, fn_ok=True):
+            super().__init__(tables)
+            self.fn_ok, self.calls = fn_ok, []
+
+        def rpc(self, name, params=None):
+            self.calls.append((name, params))
+            db = self
+
+            class R:
+                def execute(self_inner):
+                    if name == "score_leads_rules":
+                        if not db.fn_ok:
+                            raise RuntimeError("function public.score_leads_rules does not exist")
+                        for r in db.tables["leads"]:
+                            r.update(score_motivation=2, status="qualified_warm")
+                        return Resp({"scored": len(db.tables["leads"])})
+                    return Resp([])
+            return R()
+
+    db = SqlDB({"leads": leads(40)})
+    with patch("web.api._supabase_or_503", return_value=db):
+        r = client.post("/api/ai/score-unscored-leads", json={}).json()
+    assert r["scored"] == 40 and r["progress"]["unscored"] == 0
+    assert [c[0] for c in db.calls].count("score_leads_rules") == 1 and db.upserts == 0
+
+    db2 = SqlDB({"leads": leads(30)}, fn_ok=False)   # migration not applied -> API-side rules path
+    with patch("web.api._supabase_or_503", return_value=db2):
+        r2 = client.post("/api/ai/score-unscored-leads", json={}).json()
+    assert r2["scored"] == 30 and db2.upserts >= 1

@@ -606,6 +606,8 @@ def _score_leads_with_rules(supabase: Any, leads: list[dict[str, Any]]) -> tuple
     for lead in leads:
         try:
             payload = score_lead(lead).to_update_payload()
+            if lead.get("status") not in (None, "new", "qualified_hot", "qualified_warm", "qualified_cold", "scoring_error"):
+                payload.pop("status", None)   # keep the stage of leads a human already worked
         except Exception:
             logger.exception("Rules scoring failed for lead %s", lead.get("id"))
             failed += 1
@@ -653,6 +655,28 @@ def _status_filter_ok(query: Any, body: ScoreUnscoredLeadsRequest) -> Any:
     if body.list_id:
         query = query.eq("list_id", body.list_id)
     return query
+
+
+def _score_via_sql(supabase: Any, body: ScoreUnscoredLeadsRequest, ids: list[str] | None = None) -> dict | None:
+    """Whole-backlog screen in ONE database call (public.score_leads_rules).
+    Returns None if the function is not installed so callers can fall back."""
+    try:
+        params: dict[str, Any] = {
+            "p_rescore": bool(body.rescore_existing),
+            "p_include_errors": bool(body.include_errors),
+        }
+        if body.list_id:
+            params["p_list_id"] = body.list_id
+        if ids:
+            params["p_ids"] = ids
+        data = supabase.rpc("score_leads_rules", params).execute().data
+    except Exception:
+        logger.exception("score_leads_rules RPC unavailable; falling back to API-side scoring")
+        return None
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    scored = int((data or {}).get("scored", 0))
+    return {"processed": scored, "scored": scored, "failed": 0}
 
 
 def _score_batch_rules(supabase: Any, body: ScoreUnscoredLeadsRequest, batch_size: int) -> dict:
@@ -703,7 +727,7 @@ def score_unscored_leads(body: ScoreUnscoredLeadsRequest = ScoreUnscoredLeadsReq
 
     if body.engine == "rules":
         batch_size = max(1, min(MAX_RULES_BATCH, int(body.batch_size or MAX_RULES_BATCH)))
-        counts = _score_batch_rules(supabase, body, batch_size)
+        counts = _score_via_sql(supabase, body) or _score_batch_rules(supabase, body, batch_size)
         return {
             "status": "complete" if counts["processed"] == 0 else "ok",
             **counts,
@@ -868,11 +892,19 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
 
     scored_count = 0
     if body.score_with_claude and body.engine == "rules" and saved_rows:
-        scored_count, _failed = _score_leads_with_rules(supabase, saved_rows)
-        try:
-            supabase.rpc("recompute_priority_ranks").execute()
-        except Exception:
-            logger.exception("Failed to recompute priority ranks after import")
+        via_sql = _score_via_sql(
+            supabase,
+            ScoreUnscoredLeadsRequest(rescore_existing=True, include_errors=True),
+            ids=[str(r["id"]) for r in saved_rows],
+        )
+        if via_sql is not None:
+            scored_count = via_sql["scored"]
+        else:
+            scored_count, _failed = _score_leads_with_rules(supabase, saved_rows)
+            try:
+                supabase.rpc("recompute_priority_ranks").execute()
+            except Exception:
+                logger.exception("Failed to recompute priority ranks after import")
     elif body.score_with_claude and saved_for_scoring:
         scored = _score_imported_leads_with_claude(saved_for_scoring)
         for lead_id, score_payload in scored.items():

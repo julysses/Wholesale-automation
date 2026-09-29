@@ -67,16 +67,16 @@ MIN_EQUITY_PCT = 30.0
 
 # (regex, signal). Matched against tag + source + notes.
 _SIGNAL_PATTERNS: tuple[tuple[str, str], ...] = (
-    (r"probate|inherit|estate of|deceased|heir", "probate"),
-    (r"pre[\s-]?foreclos|foreclos|\blis pendens\b|\bnod\b|notice of default|auction|trustee sale", "pre_foreclosure"),
-    (r"tax[\s-]?(delinq|lien|sale)|delinquent tax|back tax", "tax_delinquent"),
+    (r"probate|inherit|estate of|deceased|\bheir\b", "probate"),
+    (r"pre[\s-]?foreclos|\bprefor\b|foreclos|\blis pendens\b|\bnod\b|notice of default|auction|trustee sale", "pre_foreclosure"),
+    (r"delinq|tax[\s-]?(lien|sale|roll)|back tax", "tax_delinquent"),
     (r"code (violation|enforcement)|condemn|unsafe|nuisance", "code_violation"),
     (r"vacant|abandon|empty", "vacant"),
     (r"absentee|non[\s-]?owner|out[\s-]?of[\s-]?(state|town)", "absentee"),
     (r"divorce|bankrupt|chapter 7|chapter 13", "life_event"),
     (r"tired landlord|landlord|evict|tenant", "tired_landlord"),
     (r"water shut|utility (shut|disconnect)|shutoff", "utility_shutoff"),
-    (r"fire damage|fire[\s-]?damaged|flood|hail|storm|foundation|mold|roof", "damaged"),
+    (r"fire damage|fire[\s-]?damaged|\bflood|\bhail\b|\bstorm|foundation|\bmold\b|\broof", "damaged"),
     (r"high equity|free and clear|no mortgage|paid off|\blow ltv\b", "high_equity"),
     (r"need(s)? to sell|must sell|asap|relocat|behind on|hardship|job loss|as[\s-]?is", "urgent_language"),
 )
@@ -90,9 +90,12 @@ _MOTIVATION_POINTS = {
 _HARD_CLOCK = {"pre_foreclosure": 3, "probate": 2, "tax_delinquent": 2, "code_violation": 2,
                "utility_shutoff": 2, "life_event": 2, "urgent_language": 2}
 
+# Tax-roll rows for business equipment etc. are not real estate and can never be assigned.
+_NOT_REAL_ESTATE = re.compile(r"business personal|personal property|mineral|utility|inventory", re.I)
+_RESIDENTIAL = re.compile(r"single[\s-]?family|\bsfr\b|residential|\bhouse\b|\bhome\b|townhome", re.I)
 _NON_SFR = re.compile(
     r"mobile|manufactured|trailer|land|lot\b|vacant land|acre|multi|duplex|triplex|fourplex|"
-    r"quad|apartment|commercial|condo|townho|coop|co-op|industrial|farm",
+    r"quad|apartment|commercial|condo|coop|co-op|industrial|farm|^other$",
     re.I,
 )
 _MISSING = (None, "", "None", "nan")
@@ -142,11 +145,33 @@ class LeadScore:
 
 def detect_signals(*texts: Any) -> list[str]:
     blob = " ".join(str(t) for t in texts if t not in _MISSING).lower()
+    blob = re.sub(r"[_+/]+", " ", blob)   # list names like Collin_County_Delinquent_Tax_Roll
     found: list[str] = []
     for pattern, signal in _SIGNAL_PATTERNS:
         if signal not in found and re.search(pattern, blob):
             found.append(signal)
     return found
+
+
+_SUFFIX = {"street": "st", "avenue": "ave", "drive": "dr", "lane": "ln", "road": "rd",
+           "court": "ct", "boulevard": "blvd", "place": "pl", "circle": "cir", "trail": "trl",
+           "parkway": "pkwy", "highway": "hwy", "north": "", "south": "", "east": "", "west": ""}
+
+
+def _street_key(raw: Any) -> str:
+    text = re.sub(r"[^a-z0-9 ]+", " ", str(raw or "").lower())
+    return " ".join(x for x in (_SUFFIX.get(t, t) for t in text.split()) if x)
+
+
+def mailing_absentee(lead: dict[str, Any]) -> Optional[bool]:
+    """True when the owner's mailing street differs from the property street
+    (or is a PO box / suite = entity or out-of-house owner); None if unknown."""
+    mail, prop = _street_key(lead.get("owner_mailing_address")), _street_key(lead.get("property_address"))
+    if not mail or not prop:
+        return None
+    if re.match(r"^(po|p o) box\b", mail) or re.search(r"\b(ste|suite)\b", mail):
+        return True
+    return mail != prop
 
 
 def _stack_count(lead: dict[str, Any]) -> int:
@@ -170,6 +195,21 @@ def score_lead(lead: dict[str, Any]) -> LeadScore:
         lead.get("seller_notes"), lead.get("internal_notes"),
     )
     stack = _stack_count(lead)
+    ptype = str(lead.get("property_type") or "")
+
+    if _NOT_REAL_ESTATE.search(ptype):
+        return LeadScore(
+            lead_id=lead_id, factors={k: 1 for k in FACTOR_KEYS}, total=5, tier="COLD",
+            signals=signals, reasons=[f"Not real property ('{ptype}') - cannot be assigned"],
+            next_action="Suppress: not a wholesale target", buybox_fit="weak",
+            suppress_reason="NOT_REAL_ESTATE",
+        )
+
+    absentee = mailing_absentee(lead)
+    if absentee and "absentee" not in signals:
+        signals.append("absentee")
+    elif absentee is False:
+        reasons.append("Owner-occupied")
 
     # ── Motivation ────────────────────────────────────────────────────────────
     pts = sum(_MOTIVATION_POINTS.get(s, 0) for s in signals)
@@ -217,21 +257,22 @@ def score_lead(lead: dict[str, Any]) -> LeadScore:
     elif "tired_landlord" in signals or "absentee" in signals:
         equity = 2  # long-held absentee/rentals usually carry equity
     else:
-        equity = 2 if _num(lead.get("year_built")) and _num(lead.get("year_built")) < 2005 else 1
+        equity = 2 if any(x in _MOTIVATION_POINTS and x != "high_equity" for x in signals) else 1
 
     # ── Condition / exit-ability to large buyers ──────────────────────────────
     buybox = 0
     checks = 0
     wrong_type = False
-    ptype = str(lead.get("property_type") or "")
-    if ptype:
+    no_street_number = not re.match(r"^\s*\d", _street_key(lead.get("property_address")))
+    if (ptype and _NON_SFR.search(ptype)) or no_street_number:
         checks += 1
-        if _NON_SFR.search(ptype):
-            buybox -= 2
-            wrong_type = True
-            reasons.append(f"Type '{ptype}' outside institutional buy-box")
-        else:
-            buybox += 1
+        buybox -= 2
+        wrong_type = True
+        reasons.append("No street number (unimproved land)" if no_street_number
+                       else f"Type '{ptype}' outside institutional buy-box")
+    elif ptype and _RESIDENTIAL.search(ptype):
+        checks += 1
+        buybox += 1
     sqft = _num(lead.get("sqft"))
     if sqft:
         checks += 1
@@ -255,7 +296,7 @@ def score_lead(lead: dict[str, Any]) -> LeadScore:
         ratio = buybox / checks
         if wrong_type:
             buybox_fit, condition = "weak", 1   # wrong product type caps the exit
-        elif ratio >= 0.6:
+        elif ratio >= 0.6 and checks >= 2:
             buybox_fit, condition = "strong", 3
             reasons.append("Fits institutional/flip buy-box")
         elif ratio >= 0:
@@ -284,10 +325,10 @@ def score_lead(lead: dict[str, Any]) -> LeadScore:
             flexibility = 1
             reasons.append(f"Ask is {ratio:.0%} of ARV (little spread)")
     else:
-        flexibility = 2 if not ask else 1  # no ARV to test the ask against
-    if phones == 0 and lead.get("owner_email") in _MISSING:
-        flexibility = 1
-        reasons.append("No contact info")
+        flexibility = 2  # no ARV to test the ask against (often an AVM value, not a seller ask)
+    needs_skip_trace = phones == 0 and lead.get("owner_email") in _MISSING
+    if needs_skip_trace:
+        reasons.append("No phone/email - skip trace first")   # a workflow step, not a reason to down-score
     elif phones >= 2 and flexibility < 3:
         flexibility += 1
         reasons.append(f"{phones} phone numbers")
@@ -307,6 +348,8 @@ def score_lead(lead: dict[str, Any]) -> LeadScore:
     }
     total = sum(factors.values())
     tier = tier_for_total(total)
+    if factors["score_motivation"] < 2:
+        tier = "COLD"   # a nice house with no distress evidence is not a motivated-seller lead
     if suppress_reason == "DNC" and tier == "HOT":
         tier = "WARM"  # never auto-route a DNC lead to calling
 
@@ -316,9 +359,12 @@ def score_lead(lead: dict[str, Any]) -> LeadScore:
         action = ("Call today; pull comps and line up an end buyer" if buybox_fit != "weak"
                   else "Call today; confirm a buyer exists before contracting")
     elif tier == "WARM":
-        action = "Skip-trace if needed, then SMS + follow-up call this week"
+        action = "SMS + follow-up call this week"
     else:
         action = "Nurture only; revisit if a new distress signal appears"
+
+    if needs_skip_trace and not suppress_reason and tier != "COLD":
+        action = "Skip trace first, then " + action[0].lower() + action[1:]
 
     return LeadScore(
         lead_id=lead_id, factors=factors, total=total, tier=tier,
