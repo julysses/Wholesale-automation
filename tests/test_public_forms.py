@@ -21,7 +21,7 @@ def form_service(monkeypatch):
     config = {"id": "form-1", "questions": QUESTIONS, "thank_you_message": "Thank you"}
     database = MagicMock()
     table = database.table.return_value
-    table.select.return_value.eq.return_value.eq.return_value.single.return_value.execute.return_value = SimpleNamespace(data=config)
+    table.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[config])
     table.insert.return_value.execute.return_value = SimpleNamespace(data=[{"id": "submission-1"}])
     monkeypatch.setattr(forms, "_get_supabase", lambda: database)
     processor = AsyncMock()
@@ -65,3 +65,87 @@ def test_failed_save_never_returns_success(form_service, empty_response):
 
 def test_public_config_does_not_require_login(form_service):
     assert TestClient(app).get("/api/forms/test").status_code == 200
+
+
+@pytest.mark.parametrize("method,path", [("get", "/api/forms/test"), ("post", "/api/forms/test/submit")])
+def test_database_failure_is_retryable_not_missing_form(form_service, method, path):
+    db, process = form_service
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.side_effect = RuntimeError("secret database detail")
+    response = getattr(TestClient(app), method)(path, **({"json": {"answers": ANSWERS}} if method == "post" else {}))
+    assert response.status_code == 503
+    assert response.headers["retry-after"] == "30"
+    assert "secret" not in response.text
+    db.table.return_value.insert.assert_not_called()
+    process.assert_not_called()
+
+
+def test_missing_form_is_404_without_fallback_lookup(form_service):
+    db, _ = form_service
+    execute = db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute
+    execute.return_value = SimpleNamespace(data=[])
+    assert TestClient(app).get("/api/forms/missing").status_code == 404
+    execute.assert_called_once()
+
+
+def test_uuid_config_uses_id_and_slug_uses_slug(form_service):
+    db, _ = form_service
+    client = TestClient(app)
+    for identifier, field in [("hilltop-home-co", "slug"), ("22222222-2222-4222-8222-222222222222", "id")]:
+        assert client.get(f"/api/forms/{identifier}").status_code == 200
+        db.table.return_value.select.return_value.eq.assert_called_with(field, identifier)
+
+
+def test_finalization_failure_is_not_acknowledged_as_success(form_service):
+    from fastapi import HTTPException
+    _, processor = form_service
+    processor.side_effect = HTTPException(503, "Inquiry saved; follow-up delayed")
+    response = TestClient(app).post("/api/forms/test/submit", json={"answers": ANSWERS})
+    assert response.status_code == 503
+    processor.assert_awaited_once()
+
+
+def test_recovery_requires_authentication():
+    response = TestClient(app).post("/api/lead-gen/submissions/22222222-2222-4222-8222-222222222222/recover")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("created,delivery,expected_sends", [(True, True, 1), (False, True, 0), (True, False, 0)])
+async def test_atomic_finalize_controls_recovery_and_notifications(monkeypatch, created, delivery, expected_sends):
+    database = MagicMock()
+    database.rpc.return_value.execute.return_value.data = {
+        "lead_id": "22222222-2222-4222-8222-222222222222", "created": created,
+    }
+    monkeypatch.setattr(forms, "_get_supabase", lambda: database)
+    sms = MagicMock()
+    monkeypatch.setattr(forms, "_send_lead_pipeline_sms", sms)
+    answers = {**ANSWERS, "property_address": "Fixture, Dallas, TX"}
+    result = await forms._process_form_submission(
+        {"send_confirmation_sms": False}, answers, forms._compute_scores_from_answers(answers),
+        "11111111-1111-4111-8111-111111111111", None, deliver_notifications=delivery,
+    )
+    assert result == "22222222-2222-4222-8222-222222222222"
+    args = database.rpc.call_args.args
+    assert args[0] == "finalize_form_submission"
+    assert args[1]["p_lead"]["owner_phone_1"] == "+12145550100"
+    assert sms.call_count == expected_sends
+    if expected_sends:
+        assert sms.call_args.kwargs["answers"]["sms_opt_in"] is False
+    database.table.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_atomic_failure_preserves_receipt_and_does_not_send(monkeypatch):
+    from fastapi import HTTPException
+    database = MagicMock()
+    database.rpc.return_value.execute.side_effect = RuntimeError("task write failed")
+    monkeypatch.setattr(forms, "_get_supabase", lambda: database)
+    sms = MagicMock()
+    monkeypatch.setattr(forms, "_send_lead_pipeline_sms", sms)
+    with pytest.raises(HTTPException) as error:
+        await forms._process_form_submission({}, ANSWERS, forms._compute_scores_from_answers(ANSWERS),
+            "11111111-1111-4111-8111-111111111111", None)
+    assert error.value.status_code == 503
+    assert "saved" in error.value.detail
+    sms.assert_not_called()
+    database.table.assert_not_called()

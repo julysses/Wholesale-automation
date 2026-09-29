@@ -1,6 +1,6 @@
 # WholesaleOS — AI-Powered Real Estate Wholesale Automation
 
-> Current release review and remaining gates: [Final readiness review](docs/final-readiness-review.md).
+> Current release review and evidence: [Launch review](docs/launch-review.md).
 
 An end-to-end wholesale acquisition platform that automates lead scoring, AI voice dialing, seller qualification, deal analysis, and negotiation intelligence — driving 2–8 contracts/month from a precision-targeted list.
 
@@ -9,6 +9,7 @@ An end-to-end wholesale acquisition platform that automates lead scoring, AI voi
 ## Table of Contents
 
 - [Architecture](#architecture)
+- [Launch Readiness](#launch-readiness)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
 - [Environment Variables](#environment-variables)
@@ -18,6 +19,23 @@ An end-to-end wholesale acquisition platform that automates lead scoring, AI voi
 - [Acquisition Strategies](#acquisition-strategies)
 - [Known Issues](#known-issues)
 - [Polish / Roadmap Items](#polish--roadmap-items)
+
+---
+
+## Launch Readiness
+
+September 28, 2026: **not cleared for production launch**. Production database
+requests returned upstream HTTP 522 while the public form incorrectly reported
+404. The current candidate corrects this error reporting, adds durable in-app
+intake notifications and fail-closed SMS suppression, and includes the pending
+Facebook follow-up changes. It does not restore the database or certify delivery.
+
+- [Current technical review and release limits](docs/hilltop-launch-hardening.md)
+- [30-day launch checklist, owners, acceptance tests and resume point](docs/hilltop-30-day-launch-plan.md)
+
+Restore database connectivity, verify actual website-to-CRM intake, complete
+isolated schema/access acceptance and controlled provider/STOP tests, then release
+and recheck production before enabling campaigns. Unverified channels remain off.
 
 ---
 
@@ -164,6 +182,11 @@ python -m pytest -q
 | `ANTHROPIC_API_KEY` | Claude API key for qualification + deal analysis |
 | `LAUNCH_CONTROL_API_KEY` | Launch Control SMS key |
 | `LAUNCH_CONTROL_FROM_NUMBER` | SMS sender number |
+| `OWNER_ALERT_PHONE_NUMBER` | Separate internal number that receives every new-lead alert |
+| `FACEBOOK_APP_SECRET` | Meta app secret used to verify signed Lead Ads callbacks |
+| `FACEBOOK_WEBHOOK_VERIFY_TOKEN` | Token configured identically in Meta and WholesaleOS for webhook subscription |
+| `FACEBOOK_ACCESS_TOKEN` | Token used to retrieve submitted Lead Ads field data |
+| `FACEBOOK_AD_ACCOUNT_ID` | Meta ad account used for campaign synchronization |
 
 ### Frontend (`frontend/.env`)
 
