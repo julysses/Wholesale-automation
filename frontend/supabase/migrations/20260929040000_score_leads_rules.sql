@@ -2,6 +2,8 @@
 -- Mirrors tools/lead_scoring_engine.py (the Python engine stays as fallback and
 -- as the tested reference; tests/test_lead_scoring_engine.py pins the shared rules).
 --
+-- CTEs are MATERIALIZED on purpose: without it Postgres inlines them and re-evaluates the regex/
+-- street-key expressions once per reference (a full run then exceeds 120s instead of ~30s).
 -- Why in the database: the API-driven loop paid ~10 HTTP round trips per 1,000 leads
 -- (about 1 minute); this scores the whole backlog in a few seconds.
 
@@ -40,7 +42,7 @@ AS $fn$
 DECLARE
   v_scored int := 0;
 BEGIN
-  WITH src AS (
+  WITH src AS MATERIALIZED (
     SELECT
       l.id, l.status, l.contact_attempts, l.dnc,
       coalesce(l.property_type, '') AS ptype,
@@ -59,7 +61,7 @@ BEGIN
       AND (p_rescore OR l.score_motivation IS NULL)
       AND (p_include_errors OR l.status IS DISTINCT FROM 'scoring_error')
   ),
-  sig AS (
+  sig AS MATERIALIZED (
     SELECT s.*,
       (blob ~ 'probate|inherit|estate of|deceased|\yheir\y') AS probate,
       (blob ~ 'pre[[:space:]-]?foreclos|\yprefor\y|foreclos|\ylis pendens\y|\ynod\y|notice of default|auction|trustee sale') AS prefor,
@@ -87,10 +89,10 @@ BEGIN
       (ptype ~* 'single[[:space:]-]?family|\ysfr\y|residential|\yhouse\y|\yhome\y|townhome') AS resid
     FROM src s
   ),
-  sig2 AS (
+  sig2 AS MATERIALIZED (
     SELECT g.*, (absentee_txt OR coalesce(mail_abs, false)) AS absentee FROM sig g
   ),
-  mot AS (
+  mot AS MATERIALIZED (
     SELECT g.*,
       ( 3*probate::int + 3*prefor::int + 2*tax::int + 2*code::int + 2*util::int + 2*vacant::int
         + 2*life::int + 1.5*tired::int + absentee::int + damaged::int + 1.5*urgent::int
@@ -113,7 +115,7 @@ BEGIN
                ELSE 0 END ) AS buybox
     FROM sig2 g
   ),
-  fit AS (
+  fit AS MATERIALIZED (
     SELECT m.*,
       CASE
         WHEN checks = 0 THEN 'unknown'
@@ -124,7 +126,7 @@ BEGIN
       END AS fit_label
     FROM mot m
   ),
-  fac AS (
+  fac AS MATERIALIZED (
     SELECT f.*,
       CASE WHEN pts >= 3 THEN 3 WHEN pts >= 1.5 THEN 2 ELSE 1 END AS f_mot,
       greatest(1, least(3,
@@ -147,7 +149,7 @@ BEGIN
       (phones = 0 AND no_email) AS needs_skip
     FROM fit f
   ),
-  fin AS (
+  fin AS MATERIALIZED (
     SELECT c.*,
       CASE WHEN dnc THEN 1 ELSE
         greatest(1, least(3,
@@ -164,7 +166,7 @@ BEGIN
       END AS f_flex
     FROM fac c
   ),
-  scored AS (
+  scored AS MATERIALIZED (
     SELECT n.*,
       CASE WHEN not_re THEN 5 ELSE f_mot + f_time + f_eq + f_cond + f_flex END AS total,
       CASE WHEN not_re THEN 1 ELSE f_mot END AS s_mot,
@@ -174,14 +176,14 @@ BEGIN
       CASE WHEN not_re THEN 1 ELSE f_flex END AS s_flex
     FROM fin n
   ),
-  tiered AS (
+  tiered AS MATERIALIZED (
     SELECT t.*,
       CASE WHEN s_mot < 2 THEN 'COLD' WHEN total >= 13 AND NOT (coalesce(dnc, false)) THEN 'HOT'
            WHEN total >= 13 THEN 'WARM'
            WHEN total >= 8 THEN 'WARM' ELSE 'COLD' END AS tier
     FROM scored t
   ),
-  final AS (
+  final AS MATERIALIZED (
     SELECT t.id, t.status AS old_status,
       t.s_mot, t.s_time, t.s_eq, t.s_cond, t.s_flex, t.tier, t.total,
       tier || ' (' || total || '/15): ' ||
