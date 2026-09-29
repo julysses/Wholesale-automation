@@ -3,6 +3,28 @@
 Working branch: `codex/hilltop-launch-hardening`; review: PR #9.
 Decision: **database connectivity recovered; live launch remains gated** by intake security and integration acceptance.
 
+## Full-launch checklist — current work
+
+Confirmed scope: website/Facebook intake, personal follow-up, automated SMS, email and AI calls. Julio owns intake; business/test phone +12147010100 and test email julio@hilltophome.co explicitly authorized by user.
+
+- [x] Database connectivity recovered after Pro upgrade; Micro configured.
+- [x] Website repository located: julysses/HilltopHome; server route forwards to validated CRM API.
+- [x] Live seven function search paths fixed; public-schema CREATE revoked from public/anon/authenticated; anonymous is_approved execution removed while authenticated execution retained.
+- [x] Live form SMS checkbox made optional; remaining question order/settings preserved.
+- [x] Supabase leaked-password protection enabled; security advisor confirms warning cleared.
+- [x] Isolated PGlite role checks passed for public-intake restriction and security/consent migration. This is an isolated SQL test, not a full restored staging system.
+- [ ] Apply public-intake restriction after verifying production server credential path. Existing migration tested: anon writes denied, service-role writes and operator reads preserved.
+- [ ] Website candidate: correct phone, optional consent, explicit receipt checks and bounded requests; Next 15.5.26/React19 security upgrade, PostCSS8.5.28 override. Initial production build/type/lint passed and audit0; final build pending after route updates. Branch codex/launch-intake-fixes.
+- [ ] Durable intake/recovery, assigned owner task, phone-normalized suppression, form confirmation setting respected.
+- [ ] Approved/pending/operator role acceptance and admin helper guard checks.
+- [ ] Production deployment/settings: Vercel login requested. Connector get_project has schema mismatch; CLI uncredentialed. No secrets requested in chat.
+- [ ] Controlled SMS delivery + STOP/after-hours acceptance, email delivery, AI call/recording/webhook acceptance at authorized contacts.
+- [ ] Facebook signature/lead test and campaign routing.
+- [ ] Website release + CRM PR9 release, live browser/API acceptance, HTTPS/phone check.
+- [ ] Backup/restore evidence, monitoring/recovery runbook, final go/no-go.
+
+Security advisor after live changes: remaining warnings are three intentionally authenticated SECURITY DEFINER helpers (admin role/status setters and is_approved); acceptance of guards pending. webhook_jobs no-policy info reflects service-only access. No provider sends or ad activation performed in this checkpoint.
+
 ## Latest checkpoint — Pro and Micro recovery
 
 - User upgraded the organization to Pro and asked to continue recovery. Dashboard still showed Nano. Reviewed Nano-to-Micro change: same $0.01344/hour rate and **+$0.00/month**; applied only the Micro change. Spend cap and 8 GB disk remained unchanged. The resize completed and dashboard confirmed `t4g.micro`, Micro selected, 1 GB memory.
