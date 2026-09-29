@@ -812,15 +812,19 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
     list_id: str | None = None
     list_name = (body.list_name or "").strip()
     if list_name:
-        list_row = supabase.table("lead_lists").insert({
-            "name": list_name[:120],
-            "filename": (body.filename or "")[:200] or None,
-            "row_count": len(incoming_by_key),
-        }).execute().data or []
-        if not list_row:
-            raise HTTPException(503, "Could not create the list record. Retry the upload.")
-        list_id = str(list_row[0]["id"])
-        for incoming in new_rows_preview(incoming_by_key, existing_by_key):
+        try:
+            list_row = supabase.table("lead_lists").insert({
+                "name": list_name[:120],
+                "filename": (body.filename or "")[:200] or None,
+                "row_count": len(incoming_by_key),
+            }).execute().data or []
+        except Exception:
+            # List tracking is organizational; never block an import on it
+            # (e.g. migration not applied yet).
+            logger.exception("Could not create lead_lists row; importing without list tracking")
+            list_row = []
+        list_id = str(list_row[0]["id"]) if list_row else None
+        for incoming in new_rows_preview(incoming_by_key, existing_by_key) if list_id else []:
             incoming["list_id"] = list_id
 
     saved_rows: list[dict[str, Any]] = []

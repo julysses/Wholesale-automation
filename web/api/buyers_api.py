@@ -207,9 +207,13 @@ async def _process_import(
                         buyer_db_id = existing
                         buyers_updated += 1
                     else:
-                        resp = sb.table("buyers").insert(
-                            {**buyer, **({"import_log_id": log_id} if log_id else {})}
-                        ).execute()
+                        try:
+                            resp = sb.table("buyers").insert(
+                                {**buyer, **({"import_log_id": log_id} if log_id else {})}
+                            ).execute()
+                        except Exception:
+                            # import_log_id column missing (migration pending): import untracked.
+                            resp = sb.table("buyers").insert(buyer).execute()
                         buyer_db_id = (resp.data or [{}])[0].get("id")
                         buyers_created += 1
 
