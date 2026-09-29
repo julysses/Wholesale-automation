@@ -1,9 +1,9 @@
 # Launch readiness continuation — September 28, 2026
 
-Working branch: `codex/launch-runtime-checkpoint`; CRM PR #9 and website PR #3 are merged.
+Checkpoint branch: `codex/launch-runtime-checkpoint`; CRM PRs #9 and #10 and website PR #3 are merged. Production CRM commit: `c637120`.
 Decision: **website intake is live and verified; full automated launch remains gated by provider connection and delivery acceptance.**
 
-## Full-launch checklist — September 28, 2026, 9:20 PM CT
+## Full-launch checklist — September 28, 2026, 9:22 PM CT
 
 Owner: Julio. Confirmed business/test phone **214-701-0100**, test email **julio@hilltophome.co**. Authorized scope includes website/Facebook intake, personal follow-up, SMS, email and AI calls. No ads activated or real seller outreach initiated.
 
@@ -22,11 +22,11 @@ Owner: Julio. Confirmed business/test phone **214-701-0100**, test email **julio
 | STOP matching | Implemented and tested | Intake matches canonical US digits across shared registry and three lead phone fields; invalid/unknown results fail closed. Live carrier STOP webhook test still pending. |
 | Live end-to-end acceptance | Passed | hilltophome.co browser -> CRM -> processed receipt05e83afc-dbaf-4648-9cc7-56796e7c629c -> leadaced76df-cc69-4f24-be82-8e946d26669d -> Julio task -> correct browser confirmation. |
 | Automated SMS | Blocked on account setup | No Twilio/Telnyx/MessageBird credentials in Vercel or saved settings. Connect chosen account/sender and verify receipt, STOP and permitted-hours behavior using authorized number. The code has a Launch Control reply handler; a native Twilio inbound/status adapter is not yet wired and must be completed if Twilio is selected. |
-| Email | Blocked on account setup | No SendGrid/Mailgun credentials or sender configured. PR #10 removes false success for unconfigured email and requires an explicit sender. Verify domain/sender and receipt at authorized email; finish independent after-hours owner alert acceptance. |
+| Email | Blocked on account setup | No SendGrid/Mailgun credentials or sender configured. Released PR #10 removes false success for unconfigured email and requires an explicit sender. Verify domain/sender and receipt at authorized email; finish independent after-hours owner alert acceptance. |
 | AI calls | Blocked on account setup | No Retell credentials, agent, originating number or webhook secret. Verify channel permission, approved script, test call, transcript and signed completion webhook. |
 | Facebook Lead Ads | Blocked on account setup | App/Page token, app secret and verification token missing. Verify native test lead, consent mapping, owner task/routing and signature rejection before enabling campaign. |
 | Backup | Backup available | Dashboard physical backup September 29, 2026 at 01:30:08 UTC. Restore rehearsal to isolated destination not completed; no production restore attempted. |
-| Deployment startup | PR #10 | Remove automatic historical migration replay from Railway startup; use explicit Supabase migrations. Git merge triggers three preexisting Railway services as well as Vercel; runtime status needs final check. |
+| Deployment startup | Released and verified | PR #10 merged at `c637120`. Vercel deployment `2Z6iJznQxD8SHUvqX1MusxnSyw8N` Ready/Production/Current. All three Railway deployments now SUCCESS after removing automatic historical migration replay. Use explicit Supabase migrations. Startup health does not certify the separate legacy CRM database/provider configuration. |
 | Historical incomplete receipt | Assigned for review | July10 receipt5255b3df-ee62-4d76-a2c1-ba0de2b37766 has no form ID/first name. Julio has a review task; no auto-recovery/contact. |
 | Production operational acceptance | Pending | Signed-in CRM owner task/notification review, provider delivery, alert escalation/staffing and isolated restore exercise remain. HTTPS validates for apex and www (www redirects to apex); public form and health200; unauthenticated submissions API401. |
 
@@ -38,6 +38,13 @@ Owner: Julio. Confirmed business/test phone **214-701-0100**, test email **julio
 - Five clearly labeled synthetic inquiries used only the authorized owner contacts. All five resulting test leads are marked dead/AI paused, sequences disabled, notes identify fixtures; their generated test tasks completed and notifications marked read. Owner phone was not globally suppressed.
 - Final live notification metadata recorded seller_sms=no_consent_or_phone and owner_sms=failed_or_blocked. This is **not** provider delivery evidence.
 - Security advisor remaining warnings concern intentionally authenticated guarded admin helpers/is_approved; webhook_jobs no-policy information reflects service-only access. Reference: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
+
+### Release checkpoint
+
+- Railway successful deployments: pure-recreation `eee92889-6bd1-4d96-99fe-e18fb5fdd084`; mellow-luck `c5165450-f7ea-4f36-9097-e8843ea161cd`; practical-youthfulness `d00b9206-1930-46fe-a7fb-b90328eb4da0`. Startup logs/healthchecks confirm the migration startup failure is resolved.
+- Existing staged Railway settings/secrets were not accepted or overwritten. Vercel remains the live website CRM target.
+- Final HTTPS checks: website apex and www redirect, CRM health and public form all HTTP 200.
+- Required next input: chosen/signed-in provider accounts for SMS, email, Retell and Facebook. No secret keys should be pasted into chat. Full automated launch remains blocked on setup and delivery acceptance, plus operator UI and isolated restore checks.
 
 ### Resume and recovery runbook
 
