@@ -48,6 +48,7 @@ export function LeadForm() {
   const [config, setConfig] = useState<FormConfig | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -59,20 +60,39 @@ export function LeadForm() {
   // Fetch form config
   useEffect(() => {
     if (!formId) return;
-    fetch(`/api/forms/${formId}`)
+    const controller = new AbortController();
+    let active = true;
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    setLoading(true);
+    setLoadError(null);
+    setConfig(null);
+    fetch(`/api/forms/${encodeURIComponent(formId)}`, { signal: controller.signal })
       .then(async (r) => {
-        if (!r.ok) throw new Error('Form not found');
+        if (!r.ok) throw new Error(r.status === 404
+          ? 'This form was not found or is no longer active.'
+          : 'We could not load the form right now. Please try again.');
         return r.json();
       })
       .then((data) => {
+        if (!active) return;
         setConfig(data);
-        setLoading(false);
       })
       .catch((e) => {
-        setLoadError(e.message || 'Failed to load form');
-        setLoading(false);
+        if (!active) return;
+        setLoadError(e.name === 'AbortError' || e instanceof TypeError
+          ? 'The connection is taking too long or is unavailable. Please try again.'
+          : e.message || 'We could not load the form right now. Please try again.');
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
+        if (active) setLoading(false);
       });
-  }, [formId]);
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [formId, loadAttempt]);
 
   if (loading) {
     return (
@@ -88,9 +108,13 @@ export function LeadForm() {
         <div className="text-center max-w-md">
           <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Form Not Available</h2>
-          <p className="text-gray-600 text-sm">
-            This form is not available right now. Please call us directly for assistance.
+          <p role="alert" className="text-gray-600 text-sm">
+            {loadError || 'We could not load the form right now. Please try again.'}
           </p>
+          <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+            className="mt-4 rounded-lg bg-gray-900 px-5 py-3 text-sm font-medium text-white">
+            Try again
+          </button>
         </div>
       </div>
     );
