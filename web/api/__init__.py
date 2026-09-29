@@ -150,10 +150,15 @@ MAX_BATCH_LEADS = 25
 DEFAULT_SCORE_BATCH_SIZE = 25
 MAX_SCORE_BATCH_SIZE = MAX_BATCH_LEADS
 
+MAX_RULES_BATCH = 1000       # rules engine is CPU-only; bound by DB round trips
+UPSERT_CHUNK = 500
+
 SCORING_SELECT_COLUMNS = (
     "id,property_address,city,state,zip_code,owner_first_name,owner_last_name,"
     "owner_mailing_address,source,motivation_tag,seller_notes,asking_price,"
-    "estimated_equity_pct,loan_balance,estimated_arv,status,internal_notes"
+    "estimated_equity_pct,loan_balance,estimated_arv,status,internal_notes,"
+    "property_type,bedrooms,sqft,year_built,owner_phone_1,owner_phone_2,owner_phone_3,"
+    "owner_email,contact_attempts,dnc"
 )
 
 
@@ -348,13 +353,18 @@ class ImportLeadRow(BaseModel):
 
 class ImportMasterListRequest(BaseModel):
     rows: list[ImportLeadRow]
-    score_with_claude: bool = True
+    score_with_claude: bool = True   # legacy name: "score on import" (engine picks how)
+    engine: str = "rules"            # rules (instant, free) | ai (Claude, slow, paid)
+    list_name: str | None = None     # groups this upload so it can be deleted as a unit
+    filename: str | None = None
 
 
 class ScoreUnscoredLeadsRequest(BaseModel):
-    batch_size: int = DEFAULT_SCORE_BATCH_SIZE
+    batch_size: int | None = None    # default: 1000 (rules) / 25 (ai)
     rescore_existing: bool = False
     include_errors: bool = False
+    engine: str = "rules"            # rules | ai
+    list_id: str | None = None       # restrict to one uploaded list
 
 
 def _clean_import_value(field: str, value: Any) -> Any:
@@ -440,6 +450,13 @@ def _merge_payloads(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[
         elif existing.get(field) in (None, ""):
             merged[field] = value
     return {k: v for k, v in merged.items() if k in IMPORT_FIELDS or k == "internal_notes"}
+
+
+def new_rows_preview(
+    incoming_by_key: dict[str, dict[str, Any]], existing_by_key: dict[str, dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Incoming payloads that will be inserted (not merged into an existing lead)."""
+    return [row for key, row in incoming_by_key.items() if key not in existing_by_key]
 
 
 def _score_imported_leads_with_claude(leads: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -574,6 +591,53 @@ def _score_and_persist_batch(
         return 0, len(leads)
 
 
+def _score_leads_with_rules(supabase: Any, leads: list[dict[str, Any]]) -> tuple[int, int]:
+    """Score leads with the deterministic engine and bulk-persist the result.
+
+    One upsert per UPSERT_CHUNK rows instead of one UPDATE per lead. The row's
+    NOT NULL columns are echoed back so the insert half of the upsert is valid;
+    conflicting rows only get the scoring columns changed.
+    Returns (scored, failed).
+    """
+    from tools.lead_scoring_engine import score_lead
+
+    rows: list[dict[str, Any]] = []
+    failed = 0
+    for lead in leads:
+        try:
+            payload = score_lead(lead).to_update_payload()
+        except Exception:
+            logger.exception("Rules scoring failed for lead %s", lead.get("id"))
+            failed += 1
+            continue
+        rows.append({
+            "id": lead["id"],
+            "property_address": lead.get("property_address") or "",
+            "city": lead.get("city") or "",
+            **payload,
+        })
+
+    scored = 0
+    for i in range(0, len(rows), UPSERT_CHUNK):
+        chunk = rows[i:i + UPSERT_CHUNK]
+        try:
+            supabase.table("leads").upsert(chunk, on_conflict="id", default_to_null=False).execute()
+            scored += len(chunk)
+        except Exception:
+            logger.exception("Bulk score write failed; falling back to per-row updates")
+            for row in chunk:
+                lead_id = row.pop("id")
+                row.pop("property_address", None)
+                row.pop("city", None)
+                try:
+                    supabase.table("leads").update(row).eq("id", lead_id).execute()
+                    scored += 1
+                except Exception:
+                    logger.exception("Score write failed for lead %s", lead_id)
+                    failed += 1
+    return scored, failed
+
+
 @router.get("/lead-scoring-status")
 def lead_scoring_status() -> dict:
     """Return database-backed Claude scoring progress for the Leads table."""
@@ -581,14 +645,70 @@ def lead_scoring_status() -> dict:
     return _lead_scoring_status(supabase)
 
 
+def _status_filter_ok(query: Any, body: ScoreUnscoredLeadsRequest) -> Any:
+    if not body.rescore_existing:
+        query = query.is_("score_motivation", "null")
+    if not body.include_errors:
+        query = query.neq("status", "scoring_error")
+    if body.list_id:
+        query = query.eq("list_id", body.list_id)
+    return query
+
+
+def _score_batch_rules(supabase: Any, body: ScoreUnscoredLeadsRequest, batch_size: int) -> dict:
+    """Instant rules-engine pass. Uses keyset pagination so a full re-score walks
+    the table once instead of re-reading the same first page forever."""
+    import time
+
+    budget_s = 20.0
+    started = time.monotonic()
+    processed = scored = failed = 0
+    last_id: str | None = None
+    while processed < batch_size and time.monotonic() - started < budget_s:
+        page_size = min(1000, batch_size - processed)
+        query = supabase.table("leads").select(SCORING_SELECT_COLUMNS).order("id").limit(page_size)
+        query = _status_filter_ok(query, body)
+        if last_id:
+            query = query.gt("id", last_id)
+        leads = query.execute().data or []
+        if not leads:
+            break
+        s_part, f_part = _score_leads_with_rules(supabase, leads)
+        processed += len(leads)
+        scored += s_part
+        failed += f_part
+        last_id = str(leads[-1]["id"])
+        if len(leads) < page_size:
+            break
+    if scored:
+        try:
+            supabase.rpc("recompute_priority_ranks").execute()
+        except Exception:
+            logger.exception("Failed to recompute priority ranks after scoring batch")
+    return {"processed": processed, "scored": scored, "failed": failed}
+
+
 @router.post("/score-unscored-leads")
 def score_unscored_leads(body: ScoreUnscoredLeadsRequest = ScoreUnscoredLeadsRequest()) -> dict:
-    """Score one durable batch of leads from Supabase and persist results.
+    """Score one bounded batch of leads from Supabase and persist results.
 
-    This is intentionally bounded so the frontend can call it repeatedly without
-    relying on a fragile in-memory browser queue or one long serverless request.
+    engine="rules" (default) is the deterministic buy-box/distress engine: it
+    scores ~1000 leads per request with a handful of DB writes. engine="ai" keeps
+    the Claude scorer (25 leads/request) for optional narrative enrichment.
     """
+    if body.engine not in ("rules", "ai"):
+        raise HTTPException(400, detail="engine must be 'rules' or 'ai'")
     supabase = _supabase_or_503()
+
+    if body.engine == "rules":
+        batch_size = max(1, min(MAX_RULES_BATCH, int(body.batch_size or MAX_RULES_BATCH)))
+        counts = _score_batch_rules(supabase, body, batch_size)
+        return {
+            "status": "complete" if counts["processed"] == 0 else "ok",
+            **counts,
+            "progress": _lead_scoring_status(supabase),
+        }
+
     batch_size = max(1, min(MAX_SCORE_BATCH_SIZE, int(body.batch_size or DEFAULT_SCORE_BATCH_SIZE)))
 
     query = (
@@ -597,10 +717,7 @@ def score_unscored_leads(body: ScoreUnscoredLeadsRequest = ScoreUnscoredLeadsReq
         .order("created_at", desc=False)
         .limit(batch_size)
     )
-    if not body.rescore_existing:
-        query = query.is_("score_motivation", "null")
-    if not body.include_errors:
-        query = query.neq("status", "scoring_error")
+    query = _status_filter_ok(query, body)
 
     resp = query.execute()
     leads = resp.data or []
@@ -669,7 +786,8 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
     existing_columns = (
         "id,property_address,city,state,zip_code,owner_first_name,owner_last_name,"
         "owner_phone_1,owner_phone_2,owner_phone_3,owner_email,owner_mailing_address,"
-        "property_type,bedrooms,bathrooms,sqft,year_built,asking_price,source,status,internal_notes"
+        "property_type,bedrooms,bathrooms,sqft,year_built,asking_price,source,status,internal_notes,"
+        "estimated_arv,loan_balance,estimated_equity_pct,motivation_tag,seller_notes,contact_attempts,dnc"
     )
     existing_rows = []
     offset = 0
@@ -690,6 +808,20 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
     imported = 0
     updated = 0
     saved_for_scoring: list[dict[str, Any]] = []
+
+    list_id: str | None = None
+    list_name = (body.list_name or "").strip()
+    if list_name:
+        list_row = supabase.table("lead_lists").insert({
+            "name": list_name[:120],
+            "filename": (body.filename or "")[:200] or None,
+            "row_count": len(incoming_by_key),
+        }).execute().data or []
+        if not list_row:
+            raise HTTPException(503, "Could not create the list record. Retry the upload.")
+        list_id = str(list_row[0]["id"])
+        for incoming in new_rows_preview(incoming_by_key, existing_by_key):
+            incoming["list_id"] = list_id
 
     saved_rows: list[dict[str, Any]] = []
     new_rows: list[dict[str, Any]] = []
@@ -730,7 +862,13 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
         })
 
     scored_count = 0
-    if body.score_with_claude and saved_for_scoring:
+    if body.score_with_claude and body.engine == "rules" and saved_rows:
+        scored_count, _failed = _score_leads_with_rules(supabase, saved_rows)
+        try:
+            supabase.rpc("recompute_priority_ranks").execute()
+        except Exception:
+            logger.exception("Failed to recompute priority ranks after import")
+    elif body.score_with_claude and saved_for_scoring:
         scored = _score_imported_leads_with_claude(saved_for_scoring)
         for lead_id, score_payload in scored.items():
             supabase.table("leads").update(score_payload).eq("id", lead_id).execute()
@@ -748,6 +886,7 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
         "updated": updated,
         "skipped": skipped,
         "scored": scored_count,
+        "list_id": list_id,
     }
 
 

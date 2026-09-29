@@ -29,6 +29,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { parseCombinedAddress } from '@/lib/masterList';
 import { parseSpreadsheet, isSupportedFile } from '@/lib/parseFile';
+import { createLeadList } from '@/lib/leadLists';
+import { ManageListsModal } from '@/components/leads/ManageListsModal';
 import { useAutoScoreStore, type ScorableLead } from '@/stores/useAutoScoreStore';
 
 const STATUS_OPTIONS = [
@@ -130,6 +132,7 @@ export function Leads() {
   const [tier, setTier] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [listsOpen, setListsOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -221,6 +224,9 @@ export function Leads() {
           </Button>
           <Button variant="outline" size="sm" icon={<Upload className="h-4 w-4" />} onClick={() => setImportOpen(true)}>
             Import CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setListsOpen(true)}>
+            Manage Lists
           </Button>
           <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setAddOpen(true)}>
             Add Lead
@@ -415,6 +421,7 @@ export function Leads() {
       {/* Modals */}
       {addOpen && <LeadFormModal open onClose={() => setAddOpen(false)} />}
       <ImportCSVModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <ManageListsModal open={listsOpen} onClose={() => setListsOpen(false)} />
       {logActivityLead && (
         <LogActivityModal lead={logActivityLead} onClose={() => setLogActivityLead(null)} />
       )}
@@ -716,10 +723,12 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
     const scorable: ScorableLead[] = [];
 
     try {
+      const listId = await createLeadList(file.name, dataRows.length);
       const CHUNK = 100;
       for (let i = 0; i < dataRows.length; i += CHUNK) {
         const built = dataRows.slice(i, i + CHUNK).map(buildRecord);
-        const chunk = built.filter((r): r is Record<string, string | number> => r !== null);
+        const chunk = built.filter((r): r is Record<string, string | number> => r !== null)
+          .map(r => (listId ? { ...r, list_id: listId } : r));
         skipped += built.length - chunk.length;
         if (chunk.length === 0) continue;
         const { data, error } = await supabase.from('leads').insert(chunk)

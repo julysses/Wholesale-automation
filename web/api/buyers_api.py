@@ -175,6 +175,13 @@ async def _process_import(
     buyers_created = 0
     buyers_updated = 0
     tx_created = 0
+    touched_ids: list[str] = []
+
+    # Index transactions by grantee once (was a full scan of every transaction
+    # for every buyer: O(buyers x transactions) on county-size files).
+    tx_by_grantee: dict[str, list[dict[str, Any]]] = {}
+    for tx in result.transactions:
+        tx_by_grantee.setdefault(str(tx.get("grantee", "")).upper(), []).append(tx)
 
     if sb:
         try:
@@ -200,25 +207,28 @@ async def _process_import(
                         buyer_db_id = existing
                         buyers_updated += 1
                     else:
-                        resp = sb.table("buyers").insert(buyer).execute()
+                        resp = sb.table("buyers").insert(
+                            {**buyer, **({"import_log_id": log_id} if log_id else {})}
+                        ).execute()
                         buyer_db_id = (resp.data or [{}])[0].get("id")
                         buyers_created += 1
 
                     # Insert transactions for this buyer
                     if buyer_db_id:
-                        for tx in result.transactions:
-                            if tx.get("grantee", "").upper() == (buyer.get("entity_name") or f"{buyer['first_name']} {buyer['last_name']}").upper():
-                                tx_row = {**tx, "buyer_id": buyer_db_id}
-                                tx_row.pop("grantee", None)
-                                try:
-                                    sb.table("buyer_transactions").upsert(
-                                        tx_row,
-                                        on_conflict="buyer_id,apn" if tx_row.get("apn") else "id",
-                                    ).execute()
-                                    tx_created += 1
-                                except Exception:
-                                    sb.table("buyer_transactions").insert(tx_row).execute()
-                                    tx_created += 1
+                        touched_ids.append(buyer_db_id)
+                        grantee_key = (buyer.get("entity_name") or f"{buyer['first_name']} {buyer['last_name']}").upper()
+                        for tx in tx_by_grantee.get(grantee_key, []):
+                            tx_row = {**tx, "buyer_id": buyer_db_id}
+                            tx_row.pop("grantee", None)
+                            try:
+                                sb.table("buyer_transactions").upsert(
+                                    tx_row,
+                                    on_conflict="buyer_id,apn" if tx_row.get("apn") else "id",
+                                ).execute()
+                                tx_created += 1
+                            except Exception:
+                                sb.table("buyer_transactions").insert(tx_row).execute()
+                                tx_created += 1
 
                 except Exception as exc:
                     logger.error(f"[buyers_api/import] Buyer upsert failed: {exc}")
@@ -245,6 +255,10 @@ async def _process_import(
                     "errors": [{"error": str(exc)}],
                 }).eq("id", log_id).execute()
 
+    # Automatic scoring: a freshly imported list is ranked without a second click.
+    if touched_ids:
+        await _run_scoring(None, touched_ids)
+
     logger.info(
         f"[buyers_api/import] Done — {buyers_created} created, "
         f"{buyers_updated} updated, {tx_created} transactions"
@@ -265,40 +279,61 @@ async def score_buyers(req: ScoreRequest, background_tasks: BackgroundTasks) -> 
     }
 
 
-async def _run_scoring(buyer_id: Optional[str]) -> None:
-    """Background: load buyers + transactions → compute + persist scores."""
+SCORE_PAGE = 1000
+IN_CHUNK = 200
+
+
+async def _run_scoring(buyer_id: Optional[str], buyer_ids: Optional[list[str]] = None) -> None:
+    """Background: load buyers + transactions → compute + persist scores.
+
+    Pages through buyers (PostgREST caps a response at ~1000 rows) and chunks the
+    transaction ``in`` filter so large books don't silently truncate or overflow
+    the request URL.
+    """
     sb = _get_supabase()
     if not sb:
         return
 
     try:
+        buyers: list[dict[str, Any]] = []
         if buyer_id:
             buyer_resp = sb.table("buyers").select("*").eq("id", buyer_id).single().execute()
             buyers = [buyer_resp.data] if buyer_resp.data else []
+        elif buyer_ids:
+            for i in range(0, len(buyer_ids), IN_CHUNK):
+                resp = sb.table("buyers").select("*").in_("id", buyer_ids[i:i + IN_CHUNK]).execute()
+                buyers.extend(resp.data or [])
         else:
-            buyer_resp = sb.table("buyers").select("*").eq("active", True).execute()
-            buyers = buyer_resp.data or []
+            offset = 0
+            while True:
+                page = (
+                    sb.table("buyers").select("*").eq("active", True)
+                    .order("id").range(offset, offset + SCORE_PAGE - 1).execute().data or []
+                )
+                if not page:
+                    break
+                buyers.extend(page)
+                offset += len(page)
 
         if not buyers:
             return
 
-        buyer_ids = [b["id"] for b in buyers]
-
-        # Load all transactions for these buyers
-        tx_resp = (
-            sb.table("buyer_transactions")
-            .select("*")
-            .in_("buyer_id", buyer_ids)
-            .execute()
-        )
-        txs_all = tx_resp.data or []
-
-        # Group by buyer_id
-        tx_map: dict[str, list] = {bid: [] for bid in buyer_ids}
-        for tx in txs_all:
-            bid = tx.get("buyer_id")
-            if bid in tx_map:
-                tx_map[bid].append(tx)
+        all_ids = [b["id"] for b in buyers]
+        tx_map: dict[str, list] = {bid: [] for bid in all_ids}
+        for i in range(0, len(all_ids), IN_CHUNK):
+            offset = 0
+            while True:
+                page = (
+                    sb.table("buyer_transactions").select("*")
+                    .in_("buyer_id", all_ids[i:i + IN_CHUNK])
+                    .order("id").range(offset, offset + SCORE_PAGE - 1).execute().data or []
+                )
+                if not page:
+                    break
+                for tx in page:
+                    if tx.get("buyer_id") in tx_map:
+                        tx_map[tx["buyer_id"]].append(tx)
+                offset += len(page)
 
         from tools.buyer_intelligence_engine import batch_score_buyers
         updates = batch_score_buyers(buyers, tx_map)
@@ -311,6 +346,48 @@ async def _run_scoring(buyer_id: Optional[str]) -> None:
 
     except Exception as exc:
         logger.error(f"[buyers_api/score] Scoring failed: {exc}")
+
+
+@router.get("/imports")
+def list_buyer_imports(limit: int = 50) -> dict:
+    """Every buyer upload with how many of its buyers still exist."""
+    sb = _get_supabase()
+    if not sb:
+        raise HTTPException(503, "Database not configured")
+    logs = (
+        sb.table("buyer_import_log")
+        .select("id,created_at,filename,market,status,buyers_created,buyers_updated,rows_total")
+        .order("created_at", desc=True).limit(max(1, min(limit, 200))).execute().data or []
+    )
+    for log in logs:
+        resp = sb.table("buyers").select("id", count="exact").eq("import_log_id", log["id"]).limit(1).execute()
+        log["buyers_remaining"] = resp.count if getattr(resp, "count", None) is not None else len(resp.data or [])
+    return {"imports": logs}
+
+
+@router.delete("/imports/{import_id}")
+def delete_buyer_import(import_id: str) -> dict:
+    """Delete an uploaded buyer list: the buyers it *created* (their transactions
+    cascade) and the import log row. Buyers that already existed before this
+    upload and were merely updated by it are not touched."""
+    sb = _get_supabase()
+    if not sb:
+        raise HTTPException(503, "Database not configured")
+    found = sb.table("buyer_import_log").select("id,filename").eq("id", import_id).limit(1).execute().data
+    if not found:
+        raise HTTPException(404, "Import not found")
+    deleted = 0
+    while True:
+        ids = [r["id"] for r in (
+            sb.table("buyers").select("id").eq("import_log_id", import_id).limit(1000).execute().data or []
+        )]
+        if not ids:
+            break
+        for i in range(0, len(ids), IN_CHUNK):
+            sb.table("buyers").delete().in_("id", ids[i:i + IN_CHUNK]).execute()
+        deleted += len(ids)
+    sb.table("buyer_import_log").delete().eq("id", import_id).execute()
+    return {"status": "ok", "filename": found[0].get("filename"), "buyers_deleted": deleted}
 
 
 @router.get("/leaderboard")
