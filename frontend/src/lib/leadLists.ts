@@ -48,3 +48,18 @@ export const rescoreLeadList = (id: string) =>
 export const fetchBuyerImports = () => json<{ imports: BuyerImport[] }>('/api/buyers/imports').then(r => r.imports);
 export const deleteBuyerImport = (id: string) =>
   json<{ buyers_deleted: number }>(`/api/buyers/imports/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+export interface CleanupRule {
+  id: string;
+  label: string;
+  action: string;
+  timeframe: string;
+  why: string;
+  count: number;
+}
+export interface HoldPolicy { who: string; keep: string; why: string }
+
+export const fetchCleanupSuggestions = () =>
+  json<{ rules: CleanupRule[]; hold: HoldPolicy[] }>('/api/lead-lists/cleanup-suggestions');
+export const applyCleanup = (rule: string) =>
+  json<{ deleted: number; failed: number }>(`/api/lead-lists/cleanup/${encodeURIComponent(rule)}`, { method: 'POST' });

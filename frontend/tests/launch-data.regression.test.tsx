@@ -54,6 +54,7 @@ it('filters the server query before calculating page counts', async () => {
   expect(query.eq).toHaveBeenCalledWith('priority_tier', 'A');
   expect(query.eq).toHaveBeenCalledWith('motivation_tag', 'vacant');
   expect(query.range).toHaveBeenCalledWith(50, 99);
+  expect(query.order).toHaveBeenCalledWith('total_score', { ascending: false, nullsFirst: false });
   expect(result.current.data?.count).toBe(51);
 });
 

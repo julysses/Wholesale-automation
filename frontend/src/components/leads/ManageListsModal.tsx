@@ -5,8 +5,8 @@ import { RotateCw, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import {
-  deleteBuyerImport, deleteLeadList, fetchBuyerImports, fetchLeadLists, rescoreLeadList,
-  type BuyerImport, type LeadList,
+  applyCleanup, deleteBuyerImport, deleteLeadList, fetchBuyerImports, fetchCleanupSuggestions, fetchLeadLists, rescoreLeadList,
+  type BuyerImport, type CleanupRule, type HoldPolicy, type LeadList,
 } from '@/lib/leadLists';
 
 /** One place to see every uploaded lead list / buyer upload, re-score it, or delete it. */
@@ -14,6 +14,8 @@ export function ManageListsModal({ open, onClose }: { open: boolean; onClose: ()
   const qc = useQueryClient();
   const [lists, setLists] = useState<LeadList[]>([]);
   const [imports, setImports] = useState<BuyerImport[]>([]);
+  const [rules, setRules] = useState<CleanupRule[]>([]);
+  const [hold, setHold] = useState<HoldPolicy[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +23,8 @@ export function ManageListsModal({ open, onClose }: { open: boolean; onClose: ()
     try {
       const [l, b] = await Promise.all([fetchLeadLists(), fetchBuyerImports()]);
       setLists(l); setImports(b); setError(null);
+      // Suggestions need the latest migration; never block the lists if they are unavailable.
+      fetchCleanupSuggestions().then(c => { setRules(c.rules); setHold(c.hold); }).catch(() => undefined);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load lists');
     }
@@ -74,6 +78,30 @@ export function ManageListsModal({ open, onClose }: { open: boolean; onClose: ()
             </li>
           ))}
         </ul>
+      )}
+      <h3 className="text-sm font-semibold text-gray-700 mb-1">Suggested cleanup</h3>
+      <p className="text-xs text-gray-500 mb-2">Only leads nobody has contacted are ever deleted. DNC / opted-out leads are never touched.</p>
+      {rules.length === 0 ? <p className="text-sm text-gray-500 mb-6">No suggestions available.</p> : (
+        <ul className="divide-y border rounded-lg mb-3">
+          {rules.map(r => (
+            <li key={r.id} className="flex items-start gap-3 p-3">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium">{r.label} <span className="text-xs font-normal text-gray-500">- {r.action}</span></p>
+                <p className="text-xs text-gray-500">{r.why}</p>
+              </div>
+              <span className="text-sm font-semibold tabular-nums w-16 text-right">{r.count.toLocaleString()}</span>
+              <Button size="sm" variant="outline" disabled={busy !== null || r.count === 0} icon={<Trash2 className="h-3.5 w-3.5" />}
+                onClick={() => { if (confirm(`Delete ${r.count.toLocaleString()} leads: ${r.label}? This cannot be undone.`))
+                  void run(r.id, async () => `Deleted ${(await applyCleanup(r.id)).deleted} leads`); }}>Delete</Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {hold.length > 0 && (
+        <div className="mb-6 rounded-lg bg-gray-50 border p-3 text-xs text-gray-600 space-y-1">
+          <p className="font-semibold text-gray-700">Keep these</p>
+          {hold.map(h => <p key={h.who}><span className="font-medium">{h.who}</span> - {h.keep}. {h.why}</p>)}
+        </div>
       )}
       <h3 className="text-sm font-semibold text-gray-700 mb-2">Buyer uploads</h3>
       {imports.length === 0 ? <p className="text-sm text-gray-500">No buyer uploads yet.</p> : (
