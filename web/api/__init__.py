@@ -678,8 +678,9 @@ def _score_batch_rules(supabase: Any, body: ScoreUnscoredLeadsRequest, batch_siz
         scored += s_part
         failed += f_part
         last_id = str(leads[-1]["id"])
-        if len(leads) < page_size:
-            break
+        # Do NOT stop on a short page: PostgREST's max-rows cap (often 100-1000)
+        # can return fewer rows than requested while more remain. Keep walking
+        # the keyset cursor until an empty page or the batch/time budget is hit.
     if scored:
         try:
             supabase.rpc("recompute_priority_ranks").execute()

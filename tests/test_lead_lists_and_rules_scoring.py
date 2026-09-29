@@ -177,3 +177,21 @@ def test_buyer_import_delete_removes_only_buyers_it_created():
     assert out["buyers_deleted"] == 2
     assert sorted(b["id"] for b in db.tables["buyers"]) == ["b3", "b4"]
     assert [l["id"] for l in db.tables["buyer_import_log"]] == ["imp2"]
+
+
+def test_rules_scoring_keeps_paging_when_server_caps_rows_per_page():
+    """PostgREST max-rows can return 100 rows for limit(1000); one request must still drain the batch."""
+    class CappedTable(Table):
+        def limit(self, n):
+            self.lim = min(n, 100)
+            return self
+
+    class CappedDB(DB):
+        def table(self, name):
+            return CappedTable(self, name)
+
+    from unittest.mock import patch
+    db = CappedDB({"leads": leads(450)})
+    with patch("web.api._supabase_or_503", return_value=db):
+        r = client.post("/api/ai/score-unscored-leads", json={"batch_size": 1000}).json()
+    assert r["processed"] == 450 and r["progress"]["unscored"] == 0
