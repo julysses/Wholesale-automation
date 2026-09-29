@@ -130,13 +130,15 @@ export function Leads() {
   const [motivation, setMotivation] = useState('');
   const [page, setPage] = useState(1);
   const [tier, setTier] = useState('');
+  const [sortBy, setSortBy] = useState('total_score');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const { data, isLoading, error: loadError, refetch } = useLeads({ status, source, tier, motivation, search, page, pageSize: 50 });
+  const { data, isLoading, error: loadError, refetch } = useLeads({ status, source, tier, motivation, search, page, pageSize: 50, sortBy, sortDir });
   const leads = data?.data ?? [];
   const total = data?.count ?? 0;
   const totalPages = Math.ceil(total / 50);
@@ -165,6 +167,12 @@ export function Leads() {
   }, [searchParams]);
 
   const filteredLeads = leads;
+
+  const toggleSort = (column: string) => {
+    if (sortBy === column) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(column); setSortDir(column === 'total_score' || column === 'last_contact_date' || column === 'stack_bonus' ? 'desc' : 'asc'); }
+    setPage(1);
+  };
 
   const handlePushToDialer = async (lead: Lead) => {
     if (!confirm(`Push ${lead.property_address} to BatchDialer?`)) return;
@@ -258,9 +266,20 @@ export function Leads() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                {['Address', 'Owner', 'Phone', 'Source', 'Stack', 'Tier', 'Score', 'Status', 'Last Contact', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                    {h}
+                {([
+                  ['Address', 'property_address'], ['Owner', 'owner_last_name'], ['Phone', 'owner_phone_1'],
+                  ['Source', 'source'], ['Stack', 'stack_bonus'], ['Tier', 'priority_tier'], ['Score', 'total_score'],
+                  ['Status', 'status'], ['Last Contact', 'last_contact_date'], ['', ''],
+                ] as const).map(([h, column]) => (
+                  <th key={h || 'actions'} aria-sort={column && sortBy === column ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
+                    className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                    {column ? (
+                      <button type="button" onClick={() => toggleSort(column)}
+                        className={cn('inline-flex items-center gap-1 uppercase tracking-wide hover:text-gray-900', sortBy === column && 'text-gray-900')}>
+                        {h}
+                        <span aria-hidden className="text-[10px]">{sortBy === column ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </button>
+                    ) : h}
                   </th>
                 ))}
               </tr>

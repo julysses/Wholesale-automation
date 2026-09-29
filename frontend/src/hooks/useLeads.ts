@@ -11,7 +11,15 @@ interface LeadsFilter {
   search?: string;
   page?: number;
   pageSize?: number;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
 }
+
+/** Columns the table may sort by (server-side, so it works across all pages). */
+export const SORTABLE_LEAD_COLUMNS = [
+  'property_address', 'owner_last_name', 'owner_phone_1', 'source', 'stack_bonus',
+  'priority_tier', 'total_score', 'priority_rank', 'status', 'last_contact_date', 'created_at',
+] as const;
 
 export type LeadWrite = Omit<Partial<Lead>, 'asking_price' | 'estimated_equity_pct' | 'next_follow_up_date'> & {
   asking_price?: number | null;
@@ -20,7 +28,8 @@ export type LeadWrite = Omit<Partial<Lead>, 'asking_price' | 'estimated_equity_p
 };
 
 export function useLeads(filters: LeadsFilter = {}) {
-  const { status, source, tier, motivation, search, page = 1, pageSize = 50 } = filters;
+  const { status, source, tier, motivation, search, page = 1, pageSize = 50, sortBy = 'total_score', sortDir = 'desc' } = filters;
+  const sortColumn = (SORTABLE_LEAD_COLUMNS as readonly string[]).includes(sortBy) ? sortBy : 'total_score';
 
   return useQuery({
     queryKey: ['leads', filters],
@@ -28,6 +37,9 @@ export function useLeads(filters: LeadsFilter = {}) {
       let query = supabase
         .from('leads')
         .select('*', { count: 'exact' })
+        .order(sortColumn, { ascending: sortDir === 'asc', nullsFirst: false })
+        // stable, useful tie-break: best priority rank first, then newest
+        .order('priority_rank', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
 

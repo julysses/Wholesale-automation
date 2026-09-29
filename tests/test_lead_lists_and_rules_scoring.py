@@ -230,3 +230,30 @@ def test_scoring_uses_single_sql_call_and_falls_back_when_function_missing():
     with patch("web.api._supabase_or_503", return_value=db2):
         r2 = client.post("/api/ai/score-unscored-leads", json={}).json()
     assert r2["scored"] == 30 and db2.upserts >= 1
+
+
+def test_cleanup_suggestions_and_apply_delete_only_returned_ids():
+    from unittest.mock import patch
+
+    class CleanDB(DB):
+        def rpc(self, name, params=None):
+            db = self
+
+            class R:
+                def execute(self_inner):
+                    if name == "lead_cleanup_counts":
+                        return Resp({"not_real_estate": 2, "duplicates": 1})
+                    if name == "lead_cleanup_ids":
+                        return Resp(["bpp1", "bpp2"] if params["p_rule"] == "not_real_estate" else [])
+                    return Resp([])
+            return R()
+
+    rows = [{"id": i, "property_address": "x", "city": "y", "status": "new"} for i in ("bpp1", "bpp2", "keep")]
+    db = CleanDB({"leads": rows})
+    with patch("web.api.lists_api._supabase", return_value=db):
+        s = client.get("/api/lead-lists/cleanup-suggestions").json()
+        assert {r["id"]: r["count"] for r in s["rules"]}["not_real_estate"] == 2
+        assert any("DNC" in h["who"] for h in s["hold"])
+        out = client.post("/api/lead-lists/cleanup/not_real_estate").json()
+        assert client.post("/api/lead-lists/cleanup/bogus").status_code == 404
+    assert out["deleted"] == 2 and [r["id"] for r in db.tables["leads"]] == ["keep"]

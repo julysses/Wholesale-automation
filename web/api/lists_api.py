@@ -125,3 +125,106 @@ def rescore_lead_list(list_id: str) -> dict:
 
     body = ScoreUnscoredLeadsRequest(rescore_existing=True, include_errors=True, list_id=list_id)
     return {"status": "ok", **(_score_via_sql(supabase, body) or _score_batch_rules(supabase, body, 100_000))}
+
+
+# ── Retention / cleanup suggestions ───────────────────────────────────────────
+# Rule ids match public.lead_cleanup_ids(). Only untouched leads (unworked status,
+# no contact attempts, not DNC) can ever be selected, so nothing a human worked,
+# no DNC/opt-out suppression record and no deal history is at risk.
+
+CLEANUP_RULES: dict[str, dict[str, str]] = {
+    "not_real_estate": {
+        "label": "Not real estate (business personal property, minerals, utilities)",
+        "action": "Delete now",
+        "timeframe": "Immediately",
+        "why": "Tax records for business equipment or non-land assets. There is no house to contract or assign.",
+    },
+    "duplicates": {
+        "label": "Duplicate properties (same street + city)",
+        "action": "Delete now",
+        "timeframe": "Immediately",
+        "why": "Keeps the copy that has a list source and the best score; extras cause double outreach.",
+    },
+    "stale_prefor": {
+        "label": "Pre-foreclosure leads older than 60 days, never contacted",
+        "action": "Re-pull, then delete",
+        "timeframe": "60 days",
+        "why": "Texas foreclosure sales run the first Tuesday of each month. After ~60 days the sale has happened or the owner cured; the lead is stale. Re-pull a fresh list first.",
+    },
+    "stale_cold": {
+        "label": "COLD leads older than 90 days, never contacted",
+        "action": "Delete after 90 days",
+        "timeframe": "90 days",
+        "why": "No distress evidence and no follow-up. Not worth carrying; a fresh list pull will surface them again if they become distressed.",
+    },
+    "stale_warm": {
+        "label": "WARM leads older than 180 days, never contacted",
+        "action": "Delete after 180 days",
+        "timeframe": "180 days",
+        "why": "If it was not worth a call in six months it will not be; re-pull to refresh the data.",
+    },
+    "stale_tax_roll": {
+        "label": "Delinquent tax roll rows older than 12 months, never contacted",
+        "action": "Replace yearly",
+        "timeframe": "12 months",
+        "why": "The county roll is republished annually; last year's delinquencies are usually paid or foreclosed.",
+    },
+}
+
+HOLD_POLICY = [
+    {"who": "HOT and WARM leads not yet contacted", "keep": "Work them - do not delete",
+     "why": "These are the pipeline. Call HOT within 48 hours; give WARM one SMS + one call this week."},
+    {"who": "Contacted / follow-up scheduled", "keep": "Hold 12 months from last contact",
+     "why": "Seller timelines change; 'not now' often becomes 'yes' within a year. Archive after 12 months of silence."},
+    {"who": "DNC / opted out / STOP", "keep": "Keep permanently",
+     "why": "Deleting the record removes your suppression and risks re-contacting them (TCPA). Never delete."},
+    {"who": "Appointments, offers, under contract, closed", "keep": "Keep 7 years",
+     "why": "Transaction and compliance records."},
+]
+
+
+@router.get("/cleanup-suggestions")
+def cleanup_suggestions() -> dict:
+    supabase = _supabase()
+    try:
+        counts = supabase.rpc("lead_cleanup_counts").execute().data or {}
+    except Exception:
+        logger.exception("lead_cleanup_counts failed")
+        raise HTTPException(503, detail="Cleanup rules are not installed yet (apply the latest migration).")
+    if isinstance(counts, list):
+        counts = counts[0] if counts else {}
+    return {
+        "rules": [{"id": rid, **meta, "count": int(counts.get(rid, 0))} for rid, meta in CLEANUP_RULES.items()],
+        "hold": HOLD_POLICY,
+    }
+
+
+@router.post("/cleanup/{rule}")
+def apply_cleanup(rule: str) -> dict:
+    if rule not in CLEANUP_RULES:
+        raise HTTPException(404, detail="Unknown cleanup rule")
+    supabase = _supabase()
+    try:
+        ids = [str(i) for i in (supabase.rpc("lead_cleanup_ids", {"p_rule": rule}).execute().data or [])]
+    except Exception:
+        logger.exception("lead_cleanup_ids failed")
+        raise HTTPException(503, detail="Cleanup rules are not installed yet (apply the latest migration).")
+    deleted = failed = 0
+    for i in range(0, len(ids), 500):
+        chunk = ids[i:i + 500]
+        try:
+            supabase.table("leads").delete().in_("id", chunk).execute()
+            deleted += len(chunk)
+        except Exception:
+            logger.exception("Bulk cleanup delete failed; retrying row by row")
+            for lead_id in chunk:
+                try:
+                    supabase.table("leads").delete().eq("id", lead_id).execute()
+                    deleted += 1
+                except Exception:
+                    failed += 1
+    try:
+        supabase.rpc("recompute_priority_ranks").execute()
+    except Exception:
+        logger.exception("Failed to recompute priority ranks after cleanup")
+    return {"status": "ok", "rule": rule, "deleted": deleted, "failed": failed}
