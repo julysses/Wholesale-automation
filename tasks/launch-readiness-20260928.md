@@ -1,34 +1,55 @@
 # Launch readiness continuation — September 28, 2026
 
-Working branch: `codex/hilltop-launch-hardening`; review: PR #9.
-Decision: **database connectivity recovered; live launch remains gated** by intake security and integration acceptance.
+Working branch: `codex/launch-runtime-checkpoint`; CRM PR #9 and website PR #3 are merged.
+Decision: **website intake is live and verified; full automated launch remains gated by provider connection and delivery acceptance.**
 
-## Full-launch checklist — current work
+## Full-launch checklist — September 28, 2026, 9:20 PM CT
 
-Confirmed scope: website/Facebook intake, personal follow-up, automated SMS, email and AI calls. Julio owns intake; business/test phone +12147010100 and test email julio@hilltophome.co explicitly authorized by user.
+Owner: Julio. Confirmed business/test phone **214-701-0100**, test email **julio@hilltophome.co**. Authorized scope includes website/Facebook intake, personal follow-up, SMS, email and AI calls. No ads activated or real seller outreach initiated.
 
-- [x] Database connectivity recovered after Pro upgrade; Micro configured.
-- [x] Website repository located: julysses/HilltopHome; server route forwards to validated CRM API.
-- [x] Live seven function search paths fixed; public-schema CREATE revoked from public/anon/authenticated; anonymous is_approved execution removed while authenticated execution retained.
-- [x] Live form SMS checkbox made optional; remaining question order/settings preserved.
-- [x] Supabase leaked-password protection enabled; security advisor confirms warning cleared.
-- [x] Isolated PGlite role checks passed for public-intake restriction and security/consent migration. This is an isolated SQL test, not a full restored staging system.
-- [x] Applied public-intake restriction after controlled live inquiry produced a linked CRM lead. Both direct anonymous REST inserts now fail 401/42501; a second server inquiry returned200 and produced a processed receipt/linked lead. Test receipts 81a6b3a0-0391-4bcf-b733-9c173cc4cd06 and 4951f89d-e2f1-4e04-aef5-46322afb5a5c use authorized Julio contacts and are clearly marked LAUNCH TEST; SMS consent false.
-- [x] Website candidate pushed (not released), HilltopHome PR3, commit87deb6e: correct phone, optional consent, explicit receipt checks and bounded requests; Next 15.5.26/React19 security upgrade, PostCSS8.5.28 override. Final production build, form-validation tests, type/lint passed and audit0. Branch codex/launch-intake-fixes.
-- [x] Durable SQL finalizer installed: receipt lock, atomic lead/task/processed receipt, service-role-only execution. Isolated role/idempotency/rollback tests passed. Live service-role replay of second test receipt created exactly one assigned Julio task without provider messages.
-- [x] Backend candidate awaits finalization before success and adds admin-only recovery without provider replay, canonical new phone storage, respects send_confirmation_sms, corrects/escapes hot-alert links/content. Backend257 tests passed; not deployed yet.
-- [x] Discovered missing service_role SELECT on app_settings; granted it and verified finalizer works under that role. Saved agency name/contact/phone, owner alert phone/email and approved owner ID. Environment overrides still require deployment verification.
-- [ ] Complete normalized cross-channel suppression and delivery acceptance.
-- [ ] Approved/pending/operator role acceptance and admin helper guard checks.
-- [ ] Production deployment/settings: Vercel login requested. Connector get_project has schema mismatch; CLI uncredentialed. No secrets requested in chat.
-- [ ] Controlled SMS delivery + STOP/after-hours acceptance, email delivery, AI call/recording/webhook acceptance at authorized contacts.
-- [ ] Facebook signature/lead test and campaign routing.
-- [ ] Website release + CRM PR9 release, live browser/API acceptance, HTTPS/phone check.
-- [ ] Backup/restore evidence, monitoring/recovery runbook, final go/no-go.
+| Launch requirement | Status | Evidence / next action |
+|---|---|---|
+| Database recovery | Done | Pro/Micro active; SQL and form queries working. Exact recovery cause not proven. |
+| Public database protection | Done | Anonymous REST inserts into both intake tables fail 401/42501; validated server intake succeeds. |
+| Database function/security settings | Done | Seven fixed search paths, public CREATE revoked from app roles, anonymous approval RPC denied; leaked-password protection enabled. |
+| Admin helper protection | Verified with limits | Live authenticated unknown-user role/status changes denied; approval false. Guards require approved admin in profiles. Full signed-in operator UI acceptance still pending. |
+| Website connection | Live | Missing WHOLESALE_API_BASE caused live 500; verified CRM default added. HilltopHome PR #3 merged at `ec682bf`. |
+| Website contact and consent | Live | Correct214-701-0100 link/confirmation; optional SMS consent; phone validation and explicit success receipts. |
+| Website dependencies | Done | Next.js 15.5.26 / React 19 / PostCSS 8.5.28; audit 0; tests, production build/type/lint passed. |
+| Durable CRM intake | Live | PR #9 merged at `92c08f3`; Vercel production Ready/Current. Receipt is finalized atomically with lead and assigned task before success. |
+| Recovery | Implemented | Admin-only POST /api/lead-gen/submissions/{id}/recover. Repeat finalization preserves one lead/task; no provider sends replayed. |
+| Owner settings | Done | Julio's approved profile owns new tasks. Saved contact/agency settings; service-role SELECT on app_settings repaired. Vercel agency identity overrides updated. |
+| STOP matching | Implemented and tested | Intake matches canonical US digits across shared registry and three lead phone fields; invalid/unknown results fail closed. Live carrier STOP webhook test still pending. |
+| Live end-to-end acceptance | Passed | hilltophome.co browser -> CRM -> processed receipt05e83afc-dbaf-4648-9cc7-56796e7c629c -> leadaced76df-cc69-4f24-be82-8e946d26669d -> Julio task -> correct browser confirmation. |
+| Automated SMS | Blocked on account setup | No Twilio/Telnyx/MessageBird credentials in Vercel or saved settings. Connect chosen account/sender and verify receipt, STOP and permitted-hours behavior using authorized number. The code has a Launch Control reply handler; a native Twilio inbound/status adapter is not yet wired and must be completed if Twilio is selected. |
+| Email | Blocked on account setup | No SendGrid/Mailgun credentials or sender configured. PR #10 removes false success for unconfigured email and requires an explicit sender. Verify domain/sender and receipt at authorized email; finish independent after-hours owner alert acceptance. |
+| AI calls | Blocked on account setup | No Retell credentials, agent, originating number or webhook secret. Verify channel permission, approved script, test call, transcript and signed completion webhook. |
+| Facebook Lead Ads | Blocked on account setup | App/Page token, app secret and verification token missing. Verify native test lead, consent mapping, owner task/routing and signature rejection before enabling campaign. |
+| Backup | Backup available | Dashboard physical backup September 29, 2026 at 01:30:08 UTC. Restore rehearsal to isolated destination not completed; no production restore attempted. |
+| Deployment startup | PR #10 | Remove automatic historical migration replay from Railway startup; use explicit Supabase migrations. Git merge triggers three preexisting Railway services as well as Vercel; runtime status needs final check. |
+| Historical incomplete receipt | Assigned for review | July10 receipt5255b3df-ee62-4d76-a2c1-ba0de2b37766 has no form ID/first name. Julio has a review task; no auto-recovery/contact. |
+| Production operational acceptance | Pending | Signed-in CRM owner task/notification review, provider delivery, alert escalation/staffing and isolated restore exercise remain. HTTPS validates for apex and www (www redirects to apex); public form and health200; unauthenticated submissions API401. |
 
-Security advisor after live changes: remaining warnings are three intentionally authenticated SECURITY DEFINER helpers (admin role/status setters and is_approved); acceptance of guards pending. webhook_jobs no-policy info reflects service-only access. No deliberate provider sends or ad activation performed in this checkpoint. Two authorized no-SMS-consent public inquiries were submitted; provider delivery has not been certified. Live thank-you message corrected to (214)701-0100.
+### Verification and test-data handling
 
-## Latest checkpoint — Pro and Micro recovery
+- Backend 263 tests passed. Earlier unchanged frontend 91 tests, build and lint regression gate passed; release CI and Vercel preview passed.
+- Isolated PGlite tests verified role restrictions, repeated migrations, receipt/lead/task transaction rollback, idempotency, and formatted shared STOP/secondary-phone suppression. These are not a complete staging restore.
+- Live service-role tests verified settings access, finalizer repeat behavior and one assigned task. A new-lead transaction test was rolled back successfully.
+- Five clearly labeled synthetic inquiries used only the authorized owner contacts. All five resulting test leads are marked dead/AI paused, sequences disabled, notes identify fixtures; their generated test tasks completed and notifications marked read. Owner phone was not globally suppressed.
+- Final live notification metadata recorded seller_sms=no_consent_or_phone and owner_sms=failed_or_blocked. This is **not** provider delivery evidence.
+- Security advisor remaining warnings concern intentionally authenticated guarded admin helpers/is_approved; webhook_jobs no-policy information reflects service-only access. Reference: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
+
+### Resume and recovery runbook
+
+1. Connect the user's chosen SMS, email, AI-call and Facebook accounts through signed-in dashboards or server-only secret fields. Never place service/provider keys in frontend variables, source or chat. The provider-account question is pending.
+2. Verify provider delivery using +12147010100 / julio@hilltophome.co only. Retain provider IDs and callback/delivery outcomes. A dry run or accepted request does not establish delivery. Record separate consent evidence for each enabled channel; SMS consent does not itself prove AI-call permission.
+3. For a saved but unfinished inquiry, inspect raw answers and processing status, then use the admin recovery endpoint. Recovery does not resend messages; reconcile uncertain provider receipts manually before any deliberate resend.
+4. For app failure, use Vercel's previous known-good deployment. Keep additive database functions/permissions intact; do not restore anonymous writes as an app rollback. For database failure, use the Supabase backup controls and support case after assessing the restore point/data impact.
+5. Inspect API health, form lookup, pending/failed submissions and assigned tasks after each release. A health200 alone is insufficient. Review the legacy receipt task separately.
+6. Reconcile Supabase migration history by name/version before CLI deployment; the legacy custom _migrations runner must not run automatically. Repository timestamps created by CLI and provider-applied history timestamps can differ.
+7. Complete isolated restore rehearsal and operating-owner acceptance, then explicitly record final all-channel go/no-go. Until provider tests pass, do not call the full automated launch complete.
+
+## Earlier recovery checkpoint — historical
 
 - User upgraded the organization to Pro and asked to continue recovery. Dashboard still showed Nano. Reviewed Nano-to-Micro change: same $0.01344/hour rate and **+$0.00/month**; applied only the Micro change. Spend cap and 8 GB disk remained unchanged. The resize completed and dashboard confirmed `t4g.micro`, Micro selected, 1 GB memory.
 - A simple SQL query first succeeded before the resize, after the user's Pro upgrade; therefore the exact cause/timing of recovery cannot be attributed exclusively to Micro. Post-resize queries, migration history and security advisor checks also succeeded.
@@ -40,7 +61,7 @@ Security advisor after live changes: remaining warnings are three intentionally 
 
 Security remediation references: https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable and https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
 
-## Completed this session
+## Earlier outage work — historical
 
 - Pulled tracked branch successfully at `6cdcecd`; preserved existing untracked documentation.
 - Rechecked Supabase project `dvzhzlipbwzzcliujzyz`: ACTIVE_HEALTHY in project inventory, but SQL, migration list, and security advisor queries time out. Postgres log query returned no rows; this does not establish database health or the root cause.
@@ -53,7 +74,7 @@ Security remediation references: https://supabase.com/docs/guides/database/datab
 - Follow-up investigation: SQL again timed out. Postgres logs now returned authentication and statement timeout records. Infrastructure displayed 100% CPU, 46% memory and 100% disk I/O on Nano, with 0.31 GB used of 8 GB; exact metric time window and causality remain unconfirmed. Scaling requires a paid plan.
 - Inspected managed upgrade: stable version 17.6.1.166 is offered alongside a preview; confirmation warns of up to one hour offline and no downgrade. Cancelled without applying because backup and preflight verification are unavailable. Support form is open with the correct wholesale project selected; authorization to send the prepared recovery request is pending. No support request has been sent.
 
-## Resume steps
+## Earlier support escalation — historical
 
 ### Support escalation submitted
 

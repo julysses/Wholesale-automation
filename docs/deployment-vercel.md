@@ -79,3 +79,7 @@ approved-account CRUD/browser acceptance, staging migration verification, enable
 provider round trips, duration/recovery checks, and post-deployment smoke tests.
 Calendar records currently save locally; external calendar synchronization is
 explicitly reported as unavailable and must not be advertised as working.
+
+## Database migration ownership
+
+Apply reviewed migrations explicitly through the Supabase release workflow. Vercel and Railway application startup must not replay the historical SQL directory. The legacy `tools/run_migrations.py` uses `_migrations`, while the live project uses Supabase migration history; reconcile names and versions before any manual use. Do not run that script against production as a deployment hook.

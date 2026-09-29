@@ -507,13 +507,13 @@ def _send_hot_lead_notification(lead_id: str, answers: dict, score: int):
         try:
             email_client = EmailClient()
             subject = f"🔥 HOT INBOUND LEAD — {address}"
-            email_client.send(
+            accepted = email_client.send(
                 to_email=settings.notification_email,
                 subject=subject,
                 body=f"{subject}\n\n{body}\n\nView Lead: https://wholesale-automation.vercel.app/acquisitions?lead={lead_id}",
                 html_body=f"<h2>{escape(subject)}</h2><p>{escape(body)}</p><p><a href='https://wholesale-automation.vercel.app/acquisitions?lead={lead_id}'>View Lead in Dashboard</a></p>",
             )
-            logger.info(f"HOT lead email alert sent to {settings.notification_email}")
+            logger.info("HOT lead email alert provider acceptance: %s", accepted)
         except Exception as exc:
             logger.error(f"HOT lead email alert failed: {exc}")
 
