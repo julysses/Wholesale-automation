@@ -21,3 +21,6 @@ uvicorn[standard]>=0.29.0
 gunicorn>=22.0.0
 jinja2>=3.1.0
 python-multipart>=0.0.9
+
+# Default SMS provider; exercised by deployment contract tests.
+twilio==9.11.2

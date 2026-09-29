@@ -142,7 +142,7 @@ If these are not met by October 28, use a narrower tested launch scope or move t
 
 **Completed September 28:** located and pulled current repository; inspected production source and PR #8; verified website HTTPS/browser rendering and placeholder number; checked health/auth boundaries and deployment history; attempted read-only database inspection and observed delayed form-config HTTP 404; reviewed public client consent behavior; created this plan.
 
-**First next action:** diagnose A03 using read-only production logs and database connectivity, then identify the website repository and Netlify `/api/get-offer` handler for A04. Do not infer the website's backend destination from branding or from the separate CRM form endpoint.
+**First next action:** restore/verify A03 Supabase connectivity (production logs show upstream HTTP 522), then identify the website repository and Netlify `/api/get-offer` handler for A04. Review candidate branch `codex/hilltop-launch-hardening`; source fixes are prepared but not production acceptance. Do not infer the website's backend destination from branding or from the separate CRM form endpoint.
 
 **Decisions pending from Julio:** exact ad date; website vs native lead form (or both); personal vs automated follow-up; confirmed business number; primary/backup owner; ad spending cap; authorized provider test contacts when tests are staged.
 
@@ -165,3 +165,13 @@ Update this file after each work session: item ID, date, result, evidence, commi
 - [Meta special-category help](https://www.facebook.com/business/help/1198401317374558): confirm applicability and current account requirements in Ads Manager; Meta account configuration was not inspected in this review.
 
 Limits: no new full regression run, signed-in CRM acceptance, Meta account audit, provider round trip, migration rollout or production form submission today. Database contents and current provider credentials remain unverified. Read-only timeouts are diagnostic findings, not a root-cause diagnosis.
+
+
+### September 28 implementation update
+
+- A03: production runtime logs confirmed upstream Supabase HTTP 522; database outage was incorrectly mapped to form-not-found. Candidate fixes error reporting and redundant lookup. Connectivity is still unresolved.
+- A07/B04: candidate saves in-app notifications before texting, blocks seller sends on uncertain suppression, and records failed/unknown/dry-run outcomes. Owner assignment, external after-hours delivery and live STOP synchronization remain open.
+- B01: PR #8 code incorporated into the hardening candidate, not deployed.
+- B03: missing default Twilio SDK added to deployment requirements with a dispatch contract test. Sender approvals and real delivery remain unverified.
+- Validation: 251 backend and 88 frontend tests passed; build, lint regression gate and frontend audit passed. See `docs/hilltop-launch-hardening.md`; no checklist item is closed solely by mocked tests.
+- Resume branch: `codex/hilltop-launch-hardening`. Resume with upstream database recovery, isolated acceptance and release review. The earlier plan-only branch is retained for history.

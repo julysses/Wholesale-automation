@@ -1,0 +1,152 @@
+"""Operator visibility and fail-closed intake SMS without contacting providers."""
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import pytest
+
+from config.settings import settings
+from web.api import lead_forms_api as forms
+from tests.test_webhook_completion_delivery import MemoryDB, MemoryTable
+
+LEAD_ID = "22222222-2222-4222-8222-222222222222"
+OWNER = "+15555550111"
+SELLER = "+15555550222"
+
+
+class Query(MemoryTable):
+    def gte(self, *_):
+        return self
+
+    def neq(self, key, value):
+        self.exclude = (key, value)
+        return self
+
+    def execute(self):
+        if self.name == "leads" and self.db.safety_failure:
+            raise RuntimeError("database unavailable")
+        if self.name == "leads" and hasattr(self, "exclude"):
+            return SimpleNamespace(data=[])
+        return super().execute()
+
+
+class DB(MemoryDB):
+    safety_failure = False
+
+    def __init__(self):
+        self.tables = {"leads": {LEAD_ID: {"id": LEAD_ID, "dnc": False, "owner_phone_1": SELLER}}}
+
+    def table(self, name):
+        return Query(self, name)
+
+
+@pytest.fixture
+def pipeline(monkeypatch):
+    db, client = DB(), MagicMock()
+    client.send.return_value = True
+    monkeypatch.setattr(forms, "_get_supabase", lambda: db)
+    monkeypatch.setattr(forms, "SMSClient", lambda: client)
+    monkeypatch.setattr(settings, "owner_alert_phone_number", OWNER)
+    return db, client
+
+
+def run(consent=True):
+    forms._send_lead_pipeline_sms(LEAD_ID, {"first_name": "Test", "sms_opt_in": consent}, SELLER, "Test property")
+
+
+def receipt(db):
+    return next(iter(db.tables["app_notifications"].values()))
+
+
+@pytest.mark.parametrize("consent", [False, "false", "no", "", None])
+def test_no_consent_still_records_owner_alert_without_seller_send(pipeline, consent):
+    db, client = pipeline
+    run(consent)
+    assert [call.args[1] for call in client.send.call_args_list] == [OWNER]
+    assert receipt(db)["metadata"]["seller_sms"] == "no_consent_or_phone"
+
+
+def test_failed_suppression_lookup_blocks_seller_but_not_owner(pipeline):
+    db, client = pipeline
+    db.safety_failure = True
+    run()
+    assert [call.args[1] for call in client.send.call_args_list] == [OWNER]
+    assert receipt(db)["metadata"]["seller_sms"] == "suppression_check_failed"
+
+
+@pytest.mark.parametrize("mode", ["current", "other", "missing"])
+def test_suppression_or_missing_lead_blocks_seller(pipeline, mode):
+    db, client = pipeline
+    if mode == "current":
+        db.tables["leads"][LEAD_ID]["dnc"] = True
+    elif mode == "other":
+        db.tables["leads"]["other"] = {"id": "other", "owner_phone_1": SELLER, "dnc": True}
+    else:
+        db.tables["leads"] = {}
+    run()
+    assert [call.args[1] for call in client.send.call_args_list] == [OWNER]
+
+
+@pytest.mark.parametrize("mode,expected", [("blocked", "failed_or_blocked"), ("error", "unknown"), ("dry", "dry_run"), ("ok", "accepted")])
+def test_delivery_outcomes_are_persisted_and_never_automatically_resent(pipeline, mode, expected):
+    db, client = pipeline
+    def send(message, number):
+        assert db.tables["app_notifications"], "Record alert before any external send"
+        if mode == "error":
+            raise RuntimeError("provider timeout")
+        if mode == "dry":
+            message.a2p_provider = "twilio:dry-run"
+        return mode != "blocked"
+    client.send.side_effect = send
+    run()
+    run()
+    assert client.send.call_count == 2
+    assert receipt(db)["metadata"]["owner_sms"] == expected
+    assert receipt(db)["metadata"]["seller_sms"] == expected
+
+
+def test_missing_owner_phone_is_recorded(pipeline, monkeypatch):
+    db, client = pipeline
+    monkeypatch.setattr(settings, "owner_alert_phone_number", "")
+    run(False)
+    client.send.assert_not_called()
+    assert receipt(db)["metadata"]["owner_sms"] == "not_configured"
+
+
+def test_missing_notification_receipt_never_sends(pipeline, monkeypatch):
+    _, client = pipeline
+    broken = MagicMock()
+    broken.table.return_value.upsert.return_value.execute.return_value.data = []
+    broken.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+    monkeypatch.setattr(forms, "_get_supabase", lambda: broken)
+    with pytest.raises(RuntimeError, match="persistence was not confirmed"):
+        run()
+    client.send.assert_not_called()
+
+
+def test_interrupted_outcome_write_never_replays_provider_sends(pipeline, monkeypatch):
+    db, client = pipeline
+    original = Query.execute
+    def execute(self):
+        if self.name == "app_notifications" and self.action == "update":
+            raise RuntimeError("write interrupted")
+        return original(self)
+    monkeypatch.setattr(Query, "execute", execute)
+    with pytest.raises(RuntimeError, match="interrupted"):
+        run()
+    assert receipt(db)["metadata"]["seller_sms"] == "unresolved"
+    run()
+    assert client.send.call_count == 2
+
+
+def test_default_twilio_dependency_and_dispatch_contract(monkeypatch):
+    # Import the actual packaged SDK; replace only the network-facing client.
+    import twilio.rest
+    from tools.sms_client import SMSClient
+    from schemas.outreach import OutreachChannel, OutreachMessage
+    sdk = MagicMock()
+    sdk.messages.create.return_value.sid = "SM-test"
+    monkeypatch.setattr(twilio.rest, "Client", MagicMock(return_value=sdk))
+    message = OutreachMessage(lead_id=LEAD_ID, channel=OutreachChannel.SMS, body="Controlled fixture")
+    assert SMSClient()._send_twilio(message, SELLER) is True
+    assert message.a2p_provider == "twilio"
+    sdk.messages.create.assert_called_once()

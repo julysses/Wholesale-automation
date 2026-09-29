@@ -29,6 +29,7 @@ import math
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
+from uuid import UUID, NAMESPACE_URL, uuid5
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -158,26 +159,28 @@ def _compute_scores_from_answers(answers: dict) -> dict:
 
 # ── Public form endpoints ──────────────────────────────────────────────────────
 
+def _load_active_form(supabase, form_id: str) -> dict:
+    """A missing row is a 404; a failed database lookup is a retryable outage."""
+    try:
+        UUID(form_id)
+        field = "id"
+    except ValueError:
+        field = "slug"
+    try:
+        response = (supabase.table("lead_form_configs").select("*")
+                    .eq(field, form_id).eq("active", True).limit(1).execute())
+    except Exception:
+        logger.exception("[lead_forms] active configuration lookup failed")
+        raise HTTPException(503, "Form service is temporarily unavailable. Please try again.",
+                            headers={"Retry-After": "30"}) from None
+    if not response.data:
+        raise HTTPException(404, "Form not found or inactive")
+    return response.data[0]
+
+
 @router.get("/api/forms/{form_id}")
 async def get_form_config(form_id: str):
-    """Public — return active form config by ID or slug."""
-    supabase = _get_supabase()
-    # Try by ID first, then by slug
-    try:
-        resp = supabase.table("lead_form_configs").select("*").eq("id", form_id).eq("active", True).single().execute()
-        if resp.data:
-            return resp.data
-    except Exception as exc:
-        logger.debug("[lead_forms] config lookup by id %s failed: %s", form_id, exc)
-
-    try:
-        resp = supabase.table("lead_form_configs").select("*").eq("slug", form_id).eq("active", True).single().execute()
-        if resp.data:
-            return resp.data
-    except Exception as exc:
-        logger.debug("[lead_forms] config lookup by slug %s failed: %s", form_id, exc)
-
-    raise HTTPException(status_code=404, detail="Form not found or inactive")
+    return _load_active_form(_get_supabase(), form_id)
 
 
 class FormSubmitRequest(BaseModel):
@@ -202,21 +205,7 @@ async def submit_form(
     """
     supabase = _get_supabase()
 
-    # Fetch form config
-    form_config = None
-    try:
-        resp = supabase.table("lead_form_configs").select("*").eq("slug", form_id).eq("active", True).single().execute()
-        form_config = resp.data
-    except Exception as exc:
-        logger.debug("[lead_forms] submit config lookup by slug %s failed: %s", form_id, exc)
-    if not form_config:
-        try:
-            resp = supabase.table("lead_form_configs").select("*").eq("id", form_id).eq("active", True).single().execute()
-            form_config = resp.data
-        except Exception as exc:
-            logger.debug("[lead_forms] submit config lookup by id %s failed: %s", form_id, exc)
-    if not form_config:
-        raise HTTPException(status_code=404, detail="Form not found")
+    form_config = _load_active_form(supabase, form_id)
 
     answers = _validate_answers(form_config.get("questions", []), body.answers)
     scores = _compute_scores_from_answers(answers)
@@ -398,85 +387,92 @@ def _send_lead_pipeline_sms(
     property_address: str,
     source: str = "web_form",
 ):
-    """
-    Speed-to-lead SMS for every new web-form lead (target: <60s end to end).
+    """Persist an operator alert before attempting optional SMS delivery.
 
-    - Dedup: if a lead with the same phone + property address already exists
-      from the last 30 days, skip the seller's own confirmation text and send
-      the owner a low-priority "repeat inquiry" note instead (don't
-      double-alert on repeat submissions).
-    - Otherwise: text the seller a confirmation (only if they opted in via
-      sms_opt_in, and the lead isn't DNC-flagged), and always text the owner
-      an immediate new-lead alert.
-
-    Uses SMSClient, which enforces the standard compliance guards (allowed
-    hours, weekend block, valid-number check). Both messages are marked
-    is_inbound_reply=True since they're a direct response to the seller's
-    own form submission, not an outbound marketing touch.
+    Delivery outcomes are retained for manual reconciliation, never auto-replayed:
+    a provider exception can mean delivery succeeded but its response was lost.
     """
     from config.settings import settings
 
     supabase = _get_supabase()
-    name = answers.get("first_name", "").strip() or "there"
-    owner_phone = settings.owner_alert_phone_number
+    notification_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{lead_id}"))
+    notification = {
+        "id": notification_id, "recipient_role": "admin", "type": "pipeline_step",
+        "title": "New inquiry — follow-up required",
+        "body": f"{property_address} — source: {source}. Review the lead and assign follow-up.",
+        "action_url": "/leads", "lead_id": lead_id,
+        "metadata": {"source": source, "seller_sms": "unresolved", "owner_sms": "unresolved"},
+    }
+    claim = supabase.table("app_notifications").upsert(
+        notification, on_conflict="id", ignore_duplicates=True,
+    ).execute()
+    if not claim.data:
+        # A prior attempt may have sent externally. Never resend on ambiguous receipt.
+        existing = supabase.table("app_notifications").select("id").eq("id", notification_id).limit(1).execute()
+        if existing.data:
+            return
+        raise RuntimeError("Intake notification persistence was not confirmed")
+
+    outcomes = notification["metadata"].copy()
+    name = str(answers.get("first_name") or "").strip() or "there"
     sms_client = SMSClient()
 
-    def _send(to_number: str, body: str) -> None:
+    def _send(to_number: str, body: str) -> str:
         if not to_number:
-            return
-        message = OutreachMessage(
-            lead_id=lead_id,
-            channel=OutreachChannel.SMS,
-            body=body,
-            is_inbound_reply=True,
-            compliance_cleared=True,
-        )
-        sms_client.send(message, to_number)
-
-    is_duplicate = False
-    if phone and property_address:
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+            return "not_configured"
+        message = OutreachMessage(lead_id=lead_id, channel=OutreachChannel.SMS,
+                                  body=body, is_inbound_reply=True, compliance_cleared=True)
         try:
-            dup_resp = (
-                supabase.table("leads")
-                .select("id")
-                .eq("owner_phone_1", phone)
-                .eq("property_address", property_address)
-                .gte("created_at", cutoff)
-                .neq("id", lead_id)
-                .limit(1)
-                .execute()
-            )
-            is_duplicate = bool(dup_resp.data)
-        except Exception as exc:
-            logger.warning(f"Dedup lookup failed for lead {lead_id}: {exc}")
+            accepted = sms_client.send(message, to_number)
+        except Exception:
+            logger.exception("[lead_forms] SMS outcome unknown for lead %s", lead_id)
+            return "unknown"
+        if message.a2p_provider.endswith(":dry-run"):
+            return "dry_run"
+        return "accepted" if accepted else "failed_or_blocked"
 
-    if is_duplicate:
-        _send(
-            owner_phone,
-            f"Repeat inquiry: {name} — {property_address} ({phone}). Already in the system.",
-        )
-        return
-
-    dnc = False
-    try:
-        lead_resp = supabase.table("leads").select("dnc").eq("id", lead_id).single().execute()
-        dnc = bool(lead_resp.data and lead_resp.data.get("dnc"))
-    except Exception as exc:
-        logger.warning(f"DNC lookup failed for lead {lead_id}: {exc}")
-
-    raw_sms_opt_in = answers.get("sms_opt_in")
-    sms_opted_in = raw_sms_opt_in is True or str(raw_sms_opt_in).strip().lower() in {
+    # Preserve uncertainty: a failed duplicate/suppression lookup must not enable a send.
+    seller_allowed = False
+    is_duplicate = False
+    raw_consent = answers.get("sms_opt_in")
+    opted_in = raw_consent is True or str(raw_consent).strip().lower() in {
         "1", "true", "yes", "on", "agree", "agreed", "opted_in",
     }
-    if sms_opted_in and phone and not dnc:
-        _send(
-            phone,
-            f"Hi {name}, thanks for reaching out to Hilltop Home Co. about "
-            f"{property_address}. We'll be in touch shortly — reply here anytime with questions.",
-        )
+    if opted_in and phone:
+        try:
+            current = supabase.table("leads").select("dnc").eq("id", lead_id).single().execute()
+            suppressed = supabase.table("leads").select("id").eq("owner_phone_1", phone).eq("dnc", True).limit(1).execute()
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+            duplicate = (supabase.table("leads").select("id").eq("owner_phone_1", phone)
+                         .eq("property_address", property_address).gte("created_at", cutoff)
+                         .neq("id", lead_id).limit(1).execute())
+            is_duplicate = bool(duplicate.data)
+            seller_allowed = bool(current.data and current.data.get("dnc") is False
+                                  and not suppressed.data and not is_duplicate)
+            outcomes["seller_sms"] = "suppressed_or_duplicate" if not seller_allowed else "not_attempted"
+        except Exception:
+            outcomes["seller_sms"] = "suppression_check_failed"
+            logger.exception("[lead_forms] seller SMS blocked: safety lookup failed for %s", lead_id)
+    else:
+        outcomes["seller_sms"] = "no_consent_or_phone"
 
-    _send(owner_phone, f"🔔 New lead: {name} — {property_address} — {phone}. Source: {source}.")
+    # Internal notification is already saved even when this SMS is blocked after hours.
+    prefix = "Repeat inquiry" if is_duplicate else "New lead"
+    outcomes["owner_sms"] = _send(settings.owner_alert_phone_number,
+                                 f"{prefix}: {name} — {property_address} — {phone}. Source: {source}.")
+    if seller_allowed:
+        outcomes["seller_sms"] = _send(
+            phone, f"Hi {name}, thanks for reaching out to Hilltop Home Co. about "
+            f"{property_address}. We'll be in touch shortly. Reply STOP to opt out.",
+        )
+    summary = (f"{property_address} — source: {source}. "
+               f"Owner SMS: {outcomes['owner_sms']}; seller SMS: {outcomes['seller_sms']}. "
+               "Review the lead and assign follow-up. Accepted does not confirm delivery.")
+    saved = supabase.table("app_notifications").update(
+        {"metadata": outcomes, "body": summary},
+    ).eq("id", notification_id).execute()
+    if not saved.data:
+        raise RuntimeError("Intake SMS outcome persistence was not confirmed; reconcile before retry")
 
 
 def _send_hot_lead_notification(lead_id: str, answers: dict, score: int):
