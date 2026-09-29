@@ -3,36 +3,36 @@
 Working branch: `codex/launch-runtime-checkpoint`; CRM PR #9 and website PR #3 are merged.
 Decision: **website intake is live and verified; full automated launch remains gated by provider connection and delivery acceptance.**
 
-## Full-launch checklist — September 28, 2026, 9:15 PM CT
+## Full-launch checklist — September 28, 2026, 9:20 PM CT
 
 Owner: Julio. Confirmed business/test phone **214-701-0100**, test email **julio@hilltophome.co**. Authorized scope includes website/Facebook intake, personal follow-up, SMS, email and AI calls. No ads activated or real seller outreach initiated.
 
 | Launch requirement | Status | Evidence / next action |
 |---|---|---|
 | Database recovery | Done | Pro/Micro active; SQL and form queries working. Exact recovery cause not proven. |
-| Public database protection | Done | Anonymous REST inserts into both intake tables fail401/42501; validated server intake succeeds. |
+| Public database protection | Done | Anonymous REST inserts into both intake tables fail 401/42501; validated server intake succeeds. |
 | Database function/security settings | Done | Seven fixed search paths, public CREATE revoked from app roles, anonymous approval RPC denied; leaked-password protection enabled. |
 | Admin helper protection | Verified with limits | Live authenticated unknown-user role/status changes denied; approval false. Guards require approved admin in profiles. Full signed-in operator UI acceptance still pending. |
-| Website connection | Live | Missing WHOLESALE_API_BASE caused live500; verified CRM default added. HilltopHome PR3 merged at ec682bf. |
+| Website connection | Live | Missing WHOLESALE_API_BASE caused live 500; verified CRM default added. HilltopHome PR #3 merged at `ec682bf`. |
 | Website contact and consent | Live | Correct214-701-0100 link/confirmation; optional SMS consent; phone validation and explicit success receipts. |
-| Website dependencies | Done | Next15.5.26/React19/PostCSS8.5.28; audit0; tests, production build/type/lint passed. |
-| Durable CRM intake | Live | PR9 merged at92c08f3; Vercel production Ready/Current. Receipt is finalized atomically with lead and assigned task before success. |
+| Website dependencies | Done | Next.js 15.5.26 / React 19 / PostCSS 8.5.28; audit 0; tests, production build/type/lint passed. |
+| Durable CRM intake | Live | PR #9 merged at `92c08f3`; Vercel production Ready/Current. Receipt is finalized atomically with lead and assigned task before success. |
 | Recovery | Implemented | Admin-only POST /api/lead-gen/submissions/{id}/recover. Repeat finalization preserves one lead/task; no provider sends replayed. |
 | Owner settings | Done | Julio's approved profile owns new tasks. Saved contact/agency settings; service-role SELECT on app_settings repaired. Vercel agency identity overrides updated. |
 | STOP matching | Implemented and tested | Intake matches canonical US digits across shared registry and three lead phone fields; invalid/unknown results fail closed. Live carrier STOP webhook test still pending. |
 | Live end-to-end acceptance | Passed | hilltophome.co browser -> CRM -> processed receipt05e83afc-dbaf-4648-9cc7-56796e7c629c -> leadaced76df-cc69-4f24-be82-8e946d26669d -> Julio task -> correct browser confirmation. |
-| Automated SMS | Blocked on account setup | No Twilio/Telnyx/MessageBird credentials in Vercel or saved settings. Connect chosen account/sender and verify receipt, STOP and permitted-hours behavior using authorized number. |
-| Email | Blocked on account setup | No SendGrid/Mailgun credentials or sender configured. Verify domain/sender and receipt at authorized email; finish independent after-hours owner alert acceptance. |
+| Automated SMS | Blocked on account setup | No Twilio/Telnyx/MessageBird credentials in Vercel or saved settings. Connect chosen account/sender and verify receipt, STOP and permitted-hours behavior using authorized number. The code has a Launch Control reply handler; a native Twilio inbound/status adapter is not yet wired and must be completed if Twilio is selected. |
+| Email | Blocked on account setup | No SendGrid/Mailgun credentials or sender configured. PR #10 removes false success for unconfigured email and requires an explicit sender. Verify domain/sender and receipt at authorized email; finish independent after-hours owner alert acceptance. |
 | AI calls | Blocked on account setup | No Retell credentials, agent, originating number or webhook secret. Verify channel permission, approved script, test call, transcript and signed completion webhook. |
 | Facebook Lead Ads | Blocked on account setup | App/Page token, app secret and verification token missing. Verify native test lead, consent mapping, owner task/routing and signature rejection before enabling campaign. |
-| Backup | Backup available | Dashboard physical backup29Sep2026 01:30:08UTC. Restore rehearsal to isolated destination not completed; no production restore attempted. |
-| Deployment startup | PR10 | Remove automatic historical migration replay from Railway startup; use explicit Supabase migrations. Git merge triggers three preexisting Railway services as well as Vercel; runtime status needs final check. |
+| Backup | Backup available | Dashboard physical backup September 29, 2026 at 01:30:08 UTC. Restore rehearsal to isolated destination not completed; no production restore attempted. |
+| Deployment startup | PR #10 | Remove automatic historical migration replay from Railway startup; use explicit Supabase migrations. Git merge triggers three preexisting Railway services as well as Vercel; runtime status needs final check. |
 | Historical incomplete receipt | Assigned for review | July10 receipt5255b3df-ee62-4d76-a2c1-ba0de2b37766 has no form ID/first name. Julio has a review task; no auto-recovery/contact. |
-| Production operational acceptance | Pending | Signed-in CRM owner task/notification review, provider delivery, alert escalation/staffing and isolated restore exercise remain. |
+| Production operational acceptance | Pending | Signed-in CRM owner task/notification review, provider delivery, alert escalation/staffing and isolated restore exercise remain. HTTPS validates for apex and www (www redirects to apex); public form and health200; unauthenticated submissions API401. |
 
 ### Verification and test-data handling
 
-- Backend260 tests passed. Earlier unchanged frontend91 tests, build and lint regression gate passed; release CI and Vercel preview passed.
+- Backend 263 tests passed. Earlier unchanged frontend 91 tests, build and lint regression gate passed; release CI and Vercel preview passed.
 - Isolated PGlite tests verified role restrictions, repeated migrations, receipt/lead/task transaction rollback, idempotency, and formatted shared STOP/secondary-phone suppression. These are not a complete staging restore.
 - Live service-role tests verified settings access, finalizer repeat behavior and one assigned task. A new-lead transaction test was rolled back successfully.
 - Five clearly labeled synthetic inquiries used only the authorized owner contacts. All five resulting test leads are marked dead/AI paused, sequences disabled, notes identify fixtures; their generated test tasks completed and notifications marked read. Owner phone was not globally suppressed.

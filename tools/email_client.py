@@ -24,7 +24,7 @@ class EmailClient:
 
     def __init__(self, provider: Optional[str] = None) -> None:
         self._provider = (provider or settings.email_provider).lower()
-        self._from_email = settings.from_email or "alerts@wholesale-os.com"
+        self._from_email = settings.from_email.strip()
         self._configured = self._check_provider_credentials()
 
         if not self._configured:
@@ -35,9 +35,9 @@ class EmailClient:
 
     def _check_provider_credentials(self) -> bool:
         if self._provider == "sendgrid":
-            return bool(settings.sendgrid_api_key)
+            return bool(settings.sendgrid_api_key and self._from_email)
         if self._provider == "mailgun":
-            return bool(settings.mailgun_api_key)
+            return bool(settings.mailgun_api_key and self._from_email)
         return False
 
     def send(
@@ -48,7 +48,7 @@ class EmailClient:
         html_body: Optional[str] = None,
     ) -> bool:
         """
-        Attempt to send an email. Returns True if sent (or dry-run simulated).
+        Attempt to send an email. Returns True only for provider acceptance.
         """
         if not to_email:
             logger.error("[EmailClient] BLOCKED invalid to_email: empty")
@@ -59,7 +59,7 @@ class EmailClient:
                 f"[EmailClient][DRY-RUN] Provider={self._provider} | "
                 f"To={to_email} | Subject={subject} | Body={body[:60]}..."
             )
-            return True
+            return False
 
         return self._dispatch(to_email, subject, body, html_body)
 
