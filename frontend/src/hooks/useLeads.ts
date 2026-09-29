@@ -8,6 +8,7 @@ interface LeadsFilter {
   source?: string;
   tier?: string;
   motivation?: string;
+  retention?: string;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -18,7 +19,7 @@ interface LeadsFilter {
 /** Columns the table may sort by (server-side, so it works across all pages). */
 export const SORTABLE_LEAD_COLUMNS = [
   'property_address', 'owner_last_name', 'owner_phone_1', 'source', 'stack_bonus',
-  'priority_tier', 'total_score', 'priority_rank', 'status', 'last_contact_date', 'created_at',
+  'priority_tier', 'total_score', 'priority_rank', 'status', 'last_contact_date', 'created_at', 'retention_due_at',
 ] as const;
 
 export type LeadWrite = Omit<Partial<Lead>, 'asking_price' | 'estimated_equity_pct' | 'next_follow_up_date'> & {
@@ -28,7 +29,7 @@ export type LeadWrite = Omit<Partial<Lead>, 'asking_price' | 'estimated_equity_p
 };
 
 export function useLeads(filters: LeadsFilter = {}) {
-  const { status, source, tier, motivation, search, page = 1, pageSize = 50, sortBy = 'total_score', sortDir = 'desc' } = filters;
+  const { status, source, tier, motivation, retention, search, page = 1, pageSize = 50, sortBy = 'total_score', sortDir = 'desc' } = filters;
   const sortColumn = (SORTABLE_LEAD_COLUMNS as readonly string[]).includes(sortBy) ? sortBy : 'total_score';
 
   return useQuery({
@@ -47,6 +48,14 @@ export function useLeads(filters: LeadsFilter = {}) {
       if (source) query = query.eq('source', source);
       if (tier) query = query.eq('priority_tier', tier);
       if (motivation) query = query.eq('motivation_tag', motivation);
+      if (retention) {
+        const now = new Date();
+        if (retention === 'delete_now') query = query.eq('retention_deletable', true).lte('retention_due_at', now.toISOString());
+        else if (retention === 'delete_soon') {
+          query = query.eq('retention_deletable', true).gt('retention_due_at', now.toISOString())
+            .lte('retention_due_at', new Date(now.getTime() + 30 * 86_400_000).toISOString());
+        } else query = query.eq('retention_action', retention);
+      }
       if (search) {
         query = query.or(
           `property_address.ilike.%${search}%,owner_first_name.ilike.%${search}%,owner_last_name.ilike.%${search}%,owner_phone_1.ilike.%${search}%`

@@ -30,6 +30,7 @@ import { supabase } from '@/lib/supabase';
 import { parseCombinedAddress } from '@/lib/masterList';
 import { parseSpreadsheet, isSupportedFile } from '@/lib/parseFile';
 import { createLeadList } from '@/lib/leadLists';
+import { retentionBadge, RETENTION_TONE_CLASS } from '@/lib/retention';
 import { ManageListsModal } from '@/components/leads/ManageListsModal';
 import { useAutoScoreStore, type ScorableLead } from '@/stores/useAutoScoreStore';
 
@@ -61,6 +62,15 @@ const STATUS_OPTIONS = [
   { value: 'dead', label: 'Dead' },
   { value: 'recycle', label: 'Recycle' },
   { value: 'dnc', label: 'DNC' },
+];
+
+const RETENTION_OPTIONS = [
+  { value: '', label: 'Keep / Delete: all' },
+  { value: 'delete_now', label: 'Delete now' },
+  { value: 'delete_soon', label: 'Delete within 30 days' },
+  { value: 'work', label: 'Work now' },
+  { value: 'hold', label: 'Hold' },
+  { value: 'keep', label: 'Keep' },
 ];
 
 const TIER_OPTIONS = [
@@ -130,6 +140,7 @@ export function Leads() {
   const [motivation, setMotivation] = useState('');
   const [page, setPage] = useState(1);
   const [tier, setTier] = useState('');
+  const [retention, setRetention] = useState('');
   const [sortBy, setSortBy] = useState('total_score');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [addOpen, setAddOpen] = useState(false);
@@ -138,7 +149,7 @@ export function Leads() {
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const { data, isLoading, error: loadError, refetch } = useLeads({ status, source, tier, motivation, search, page, pageSize: 50, sortBy, sortDir });
+  const { data, isLoading, error: loadError, refetch } = useLeads({ status, source, tier, motivation, retention, search, page, pageSize: 50, sortBy, sortDir });
   const leads = data?.data ?? [];
   const total = data?.count ?? 0;
   const totalPages = Math.ceil(total / 50);
@@ -257,6 +268,7 @@ export function Leads() {
         <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} options={STATUS_OPTIONS} className="w-44" />
         <Select value={tier} onChange={(e) => { setTier(e.target.value); setPage(1); }} options={TIER_OPTIONS} className="w-36" />
         <Select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} options={SOURCE_OPTIONS} className="w-36" />
+        <Select value={retention} onChange={(e) => { setRetention(e.target.value); setPage(1); }} options={RETENTION_OPTIONS} className="w-44" />
         <Select value={motivation} onChange={(e) => { setMotivation(e.target.value); setPage(1); }} options={MOTIVATION_OPTIONS} className="w-40" />
       </div>
 
@@ -269,7 +281,7 @@ export function Leads() {
                 {([
                   ['Address', 'property_address'], ['Owner', 'owner_last_name'], ['Phone', 'owner_phone_1'],
                   ['Source', 'source'], ['Stack', 'stack_bonus'], ['Tier', 'priority_tier'], ['Score', 'total_score'],
-                  ['Status', 'status'], ['Last Contact', 'last_contact_date'], ['', ''],
+                  ['Status', 'status'], ['Last Contact', 'last_contact_date'], ['Keep / Action', 'retention_due_at'], ['', ''],
                 ] as const).map(([h, column]) => (
                   <th key={h || 'actions'} aria-sort={column && sortBy === column ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
                     className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
@@ -286,12 +298,12 @@ export function Leads() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loadError ? (
-                <tr><td colSpan={10} className="p-6 text-center text-red-700" role="alert">Could not load leads. <button onClick={() => refetch()} className="underline">Retry</button></td></tr>
+                <tr><td colSpan={11} className="p-6 text-center text-red-700" role="alert">Could not load leads. <button onClick={() => refetch()} className="underline">Retry</button></td></tr>
               ) : isLoading ? (
-                <tr><td colSpan={10} className="px-4 py-6"><TableSkeleton rows={8} cols={8} /></td></tr>
+                <tr><td colSpan={11} className="px-4 py-6"><TableSkeleton rows={8} cols={8} /></td></tr>
               ) : filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-16 text-center">
+                  <td colSpan={11} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-400">
                       <Search className="h-10 w-10 opacity-30" />
                       <p className="font-medium">No leads found</p>
@@ -368,6 +380,17 @@ export function Leads() {
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                     {formatDate(lead.last_contact_date) || '—'}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {(() => {
+                      const r = retentionBadge(lead);
+                      return r ? (
+                        <span title={r.title} className={cn('inline-flex flex-col rounded border px-2 py-0.5 text-xs leading-tight', RETENTION_TONE_CLASS[r.tone])}>
+                          <span className="font-semibold">{r.label}</span>
+                          {r.sub && <span className="opacity-80">{r.sub}</span>}
+                        </span>
+                      ) : <span className="text-gray-300">—</span>;
+                    })()}
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="relative">
@@ -1033,6 +1056,15 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
 
         {/* AI Qualifier */}
         <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+          {(() => {
+            const r = retentionBadge(lead);
+            return r ? (
+              <div className={cn('rounded-lg border p-3 text-xs', RETENTION_TONE_CLASS[r.tone])}>
+                <p className="font-semibold">Keep / Action: {r.label}{r.sub ? ` - ${r.sub}` : ''}</p>
+                {r.title && <p className="mt-0.5 opacity-90">{r.title}</p>}
+              </div>
+            ) : null;
+          })()}
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
               <Bot className="h-4 w-4 text-[#E8720C]" /> AI Qualifier
