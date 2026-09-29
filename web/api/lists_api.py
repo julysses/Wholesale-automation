@@ -128,7 +128,8 @@ def rescore_lead_list(list_id: str) -> dict:
 
 
 # ── Retention / cleanup suggestions ───────────────────────────────────────────
-# Rule ids match public.lead_cleanup_ids(). Only untouched leads (unworked status,
+# Rule ids match public.lead_retention_calc() - the single definition behind the per-lead
+# "Keep / Action" label, these counts and the delete buttons. Only untouched leads (unworked status,
 # no contact attempts, not DNC) can ever be selected, so nothing a human worked,
 # no DNC/opt-out suppression record and no deal history is at risk.
 
@@ -223,8 +224,9 @@ def apply_cleanup(rule: str) -> dict:
                     deleted += 1
                 except Exception:
                     failed += 1
-    try:
-        supabase.rpc("recompute_priority_ranks").execute()
-    except Exception:
-        logger.exception("Failed to recompute priority ranks after cleanup")
+    for fn in ("recompute_priority_ranks", "refresh_lead_retention"):
+        try:
+            supabase.rpc(fn).execute()
+        except Exception:
+            logger.exception("%s failed after cleanup", fn)
     return {"status": "ok", "rule": rule, "deleted": deleted, "failed": failed}

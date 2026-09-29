@@ -59,6 +59,12 @@ export interface Lead {
   tax_delinquent_flag?: boolean;
   vacant?: boolean;
   years_owned?: number;
+  // Retention guidance (computed in the database by lead_retention_calc)
+  retention_rule?: string | null;
+  retention_action?: 'work' | 'hold' | 'keep' | null;
+  retention_due_at?: string | null;
+  retention_deletable?: boolean;
+  retention_reason?: string | null;
   apn?: string;
   county?: string;
   phones?: Array<{ number: string; type: string; confidence: number; status: string }>;
