@@ -8,7 +8,6 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from starlette.datastructures import FormData
-from twilio.request_validator import RequestValidator
 
 from config.settings import settings
 from tools.crm import get_supabase_client
@@ -19,6 +18,7 @@ STATUSES = {"accepted", "scheduled", "queued", "sending", "sent", "delivered", "
 
 
 async def _verified(request: Request, kind: str) -> dict:
+    from twilio.request_validator import RequestValidator
     token = settings.twilio_auth_token
     base = settings.twilio_webhook_base_url.rstrip("/")
     if not token or not settings.twilio_account_sid or not base.startswith("https://"):

@@ -125,3 +125,8 @@ def test_suppressed_recipient_blocked(sending):
     db.rpc.return_value.execute.return_value.data={'suppressed':True}
     assert SMSClient()._send_twilio(msg,PHONE) is False
     sdk.messages.create.assert_not_called()
+
+
+def test_vercel_bundle_includes_twilio():
+    from pathlib import Path
+    assert 'twilio==9.11.2' in Path('api/requirements.txt').read_text().splitlines()
