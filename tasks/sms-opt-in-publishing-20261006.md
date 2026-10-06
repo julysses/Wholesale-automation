@@ -9,22 +9,27 @@ User confirmed Hilltop Home Co. is a DBA of The Jays Dallas, LLC and authorized 
 - HilltopHome PRs #4 and #5 merged. Optional unchecked consent identifies both entities and message scope, rates, frequency, STOP/HELP and no purchase condition; adjacent policy/terms links. Rendering version/text travels with submission; stale opted-in forms return 409. Actual source path validated (homepage and standalone page); unknown source remains null.
 - Hilltop removed Meta pixel and server conversion delivery so form contact information/consent is not sent to advertising providers. Regression tests including no Meta request with configured credentials pass; production build/type/lint pass.
 - Wholesale-automation PR #17 merged at baeb25f557ac86b2a41cd54f9a3fba4e9a0f017c. Receipt now stores server-owned choice, configured disclosure/hash/time/form identity. Frontend dependency audit repaired; checks passed.
-- Wholesale-automation PR #18 remains OPEN: it adds rendered disclosure matching (409 before save on stale/missing opted-in disclosure), direct CRM form metadata and client-reported source. 24 public-form tests, 96 frontend tests and build pass locally. Hold deployment until Hilltop's form changes are live to avoid blocking old accepted-consent submissions.
+- Wholesale-automation PR #18 (now merged; see verification below): it adds rendered disclosure matching (409 before save on stale/missing opted-in disclosure), direct CRM form metadata and client-reported source. 24 public-form tests, 96 frontend tests and build pass locally. The website-first deployment gate has now been satisfied.
 - Supabase live hilltop-home-co SMS question label updated to the full matching DBA/program disclosure; required=false retained. No schema/permission changes.
 
-## Publishing blocker / exact resume point
+## Production verification — October 6, 2026, 3:15 PM Central
 
-The Netlify preview works, but the production domains still show older content: thejaysdallas.com/sms returned 404 and Hilltop form had the old label after Git merges. No production commit status was posted for either website merge. Need signed-in Netlify to inspect production branch, build/publish settings and queue. Do not assume the site was published merely because a PR merged.
+- Netlify signed-in dashboard confirmed main auto-publishing enabled. Both sites finished publishing; no settings or DNS changes were necessary.
+- https://thejaysdallas.com/sms live and visually verified. Hilltop /get-an-offer has exact DBA/program disclosure, optional checkbox initially unchecked, and adjacent privacy/terms/help links. Both sites' SMS privacy and terms URLs return 200.
+- Wholesale PR #18 merged at fb39d6c0b4edf1c16600a9d57a49c0e12e87bcb4 after all checks passed. Vercel and all three Railway deployment statuses now success.
+- Live Hilltop API rejected stale accepted disclosure with HTTP 409.
+- Controlled live submission used Julio's authorized phone/email with SMS declined. HTTP 200 confirmed; receipt cf68ee58-fad5-4995-ad73-c269b06f8809 is processed and linked to lead 3d3ef68a-c05e-4529-8b12-66f38066e9f3. Database receipt preserves accepted=false, exact disclosure, SHA256, server timestamp, source /get-an-offer, rendered_disclosure_matches=true.
+- Synthetic lead was then archived as dead, AI calling paused, both sequences off; its task marked done. No seller outreach enabled.
+- Twilio Fix Campaign modal filled with corrected seller-inquiry description, four samples, actual public consent flow, and existing policy URLs. Not submitted: final correctness/vetting checkbox remains unchecked. Draft excludes internal employee alerts, unrelated marketing, lending and AI calls. Messaging flags links and phone=true, lending/age=false.
 
-Netlify login tab is open through GitHub and awaiting user sign-in. Browser tab 1348645356 (Chrome Julio). User was asked via async question to sign in. The Twilio campaign was not edited/submitted, no new credentials transferred, no fees accepted, no SMS sent. Corrected pages must be live before resubmission.
+## Exact resume checkpoint
 
-## Resume order
+1. Obtain action-time approval for Twilio's correctness attestation and resubmission of existing campaign CM81b71bfdf3483a566e6ecf0161c840b9. Modal is populated in Chrome tab 1348645330; do not navigate away before submission. Twilio documentation says in-place resubmission has a once-per-campaign fee; help FAQ conflicts on possible additional charges. No new fees accepted; stop if a new charge is explicitly presented.
+2. After approval, check final checkbox, Update, and verify actual resulting status. Do not call pending vetting approved.
+3. Complete native signed Twilio inbound STOP/reply and status callback integration; provider keys remain missing. Do not use Launch Control's differently signed endpoint.
+4. Configure existing sender +14698049920/service, server-side credentials, and controlled delivery/STOP tests using Julio only after campaign approval. Positive consent acceptance and delivery remain to be tested; today's end-to-end test was declined SMS.
+5. Internal owner SMS alerts need separate accurate opt-in coverage. AI-call consent, email/Retell/Facebook provider checks and isolated restore test remain open launch gates.
 
-1. User signs in to Netlify; inspect thejaysdallas and hilltophome project production settings. Publish latest merged commits without changing domains/email DNS.
-2. Browser-check /sms, its offer CTA, both policy links, and optional unchecked Hilltop consent on homepage and /get-an-offer. Save live screenshot proof.
-3. Check PR #18 CI and merge/release after website publication; verify actual production deployment. Controlled submission using Julio contacts only; verify durable evidence, then archive fixture.
-4. Review corrected Twilio campaign scope. Original rejected campaign was internal management alerts; proposed seller property inquiry campaign must not silently cover internal alerts, buyer blasts, unrelated marketing or AI calls. If owner SMS alerts are included, document a separate real employee opt-in mechanism and reflect it accurately in registration.
-5. Complete native Twilio signed inbound STOP/reply and delivery callback integration; keys remain missing. Do not point number to Launch Control's differently signed endpoint.
-6. Prepare final Twilio form, verify re-vetting fee, and request approval for the concrete correctness attestation/fee immediately before submitting. Carrier approval and controlled delivery tests remain open gates.
+Proof: outputs/sms-opt-in-live.jpg, outputs/hilltop-consent-live.jpg, outputs/twilio-campaign-ready.jpg. Final screenshot of Twilio is an unsaved draft, not a completed submission.
 
-Local repositories: work/the-jays-dallas (codex/sms-opt-in), work/hilltop-home (codex/sms-consent-evidence); backend implementation branch codex/twilio-consent-records. Preserve unrelated untracked docs/deployment-vercel 2.md and tests/form-validation 2.mjs.
+Preserve unrelated untracked docs/deployment-vercel 2.md and tests/form-validation 2.mjs. Backend checkpoint branch codex/launch-runtime-checkpoint.
