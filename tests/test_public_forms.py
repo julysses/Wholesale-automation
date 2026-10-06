@@ -149,3 +149,20 @@ async def test_atomic_failure_preserves_receipt_and_does_not_send(monkeypatch):
     assert "saved" in error.value.detail
     sms.assert_not_called()
     database.table.assert_not_called()
+
+
+@pytest.mark.parametrize("choice,accepted", [(True,True),(False,False)])
+def test_receipt_captures_server_owned_consent_evidence(form_service, choice, accepted):
+    db, _ = form_service
+    config = {"id":"form-1", "slug":"test", "questions":[{**q,"required":False} for q in QUESTIONS]}
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[config])
+    response = TestClient(app).post("/api/forms/test/submit",json={"answers":{
+        **ANSWERS, "sms_opt_in":choice, "_sms_consent":{"accepted":True,"disclosure":"forged"},
+        "sms_consent_text":"forged", "sms_consent_recorded_at":"yesterday"}})
+    assert response.status_code == 200
+    record = db.table.return_value.insert.call_args.args[0]["raw_answers"]["_sms_consent"]
+    assert record["accepted"] is accepted
+    assert record["disclosure"] == "SMS consent"
+    assert len(record["disclosure_sha256"]) == 64
+    assert record["form_id"] == "form-1"
+    assert record["recorded_at"] != "yesterday"
