@@ -45,6 +45,7 @@ from schemas.compliance import AuditLogEntry      # noqa: E402
 from schemas.property import DataSource           # noqa: E402
 from tools.crm import CRMStore                    # noqa: E402
 from web.api import router as ai_router           # noqa: E402
+from web.api.twilio_webhooks import router as twilio_router
 from web.api.webhooks import router as webhook_router  # noqa: E402
 from web.api.lead_forms_api import router as lead_forms_router  # noqa: E402
 from web.api.buyers_api import router as buyers_router  # noqa: E402
@@ -101,6 +102,7 @@ else:
 
 # ── AI endpoints (used by React/WholesaleOS) ───────────────────────────────────
 app.include_router(ai_router)          # POST /api/ai/*
+app.include_router(twilio_router)
 app.include_router(webhook_router)     # POST /webhooks/* — dialer + SMS inbound events
 app.include_router(lead_forms_router)  # GET/POST /api/forms/*, /api/lead-gen/*, /api/ai/lead-gen/*
 app.include_router(buyers_router)      # POST/GET /api/buyers/*

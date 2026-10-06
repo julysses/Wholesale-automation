@@ -57,6 +57,7 @@ class OutreachMessage(BaseModel):
     response_text: str = ""
     opt_out_detected: bool = False
     opt_out_keyword: str = ""
+    provider_message_id: str = ""
     a2p_provider: str = ""             # "twilio" | "telnyx" | "messagebird"
     created_at: datetime = Field(default_factory=datetime.utcnow)
     compliance_cleared: bool = False

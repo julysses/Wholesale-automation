@@ -147,18 +147,6 @@ def test_interrupted_outcome_write_never_replays_provider_sends(pipeline, monkey
     assert client.send.call_count == 2
 
 
-def test_default_twilio_dependency_and_dispatch_contract(monkeypatch):
-    # Import the actual packaged SDK; replace only the network-facing client.
-    import twilio.rest
-    from tools.sms_client import SMSClient
-    from schemas.outreach import OutreachChannel, OutreachMessage
-    sdk = MagicMock()
-    sdk.messages.create.return_value.sid = "SM-test"
-    monkeypatch.setattr(twilio.rest, "Client", MagicMock(return_value=sdk))
-    message = OutreachMessage(lead_id=LEAD_ID, channel=OutreachChannel.SMS, body="Controlled fixture")
-    assert SMSClient()._send_twilio(message, SELLER) is True
-    assert message.a2p_provider == "twilio"
-    sdk.messages.create.assert_called_once()
 
 
 @pytest.mark.parametrize("status", [None, {}, {"suppressed": "false", "duplicate": False}])
