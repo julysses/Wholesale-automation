@@ -53,3 +53,10 @@ A controlled HELP text was sent from Google Voice +12147010100 on October 6, 202
 The number lists SMS/MMS capabilities and active US1 message routing. It belongs to Messaging Service MGaf5837f7a7cad183e8b38b1147728562, with Advanced Opt-Out enabled and inbound HTTP POST to https://wholesale-automation.vercel.app/webhooks/twilio/inbound. Number-level webhook matches. Controlled signed synthetic requests to the endpoint previously succeeded; these were not real carrier messages.
 
 A2P campaign CM81b71bfdf3483a566e6ecf0161c840b9 is under review. Application outbound SMS remains disabled. Please determine the cause of missing inbound receipt independently of outbound campaign approval. Do not purchase, replace, release or port the number.
+
+## Payment restoration and real inbound success
+- User reported account suspension for nonpayment and restored payment. After restoration, Twilio received real HELP at 2026-10-06 15:51:29 America/Chicago (20:51:29 UTC), Message SID SMb3f2b5ca15cfccf7905a3d69e856cf28. Twilio shows Incoming, HELP, from authorized test number to existing sender, cost $0.0083.
+- CRM sms_events contains matching real Message SID, direction inbound, status replied, body HELP, OptOutType HELP, opt_out false. The status replied is the CRM inbound classification, NOT proof of an outbound automatic reply. This confirms carrier ingress through the signed CRM callback and persistence.
+- Twilio detail UI says no HTTP Requests logged for this event, despite the matching persisted receipt. Do not claim Request Inspector HTTP evidence.
+- Google Voice conversation still showed only the two sent HELP messages when checked. Automatic HELP reply delivery is not verified. Asked user to send STOP now and report replies; verify real STOP record and dnc_registry before marking opt-out acceptance complete.
+- Earlier missing-ingress support draft is superseded by restored real delivery and has NOT been sent. No support escalation needed for the now-resolved absence of incoming messages. Outbound campaign approval and delivery acceptance remain separate open gates; sending stays disabled.
