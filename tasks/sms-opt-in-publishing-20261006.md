@@ -24,8 +24,8 @@ User confirmed Hilltop Home Co. is a DBA of The Jays Dallas, LLC and authorized 
 
 ## Exact resume checkpoint
 
-1. Obtain action-time approval for Twilio's correctness attestation and resubmission of existing campaign CM81b71bfdf3483a566e6ecf0161c840b9. Modal is populated in Chrome tab 1348645330; do not navigate away before submission. Twilio documentation says in-place resubmission has a once-per-campaign fee; help FAQ conflicts on possible additional charges. No new fees accepted; stop if a new charge is explicitly presented.
-2. After approval, check final checkbox, Update, and verify actual resulting status. Do not call pending vetting approved.
+1. User personally agreed and submitted the corrected campaign. Refreshed Console confirms Campaign status In progress and under review. Corrected description, four samples, consent flow and policy links persisted. Console estimates 2-3 weeks; no carrier approval or delivery is claimed.
+2. Carrier review is pending. No further submission is necessary now; do not repeatedly edit or recreate the campaign.
 3. Complete native signed Twilio inbound STOP/reply and status callback integration; provider keys remain missing. Do not use Launch Control's differently signed endpoint.
 4. Configure existing sender +14698049920/service, server-side credentials, and controlled delivery/STOP tests using Julio only after campaign approval. Positive consent acceptance and delivery remain to be tested; today's end-to-end test was declined SMS.
 5. Internal owner SMS alerts need separate accurate opt-in coverage. AI-call consent, email/Retell/Facebook provider checks and isolated restore test remain open launch gates.
@@ -33,3 +33,15 @@ User confirmed Hilltop Home Co. is a DBA of The Jays Dallas, LLC and authorized 
 Proof: outputs/sms-opt-in-live.jpg, outputs/hilltop-consent-live.jpg, outputs/twilio-campaign-ready.jpg. Final screenshot of Twilio is an unsaved draft, not a completed submission.
 
 Preserve unrelated untracked docs/deployment-vercel 2.md and tests/form-validation 2.mjs. Backend checkpoint branch codex/launch-runtime-checkpoint.
+
+## Submission verified
+
+User submitted final attestation personally. Initial page retained a stale Rejected label alongside the new review banner; after reload the explicit Campaign status changed to In progress. Proof saved to outputs/twilio-campaign-submitted.jpg. Do not interpret the old label as a second rejection.
+
+## Sender association and remaining integration
+
+Linked existing number +14698049920 (PNb952c10eb0350422ccd08b1d8c5ce738) to the campaign's Messaging Service MGaf5837f7a7cad183e8b38b1147728562. Verified number now appears in Sender Pool. No new number purchased, no message sent. Proof: outputs/twilio-sender-linked.jpg.
+
+Service Integration currently defers inbound traffic to the sender webhook; delivery status callback is blank. Left these unchanged until native Twilio signature validation, durable inbound processing and status callback endpoints exist and pass tests. Code inspection confirms tools/sms_client.py dispatches directly from the number and does not yet provide a status callback or persist the Twilio Message SID. Its missing-credentials dry-run path marks a message sent; production must fail closed instead before enabling live automation. These are concrete implementation gates, not carrier-review blockers.
+
+Next technical step: implement and test native Twilio callbacks and production fail-closed sending on the latest production branch, then wire server-side credentials and service callbacks. Do not treat this checkpoint branch as latest production source. Keep SMS launch blocked pending carrier approval and controlled delivery/STOP acceptance.
