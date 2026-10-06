@@ -60,3 +60,18 @@ A2P campaign CM81b71bfdf3483a566e6ecf0161c840b9 is under review. Application out
 - Twilio detail UI says no HTTP Requests logged for this event, despite the matching persisted receipt. Do not claim Request Inspector HTTP evidence.
 - Google Voice conversation still showed only the two sent HELP messages when checked. Automatic HELP reply delivery is not verified. Asked user to send STOP now and report replies; verify real STOP record and dnc_registry before marking opt-out acceptance complete.
 - Earlier missing-ingress support draft is superseded by restored real delivery and has NOT been sent. No support escalation needed for the now-resolved absence of incoming messages. Outbound campaign approval and delivery acceptance remain separate open gates; sending stays disabled.
+
+## Missing automatic HELP reply — revised diagnosis
+- User confirms no HELP reply received after payment restoration. Advanced Opt-Out UI verified Enabled, HELP/info keywords and branded response saved, no language/country overrides. Real CRM receipt still contains HELP with OptOutType HELP; no real STOP event recorded as of this check.
+- Correction to prior diagnostic assumption: Twilio Advanced Opt-Out automatic replies do NOT appear in normal SMS logs. Absence of an outgoing log does not prove no auto-reply attempt. Official source: https://help.twilio.com/articles/360034798533-Getting-Started-with-Advanced-Opt-Out-for-Messaging-Services
+- Twilio documents that previously opted-out users do not receive HELP responses, and block-list reporting is unavailable in Console/REST. This is a hypothesis only; we have not established prior provider suppression for this recipient. https://www.twilio.com/docs/messaging/tutorials/advanced-opt-out
+- Do not add an application-generated duplicate HELP reply or clear CRM DNC to work around an unproven provider issue. Carrier approval remains pending and no proof attributes this automatic reply failure to approval status.
+
+### Revised support draft — not sent
+Subject: Advanced Opt-Out HELP received but automatic reply missing
+
+Our billing suspension has been resolved. Please trace the automatic Advanced Opt-Out HELP response associated with inbound Message SID SMb3f2b5ca15cfccf7905a3d69e856cf28, received October 6, 2026 at 20:51:29 UTC (3:51:29 PM America/Chicago), from Google Voice +12147010100 to Twilio +14698049920.
+
+Incoming receipt and the signed application callback succeeded; our CRM stored matching Message SID and OptOutType=HELP. Advanced Opt-Out is enabled on MGaf5837f7a7cad183e8b38b1147728562 and the branded HELP response is saved without country/language overrides. The recipient received no reply. We understand automatic replies are not shown in normal SMS logs.
+
+Please check whether prior opt-out suppression, residual account suspension, pending A2P campaign CM81b71bfdf3483a566e6ecf0161c840b9, or carrier delivery prevented the automatic response, and provide its internal delivery outcome. Do not remove opt-outs, purchase/release/replace numbers, or enable campaign traffic. Application sending remains disabled.
