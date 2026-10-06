@@ -36,3 +36,20 @@ User-facing proofs in outputs: twilio-production-secrets.jpg, twilio-callbacks-c
 - Replaced the dormant number-level demo SMS URL with the same CRM inbound endpoint and verified saved value. This removes obsolete routing but is not evidence of the root cause, since service routing already overrides it. Voice settings unchanged.
 - Latest bf5db0a deployment succeeded on Vercel and all three Railway services; production /api/health returned 200. Campaign remains In progress.
 - Asked user to send a fresh plain SMS HELP to full +1 (469) 804-9920 and report timestamp and handset delivery status. Resume by refreshing Twilio logs and correlating any Message SID with CRM receipt. If no Twilio receipt after a confirmed SMS send, investigate carrier/number provisioning with Twilio using the test timestamp. No external support message sent.
+
+## Second HELP test — October 6, 3:44 PM Central
+- Read the existing Google Voice conversation for +14698049920: outgoing HELP displayed October 6 at 3:44 PM Central. Google Voice calling identity is +12147010100. No received response or explicit delivery receipt was visible. Do not treat the sent bubble as carrier delivery confirmation.
+- Refreshed Twilio Messaging Logs: no logs for the account. Error logs for the last 24 hours: No events found. Number Properties confirms Voice, SMS, MMS, SIP capabilities, local Dallas number.
+- Evidence points to non-arrival before the CRM webhook, but sender-provider versus Twilio ingress cause remains unproven. Campaign approval is a separate outbound gate, not a proven explanation for absent incoming logs.
+- Next: obtain Twilio inbound-routing trace for the timestamp, or compare a test from a cellular carrier rather than Google Voice. Support message drafted below; NOT sent. User authorization required to contact external support.
+
+### Draft Twilio support request
+Subject: Incoming SMS to +14698049920 absent from message logs
+
+Please investigate inbound SMS routing/provisioning for our existing number +14698049920, SID PNb952c10eb0350422ccd08b1d8c5ce738, the signed-in Twilio account (account SID omitted from Git).
+
+A controlled HELP text was sent from Google Voice +12147010100 on October 6, 2026 at 3:44 PM America/Chicago (20:44 UTC). It appears in the sender conversation, but no reply was received and our Twilio Programmable Messaging Logs show no records. The last-24-hour Error Logs show no events. Please trace ingress from the sending provider and confirm SMS provisioning/routing for this destination; no Message SID exists in our console to supply.
+
+The number lists SMS/MMS capabilities and active US1 message routing. It belongs to Messaging Service MGaf5837f7a7cad183e8b38b1147728562, with Advanced Opt-Out enabled and inbound HTTP POST to https://wholesale-automation.vercel.app/webhooks/twilio/inbound. Number-level webhook matches. Controlled signed synthetic requests to the endpoint previously succeeded; these were not real carrier messages.
+
+A2P campaign CM81b71bfdf3483a566e6ecf0161c840b9 is under review. Application outbound SMS remains disabled. Please determine the cause of missing inbound receipt independently of outbound campaign approval. Do not purchase, replace, release or port the number.
