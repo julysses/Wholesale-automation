@@ -102,7 +102,7 @@ class SMSClient:
         to_number: str,
     ) -> bool:
         """
-        Attempt to send an SMS. Returns True if sent (or dry-run simulated).
+        Attempt to send an SMS. Returns True only when the provider accepts the message.
         All compliance guards are enforced before sending.
         """
         # Guard 1: compliance clearance
@@ -140,15 +140,11 @@ class SMSClient:
             logger.error(f"[SMSClient] BLOCKED invalid phone: {to_number!r}")
             return False
 
-        # Guard 5: dry-run mode (no credentials)
-        if not self._configured:
-            logger.info(
-                f"[SMSClient][DRY-RUN] Provider={self._provider} | "
-                f"To={to_number[:6]}*** | Body={message.body[:60]}..."
-            )
-            message.mark_sent()
-            message.a2p_provider = f"{self._provider}:dry-run"
-            return True
+        # Missing credentials never count as a send. Twilio stays disabled until
+        # carrier approval and controlled delivery acceptance are complete.
+        if not self._configured or (self._provider == "twilio" and not settings.sms_live_enabled):
+            message.mark_stopped("SMS credentials missing or live sending disabled")
+            return False
 
         return self._dispatch(message, to_number)
 
@@ -168,17 +164,60 @@ class SMSClient:
             return False
 
     def _send_twilio(self, message: OutreachMessage, to_number: str) -> bool:
-        from twilio.rest import Client  # type: ignore
+        import re
+        from twilio.rest import Client
+        from tools.crm import get_supabase_client
 
+        if not settings.sms_live_enabled:
+            return False
+        digits = re.sub(r"\D", "", to_number)
+        if len(digits) == 10:
+            digits = "1" + digits
+        if not re.fullmatch(r"1\d{10}", digits):
+            return False
+        to_number = "+" + digits
+        base = settings.twilio_webhook_base_url.rstrip("/")
+        if not base.startswith("https://") or not settings.twilio_messaging_service_sid:
+            return False
+        sb = get_supabase_client()
+        if sb is None:
+            return False
+        # This registration covers consented property inquiries only, not owner
+        # alerts or buyer-list blasts. Require a matching durable form receipt.
+        rows = sb.table("lead_form_submissions").select("raw_answers").eq(
+            "lead_id", str(message.lead_id)).order("created_at", desc=True).limit(1).execute().data
+        answers = rows[0].get("raw_answers", {}) if rows else {}
+        consent = answers.get("_sms_consent", {})
+        receipt_phone = re.sub(r"\D", "", str(answers.get("phone", "")))
+        if (consent.get("accepted") is not True or consent.get("rendered_disclosure_matches") is not True
+                or receipt_phone[-10:] != digits[-10:]):
+            message.mark_stopped("No matching property inquiry consent receipt")
+            return False
+        safety = sb.rpc("intake_phone_status", {"p_phone": to_number,
+            "p_lead": str(message.lead_id), "p_property": answers.get("property_address", "")}).execute().data
+        if not isinstance(safety, dict) or safety.get("suppressed") is not False:
+            message.mark_stopped("Suppression lookup blocked sending")
+            return False
+        claim = sb.table("sms_events").upsert({"id": str(message.id), "lead_id": str(message.lead_id),
+            "provider": "twilio", "direction": "outbound", "phone_number": to_number,
+            "body": message.body, "status": "submitting"}, on_conflict="id", ignore_duplicates=True).execute()
+        if not claim.data:
+            return False  # An earlier attempt may have reached Twilio; never auto-replay.
         client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
-        result = client.messages.create(
-            body=message.body,
-            from_=settings.twilio_from_number,
-            to=to_number,
-        )
+        try:
+            result = client.messages.create(body=message.body, from_=settings.twilio_from_number,
+                messaging_service_sid=settings.twilio_messaging_service_sid, to=to_number,
+                status_callback=f"{base}/webhooks/twilio/status?message_id={message.id}")
+        except Exception:
+            sb.table("sms_events").update({"status": "unknown"}).eq("id", str(message.id)).execute()
+            raise
+        message.provider_message_id = result.sid
+        saved = sb.table("sms_events").update({"status": "accepted",
+            "raw_payload": {"provider_sid": result.sid}}).eq("id", str(message.id)).execute()
+        if not saved.data:
+            raise RuntimeError("Provider accepted SMS but local receipt is unconfirmed; reconcile before retry")
         message.mark_sent()
         message.a2p_provider = "twilio"
-        logger.info(f"[SMSClient] Sent via Twilio | msg={message.id} | SID={result.sid}")
         return True
 
     def _send_telnyx(self, message: OutreachMessage, to_number: str) -> bool:

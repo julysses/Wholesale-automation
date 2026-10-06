@@ -58,6 +58,9 @@ class Settings:
     twilio_account_sid: str = os.getenv("TWILIO_ACCOUNT_SID", "")
     twilio_auth_token: str = os.getenv("TWILIO_AUTH_TOKEN", "")
     twilio_from_number: str = os.getenv("TWILIO_FROM_NUMBER", "")
+    twilio_messaging_service_sid: str = os.getenv("TWILIO_MESSAGING_SERVICE_SID", "")
+    twilio_webhook_base_url: str = os.getenv("TWILIO_WEBHOOK_BASE_URL", "")
+    sms_live_enabled: bool = os.getenv("SMS_LIVE_ENABLED", "false").lower() == "true"
     telnyx_api_key: str = os.getenv("TELNYX_API_KEY", "")
     telnyx_from_number: str = os.getenv("TELNYX_FROM_NUMBER", "")
     messagebird_api_key: str = os.getenv("MESSAGEBIRD_API_KEY", "")
