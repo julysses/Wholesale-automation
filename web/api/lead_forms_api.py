@@ -218,8 +218,16 @@ async def submit_form(
     receipt_answers = dict(answers)
     if sms_question:
         disclosure = str(sms_question.get("label", ""))
+        accepted = answers.get("sms_opt_in") == "true"
+        if accepted and body.answers.get("sms_consent_text") != disclosure:
+            raise HTTPException(409, "The SMS disclosure has changed. Reload the form and review it before opting in.")
+        source = body.answers.get("sms_consent_source")
+        if not isinstance(source, str) or len(source) > 500:
+            source = None
         receipt_answers["_sms_consent"] = {
-            "accepted": answers.get("sms_opt_in") == "true",
+            "accepted": accepted,
+            "rendered_disclosure_matches": body.answers.get("sms_consent_text") == disclosure,
+            "client_reported_source": source,
             "disclosure": disclosure,
             "disclosure_sha256": hashlib.sha256(disclosure.encode()).hexdigest(),
             "recorded_at": datetime.now(timezone.utc).isoformat(),

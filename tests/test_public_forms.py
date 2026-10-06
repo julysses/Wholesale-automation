@@ -13,7 +13,7 @@ QUESTIONS = [
     {"field_name": "phone", "label": "Phone", "type": "tel", "required": True},
     {"field_name": "sms_opt_in", "label": "SMS consent", "type": "checkbox", "required": True},
 ]
-ANSWERS = {"first_name": "Test", "phone": "(214) 555-0100", "sms_opt_in": "true"}
+ANSWERS = {"first_name": "Test", "phone": "(214) 555-0100", "sms_opt_in": "true", "sms_consent_text": "SMS consent"}
 
 
 @pytest.fixture
@@ -158,7 +158,7 @@ def test_receipt_captures_server_owned_consent_evidence(form_service, choice, ac
     db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[config])
     response = TestClient(app).post("/api/forms/test/submit",json={"answers":{
         **ANSWERS, "sms_opt_in":choice, "_sms_consent":{"accepted":True,"disclosure":"forged"},
-        "sms_consent_text":"forged", "sms_consent_recorded_at":"yesterday"}})
+        "sms_consent_text":"SMS consent", "sms_consent_recorded_at":"yesterday"}})
     assert response.status_code == 200
     record = db.table.return_value.insert.call_args.args[0]["raw_answers"]["_sms_consent"]
     assert record["accepted"] is accepted
@@ -166,3 +166,12 @@ def test_receipt_captures_server_owned_consent_evidence(form_service, choice, ac
     assert len(record["disclosure_sha256"]) == 64
     assert record["form_id"] == "form-1"
     assert record["recorded_at"] != "yesterday"
+
+
+@pytest.mark.parametrize("text", [None,"old disclosure"])
+def test_changed_disclosure_rejects_opt_in_before_saving(form_service,text):
+    db, processor = form_service
+    response = TestClient(app).post("/api/forms/test/submit",json={"answers":{**ANSWERS,"sms_consent_text":text}})
+    assert response.status_code == 409
+    db.table.return_value.insert.assert_not_called()
+    processor.assert_not_called()

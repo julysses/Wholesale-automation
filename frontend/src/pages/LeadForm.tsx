@@ -174,7 +174,11 @@ export function LeadForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          answers,
+          answers: {
+            ...answers,
+            sms_consent_text: config.questions.find(q => q.field_name === 'sms_opt_in' && q.type === 'checkbox')?.label,
+            sms_consent_source: window.location.origin + window.location.pathname,
+          },
           utm_source: params.get('utm_source'),
           utm_medium: params.get('utm_medium'),
           utm_campaign: params.get('utm_campaign'),
