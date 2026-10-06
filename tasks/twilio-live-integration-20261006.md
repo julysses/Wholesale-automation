@@ -75,3 +75,12 @@ Our billing suspension has been resolved. Please trace the automatic Advanced Op
 Incoming receipt and the signed application callback succeeded; our CRM stored matching Message SID and OptOutType=HELP. Advanced Opt-Out is enabled on MGaf5837f7a7cad183e8b38b1147728562 and the branded HELP response is saved without country/language overrides. The recipient received no reply. We understand automatic replies are not shown in normal SMS logs.
 
 Please check whether prior opt-out suppression, residual account suspension, pending A2P campaign CM81b71bfdf3483a566e6ecf0161c840b9, or carrier delivery prevented the automatic response, and provide its internal delivery outcome. Do not remove opt-outs, purchase/release/replace numbers, or enable campaign traffic. Application sending remains disabled.
+
+## Support escalation submitted
+- User explicitly authorized submission. Twilio ticket #29854581 created October 6, 2026 at 3:57 PM Central, status New, priority P3 (General).
+- URL: https://help.twilio.com/tickets/29854581
+- Subject: Advanced Opt-Out HELP received but automatic reply missing.
+- Verified ticket contains the approved real Message SID, test numbers, timestamp, callback evidence and request for internal automatic-reply delivery outcome. No opt-out removal, number changes or campaign enabling requested.
+- Twilio chat-to-ticket prefill was incorrect; replaced it with the actual approved issue before submission. No paid support plan purchased.
+- Resume: read ticket reply, apply evidenced remediation, then repeat controlled HELP/STOP and verify actual receipt, response and CRM suppression. Outbound campaign approval remains separate.
+- Proof: outputs/twilio-support-ticket-29854581.jpg in the launch workspace.
