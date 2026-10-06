@@ -24,6 +24,7 @@ Authenticated:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import math
 import re
@@ -210,6 +211,21 @@ async def submit_form(
 
     answers = _validate_answers(form_config.get("questions", []), body.answers)
     scores = _compute_scores_from_answers(answers)
+    # Preserve server-owned consent evidence even as the public form evolves.
+    # Never accept a caller-supplied disclosure/timestamp as authoritative.
+    sms_question = next((q for q in form_config.get("questions", [])
+                         if q.get("field_name") == "sms_opt_in" and q.get("type") == "checkbox"), None)
+    receipt_answers = dict(answers)
+    if sms_question:
+        disclosure = str(sms_question.get("label", ""))
+        receipt_answers["_sms_consent"] = {
+            "accepted": answers.get("sms_opt_in") == "true",
+            "disclosure": disclosure,
+            "disclosure_sha256": hashlib.sha256(disclosure.encode()).hexdigest(),
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "form_id": form_config["id"],
+            "form_slug": form_config.get("slug", form_id),
+        }
 
     # Insert submission record
     submission_data = {
@@ -219,7 +235,7 @@ async def submit_form(
         "utm_source": body.utm_source,
         "utm_medium": body.utm_medium,
         "utm_campaign": body.utm_campaign,
-        "raw_answers": answers,
+        "raw_answers": receipt_answers,
         "computed_motivation_tag": scores.get("motivation_tag"),
         "computed_timeline": answers.get("timeline"),
         "computed_condition": answers.get("condition"),
