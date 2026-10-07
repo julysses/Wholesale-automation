@@ -201,6 +201,8 @@ async def test_facebook_retry_creates_one_lead_without_invalid_qualification_cal
     from tools import crm
     from web.api import lead_forms_api
     db = MemoryDB()
+    db.tables["app_settings"] = {"owner": {"key": "lead_owner_user_id", "value": "owner-1"}}
+    db.tables["profiles"] = {"owner-1": {"id": "owner-1", "status": "approved"}}
     monkeypatch.setattr(crm, "get_supabase_client", lambda: db)
     speed_to_lead = MagicMock()
     monkeypatch.setattr(lead_forms_api, "_send_lead_pipeline_sms", speed_to_lead)
@@ -213,10 +215,19 @@ async def test_facebook_retry_creates_one_lead_without_invalid_qualification_cal
     })
     entry = SimpleNamespace(leadgen_id="fb-1", campaign_id="")
     await webhooks._process_facebook_lead(entry, adapter)
+    task = next(iter(db.tables["tasks"].values()))
+    task["status"] = "completed"
     await webhooks._process_facebook_lead(entry, adapter)
     imported = [r for r in db.tables["leads"].values() if r.get("internal_notes") == "FB leadgen_id=fb-1"]
     assert len(imported) == 1
-    speed_to_lead.assert_called_once_with(
+    assert imported[0]["assigned_to"] == "owner-1"
+    assert imported[0]["ai_calling_paused"] is True
+    assert len(db.tables["tasks"]) == 1
+    assert next(iter(db.tables["tasks"].values()))["status"] == "completed"
+    # The notification helper owns its durable send claim; retries repair a
+    # missing task/notification after partial lead persistence.
+    assert speed_to_lead.call_count == 2
+    speed_to_lead.assert_called_with(
         lead_id=imported[0]["id"],
         answers={
             "full_name": "Test Seller",
@@ -230,6 +241,20 @@ async def test_facebook_retry_creates_one_lead_without_invalid_qualification_cal
         property_address="100 Test St",
         source="facebook_lead_ad",
     )
+
+
+def test_facebook_followup_recovers_missing_task_without_changing_owner():
+    db = MemoryDB()
+    db.tables["leads"]["lead-1"]["assigned_to"] = "operator-owner"
+    webhooks._ensure_facebook_followup(db, "lead-1")
+    webhooks._ensure_facebook_followup(db, "lead-1")
+    assert len(db.tables["tasks"]) == 1
+    assert next(iter(db.tables["tasks"].values()))["assigned_to"] == "operator-owner"
+
+
+def test_facebook_followup_refuses_unconfigured_owner():
+    with pytest.raises(RuntimeError, match="approved Facebook intake owner"):
+        webhooks._ensure_facebook_followup(MemoryDB(), "lead-1")
 
 
 @pytest.mark.asyncio

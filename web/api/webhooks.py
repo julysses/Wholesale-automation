@@ -1861,6 +1861,7 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         "contact_attempts": 0,
         "sms_sequence_active": False,
         "email_sequence_active": False,
+        "ai_calling_paused": True,
         "dnc": False,
         "internal_notes": f"FB leadgen_id={entry.leadgen_id}",
     }
@@ -1881,6 +1882,11 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         "internal_notes", lead_payload["internal_notes"],
     ).limit(1).execute().data
     if existing:
+        _ensure_facebook_followup(supabase, existing[0]["id"])
+        _send_lead_pipeline_sms(
+            lead_id=existing[0]["id"], answers=fields, phone=fields.get("phone", ""),
+            property_address=fields.get("property_address", "Unknown"), source="facebook_lead_ad",
+        )
         return
     resp = supabase.table("leads").upsert(
         lead_payload, on_conflict="id", ignore_duplicates=True,
@@ -1888,9 +1894,15 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
     if not resp.data:
         existing = supabase.table("leads").select("id").eq("id", lead_payload["id"]).limit(1).execute().data
         if existing:
-            return  # A concurrent or retried delivery already saved the lead.
+            _ensure_facebook_followup(supabase, existing[0]["id"])
+            _send_lead_pipeline_sms(
+                lead_id=existing[0]["id"], answers=fields, phone=fields.get("phone", ""),
+                property_address=fields.get("property_address", "Unknown"), source="facebook_lead_ad",
+            )
+            return
         raise RuntimeError("Facebook lead persistence was not confirmed")
     lead_id = resp.data[0]["id"]
+    _ensure_facebook_followup(supabase, lead_id)
 
     # Update campaign lead count
     if lead_payload.get("ad_campaign_id"):
@@ -1923,6 +1935,29 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         _send_hot_lead_notification(lead_id, fields, total_score)
 
     logger.info(f"[Facebook] Lead {lead_id} created (score={total_score}, tier={scores['priority_tier']})")
+
+
+def _ensure_facebook_followup(supabase: Any, lead_id: str) -> None:
+    """Repair partial imports on retry without resetting operator task changes."""
+    lead = supabase.table("leads").select("assigned_to").eq("id", lead_id).single().execute().data
+    owner_id = (lead or {}).get("assigned_to")
+    if not owner_id:
+        rows = supabase.table("app_settings").select("value").eq("key", "lead_owner_user_id").limit(1).execute().data
+        owner_id = rows[0].get("value") if rows else None
+        approved = supabase.table("profiles").select("id").eq("id", owner_id).eq("status", "approved").limit(1).execute().data if owner_id else []
+        if not approved:
+            raise RuntimeError("An approved Facebook intake owner is required")
+        supabase.table("leads").update({"assigned_to": owner_id, "ai_calling_paused": True}).eq("id", lead_id).execute()
+    task_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:facebook:followup:{lead_id}"))
+    saved = supabase.table("tasks").upsert({
+        "id": task_id, "lead_id": lead_id, "assigned_to": owner_id,
+        "title": "Follow up on new Facebook inquiry",
+        "description": "Review the saved inquiry and consent before contacting the seller.",
+        "priority": "high", "status": "pending", "type": "follow_up",
+        "due_date": datetime.now(timezone.utc).isoformat(),
+    }, on_conflict="id", ignore_duplicates=True).execute().data
+    if not saved and not supabase.table("tasks").select("id").eq("id", task_id).limit(1).execute().data:
+        raise RuntimeError("Facebook follow-up task persistence was not confirmed")
 
 
 # ── Queue processors (serverless) ─────────────────────────────────────────────
