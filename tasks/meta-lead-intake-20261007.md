@@ -34,3 +34,11 @@ Create the user's developer account and connect Hilltop Home Company native Face
 
 ## Remaining wider launch gates
 SMS delivered and user receipt confirmed; STOP/refusal remains pending. Email delivered and duplicate reference refused; real unsubscribe/refusal remains pending. Retell account does not exist yet. Supabase backup dashboard requires sign-in; isolated restore rehearsal remains pending. Full checklist: tasks/production-acceptance-20261007.md.
+
+## Developer account completed; app creation review pending
+- User completed developer registration personally. Current My Apps initially showed No apps yet.
+- Prepared app name Hilltop Lead Intake, contact julio@hilltophome.co. Selected All use cases -> Capture & manage ad leads with Marketing API.
+- Business step showed No businesses available. Selected connect later; portfolio/Page ownership connection remains required before full launch.
+- Requirements screen reported none currently; this may change when permissions/features are configured.
+- Overview now shows the correct app name/email/use case and a final Create app button. Its text explicitly accepts Meta Platform Terms, Developer Policies and other applicable policies. Asked user for action-time authorization for app creation/credentials and agreement acceptance, or to click personally. No app created by the agent yet.
+- Tab1348645482 stays at overview; screenshot meta-app-create-review.jpg in task outputs. After user confirmation, create app, verify app ID and dashboard, then business/Page settings and signed leadgen integration.
