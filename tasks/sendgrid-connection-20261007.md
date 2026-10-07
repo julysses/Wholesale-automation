@@ -32,3 +32,10 @@ Twilio: approved campaign reported; HELP/STOP receipt from confirmed user phone 
 | TXT | _dmarc | v=DMARC1; p=none; |
 
 - Recheck for existing same-host records before saving; do not create duplicate DMARC or overwrite a stronger policy. After installing, return to SendGrid Next and verify DNS. Review actual plan options before choosing a paid subscription.
+
+## DNS installation completed
+- User authorized Namecheap takeover. Added all eight listed SendGrid records via Namecheap Advanced DNS, TTL Automatic. Existing Netlify ALIAS/www, Google verification/SPF/DKIM and Google MX preserved.
+- Direct authoritative queries to dns1.registrar-servers.com returned all eight exact expected records. SendGrid first saw cached missing DMARC; next verification succeeded and onboarding marked Install DNS Completed.
+- Onboarding now Choose Your Plan. Visible Email API options: 60-day $0 trial (100/day), Essentials 50K $19.95/month, Pro 100K $89.95/month. Marketing Campaigns is separately offered. No plan selected, purchase made or trial activated.
+- Proofs in launch outputs: sendgrid-namecheap-dns-installed.jpg and sendgrid-dns-verified.jpg.
+- Resume: finish chosen plan/account eligibility, prepare narrowly scoped Mail Send credential, server connection and signed event handling, controlled inbox/delivery/suppression acceptance. DNS completion alone does not complete the application email connection.
