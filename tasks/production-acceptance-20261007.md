@@ -77,3 +77,6 @@ Meta app published with user approval. Active Hilltop Property Inquiry — Octob
 
 ### Native Facebook intake verified; consent version added
 Fresh native test1789832872288721 reached production bfbcaca and created one lead71d5bd6a-ea51-5aac-a666-9152ae7192a4 and one Julio follow-up task. Owner email73ef229f-4d67-5083-ae33-942c71cf0416 has signed delivered event. Seller SMS withheld; AI paused. User requested consent checkbox: new Active native form1548364970390755 has separate unchecked optional SMS/AI boxes. Consent capture patch and new-version test in progress. Retell, current STOP/refusal, real secondary-email unsubscribe/refusal, restore rehearsal and final operational gates remain open.
+
+## Two-website intake acceptance completed October7 3:51 PM Central
+Fixed all Jays mailto forms and verified five public submissions: Hilltop offer, Jays contact/seller/buyer/financing. All saved CRM leads/Julio tasks/in-app notifications; all five signed owner-email delivered events confirmed to julio@hilltophome.co. Current runtime face1c3; Jays Netlify81d973a. Details and resume evidence: tasks/website-intake-verification-20261007.md. Human inbox confirmation pending response; broader AI/STOP/unsubscribe/restore gates unchanged.
