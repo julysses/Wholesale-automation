@@ -68,3 +68,8 @@ Twilio: approved campaign reported; HELP/STOP receipt from confirmed user phone 
 - EMAIL_LIVE_ENABLED remains false and EMAIL_ALLOWED_RECIPIENTS remains julio@hilltophome.co. Replacement-specific send and deployed application email acceptance remain unverified.
 - Original key named Hilltop CRM Production Mail Send still exists. Opened its action menu, stopped before Delete API Key, and asked explicit action-time confirmation to permanently revoke it. Screenshot outputs/sendgrid-old-key-revoke-ready.jpg. Replacement key name has v2 suffix; preserve it.
 - Resume with original-key revocation after confirmation, verify list excludes old key, then finish signed event callbacks/suppression and controlled deployed-path email test before broader launch.
+
+## Original credential revocation verified
+- User reported done. Reloaded SendGrid API Keys and verified only Hilltop CRM Production Mail Send v2 remains; original key is absent. Revocation completed by user, independently verified in dashboard.
+- Proof: outputs/sendgrid-original-key-revoked.jpg in local launch workspace. Replacement was already stored in Vercel and deployed successfully. First controlled email receipt confirmed by user; do not label it a replacement-key or deployed-path test.
+- Remaining launch gates: signed SendGrid event ingestion and durable bounce/unsubscribe suppression, controlled production-path test using replacement, operator delivery visibility, Twilio controlled outbound/callback test. EMAIL_LIVE_ENABLED=false and SMS_LIVE_ENABLED=false remain the intended production gates.
