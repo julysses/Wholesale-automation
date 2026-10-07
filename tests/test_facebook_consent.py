@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tools.facebook_consent import HILLTOP_CONSENT_FORM_ID, facebook_consent_record
+from tools.facebook_consent import AI_CHECKBOX_KEY, SMS_CHECKBOX_KEY, HILLTOP_CONSENT_FORM_ID, facebook_consent_record
 
 
 @pytest.mark.parametrize("sms,ai,expected_sms,expected_ai", [
@@ -11,8 +11,8 @@ from tools.facebook_consent import HILLTOP_CONSENT_FORM_ID, facebook_consent_rec
 ])
 def test_channels_require_their_own_checked_box(sms, ai, expected_sms, expected_ai):
     data = SimpleNamespace(form_id=HILLTOP_CONSENT_FORM_ID, created_time="2026-10-07T20:00:00Z",
-        custom_disclaimer_responses=[{"checkbox_key": "optional_1", "is_checked": sms},
-                                     {"checkbox_key": "optional_2", "is_checked": ai}])
+        custom_disclaimer_responses=[{"checkbox_key": SMS_CHECKBOX_KEY, "is_checked": sms},
+                                     {"checkbox_key": AI_CHECKBOX_KEY, "is_checked": ai}])
     receipt = facebook_consent_record(data, "test-lead")
     assert receipt["sms"]["accepted"] is expected_sms
     assert receipt["ai_calls"]["accepted"] is expected_ai
@@ -22,10 +22,11 @@ def test_channels_require_their_own_checked_box(sms, ai, expected_sms, expected_
 
 
 @pytest.mark.parametrize("form,time,responses", [
-    ("unknown", "2026-10-07T20:00:00Z", [{"checkbox_key": "optional_1", "is_checked": "1"}]),
-    (HILLTOP_CONSENT_FORM_ID, None, [{"checkbox_key": "optional_1", "is_checked": "1"}]),
+    ("unknown", "2026-10-07T20:00:00Z", [{"checkbox_key": SMS_CHECKBOX_KEY, "is_checked": "1"}]),
+    (HILLTOP_CONSENT_FORM_ID, None, [{"checkbox_key": SMS_CHECKBOX_KEY, "is_checked": "1"}]),
     (HILLTOP_CONSENT_FORM_ID, "2026-10-07T20:00:00Z", []),
-    (HILLTOP_CONSENT_FORM_ID, "2026-10-07T20:00:00Z", [{"checkbox_key": "optional_1", "is_checked": "1"}] * 2),
+    (HILLTOP_CONSENT_FORM_ID, "2026-10-07T20:00:00Z", [{"checkbox_key": SMS_CHECKBOX_KEY, "is_checked": "1"}] * 2),
+    (HILLTOP_CONSENT_FORM_ID, "2026-10-07T20:00:00Z", [{"checkbox_key": "optional_1", "is_checked": "1"}]),
 ])
 def test_ambiguous_consent_never_authorizes_sms(form, time, responses):
     receipt = facebook_consent_record(SimpleNamespace(form_id=form, created_time=time,

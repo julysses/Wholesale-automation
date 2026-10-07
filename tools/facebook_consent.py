@@ -8,6 +8,10 @@ from datetime import datetime, timezone
 HILLTOP_CONSENT_FORM_ID = "1548364970390755"
 SMS_DISCLOSURE = "I agree to receive recurring automated text messages from Hilltop Home Co., a DBA of The Jays Dallas, LLC, about my property inquiry, offer updates, appointment reminders and closing updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase or receiving an offer."
 AI_DISCLOSURE = "I agree to receive automated calls using an AI-generated or artificial voice from Hilltop Home Co., a DBA of The Jays Dallas, LLC, at the number I provide about my property inquiry, offers and appointments. Calls may be recorded. Consent is not a condition of purchase or receiving an offer. I may revoke consent at any time by calling 214-701-0100 or emailing julio@hilltophome.co."
+# Verified against native test1116758057469583: Meta uses normalized disclosure
+# text as the key for this form, rather than positional optional_1/optional_2.
+SMS_CHECKBOX_KEY = SMS_DISCLOSURE.lower().replace(" ", "_")
+AI_CHECKBOX_KEY = AI_DISCLOSURE.lower().replace(" ", "_")
 
 
 def facebook_consent_record(lead_data, leadgen_id: str) -> dict:
@@ -26,8 +30,8 @@ def facebook_consent_record(lead_data, leadgen_id: str) -> dict:
         "leadgen_id": leadgen_id, "submitted_at": created_time,
         "recorded_at": datetime.now(timezone.utc).isoformat(),
         "recognized_form": recognized, "raw_responses": responses,
-        "sms": {"accepted": checked("optional_1"), "checkbox_key": "optional_1",
+        "sms": {"accepted": checked(SMS_CHECKBOX_KEY), "checkbox_key": SMS_CHECKBOX_KEY,
                 "disclosure": SMS_DISCLOSURE if recognized else None},
-        "ai_calls": {"accepted": checked("optional_2"), "checkbox_key": "optional_2",
+        "ai_calls": {"accepted": checked(AI_CHECKBOX_KEY), "checkbox_key": AI_CHECKBOX_KEY,
                      "disclosure": AI_DISCLOSURE if recognized else None},
     }
