@@ -187,3 +187,15 @@ def test_sms_provider_failure_does_not_prevent_owner_email(pipeline):
     assert receipt(db)["metadata"]["seller_sms"] == "unknown"
     assert receipt(db)["metadata"]["owner_email"] == "accepted"
     db.email_client.send.assert_called_once()
+
+
+def test_owner_email_includes_website_inquiry_contact_and_message(pipeline):
+    db, _ = pipeline
+    forms._send_lead_pipeline_sms(LEAD_ID, {
+        "first_name": "Test", "email": "buyer@example.com", "inquiry_type": "buyer",
+        "message": "criteria: Three bedrooms", "sms_opt_in": False}, SELLER,
+        "The Jays Dallas — buyer inquiry", source="the-jays-dallas")
+    email = db.email_client.send.call_args.kwargs
+    assert "buyer@example.com" in email["body"]
+    assert "Three bedrooms" in email["body"]
+    assert "the-jays-dallas" in email["body"]

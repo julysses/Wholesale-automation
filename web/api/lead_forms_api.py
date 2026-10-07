@@ -210,6 +210,9 @@ async def submit_form(
     form_config = _load_active_form(supabase, form_id)
 
     answers = _validate_answers(form_config.get("questions", []), body.answers)
+    if form_config.get("slug") == "the-jays-dallas" and answers.get("inquiry_type") != "sell":
+        # This campaign covers property sellers, never buyer/capital/contact updates.
+        answers["sms_opt_in"] = ""
     scores = _compute_scores_from_answers(answers)
     # Preserve server-owned consent evidence even as the public form evolves.
     # Never accept a caller-supplied disclosure/timestamp as authoritative.
@@ -352,6 +355,15 @@ async def _process_form_submission(
     if form_config.get("campaign_id"):
         lead_data["ad_campaign_id"] = form_config["campaign_id"]
 
+    # General Jays inquiries need personal review, not seller qualification.
+    if form_config.get("slug") == "the-jays-dallas":
+        intent = answers.get("inquiry_type", "contact")
+        lead_data["property_address"] = property_address or f"The Jays Dallas — {intent} inquiry"
+        lead_data["status"] = "new"
+        lead_data["ai_qualification_summary"] = f"The Jays Dallas {intent} inquiry. Manual follow-up required.\n{answers.get('message', '')}"
+        lead_data["internal_notes"] = f"Website: thejaysdallas.com | Inquiry: {intent}\n{answers.get('message', '')}"
+        lead_data["ai_calling_paused"] = True
+
     created = True
     try:
         if submission_id:
@@ -383,7 +395,8 @@ async def _process_form_submission(
                 lead_id=lead_id,
                 answers={**answers, "sms_opt_in": answers.get("sms_opt_in") if form_config.get("send_confirmation_sms", True) else False},
                 phone=phone,
-                property_address=property_address,
+                property_address=lead_data["property_address"],
+                source=form_config.get("slug") or "web_form",
             )
         except Exception as exc:
             logger.error(f"Speed-to-lead SMS failed for lead {lead_id}: {exc}")
@@ -393,7 +406,7 @@ async def _process_form_submission(
     # inputs; neither exposes a run(lead_id=...) method.
 
     # HOT lead notification (A-tier or score >= 13)
-    if total_score >= 13 and lead_id:
+    if total_score >= 13 and lead_id and form_config.get("slug") != "the-jays-dallas":
         try:
             _send_hot_lead_notification(lead_id, answers, total_score)
         except Exception as exc:
@@ -500,6 +513,8 @@ def _send_lead_pipeline_sms(
                 to_email=settings.notification_email,
                 subject=f"{prefix} — {property_address}",
                 body=f"{name} — {property_address} — {phone}. Source: {source}.\n"
+                     f"Email: {answers.get('email', '')}\n"
+                     f"Inquiry: {answers.get('inquiry_type', 'seller')}\n{answers.get('message', '')}\n"
                      f"Review and follow up: https://wholesale-automation.vercel.app/leads?lead={lead_id}",
                 message_id=email_id,
             )

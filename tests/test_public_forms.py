@@ -175,3 +175,36 @@ def test_changed_disclosure_rejects_opt_in_before_saving(form_service,text):
     assert response.status_code == 409
     db.table.return_value.insert.assert_not_called()
     processor.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_jays_inquiry_retains_message_and_manual_review(monkeypatch):
+    database = MagicMock()
+    database.rpc.return_value.execute.return_value.data = {"lead_id": "lead-1", "created": True}
+    monkeypatch.setattr(forms, "_get_supabase", lambda: database)
+    notify = MagicMock()
+    monkeypatch.setattr(forms, "_send_lead_pipeline_sms", notify)
+    answers = {"first_name": "Test", "email": "test@example.com", "inquiry_type": "buyer", "message": "criteria: Three bedrooms", "property_address": ""}
+    await forms._process_form_submission({"slug": "the-jays-dallas"}, answers,
+        forms._compute_scores_from_answers(answers), "receipt-1", None)
+    saved = database.rpc.call_args.args[1]["p_lead"]
+    assert saved["status"] == "new"
+    assert saved["ai_calling_paused"] is True
+    assert "Three bedrooms" in saved["internal_notes"]
+    assert saved["property_address"] == "The Jays Dallas — buyer inquiry"
+    assert notify.call_args.kwargs["source"] == "the-jays-dallas"
+
+
+def test_jays_non_seller_checkbox_never_authorizes_sms(form_service):
+    db, processor = form_service
+    config = {"id": "form-1", "slug": "the-jays-dallas", "questions": [
+        {"field_name": "inquiry_type", "label": "Intent", "type": "text"},
+        {"field_name": "sms_opt_in", "label": "SMS consent", "type": "checkbox"},
+    ]}
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[config])
+    response = TestClient(app).post("/api/forms/the-jays-dallas/submit", json={"answers": {
+        "inquiry_type": "buyer", "sms_opt_in": True, "sms_consent_text": "SMS consent"}})
+    assert response.status_code == 200
+    receipt = db.table.return_value.insert.call_args.args[0]["raw_answers"]
+    assert receipt["_sms_consent"]["accepted"] is False
+    assert processor.call_args.kwargs["answers"]["sms_opt_in"] == ""
