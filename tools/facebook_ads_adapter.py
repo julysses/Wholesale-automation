@@ -21,7 +21,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-GRAPH_API_VERSION = "v19.0"
+GRAPH_API_VERSION = "v26.0"
 GRAPH_BASE = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
 
 
@@ -121,7 +121,7 @@ class FacebookAdsAdapter:
 
     def fetch_lead_form_data(self, leadgen_id: str) -> Optional[FacebookLeadFormData]:
         """
-        GET /{leadgen_id}?fields=field_data&access_token=...
+        GET /{leadgen_id}?fields=field_data with bearer authentication.
         Returns normalized FacebookLeadFormData or None on failure.
         """
         if not leadgen_id or not self._access_token:
@@ -131,15 +131,14 @@ class FacebookAdsAdapter:
         url = f"{GRAPH_BASE}/{leadgen_id}"
         params = {
             "fields": "field_data,created_time,ad_id,campaign_id,adgroup_id,form_id",
-            "access_token": self._access_token,
         }
         try:
             with httpx.Client(timeout=10.0) as client:
-                resp = client.get(url, params=params)
+                resp = client.get(url, params=params, headers={"Authorization": f"Bearer {self._access_token}"})
                 resp.raise_for_status()
                 data = resp.json()
         except Exception as exc:
-            logger.error(f"fetch_lead_form_data error for {leadgen_id}: {exc}")
+            logger.error("fetch_lead_form_data failed (%s)", type(exc).__name__)
             return None
 
         raw_fields: list[dict] = data.get("field_data", [])
@@ -171,15 +170,14 @@ class FacebookAdsAdapter:
         params = {
             "fields": "impressions,clicks,spend,actions",
             "date_preset": date_preset,
-            "access_token": self._access_token,
         }
         try:
             with httpx.Client(timeout=15.0) as client:
-                resp = client.get(url, params=params)
+                resp = client.get(url, params=params, headers={"Authorization": f"Bearer {self._access_token}"})
                 resp.raise_for_status()
                 data = resp.json()
         except Exception as exc:
-            logger.error(f"sync_campaign_insights error for {campaign_id}: {exc}")
+            logger.error("sync_campaign_insights failed (%s)", type(exc).__name__)
             return None
 
         insights = data.get("data", [{}])[0] if data.get("data") else {}
@@ -213,16 +211,15 @@ class FacebookAdsAdapter:
         url = f"{GRAPH_BASE}/{account_id}/campaigns"
         params = {
             "fields": "id,name,status,daily_budget,objective",
-            "access_token": self._access_token,
             "limit": 50,
         }
         try:
             with httpx.Client(timeout=15.0) as client:
-                resp = client.get(url, params=params)
+                resp = client.get(url, params=params, headers={"Authorization": f"Bearer {self._access_token}"})
                 resp.raise_for_status()
                 data = resp.json()
         except Exception as exc:
-            logger.error(f"sync_all_campaigns error: {exc}")
+            logger.error("sync_all_campaigns failed (%s)", type(exc).__name__)
             return []
 
         campaigns = []

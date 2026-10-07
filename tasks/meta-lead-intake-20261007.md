@@ -4,20 +4,21 @@
 Create the user's developer account and connect Hilltop Home Company native Facebook Lead Ads intake to WholesaleOS with signed webhooks, durable deduplication, owner assignment and consent-aware routing. No paid campaign is started by this setup.
 
 ## Current authoritative state
-- User signed into Facebook for the Meta developer flow.
-- Official registration page: https://developers.facebook.com/async/registration/dialog/?src=default
-- Current step Register; subsequent Verify account, Contact info and About you steps are pending.
-- Continue explicitly accepts Meta Platform Terms and Developer Policies. Asked the user for action-time authorization; no terms accepted yet.
-- Browser tab1348645482. Preserve this exact live signup page.
-- Repository checkpointa9f2256 was pushed successfully to working and production branches after the prior transient DNS failure.
+- User completed developer registration and authorized final app creation with "yes create".
+- Created Hilltop Lead Intake, app ID1028695470188549, lead-capture Marketing API use case, contact julio@hilltophome.co. Unpublished; no business available during creation, connection deferred.
+- Saved privacy https://hilltophome.co/privacy-policy, terms https://hilltophome.co/terms-of-service and deletion instructions at the privacy URL. Verified published policy includes deletion request instructions and business phone.
+- Meta Page webhook screen explicitly says unpublished apps receive dashboard test webhooks only, not production data, including admin/tester data. Publishing remains a real readiness gate.
+- Page leadgen subscription defaults to v26.0; Graph API Explorer also v26.0. Adapter updated from v19.0. Bearer headers replace token query parameters; errors log only exception types. Three regression tests cover each Graph request path, URLs and logs. Full backend351passed,307existingwarnings; diffcheckclean.
+- Graph API Explorer tab1348645503 prepared pages_show_list and leads_retrieval, correct Hilltop Lead Intake app. No token generated or Page grant submitted. Asked action-time approval for token generation and backend-only Vercel storage. Preserve this and app tab1348645482.
+- pages_manage_metadata must still be configured for Page subscriptions; do not silently grant broader ad/business scopes. Actual token expiry, exact Page and portfolio identity still require verification.
 
 ## Registration and connection checklist
-- [ ] User authorizes Meta terms acceptance or clicks Continue personally.
-- [ ] Complete account verification; user supplies any identity/OTP checks.
-- [ ] Confirm developer contact email and business/operator role.
-- [ ] Create an app for the Page lead retrieval use case using current Meta setup choices.
+- [x] User authorizes Meta terms acceptance or clicks Continue personally.
+- [x] Complete account verification; user supplies any identity/OTP checks.
+- [x] Confirm developer contact email and business/operator role.
+- [x] Create an app for the Page lead retrieval use case using current Meta setup choices.
 - [ ] Confirm the exact Hilltop Home Company Page and business portfolio; do not conflate with Hilltop Homes profile.
-- [ ] Inspect current supported Graph API version; tools/facebook_ads_adapter.py currently pins v19.0 and needs reconciliation.
+- [x] Inspect current supported Graph API version and update adapter to v26.0; live Graph acceptance still pending.
 - [ ] Configure app identity, privacy policy, data deletion path and required business verification/review.
 - [ ] Configure least required Page/lead permissions and server-only credential storage. Obtain action-time confirmation if granting security-sensitive access through browser UI.
 - [ ] Configure /webhooks/facebook/lead callback: GET challenge verifies configured token; POST HMAC-SHA256 checks raw body with app secret.
@@ -40,5 +41,5 @@ SMS delivered and user receipt confirmed; STOP/refusal remains pending. Email de
 - Prepared app name Hilltop Lead Intake, contact julio@hilltophome.co. Selected All use cases -> Capture & manage ad leads with Marketing API.
 - Business step showed No businesses available. Selected connect later; portfolio/Page ownership connection remains required before full launch.
 - Requirements screen reported none currently; this may change when permissions/features are configured.
-- Overview now shows the correct app name/email/use case and a final Create app button. Its text explicitly accepts Meta Platform Terms, Developer Policies and other applicable policies. Asked user for action-time authorization for app creation/credentials and agreement acceptance, or to click personally. No app created by the agent yet.
-- Tab1348645482 stays at overview; screenshot meta-app-create-review.jpg in task outputs. After user confirmation, create app, verify app ID and dashboard, then business/Page settings and signed leadgen integration.
+- Historical review: user subsequently authorized creation; app was created and ID verified as recorded above.
+- Proof screenshots: meta-app-created.jpg, meta-app-policies-saved.jpg, meta-lead-permissions-ready.jpg in task outputs. No app secret revealed, production subscription or paid ad started.
