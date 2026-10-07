@@ -130,7 +130,9 @@ class FacebookAdsAdapter:
 
         url = f"{GRAPH_BASE}/{leadgen_id}"
         params = {
-            "fields": "field_data,created_time,ad_id,campaign_id,adgroup_id,form_id",
+            # Intake only consumes these fields. adgroup_id is not a Lead
+            # field in Graph v26 and makes the entire retrieval fail.
+            "fields": "field_data,created_time",
         }
         try:
             with httpx.Client(timeout=10.0) as client:
