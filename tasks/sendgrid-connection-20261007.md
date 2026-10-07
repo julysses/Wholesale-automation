@@ -39,3 +39,10 @@ Twilio: approved campaign reported; HELP/STOP receipt from confirmed user phone 
 - Onboarding now Choose Your Plan. Visible Email API options: 60-day $0 trial (100/day), Essentials 50K $19.95/month, Pro 100K $89.95/month. Marketing Campaigns is separately offered. No plan selected, purchase made or trial activated.
 - Proofs in launch outputs: sendgrid-namecheap-dns-installed.jpg and sendgrid-dns-verified.jpg.
 - Resume: finish chosen plan/account eligibility, prepare narrowly scoped Mail Send credential, server connection and signed event handling, controlled inbox/delivery/suppression acceptance. DNS completion alone does not complete the application email connection.
+
+## Trial and restricted API key preparation
+- User selected trial. SendGrid now displays Trial: API & MC, ending December 6, 2026.
+- Sender Authentication confirms em3198.hilltophome.co Verified and url275.hilltophome.co Verified, SSL certificate available. Domain authentication allows sending as julio@hilltophome.co without separate single-sender setup.
+- API Keys list initially empty. Prepared unsaved key named Hilltop CRM Production Mail Send with Custom Access, Mail Send Full Access only; every other category No Access.
+- Stopped before Create & View: browser policy requires action-time confirmation for new security-sensitive access. No credential created, runtime variable updated, or email sent. User handoff on open SendGrid API Keys tab.
+- Next: user creates prepared key and leaves it open without pasting it in chat; inspect callers and add launch gate/event processing before connecting credentials and running controlled delivery test.
