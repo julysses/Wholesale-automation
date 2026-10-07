@@ -2,7 +2,7 @@
 
 Goal: finish all remaining setup and prove readiness for the authorized website/Facebook intake, SMS, email, AI calls and owner follow-up scope. A green deployment or one delivered email is not full acceptance.
 
-Latest Meta checkpoint: Hilltop Lead Intake created, app1028695470188549, policies saved. Unpublished and no business connected. Graph adapter updated to dashboard v26.0 and bearer auth to keep tokens out of URLs/error logs;351backend tests pass. Page token approval pending at Graph Explorer; no production Meta lead test yet. Resume details in tasks/meta-lead-intake-20261007.md.
+Latest Meta checkpoint: Hilltop Lead Intake created, app1028695470188549, policies saved. Unpublished and no business connected. Graph adapter updated to dashboard v26.0 and bearer auth to keep tokens out of URLs/error logs;351backend tests pass. User approved initial lead retrieval access; ONLY current Hilltop Home Company Page1303115306222198 selected, distinct Page token stored as production-only Vercel Secret. Identity lookup failed error100 requiring pages_read_engagement. Additional read-engagement/webhook-metadata and app-secret/verify-token storage approval pending; no production Meta lead test yet. Resume details in tasks/meta-lead-intake-20261007.md.
 
 ## Current evidence
 - SendGrid authenticated domain/link branding verified; restricted v2 key stored as Vercel production Secret; original revoked. First local EmailClient email received by Julio.
