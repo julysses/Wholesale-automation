@@ -176,6 +176,11 @@ class SMSClient:
         if not re.fullmatch(r"1\d{10}", digits):
             return False
         to_number = "+" + digits
+        if settings.sms_allowed_recipients:
+            allowed = {number.strip() for number in settings.sms_allowed_recipients.split(',') if number.strip()}
+            if to_number not in allowed:
+                message.mark_stopped("Recipient outside launch allowlist")
+                return False
         base = settings.twilio_webhook_base_url.rstrip("/")
         if not base.startswith("https://") or not settings.twilio_messaging_service_sid:
             return False

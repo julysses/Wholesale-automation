@@ -130,3 +130,19 @@ def test_suppressed_recipient_blocked(sending):
 def test_vercel_bundle_includes_twilio():
     from pathlib import Path
     assert 'twilio==9.11.2' in Path('api/requirements.txt').read_text().splitlines()
+
+@pytest.mark.parametrize('allowlist,recipient,expected', [
+    (PHONE,PHONE,True),
+    (PHONE,'(214) 701-0100',True),
+    ('+12145550199',PHONE,False),
+    (' , ',PHONE,False),
+    (PHONE+'9',PHONE,False),
+])
+def test_twilio_test_allowlist(sending,monkeypatch,allowlist,recipient,expected):
+    db,sdk,msg=sending
+    monkeypatch.setattr(hooks.settings,'sms_allowed_recipients',allowlist)
+    assert SMSClient()._send_twilio(msg,recipient) is expected
+    assert sdk.messages.create.call_count==int(expected)
+    if not expected:
+        db.table.assert_not_called()
+        assert msg.status==OutreachStatus.STOPPED
