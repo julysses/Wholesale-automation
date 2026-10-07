@@ -66,3 +66,9 @@ def test_public_system_routes_remain_available():
     client = TestClient(app)
     assert client.get("/api/health").status_code == 200
     assert client.get("/api/config").status_code == 200
+
+@pytest.mark.parametrize('method,path',[('get','/api/email/messages'),('post','/api/email/test')])
+def test_email_controls_require_admin(identity,method,path):
+    client=TestClient(app)
+    assert getattr(client,method)(path).status_code==401
+    assert getattr(client,method)(path,headers={'Authorization':'Bearer valid'}).status_code==403

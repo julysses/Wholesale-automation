@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
+from uuid import UUID, uuid4
 
 import httpx
 from config.settings import settings
@@ -26,6 +27,8 @@ class EmailClient:
         self._provider = (provider or settings.email_provider).lower()
         self._from_email = settings.from_email.strip()
         self._configured = self._check_provider_credentials()
+        self.message_id = None
+        self._provider_message_id = None
 
         if not self._configured:
             logger.warning(
@@ -46,6 +49,7 @@ class EmailClient:
         subject: str,
         body: str,
         html_body: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> bool:
         """
         Attempt to send an email. Returns True only for provider acceptance.
@@ -74,7 +78,40 @@ class EmailClient:
             )
             return False
 
-        return self._dispatch(to_email, subject, body, html_body)
+        try:
+            self.message_id = str(UUID(message_id)) if message_id else str(uuid4())
+            if not self._claim(to_email, subject):
+                return False
+        except Exception:
+            logger.exception("[EmailClient] BLOCKED: durable claim unavailable")
+            return False
+        self._provider_message_id = None
+        accepted = self._dispatch(to_email, subject, body, html_body)
+        try:
+            # Never blindly retry an ambiguous provider outcome. Reusing the ID
+            # cannot claim another send, even if this final status write fails.
+            from tools.crm import get_supabase_client
+            sb = get_supabase_client()
+            saved = sb.table('email_messages').update({
+                'status': 'accepted' if accepted else 'unknown',
+                'provider_message_id': self._provider_message_id,
+            }).eq('id', self.message_id).execute().data
+            if not saved:
+                raise RuntimeError('Email outcome persistence unconfirmed')
+        except Exception:
+            logger.exception('[EmailClient] Outcome persistence failed; inspect claim before retry')
+        return accepted
+
+    def _claim(self, recipient: str, subject: str) -> bool:
+        from tools.crm import get_supabase_client
+        sb = get_supabase_client()
+        if sb is None:
+            return False
+        data = sb.rpc('claim_email_message', {
+            'p_id': self.message_id, 'p_email': recipient,
+            'p_subject': subject, 'p_provider': self._provider,
+        }).execute().data
+        return isinstance(data, dict) and data.get('claimed') is True
 
     def _dispatch(
         self,
@@ -112,6 +149,7 @@ class EmailClient:
             "personalizations": [{"to": [{"email": to_email}]}],
             "from": {"email": self._from_email},
             "subject": subject,
+            "custom_args": {"app_message_id": self.message_id},
             "content": [
                 {"type": "text/plain", "value": body},
             ],
@@ -122,6 +160,7 @@ class EmailClient:
         with httpx.Client(timeout=15) as client:
             resp = client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
+            self._provider_message_id = resp.headers.get('X-Message-Id')
         logger.info(f"[EmailClient] Sent via SendGrid | To={to_email} | Subject={subject}")
         return True
 

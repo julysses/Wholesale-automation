@@ -24,3 +24,4 @@ python-multipart>=0.0.9
 
 # Default SMS provider; exercised by deployment contract tests.
 twilio==9.11.2
+cryptography==50.0.1

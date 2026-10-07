@@ -36,6 +36,8 @@ def test_launch_gate_prevents_provider_calls(monkeypatch, enabled, allowlist, re
     monkeypatch.setattr(settings, 'email_live_enabled', enabled)
     monkeypatch.setattr(settings, 'email_allowed_recipients', allowlist)
     client = EmailClient('sendgrid')
+    monkeypatch.setattr(client, '_claim', lambda *_: True)
+    monkeypatch.setattr('tools.crm.get_supabase_client', lambda: MagicMock())
     dispatch = MagicMock(return_value=True)
     monkeypatch.setattr(client, '_dispatch', dispatch)
     assert client.send(recipient, 'Fixture', 'Test') is expected
@@ -46,5 +48,21 @@ def test_email_reports_provider_rejection(monkeypatch):
     monkeypatch.setattr(settings,'sendgrid_api_key','test-key')
     monkeypatch.setattr(settings,'from_email','owner@example.com')
     client=EmailClient('sendgrid')
+    monkeypatch.setattr(client,'_claim',lambda *_: True)
+    monkeypatch.setattr('tools.crm.get_supabase_client',lambda:MagicMock())
     monkeypatch.setattr(client,'_dispatch',lambda *_: False)
     assert client.send('fixture@example.com','Fixture','Test') is False
+
+
+@pytest.mark.parametrize('result', [None, {}, {'claimed':False,'suppressed':True}, {'claimed':False,'suppressed':False}])
+def test_failed_or_duplicate_claim_blocks_provider(monkeypatch,result):
+    monkeypatch.setattr(settings,'sendgrid_api_key','test-key')
+    monkeypatch.setattr(settings,'from_email','owner@example.com')
+    sb=MagicMock()
+    sb.rpc.return_value.execute.return_value.data=result
+    monkeypatch.setattr('tools.crm.get_supabase_client',lambda:sb)
+    client=EmailClient('sendgrid')
+    dispatch=MagicMock()
+    monkeypatch.setattr(client,'_dispatch',dispatch)
+    assert client.send('fixture@example.com','Fixture','Test') is False
+    dispatch.assert_not_called()

@@ -477,6 +477,43 @@ function LaunchControlStep({ onNext, onSkip, saved }: StepProps) {
   );
 }
 
+function EmailDeliveryPanel() {
+  const [evidence, setEvidence] = useState<{ live_enabled: boolean; test_recipients: string; messages: Array<{ id: string; recipient: string; status: string }>; events: Array<{ event_id: string; message_id: string | null; event: string; recipient: string }> } | null>(null);
+  const [messageId] = useState(() => crypto.randomUUID());
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState('');
+  const refresh = useCallback(async () => {
+    try {
+      const response = await apiFetch('/api/email/messages');
+      setEvidence(await response.json());
+    } catch (error) { setResult(error instanceof Error ? error.message : 'Unable to load delivery evidence'); }
+  }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
+  const sendTest = async () => {
+    setBusy(true);
+    try {
+      const response = await apiFetch('/api/email/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: messageId }) });
+      const data = await response.json();
+      setResult(data.provider_accepted ? 'Provider accepted the test. Refresh delivery events to confirm delivery.' : 'No new email accepted. The reference may already have been attempted, or sending was blocked. Check the ledger before retrying.');
+      await refresh();
+    } catch (error) { setResult(error instanceof Error ? error.message : 'Test failed'); }
+    finally { setBusy(false); }
+  };
+  return <div className="space-y-3 rounded-lg border p-4">
+    <h3 className="font-medium">Email delivery verification</h3>
+    <p className="text-sm text-muted-foreground">Sending: {evidence?.live_enabled ? 'enabled' : 'disabled'}. Test recipient: {evidence?.test_recipients || 'not configured'}.</p>
+    <div className="flex gap-2">
+      <Button onClick={sendTest} disabled={busy || !evidence?.live_enabled}>Send production test email</Button>
+      <Button variant="outline" onClick={refresh} disabled={busy}>Refresh delivery events</Button>
+    </div>
+    {result && <p role="status" className="text-sm">{result}</p>}
+    {evidence?.messages.map(message => <div key={message.id} className="text-sm border-t pt-2">
+      <p>{message.recipient}: {message.status}</p>
+      <p className="text-muted-foreground">{evidence.events.filter(event => event.message_id === message.id).map(event => event.event).join(', ') || 'No delivery receipt yet'}</p>
+    </div>)}
+  </div>;
+}
+
 function EmailStep({ onNext, onSkip, saved }: StepProps) {
   const [vals, setVals] = useState({
     email_provider:   saved['email_provider']   ?? 'sendgrid',
@@ -488,6 +525,7 @@ function EmailStep({ onNext, onSkip, saved }: StepProps) {
   return (
     <div className="space-y-5">
       <FeatureCard icon={<Mail className="h-5 w-5" />} title="Email Outreach" description="Email is the preferred channel (highest trust). Set up SendGrid or Mailgun for compliant email outreach." />
+      <EmailDeliveryPanel />
       <KeyField envKey="EMAIL_PROVIDER" label="Email Provider" description="sendgrid | mailgun | instantly" example="sendgrid" isSecret={false} value={vals.email_provider} onChange={set('email_provider')} />
       <KeyField envKey="SENDGRID_API_KEY" label="SendGrid API Key" description="SendGrid API key (if using SendGrid)" example="SG.xxx..." value={vals.sendgrid_api_key} onChange={set('sendgrid_api_key')} />
       <KeyField envKey="FROM_EMAIL" label="From Email" description="Verified sender email address" example="alex@yourdomain.com" isSecret={false} value={vals.from_email} onChange={set('from_email')} />
