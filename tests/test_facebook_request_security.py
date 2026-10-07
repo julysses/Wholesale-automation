@@ -41,9 +41,10 @@ def test_lead_retrieval_uses_supported_intake_fields(monkeypatch):
     def respond(request):
         # Mirrors the v26 failure observed with a real native test lead.
         fields = set(request.url.params["fields"].split(","))
-        if fields - {"field_data", "created_time"}:
+        if fields - {"field_data", "created_time", "form_id", "custom_disclaimer_responses"}:
             return httpx.Response(400, json={"error": {"code": 100}})
         return httpx.Response(200, json={
+            "form_id": "consent-form", "custom_disclaimer_responses": [{"checkbox_key": "optional_1", "is_checked": "1"}],
             "created_time": "2026-10-07T19:55:53+0000",
             "field_data": [{"name": "property_address", "values": ["Test property"]}],
         })
@@ -53,3 +54,5 @@ def test_lead_retrieval_uses_supported_intake_fields(monkeypatch):
     lead = module.FacebookAdsAdapter("secret", "token", "verify").fetch_lead_form_data("123")
     assert lead is not None
     assert lead.fields["property_address"] == "Test property"
+    assert lead.form_id == "consent-form"
+    assert lead.custom_disclaimer_responses[0]["is_checked"] == "1"

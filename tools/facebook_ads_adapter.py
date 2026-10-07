@@ -45,6 +45,8 @@ class FacebookLeadFormData:
     fields: dict[str, str] = field(default_factory=dict)
     # Raw list in case caller needs original structure
     raw_field_data: list[dict] = field(default_factory=list)
+    form_id: str = ""
+    custom_disclaimer_responses: list[dict] = field(default_factory=list)
 
 
 class FacebookAdsAdapter:
@@ -132,7 +134,7 @@ class FacebookAdsAdapter:
         params = {
             # Intake only consumes these fields. adgroup_id is not a Lead
             # field in Graph v26 and makes the entire retrieval fail.
-            "fields": "field_data,created_time",
+            "fields": "field_data,created_time,form_id,custom_disclaimer_responses",
         }
         try:
             with httpx.Client(timeout=10.0) as client:
@@ -155,6 +157,8 @@ class FacebookAdsAdapter:
             created_time=data.get("created_time"),
             fields=fields_map,
             raw_field_data=raw_fields,
+            form_id=str(data.get("form_id") or ""),
+            custom_disclaimer_responses=data.get("custom_disclaimer_responses") or [],
         )
 
     def sync_campaign_insights(

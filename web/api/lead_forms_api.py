@@ -432,6 +432,8 @@ def _send_lead_pipeline_sms(
         "metadata": {"source": source, "seller_sms": "unresolved", "owner_email": "unresolved",
                      "owner_sms": "not_supported_for_registered_campaign"},
     }
+    if source == "facebook_lead_ad":
+        notification["metadata"]["consent_receipt"] = answers.get("_facebook_consent")
     claim = supabase.table("app_notifications").upsert(
         notification, on_conflict="id", ignore_duplicates=True,
     ).execute()

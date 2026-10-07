@@ -1831,6 +1831,10 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         raise RuntimeError("Facebook lead data could not be fetched")
 
     fields = normalize_facebook_fields(lead_data_raw.fields)
+    from tools.facebook_consent import facebook_consent_record
+    consent = facebook_consent_record(lead_data_raw, entry.leadgen_id)
+    fields["sms_opt_in"] = consent["sms"]["accepted"]
+    fields["_facebook_consent"] = consent
     scores = _compute_scores_from_answers(fields)
 
     supabase = get_supabase_client()

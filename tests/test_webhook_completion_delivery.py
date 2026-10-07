@@ -1,7 +1,7 @@
 """At-most-once completion attempts and retryable delivery failure contracts."""
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -235,7 +235,8 @@ async def test_facebook_retry_creates_one_lead_without_invalid_qualification_cal
             "last_name": "Seller",
             "phone": "+12145550123",
             "property_address": "100 Test St",
-            "sms_opt_in": "yes",
+            "sms_opt_in": False,
+            "_facebook_consent": ANY,
         },
         phone="+12145550123",
         property_address="100 Test St",

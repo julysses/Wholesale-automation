@@ -74,3 +74,6 @@ Browser Chrome 3: CRM tab1348645462, SendGrid tab1348645447, Vercel tab134864545
 
 ### October7 Meta publication and native test
 Meta app published with user approval. Active Hilltop Property Inquiry — October2026 native form created, personal follow-up only; no SMS/AI opt-in implied. Test1404256624614355 revealed obsolete Graph adgroup_id causing400. Supported minimal retrieval verified in Explorer; adapter correction prepared. Deployment and durable CRM/owner handoff proof pending. See tasks/meta-lead-intake-20261007.md. No paid ad started.
+
+### Native Facebook intake verified; consent version added
+Fresh native test1789832872288721 reached production bfbcaca and created one lead71d5bd6a-ea51-5aac-a666-9152ae7192a4 and one Julio follow-up task. Owner email73ef229f-4d67-5083-ae33-942c71cf0416 has signed delivered event. Seller SMS withheld; AI paused. User requested consent checkbox: new Active native form1548364970390755 has separate unchecked optional SMS/AI boxes. Consent capture patch and new-version test in progress. Retell, current STOP/refusal, real secondary-email unsubscribe/refusal, restore rehearsal and final operational gates remain open.
