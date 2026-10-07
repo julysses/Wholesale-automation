@@ -84,3 +84,10 @@ Please check whether prior opt-out suppression, residual account suspension, pen
 - Twilio chat-to-ticket prefill was incorrect; replaced it with the actual approved issue before submission. No paid support plan purchased.
 - Resume: read ticket reply, apply evidenced remediation, then repeat controlled HELP/STOP and verify actual receipt, response and CRM suppression. Outbound campaign approval remains separate.
 - Proof: outputs/twilio-support-ticket-29854581.jpg in the launch workspace.
+
+## Real STOP suppression verified — October 7 check
+- User reported receiving HELP contact-details reply and unsubscribe confirmation. Live database inspection found HELP SMfcc8873bd7b260d7fa09866b0e96d3f8 followed by STOP SM9d44ce66ebf9d8c15387b5e31c017fba from phone ending 0280, not the earlier authorized 0100 destination. Asked user to confirm test source; do not assume authorization to send outbound tests to 0280.
+- HELP occurred 2026-10-07 03:29:59 UTC and STOP 03:30:21 UTC (October 6 at 10:29:59/10:30:21 PM Central). STOP has opt_out=true; matching dnc_registry count=1. No existing matching leads, so no real lead-sequence pause assertion is possible for this number. Unknown-number suppression passed.
+- The original 0100 test number still has only its earlier HELP event and no suppression record. Do not conflate the two phone numbers.
+- User-supplied campaign approval email matches configured campaign. Approval plus these replies does not yet verify an application-originated outbound message/status callback. Sending gate remains disabled; no suppression cleared.
+- Next acceptance: confirm source ending 0280, then perform controlled outbound delivery with fresh matching consent to an authorized nonsuppressed destination, verify delivery callback and refusal after STOP. Support ticket not closed or updated in this step.
