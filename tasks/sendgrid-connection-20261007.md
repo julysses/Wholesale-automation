@@ -14,3 +14,21 @@
 6. Record acceptance evidence; do not enable seller email sequences from dashboard setup alone.
 
 Twilio: approved campaign reported; HELP/STOP receipt from confirmed user phone ending 0280 and its suppression registry entry verified. Original 0100 controlled outbound delivery acceptance still pending; keep SMS gate disabled.
+
+## Install DNS review
+- Login resolved by user; current SendGrid onboarding marks Set up Sending complete, Install DNS current, Choose Your Plan incomplete. No new signup is needed for this screen.
+- Public DNS: dns1.registrar-servers.com and dns2.registrar-servers.com (Namecheap). Existing MX: priority 1 smtp.google.com. No public DMARC, s1/s2 DKIM CNAME or em3198 CNAME found at review. No DNS changes made. Preserve existing Google MX and website records.
+- Namecheap: Domain List > Manage hilltophome.co > Advanced DNS > Host Records > Add New Record. Host values below omit the domain; TTL Automatic. Exact generated SendGrid values:
+
+| Type | Host | Value |
+|---|---|---|
+| CNAME | url275 | click.sendgrid.net |
+| CNAME | 116233378 | sendgrid.net |
+| CNAME | _acme-challenge.url275 | url275.hilltophome.co.4a767ed83ff78982.dcv.cloudflare.com |
+| TXT | _cf-custom-hostname.url275 | ee647200-e02a-445a-b1d6-256e7994f2fe |
+| CNAME | em3198 | u116233378.wl129.sendgrid.net |
+| CNAME | s1._domainkey | s1.domainkey.u116233378.wl129.sendgrid.net |
+| CNAME | s2._domainkey | s2.domainkey.u116233378.wl129.sendgrid.net |
+| TXT | _dmarc | v=DMARC1; p=none; |
+
+- Recheck for existing same-host records before saving; do not create duplicate DMARC or overwrite a stronger policy. After installing, return to SendGrid Next and verify DNS. Review actual plan options before choosing a paid subscription.
