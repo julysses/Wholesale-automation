@@ -429,7 +429,8 @@ def _send_lead_pipeline_sms(
         "title": "New inquiry — follow-up required",
         "body": f"{property_address} — source: {source}. Review the lead and assign follow-up.",
         "action_url": "/leads", "lead_id": lead_id,
-        "metadata": {"source": source, "seller_sms": "unresolved", "owner_sms": "unresolved"},
+        "metadata": {"source": source, "seller_sms": "unresolved", "owner_email": "unresolved",
+                     "owner_sms": "not_supported_for_registered_campaign"},
     }
     claim = supabase.table("app_notifications").upsert(
         notification, on_conflict="id", ignore_duplicates=True,
@@ -486,15 +487,31 @@ def _send_lead_pipeline_sms(
 
     # Internal notification is already saved even when this SMS is blocked after hours.
     prefix = "Repeat inquiry" if is_duplicate else "New lead"
-    outcomes["owner_sms"] = _send(settings.owner_alert_phone_number,
-                                 f"{prefix}: {name} — {property_address} — {phone}. Source: {source}.")
+    # The registered SMS campaign covers seller inquiries, not internal alerts.
+    # Email independently of seller consent, SMS hours, and lead temperature.
+    outcomes["owner_email"] = "not_configured"
+    if settings.notification_email:
+        email_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-owner-email:{lead_id}"))
+        outcomes["owner_email_message_id"] = email_id
+        try:
+            accepted = EmailClient().send(
+                to_email=settings.notification_email,
+                subject=f"{prefix} — {property_address}",
+                body=f"{name} — {property_address} — {phone}. Source: {source}.\n"
+                     f"Review and follow up: https://wholesale-automation.vercel.app/leads?lead={lead_id}",
+                message_id=email_id,
+            )
+            outcomes["owner_email"] = "accepted" if accepted else "failed_or_blocked"
+        except Exception:
+            outcomes["owner_email"] = "unknown"
+            logger.exception("[lead_forms] Owner email outcome unknown for lead %s", lead_id)
     if seller_allowed:
         outcomes["seller_sms"] = _send(
             phone, f"Hi {name}, thanks for reaching out to Hilltop Home Co. about "
             f"{property_address}. We'll be in touch shortly. Reply STOP to opt out.",
         )
     summary = (f"{property_address} — source: {source}. "
-               f"Owner SMS: {outcomes['owner_sms']}; seller SMS: {outcomes['seller_sms']}. "
+               f"Owner email: {outcomes['owner_email']}; seller SMS: {outcomes['seller_sms']}. "
                "Review the lead and assign follow-up. Accepted does not confirm delivery.")
     saved = supabase.table("app_notifications").update(
         {"metadata": outcomes, "body": summary},

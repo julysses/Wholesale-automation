@@ -24,3 +24,16 @@ Goal: finish all remaining setup and prove readiness for the authorized website/
 ## Resume pointers
 Repo branch codex/twilio-live-integration; production claude/ai-wholesaling-agency-KkDF1. Pull before edits, push after updates. Preserve two unrelated untracked docs with ` 2.md` suffix.
 Browser Chrome 3: CRM tab1348645462, SendGrid tab1348645447, Vercel tab1348645459. Never capture unredacted credentials in AX/screenshot output. Detailed email history: tasks/sendgrid-connection-20261007.md; Twilio: tasks/twilio-live-integration-20261006.md; original broader checklist: tasks/launch-readiness-20260928.md.
+
+## October 7 continuation — unsubscribe and owner follow-up
+- GitHub writes recovered. Both production and working branches pushed through 5903e0c; backend/frontend CI passed and Vercel dpl_7ifU55gomNqFLXnX5Z2ChVynoBsu reached READY.
+- SendGrid Subscription Tracking enabled and saved successfully; default HTML/plain-text unsubscribe content retained, blank replacement tag appends it to every message. Real click/event/refusal still pending.
+- Added SMS_ALLOWED_RECIPIENTS guard, 18 Twilio tests passed. Production Vercel Config saved as +12147010100 only. SMS_LIVE_ENABLED remains false. New deployment required to load the new variable.
+- Fresh Twilio dashboard: campaign CM81b71bfdf3483a566e6ecf0161c840b9 Verified/A2P Compliant; sender pool contains +14698049920. Inbound/status URLs still point to the production native handlers.
+- Found internal owner SMS incompatible with this seller-inquiry campaign. Routine owner alerts now use EmailClient with a deterministic message ID, independent of seller SMS consent/hours/score; outcome and message ID persist in the operator notification. Seller SMS remains separately gated. Full backend suite: 348 passed.
+- Added production NOTIFICATION_EMAIL=julio@hilltophome.co. This and SMS allowlist take effect with the next deployment.
+- Vercel searches found no RETELL or FACEBOOK variables; app_settings contains no Retell/Facebook/VAPI/Air credentials. These integrations still require account access/configuration and real acceptance tests.
+- Vercel environment connector returned403; CLI had no credentials and its login wait was canceled. Used existing signed-in Vercel UI successfully.
+- CRM login tab was no longer open. Reopened production /setup, redirected to /login, and asked user to sign in. Current handoff tab1348645466.
+- Screenshots in task outputs: sendgrid-unsubscribe-enabled.jpg, sms-test-allowlist.jpg, twilio-campaign-verified.jpg.
+- Next: deploy owner alert change with current environment; controlled website inquiry with SMS declined -> durable lead/task/notification plus real SendGrid delivered callback; then signed-in admin acceptance, real unsubscribe test, controlled outbound SMS. Full AI/Facebook/recovery gates remain open.

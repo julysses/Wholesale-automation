@@ -55,6 +55,10 @@ def pipeline(monkeypatch):
     monkeypatch.setattr(forms, "_get_supabase", lambda: db)
     monkeypatch.setattr(forms, "SMSClient", lambda: client)
     monkeypatch.setattr(settings, "owner_alert_phone_number", OWNER)
+    db.email_client = MagicMock()
+    db.email_client.send.return_value = True
+    monkeypatch.setattr(forms, "EmailClient", lambda: db.email_client)
+    monkeypatch.setattr(settings, "notification_email", "owner@example.com")
     return db, client
 
 
@@ -70,7 +74,7 @@ def receipt(db):
 def test_no_consent_still_records_owner_alert_without_seller_send(pipeline, consent):
     db, client = pipeline
     run(consent)
-    assert [call.args[1] for call in client.send.call_args_list] == [OWNER]
+    assert [call.args[1] for call in client.send.call_args_list] == []
     assert receipt(db)["metadata"]["seller_sms"] == "no_consent_or_phone"
 
 
@@ -78,7 +82,7 @@ def test_failed_suppression_lookup_blocks_seller_but_not_owner(pipeline):
     db, client = pipeline
     db.safety_failure = True
     run()
-    assert [call.args[1] for call in client.send.call_args_list] == [OWNER]
+    assert [call.args[1] for call in client.send.call_args_list] == []
     assert receipt(db)["metadata"]["seller_sms"] == "suppression_check_failed"
 
 
@@ -92,7 +96,7 @@ def test_suppression_or_missing_lead_blocks_seller(pipeline, mode):
     else:
         db.tables["leads"] = {}
     run()
-    assert [call.args[1] for call in client.send.call_args_list] == [OWNER]
+    assert [call.args[1] for call in client.send.call_args_list] == []
 
 
 @pytest.mark.parametrize("mode,expected", [("blocked", "failed_or_blocked"), ("error", "unknown"), ("dry", "dry_run"), ("ok", "accepted")])
@@ -108,17 +112,18 @@ def test_delivery_outcomes_are_persisted_and_never_automatically_resent(pipeline
     client.send.side_effect = send
     run()
     run()
-    assert client.send.call_count == 2
-    assert receipt(db)["metadata"]["owner_sms"] == expected
+    assert client.send.call_count == 1
+    assert receipt(db)["metadata"]["owner_sms"] == "not_supported_for_registered_campaign"
+    assert db.email_client.send.call_count == 1
     assert receipt(db)["metadata"]["seller_sms"] == expected
 
 
-def test_missing_owner_phone_is_recorded(pipeline, monkeypatch):
+def test_missing_owner_email_is_recorded(pipeline, monkeypatch):
     db, client = pipeline
-    monkeypatch.setattr(settings, "owner_alert_phone_number", "")
+    monkeypatch.setattr(settings, "notification_email", "")
     run(False)
     client.send.assert_not_called()
-    assert receipt(db)["metadata"]["owner_sms"] == "not_configured"
+    assert receipt(db)["metadata"]["owner_email"] == "not_configured"
 
 
 def test_missing_notification_receipt_never_sends(pipeline, monkeypatch):
@@ -144,7 +149,7 @@ def test_interrupted_outcome_write_never_replays_provider_sends(pipeline, monkey
         run()
     assert receipt(db)["metadata"]["seller_sms"] == "unresolved"
     run()
-    assert client.send.call_count == 2
+    assert client.send.call_count == 1
 
 
 
@@ -154,5 +159,31 @@ def test_unconfirmed_phone_status_blocks_seller(pipeline, monkeypatch, status):
     db, client = pipeline
     monkeypatch.setattr(db, "rpc", lambda *_: SimpleNamespace(execute=lambda: SimpleNamespace(data=status)))
     run()
-    assert [call.args[1] for call in client.send.call_args_list] == [OWNER]
+    assert [call.args[1] for call in client.send.call_args_list] == []
     assert receipt(db)["metadata"]["seller_sms"] == "suppression_check_failed"
+
+
+@pytest.mark.parametrize("mode,expected", [("ok", "accepted"), ("blocked", "failed_or_blocked"), ("timeout", "unknown")])
+def test_owner_email_without_seller_consent_is_durable_and_not_replayed(pipeline, mode, expected):
+    db, sms = pipeline
+    if mode == "timeout":
+        db.email_client.send.side_effect = RuntimeError("ambiguous response")
+    else:
+        db.email_client.send.return_value = mode == "ok"
+    run(False)
+    run(False)
+    sms.send.assert_not_called()
+    assert db.email_client.send.call_count == 1
+    kwargs = db.email_client.send.call_args.kwargs
+    assert kwargs["to_email"] == "owner@example.com"
+    assert kwargs["message_id"] == receipt(db)["metadata"]["owner_email_message_id"]
+    assert receipt(db)["metadata"]["owner_email"] == expected
+
+
+def test_sms_provider_failure_does_not_prevent_owner_email(pipeline):
+    db, sms = pipeline
+    sms.send.side_effect = RuntimeError("SMS unavailable")
+    run()
+    assert receipt(db)["metadata"]["seller_sms"] == "unknown"
+    assert receipt(db)["metadata"]["owner_email"] == "accepted"
+    db.email_client.send.assert_called_once()
