@@ -46,3 +46,10 @@ Twilio: approved campaign reported; HELP/STOP receipt from confirmed user phone 
 - API Keys list initially empty. Prepared unsaved key named Hilltop CRM Production Mail Send with Custom Access, Mail Send Full Access only; every other category No Access.
 - Stopped before Create & View: browser policy requires action-time confirmation for new security-sensitive access. No credential created, runtime variable updated, or email sent. User handoff on open SendGrid API Keys tab.
 - Next: user creates prepared key and leaves it open without pasting it in chat; inspect callers and add launch gate/event processing before connecting credentials and running controlled delivery test.
+
+## Key created; application connection pending
+- User clicked Create & View. Read-only browser check confirmed a SendGrid key is displayed; its value was not logged, copied to files, or transmitted.
+- Asked for explicit authorization to transfer this credential to Wholesale Automation server-side Vercel environment variables. Keep SendGrid tab open; approval pending.
+- Added EMAIL_LIVE_ENABLED (default false) and EMAIL_ALLOWED_RECIPIENTS (comma-separated exact normalized addresses) at the shared EmailClient boundary. When disabled all sends return false without provider calls; a nonempty allowlist rejects other recipients. Existing provider acceptance semantics preserved.
+- 53 focused email, backend launch contract, and webhook completion tests passed; git diff --check passed. Initial new test misplaced an existing assertion; corrected before successful run.
+- Next: after authorization and deployed gate verification, store SENDGRID_API_KEY as a production server-only secret, FROM_EMAIL=julio@hilltophome.co, EMAIL_PROVIDER=sendgrid. Keep EMAIL_LIVE_ENABLED=false until controlled testing is ready. Controlled tests require EMAIL_ALLOWED_RECIPIENTS=julio@hilltophome.co before enabling. Delivery event handling remains outstanding, as does actual receipt verification; no email was sent.

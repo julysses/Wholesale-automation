@@ -71,6 +71,8 @@ class Settings:
     sendgrid_api_key: str = os.getenv("SENDGRID_API_KEY", "")
     mailgun_api_key: str = os.getenv("MAILGUN_API_KEY", "")
     from_email: str = os.getenv("FROM_EMAIL", "")
+    email_live_enabled: bool = os.getenv("EMAIL_LIVE_ENABLED", "false").lower() == "true"
+    email_allowed_recipients: str = os.getenv("EMAIL_ALLOWED_RECIPIENTS", "")
 
     # DNC scrubbing providers (DataAxle, Contact Center Compliance, NumVerify)
     dnc_provider: str = os.getenv("DNC_PROVIDER", "")

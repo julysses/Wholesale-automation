@@ -54,6 +54,19 @@ class EmailClient:
             logger.error("[EmailClient] BLOCKED invalid to_email: empty")
             return False
 
+        if not settings.email_live_enabled:
+            logger.info("[EmailClient] BLOCKED: email sending disabled")
+            return False
+        to_email = to_email.strip().lower()
+        allowed = {
+            address.strip().lower()
+            for address in settings.email_allowed_recipients.split(",")
+            if address.strip()
+        }
+        if settings.email_allowed_recipients and to_email not in allowed:
+            logger.info("[EmailClient] BLOCKED: recipient outside launch allowlist")
+            return False
+
         if not self._configured:
             logger.info(
                 f"[EmailClient][DRY-RUN] Provider={self._provider} | "
