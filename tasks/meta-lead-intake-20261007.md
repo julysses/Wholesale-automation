@@ -38,6 +38,15 @@ Create the user's developer account and connect Hilltop Home Company native Face
 ## Remaining wider launch gates
 SMS delivered and user receipt confirmed; STOP/refusal remains pending. Email delivered and duplicate reference refused; real unsubscribe/refusal remains pending. Retell account does not exist yet. Supabase backup dashboard requires sign-in; isolated restore rehearsal remains pending. Full checklist: tasks/production-acceptance-20261007.md.
 
+## Approved webhook scopes and credential reset handoff
+- User approved pages_read_engagement/pages_manage_metadata and production-only signing-secret/verification-token storage.
+- Added pages_manage_metadata to app; Ready for testing verified. Completed expanded OAuth grant restricted to ONLY current Hilltop Home Company1303115306222198. New Page token selected; Graph GET me?fields=id,name successfully returned exact ID/name. Updated production FACEBOOK_ACCESS_TOKEN Secret.
+- Stored FACEBOOK_WEBHOOK_VERIFY_TOKEN as production-only Secret. Submitted FACEBOOK_APP_ID1028695470188549 as production Config. FACEBOOK_APP_SECRET was initially saved as Secret, but its value accidentally appeared in a tool result during a form-state check. No secret recorded in repository; reset is required before deployment/launch.
+- Opened Meta Reset control, which requests password re-entry. Asked user to complete password and credential reset personally. Current Meta app tab1348645482 is at that prompt; no replacement secret captured yet. Do not use/redeploy old signing secret. Capture new secret silently after user reset and replace Vercel value; redact all text observations before output, including Value lines.
+- Browser tabs: Meta1348645482, Graph Explorer1348645503, Vercel1348645459. In-memory verification token exists in CUA; if lost, coordinate a new value in both providers. Never copy secret values into markdown or shell output.
+- Still pending: token lifetime, replacement-secret storage, production redeploy, Meta GET challenge verification, leadgen app and Page subscription, dashboard/native test lead and dedup, publication/review/business ownership. No paid ad started.
+- Proof: meta-webhook-secrets-configured.jpg shows secret names/scope only. This proves storage, not current-secret validity or webhook acceptance.
+
 ## Developer account completed; app creation review pending
 - User completed developer registration personally. Current My Apps initially showed No apps yet.
 - Prepared app name Hilltop Lead Intake, contact julio@hilltophome.co. Selected All use cases -> Capture & manage ad leads with Marketing API.

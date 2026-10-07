@@ -4,6 +4,8 @@ Goal: finish all remaining setup and prove readiness for the authorized website/
 
 Latest Meta checkpoint: Hilltop Lead Intake created, app1028695470188549, policies saved. Unpublished and no business connected. Graph adapter updated to dashboard v26.0 and bearer auth to keep tokens out of URLs/error logs;351backend tests pass. User approved initial lead retrieval access; ONLY current Hilltop Home Company Page1303115306222198 selected, distinct Page token stored as production-only Vercel Secret. Identity lookup failed error100 requiring pages_read_engagement. Additional read-engagement/webhook-metadata and app-secret/verify-token storage approval pending; no production Meta lead test yet. Resume details in tasks/meta-lead-intake-20261007.md.
 
+Update: user approved additional Page permissions; expanded grant completed for same Page and Graph identity lookup now passes. Updated Page token and stored verification token as production Secrets; app ID submitted as Config. App secret accidentally appeared in a tool result during setup; user credential reset is pending before deployment. Meta tab is at reset password prompt. Callback verification/subscriptions/live lead test remain unproven.
+
 ## Current evidence
 - SendGrid authenticated domain/link branding verified; restricted v2 key stored as Vercel production Secret; original revoked. First local EmailClient email received by Julio.
 - Signed SendGrid callback deployed at commit 90abc47. SendGrid Test Integration persisted 11 sample event types for example@test.com. Sample bounce/unsubscribe suppression persisted. Unsigned production request returned 401. These are provider-generated sample events, not real delivered-message callbacks.
