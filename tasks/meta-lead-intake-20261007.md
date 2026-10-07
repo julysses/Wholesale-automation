@@ -47,6 +47,16 @@ SMS delivered and user receipt confirmed; STOP/refusal remains pending. Email de
 - Still pending: token lifetime, replacement-secret storage, production redeploy, Meta GET challenge verification, leadgen app and Page subscription, dashboard/native test lead and dedup, publication/review/business ownership. No paid ad started.
 - Proof: meta-webhook-secrets-configured.jpg shows secret names/scope only. This proves storage, not current-secret validity or webhook acceptance.
 
+## Secret replaced; callback and subscriptions verified
+- User completed Meta app-secret reset. Captured replacement silently, verified differs from prior value, updated production FACEBOOK_APP_SECRET Secret and verified Vercel success. Previous disclosed secret is obsolete. FACEBOOK_APP_ID Config save verified.
+- Redeployed production4dd1bf8 with latest credentials: dpl_7UbB5g9hEQ8oYDznkJJ7wJN5bu1R, READY, wholesale-automation-is57nvn7b-julysses-projects.vercel.app. Page identity query still passes after app-secret reset.
+- Meta verified and saved Page callback https://wholesale-automation.vercel.app/webhooks/facebook/lead with configured verification token. Page callback Remove subscription control enabled, verification token masked.
+- Subscribed app Page leadgen field at v26.0; Subscribed switch confirmed. Official Webhooks for Pages guide requires Page subscribed_apps registration. Graph POST1303115306222198/subscribed_apps?subscribed_fields=leadgen returned success:true; subsequent GET shows app1028695470188549, Hilltop Lead Intake, subscribed_fields:[leadgen].
+- Sent dashboard sample444444444444. Vercel logs prove signed POST reached processor, then Graph v26.0 returned400 for dummy lead ID; inline processing failed and Meta retries sample. This is connection/signature proof ONLY, not successful native lead retrieval/intake. Do not invent a successful sample/lead or bypass retrieval errors.
+- Meta Publish screen now says All required app settings are complete. App still unpublished. Asked action-time approval to Publish so real subscribed Page events can flow; no paid campaign starts.
+- Native test lead and owner handoff/dedup, token lifetime, exact business portfolio/ownership and any additional review gates remain pending. Preserve Meta1348645482 at Publish, Graph1348645503 and Vercel1348645459.
+- Proof screenshot meta-ready-to-publish.jpg in task outputs. No replacement secret value saved into screenshots/files/output.
+
 ## Developer account completed; app creation review pending
 - User completed developer registration personally. Current My Apps initially showed No apps yet.
 - Prepared app name Hilltop Lead Intake, contact julio@hilltophome.co. Selected All use cases -> Capture & manage ad leads with Marketing API.
