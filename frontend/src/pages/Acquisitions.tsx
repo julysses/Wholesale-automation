@@ -544,7 +544,7 @@ function DealAnalysisCard({ deal }: { deal: DealAnalysis }) {
       </div>
 
       {/* Offer range */}
-      {deal.offer_range_low && deal.offer_range_high && (
+      {deal.offer_range_low != null && deal.offer_range_high != null && deal.offer_range_high > 0 && (
         <div className="mt-2 text-xs">
           <span className="text-gray-400">Offer range: </span>
           <span className="font-semibold text-green-700">
@@ -576,9 +576,9 @@ function DealAnalysisCard({ deal }: { deal: DealAnalysis }) {
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 text-xs">
-            {deal.arv_mid && <div><span className="text-gray-400">ARV mid: </span><span className="font-medium">{formatCurrency(deal.arv_mid)}</span></div>}
-            {deal.as_is_value && <div><span className="text-gray-400">As-is: </span><span className="font-medium">{formatCurrency(deal.as_is_value)}</span></div>}
-            {deal.repair_cost_low && deal.repair_cost_high && (
+            {deal.arv_mid != null && <div><span className="text-gray-400">ARV mid: </span><span className="font-medium">{formatCurrency(deal.arv_mid)}</span></div>}
+            {deal.as_is_value != null && <div><span className="text-gray-400">As-is: </span><span className="font-medium">{formatCurrency(deal.as_is_value)}</span></div>}
+            {deal.repair_cost_low != null && deal.repair_cost_high != null && (
               <div><span className="text-gray-400">Repair range: </span><span className="font-medium">{formatCurrency(deal.repair_cost_low)} – {formatCurrency(deal.repair_cost_high)}</span></div>
             )}
           </div>
