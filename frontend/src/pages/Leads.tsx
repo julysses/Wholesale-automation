@@ -6,6 +6,7 @@ import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity, 
 import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
 import { OutreachTimeline } from '@/components/leads/OutreachTimeline';
+import { RetellCallDialog } from '@/components/leads/RetellCallDialog';
 import { StackBadge } from '@/components/leads/StackBadge';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
@@ -147,6 +148,7 @@ export function Leads() {
   const [importOpen, setImportOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
+  const [callLead, setCallLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const { data, isLoading, error: loadError, refetch } = useLeads({ status, source, tier, motivation, retention, search, page, pageSize: 50, sortBy, sortDir });
@@ -432,6 +434,10 @@ export function Leads() {
                             onClick={() => { setLogActivityLead(lead); setOpenMenuId(null); }}>
                             <Phone className="h-3.5 w-3.5" /> Log Activity
                           </button>
+                          <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
+                            onClick={() => { setCallLead(lead); setOpenMenuId(null); }}>
+                            <PhoneCall className="h-3.5 w-3.5" /> Review AI call
+                          </button>
                           {/* Dialer push — shown for Tier A/B or unscored leads */}
                           {lead.status !== 'dnc' && lead.status !== 'in_dialer_campaign' && (
                             <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
@@ -489,6 +495,7 @@ export function Leads() {
       {detailLead && (
         <LeadDetailDrawer lead={detailLead} onClose={() => setDetailLead(null)} />
       )}
+      {callLead && <RetellCallDialog key={callLead.id} lead={callLead} onClose={() => setCallLead(null)} />}
     </div>
   );
 }

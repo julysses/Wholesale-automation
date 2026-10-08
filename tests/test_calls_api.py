@@ -214,3 +214,86 @@ def test_approved_admin_observes_disabled_gate(setup,monkeypatch):
     assert response.status_code==409
     assert 'disabled' in response.json()['detail']
     provider.create_call.assert_not_called()
+
+
+def test_readiness_checks_without_contacting_provider(setup):
+    body,lead,_,db,provider=setup
+    # The empty unresolved-recipient lookup is separate from the latest attempt.
+    original=db.table.side_effect
+    def table(name):
+        q=original(name)
+        q.select.return_value.eq.return_value.neq.return_value.order.return_value.limit.return_value.execute.return_value.data=[]
+        return q
+    db.table.side_effect=table
+    lead['ai_calling_paused']=True
+    result=calls.lead_readiness(body.lead_id)
+    assert result['can_review'] is True
+    assert result['can_call'] is False
+    assert result['consent']['accepted'] is True
+    provider.create_call.assert_not_called()
+
+
+def test_unresolved_recipient_on_another_lead_blocks_review(setup):
+    body,lead,_,db,provider=setup
+    lead['ai_calling_paused']=True
+    original=db.table.side_effect
+    def table(name):
+        q=original(name)
+        if name=='retell_call_requests':
+            query=q.select.return_value.eq.return_value
+            query.neq.return_value.order.return_value.limit.return_value.execute.return_value.data=[{
+                'id':str(uuid4()),'lead_id':str(uuid4()),'phone_number':PHONE,
+                'status':'unknown','provider_call_id':None}]
+        return q
+    db.table.side_effect=table
+    result=calls.lead_readiness(body.lead_id)
+    assert result['can_review'] is False
+    assert 'unresolved' in ' '.join(result['blockers'])
+    provider.create_call.assert_not_called()
+
+
+@pytest.mark.parametrize('acknowledged',[False,None])
+def test_review_requires_explicit_acknowledgement(setup,acknowledged):
+    body,_,_,db,provider=setup
+    with pytest.raises(HTTPException):calls.review_lead(body.lead_id,acknowledged,str(uuid4()))
+    db.table.assert_not_called()
+    provider.create_call.assert_not_called()
+
+
+def test_disabled_launch_cannot_unpause_through_review(setup,monkeypatch):
+    body,lead,_,db,provider=setup
+    lead['ai_calling_paused']=True
+    monkeypatch.setattr(calls.settings,'ai_calling_live_enabled',False)
+    with pytest.raises(HTTPException):calls.review_lead(body.lead_id,True,str(uuid4()))
+    provider.create_call.assert_not_called()
+
+
+def test_review_audits_before_unpause_without_placing_call(setup,monkeypatch):
+    body,_,_,db,provider=setup
+    readiness={'can_review':True,'blockers':[],'consent':{'submitted_at':'2026-10-07T12:00:00Z'}}
+    monkeypatch.setattr(calls,'lead_readiness',lambda _:readiness)
+    queries={}
+    original=db.table.side_effect
+    def table(name):
+        queries.setdefault(name,original(name))
+        return queries[name]
+    db.table.side_effect=table
+    calls.review_lead(body.lead_id,True,'operator_test')
+    notice=queries['app_notifications'].upsert.call_args.args[0]
+    assert notice['metadata']['operator_id']=='operator_test'
+    assert queries['leads'].update.call_args.args[0]=={'ai_calling_paused':False}
+    assert ('dnc',False) in [c.args for c in queries['leads'].update.return_value.eq.call_args_list]
+    provider.create_call.assert_not_called()
+
+
+def test_failed_review_receipt_cannot_unpause(setup,monkeypatch):
+    body,_,_,db,provider=setup
+    monkeypatch.setattr(calls,'lead_readiness',lambda _:{'can_review':True,'blockers':[],
+        'consent':{'submitted_at':'2026-10-07T12:00:00Z'}})
+    receipt_query=MagicMock();receipt_query.upsert.return_value.execute.side_effect=RuntimeError('unavailable')
+    lead_query=MagicMock()
+    db.table.side_effect=lambda name:receipt_query if name=='app_notifications' else lead_query
+    with pytest.raises(HTTPException) as error:calls.review_lead(body.lead_id,True,'operator_test')
+    assert error.value.status_code==503
+    lead_query.update.assert_not_called()
+    provider.create_call.assert_not_called()

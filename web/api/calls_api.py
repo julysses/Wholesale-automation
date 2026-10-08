@@ -1,7 +1,7 @@
 """Admin-only Retell initiation with durable claims and explicit AI consent."""
 import logging
 import re
-from uuid import UUID
+from uuid import UUID, NAMESPACE_URL, uuid5
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -22,6 +22,87 @@ class StartCall(BaseModel):
     request_id: UUID
     lead_id: UUID
     phone_number: str
+
+
+class ReviewCall(BaseModel):
+    acknowledged: bool
+
+
+def _receipt(sb, lead_id):
+    notice_id=str(uuid5(NAMESPACE_URL,f'wholesaleos:intake-alert:{lead_id}'))
+    notices=sb.table('app_notifications').select('metadata').eq('id',notice_id).limit(1).execute().data
+    return notices[0].get('metadata',{}).get('consent_receipt') if notices else None
+
+
+def lead_readiness(lead_id):
+    sb=_storage()
+    try:
+        rows=sb.table('leads').select('*').eq('id',str(lead_id)).limit(1).execute().data
+        if not rows:
+            raise HTTPException(404,'Lead not found')
+        lead=rows[0]
+        receipt=_receipt(sb,str(lead_id))
+        blockers=[]
+        phone=None
+        try:phone=_phone(lead.get('owner_phone_1'))
+        except HTTPException:blockers.append('A valid US lead phone is required')
+        if not settings.ai_calling_live_enabled:blockers.append('AI calling is disabled pending launch acceptance')
+        if not all((settings.retell_api_key,settings.retell_agent_id,settings.retell_from_number,settings.retell_webhook_secret)):
+            blockers.append('Retell agent, number and signature configuration is incomplete')
+        try:
+            allowed={_phone(value) for value in settings.ai_calling_allowed_recipients.split(',') if value.strip()}
+        except HTTPException:allowed=set()
+        if not phone or phone not in allowed:blockers.append('Phone is outside the authorized call recipient list')
+        if lead.get('dnc') is not False:blockers.append('Lead is suppressed or its suppression state is unknown')
+        consent=_consented(receipt,phone,lead) if phone else False
+        if not consent:blockers.append('Matching explicit AI-call consent is missing')
+        now=_texas_now()
+        if now.weekday()>=5 or not settings.tcpa_allowed_start_hour<=now.hour<settings.tcpa_allowed_end_hour:
+            blockers.append('Outside weekday calling hours in Central time')
+        if phone:
+            safety=sb.rpc('intake_phone_status',{'p_phone':phone,'p_lead':str(lead_id),
+                'p_property':lead.get('property_address','')}).execute().data
+            if not isinstance(safety,dict) or safety.get('suppressed') is not False:
+                blockers.append('Phone suppression verification blocks calling')
+        attempts=[]
+        if phone:
+            # A second CRM lead can share this phone. Match the database's recipient lock.
+            attempts=sb.table('retell_call_requests').select('*').eq('phone_number',phone).neq('status','completed').order('created_at',desc=True).limit(1).execute().data
+            if not attempts:
+                attempts=sb.table('retell_call_requests').select('*').eq('phone_number',phone).order('created_at',desc=True).limit(1).execute().data
+        attempt=_record(attempts[0]) if attempts else None
+        if attempt and attempt['status']!='completed':blockers.append('An earlier call remains active or unresolved')
+        paused=lead.get('ai_calling_paused') is not False
+        return {'lead_id':str(lead_id),'phone_number':phone,'ai_calling_paused':paused,
+            'can_review':not blockers and paused,'can_call':not blockers and not paused,
+            'blockers':blockers,'attempt':attempt,
+            'consent':{'accepted':consent,'disclosure':receipt.get('ai_calls',{}).get('disclosure') if consent else None,
+                       'submitted_at':receipt.get('submitted_at') if consent else None}}
+    except HTTPException:raise
+    except Exception:
+        raise HTTPException(503,'Call readiness could not be verified')
+
+
+def review_lead(lead_id, acknowledged, operator_id):
+    if acknowledged is not True:raise HTTPException(409,'Review the saved AI-call consent before approving')
+    readiness=lead_readiness(lead_id)
+    if not readiness['can_review']:raise HTTPException(409,'Lead cannot be approved: '+('; '.join(readiness['blockers']) or 'already approved'))
+    sb=_storage()
+    # Preserve evidence of the operator review before unpausing. This never places a call.
+    reference=f"{lead_id}:{operator_id}:{readiness['consent']['submitted_at']}"
+    notice={'id':str(uuid5(NAMESPACE_URL,f'wholesaleos:call-review:{reference}')),
+        'recipient_role':'admin','type':'pipeline_step','title':'AI-call consent reviewed',
+        'body':'An operator reviewed the saved consent. Check current lead readiness before calling.',
+        'lead_id':str(lead_id),'action_url':'/leads',
+        'metadata':{'source':'ai_call_review','operator_id':operator_id,'consent_submitted_at':readiness['consent']['submitted_at']}}
+    try:
+        saved=sb.table('app_notifications').upsert(notice,on_conflict='id',ignore_duplicates=True).execute().data
+        if not saved and not sb.table('app_notifications').select('id').eq('id',notice['id']).limit(1).execute().data:
+            raise RuntimeError('Review receipt unavailable')
+        changed=sb.table('leads').update({'ai_calling_paused':False}).eq('id',str(lead_id)).eq('dnc',False).execute().data
+        if not changed:raise RuntimeError('Lead approval was not confirmed')
+    except Exception:raise HTTPException(503,'Lead approval could not be confirmed')
+    return lead_readiness(lead_id)
 
 
 def _phone(value):
@@ -76,8 +157,7 @@ def start_call(body: StartCall, operator_id: str):
         raise HTTPException(409,'Lead is suppressed or AI calling remains paused')
     if _phone(lead.get('owner_phone_1'))!=phone:
         raise HTTPException(409,'Requested phone does not match the lead')
-    notices=sb.table('app_notifications').select('metadata').eq('lead_id',str(body.lead_id)).order('created_at',desc=True).limit(1).execute().data
-    receipt=notices[0].get('metadata',{}).get('consent_receipt') if notices else None
+    receipt=_receipt(sb,str(body.lead_id))
     if not _consented(receipt,phone,lead):
         raise HTTPException(409,'A matching durable AI-call consent receipt is required')
     now=_texas_now()
@@ -184,6 +264,16 @@ def reconcile_call(payload):
 @router.post('')
 async def create(body: StartCall,request: Request):
     return await run_in_threadpool(start_call,body,request.state.user_id)
+
+
+@router.get('/lead/{lead_id}')
+async def readiness(lead_id: UUID):
+    return await run_in_threadpool(lead_readiness,lead_id)
+
+
+@router.post('/lead/{lead_id}/review')
+async def review(lead_id: UUID,body: ReviewCall,request: Request):
+    return await run_in_threadpool(review_lead,lead_id,body.acknowledged,request.state.user_id)
 
 
 @router.get('/{call_id}')
