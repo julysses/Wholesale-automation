@@ -26,6 +26,7 @@
  */
 
 import axios from 'axios';
+import { apiFetch } from '@/lib/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ export interface CallPayload {
 
 /** Options for initiating a call */
 export interface CreateCallOptions {
+  requestId: string;             // Retain this UUID until the attempt is reconciled.
   leadId: string;
   phoneNumber: string;            // E.164
   propertyAddress: string;
@@ -141,7 +143,8 @@ let _config: AgentConfig | null = null;
 
 /**
  * Initialize the Retell adapter with credentials.
- * Must be called before createCall().
+ * Only legacy transcript qualification helpers use this configuration.
+ * Call creation and status use the signed-in session and server credentials.
  */
 export function initializeAgent(config: AgentConfig): void {
   _config = config;
@@ -165,8 +168,6 @@ function requireConfig(): AgentConfig {
  * using the server-side API key and returns the created call record.
  */
 export async function createCall(options: CreateCallOptions): Promise<CallRecord> {
-  const cfg = requireConfig();
-
   const payload: CallPayload = {
     lead_id: options.leadId,
     phone_number: options.phoneNumber,
@@ -179,22 +180,15 @@ export async function createCall(options: CreateCallOptions): Promise<CallRecord
     },
   };
 
-  const resp = await axios.post<{
-    call_id: string;
-    lead_id: string;
-    phone_number: string;
-    status: string;
-    provider: 'retell' | 'air_ai';
-    provider_data?: Record<string, unknown>;
-  }>(`${cfg.backendBaseUrl}/api/calls/retell`, payload);
+  const response = await apiFetch('/api/calls/retell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, request_id: options.requestId }) });
+  const data = await response.json();
 
   return {
-    callId: resp.data.call_id,
-    leadId: resp.data.lead_id,
-    phoneNumber: resp.data.phone_number,
-    status: resp.data.status,
-    provider: resp.data.provider,
-    providerData: resp.data.provider_data,
+    callId: data.call_id,
+    leadId: data.lead_id,
+    phoneNumber: data.phone_number,
+    status: data.status,
+    provider: data.provider,
   };
 }
 
@@ -206,17 +200,13 @@ export async function updateCallStatus(callId: string): Promise<{
   status: string;
   disposition?: CallDisposition;
 }> {
-  const cfg = requireConfig();
-  const resp = await axios.get<{
-    call_id: string;
-    call_status: string;
-    disposition?: string;
-  }>(`${cfg.backendBaseUrl}/api/calls/retell/${callId}`);
+  const response = await apiFetch(`/api/calls/retell/${encodeURIComponent(callId)}`);
+  const data = await response.json();
 
   return {
-    callId: resp.data.call_id,
-    status: resp.data.call_status,
-    disposition: resp.data.disposition as CallDisposition | undefined,
+    callId: data.call_id,
+    status: data.call_status,
+    disposition: data.disposition as CallDisposition | undefined,
   };
 }
 

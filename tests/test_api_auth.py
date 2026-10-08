@@ -22,6 +22,7 @@ def identity(monkeypatch):
     ("post", "/api/buyers/outreach/sms"), ("post", "/api/marketing/bulk-sms-warm"),
     ("get", "/api/lead-gen/forms"), ("post", "/api/appointments"),
     ("get", "/v1/leads"), ("get", "/webhooks/launch_control/csv-queue"),
+    ("post", "/api/calls/retell"), ("get", "/api/calls/retell/call_test"),
 ])
 def test_operational_routes_reject_anonymous_requests(method, path):
     assert getattr(TestClient(app), method)(path).status_code == 401
@@ -72,3 +73,8 @@ def test_email_controls_require_admin(identity,method,path):
     client=TestClient(app)
     assert getattr(client,method)(path).status_code==401
     assert getattr(client,method)(path,headers={'Authorization':'Bearer valid'}).status_code==403
+
+
+@pytest.mark.parametrize('method,path',[('post','/api/calls/retell'),('get','/api/calls/retell/call_test')])
+def test_call_controls_require_admin(identity,method,path):
+    assert getattr(TestClient(app),method)(path,headers={'Authorization':'Bearer valid'}).status_code==403

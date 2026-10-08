@@ -46,6 +46,6 @@ def require_operator(request: Request) -> None:
         raise HTTPException(503, "Unable to verify account access")
     if not rows or rows[0].get("status") != "approved":
         raise HTTPException(403, "Your account requires administrator approval")
-    if (path == "/api/ai/test-key" or path.startswith("/api/email/")) and rows[0].get("role") != "admin":
+    if (path == "/api/ai/test-key" or path.startswith(("/api/email/", "/api/calls/"))) and rows[0].get("role") != "admin":
         raise HTTPException(403, "Administrator access required")
     request.state.user_id = str(user.id)

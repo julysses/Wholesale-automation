@@ -37,6 +37,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, Request
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from tools.batchdialer_adapter import BatchDialerAdapter, CallResultEvent
 from tools.launch_control_adapter import LaunchControlAdapter
@@ -1980,6 +1981,8 @@ async def _process_launch_control(payload: dict) -> None:
 
 
 async def _process_retell(payload: dict) -> None:
+    from web.api.calls_api import reconcile_call
+    await run_in_threadpool(reconcile_call, payload)
     event_type = payload.get("event") or payload.get("event_type", "")
     call_data = payload.get("call", {})
     call_id = call_data.get("call_id", "")
@@ -2001,6 +2004,8 @@ async def _process_retell(payload: dict) -> None:
 
 
 async def _process_retell_call(payload: dict) -> None:
+    from web.api.calls_api import reconcile_call
+    await run_in_threadpool(reconcile_call, payload)
     event = AICallingAdapter.parse_webhook(payload, provider="retell")
     if event is not None:
         await _retell_call_completed(event, payload)

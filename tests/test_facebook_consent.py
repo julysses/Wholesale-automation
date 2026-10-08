@@ -32,3 +32,9 @@ def test_ambiguous_consent_never_authorizes_sms(form, time, responses):
     receipt = facebook_consent_record(SimpleNamespace(form_id=form, created_time=time,
         custom_disclaimer_responses=responses), "test-lead")
     assert receipt["sms"]["accepted"] is False
+
+
+def test_consent_retains_immutable_submitted_phone():
+    data=SimpleNamespace(form_id=HILLTOP_CONSENT_FORM_ID,created_time='2026-10-07T20:00:00Z',
+        fields={'phone_number':'+12147010100'},custom_disclaimer_responses=[])
+    assert facebook_consent_record(data,'native-test')['phone']=='+12147010100'

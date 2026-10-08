@@ -28,6 +28,7 @@ def facebook_consent_record(lead_data, leadgen_id: str) -> dict:
     return {
         "source": "facebook_native_form", "form_id": form_id,
         "leadgen_id": leadgen_id, "submitted_at": created_time,
+        "phone": (getattr(lead_data, "fields", {}) or {}).get("phone_number", ""),
         "recorded_at": datetime.now(timezone.utc).isoformat(),
         "recognized_form": recognized, "raw_responses": responses,
         "sms": {"accepted": checked(SMS_CHECKBOX_KEY), "checkbox_key": SMS_CHECKBOX_KEY,

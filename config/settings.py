@@ -129,6 +129,8 @@ class Settings:
     retell_agent_id: str = os.getenv("RETELL_AGENT_ID", "")
     retell_from_number: str = os.getenv("RETELL_FROM_NUMBER", "")
     retell_webhook_secret: str = os.getenv("RETELL_WEBHOOK_SECRET", "")
+    ai_calling_live_enabled: bool = os.getenv("AI_CALLING_LIVE_ENABLED", "false").lower() == "true"
+    ai_calling_allowed_recipients: str = os.getenv("AI_CALLING_ALLOWED_RECIPIENTS", "")
 
     # Air AI (alternative AI calling provider)
     air_ai_api_key: str = os.getenv("AIR_AI_API_KEY", "")
