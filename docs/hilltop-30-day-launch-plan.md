@@ -175,3 +175,10 @@ Limits: no new full regression run, signed-in CRM acceptance, Meta account audit
 - B03: missing default Twilio SDK added to deployment requirements with a dispatch contract test. Sender approvals and real delivery remain unverified.
 - Validation: 251 backend and 88 frontend tests passed; build, lint regression gate and frontend audit passed. See `docs/hilltop-launch-hardening.md`; no checklist item is closed solely by mocked tests.
 - Resume branch: `codex/hilltop-launch-hardening`. Resume with upstream database recovery, isolated acceptance and release review. The earlier plan-only branch is retained for history.
+
+
+### October 8 — deal handoff acceptance update
+
+A11 technical progress: recoverable deal creation and version-checked edits deployed ef19e5b (READY dpl_Datg7dFJTMnZtztfFPUV5JKgbTiq; CI37858574421success). A13/A14 recording safeguards now expose owner, buyer, earnest money, inspection/closing dates, title contacts and HTTPS document links; saves atomically maintain assigned deadline review tasks. Required stage evidence is checked; recording a link does not validate signatures or open title. Full regression620backend/127frontend tests, build and lint gate pass. Actual controlled dummy save/reload/task/cancel confirmed; QA deal and tasks retained cancelled, active deals0, no new provider sends. See tasks/final-launch-verification-20261008.md for exact IDs and screenshots.
+
+Full A01–A19/B01–B09 scope remains open wherever required evidence is incomplete. A11 business rehearsal, A12SOP, A13title/contracts/earnestprocess and A14vettedbuyerpermission are not complete solely from technical persistence. Next technical audit A16 QA exclusion, attribution and conversion accuracy; provider/KYC/worker/opt-out/nativeMeta and staffing/spend/businessgo-no-go gates remain pending. Earlier September baseline observations above are historical; current decision remains no final launch certification.
