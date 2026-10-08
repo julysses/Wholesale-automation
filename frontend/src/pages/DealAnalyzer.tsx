@@ -56,7 +56,9 @@ export function DealAnalyzer() {
   const [loadingAi, setLoadingAi] = useState(false);
   const [saveLeadId, setSaveLeadId] = useState('');
   const [savingToLead, setSavingToLead] = useState(false);
-  const { data: leadsData } = useLeads({ pageSize: 200 });
+  const [leadSearch, setLeadSearch] = useState('');
+  const [leadPage, setLeadPage] = useState(1);
+  const { data: leadsData, error: leadsError, isLoading: leadsLoading } = useLeads({ search: leadSearch, page: leadPage, pageSize: 50 });
   const queryClient = useQueryClient();
   const allLeads = leadsData?.data ?? [];
 
@@ -412,14 +414,25 @@ export function DealAnalyzer() {
             <Card>
               <CardHeader><CardTitle>Save to Lead</CardTitle></CardHeader>
               <CardContent className="space-y-3">
+                <Input label="Find analysis lead" disabled={locked} value={leadSearch}
+                  onChange={e => { setLeadSearch(e.target.value.replace(/[,()%]/g, '')); setLeadPage(1); }} placeholder="Search address, owner or phone" />
                 <Select
                   label="Select Lead"
                   disabled={locked}
                   value={saveLeadId}
                   onChange={(e) => setSaveLeadId(e.target.value)}
-                  options={allLeads.map((l) => ({ value: l.id, label: l.property_address }))}
-                  placeholder="Choose a lead..."
+                  options={[
+                    ...(saveLeadId && !allLeads.some(l => l.id === saveLeadId) ? [{ value: saveLeadId, label: `Selected lead ${saveLeadId}` }] : []),
+                    ...allLeads.map((l) => ({ value: l.id, label: l.property_address })),
+                  ]}
+                  placeholder={leadsLoading ? "Loading leads…" : "Choose a lead..."}
                 />
+                {leadsError && <p role="alert">Unable to load leads. Retry the search before selecting a lead.</p>}
+                {(leadsData?.count ?? 0) > 50 && <div className="flex gap-2 items-center">
+                  <Button variant="outline" disabled={locked || leadPage === 1} onClick={() => setLeadPage(page => page - 1)}>Previous analysis leads</Button>
+                  <span>Page {leadPage} of {Math.ceil((leadsData?.count ?? 0) / 50)}</span>
+                  <Button variant="outline" disabled={locked || leadPage * 50 >= (leadsData?.count ?? 0)} onClick={() => setLeadPage(page => page + 1)}>Next analysis leads</Button>
+                </div>}
                 <Button
                   onClick={handleSaveToLead}
                   loading={savingToLead}

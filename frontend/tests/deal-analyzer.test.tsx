@@ -1,14 +1,15 @@
 import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ api: vi.fn(), success: vi.fn(), error: vi.fn() }));
+const mocks = vi.hoisted(() => ({ leads: vi.fn(), api: vi.fn(), success: vi.fn(), error: vi.fn() }));
 vi.mock('@/lib/api', () => ({ apiFetch: mocks.api }));
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error } }));
-vi.mock('@/hooks/useLeads', () => ({ useLeads: () => ({ data: { data: [{ id: 'lead-1', property_address: 'Test Property' }] } }) }));
+vi.mock('@/hooks/useLeads', () => ({ useLeads: mocks.leads }));
 import { DealAnalyzer } from '@/pages/DealAnalyzer';
 function mount(){render(<QueryClientProvider client={new QueryClient()}><DealAnalyzer /></QueryClientProvider>);}
 beforeEach(() => {
  vi.clearAllMocks();sessionStorage.clear();
+ mocks.leads.mockReturnValue({data:{data:[{id:'lead-1',property_address:'Test Property'}],count:120}});
  mocks.api.mockImplementation(async (_path, init) => {const b=JSON.parse(init.body);return {json:async()=>({analysis:{id:b.request_id,lead_id:b.lead_id}})};});
  mount();fireEvent.change(screen.getByLabelText('ARV Override'), {target:{value:'250000'}});
  fireEvent.change(screen.getByLabelText('Select Lead'), {target:{value:'lead-1'}});
@@ -32,4 +33,11 @@ it('reports AI failure without inventing a recommendation',async()=>{
  mocks.api.mockRejectedValue(new Error('AI is unavailable'));fireEvent.click(screen.getByRole('button',{name:'Get AI Take'}));
  await waitFor(()=>expect(mocks.error).toHaveBeenCalledWith('AI is unavailable'));
  expect(screen.queryByText(/Your numbers look solid/)).not.toBeInTheDocument();
+});
+
+it('searches and pages beyond the initial lead cohort',()=>{
+ fireEvent.click(screen.getByRole('button',{name:'Next analysis leads'}));
+ expect(mocks.leads).toHaveBeenLastCalledWith({search:'',page:2,pageSize:50});
+ fireEvent.change(screen.getByLabelText('Find analysis lead'),{target:{value:'Internal dummy'}});
+ expect(mocks.leads).toHaveBeenLastCalledWith({search:'Internal dummy',page:1,pageSize:50});
 });
