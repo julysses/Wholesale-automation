@@ -187,6 +187,7 @@ async def get_form_config(form_id: str):
 
 class FormSubmitRequest(BaseModel):
     answers: dict[str, Any]
+    request_id: Optional[UUID] = None
     utm_source: Optional[str] = None
     utm_medium: Optional[str] = None
     utm_campaign: Optional[str] = None
@@ -253,8 +254,31 @@ async def submit_form(
         "processing_status": "pending",
     }
     try:
-        sub_resp = supabase.table("lead_form_submissions").insert(submission_data).execute()
-        submission_id = sub_resp.data[0]["id"] if sub_resp.data else None
+        if body.request_id:
+            # Compare validated inquiry inputs, not volatile server timestamps or IPs.
+            # A reference represents this submission only, never all inquiries by a person.
+            consent = receipt_answers.get("_sms_consent")
+            manifest = {
+                "form_id": form_config["id"], "answers": answers,
+                "utm_source": body.utm_source, "utm_medium": body.utm_medium,
+                "utm_campaign": body.utm_campaign,
+                "consent": {k: v for k, v in consent.items() if k != "recorded_at"} if consent else None,
+            }
+            reserved = supabase.rpc("reserve_form_submission", {
+                "p_request_id": str(body.request_id), "p_submission": submission_data,
+                "p_manifest": manifest,
+            }).execute().data
+            if isinstance(reserved, dict) and reserved.get("status") == "conflict":
+                raise HTTPException(409, "This inquiry reference already has different answers. Contact us before submitting another inquiry.")
+            submission_id = reserved.get("submission_id") if isinstance(reserved, dict) else None
+            if not isinstance(reserved, dict) or reserved.get("status") not in {"created", "replayed"} or submission_id != str(body.request_id):
+                raise RuntimeError("Inquiry reference was not confirmed")
+        else:
+            # Legacy clients remain accepted until both sites and the CRM form are upgraded.
+            sub_resp = supabase.table("lead_form_submissions").insert(submission_data).execute()
+            submission_id = sub_resp.data[0]["id"] if sub_resp.data else None
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(f"Failed to insert form submission: {exc}")
         raise HTTPException(503, "We could not save your inquiry. Please try again.")
@@ -273,6 +297,8 @@ async def submit_form(
 
     return {
         "success": True,
+        "submission_id": submission_id,
+        "processing_status": "processed",
         "message": form_config.get("thank_you_message", "Thank you! We'll be in touch shortly."),
         "redirect_url": form_config.get("redirect_url"),
     }

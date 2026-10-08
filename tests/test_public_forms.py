@@ -208,3 +208,73 @@ def test_jays_non_seller_checkbox_never_authorizes_sms(form_service):
     receipt = db.table.return_value.insert.call_args.args[0]["raw_answers"]
     assert receipt["_sms_consent"]["accepted"] is False
     assert processor.call_args.kwargs["answers"]["sms_opt_in"] == ""
+
+
+REFERENCE = "11111111-1111-4111-8111-111111111111"
+
+
+def test_request_reference_replay_returns_same_durable_receipt(form_service):
+    db, processor = form_service
+    db.rpc.return_value.execute.side_effect = [
+        SimpleNamespace(data={"status": status, "submission_id": REFERENCE})
+        for status in ("created", "replayed")
+    ]
+    client = TestClient(app)
+    receipts = [client.post("/api/forms/test/submit", json={"answers": ANSWERS, "request_id": REFERENCE}) for _ in range(2)]
+    assert all(r.status_code == 200 for r in receipts)
+    assert all(r.json()["submission_id"] == REFERENCE and r.json()["processing_status"] == "processed" for r in receipts)
+    calls = db.rpc.call_args_list
+    assert calls[0].args[0] == "reserve_form_submission"
+    assert calls[0].args[1]["p_manifest"] == calls[1].args[1]["p_manifest"]
+    assert "recorded_at" not in calls[0].args[1]["p_manifest"]["consent"]
+    assert "recorded_at" in calls[0].args[1]["p_submission"]["raw_answers"]["_sms_consent"]
+    assert processor.await_count == 2
+    assert all(c.kwargs["submission_id"] == REFERENCE for c in processor.call_args_list)
+    db.table.return_value.insert.assert_not_called()
+
+
+def test_reference_conflict_never_finalizes_changed_inquiry(form_service):
+    db, processor = form_service
+    db.rpc.return_value.execute.return_value = SimpleNamespace(data={"status": "conflict"})
+    response = TestClient(app).post("/api/forms/test/submit", json={"answers": {**ANSWERS, "first_name": "Changed"}, "request_id": REFERENCE})
+    assert response.status_code == 409
+    processor.assert_not_called()
+    db.table.return_value.insert.assert_not_called()
+
+
+@pytest.mark.parametrize("result", [None, {}, {"status": "created", "submission_id": "different-reference"}])
+def test_unconfirmed_reference_never_acknowledges_or_creates_fallback(form_service, result):
+    db, processor = form_service
+    db.rpc.return_value.execute.return_value = SimpleNamespace(data=result)
+    response = TestClient(app).post("/api/forms/test/submit", json={"answers": ANSWERS, "request_id": REFERENCE})
+    assert response.status_code == 503
+    processor.assert_not_called()
+    db.table.return_value.insert.assert_not_called()
+
+
+def test_invalid_reference_or_answers_never_reserve(form_service):
+    db, processor = form_service
+    client = TestClient(app)
+    for payload in [{"answers": ANSWERS, "request_id": "not-a-uuid"}, {"answers": {**ANSWERS, "phone": "123"}, "request_id": REFERENCE}]:
+        assert client.post("/api/forms/test/submit", json=payload).status_code == 422
+    db.rpc.assert_not_called()
+    processor.assert_not_called()
+
+
+def test_saved_but_unfinished_inquiry_retry_uses_original_receipt(form_service):
+    from fastapi import HTTPException
+    db, processor = form_service
+    db.rpc.return_value.execute.side_effect = [
+        SimpleNamespace(data={"status": status, "submission_id": REFERENCE})
+        for status in ("created", "replayed")
+    ]
+    processor.side_effect = [HTTPException(503, "Saved; follow-up delayed"), "lead-1"]
+    client = TestClient(app)
+    payload = {"answers": ANSWERS, "request_id": REFERENCE, "utm_campaign": "original campaign"}
+    assert client.post("/api/forms/test/submit", json=payload).status_code == 503
+    response = client.post("/api/forms/test/submit", json=payload)
+    assert response.status_code == 200
+    assert response.json()["submission_id"] == REFERENCE
+    assert all(c.kwargs["submission_id"] == REFERENCE for c in processor.call_args_list)
+    assert db.rpc.call_args_list[0].args[1]["p_manifest"]["utm_campaign"] == "original campaign"
+    db.table.return_value.insert.assert_not_called()
