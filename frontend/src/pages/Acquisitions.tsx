@@ -834,6 +834,8 @@ export function Acquisitions() {
           {tabs.map((t) => (
             <button
               key={t.key}
+              aria-label={t.label}
+              aria-pressed={tab === t.key}
               onClick={() => setTab(t.key)}
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0',
@@ -843,8 +845,7 @@ export function Acquisitions() {
               )}
             >
               <t.icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{t.label}</span>
-              <span className="sm:hidden">{t.label.split(' ')[0]}</span>
+              <span>{t.label}</span>
               {t.count !== undefined && t.count > 0 && (
                 <span className={cn(
                   'text-xs rounded-full px-1.5 py-0.5 font-bold',
