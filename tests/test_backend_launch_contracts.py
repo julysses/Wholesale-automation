@@ -161,7 +161,7 @@ async def test_warm_sms_uses_selected_supabase_leads_and_latest_qualification(mo
         {"lead_id": cold["id"], "classification": "WARM", "created_at": "2026-01"},
     ], "dnc_registry": [{"id": "stop", "lead_id": suppressed["id"]}]})
     monkeypatch.setattr(marketing_api, "get_supabase_client", lambda: db)
-    result = await marketing_api.bulk_sms_warm(marketing_api.BulkSMSRequest(lead_ids=[row["id"] for row in rows]))
+    result = await marketing_api.bulk_sms_warm(marketing_api.BulkSMSRequest(request_id=uuid4(), lead_ids=[row["id"] for row in rows]))
     assert result["sent_count"] == 1
     assert result["skipped_count"] == 4
     assert str(sms.sends[0][0].lead_id) == eligible["id"]
@@ -175,7 +175,7 @@ async def test_warm_sms_log_failure_preserves_sent_count(monkeypatch, sms):
     db = Database({"leads": [row]})
     db.fail_inserts.add("outreach_activity")
     monkeypatch.setattr(marketing_api, "get_supabase_client", lambda: db)
-    result = await marketing_api.bulk_sms_warm(marketing_api.BulkSMSRequest(lead_ids=[row["id"]]))
+    result = await marketing_api.bulk_sms_warm(marketing_api.BulkSMSRequest(request_id=uuid4(), lead_ids=[row["id"]]))
     assert result["sent_count"] == 1
     assert result["failed_count"] == 0
     assert result["log_failed_count"] == 1
@@ -185,7 +185,7 @@ async def test_warm_sms_log_failure_preserves_sent_count(monkeypatch, sms):
 @pytest.mark.parametrize("template", ["Hi {unknown}", "Hi {first_name.__class__}", "Hi {address", "Hi {first_name!r}"])
 def test_warm_sms_rejects_bad_template_before_sending(template):
     with pytest.raises(ValueError):
-        marketing_api.BulkSMSRequest(lead_ids=[str(uuid4())], template=template)
+        marketing_api.BulkSMSRequest(request_id=uuid4(), lead_ids=[str(uuid4())], template=template)
 
 
 @pytest.mark.asyncio

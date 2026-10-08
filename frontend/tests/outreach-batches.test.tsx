@@ -24,7 +24,7 @@ it('preserves confirmed counts when apiFetch throws on a later batch and stops a
 it('uses selected lead IDs, deduplicates recipients, and reports dry-run and logging failures', async () => {
   mocks.api.mockResolvedValueOnce(reply(1, { dry_run_count: 1, log_failed_count: 1 }));
   const result = await sendOutreachBatches('/api/marketing/bulk-sms-warm', 'lead_ids', ['lead-a', 'lead-b', 'lead-a']);
-  expect(JSON.parse(mocks.api.mock.calls[0][1].body)).toEqual({ lead_ids: ['lead-a', 'lead-b'] });
+  expect(JSON.parse(mocks.api.mock.calls[0][1].body)).toEqual({ lead_ids: ['lead-a', 'lead-b'], request_id: expect.any(String) });
   expect(result).toMatchObject({ sent: 1, dryRun: 1, logFailed: 1, interrupted: false });
   expect(outreachResultText(result)).toContain('1 activity-log updates failed');
 });
@@ -34,6 +34,20 @@ it('stops on legacy queued responses or malformed partial counts instead of clai
   const result = await sendOutreachBatches('/api/buyers/outreach/email', 'buyer_ids', ['a', 'b', 'c', 'd', 'e', 'f']);
   expect(result).toMatchObject({ sent: 0, interrupted: true, unresolved: 5, unattempted: 1 });
   expect(mocks.api).toHaveBeenCalledTimes(1);
+});
+
+it('keeps one explicit campaign reference across bounded lead batches', async () => {
+  mocks.api.mockResolvedValueOnce(reply(5)).mockResolvedValueOnce(reply(1));
+  const request_id = '06e6a013-74b5-4fcd-ad9f-98bfd4779f12';
+  await sendOutreachBatches('/api/marketing/bulk-sms-warm', 'lead_ids', ['a','b','c','d','e','f'], { request_id });
+  expect(mocks.api.mock.calls.map(call => JSON.parse(call[1].body).request_id)).toEqual([request_id, request_id]);
+});
+
+it('stops later batches when a recorded SMS outcome is unknown and preserves known counts', async () => {
+  mocks.api.mockResolvedValueOnce(reply(2, { skipped_count: 2, unknown_count: 1 }));
+  const result = await sendOutreachBatches('/api/marketing/bulk-sms-warm', 'lead_ids', ['a','b','c','d','e','f']);
+  expect(result).toMatchObject({ sent: 2, skipped: 2, failed: 0, unresolved: 1, unattempted: 1, interrupted: true });
+  expect(mocks.api).toHaveBeenCalledOnce();
 });
 
 it('shows interrupted buyer sends without a resend button or automatic navigation', async () => {
