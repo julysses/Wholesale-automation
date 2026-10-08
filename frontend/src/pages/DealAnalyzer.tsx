@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { calculateMAO, formatCurrency } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Plus, Trash2, Calculator, TrendingUp, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -61,41 +60,56 @@ export function DealAnalyzer() {
   const queryClient = useQueryClient();
   const allLeads = leadsData?.data ?? [];
 
-  const handleSaveToLead = async () => {
-    if (!saveLeadId) return toast.error('Select a lead to save to');
-    if (arv === 0) return toast.error('Calculate ARV first');
-    setSavingToLead(true);
+  const pending = useRef<{ request_id: string; lead_id: string; inputs: Record<string, unknown> } | null>(null);
+  const inFlight = useRef(false);
+  const [locked, setLocked] = useState(false);
+  const [savedReference, setSavedReference] = useState('');
+  const [recoveryBlocked, setRecoveryBlocked] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  const draftKey = 'hilltop.pending-manual-analysis.v1';
+  useEffect(() => {
     try {
-      // One durable analysis write also updates the lead through the existing
-      // deal_analysis_sync trigger, so Acquisitions sees the same analysis.
-      const { error } = await supabase.from('deal_analyses').insert({
-        lead_id: saveLeadId,
-        arv_low: arv, arv_mid: arv, arv_high: arv,
-        arv_confidence: 'low',
-        arv_comp_count: comps.filter(c => c.sale_price > 0 && c.sqft > 0).length,
-        arv_notes: 'Operator-entered comparable analysis; values are estimates.',
-        repair_tier: condition === 'cosmetic' ? 'light' : condition === 'full_renovation' ? 'heavy' : 'moderate',
-        repair_cost_low: estimatedRepairs, repair_cost_mid: estimatedRepairs, repair_cost_high: estimatedRepairs,
-        assignment_fee: assignmentFee,
-        mao,
-        offer_range_low: Math.max(0, mao * 0.9), offer_range_high: Math.max(0, mao),
-        is_viable: mao > 0,
-        summary: aiRec || 'Manual comparable and repair analysis.',
-      }).select('id').single();
-      if (error) throw error;
-      const { error: repairError } = await supabase.from('leads')
-        .update({ estimated_repairs: estimatedRepairs }).eq('id', saveLeadId).select('id').single();
-      if (repairError) throw new Error('Analysis saved, but the lead repair estimate could not be updated. Please retry.');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['leads'] }),
-        queryClient.invalidateQueries({ queryKey: ['deal_analyses'] }),
-      ]);
+      const raw = sessionStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (!draft?.request_id || !draft?.lead_id || !draft?.inputs) throw new Error('Invalid draft');
+      pending.current = draft;
+      const i = draft.inputs;
+      setAddress(i.address); setSqft(i.sqft); setBeds(i.beds); setBaths(i.baths);
+      setCondition(i.condition); setComps(i.comps); setLineItems(i.line_items);
+      setArv(i.arv); setRepairOverride(i.repair_override); setAssignmentFee(i.assignment_fee);
+      setAiRec(i.summary); setSaveLeadId(draft.lead_id); setLocked(true);
+      setSaveMessage('Recovered an unconfirmed save. Retry the same reference to retrieve its result.');
+    } catch { setRecoveryBlocked(true); setLocked(true); setSaveMessage('Pending save could not be recovered. Review existing analyses before saving again.'); }
+  }, []);
+  const handleSaveToLead = async () => {
+    if (inFlight.current || savedReference || recoveryBlocked) return;
+    if (!saveLeadId) return toast.error('Select a lead to save to');
+    if (arv <= 0) return toast.error('Calculate ARV first');
+    inFlight.current = true; setSavingToLead(true);
+    try {
+      if (!pending.current) {
+        const draft = { request_id: crypto.randomUUID(), lead_id: saveLeadId, inputs: {
+          address, sqft, beds, baths, condition, comps, line_items: lineItems, arv,
+          repairs: estimatedRepairs, repair_override: repairOverride, assignment_fee: assignmentFee, summary: aiRec,
+        } };
+        // Save recovery reference before sending; failed storage must not dispatch.
+        sessionStorage.setItem(draftKey, JSON.stringify(draft));
+        pending.current = draft;
+      }
+      setLocked(true);
+      const response = await apiFetch('/api/analyses', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(pending.current) });
+      const value = await response.json();
+      if (value.analysis?.id !== pending.current.request_id || value.analysis?.lead_id !== pending.current.lead_id) throw new Error('Analysis acknowledgement is unconfirmed. Retry the same reference.');
+      setSavedReference(value.analysis.id);
+      setSaveMessage(`Saved analysis ${value.analysis.id}. Inputs and repair estimate persisted together. This estimate does not send an offer.`);
+      sessionStorage.removeItem(draftKey);
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ['leads'] }), queryClient.invalidateQueries({ queryKey: ['deal_analyses'] })]);
       toast.success('Analysis saved to lead and Acquisitions');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save analysis. Please retry.');
-    } finally {
-      setSavingToLead(false);
-    }
+      const message = error instanceof Error ? error.message : 'Save outcome is unconfirmed. Retry the same reference.';
+      setSaveMessage(message); toast.error(message);
+    } finally { inFlight.current = false; setSavingToLead(false); }
   };
 
   // Calculate ARV from comps
@@ -182,7 +196,7 @@ export function DealAnalyzer() {
         <p className="text-sm text-gray-500 mt-0.5">Calculate your MAO and analyze deal profitability</p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <fieldset disabled={locked || savingToLead} className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* LEFT: Input panel */}
         <div className="space-y-5">
           {/* Property Info */}
@@ -366,31 +380,6 @@ export function DealAnalyzer() {
             </CardContent>
           </Card>
 
-          {/* Save to Lead */}
-          {arv > 0 && (
-            <Card>
-              <CardHeader><CardTitle>Save to Lead</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <Select
-                  label="Select Lead"
-                  value={saveLeadId}
-                  onChange={(e) => setSaveLeadId(e.target.value)}
-                  options={allLeads.map((l) => ({ value: l.id, label: l.property_address }))}
-                  placeholder="Choose a lead..."
-                />
-                <Button
-                  onClick={handleSaveToLead}
-                  loading={savingToLead}
-                  disabled={!saveLeadId}
-                  icon={<Save className="h-4 w-4" />}
-                  className="w-full"
-                >
-                  Save ARV + Repairs + MAO to Lead
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Summary */}
           {arv > 0 && (
             <Card>
@@ -417,7 +406,36 @@ export function DealAnalyzer() {
             </Card>
           )}
         </div>
-      </div>
+      </fieldset>
+          {/* Save to Lead */}
+          {arv > 0 && (
+            <Card>
+              <CardHeader><CardTitle>Save to Lead</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <Select
+                  label="Select Lead"
+                  disabled={locked}
+                  value={saveLeadId}
+                  onChange={(e) => setSaveLeadId(e.target.value)}
+                  options={allLeads.map((l) => ({ value: l.id, label: l.property_address }))}
+                  placeholder="Choose a lead..."
+                />
+                <Button
+                  onClick={handleSaveToLead}
+                  loading={savingToLead}
+                  disabled={!saveLeadId || !!savedReference || loadingAi || recoveryBlocked}
+                  icon={<Save className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  {locked && !savedReference ? 'Retry same analysis save' : 'Save ARV + Repairs + MAO to Lead'}
+                </Button>
+                {pending.current && <p className="text-xs">Save reference: {pending.current.request_id}</p>}
+                {saveMessage && <p role="status">{saveMessage}</p>}
+                {savedReference && <Button variant="outline" onClick={() => { pending.current = null; setLocked(false); setSavedReference(''); setSaveMessage(''); }}>Start a new analysis</Button>}
+              </CardContent>
+            </Card>
+          )}
+
     </div>
   );
 }

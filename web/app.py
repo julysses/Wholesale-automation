@@ -59,6 +59,7 @@ from web.api.fb_ads_api import router as fb_ads_router  # noqa: E402
 from web.api.marketing_api import router as marketing_router  # noqa: E402
 from web.api.leads_api import router as leads_router          # noqa: E402
 from web.api.lists_api import router as lists_router          # noqa: E402
+from web.api.analysis_api import router as analysis_router
 from web.api.appointments_api import router as appointments_router  # noqa: E402
 from web.auth import require_operator  # noqa: E402
 
@@ -122,6 +123,7 @@ app.include_router(fb_ads_router)      # POST /api/ai/fb-ads/*
 app.include_router(marketing_router)   # POST /api/marketing/*
 app.include_router(leads_router)       # POST /api/leads/*
 app.include_router(lists_router)       # GET/DELETE /api/lead-lists/*
+app.include_router(analysis_router)
 app.include_router(appointments_router) # POST /api/appointments/*
 
 # ── Load settings from Supabase app_settings (env vars take priority) ─────────

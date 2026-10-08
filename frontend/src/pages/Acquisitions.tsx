@@ -82,6 +82,8 @@ interface Appointment {
 }
 
 interface DealAnalysis {
+  created_by?: string | null;
+  operator_inputs?: { address: string; sqft: number; beds: number; baths: number; arv: number; repairs: number; assignment_fee: number; comps: { address: string; sqft: number; sale_price: number; sale_date: string; distance: number }[]; line_items: { label: string; amount: number }[] } | null;
   id: string;
   lead_id: string | null;
   arv_low: number | null;
@@ -547,7 +549,7 @@ function DealAnalysisCard({ deal }: { deal: DealAnalysis }) {
           <p className="font-semibold text-gray-900 mt-1 truncate">{deal.property_address ?? 'Unknown'}</p>
           {deal.owner_name && <p className="text-xs text-gray-500">{deal.owner_name}</p>}
         </div>
-        <button onClick={() => setOpen(!open)} className="p-1 rounded hover:bg-gray-100 text-gray-400 shrink-0">
+        <button aria-label="Review saved analysis" aria-expanded={open} onClick={() => setOpen(!open)} className="p-1 rounded hover:bg-gray-100 text-gray-400 shrink-0">
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
       </div>
@@ -581,6 +583,16 @@ function DealAnalysisCard({ deal }: { deal: DealAnalysis }) {
       {open && (
         <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
           {deal.summary && <p className="text-xs text-gray-600 italic">{deal.summary}</p>}
+          {deal.operator_inputs && <div className="text-xs space-y-2">
+            <p>Operator estimate · saved {new Date(deal.analyzed_at).toLocaleString()} · reference {deal.id}</p>
+            <p>Subject: {deal.operator_inputs.address || 'Address not entered'} · {deal.operator_inputs.sqft} sqft · {deal.operator_inputs.beds} beds · {deal.operator_inputs.baths} baths</p>
+            <p>Assignment fee: {formatCurrency(deal.operator_inputs.assignment_fee)}. MAO uses 70% of ARV less repairs and this fee. Review estimates before approving an offer; no offer was sent.</p>
+            <p>Saved comparables:</p>
+            {deal.operator_inputs.comps.map((comp, i) => <p key={i}>{comp.address || 'Address not entered'} · {comp.sqft} sqft · {formatCurrency(comp.sale_price)} · {comp.sale_date || 'Date not entered'} · {comp.distance} miles</p>)}
+            <p>Saved repair line items:</p>
+            {deal.operator_inputs.line_items.map((item, i) => <p key={i}>{item.label}: {formatCurrency(item.amount)}</p>)}
+            <p>Effective repair estimate: {formatCurrency(deal.operator_inputs.repairs)} (may use an override or condition estimate).</p>
+          </div>}
           {deal.weak_deal_reasons && deal.weak_deal_reasons.length > 0 && (
             <div className="flex items-start gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
@@ -632,7 +644,7 @@ function OfferRecCard({ rec }: { rec: OfferRec }) {
           <p className="font-semibold text-gray-900 mt-1 truncate">{rec.property_address ?? 'Unknown'}</p>
           {rec.owner_name && <p className="text-xs text-gray-500">{rec.owner_name}</p>}
         </div>
-        <button onClick={() => setOpen(!open)} className="p-1 rounded hover:bg-gray-100 text-gray-400 shrink-0">
+        <button aria-label="Review saved analysis" aria-expanded={open} onClick={() => setOpen(!open)} className="p-1 rounded hover:bg-gray-100 text-gray-400 shrink-0">
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
       </div>
