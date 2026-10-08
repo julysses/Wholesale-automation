@@ -42,6 +42,41 @@ def _texas_now() -> datetime:
     return datetime.now(tz=tz)
 
 
+def sms_consent_blocker(sb, lead_id: str, to_number: str) -> str | None:
+    # This registration covers consented property inquiries only, not owner
+    # alerts or buyer-list blasts. Require a matching durable form receipt.
+    rows = sb.table("lead_form_submissions").select("raw_answers").eq(
+        "lead_id", str(lead_id)).order("created_at", desc=True).limit(1).execute().data
+    answers = rows[0].get("raw_answers", {}) if rows else {}
+    authorized = False
+    if rows:
+        # A recorded website refusal must never fall back to older consent.
+        consent = answers.get("_sms_consent", {})
+        try:
+            authorized = (consent.get("accepted") is True and consent.get("rendered_disclosure_matches") is True
+                          and normalize_us_phone(answers.get("phone")) == to_number)
+        except ValueError:
+            pass
+    else:
+        leads = sb.table("leads").select("source,internal_notes,owner_phone_1,property_address,dnc").eq(
+            "id", str(lead_id)).limit(1).execute().data
+        lead = leads[0] if leads else {}
+        if lead.get("source") == "facebook_lead_ad" and lead.get("dnc") is False:
+            notice_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{lead_id}"))
+            notices = sb.table("app_notifications").select("metadata").eq("id", notice_id).limit(1).execute().data
+            metadata = notices[0].get("metadata", {}) if notices else {}
+            authorized = (metadata.get("source") == "facebook_lead_ad"
+                          and matching_native_consent(metadata.get("consent_receipt"), to_number, lead, "sms"))
+            answers = {"property_address": lead.get("property_address", "")}
+    if not authorized:
+        return "No matching property inquiry consent receipt"
+    safety = sb.rpc("intake_phone_status", {"p_phone": to_number,
+        "p_lead": str(lead_id), "p_property": answers.get("property_address", "")}).execute().data
+    if not isinstance(safety, dict) or safety.get("suppressed") is not False:
+        return "Suppression lookup blocked sending"
+    return None
+
+
 class SMSClient:
     """
     Provider-agnostic SMS client with mandatory compliance guards.
@@ -169,6 +204,7 @@ class SMSClient:
 
     def _send_twilio(self, message: OutreachMessage, to_number: str) -> bool:
         from twilio.rest import Client
+        from twilio.http.http_client import TwilioHttpClient
         from tools.crm import get_supabase_client
 
         if not settings.sms_live_enabled:
@@ -188,45 +224,18 @@ class SMSClient:
         sb = get_supabase_client()
         if sb is None:
             return False
-        # This registration covers consented property inquiries only, not owner
-        # alerts or buyer-list blasts. Require a matching durable form receipt.
-        rows = sb.table("lead_form_submissions").select("raw_answers").eq(
-            "lead_id", str(message.lead_id)).order("created_at", desc=True).limit(1).execute().data
-        answers = rows[0].get("raw_answers", {}) if rows else {}
-        authorized = False
-        if rows:
-            # A recorded website refusal must never fall back to older consent.
-            consent = answers.get("_sms_consent", {})
-            try:
-                authorized = (consent.get("accepted") is True and consent.get("rendered_disclosure_matches") is True
-                              and normalize_us_phone(answers.get("phone")) == to_number)
-            except ValueError:
-                pass
-        else:
-            leads = sb.table("leads").select("source,internal_notes,owner_phone_1,property_address,dnc").eq(
-                "id", str(message.lead_id)).limit(1).execute().data
-            lead = leads[0] if leads else {}
-            if lead.get("source") == "facebook_lead_ad" and lead.get("dnc") is False:
-                notice_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{message.lead_id}"))
-                notices = sb.table("app_notifications").select("metadata").eq("id", notice_id).limit(1).execute().data
-                metadata = notices[0].get("metadata", {}) if notices else {}
-                authorized = (metadata.get("source") == "facebook_lead_ad"
-                              and matching_native_consent(metadata.get("consent_receipt"), to_number, lead, "sms"))
-                answers = {"property_address": lead.get("property_address", "")}
-        if not authorized:
-            message.mark_stopped("No matching property inquiry consent receipt")
+        blocker = sms_consent_blocker(sb, str(message.lead_id), to_number)
+        if blocker:
+            message.mark_stopped(blocker)
             return False
-        safety = sb.rpc("intake_phone_status", {"p_phone": to_number,
-            "p_lead": str(message.lead_id), "p_property": answers.get("property_address", "")}).execute().data
-        if not isinstance(safety, dict) or safety.get("suppressed") is not False:
-            message.mark_stopped("Suppression lookup blocked sending")
-            return False
-        claim = sb.table("sms_events").upsert({"id": str(message.id), "lead_id": str(message.lead_id),
-            "provider": "twilio", "direction": "outbound", "phone_number": to_number,
-            "body": message.body, "status": "submitting"}, on_conflict="id", ignore_duplicates=True).execute()
-        if not claim.data:
-            return False  # An earlier attempt may have reached Twilio; never auto-replay.
-        client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+        claim = sb.rpc("claim_twilio_sms", {"p_id": str(message.id), "p_lead": str(message.lead_id),
+            "p_phone": to_number, "p_body": message.body}).execute().data
+        if not isinstance(claim, dict) or claim.get("claimed") is not True:
+            reason = claim.get("reason", "claim_unconfirmed") if isinstance(claim, dict) else "claim_unconfirmed"
+            message.mark_stopped(f"SMS dispatch blocked: {reason}")
+            return False  # Never replay an ambiguous or duplicate attempt.
+        client = Client(settings.twilio_account_sid, settings.twilio_auth_token,
+            http_client=TwilioHttpClient(timeout=5, max_retries=0))
         try:
             result = client.messages.create(body=message.body, from_=settings.twilio_from_number,
                 messaging_service_sid=settings.twilio_messaging_service_sid, to=to_number,

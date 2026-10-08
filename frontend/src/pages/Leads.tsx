@@ -6,6 +6,7 @@ import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity, 
 import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
 import { OutreachTimeline } from '@/components/leads/OutreachTimeline';
+import { SMSNurtureDialog } from '@/components/leads/SMSNurtureDialog';
 import { RetellCallDialog } from '@/components/leads/RetellCallDialog';
 import { StackBadge } from '@/components/leads/StackBadge';
 import { Modal } from '@/components/ui/modal';
@@ -148,6 +149,7 @@ export function Leads() {
   const [importOpen, setImportOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
+  const [nurtureLead, setNurtureLead] = useState<Lead | null>(null);
   const [callLead, setCallLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -196,21 +198,6 @@ export function Leads() {
       toast.success('Lead marked ready for dialer');
     } catch {
       toast.error('Failed to update lead status');
-    }
-  };
-
-  const handleEnrollSMS = async (lead: Lead) => {
-    if (!confirm(`Enroll ${lead.property_address} in Launch Control SMS nurture?`)) return;
-    try {
-      const { error, data: saved } = await supabase.from('leads').update({
-        status: 'sms_nurture',
-        sms_sequence_active: true,
-      }).eq('id', lead.id).select('id').single();
-      if (error || !saved) throw error || new Error('Lead update was not saved');
-      await qc.invalidateQueries({ queryKey: ['leads'] });
-      toast.success('Lead marked for SMS nurture');
-    } catch {
-      toast.error('Failed to enroll lead in SMS nurture');
     }
   };
 
@@ -445,11 +432,11 @@ export function Leads() {
                               <PhoneCall className="h-3.5 w-3.5" /> Push to Dialer
                             </button>
                           )}
-                          {/* SMS nurture — shown for Tier C or unscored leads */}
-                          {lead.status !== 'dnc' && !lead.sms_sequence_active && (
+                          {/* Always allow review/cancellation; the server checks sending eligibility. */}
+                          {(
                             <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-teal-600 hover:bg-teal-50"
-                              onClick={() => { handleEnrollSMS(lead); setOpenMenuId(null); }}>
-                              <Zap className="h-3.5 w-3.5" /> Enroll in SMS Nurture
+                              onClick={() => { setNurtureLead(lead); setOpenMenuId(null); }}>
+                              <Zap className="h-3.5 w-3.5" /> Review SMS nurture
                             </button>
                           )}
                           <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50" onClick={() => { if (confirm('Delete this lead?')) deleteLead.mutate(lead.id); setOpenMenuId(null); }}>
@@ -495,6 +482,7 @@ export function Leads() {
       {detailLead && (
         <LeadDetailDrawer lead={detailLead} onClose={() => setDetailLead(null)} />
       )}
+      {nurtureLead && <SMSNurtureDialog key={nurtureLead.id} lead={nurtureLead} onClose={() => setNurtureLead(null)} />}
       {callLead && <RetellCallDialog key={callLead.id} lead={callLead} onClose={() => setCallLead(null)} />}
     </div>
   );

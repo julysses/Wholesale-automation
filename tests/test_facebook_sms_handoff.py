@@ -43,6 +43,13 @@ class DB(MemoryDB):
         return Query(self, name)
 
     def rpc(self, name, _payload):
+        if name == 'claim_twilio_sms':
+            existing = _payload['p_id'] in self.tables.get('sms_events', {})
+            if not existing:
+                self.table('sms_events').upsert({'id':_payload['p_id'], 'lead_id':_payload['p_lead'],
+                    'phone_number':_payload['p_phone'], 'body':_payload['p_body'], 'provider':'twilio',
+                    'direction':'outbound','status':'submitting'},on_conflict='id',ignore_duplicates=True).execute()
+            return SimpleNamespace(execute=lambda: SimpleNamespace(data={'claimed':not existing}))
         assert name == 'intake_phone_status'
         return SimpleNamespace(execute=lambda: SimpleNamespace(data={'suppressed': self.suppressed, 'duplicate': False}))
 
@@ -53,7 +60,7 @@ def intake(monkeypatch):
     db, sdk, email = DB(), MagicMock(), MagicMock()
     sdk.messages.create.return_value.sid = 'SM' + 'a' * 32
     email.send.return_value = True
-    monkeypatch.setattr(twilio.rest, 'Client', lambda *_: sdk)
+    monkeypatch.setattr(twilio.rest, 'Client', lambda *_args, **_kwargs: sdk)
     monkeypatch.setattr(crm, 'get_supabase_client', lambda: db)
     monkeypatch.setattr(forms, '_get_supabase', lambda: db)
     monkeypatch.setattr(forms, 'EmailClient', lambda: email)

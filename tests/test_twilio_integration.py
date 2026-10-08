@@ -95,13 +95,13 @@ def sending(setup,monkeypatch):
     db=MagicMock(); q=db.table.return_value
     q.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data=[{
         'raw_answers':{'phone':PHONE,'property_address':'Test','_sms_consent':{'accepted':True,'rendered_disclosure_matches':True}}}]
-    db.rpc.return_value.execute.return_value.data={'suppressed':False}
+    db.rpc.return_value.execute.return_value.data={'suppressed':False,'claimed':True}
     q.upsert.return_value.execute.return_value.data=[{'id':'saved'}]
     q.update.return_value.eq.return_value.execute.return_value.data=[{'id':'saved'}]
     monkeypatch.setattr(crm,'get_supabase_client',lambda:db)
     monkeypatch.setattr('tools.sms_client.reconcile_twilio_receipt',lambda *_:'accepted')
     sdk=MagicMock();sdk.messages.create.return_value.sid=MESSAGE
-    monkeypatch.setattr(twilio.rest,'Client',lambda *_:sdk)
+    monkeypatch.setattr(twilio.rest,'Client',lambda *_args, **_kwargs:sdk)
     return db,sdk,OutreachMessage(lead_id=uuid4(),channel=OutreachChannel.SMS,body='Test')
 
 def test_send_has_durable_claim_sid_and_callback(sending):
@@ -113,7 +113,7 @@ def test_send_has_durable_claim_sid_and_callback(sending):
 
 def test_duplicate_claim_never_sends_again(sending):
     db,sdk,msg=sending
-    db.table.return_value.upsert.return_value.execute.return_value.data=[]
+    db.rpc.return_value.execute.return_value.data={'suppressed':False,'claimed':False,'reason':'existing_reference'}
     assert SMSClient()._send_twilio(msg,PHONE) is False
     sdk.messages.create.assert_not_called()
 

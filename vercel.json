@@ -18,13 +18,32 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "frontend/dist" }
+      "config": {
+        "distDir": "frontend/dist"
+      }
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/index.py" },
-    { "src": "/webhooks/(.*)", "dest": "/api/index.py" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/webhooks/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/webhooks/_worker/sms-nurture",
+      "schedule": "0 15 * * 1-5"
+    }
   ]
 }

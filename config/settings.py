@@ -60,6 +60,7 @@ class Settings:
     twilio_from_number: str = os.getenv("TWILIO_FROM_NUMBER", "")
     twilio_messaging_service_sid: str = os.getenv("TWILIO_MESSAGING_SERVICE_SID", "")
     twilio_webhook_base_url: str = os.getenv("TWILIO_WEBHOOK_BASE_URL", "")
+    sms_nurture_enabled: bool = os.getenv("SMS_NURTURE_ENABLED", "false").lower() == "true"
     sms_live_enabled: bool = os.getenv("SMS_LIVE_ENABLED", "false").lower() == "true"
     sms_allowed_recipients: str = os.getenv("SMS_ALLOWED_RECIPIENTS", "")
     telnyx_api_key: str = os.getenv("TELNYX_API_KEY", "")

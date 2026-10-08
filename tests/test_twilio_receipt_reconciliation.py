@@ -185,6 +185,11 @@ class SendDB(DB):
     def table(self, name):
         return Consent() if name == 'lead_form_submissions' else super().table(name)
     def rpc(self, name, _args):
+        if name == 'claim_twilio_sms':
+            self.table('sms_events').upsert({'id':_args['p_id'],'lead_id':_args['p_lead'],
+                'provider':'twilio','direction':'outbound','phone_number':_args['p_phone'],
+                'body':_args['p_body'],'status':'submitting'},on_conflict='id',ignore_duplicates=True).execute()
+            return SimpleNamespace(execute=lambda:SimpleNamespace(data={'claimed':True}))
         assert name == 'intake_phone_status'
         return SimpleNamespace(execute=lambda:SimpleNamespace(data={'suppressed':False}))
 
