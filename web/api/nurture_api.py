@@ -54,6 +54,11 @@ def _readiness(sb, lead_id):
         blockers.append("Scheduled worker secret is not configured")
     events = []
     if phone:
+        limits=sb.rpc("outreach_recipient_limits",{"p_phone":phone}).execute().data
+        if not isinstance(limits,dict) or "blocker" not in limits:
+            blockers.append("Recipient contact limits could not be verified")
+        elif limits["blocker"]:
+            blockers.append("An earlier text or call blocks another automated contact: "+limits["blocker"])
         consent = sms_consent_blocker(sb, str(lead_id), phone)
         if consent:
             blockers.append(consent)

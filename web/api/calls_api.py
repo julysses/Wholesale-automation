@@ -1,10 +1,11 @@
 """Admin-only Retell initiation with durable claims and explicit AI consent."""
 import logging
 import re
+from datetime import datetime, timezone, timedelta
 from uuid import UUID, NAMESPACE_URL, uuid5
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from config.settings import settings
@@ -34,6 +35,25 @@ def _receipt(sb, lead_id):
     return notices[0].get('metadata',{}).get('consent_receipt') if notices else None
 
 
+LIMIT_REASONS = {
+    'unresolved_attempt': 'An earlier text or call remains active or unresolved',
+    'attempt_limit': 'Recipient has reached two automated seller contacts in 30 days',
+    'contact_cooldown': 'Recipient was contacted in the last 24 hours',
+}
+
+
+def _recipient_blocker(sb, phone):
+    limits=sb.rpc('outreach_recipient_limits',{'p_phone':phone}).execute().data
+    if not isinstance(limits,dict) or 'blocker' not in limits:
+        raise HTTPException(503,'Recipient contact limits could not be verified')
+    reason=limits['blocker']
+    return LIMIT_REASONS.get(reason,'Recipient contact limits block calling') if reason else None
+
+
+def _status_blocker(lead):
+    return lead.get('status') in {'dead','dnc','closed','under_contract','responding','hot','qualified_hot','appointment_set','appt_set','offer_made'}
+
+
 def lead_readiness(lead_id):
     sb=_storage()
     try:
@@ -54,6 +74,7 @@ def lead_readiness(lead_id):
         except HTTPException:allowed=set()
         if not phone or phone not in allowed:blockers.append('Phone is outside the authorized call recipient list')
         if lead.get('dnc') is not False:blockers.append('Lead is suppressed or its suppression state is unknown')
+        if _status_blocker(lead):blockers.append('Lead needs personal follow-up or is no longer eligible for automated calling')
         consent=_consented(receipt,phone,lead) if phone else False
         if not consent:blockers.append('Matching explicit AI-call consent is missing')
         now=_texas_now()
@@ -64,6 +85,9 @@ def lead_readiness(lead_id):
                 'p_property':lead.get('property_address','')}).execute().data
             if not isinstance(safety,dict) or safety.get('suppressed') is not False:
                 blockers.append('Phone suppression verification blocks calling')
+        if phone:
+            contact_blocker=_recipient_blocker(sb,phone)
+            if contact_blocker:blockers.append(contact_blocker)
         attempts=[]
         if phone:
             # A second CRM lead can share this phone. Match the database's recipient lock.
@@ -73,7 +97,7 @@ def lead_readiness(lead_id):
         attempt=_record(attempts[0]) if attempts else None
         if attempt and attempt['status']!='completed':blockers.append('An earlier call remains active or unresolved')
         paused=lead.get('ai_calling_paused') is not False
-        return {'lead_id':str(lead_id),'phone_number':phone,'ai_calling_paused':paused,
+        return {'lead_id':str(lead_id),'property_address':lead.get('property_address',''),'phone_number':phone,'ai_calling_paused':paused,
             'can_review':not blockers and paused,'can_call':not blockers and not paused,
             'blockers':blockers,'attempt':attempt,
             'consent':{'accepted':consent,'disclosure':receipt.get('ai_calls',{}).get('disclosure') if consent else None,
@@ -153,7 +177,7 @@ def start_call(body: StartCall, operator_id: str):
     if not rows:
         raise HTTPException(404,'Lead not found')
     lead=rows[0]
-    if lead.get('dnc') is not False or lead.get('ai_calling_paused') is not False:
+    if lead.get('dnc') is not False or lead.get('ai_calling_paused') is not False or _status_blocker(lead):
         raise HTTPException(409,'Lead is suppressed or AI calling remains paused')
     if _phone(lead.get('owner_phone_1'))!=phone:
         raise HTTPException(409,'Requested phone does not match the lead')
@@ -170,11 +194,14 @@ def start_call(body: StartCall, operator_id: str):
     claim={'id':reference,'lead_id':str(body.lead_id),'phone_number':phone,
            'requested_by':operator_id,'status':'submitting'}
     try:
-        saved=sb.table('retell_call_requests').upsert(claim,on_conflict='id',ignore_duplicates=True).execute().data
+        result=sb.rpc('claim_retell_call',{'p_id':reference,'p_lead':str(body.lead_id),
+            'p_phone':phone,'p_operator':operator_id}).execute().data
+        saved=isinstance(result,dict) and result.get('claimed') is True
     except Exception:
         raise HTTPException(409,'Call claim unavailable or an earlier call remains unresolved')
     if not saved:
-        raise HTTPException(409,'Another request already claimed this call reference')
+        reason=result.get('reason') if isinstance(result,dict) else None
+        raise HTTPException(409,LIMIT_REASONS.get(reason,'Another request already claimed this call or current limits block it'))
     req=CallRequest(lead_id=str(body.lead_id),phone_number=phone,
         property_address=lead.get('property_address',''),
         owner_name=' '.join(str(lead.get(key) or '') for key in ('owner_first_name','owner_last_name')).strip(),
@@ -274,6 +301,137 @@ async def readiness(lead_id: UUID):
 @router.post('/lead/{lead_id}/review')
 async def review(lead_id: UUID,body: ReviewCall,request: Request):
     return await run_in_threadpool(review_lead,lead_id,body.acknowledged,request.state.user_id)
+
+
+class BatchSelection(BaseModel):
+    lead_ids: list[UUID] = Field(min_length=1,max_length=5)
+
+class StartBatch(BatchSelection):
+    request_id: UUID
+    acknowledged: bool = False
+
+
+def preview_batch(body: BatchSelection):
+    rows=[]
+    for lead_id in dict.fromkeys(body.lead_ids):
+        rows.append(lead_readiness(lead_id))
+    phones=[row['phone_number'] for row in rows if row['phone_number']]
+    if len(phones)!=len(set(phones)):
+        for row in rows:
+            row['blockers'].append('Selection includes duplicate recipients; select one lead per phone')
+            row['can_call']=row['can_review']=False
+    return {'leads':rows,'can_start':all(row['can_call'] for row in rows)}
+
+
+def batch_status(batch_id, operator_id):
+    rows=_storage().table('retell_call_batches').select('*').eq('id',str(batch_id)).eq('requested_by',operator_id).limit(1).execute().data
+    if not rows:raise HTTPException(404,'Call batch not found for this operator')
+    return rows[0]
+
+
+def create_batch(body: StartBatch, operator_id):
+    sb=_storage()
+    lead_ids=[str(value) for value in dict.fromkeys(body.lead_ids)]
+    previous=sb.table('retell_call_batches').select('*').eq('id',str(body.request_id)).limit(1).execute().data
+    if previous:
+        row=previous[0]
+        if row['requested_by']!=operator_id or row['lead_ids']!=lead_ids:
+            raise HTTPException(409,'Batch reference already belongs to another selection')
+        return row  # Repeated creation never dispatches or expands a batch.
+    if not body.acknowledged:raise HTTPException(409,'Review every selected lead and saved AI-call consent first')
+    state=preview_batch(body)
+    if not state['can_start']:raise HTTPException(409,'Selected leads are not all approved and eligible. Refresh the review.')
+    outcomes=[{'lead_id':row['lead_id'],'phone_number':row['phone_number'],
+               'request_id':str(uuid5(body.request_id,'retell:'+row['lead_id'])),'status':'pending'} for row in state['leads']]
+    row={'id':str(body.request_id),'requested_by':operator_id,'lead_ids':lead_ids,'outcomes':outcomes,'status':'ready'}
+    try:
+        saved=sb.table('retell_call_batches').upsert(row,on_conflict='id',ignore_duplicates=True).execute().data
+    except Exception:raise HTTPException(503,'Batch persistence unconfirmed; refresh without a new reference')
+    if not saved:
+        observed=batch_status(body.request_id,operator_id)
+        if observed['lead_ids']!=lead_ids:raise HTTPException(409,'Batch reference belongs to another selection')
+        return observed
+    return saved[0]
+
+
+def _finish_batch(sb, batch_id, item, status, reason):
+    result=sb.rpc('finish_retell_batch_item',{'p_batch':str(batch_id),'p_reference':item['request_id'],
+        'p_status':status,'p_reason':reason}).execute().data
+    if not isinstance(result,dict) or result.get('saved') is not True:
+        raise HTTPException(503,'Batch outcome unconfirmed; refresh and reconcile before continuing')
+
+
+def batch_next(batch_id, operator_id):
+    batch_status(batch_id,operator_id)
+    sb=_storage()
+    result=sb.rpc('claim_retell_batch_next',{'p_batch':str(batch_id),'p_operator':operator_id}).execute().data
+    if not isinstance(result,dict) or not isinstance(result.get('claimed'),bool):
+        raise HTTPException(503,'Batch claim unconfirmed; refresh without resubmitting')
+    if not result['claimed']:return batch_status(batch_id,operator_id)
+    item=result['item']
+    status,reason='unknown','Provider outcome unconfirmed; reconcile before further calls'
+    try:
+        record=start_call(StartCall(request_id=item['request_id'],lead_id=item['lead_id'],phone_number=item['phone_number']),operator_id)
+        if record.get('call_id') and record['status'] not in ('submitting','unknown'):
+            status,reason='accepted','Provider accepted. Answered call and completion are verified separately.'
+    except HTTPException as exc:
+        rows=sb.table('retell_call_requests').select('*').eq('id',item['request_id']).limit(1).execute().data or []
+        if not rows and exc.status_code<500:
+            status,reason='blocked',str(exc.detail)
+        elif rows and rows[0].get('provider_call_id') and rows[0].get('status') in ('accepted','completed'):
+            status,reason='accepted','Durable receipt confirms provider acceptance; no resubmission'
+    except Exception:
+        pass  # The batch claim remains durable; no automatic provider retry.
+    _finish_batch(sb,batch_id,item,status,reason)
+    if status=='unknown':record_provider_alert(sb,'retell',item['request_id'],'unknown',item['lead_id'])
+    return batch_status(batch_id,operator_id)
+
+
+def reconcile_batch(batch_id,operator_id):
+    batch=batch_status(batch_id,operator_id)
+    if batch['status'] not in ('processing','review'):return batch
+    sb=_storage()
+    for item in batch['outcomes']:
+        if item['status'] not in ('submitting','unknown'):continue
+        rows=sb.table('retell_call_requests').select('*').eq('id',item['request_id']).limit(1).execute().data or []
+        if rows and rows[0].get('provider_call_id') and rows[0].get('status') in ('accepted','completed'):
+            _finish_batch(sb,batch_id,item,'accepted','Correlated durable provider receipt confirmed; no redial')
+        elif batch.get('claimed_at') and datetime.fromisoformat(batch['claimed_at'].replace('Z','+00:00'))<datetime.now(timezone.utc)-timedelta(minutes=5):
+            _finish_batch(sb,batch_id,item,'unknown','No confirmed provider outcome; operator reconciliation required')
+            record_provider_alert(sb,'retell',item['request_id'],'unknown',item['lead_id'])
+    return batch_status(batch_id,operator_id)
+
+@router.post('/batch/preview')
+async def batch_preview(body: BatchSelection):
+    return await run_in_threadpool(preview_batch,body)
+
+@router.post('/batch')
+async def batch_create(body: StartBatch,request: Request):
+    return await run_in_threadpool(create_batch,body,request.state.user_id)
+
+@router.get('/batch/recent')
+async def recent_batch(request: Request):
+    rows=_storage().table('retell_call_batches').select('*').eq('requested_by',request.state.user_id).in_('status',['ready','processing','review']).order('created_at',desc=True).limit(1).execute().data
+    return rows[0] if rows else None
+
+@router.get('/batch/{batch_id}')
+async def batch_read(batch_id: UUID,request: Request):
+    return await run_in_threadpool(batch_status,batch_id,request.state.user_id)
+
+@router.post('/batch/{batch_id}/next')
+async def batch_dispatch(batch_id: UUID,request: Request):
+    return await run_in_threadpool(batch_next,batch_id,request.state.user_id)
+
+@router.post('/batch/{batch_id}/reconcile')
+async def batch_reconcile(batch_id: UUID,request: Request):
+    return await run_in_threadpool(reconcile_batch,batch_id,request.state.user_id)
+
+@router.post('/batch/{batch_id}/cancel')
+async def batch_cancel(batch_id: UUID,request: Request):
+    batch_status(batch_id,request.state.user_id)
+    rows=_storage().table('retell_call_batches').update({'status':'canceled'}).eq('id',str(batch_id)).eq('requested_by',request.state.user_id).eq('status','ready').execute().data
+    if not rows:raise HTTPException(409,'Batch is already claimed or requires reconciliation; cancellation not confirmed')
+    return rows[0]
 
 
 @router.get('/{call_id}')

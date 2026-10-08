@@ -39,7 +39,7 @@ def setup(monkeypatch):
         update.execute.return_value.data=[{'id':str(body.request_id)}]
         return q
     db.table.side_effect=table
-    db.rpc.return_value.execute.return_value.data={'suppressed':False}
+    db.rpc.return_value.execute.return_value.data={'suppressed':False,'claimed':True,'blocker':None}
     monkeypatch.setattr(calls,'get_supabase_client',lambda:db)
     monkeypatch.setattr(calls,'_texas_now',lambda:datetime(2026,10,8,12,tzinfo=ZoneInfo('America/Chicago')))
     provider=MagicMock()
@@ -128,16 +128,14 @@ def test_existing_reference_does_not_resubmit(setup,provider_id):
 @pytest.mark.parametrize('claim_result',[[],RuntimeError('database failure')])
 def test_claim_failure_never_calls_provider(setup,claim_result):
     body,_,_,db,provider=setup
-    original=db.table.side_effect
-    def table(name):
-        q=original(name)
-        if name=='retell_call_requests':
-            if isinstance(claim_result,Exception):
-                q.upsert.return_value.execute.side_effect=claim_result
-            else:
-                q.upsert.return_value.execute.return_value.data=claim_result
+    def rpc(name, args):
+        q=MagicMock()
+        if name=='claim_retell_call':
+            if isinstance(claim_result,Exception):q.execute.side_effect=claim_result
+            else:q.execute.return_value.data=claim_result
+        else:q.execute.return_value.data={'suppressed':False}
         return q
-    db.table.side_effect=table
+    db.rpc.side_effect=rpc
     with pytest.raises(HTTPException):calls.start_call(body,str(uuid4()))
     provider.create_call.assert_not_called()
 

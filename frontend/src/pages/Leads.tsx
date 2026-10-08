@@ -6,6 +6,7 @@ import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity, 
 import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
 import { OutreachTimeline } from '@/components/leads/OutreachTimeline';
+import { RetellBatchDialog } from '@/components/leads/RetellBatchDialog';
 import { SMSNurtureDialog } from '@/components/leads/SMSNurtureDialog';
 import { RetellCallDialog } from '@/components/leads/RetellCallDialog';
 import { StackBadge } from '@/components/leads/StackBadge';
@@ -134,7 +135,6 @@ function downloadCSV(filename: string, rows: Record<string, unknown>[], excludeK
 }
 
 export function Leads() {
-  const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [status, setStatus] = useState(searchParams.get('status') || '');
@@ -149,6 +149,8 @@ export function Leads() {
   const [importOpen, setImportOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
+  const [callSelection, setCallSelection] = useState<string[]>([]);
+  const [callBatchOpen, setCallBatchOpen] = useState(false);
   const [nurtureLead, setNurtureLead] = useState<Lead | null>(null);
   const [callLead, setCallLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -187,18 +189,6 @@ export function Leads() {
     if (sortBy === column) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortBy(column); setSortDir(column === 'total_score' || column === 'last_contact_date' || column === 'stack_bonus' ? 'desc' : 'asc'); }
     setPage(1);
-  };
-
-  const handlePushToDialer = async (lead: Lead) => {
-    if (!confirm(`Push ${lead.property_address} to BatchDialer?`)) return;
-    try {
-      const { error, data: saved } = await supabase.from('leads').update({ status: 'ready_for_dialer' }).eq('id', lead.id).select('id').single();
-      if (error || !saved) throw error || new Error('Lead update was not saved');
-      await qc.invalidateQueries({ queryKey: ['leads'] });
-      toast.success('Lead marked ready for dialer');
-    } catch {
-      toast.error('Failed to update lead status');
-    }
   };
 
   const handleMoveToPipeline = async (lead: Lead) => {
@@ -271,12 +261,19 @@ export function Leads() {
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" onClick={() => setCallBatchOpen(true)}>Review AI call batch ({callSelection.length}/5 selected)</Button>
+        {!!callSelection.length && <Button variant="outline" onClick={() => setCallSelection([])}>Clear call selection</Button>}
+        <span className="text-xs text-gray-500">Select individual leads. Calls require saved consent and operator review.</span>
+      </div>
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500">Call</th>
                 {([
                   ['Address', 'property_address'], ['Owner', 'owner_last_name'], ['Phone', 'owner_phone_1'],
                   ['Source', 'source'], ['Stack', 'stack_bonus'], ['Tier', 'priority_tier'], ['Score', 'total_score'],
@@ -297,12 +294,12 @@ export function Leads() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loadError ? (
-                <tr><td colSpan={11} className="p-6 text-center text-red-700" role="alert">Could not load leads. <button onClick={() => refetch()} className="underline">Retry</button></td></tr>
+                <tr><td colSpan={12} className="p-6 text-center text-red-700" role="alert">Could not load leads. <button onClick={() => refetch()} className="underline">Retry</button></td></tr>
               ) : isLoading ? (
-                <tr><td colSpan={11} className="px-4 py-6"><TableSkeleton rows={8} cols={8} /></td></tr>
+                <tr><td colSpan={12} className="px-4 py-6"><TableSkeleton rows={8} cols={8} /></td></tr>
               ) : filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-16 text-center">
+                  <td colSpan={12} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-400">
                       <Search className="h-10 w-10 opacity-30" />
                       <p className="font-medium">No leads found</p>
@@ -312,6 +309,11 @@ export function Leads() {
                 </tr>
               ) : filteredLeads.map((lead) => (
                 <tr key={lead.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setDetailLead(lead)}>
+                  <td className="px-3 py-3" onClick={event => event.stopPropagation()}>
+                    <input type="checkbox" aria-label={`Select ${lead.property_address} for call batch`}
+                      checked={callSelection.includes(lead.id)} disabled={callSelection.length >= 5 && !callSelection.includes(lead.id)}
+                      onChange={event => setCallSelection(current => event.target.checked ? [...current, lead.id].slice(0, 5) : current.filter(id => id !== lead.id))} />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
                       <div>
@@ -425,13 +427,6 @@ export function Leads() {
                             onClick={() => { setCallLead(lead); setOpenMenuId(null); }}>
                             <PhoneCall className="h-3.5 w-3.5" /> Review AI call
                           </button>
-                          {/* Dialer push — shown for Tier A/B or unscored leads */}
-                          {lead.status !== 'dnc' && lead.status !== 'in_dialer_campaign' && (
-                            <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
-                              onClick={() => { handlePushToDialer(lead); setOpenMenuId(null); }}>
-                              <PhoneCall className="h-3.5 w-3.5" /> Push to Dialer
-                            </button>
-                          )}
                           {/* Always allow review/cancellation; the server checks sending eligibility. */}
                           {(
                             <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-teal-600 hover:bg-teal-50"
@@ -482,6 +477,7 @@ export function Leads() {
       {detailLead && (
         <LeadDetailDrawer lead={detailLead} onClose={() => setDetailLead(null)} />
       )}
+      {callBatchOpen && <RetellBatchDialog leadIds={callSelection} onClose={() => setCallBatchOpen(false)} />}
       {nurtureLead && <SMSNurtureDialog key={nurtureLead.id} lead={nurtureLead} onClose={() => setNurtureLead(null)} />}
       {callLead && <RetellCallDialog key={callLead.id} lead={callLead} onClose={() => setCallLead(null)} />}
     </div>

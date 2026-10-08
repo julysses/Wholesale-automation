@@ -65,7 +65,7 @@ export function SMSNurtureDialog({ lead, onClose }: { lead: Lead; onClose: () =>
         <Button variant="outline" disabled={busy} onClick={() => void load().catch(error => setMessage(error instanceof Error ? error.message : 'Refresh failed'))}>Refresh</Button>
       </div>
       {message && <p role="status" className="text-sm">{message}</p>}
-      <p className="text-xs text-gray-500">Uncertain attempts require reconciliation. No automatic resends. A maximum of two SMS attempts per recipient in 30 days includes earlier intake texts.</p>
+      <p className="text-xs text-gray-500">Uncertain attempts require reconciliation. No automatic resends. A maximum of two automated seller contacts per recipient in 30 days includes earlier texts and calls.</p>
     </div>
   </Modal>;
 }
