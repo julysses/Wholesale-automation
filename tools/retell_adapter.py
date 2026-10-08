@@ -27,9 +27,11 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
+from uuid import uuid4
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -117,6 +119,7 @@ class CallRequest:
     seller_score: Optional[int] = None
     distress_flags: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    request_id: str = field(default_factory=lambda: str(uuid4()))
 
     def to_payload(self) -> dict[str, Any]:
         """Return the canonical blueprint call payload dict."""
@@ -221,21 +224,17 @@ class RetellAdapter:
             "Content-Type": "application/json",
         }
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def create_call(self, req: CallRequest) -> CallRecord:
-        """Initiate an outbound AI call via Retell AI."""
-        if self._dry_run:
-            logger.info(
-                f"[retell][dry-run] Would call {req.phone_number} for lead {req.lead_id} "
-                f"re: {req.property_address}"
-            )
-            return CallRecord(
-                call_id=f"dry_run_{req.lead_id}",
-                lead_id=req.lead_id,
-                provider=AICallingProvider.RETELL,
-                phone_number=req.phone_number,
-                status="dry_run",
-            )
+        """Submit once. An ambiguous outcome must be reconciled, never redialed.
+
+        The caller must durably claim request_id before calling this method and
+        retain it across retries. Retell's provider deduplication lasts one hour;
+        it does not replace the application's durable initiation ledger.
+        """
+        if not all((self.api_key, self.agent_id, self.from_number)):
+            raise RuntimeError("Retell API key, published agent and caller number are required")
+        if not re.fullmatch(r"[A-Za-z0-9_-]{5,255}", req.request_id):
+            raise ValueError("Invalid Retell request reference")
 
         payload = build_retell_call_payload(req, self.agent_id, self.from_number)
 
@@ -249,6 +248,8 @@ class RetellAdapter:
             data = resp.json()
 
         call_id = data.get("call_id", "")
+        if not isinstance(call_id, str) or not call_id.strip():
+            raise RuntimeError("Retell response has no call ID; reconcile before retrying")
         logger.info(f"[retell] Created call {call_id} for lead {req.lead_id}")
 
         return CallRecord(
@@ -737,7 +738,7 @@ def build_retell_call_payload(
     Build the full Retell API payload for POST /v2/create-phone-call.
 
     Merges the blueprint metadata structure (seller_score, distress_flags)
-    with Retell-specific fields (agent_id, retell_llm_dynamic_variables).
+    with Retell-specific fields (override_agent_id, retell_llm_dynamic_variables).
     """
     agent_name = req.agent_name or settings.agency_contact_name or "Alex"
     agency_name = settings.agency_name or "Texas Wholesale Solutions"
@@ -745,7 +746,10 @@ def build_retell_call_payload(
     blueprint_payload = req.to_payload()
 
     return {
-        "agent_id": agent_id,
+        "override_agent_id": agent_id,
+        "override_agent_version": "latest_published",
+        "idempotency_key": req.request_id,
+        "honor_internal_dnc": True,
         "from_number": from_number,
         "to_number": req.phone_number,
         # Blueprint metadata (lead_id, seller_score, distress_flags, etc.)
@@ -754,6 +758,7 @@ def build_retell_call_payload(
             "lead_id": req.lead_id,
             "property_address": req.property_address,
             "owner_name": req.owner_name,
+            "request_id": req.request_id,
         },
         # Dynamic variables injected into the agent script at runtime
         "retell_llm_dynamic_variables": {
