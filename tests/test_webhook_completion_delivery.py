@@ -125,6 +125,70 @@ async def test_retell_second_route_uses_same_completion_claim(completion):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["call_ended", "call_analyzed"])
+async def test_voice_opt_out_precedes_hot_qualification_and_deduplicates(completion, kind):
+    db, qualify, hot = completion
+    payload = final_event(kind, "Agent: Please don't call me is an opt-out.\nUser: Please don't call me again.")
+    await webhooks._process_inline("retell", payload)
+    await webhooks._process_inline("retell_call", payload)
+    assert db.tables["leads"]["lead-1"] == {
+        "id": "lead-1", "contact_attempts": 0, "dnc": True, "status": "dnc",
+        "ai_calling_paused": True, "sms_sequence_active": False,
+    }
+    assert len(db.tables["dnc_registry"]) == 1
+    assert next(iter(db.tables["dnc_registry"].values()))["phone_number"] == "+15555550123"
+    assert db.tables["ai_call_records"]["call-1"]["disposition"] == "dnc"
+    qualify.assert_not_called()
+    hot.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_late_analyzed_dnc_suppresses_even_after_completion_claim(completion):
+    db, qualify, hot = completion
+    await webhooks._process_inline("retell", final_event())
+    payload = final_event("call_analyzed")
+    payload["call"]["call_analysis"]["custom_analysis_data"]["disposition"] = "do_not_call"
+    await webhooks._process_inline("retell", payload)
+    await webhooks._process_inline("retell", final_event("call_analyzed"))
+    assert db.tables["leads"]["lead-1"]["dnc"] is True
+    assert db.tables["leads"]["lead-1"]["status"] == "dnc"
+    assert db.tables["ai_call_records"]["call-1"]["disposition"] == "dnc"
+    qualify.assert_called_once()
+    hot.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_voice_suppression_failure_requests_provider_retry_without_automation(completion, monkeypatch):
+    db, qualify, hot = completion
+    original = MemoryTable.execute
+    def failing(table):
+        if table.name == "dnc_registry":
+            return SimpleNamespace(data=[])
+        return original(table)
+    monkeypatch.setattr(MemoryTable, "execute", failing)
+    with pytest.raises(HTTPException) as error:
+        await webhooks._process_inline("retell", final_event(transcript="User: Stop calling me."))
+    assert error.value.status_code == 503
+    qualify.assert_not_called()
+    hot.assert_not_awaited()
+    assert webhooks._retell_receipt_id("call-1", "completion") not in db.tables["webhook_jobs"]
+
+
+@pytest.mark.parametrize("transcript,expected", [
+    ("Agent: Please stop calling me.", False),
+    ("User: Don't stop calling me; I want an offer.", False),
+    ("User: The tenants said don't call me yesterday.", False),
+    ([{"role": "user", "content": "I withdraw my consent."}], True),
+    ("User: Remove me from your list.", True),
+    ("User: Stop.", True),
+])
+def test_opt_out_detector_only_uses_direct_recipient_requests(transcript, expected):
+    from tools.retell_adapter import AICallingAdapter
+    event = AICallingAdapter.parse_webhook(final_event())
+    assert bool(webhooks._retell_opted_out(event, transcript)) is expected
+
+
+@pytest.mark.asyncio
 async def test_failed_completion_is_parked_and_retry_does_not_repeat_attempt(completion):
     db, qualify, hot = completion
     qualify.side_effect = RuntimeError("qualification unavailable")

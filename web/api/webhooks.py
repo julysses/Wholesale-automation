@@ -961,6 +961,17 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
         raise RuntimeError("Retell call persistence was not confirmed")
     if not event.lead_id:
         return  # Preserve unlinked provider calls without attempting lead automation.
+    # Opt-out must run even for a late analyzed event or a retried completion.
+    # It takes precedence over qualification and never depends on an LLM.
+    if _retell_opted_out(event, call_data.get("transcript") or transcript):
+        _persist_retell_opt_out(sb, event, raw_payload)
+        return
+    lead_state = sb.table("leads").select("dnc").eq("id", event.lead_id).limit(1).execute().data
+    if lead_state and lead_state[0].get("dnc") is True:
+        saved = sb.table("ai_call_records").update({"disposition": "dnc"}).eq("call_id", event.call_id).execute()
+        if not saved.data:
+            raise RuntimeError("Retell suppressed call outcome was not confirmed")
+        return  # A later provider outcome cannot reactivate a suppressed lead.
     nonconversation_status = _retell_nonconversation_status(event, call_data)
     if not transcript and not nonconversation_status:
         if event_type in {"call_ended", "retell.call.completed"}:
@@ -992,6 +1003,48 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
         except Exception:
             logger.exception("Could not park failed Retell completion receipt")
         raise
+
+
+def _retell_opted_out(event: AICallResultEvent, transcript: Any) -> bool:
+    if event.disposition.value == "dnc":
+        return True
+    # Match direct requests from the recipient, never the agent's opt-out script.
+    request = re.compile(
+        r"(?:^|[.!?]\s*)(?:please\s+)?(?:"
+        r"(?:do not|don't|dont|never)\s+(?:call|contact|text)\s+me\b|"
+        r"stop\s+(?:calling|contacting|texting)(?:\s+me)?\b|"
+        r"remove\s+me\s+from\s+(?:your|the)\s+(?:list|database)\b|"
+        r"take\s+me\s+off\s+(?:your|the)\s+list\b|"
+        r"i\s+(?:revoke|withdraw)\s+(?:my\s+)?consent\b|"
+        r"stop[.!?]*$)", re.I,
+    )
+    return any(
+        turn.role.lower() in {"user", "seller", "owner"}
+        and request.search(turn.content.replace("\u2019", "'"))
+        for turn in parse_transcript(transcript)
+    )
+
+
+def _persist_retell_opt_out(sb: Any, event: AICallResultEvent, payload: dict) -> None:
+    """Confirm durable shared suppression before acknowledging a voice opt-out."""
+    phone = payload.get("call", {}).get("to_number", "")
+    saved = sb.table("dnc_registry").upsert({
+        "id": _retell_receipt_id(event.call_id, "voice_opt_out"),
+        "lead_id": event.lead_id, "phone_number": phone or None,
+        "reason": "call_disposition_dnc", "source": "retell",
+        "raw_payload": payload,
+    }, on_conflict="id").execute()
+    if not saved.data:
+        raise RuntimeError("Retell voice suppression receipt was not confirmed")
+    saved = sb.table("leads").update({
+        "dnc": True, "status": "dnc", "ai_calling_paused": True,
+        "sms_sequence_active": False,
+    }).eq("id", event.lead_id).execute()
+    if not saved.data:
+        raise RuntimeError("Retell lead suppression was not confirmed")
+    saved = sb.table("ai_call_records").update({"disposition": "dnc"}).eq("call_id", event.call_id).execute()
+    if not saved.data:
+        raise RuntimeError("Retell opt-out call outcome was not confirmed")
 
 
 async def _run_retell_completion(sb: Any, event: AICallResultEvent, raw_payload: dict, raw_transcript: str) -> None:

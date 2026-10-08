@@ -55,6 +55,7 @@ class CallDisposition(str, Enum):
     VOICEMAIL        = "voicemail"
     WRONG_NUMBER     = "wrong_number"
     NOT_INTERESTED   = "not_interested"
+    DNC              = "dnc"
     CALLBACK         = "callback"
     WARM             = "warm"
     HOT              = "hot"
@@ -64,6 +65,9 @@ class CallDisposition(str, Enum):
 
 # Retell AI call status → canonical disposition
 RETELL_DISPOSITION_MAP: dict[str, CallDisposition] = {
+    "dnc":                    CallDisposition.DNC,
+    "do_not_call":            CallDisposition.DNC,
+    "opt_out":                CallDisposition.DNC,
     "no_answer":              CallDisposition.NO_ANSWER,
     "voicemail":              CallDisposition.VOICEMAIL,
     "wrong_number":           CallDisposition.WRONG_NUMBER,
