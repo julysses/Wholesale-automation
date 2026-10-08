@@ -27,7 +27,8 @@ Goal: complete each outstanding acceptance gate before declaring full automation
 - [ ] Secondary controlled mailbox supplied; real unsubscribe event and subsequent refusal, preserving primary owner-alert mailbox.
 - [ ] Meta account confirmation, durable Page token deployment and successful native intake; real independent yes/no consent tests and old form retirement.
 - [ ] Retell signup completed personally (password/Terms), then agent/number/script/security configuration and authorized live call/transcript/CRM completion.
-- [ ] Isolated restore SQL verification, after-hours runtime acceptance and operational failure alerts.
+- [x] Isolated backup restore: direct SQL, data/security integrity comparison and rolled-back write verified October8 (details below).
+- [ ] After-hours runtime acceptance and operational failure alerts.
 - [ ] Final full-scope acceptance and approval to broaden recipient restrictions. Current SMS/email allowlists remain in place; no real seller contacted or paid ad started.
 
 ## Resume
@@ -57,3 +58,27 @@ Browser handoffs: Meta confirmation1348645682; Supabase restore1348645658; Retel
 - Automatic approval review rejected an attempted Delete lead interaction because permanent removal of this specific dummy was not explicitly authorized. No deletion occurred; no bypass attempted. Asked user to approve deleting only this Meta dummy and replacing with controlled submissions; CRM lead/tasks/receipts remain retained.
 - Keep tab1348645700 as handoff. Once approved, inspect fresh controls, delete only current Consent v2 dummy, verify deletion and open editable preview for controlled contact information and independent checkbox selections; trace fresh native event through lead/task/notification/email and preserve exact raw consent values. Do not treat native test Pending status or a preview success as CRM-delivery proof.
 - Proof: outputs/meta-native-replacement-review-20261008.jpg under task cwd. Broader launch goal remains active.
+
+## Isolated database restore accepted — October8
+User completed new password and Restore to new project. New project wholesale-restore-rehearsal-20261008, ref tbhwxgfzbiaqjurghntj, created2026-10-08T17:53:33.576693Z, regionus-west-2, ACTIVE_HEALTHY. Original production ref remains dvzhzlipbwzzcliujzyz. Original latest completed backup was2026-10-08T11:48:17UTC. Clone runs Postgres17.11; production17.6. This is a database restore rehearsal, not app failover.
+
+Direct SQL comparison proved both databases contain:17349leads,16tasks,33notifications,16form submissions,3form configs,9SMS events,1DNC record,11email messages,33delivery events,1email suppression,2Auth users. Latest lead created2026-10-07T20:55:57.110816Z. All52public tables haveRLS enabled in both.
+
+| Integrity check | Identical digest in production and restore |
+|---|---|
+| Full lead rows | 6001e50fc37e0c2905db8cd9783098b1 |
+| Full durable form/consent rows | 6f34a25016344775a028016d07f8dcea |
+| Full DNC rows | 2e87085de0aa3aabe4bebcac7867ba97 |
+| Public RLS policy definitions | ec92ee70f1e654487a738ecbc5cf3aab |
+| claim_email_message definition | 867a603ea1c88d076f5f798c474c9ae6 |
+| finalize_form_submission definition | f1fec626fa5dc51dd441a1a03031c382 |
+| intake_phone_status definition | cb770f1223b6f1751fc320a4aa09bd6f |
+| record_twilio_event definition | 5b7453add9d9d3e1efb9c37ca00786fa |
+
+All four critical RPCs retain anonEXECUTEfalse/authenticatedEXECUTEfalse/service_roleEXECUTEtrue. A transaction on restored fixturef44034c3-2a35-5b88-a028-ba038a408e1e appended a test marker, confirmed write success, then rolled back. Follow-up SQL proved zero retained markers and unchanged full lead digest.
+
+One copied cron job refresh-lead-retention (15 9 * * *, no direct external-network command) was initially active. Disabled ONLY in the restore with cron.alter_job(activefalse). Follow-up SQL: clone0active jobs; production original job activetrue. No production mutations, credential changes, provider messages or application repointing performed.
+
+Recovery limitations: daily backup has a data-loss window; exact restore duration was not measured. Storage objects/settings, Edge Functions, Auth settings/API keys and deployment/webhook configuration require separate recovery. Supabase reference: https://supabase.com/docs/guides/platform/backups and https://supabase.com/docs/guides/platform/clone-project. Current restore verification passes database recovery gate; full application failover is not asserted.
+
+Keep clone isolated for remaining staging work; it still incurs the approved estimated$10.18/month while provisioned. Final cleanup must target ONLY tbhwxgfzbiaqjurghntj and needs explicit permanent-deletion confirmation. Never delete original dvzhzlipbwzzcliujzyz. Next: Meta dummy replacement approval/native consent, secondary mailbox unsubscribe,0100STOP, Retell call initiation/security/provider acceptance, after-hours runtime and operational alerts.
