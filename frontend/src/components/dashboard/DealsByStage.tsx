@@ -1,4 +1,4 @@
-import { useDeals } from '@/hooks/useDeals';
+import { useBusinessDeals } from '@/hooks/useDeals';
 import { formatCurrency, getStageLabel } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +12,7 @@ const stageConfig = [
 ];
 
 export function DealsByStage() {
-  const { data: deals } = useDeals();
+  const { data: deals } = useBusinessDeals();
 
   const stageData = stageConfig.map(({ stage, color, label }) => {
     const stageDeals = (deals ?? []).filter((d) => d.stage === stage);

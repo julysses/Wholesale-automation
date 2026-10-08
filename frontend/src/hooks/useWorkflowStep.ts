@@ -114,6 +114,7 @@ export interface WorkflowProgress {
   /** 0–100 overall completion percentage */
   pct: number;
   isLoading: boolean;
+  error: Error | null;
 }
 
 interface CheckData {
@@ -132,7 +133,7 @@ interface CheckData {
 // Whether a step is complete based purely on live Supabase data.
 function dataDone(step: number, d: CheckData): boolean {
   switch (step) {
-    case 1:  return true; // setup — complete if they're logged in
+    case 1:  return false; // operator acknowledgement; login does not prove provider setup
     case 2:  return d.strategyChosen;
     case 3:  return d.hasLeads;
     case 4:  return d.hasTieredLeads;
@@ -170,47 +171,41 @@ export function toggleManualComplete(step: number): void {
   window.dispatchEvent(new CustomEvent('workflowManualChange'));
 }
 
+export async function loadWorkflowEvidence(): Promise<CheckData> {
+  const [leadsRes,tieredLeadsRes,callsRes,hotLeadsRes,dealAnalysesRes,offerRecsRes,appointmentsRes,dealsRes] = await Promise.all([
+    supabase.from('reportable_leads').select('id', { count:'exact',head:true }),
+    supabase.from('reportable_leads').select('id', { count:'exact',head:true }).not('precision_tier','is',null),
+    supabase.from('reportable_ai_call_records').select('id', { count:'exact',head:true }),
+    supabase.from('reportable_leads').select('id', { count:'exact',head:true }).in('status',['hot','qualified_hot']),
+    supabase.from('reportable_deal_analyses').select('id', { count:'exact',head:true }),
+    supabase.from('reportable_offer_recommendations').select('id', { count:'exact',head:true }),
+    supabase.from('reportable_appointments').select('id', { count:'exact',head:true }).in('status',['scheduled','confirmed','completed']),
+    supabase.from('reportable_deals').select('id', { count:'exact',head:true }).eq('stage','closed').not('actual_close_date','is',null),
+  ]);
+  for (const result of [leadsRes,tieredLeadsRes,callsRes,hotLeadsRes,dealAnalysesRes,offerRecsRes,appointmentsRes,dealsRes]) {
+    if (result.error) throw result.error;
+  }
+
+  return {
+    hasLeads:        (leadsRes.count ?? 0) > 0,
+    hasTieredLeads:  (tieredLeadsRes.count ?? 0) > 0,
+    hasCalls:        (callsRes.count ?? 0) > 0,
+    hasManyCalls:    (callsRes.count ?? 0) >= 50,
+    hasHotLeads:     (hotLeadsRes.count ?? 0) > 0,
+    hasDealAnalyses: (dealAnalysesRes.count ?? 0) > 0,
+    hasOfferRecs:    (offerRecsRes.count ?? 0) > 0,
+    hasAppointments: (appointmentsRes.count ?? 0) > 0,
+    hasDeals:        (dealsRes.count ?? 0) > 0,
+    strategyChosen: false, // overridden below from localStorage
+  };
+}
+
 export function useWorkflowStep(): WorkflowProgress {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['workflow_progress'],
     staleTime: 30_000,
     refetchInterval: 60_000,
-    queryFn: async (): Promise<CheckData> => {
-      const [
-        leadsRes,
-        tieredLeadsRes,
-        callsRes,
-        manyCallsRes,
-        hotLeadsRes,
-        dealAnalysesRes,
-        offerRecsRes,
-        appointmentsRes,
-        dealsRes,
-      ] = await Promise.all([
-        supabase.from('leads').select('id', { count: 'exact', head: true }),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).not('precision_tier', 'is', null),
-        supabase.from('ai_call_records').select('id', { count: 'exact', head: true }),
-        supabase.from('ai_call_records').select('id', { count: 'exact', head: true }).gt('id', '0').limit(1).maybeSingle(),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'hot'),
-        supabase.from('deal_analyses').select('id', { count: 'exact', head: true }),
-        supabase.from('offer_recommendations').select('id', { count: 'exact', head: true }),
-        supabase.from('tasks').select('id', { count: 'exact', head: true }).ilike('type', '%appointment%'),
-        supabase.from('deals').select('id', { count: 'exact', head: true }),
-      ]);
-
-      return {
-        hasLeads:        (leadsRes.count ?? 0) > 0,
-        hasTieredLeads:  (tieredLeadsRes.count ?? 0) > 0,
-        hasCalls:        (callsRes.count ?? 0) > 0,
-        hasManyCalls:    (callsRes.count ?? 0) >= 50,
-        hasHotLeads:     (hotLeadsRes.count ?? 0) > 0,
-        hasDealAnalyses: (dealAnalysesRes.count ?? 0) > 0,
-        hasOfferRecs:    (offerRecsRes.count ?? 0) > 0,
-        hasAppointments: (appointmentsRes.count ?? 0) > 0,
-        hasDeals:        (dealsRes.count ?? 0) > 0,
-        strategyChosen: false, // overridden below from localStorage
-      };
-    },
+    queryFn: loadWorkflowEvidence,
   });
 
   // Strategy choice lives in localStorage (written by StrategyComparisonPanel /
@@ -258,5 +253,5 @@ export function useWorkflowStep(): WorkflowProgress {
   const activeStep = WORKFLOW_STEPS[currentStep - 1];
   const nextStep = currentStep < WORKFLOW_STEPS.length ? WORKFLOW_STEPS[currentStep] : null;
 
-  return { currentStep, completedSteps, activeStep, nextStep, pct, isLoading };
+  return { currentStep, completedSteps, activeStep, nextStep, pct, isLoading, error };
 }

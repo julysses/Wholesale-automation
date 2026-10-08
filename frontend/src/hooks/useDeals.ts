@@ -51,6 +51,10 @@ export function useDeals() {
   return query;
 }
 
+export function useBusinessDeals() {
+  return useQuery({queryKey:['business_deals'],queryFn:()=>queryAll<Deal>((from,to)=>supabase.from('reportable_deals').select('*').order('id').range(from,to)),staleTime:60000});
+}
+
 export function useUpcomingClosings() {
   const in14Days = new Date();
   in14Days.setDate(in14Days.getDate() + 14);
@@ -60,7 +64,7 @@ export function useUpcomingClosings() {
     queryKey: ['deals', 'upcoming-closings', today],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('deals')
+        .from('reportable_deals')
         .select('*, lead:leads(property_address, city)')
         .gte('closing_date', today)
         .lte('closing_date', localDateString(in14Days))
@@ -81,7 +85,7 @@ export function useCreateDeal() {
   const mutation = useMutation({
     mutationFn: (deal: DealWrite) => createPipelineDeal(deal, setPendingCreate),
     onSuccess: async () => {
-      await Promise.all(['deals','kpi','reports','tasks'].map(key => qc.invalidateQueries({ queryKey:[key] }))).catch(() => {});
+      await Promise.all(['deals','business_deals','kpi','reports','tasks','workflow_progress','funnel_metrics'].map(key => qc.invalidateQueries({ queryKey:[key] }))).catch(() => {});
       toast.success('Deal created');
     },
     onError: (error: Error) => toast.error(error.message),
@@ -99,6 +103,9 @@ export function useUpdateDeal() {
       store.setDeals(store.deals.map(deal => deal.id === saved.id ? { ...deal, ...saved } : deal));
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['deals'] }),
+        qc.invalidateQueries({ queryKey: ['business_deals'] }),
+        qc.invalidateQueries({ queryKey: ['workflow_progress'] }),
+        qc.invalidateQueries({ queryKey: ['funnel_metrics'] }),
         qc.invalidateQueries({ queryKey: ['kpi'] }),
         qc.invalidateQueries({ queryKey: ['reports'] }),
         qc.invalidateQueries({ queryKey: ['tasks'] }),

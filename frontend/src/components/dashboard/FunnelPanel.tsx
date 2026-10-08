@@ -246,58 +246,23 @@ export function FunnelPanel() {
   const { strategy, setStrategy } = useStrategySelection();
   const selected = STRATEGIES[strategy];
 
-  const { data: metrics, isLoading } = useQuery<FunnelMetrics>({
+  const { data: metrics, isLoading, error } = useQuery<FunnelMetrics & {contracts_closed:number;closed_fees:number}>({
     queryKey: ['funnel_metrics'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('funnel_metrics')
-        .select('*')
-        .single();
-      if (error || !data) {
-        const [callsRes, apptRes] = await Promise.all([
-          supabase.from('ai_call_records').select('id, disposition'),
-          supabase.from('appointments').select('id, status'),
-        ]);
-        const calls = callsRes.data ?? [];
-        const appts = apptRes.data ?? [];
-        return {
-          total_calls: calls.length,
-          conversations: calls.filter((c: any) =>
-            !['no_answer', 'voicemail', 'unknown'].includes(c.disposition ?? '')
-          ).length,
-          interested: calls.filter((c: any) =>
-            ['warm', 'hot', 'appointment_set', 'callback'].includes(c.disposition ?? '')
-          ).length,
-          hot_leads: calls.filter((c: any) =>
-            ['hot', 'appointment_set'].includes(c.disposition ?? '')
-          ).length,
-          appointments: appts.length,
-          appointments_completed: appts.filter((a: any) => a.status === 'completed').length,
-        };
-      }
-      const d = data as any;
-      return {
-        total_calls:            d.total_calls            ?? 0,
-        conversations:          d.conversations          ?? 0,
-        interested:             d.interested             ?? 0,
-        hot_leads:              d.hot_leads              ?? 0,
-        appointments:           d.appointments           ?? 0,
-        appointments_completed: d.appointments_completed ?? d.contracts_closed ?? 0,
-      } as FunnelMetrics;
+      const {data,error}=await supabase.from('business_funnel_metrics').select('*').single();
+      if (error) throw error;
+      if (!data) throw new Error('No funnel evidence returned');
+      return data;
     },
-    staleTime: 120000,
+    staleTime:120000,
   });
-
-  const actual: FunnelMetrics = metrics ?? {
-    total_calls: 0, conversations: 0, interested: 0,
-    hot_leads: 0, appointments: 0, appointments_completed: 0,
-  };
+  const actual = metrics ?? {total_calls:0,conversations:0,interested:0,hot_leads:0,appointments:0,appointments_completed:0,contracts_closed:0,closed_fees:0};
 
   const targets = selected.targets;
   const ratios  = selected.stageRatios;
 
-  const projectedContracts = actual.appointments_completed;
-  const projectedRevenue   = projectedContracts * 10_000;
+  const projectedContracts = actual.contracts_closed;
+  const projectedRevenue   = Number(actual.closed_fees);
 
   const stages: StageProps[] = [
     { icon: <Phone className="h-3.5 w-3.5" />,       label: 'AI Calls Made',     actual: actual.total_calls,            target: targets.total_calls,            ratio: ratios[0], color: 'text-blue-600',   bgColor: 'bg-blue-50',   borderColor: 'border-blue-100' },
@@ -305,7 +270,7 @@ export function FunnelPanel() {
     { icon: <TrendingUp className="h-3.5 w-3.5" />,   label: 'Interested',        actual: actual.interested,             target: targets.interested,             ratio: ratios[2], color: 'text-purple-600', bgColor: 'bg-purple-50', borderColor: 'border-purple-100' },
     { icon: <Flame className="h-3.5 w-3.5" />,        label: 'Warm / Hot Leads',  actual: actual.hot_leads,              target: targets.hot_leads,              ratio: ratios[3], color: 'text-orange-600', bgColor: 'bg-orange-50', borderColor: 'border-orange-100' },
     { icon: <CalendarCheck className="h-3.5 w-3.5" />,label: 'Appointments Set',  actual: actual.appointments,           target: targets.appointments,           ratio: ratios[4], color: 'text-amber-700',  bgColor: 'bg-amber-50',  borderColor: 'border-amber-100' },
-    { icon: <FileText className="h-3.5 w-3.5" />,     label: 'Contracts Closed',  actual: actual.appointments_completed, target: targets.appointments_completed, ratio: '',        color: 'text-green-700',  bgColor: 'bg-green-50',  borderColor: 'border-green-200' },
+    { icon: <FileText className="h-3.5 w-3.5" />,     label: 'Contracts Closed',  actual: actual.contracts_closed, target: targets.appointments_completed, ratio: '',        color: 'text-green-700',  bgColor: 'bg-green-50',  borderColor: 'border-green-200' },
   ];
 
   return (
@@ -313,9 +278,10 @@ export function FunnelPanel() {
       {/* Header + toggle */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-base font-semibold text-gray-900">Acquisition Funnel</h3>
-        <span className="text-xs text-gray-400">Monthly target</span>
+        <span className="text-xs text-gray-400">Recorded totals · planning targets</span>
       </div>
 
+      <p className="text-xs text-gray-500 mb-3">Internal QA is excluded. Targets are planning assumptions, not measured results. Completed appointments do not count as closed contracts.</p>
       <StrategyToggle current={strategy} onChange={setStrategy} />
 
       {/* Selected strategy summary */}
@@ -343,7 +309,7 @@ export function FunnelPanel() {
         <p className="text-gray-500 mt-1 leading-relaxed">{selected.description}</p>
       </div>
 
-      {isLoading ? (
+      {error ? <p role="alert" className="text-sm text-red-700">Funnel evidence could not be loaded. Refresh to retry.</p> : isLoading ? (
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
@@ -356,22 +322,22 @@ export function FunnelPanel() {
       )}
 
       {/* Revenue projection */}
-      {projectedContracts > 0 && (
+      {!error && projectedContracts > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-100">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">Projected Revenue</span>
+            <span className="text-xs text-gray-500">Recorded Closed Fees</span>
             <span className="text-sm font-bold text-green-700">
               ${projectedRevenue.toLocaleString()}
             </span>
           </div>
           <div className="text-xs text-gray-400 mt-0.5">
-            {projectedContracts} contract{projectedContracts !== 1 ? 's' : ''} ×
-            $10,000+ avg fee · target: {selected.contractsRange}
+            {projectedContracts} closed contract{projectedContracts !== 1 ? 's' : ''} ·
+            recorded assignment fees · target: {selected.contractsRange}
           </div>
         </div>
       )}
 
-      {projectedContracts === 0 && !isLoading && (
+      {projectedContracts === 0 && !isLoading && !error && (
         <div className="mt-4 pt-4 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-400">
             Target: {selected.contractsRange} · $10,000+ avg fee

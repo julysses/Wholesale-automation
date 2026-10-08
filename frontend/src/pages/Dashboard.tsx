@@ -40,8 +40,8 @@ export function Dashboard() {
     queryKey: ['kpi'],
     queryFn: async () => {
       const [leadsRes, dealsRes] = await Promise.all([
-        supabase.from('leads').select('id', { count: 'exact', head: true }).not('status', 'in', '(dead,dnc,under_contract)'),
-        queryAll<Pick<Deal, 'id' | 'stage' | 'assignment_fee' | 'closing_date' | 'actual_close_date' | 'contract_price'>>((from, to) => supabase.from('deals').select('id, stage, assignment_fee, closing_date, actual_close_date, contract_price').order('id').range(from, to)),
+        supabase.from('reportable_leads').select('id', { count: 'exact', head: true }).not('status', 'in', '(dead,dnc,under_contract)'),
+        queryAll<Pick<Deal, 'id' | 'stage' | 'assignment_fee' | 'closing_date' | 'actual_close_date' | 'contract_price'>>((from, to) => supabase.from('reportable_deals').select('id, stage, assignment_fee, closing_date, actual_close_date, contract_price').order('id').range(from, to)),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
@@ -49,7 +49,7 @@ export function Dashboard() {
       const activeLeads = leadsRes.count ?? 0;
 
       const underContract = deals.filter(d =>
-        !['closed', 'cancelled'].includes(d.stage)
+        ['under_contract','marketing_to_buyers','buyer_found','assigned'].includes(d.stage)
       );
       const underContractValue = underContract.reduce((sum, deal) => sum + (deal.contract_price || 0), 0);
 
@@ -60,7 +60,7 @@ export function Dashboard() {
       );
       const closedFees = closedThisMonth.reduce((sum, deal) => sum + (deal.assignment_fee || 0), 0);
 
-      const pipelineValue = underContract.reduce((sum, deal) => sum + (deal.assignment_fee || 0), 0);
+      const pipelineValue = deals.filter(d => !['closed','cancelled'].includes(d.stage)).reduce((sum, deal) => sum + (deal.assignment_fee || 0), 0);
 
       return {
         activeLeads,
@@ -82,7 +82,7 @@ export function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Your wholesale pipeline at a glance</p>
+        <p className="text-gray-500 text-sm mt-0.5">Business activity excludes confirmed internal QA records.</p>
       </div>
 
       {/* Getting Started Guide */}
@@ -113,7 +113,7 @@ export function Dashboard() {
         />
         <KPICard
           title="Pipeline Value"
-          value={kpiData?.pipelineValue ? formatCurrency(kpiData.pipelineValue) : '—'}
+          value={kpiData ? formatCurrency(kpiData.pipelineValue) : '—'}
           icon={<TrendingUp className="h-5 w-5" />}
           color="purple"
         />

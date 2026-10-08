@@ -47,7 +47,7 @@ export function Reports() {
   const { data: dealsData, error: dealsError } = useQuery({
     queryKey: ['reports', 'deals', range],
     queryFn: async () => {
-      return queryAll<Deal>((from, to) => supabase.from('deals').select('*')
+      return queryAll<Deal>((from, to) => supabase.from('reportable_deals').select('*')
         .order('id').range(from, to));
     },
     staleTime: 60000,
@@ -57,7 +57,7 @@ export function Reports() {
   const { data: leadsData, error: leadsError } = useQuery({
     queryKey: ['reports', 'leads', range],
     queryFn: async () => {
-      return queryAll<Pick<Lead, 'id' | 'source' | 'status'>>((from, to) => supabase.from('leads')
+      return queryAll<Pick<Lead, 'id' | 'source' | 'status'>>((from, to) => supabase.from('reportable_leads')
         .select('id, source, status').gte('created_at', dateFrom).lte('created_at', dateTo)
         .order('id').range(from, to));
     },
@@ -121,13 +121,15 @@ export function Reports() {
     value,
   })).sort((a, b) => b.value - a.value);
 
-  // Funnel conversion
+  // Same lead-created cohort for each funnel stage; closing-date metrics above are separate.
+  const cohortIds = new Set(leads.map(lead => lead.id));
+  const cohortDeals = allDeals.filter(deal => cohortIds.has(deal.lead_id) && deal.stage !== 'cancelled');
   const funnelStages = [
     { label: 'Total Leads', count: leads.length },
-    { label: 'Qualified', count: leads.filter((l: any) => ['hot', 'warm', 'qualified_hot', 'qualified_warm', 'qualified_cold'].includes(l.status)).length },
-    { label: 'Offer Made', count: new Set([...leads.filter(l => l.status === 'offer_made').map(l => l.id), ...deals.filter(d => d.stage === 'offer_made').map(d => d.lead_id)]).size },
-    { label: 'Under Contract', count: deals.filter((d: any) => !['offer_made', 'cancelled'].includes(d.stage)).length },
-    { label: 'Closed', count: closedDeals.length },
+    { label: 'Qualified', count: leads.filter(l => ['hot','warm','qualified_hot','qualified_warm','qualified_cold'].includes(l.status)).length },
+    { label: 'Recorded Offer', count: new Set([...leads.filter(l => l.status === 'offer_made').map(l => l.id), ...cohortDeals.filter(d => (d.contract_price ?? 0) > 0).map(d => d.lead_id)]).size },
+    { label: 'Under Contract', count: new Set(cohortDeals.filter(d => !['offer_made','cancelled'].includes(d.stage)).map(d => d.lead_id)).size },
+    { label: 'Closed', count: new Set(cohortDeals.filter(d => d.stage === 'closed' && d.actual_close_date).map(d => d.lead_id)).size },
   ];
 
   // Pipeline health
@@ -178,7 +180,7 @@ export function Reports() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Reports</h1><p className="text-sm text-gray-500">Confirmed internal QA is excluded. Funnel counts use the lead creation cohort; closing totals use actual closing dates. Recorded stages still require operator verification.</p>
           <p className="text-sm text-gray-500 mt-0.5">Performance analytics and insights</p>
         </div>
         <div className="flex gap-1 bg-white border border-gray-200 rounded-lg p-1">

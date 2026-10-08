@@ -1,4 +1,4 @@
-import { useDeals } from '@/hooks/useDeals';
+import { useBusinessDeals } from '@/hooks/useDeals';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -29,13 +29,13 @@ export function PipelineChart() {
   const { data: leadCounts, error } = useQuery({
     queryKey: ['lead-stage-counts'],
     queryFn: async () => Object.fromEntries(await Promise.all(STAGES.map(async stage => {
-      const { count, error } = await supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', stage);
+      const { count, error } = await supabase.from('reportable_leads').select('id', { count: 'exact', head: true }).eq('status', stage);
       if (error) throw error;
       return [stage, count ?? 0];
     }))),
     staleTime: 60000,
   });
-  const { data: deals, error: dealsError } = useDeals();
+  const { data: deals, error: dealsError } = useBusinessDeals();
   const counts: Record<string, number> = Object.fromEntries(STAGES.map(stage => [stage, leadCounts?.[stage] ?? 0]));
 
   // Count deals by stage

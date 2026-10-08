@@ -75,7 +75,7 @@ export function useHotLeads() {
     queryKey: ['leads', 'hot'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('reportable_leads')
         .select('*')
         .gte('total_score', 13)
         .order('total_score', { ascending: false })

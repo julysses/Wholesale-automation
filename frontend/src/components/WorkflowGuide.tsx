@@ -39,7 +39,7 @@ const STEP_DETAILS: Record<number, { what: string; system: string }> = {
 };
 
 export function WorkflowGuide() {
-  const { currentStep, completedSteps, pct, isLoading } = useWorkflowStep();
+  const { currentStep, completedSteps, pct, isLoading, error } = useWorkflowStep();
   const [expanded, setExpanded] = useState(true);
   const [openDetail, setOpenDetail] = useState<number | null>(currentStep);
 
@@ -58,6 +58,8 @@ export function WorkflowGuide() {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <p className="px-5 pt-3 text-xs text-gray-500">Internal QA is excluded. Manual checkmarks are operator acknowledgements; this guide does not certify launch readiness.</p>
+      {error && <p role="alert" className="px-5 text-sm text-red-700">Workflow evidence could not be loaded. Refresh before relying on completion status.</p>}
       {/* Header */}
       <button
         onClick={() => setExpanded(e => !e)}
@@ -72,7 +74,7 @@ export function WorkflowGuide() {
               {allDone ? 'Workflow Complete 🎉' : `Getting Started — Step ${currentStep} of 11`}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {allDone ? 'You\'ve completed the full wholesale workflow.' : `${completedSteps.size} of 11 steps complete`}
+              {allDone ? 'Recorded workflow milestones complete; launch approval remains separate.' : `${completedSteps.size} of 11 steps complete`}
             </p>
           </div>
         </div>

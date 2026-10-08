@@ -54,10 +54,11 @@ function usePrecisionSummary() {
   return useQuery<PrecisionSummary>({
     queryKey: ['precision_targeting_summary'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('precision_targeting_summary')
         .select('*')
         .single();
+      if (error) throw error;
       return (data ?? {
         total_imported: 0, total_suppressed: 0, total_prioritized: 0,
         tier_1_count: 0, tier_2_count: 0, tier_3_count: 0,
@@ -72,10 +73,11 @@ function useStackAnalytics() {
   return useQuery<StackRow[]>({
     queryKey: ['stack_analytics'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('stack_analytics')
         .select('*')
         .limit(10);
+      if (error) throw error;
       return (data ?? []) as StackRow[];
     },
     staleTime: 60000,
@@ -137,12 +139,13 @@ function StatCard({ label, value, sub, icon: Icon, color, bg, border }: StatCard
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export function PrecisionTargetingPanel() {
-  const { data: summary, isLoading: summaryLoading } = usePrecisionSummary();
-  const { data: stacks = [], isLoading: stacksLoading } = useStackAnalytics();
+  const { data: summary, isLoading: summaryLoading, error:summaryError } = usePrecisionSummary();
+  const { data: stacks = [], isLoading: stacksLoading, error:stacksError } = useStackAnalytics();
 
   const top2k = summary?.top_2000_count ?? 0;
   const pctFilled = Math.min(100, Math.round((top2k / 2000) * 100));
 
+  if (summaryError || stacksError) return <section role="alert" className="bg-red-50 p-5 rounded text-red-700">Precision business evidence could not be loaded. Refresh to retry.</section>;
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-5">
       {/* Header */}
@@ -182,7 +185,7 @@ export function PrecisionTargetingPanel() {
           <StatCard
             label="Converted" value={summary?.total_converted ?? 0}
             sub={summary?.avg_assignment_fee
-              ? `Avg fee: ${formatCurrency(summary.avg_assignment_fee)}`
+              ? `Avg closed fee: ${formatCurrency(summary.avg_assignment_fee)}`
               : undefined}
             icon={Award} color="text-green-700" bg="bg-green-50" border="border-green-100"
           />
@@ -322,7 +325,7 @@ export function PrecisionTargetingPanel() {
                     <span>{convPct.toFixed(1)}% conv.</span>
                     <span className="ml-auto">
                       {row.avg_assignment_fee ? (
-                        <span className="text-green-700 font-semibold">{formatCurrency(row.avg_assignment_fee)} avg fee</span>
+                        <span className="text-green-700 font-semibold">{formatCurrency(row.avg_assignment_fee)} avg closed fee</span>
                       ) : (
                         <span className="text-gray-400">No deals yet</span>
                       )}
