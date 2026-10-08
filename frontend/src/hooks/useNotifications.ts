@@ -80,9 +80,10 @@ export function useNotifications(): UseNotificationsResult {
           setNotifications((prev) => [n, ...prev]);
 
           // Pop a toast for high-priority types
-          if (TOAST_TYPES.has(n.type)) {
+          const deliveryFailure = n.type === 'system' && n.metadata?.integration_failure === true;
+          if (TOAST_TYPES.has(n.type) || deliveryFailure) {
             const icon = TOAST_ICONS[n.type] ?? '🔔';
-            const toastFn = n.type === 'access_denied' ? toast.error : toast.success;
+            const toastFn = n.type === 'access_denied' || deliveryFailure ? toast.error : toast.success;
             toastFn(`${icon} ${n.title}`, {
               description: n.body,
               duration: n.type === 'hot_lead' ? 10000 : 6000,

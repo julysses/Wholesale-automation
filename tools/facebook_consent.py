@@ -4,6 +4,20 @@ Never infer consent from contact details, a free-text question, or an unknown
 form. Keep the provider's raw checkbox answers with the exact disclosure.
 """
 from datetime import datetime, timezone
+import re
+from types import SimpleNamespace
+
+
+def normalize_us_phone(value) -> str:
+    value = str(value or '').strip()
+    if not re.fullmatch(r'\+?[0-9().\s-]+', value):
+        raise ValueError('A valid US phone number is required')
+    digits = re.sub(r'\D', '', value)
+    if len(digits) == 10:
+        digits = '1' + digits
+    if not re.fullmatch(r'1[2-9][0-9]{9}', digits):
+        raise ValueError('A valid US phone number is required')
+    return '+' + digits
 
 HILLTOP_CONSENT_FORM_ID = "1548364970390755"
 SMS_DISCLOSURE = "I agree to receive recurring automated text messages from Hilltop Home Co., a DBA of The Jays Dallas, LLC, about my property inquiry, offer updates, appointment reminders and closing updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase or receiving an offer."
@@ -36,3 +50,28 @@ def facebook_consent_record(lead_data, leadgen_id: str) -> dict:
         "ai_calls": {"accepted": checked(AI_CHECKBOX_KEY), "checkbox_key": AI_CHECKBOX_KEY,
                      "disclosure": AI_DISCLOSURE if recognized else None},
     }
+
+
+def matching_native_consent(receipt, phone: str, lead: dict, channel: str) -> bool:
+    """Revalidate immutable native evidence independently for each channel."""
+    if channel not in ('sms', 'ai_calls') or not isinstance(receipt, dict):
+        return False
+    if receipt.get('source') != 'facebook_native_form' or lead.get('source') != 'facebook_lead_ad':
+        return False
+    try:
+        submitted = datetime.fromisoformat(receipt['submitted_at'].replace('Z', '+00:00'))
+        if submitted.tzinfo is None or submitted > datetime.now(timezone.utc):
+            return False
+        phone = normalize_us_phone(phone)
+        if normalize_us_phone(receipt.get('phone')) != phone or normalize_us_phone(lead.get('owner_phone_1')) != phone:
+            return False
+        leadgen = str(receipt.get('leadgen_id') or '')
+        if not leadgen or lead.get('internal_notes', '') != f'FB leadgen_id={leadgen}':
+            return False
+        actual = facebook_consent_record(SimpleNamespace(form_id=receipt.get('form_id'),
+            created_time=receipt.get('submitted_at'), custom_disclaimer_responses=receipt.get('raw_responses')), leadgen)
+        saved = receipt.get(channel, {})
+        return (actual[channel]['accepted'] is True and saved.get('accepted') is True
+                and saved.get('disclosure') == actual[channel]['disclosure'])
+    except (KeyError, ValueError, TypeError, AttributeError):
+        return False

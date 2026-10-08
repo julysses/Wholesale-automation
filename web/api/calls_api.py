@@ -1,8 +1,6 @@
 """Admin-only Retell initiation with durable claims and explicit AI consent."""
-from datetime import datetime, timezone
 import logging
 import re
-from types import SimpleNamespace
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
@@ -11,8 +9,9 @@ from starlette.concurrency import run_in_threadpool
 
 from config.settings import settings
 from tools.crm import get_supabase_client
-from tools.facebook_consent import facebook_consent_record
+from tools.facebook_consent import matching_native_consent, normalize_us_phone
 from tools.retell_adapter import CallRequest, RetellAdapter
+from tools.operational_alerts import record_provider_alert
 from tools.sms_client import _texas_now
 
 router=APIRouter(prefix='/api/calls/retell',tags=['Calls'])
@@ -26,15 +25,10 @@ class StartCall(BaseModel):
 
 
 def _phone(value):
-    value=str(value or '').strip()
-    if not re.fullmatch(r'\+?[0-9().\s-]+',value):
+    try:
+        return normalize_us_phone(value)
+    except ValueError:
         raise HTTPException(409,'A valid US phone number is required')
-    digits=re.sub(r'\D','',value)
-    if len(digits)==10:
-        digits='1'+digits
-    if not re.fullmatch(r'1[2-9]\d{9}',digits):
-        raise HTTPException(409,'A valid US phone number is required')
-    return '+'+digits
 
 
 def _storage():
@@ -45,22 +39,7 @@ def _storage():
 
 
 def _consented(receipt, phone, lead):
-    if not isinstance(receipt,dict) or receipt.get('source')!='facebook_native_form':
-        return False
-    try:
-        submitted=datetime.fromisoformat(receipt['submitted_at'].replace('Z','+00:00'))
-        if submitted.tzinfo is None or submitted>datetime.now(timezone.utc):
-            return False
-        if _phone(receipt.get('phone'))!=phone:
-            return False
-        leadgen=str(receipt.get('leadgen_id') or '')
-        if not leadgen or lead.get('internal_notes','')!=f'FB leadgen_id={leadgen}':
-            return False
-        actual=facebook_consent_record(SimpleNamespace(form_id=receipt.get('form_id'),
-            created_time=receipt.get('submitted_at'),custom_disclaimer_responses=receipt.get('raw_responses')),leadgen)
-        return actual['ai_calls']['accepted'] is True and receipt.get('ai_calls',{}).get('disclosure')==actual['ai_calls']['disclosure']
-    except (KeyError,ValueError,TypeError,AttributeError,HTTPException):
-        return False
+    return matching_native_consent(receipt, phone, lead, 'ai_calls')
 
 
 def _record(row):
@@ -136,6 +115,10 @@ def start_call(body: StartCall, operator_id: str):
             sb.table('retell_call_requests').update({'status':'unknown'}).eq('id',reference).eq('status','submitting').execute()
         except Exception:
             pass # The durable submitting claim still blocks automatic redial.
+        try:
+            record_provider_alert(sb,'retell',reference,'unknown',str(body.lead_id))
+        except Exception:
+            logger.exception('Retell reconciliation alert persistence failed')
         raise HTTPException(502,'Call outcome is unconfirmed; reconcile in Retell before retrying')
     return _record({**claim,'status':record.status,'provider_call_id':record.call_id})
 

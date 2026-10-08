@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Optional
+from uuid import NAMESPACE_URL, uuid5
 
 try:
     from zoneinfo import ZoneInfo
@@ -24,6 +25,8 @@ except ImportError:
 
 from config.settings import settings
 from schemas.outreach import APPROVED_SMS_PROVIDERS, OutreachMessage, OutreachStatus
+from tools.facebook_consent import matching_native_consent, normalize_us_phone
+from tools.operational_alerts import record_provider_alert
 
 logger = logging.getLogger(__name__)
 
@@ -164,18 +167,15 @@ class SMSClient:
             return False
 
     def _send_twilio(self, message: OutreachMessage, to_number: str) -> bool:
-        import re
         from twilio.rest import Client
         from tools.crm import get_supabase_client
 
         if not settings.sms_live_enabled:
             return False
-        digits = re.sub(r"\D", "", to_number)
-        if len(digits) == 10:
-            digits = "1" + digits
-        if not re.fullmatch(r"1\d{10}", digits):
+        try:
+            to_number = normalize_us_phone(to_number)
+        except ValueError:
             return False
-        to_number = "+" + digits
         if settings.sms_allowed_recipients:
             allowed = {number.strip() for number in settings.sms_allowed_recipients.split(',') if number.strip()}
             if to_number not in allowed:
@@ -192,10 +192,27 @@ class SMSClient:
         rows = sb.table("lead_form_submissions").select("raw_answers").eq(
             "lead_id", str(message.lead_id)).order("created_at", desc=True).limit(1).execute().data
         answers = rows[0].get("raw_answers", {}) if rows else {}
-        consent = answers.get("_sms_consent", {})
-        receipt_phone = re.sub(r"\D", "", str(answers.get("phone", "")))
-        if (consent.get("accepted") is not True or consent.get("rendered_disclosure_matches") is not True
-                or receipt_phone[-10:] != digits[-10:]):
+        authorized = False
+        if rows:
+            # A recorded website refusal must never fall back to older consent.
+            consent = answers.get("_sms_consent", {})
+            try:
+                authorized = (consent.get("accepted") is True and consent.get("rendered_disclosure_matches") is True
+                              and normalize_us_phone(answers.get("phone")) == to_number)
+            except ValueError:
+                pass
+        else:
+            leads = sb.table("leads").select("source,internal_notes,owner_phone_1,property_address,dnc").eq(
+                "id", str(message.lead_id)).limit(1).execute().data
+            lead = leads[0] if leads else {}
+            if lead.get("source") == "facebook_lead_ad" and lead.get("dnc") is False:
+                notice_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{message.lead_id}"))
+                notices = sb.table("app_notifications").select("metadata").eq("id", notice_id).limit(1).execute().data
+                metadata = notices[0].get("metadata", {}) if notices else {}
+                authorized = (metadata.get("source") == "facebook_lead_ad"
+                              and matching_native_consent(metadata.get("consent_receipt"), to_number, lead, "sms"))
+                answers = {"property_address": lead.get("property_address", "")}
+        if not authorized:
             message.mark_stopped("No matching property inquiry consent receipt")
             return False
         safety = sb.rpc("intake_phone_status", {"p_phone": to_number,
@@ -215,11 +232,13 @@ class SMSClient:
                 status_callback=f"{base}/webhooks/twilio/status?message_id={message.id}")
         except Exception:
             sb.table("sms_events").update({"status": "unknown"}).eq("id", str(message.id)).execute()
+            record_provider_alert(sb, 'twilio', str(message.id), 'unknown', message.lead_id)
             raise
         message.provider_message_id = result.sid
         saved = sb.table("sms_events").update({"status": "accepted",
             "raw_payload": {"provider_sid": result.sid}}).eq("id", str(message.id)).execute()
         if not saved.data:
+            record_provider_alert(sb, 'twilio', str(message.id), 'unknown', message.lead_id)
             raise RuntimeError("Provider accepted SMS but local receipt is unconfirmed; reconcile before retry")
         message.mark_sent()
         message.a2p_provider = "twilio"

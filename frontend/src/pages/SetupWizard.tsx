@@ -480,6 +480,7 @@ function LaunchControlStep({ onNext, onSkip, saved }: StepProps) {
 function EmailDeliveryPanel() {
   const [evidence, setEvidence] = useState<{ live_enabled: boolean; test_recipients: string; default_recipient: string | null; messages: Array<{ id: string; recipient: string; status: string }>; events: Array<{ event_id: string; message_id: string | null; event: string; recipient: string }> } | null>(null);
   const messageIds = useRef<Record<string, string>>({});
+  const alertId = useRef<string | null>(null);
   const [recipient, setRecipient] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState('');
@@ -505,6 +506,15 @@ function EmailDeliveryPanel() {
     } catch (error) { setResult(error instanceof Error ? error.message : 'Test failed'); }
     finally { setBusy(false); }
   };
+  const testAlert = async () => {
+    setBusy(true);
+    try {
+      alertId.current ??= crypto.randomUUID();
+      await apiFetch('/api/operations/test-alert', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ request_id: alertId.current }) });
+      setResult('Test alert saved. Open the notification bell to confirm it appears. No external message was sent.');
+    } catch (error) { setResult(error instanceof Error ? error.message : 'Alert test failed'); }
+    finally { setBusy(false); }
+  };
   return <div className="space-y-3 rounded-lg border p-4">
     <h3 className="font-medium">Email delivery verification</h3>
     <p className="text-sm text-muted-foreground">Sending: {evidence?.live_enabled ? 'enabled' : 'disabled'}. Test recipient: {evidence?.test_recipients || 'not configured'}.</p>
@@ -517,6 +527,7 @@ function EmailDeliveryPanel() {
     <div className="flex gap-2">
       <Button onClick={sendTest} disabled={busy || !evidence?.live_enabled}>Send production test email</Button>
       <Button variant="outline" onClick={refresh} disabled={busy}>Refresh delivery events</Button>
+      <Button variant="outline" onClick={testAlert} disabled={busy}>Test failure alert</Button>
     </div>
     {result && <p role="status" className="text-sm">{result}</p>}
     {evidence?.messages.map(message => <div key={message.id} className="text-sm border-t pt-2">

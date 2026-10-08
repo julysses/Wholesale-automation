@@ -20,12 +20,12 @@ def setup(monkeypatch):
         'retell_webhook_secret':'test-secret','tcpa_allowed_start_hour':9,'tcpa_allowed_end_hour':19}.items():
         monkeypatch.setattr(calls.settings,key,value)
     body=calls.StartCall(request_id=uuid4(),lead_id=uuid4(),phone_number=PHONE)
-    lead={'dnc':False,'ai_calling_paused':False,'owner_phone_1':PHONE,
+    lead={'source':'facebook_lead_ad','dnc':False,'ai_calling_paused':False,'owner_phone_1':PHONE,
         'internal_notes':'FB leadgen_id=test','property_address':'TEST ONLY'}
     receipt={'source':'facebook_native_form','phone':PHONE,'leadgen_id':'test',
         'form_id':HILLTOP_CONSENT_FORM_ID,'submitted_at':'2026-10-07T12:00:00+00:00',
         'raw_responses':[{'checkbox_key':AI_CHECKBOX_KEY,'is_checked':'1'}],
-        'ai_calls':{'disclosure':AI_DISCLOSURE}}
+        'ai_calls':{'accepted':True,'disclosure':AI_DISCLOSURE}}
     db=MagicMock()
     def table(name):
         q=MagicMock()

@@ -87,6 +87,7 @@ class EmailClient:
             return False
         self._provider_message_id = None
         accepted = self._dispatch(to_email, subject, body, html_body)
+        needs_review = not accepted
         try:
             # Never blindly retry an ambiguous provider outcome. Reusing the ID
             # cannot claim another send, even if this final status write fails.
@@ -99,7 +100,14 @@ class EmailClient:
             if not saved:
                 raise RuntimeError('Email outcome persistence unconfirmed')
         except Exception:
+            needs_review = True
             logger.exception('[EmailClient] Outcome persistence failed; inspect claim before retry')
+        if needs_review and self._provider == 'sendgrid':
+            try:
+                from tools.operational_alerts import record_provider_alert
+                record_provider_alert(sb, 'sendgrid', self.message_id, 'unknown')
+            except Exception:
+                logger.exception('[EmailClient] Reconciliation alert persistence failed')
         return accepted
 
     def _claim(self, recipient: str, subject: str) -> bool:

@@ -72,3 +72,29 @@ def test_invalid_signed_payload_never_persists(setup,event):
     body=json.dumps([event]).encode()
     assert client.post('/webhooks/sendgrid/events',content=body,headers=signed(private,body)).status_code==400
     sb.rpc.assert_not_called()
+
+
+@pytest.mark.parametrize('event',['bounce','dropped','spamreport'])
+def test_tracked_failure_alert_is_confirmed_before_ack(setup,event,monkeypatch):
+    from uuid import uuid4
+    client,private,sb=setup
+    message_id=str(uuid4())
+    sb.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data=[{'id':message_id}]
+    alert=MagicMock()
+    monkeypatch.setattr(webhook,'record_provider_alert',alert)
+    body=json.dumps([{'email':'fixture@example.com','event':event,'timestamp':1791389900,
+                     'sg_event_id':'failure-test','app_message_id':message_id}]).encode()
+    assert client.post('/webhooks/sendgrid/events',content=body,headers=signed(private,body)).status_code==200
+    alert.assert_called_once_with(sb,'sendgrid',message_id,event)
+    alert.side_effect=RuntimeError('notification write unavailable')
+    assert client.post('/webhooks/sendgrid/events',content=body,headers=signed(private,body)).status_code==503
+
+
+def test_untracked_failure_does_not_create_misleading_operator_alert(setup,monkeypatch):
+    from uuid import uuid4
+    client,private,sb=setup
+    sb.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data=[]
+    alert=MagicMock();monkeypatch.setattr(webhook,'record_provider_alert',alert)
+    body=json.dumps([{'email':'fixture@example.com','event':'bounce','timestamp':1791389900,'app_message_id':str(uuid4())}]).encode()
+    assert client.post('/webhooks/sendgrid/events',content=body,headers=signed(private,body)).status_code==200
+    alert.assert_not_called()

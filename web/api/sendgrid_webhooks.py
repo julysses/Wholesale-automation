@@ -13,6 +13,7 @@ from starlette.concurrency import run_in_threadpool
 
 from config.settings import settings
 from tools.crm import get_supabase_client
+from tools.operational_alerts import record_provider_alert
 
 router = APIRouter(prefix='/webhooks/sendgrid', tags=['SendGrid'])
 logger = logging.getLogger(__name__)
@@ -72,6 +73,11 @@ def persist(events):
         data=sb.rpc('record_sendgrid_events',{'p_events':events}).execute().data
         if not isinstance(data,dict) or data.get('saved') is not True:
             raise RuntimeError('Unconfirmed receipt')
+        for event in events:
+            if event['event'] in ('bounce','dropped','spamreport') and event.get('message_id'):
+                tracked=sb.table('email_messages').select('id').eq('id',event['message_id']).limit(1).execute().data
+                if tracked:
+                    record_provider_alert(sb,'sendgrid',event['message_id'],event['event'])
     except Exception:
         logger.exception('SendGrid receipt transaction failed')
         raise HTTPException(503,'Email receipt storage unavailable')

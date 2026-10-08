@@ -175,3 +175,16 @@ def test_public_send_enforces_texas_hours_and_weekend(sending,monkeypatch,local_
     if not expected:
         db.table.assert_not_called()
         assert msg.sent_at is None
+
+
+@pytest.mark.parametrize('state',['failed','undelivered','canceled'])
+def test_signed_tracked_failure_requires_operator_alert(setup,monkeypatch,state):
+    client,db=setup
+    ref,lead_id=str(uuid4()),str(uuid4())
+    db.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data=[{'lead_id':lead_id}]
+    alert=MagicMock();monkeypatch.setattr(hooks,'record_provider_alert',alert)
+    data={'AccountSid':SID,'MessageSid':MESSAGE,'From':SENDER,'To':PHONE,'MessageStatus':state}
+    assert signed(client,'status',data,'?message_id='+ref).status_code==200
+    alert.assert_called_once_with(db,'twilio',ref,state,lead_id)
+    alert.side_effect=RuntimeError('alert unavailable')
+    assert signed(client,'status',data,'?message_id='+ref).status_code==503

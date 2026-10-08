@@ -49,6 +49,7 @@ from web.api.twilio_webhooks import router as twilio_router
 from web.api.sendgrid_webhooks import router as sendgrid_router
 from web.api.email_api import router as email_router
 from web.api.calls_api import router as calls_router
+from web.api.operations_api import router as operations_router
 from web.api.webhooks import router as webhook_router  # noqa: E402
 from web.api.lead_forms_api import router as lead_forms_router  # noqa: E402
 from web.api.buyers_api import router as buyers_router  # noqa: E402
@@ -109,6 +110,7 @@ app.include_router(twilio_router)
 app.include_router(sendgrid_router)
 app.include_router(email_router)
 app.include_router(calls_router)
+app.include_router(operations_router)
 app.include_router(webhook_router)     # POST /webhooks/* — dialer + SMS inbound events
 app.include_router(lead_forms_router)  # GET/POST /api/forms/*, /api/lead-gen/*, /api/ai/lead-gen/*
 app.include_router(buyers_router)      # POST/GET /api/buyers/*

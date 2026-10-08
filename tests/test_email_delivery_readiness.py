@@ -66,3 +66,19 @@ def test_failed_or_duplicate_claim_blocks_provider(monkeypatch,result):
     monkeypatch.setattr(client,'_dispatch',dispatch)
     assert client.send('fixture@example.com','Fixture','Test') is False
     dispatch.assert_not_called()
+
+
+def test_unknown_email_outcome_creates_in_app_alert_without_another_send(monkeypatch):
+    from tests.test_webhook_completion_delivery import MemoryDB
+    from tools import operational_alerts
+    monkeypatch.setattr(settings,'sendgrid_api_key','test-key')
+    monkeypatch.setattr(settings,'from_email','owner@example.com')
+    db=MemoryDB(); monkeypatch.setattr('tools.crm.get_supabase_client',lambda:db)
+    client=EmailClient('sendgrid')
+    monkeypatch.setattr(client,'_claim',lambda *_:True)
+    dispatch=MagicMock(return_value=False); monkeypatch.setattr(client,'_dispatch',dispatch)
+    assert client.send('fixture@example.com','Fixture','Test') is False
+    dispatch.assert_called_once()
+    notice=next(iter(db.tables['app_notifications'].values()))
+    assert notice['metadata']['provider']=='sendgrid'
+    assert notice['metadata']['status']=='unknown'
