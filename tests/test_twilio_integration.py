@@ -146,3 +146,32 @@ def test_twilio_test_allowlist(sending,monkeypatch,allowlist,recipient,expected)
     if not expected:
         db.table.assert_not_called()
         assert msg.status==OutreachStatus.STOPPED
+
+
+@pytest.mark.parametrize('local_time,inbound,expected', [
+    ('2026-10-08T08:59:59',False,False),
+    ('2026-10-08T09:00:00',False,True),
+    ('2026-10-08T18:59:59',False,True),
+    ('2026-10-08T19:00:00',False,False),
+    ('2026-10-10T12:00:00',False,False),
+    ('2026-10-10T12:00:00',True,True),
+    ('2026-10-10T19:00:00',True,False),
+])
+def test_public_send_enforces_texas_hours_and_weekend(sending,monkeypatch,local_time,inbound,expected):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from tools import sms_client
+    db,sdk,msg=sending
+    clock=datetime.fromisoformat(local_time).replace(tzinfo=ZoneInfo('America/Chicago'))
+    monkeypatch.setattr(sms_client,'_texas_now',lambda:clock)
+    monkeypatch.setattr(hooks.settings,'tcpa_allowed_start_hour',9)
+    monkeypatch.setattr(hooks.settings,'tcpa_allowed_end_hour',19)
+    monkeypatch.setattr(hooks.settings,'sms_weekend_blocked',True)
+    monkeypatch.setattr(hooks.settings,'sms_allowed_recipients',PHONE)
+    msg.compliance_cleared=True
+    msg.is_inbound_reply=inbound
+    assert SMSClient('twilio').send(msg,PHONE) is expected
+    assert sdk.messages.create.call_count==int(expected)
+    if not expected:
+        db.table.assert_not_called()
+        assert msg.sent_at is None
