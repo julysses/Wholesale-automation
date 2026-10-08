@@ -22,6 +22,7 @@ import {
   BarChart2, Hammer, Lightbulb, ShieldCheck, ArrowRight, Plus, Loader2, Download,
 } from 'lucide-react';
 import { queryAll, queryByIds } from '@/lib/queryAll';
+import { loadAnalysisPage, ANALYSIS_PAGE_SIZE } from '@/lib/analysisHistory';
 import { latestByLead } from '@/lib/qualificationHistory';
 import { sendOutreachBatches, outreachResultText, type OutreachSummary } from '@/lib/outreachBatches';
 import { formatDistanceToNow } from 'date-fns';
@@ -183,38 +184,10 @@ function useAcquisitionLeads(classification: CallClassification) {
   });
 }
 
-function useDealAnalyses() {
-  return useQuery<DealAnalysis[]>({
-    queryKey: ['deal_analyses'],
-    queryFn: async () => {
-      const { data: analyses, error } = await supabase
-        .from('deal_analyses')
-        .select('*')
-        .eq('is_viable', true)
-        .order('analyzed_at', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      if (!analyses?.length) return [];
-
-      const leadIds = [...new Set(analyses.map((a) => a.lead_id).filter(Boolean))];
-      const { data: leads, error: leadsError } = leadIds.length
-        ? await supabase
-            .from('leads')
-            .select('id, property_address, owner_first_name, owner_last_name')
-            .in('id', leadIds)
-        : { data: [], error: null };
-
-      if (leadsError) throw leadsError;
-      const leadMap = Object.fromEntries((leads ?? []).map((l) => [l.id, l]));
-      return analyses.map((a) => {
-        const l = leadMap[a.lead_id ?? ''];
-        return {
-          ...a,
-          property_address: l?.property_address,
-          owner_name: l ? `${l.owner_first_name ?? ''} ${l.owner_last_name ?? ''}`.trim() : undefined,
-        };
-      });
-    },
+function useDealAnalyses(page: number) {
+  return useQuery({
+    queryKey: ['deal_analyses', page],
+    queryFn: () => loadAnalysisPage<DealAnalysis>(page),
     staleTime: 60000,
   });
 }
@@ -540,6 +513,7 @@ function DealAnalysisCard({ deal }: { deal: DealAnalysis }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
+            {!deal.is_viable && <span className="text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">Not viable under saved assumptions — review required</span>}
             {deal.exit_strategy && <ExitStrategyBadge strategy={deal.exit_strategy} />}
             {deal.repair_tier && <RepairTierBadge tier={deal.repair_tier} />}
             {deal.arv_confidence && (
@@ -557,9 +531,9 @@ function DealAnalysisCard({ deal }: { deal: DealAnalysis }) {
       {/* Key numbers */}
       <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         {[
-          { label: 'ARV',       value: deal.arv_low   ? formatCurrency(deal.arv_low)   : '—', color: 'text-blue-700' },
-          { label: 'Repairs',   value: deal.repair_cost_high ? formatCurrency(deal.repair_cost_high) : '—', color: 'text-orange-600' },
-          { label: 'MAO',       value: deal.mao       ? formatCurrency(deal.mao)       : '—', color: 'text-gray-800' },
+          { label: 'ARV',       value: deal.arv_low != null ? formatCurrency(deal.arv_low)   : '—', color: 'text-blue-700' },
+          { label: 'Repairs',   value: deal.repair_cost_high != null ? formatCurrency(deal.repair_cost_high) : '—', color: 'text-orange-600' },
+          { label: 'MAO',       value: deal.mao != null ? formatCurrency(deal.mao)       : '—', color: 'text-gray-800' },
           { label: 'Proj. Fee', value: deal.projected_assignment_fee ? formatCurrency(deal.projected_assignment_fee) : '—', color: 'text-green-700' },
         ].map((s) => (
           <div key={s.label} className="bg-gray-50 rounded-lg p-2 border border-gray-100">
@@ -772,7 +746,9 @@ export function Acquisitions() {
 
   const { data: hotLeads = [], isLoading: hotLoading, error: hotError }    = useAcquisitionLeads('HOT');
   const { data: warmLeads = [], isLoading: warmLoading, error: warmError, refetch: refetchWarm }  = useAcquisitionLeads('WARM');
-  const { data: deals = [], isLoading: dealsLoading, error: dealsError }     = useDealAnalyses();
+  const [analysisPage, setAnalysisPage] = useState(1);
+  const { data: analysisHistory, isLoading: dealsLoading, error: dealsError, refetch: refetchAnalyses } = useDealAnalyses(analysisPage);
+  const deals = analysisHistory?.data ?? [];
   const { data: offerRecs = [], isLoading: recsLoading, error: recsError }  = useOfferRecs();
   const { data: appointments = [], error: apptsError, refetch: refetchAppts }                       = useAppointments();
 
@@ -793,7 +769,7 @@ export function Acquisitions() {
   const tabs: { key: Tab; label: string; icon: React.ElementType; count?: number; color: string }[] = [
     { key: 'hot',          label: 'HOT Leads',      icon: Flame,        count: hotLeads.length,    color: 'text-red-600' },
     { key: 'warm',         label: 'WARM Leads',     icon: TrendingUp,   count: warmLeads.length,   color: 'text-orange-600' },
-    { key: 'deal_analysis',label: 'Deal Analysis',  icon: BarChart2,    count: deals.length,       color: 'text-blue-600' },
+    { key: 'deal_analysis',label: 'Deal Analysis',  icon: BarChart2,    count: analysisHistory?.count,       color: 'text-blue-600' },
     { key: 'negotiation',  label: 'Negotiation',    icon: Lightbulb,    count: offerRecs.length,   color: 'text-purple-600' },
     { key: 'appointments', label: 'Appointments',   icon: CalendarCheck, count: appointments.length, color: 'text-teal-600' },
   ];
@@ -975,12 +951,19 @@ export function Acquisitions() {
 
       {tab === 'deal_analysis' && (
         <div className="space-y-3">
+          <p className="text-sm">All saved analyses, including estimates that do not meet the saved buy formula. Review inputs before approving an offer.</p>
+          <button onClick={() => { void refetchAnalyses(); }} className="text-blue-700 underline">Refresh analysis history</button>
+          {analysisHistory && <div className="flex gap-3 items-center text-sm">
+            <button disabled={analysisPage === 1 || dealsLoading} onClick={() => setAnalysisPage(page => page - 1)}>Previous analyses</button>
+            <span>{analysisHistory.count} saved analyses · Page {analysisPage} of {Math.max(1, Math.ceil(analysisHistory.count / ANALYSIS_PAGE_SIZE))}</span>
+            <button disabled={analysisPage * ANALYSIS_PAGE_SIZE >= analysisHistory.count || dealsLoading} onClick={() => setAnalysisPage(page => page + 1)}>Next analyses</button>
+          </div>}
           {dealsLoading && (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />)}
             </div>
           )}
-          {!dealsLoading && deals.length === 0 && (
+          {!dealsLoading && !dealsError && deals.length === 0 && (
             <div className="text-center py-16">
               <BarChart2 className="h-12 w-12 text-gray-200 mx-auto mb-3" />
               <p className="text-gray-500 font-medium">No deal analyses yet</p>
