@@ -1,11 +1,12 @@
+"""Durable manual bookings. External calendar capability is reported truthfully."""
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from typing import Any, Optional
+from typing import Literal
+from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import AwareDatetime, BaseModel, Field
 
 from tools.calendar_adapter import CalendarAdapter
 from tools.crm import get_supabase_client
@@ -15,55 +16,66 @@ router = APIRouter(prefix="/api/appointments", tags=["Appointments"])
 
 
 class CreateAppointmentRequest(BaseModel):
-    lead_id: str
-    scheduled_at: datetime
-    appointment_type: str = "phone"
-    notes: Optional[str] = None
+    request_id: UUID
+    lead_id: UUID
+    scheduled_at: AwareDatetime
+    appointment_type: Literal["phone", "in_person", "video"] = "phone"
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+class AppointmentTransition(BaseModel):
+    expected_status: Literal["scheduled", "confirmed"]
+    status: Literal["confirmed", "completed", "no_show", "cancelled"]
+
+
+def _operator(request: Request) -> str:
+    operator = getattr(request.state, "user_id", None)
+    if not operator:
+        raise HTTPException(401, "Sign in to continue")
+    return str(operator)
+
+
+def _result(value: object) -> dict:
+    if not isinstance(value, dict):
+        raise HTTPException(503, "Appointment outcome is unconfirmed. Retry with the same booking details.")
+    if value.get("missing"):
+        raise HTTPException(404, "Appointment not found")
+    if value.get("conflict"):
+        raise HTTPException(409, "Booking details or status changed. Refresh appointments before continuing.")
+    if value.get("invalid"):
+        raise HTTPException(422, "Choose an existing lead and a future appointment time.")
+    saved = value.get("appointment")
+    if not isinstance(saved, dict) or not saved.get("id"):
+        raise HTTPException(503, "Appointment outcome is unconfirmed. Retry with the same booking details.")
+    return {**saved, "reused": bool(value.get("reused"))}
 
 
 @router.post("")
-async def create_appointment(body: CreateAppointmentRequest):
-    """Create a new appointment and sync to calendar."""
-    supabase = get_supabase_client()
-    
-    # 1. Insert into DB
+async def create_appointment(body: CreateAppointmentRequest, request: Request):
+    operator = _operator(request)
     try:
-        resp = supabase.table("appointments").insert({
-            "lead_id": body.lead_id,
-            "scheduled_at": body.scheduled_at.isoformat(),
-            "appointment_type": body.appointment_type,
-            "notes": body.notes,
-            "status": "scheduled",
-            "source": "manual",
-        }).execute()
-        
-        if not resp.data:
-            raise HTTPException(status_code=500, detail="Failed to create appointment in DB")
-            
-        appointment = resp.data[0]
-        
-    except Exception as exc:
-        logger.error(f"Appointment creation failed: {exc}")
-        if isinstance(exc, HTTPException):
-            raise exc
-        raise HTTPException(status_code=500, detail=str(exc))
+        db = get_supabase_client()
+        value = db.rpc("book_appointment", {
+            "p_id": str(body.request_id), "p_lead": str(body.lead_id),
+            "p_at": body.scheduled_at.isoformat(), "p_type": body.appointment_type,
+            "p_notes": body.notes or "", "p_operator": operator,
+            "p_calendar": CalendarAdapter().status,
+        }).execute().data
+    except Exception:
+        logger.exception("Appointment booking acknowledgement unavailable")
+        raise HTTPException(503, "Appointment outcome is unconfirmed. Retry with the same booking details.")
+    return _result(value)
 
-    calendar_sync = "failed"
-    # 2. Sync to Calendar
+
+@router.patch("/{appointment_id}")
+async def transition_appointment(appointment_id: UUID, body: AppointmentTransition, request: Request):
+    operator = _operator(request)
     try:
-        # Fetch lead address for calendar entry
-        lead_resp = supabase.table("leads").select("property_address").eq("id", body.lead_id).single().execute()
-        address = lead_resp.data.get("property_address", "Unknown Property") if lead_resp.data else "Unknown Property"
-        
-        calendar = CalendarAdapter()
-        synced = calendar.sync_deal_milestones(
-            deal_id=body.lead_id, # using lead_id as deal_id for now
-            address=address,
-            milestones={f"Appointment ({body.appointment_type})": body.scheduled_at}
-        )
-        calendar_sync = "synced" if synced else calendar.status
-    except Exception as exc:
-        logger.warning(f"Calendar sync failed: {exc}")
-        # We don't fail the whole request if calendar sync fails
-
-    return {**appointment, "calendar_sync": calendar_sync}
+        value = get_supabase_client().rpc("transition_appointment", {
+            "p_id": str(appointment_id), "p_expected": body.expected_status,
+            "p_next": body.status, "p_operator": operator,
+        }).execute().data
+    except Exception:
+        logger.exception("Appointment status acknowledgement unavailable")
+        raise HTTPException(503, "Appointment status is unconfirmed. Refresh before continuing.")
+    return _result(value)

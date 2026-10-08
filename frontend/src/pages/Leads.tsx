@@ -7,6 +7,7 @@ import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
 import { OutreachTimeline } from '@/components/leads/OutreachTimeline';
 import { RetellBatchDialog } from '@/components/leads/RetellBatchDialog';
+import { AppointmentBookingDialog } from '@/components/appointments/AppointmentBookingDialog';
 import { SMSNurtureDialog } from '@/components/leads/SMSNurtureDialog';
 import { RetellCallDialog } from '@/components/leads/RetellCallDialog';
 import { StackBadge } from '@/components/leads/StackBadge';
@@ -151,6 +152,8 @@ export function Leads() {
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [callSelection, setCallSelection] = useState<string[]>([]);
   const [callBatchOpen, setCallBatchOpen] = useState(false);
+  const appointmentQueries = useQueryClient();
+  const [appointmentLead, setAppointmentLead] = useState<Lead | null>(null);
   const [nurtureLead, setNurtureLead] = useState<Lead | null>(null);
   const [callLead, setCallLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -427,6 +430,10 @@ export function Leads() {
                             onClick={() => { setCallLead(lead); setOpenMenuId(null); }}>
                             <PhoneCall className="h-3.5 w-3.5" /> Review AI call
                           </button>
+                          <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-teal-600 hover:bg-teal-50"
+                            onClick={() => { setAppointmentLead(lead); setOpenMenuId(null); }}>
+                            Schedule appointment
+                          </button>
                           {/* Always allow review/cancellation; the server checks sending eligibility. */}
                           {(
                             <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-teal-600 hover:bg-teal-50"
@@ -478,6 +485,9 @@ export function Leads() {
         <LeadDetailDrawer lead={detailLead} onClose={() => setDetailLead(null)} />
       )}
       {callBatchOpen && <RetellBatchDialog leadIds={callSelection} onClose={() => setCallBatchOpen(false)} />}
+      {appointmentLead && <AppointmentBookingDialog key={appointmentLead.id} leadId={appointmentLead.id}
+        address={appointmentLead.property_address} onClose={() => setAppointmentLead(null)}
+        onSaved={() => { void appointmentQueries.invalidateQueries({ queryKey: ['upcoming_appointments'] }); }} />}
       {nurtureLead && <SMSNurtureDialog key={nurtureLead.id} lead={nurtureLead} onClose={() => setNurtureLead(null)} />}
       {callLead && <RetellCallDialog key={callLead.id} lead={callLead} onClose={() => setCallLead(null)} />}
     </div>

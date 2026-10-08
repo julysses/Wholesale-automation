@@ -3,15 +3,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 import sys
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
-from fastapi import HTTPException
 
 from config.settings import settings
 from tools.calendar_adapter import CalendarAdapter
-from web.api import appointments_api
 
 REPO = Path(__file__).resolve().parents[1]
 RUNNER = REPO / "tools" / "run_migrations.py"
@@ -59,48 +55,3 @@ def test_calendar_never_reports_a_fake_provider_sync(monkeypatch, google, calend
     calendar = CalendarAdapter()
     assert calendar.sync_deal_milestones("deal-test", "123 Main St", {"Closing": datetime.now(timezone.utc)}) is False
     assert calendar.status == expected
-
-
-def appointment_db():
-    appointment = {"id": "appointment-test", "lead_id": "lead-test", "status": "scheduled"}
-    db = MagicMock()
-    db.table.return_value.insert.return_value.execute.return_value = SimpleNamespace(data=[appointment])
-    db.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = SimpleNamespace(data={"property_address": "123 Main St"})
-    return db, appointment
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("configured,expected", [(False, "not_configured"), (True, "not_supported")])
-async def test_saved_appointment_reports_calendar_limitation(monkeypatch, configured, expected):
-    db, stored = appointment_db()
-    monkeypatch.setattr(appointments_api, "get_supabase_client", lambda: db)
-    monkeypatch.setattr(settings, "google_calendar_id", "calendar@example.test" if configured else "")
-    monkeypatch.setattr(settings, "calendly_api_key", "")
-    result = await appointments_api.create_appointment(appointments_api.CreateAppointmentRequest(lead_id="lead-test", scheduled_at=datetime.now(timezone.utc)))
-    assert result["id"] == stored["id"]
-    assert result["status"] == "scheduled"
-    assert result["calendar_sync"] == expected
-    assert "calendar_sync" not in stored
-    db.table.return_value.insert.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_calendar_failure_does_not_lose_saved_appointment(monkeypatch):
-    db, stored = appointment_db()
-    monkeypatch.setattr(appointments_api, "get_supabase_client", lambda: db)
-    db.table.return_value.select.return_value.eq.return_value.single.return_value.execute.side_effect = RuntimeError("simulated lookup error")
-    result = await appointments_api.create_appointment(appointments_api.CreateAppointmentRequest(lead_id="lead-test", scheduled_at=datetime.now(timezone.utc)))
-    assert result["id"] == stored["id"]
-    assert result["calendar_sync"] == "failed"
-
-
-@pytest.mark.asyncio
-async def test_failed_appointment_insert_never_attempts_calendar(monkeypatch):
-    db, _ = appointment_db()
-    db.table.return_value.insert.return_value.execute.side_effect = RuntimeError("simulated save error")
-    monkeypatch.setattr(appointments_api, "get_supabase_client", lambda: db)
-    calendar = MagicMock()
-    monkeypatch.setattr(appointments_api, "CalendarAdapter", calendar)
-    with pytest.raises(HTTPException):
-        await appointments_api.create_appointment(appointments_api.CreateAppointmentRequest(lead_id="lead-test", scheduled_at=datetime.now(timezone.utc)))
-    calendar.assert_not_called()

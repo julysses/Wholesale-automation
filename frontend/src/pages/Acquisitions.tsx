@@ -1,4 +1,5 @@
-import { apiFetch } from '@/lib/api';
+import { AppointmentBookingDialog } from '@/components/appointments/AppointmentBookingDialog';
+import { AppointmentActions } from '@/components/appointments/AppointmentActions';
 /**
  * Acquisitions Dashboard
  *
@@ -76,6 +77,7 @@ interface Appointment {
   appointment_type: string;
   status: string;
   notes: string | null;
+  calendar_sync: string;
   lead?: { property_address: string; owner_first_name: string | null; owner_last_name: string | null };
 }
 
@@ -254,15 +256,13 @@ function useAppointments() {
   return useQuery<Appointment[]>({
     queryKey: ['upcoming_appointments'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      return queryAll<Appointment>((from, to) => supabase
         .from('appointments')
         .select('*, lead:lead_id(property_address, owner_first_name, owner_last_name)')
         .in('status', ['scheduled', 'confirmed'])
-        .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
-        .limit(20);
-      if (error) throw error;
-      return (data ?? []) as Appointment[];
+        .order('id', { ascending: true })
+        .range(from, to));
     },
     staleTime: 60000,
   });
@@ -757,8 +757,6 @@ export function Acquisitions() {
   const [bulkSmsResult, setBulkSmsResult] = useState<OutreachSummary | null>(null);
   const [showApptModal, setShowApptModal] = useState(false);
   const [selectedLeadForAppt, setSelectedLeadForAppt] = useState<string | null>(null);
-  const [newAppt, setNewAppt] = useState({ date: '', time: '', type: 'phone', notes: '' });
-  const [submittingAppt, setSubmittingAppt] = useState(false);
 
   const { data: hotLeads = [], isLoading: hotLoading, error: hotError }    = useAcquisitionLeads('HOT');
   const { data: warmLeads = [], isLoading: warmLoading, error: warmError, refetch: refetchWarm }  = useAcquisitionLeads('WARM');
@@ -779,37 +777,6 @@ export function Acquisitions() {
     }
   };
 
-  const handleScheduleAppt = async () => {
-    if (!selectedLeadForAppt || !newAppt.date || !newAppt.time) return;
-    setSubmittingAppt(true);
-    try {
-      const scheduledAt = new Date(`${newAppt.date}T${newAppt.time}`);
-      const resp = await apiFetch('/api/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lead_id: selectedLeadForAppt,
-          scheduled_at: scheduledAt.toISOString(),
-          appointment_type: newAppt.type,
-          notes: newAppt.notes,
-        }),
-      });
-      if (resp.ok) {
-        const saved = await resp.json();
-        if (saved.calendar_sync !== 'synced') alert('Appointment saved in WholesaleOS. External calendar sync is unavailable; add it to your calendar manually.');
-        setShowApptModal(false);
-        setNewAppt({ date: '', time: '', type: 'phone', notes: '' });
-        setSelectedLeadForAppt(null);
-        refetchAppts();
-      } else {
-        alert('Failed to schedule appointment.');
-      }
-    } catch (err) {
-      alert('Error: ' + err);
-    } finally {
-      setSubmittingAppt(false);
-    }
-  };
 
   const tabs: { key: Tab; label: string; icon: React.ElementType; count?: number; color: string }[] = [
     { key: 'hot',          label: 'HOT Leads',      icon: Flame,        count: hotLeads.length,    color: 'text-red-600' },
@@ -1039,9 +1006,9 @@ export function Acquisitions() {
           {appointments.length === 0 && (
             <div className="text-center py-16">
               <CalendarCheck className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">No upcoming appointments</p>
+              <p className="text-gray-500 font-medium">No active appointments</p>
               <p className="text-sm text-gray-400 mt-1">
-                Appointments are created automatically when sellers agree to speak further
+                Schedule a time agreed with the seller from their lead card.
               </p>
             </div>
           )}
@@ -1088,6 +1055,9 @@ export function Acquisitions() {
                     </span>
                     <span className="capitalize">{appt.appointment_type.replace(/_/g, ' ')}</span>
                   </div>
+                  {new Date(appt.scheduled_at).getTime() < Date.now() && <p className="text-sm text-red-700">Overdue — record an outcome or arrange a new time.</p>}
+                  <p className="text-xs text-gray-600">{appt.calendar_sync === 'synced' ? 'Calendar synced' : 'External calendar unavailable — add to your calendar manually.'}</p>
+                  <AppointmentActions appointment={appt} onSaved={() => { void refetchAppts(); }} />
                   {appt.notes && (
                     <p className="text-xs text-gray-400 mt-0.5 truncate">{appt.notes}</p>
                   )}
@@ -1098,86 +1068,12 @@ export function Acquisitions() {
         </div>
       )}
 
-      {/* Appointment Modal */}
-      {showApptModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <CalendarCheck className="h-5 w-5 text-teal-600" />
-              Schedule Appointment
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1 capitalize">Property</label>
-                <div className="text-sm font-medium text-gray-900 bg-gray-50 px-3 py-2 rounded-lg border">
-                  {[...hotLeads, ...warmLeads].find(l => l.id === selectedLeadForAppt)?.property_address || 'Selected Lead'}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Date</label>
-                  <input
-                    type="date"
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-                    value={newAppt.date}
-                    onChange={(e) => setNewAppt(p => ({ ...p, date: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Time</label>
-                  <input
-                    type="time"
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-                    value={newAppt.time}
-                    onChange={(e) => setNewAppt(p => ({ ...p, time: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Type</label>
-                <select
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-                  value={newAppt.type}
-                  onChange={(e) => setNewAppt(p => ({ ...p, type: e.target.value }))}
-                >
-                  <option value="phone">Phone Call</option>
-                  <option value="video">Virtual Walkthrough (Video)</option>
-                  <option value="in_person">In-Person Inspection</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Notes (Optional)</label>
-                <textarea
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none resize-none"
-                  rows={3}
-                  placeholder="e.g., Seller wants to show the new roof..."
-                  value={newAppt.notes}
-                  onChange={(e) => setNewAppt(p => ({ ...p, notes: e.target.value }))}
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    setShowApptModal(false);
-                    setSelectedLeadForAppt(null);
-                  }}
-                  className="flex-1 px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleScheduleAppt}
-                  disabled={submittingAppt || !newAppt.date || !newAppt.time}
-                  className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {submittingAppt ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showApptModal && selectedLeadForAppt && <AppointmentBookingDialog
+        leadId={selectedLeadForAppt}
+        address={[...hotLeads, ...warmLeads].find(lead => lead.id === selectedLeadForAppt)?.property_address || 'Selected lead'}
+        onClose={() => { setShowApptModal(false); setSelectedLeadForAppt(null); }}
+        onSaved={() => { void refetchAppts(); }}
+      />}
 
       {/* Blueprint funnel reminder */}
       <div className="mt-6 p-4 rounded-xl bg-gray-50 border border-gray-200">
