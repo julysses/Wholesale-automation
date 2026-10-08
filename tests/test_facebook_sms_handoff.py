@@ -23,6 +23,14 @@ PHONE = '+12147010100'
 class Query(MemoryTable):
     def order(self, *_args, **_kwargs):
         return self
+    def is_(self, key, value):
+        assert key == 'raw_payload->>provider_sid' and value == 'null'
+        # Native intake fixtures exercise first-send unbound claims. Concurrent
+        # JSON/SID comparisons are covered by the receipt-reconciliation suite.
+        matches = [row for row in self.db.tables.get(self.name, {}).values()
+                   if all(row.get(k) == v for k,v in self.filters.items())]
+        assert all((row.get('raw_payload') or {}).get('provider_sid') is None for row in matches)
+        return self
 
 
 class DB(MemoryDB):

@@ -26,6 +26,7 @@ def setup(monkeypatch):
     db=MagicMock()
     db.rpc.return_value.execute.return_value.data={'saved':True}
     monkeypatch.setattr(hooks,'get_supabase_client',lambda:db)
+    monkeypatch.setattr(hooks,'reconcile_twilio_callback',lambda _,payload:(payload.get('app_message_id'),payload.get('MessageStatus')))
     app=FastAPI();app.include_router(hooks.router)
     return TestClient(app),db
 
@@ -98,6 +99,7 @@ def sending(setup,monkeypatch):
     q.upsert.return_value.execute.return_value.data=[{'id':'saved'}]
     q.update.return_value.eq.return_value.execute.return_value.data=[{'id':'saved'}]
     monkeypatch.setattr(crm,'get_supabase_client',lambda:db)
+    monkeypatch.setattr('tools.sms_client.reconcile_twilio_receipt',lambda *_:'accepted')
     sdk=MagicMock();sdk.messages.create.return_value.sid=MESSAGE
     monkeypatch.setattr(twilio.rest,'Client',lambda *_:sdk)
     return db,sdk,OutreachMessage(lead_id=uuid4(),channel=OutreachChannel.SMS,body='Test')

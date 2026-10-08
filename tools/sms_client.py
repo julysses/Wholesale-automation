@@ -27,6 +27,7 @@ from config.settings import settings
 from schemas.outreach import APPROVED_SMS_PROVIDERS, OutreachMessage, OutreachStatus
 from tools.facebook_consent import matching_native_consent, normalize_us_phone
 from tools.operational_alerts import record_provider_alert
+from tools.twilio_receipts import reconcile_twilio_receipt
 
 logger = logging.getLogger(__name__)
 
@@ -231,15 +232,31 @@ class SMSClient:
                 messaging_service_sid=settings.twilio_messaging_service_sid, to=to_number,
                 status_callback=f"{base}/webhooks/twilio/status?message_id={message.id}")
         except Exception:
-            sb.table("sms_events").update({"status": "unknown"}).eq("id", str(message.id)).execute()
+            # A delivery callback may have arrived while the HTTP request timed
+            # out. Only an untouched submitting claim becomes unknown.
+            parked = sb.table("sms_events").update({"status": "unknown"}).eq("id", str(message.id)).eq("status", "submitting").execute()
+            if not parked.data:
+                rows = sb.table("sms_events").select("status,raw_payload").eq("id", str(message.id)).limit(1).execute().data
+                receipt = rows[0] if rows else {}
+                sid = (receipt.get("raw_payload") or {}).get("provider_sid")
+                if sid and receipt.get("status") in {"accepted", "scheduled", "queued", "sending", "sent", "delivered", "read"}:
+                    message.provider_message_id = sid
+                    message.mark_sent()
+                    message.a2p_provider = "twilio"
+                    return True  # A verified callback already confirmed provider acceptance.
+                if sid and receipt.get("status") in {"failed", "undelivered", "canceled"}:
+                    message.provider_message_id = sid
+                    return False
             record_provider_alert(sb, 'twilio', str(message.id), 'unknown', message.lead_id)
             raise
         message.provider_message_id = result.sid
-        saved = sb.table("sms_events").update({"status": "accepted",
-            "raw_payload": {"provider_sid": result.sid}}).eq("id", str(message.id)).execute()
-        if not saved.data:
+        try:
+            outcome = reconcile_twilio_receipt(sb, str(message.id), to_number, result.sid, "accepted")
+        except Exception:
             record_provider_alert(sb, 'twilio', str(message.id), 'unknown', message.lead_id)
             raise RuntimeError("Provider accepted SMS but local receipt is unconfirmed; reconcile before retry")
+        if outcome in {"failed", "undelivered", "canceled", "unknown"}:
+            return False
         message.mark_sent()
         message.a2p_provider = "twilio"
         return True

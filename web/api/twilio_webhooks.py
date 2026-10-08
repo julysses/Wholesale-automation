@@ -12,6 +12,7 @@ from starlette.datastructures import FormData
 from config.settings import settings
 from tools.crm import get_supabase_client
 from tools.operational_alerts import record_provider_alert
+from tools.twilio_receipts import reconcile_twilio_callback
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/twilio", tags=["Twilio"])
@@ -50,6 +51,8 @@ async def _verified(request: Request, kind: str) -> dict:
         raise HTTPException(400, "Invalid message SID")
     if kind == "inbound" and data.get("To") != settings.twilio_from_number:
         raise HTTPException(403, "Unexpected destination")
+    if kind == "status" and data.get("From") != settings.twilio_from_number:
+        raise HTTPException(403, "Unexpected sending number")
     if kind == "status" and data.get("MessageStatus") not in STATUSES:
         raise HTTPException(400, "Invalid message status")
     if not re.fullmatch(r"\+1\d{10}", data.get("From" if kind == "inbound" else "To", "")):
@@ -76,10 +79,11 @@ async def _receive(request: Request, kind: str) -> Response:
         }).execute().data
         if not isinstance(result, dict) or result.get("saved") is not True:
             raise RuntimeError("Receipt unconfirmed")
-        if kind == 'status' and data['MessageStatus'] in ('failed','undelivered','canceled') and data.get('app_message_id'):
-            tracked = sb.table('sms_events').select('lead_id').eq('id',data['app_message_id']).limit(1).execute().data
+        reference, outcome = reconcile_twilio_callback(sb, data) if kind == 'status' else (None, None)
+        if reference and outcome in ('failed','undelivered','canceled','unknown'):
+            tracked = sb.table('sms_events').select('lead_id').eq('id',reference).limit(1).execute().data
             if tracked:
-                record_provider_alert(sb,'twilio',data['app_message_id'],data['MessageStatus'],tracked[0].get('lead_id'))
+                record_provider_alert(sb,'twilio',reference,outcome,tracked[0].get('lead_id'))
     except Exception:
         logger.exception("Twilio receipt failed for %s", data["MessageSid"])
         raise HTTPException(503, "Receipt storage unavailable")
