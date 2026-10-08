@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api';
  * Vercel environment variables remain the primary source; Supabase fills
  * in any blanks on each backend cold start.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -478,22 +478,28 @@ function LaunchControlStep({ onNext, onSkip, saved }: StepProps) {
 }
 
 function EmailDeliveryPanel() {
-  const [evidence, setEvidence] = useState<{ live_enabled: boolean; test_recipients: string; messages: Array<{ id: string; recipient: string; status: string }>; events: Array<{ event_id: string; message_id: string | null; event: string; recipient: string }> } | null>(null);
-  const [messageId] = useState(() => crypto.randomUUID());
+  const [evidence, setEvidence] = useState<{ live_enabled: boolean; test_recipients: string; default_recipient: string | null; messages: Array<{ id: string; recipient: string; status: string }>; events: Array<{ event_id: string; message_id: string | null; event: string; recipient: string }> } | null>(null);
+  const messageIds = useRef<Record<string, string>>({});
+  const [recipient, setRecipient] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState('');
   const refresh = useCallback(async () => {
     try {
       const response = await apiFetch('/api/email/messages');
-      setEvidence(await response.json());
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Unable to load delivery evidence');
+      setEvidence(data);
     } catch (error) { setResult(error instanceof Error ? error.message : 'Unable to load delivery evidence'); }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
   const sendTest = async () => {
     setBusy(true);
     try {
-      const response = await apiFetch('/api/email/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: messageId }) });
+      const key = recipient || evidence?.default_recipient || 'default';
+      const messageId = messageIds.current[key] ??= crypto.randomUUID();
+      const response = await apiFetch('/api/email/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: messageId, recipient: recipient || undefined }) });
       const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Email test was refused');
       setResult(data.provider_accepted ? 'Provider accepted the test. Refresh delivery events to confirm delivery.' : 'No new email accepted. The reference may already have been attempted, or sending was blocked. Check the ledger before retrying.');
       await refresh();
     } catch (error) { setResult(error instanceof Error ? error.message : 'Test failed'); }
@@ -502,6 +508,12 @@ function EmailDeliveryPanel() {
   return <div className="space-y-3 rounded-lg border p-4">
     <h3 className="font-medium">Email delivery verification</h3>
     <p className="text-sm text-muted-foreground">Sending: {evidence?.live_enabled ? 'enabled' : 'disabled'}. Test recipient: {evidence?.test_recipients || 'not configured'}.</p>
+    <label className="block text-sm">Authorized test recipient
+      <select className="mt-1 block rounded-md border bg-background p-2" value={recipient} disabled={busy} onChange={event => { setRecipient(event.target.value); setResult(''); }}>
+        <option value="">{evidence?.default_recipient ? `Default: ${evidence.default_recipient}` : 'Select a recipient'}</option>
+        {Array.from(new Set((evidence?.test_recipients || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean))).map(value => <option key={value} value={value}>{value}</option>)}
+      </select>
+    </label>
     <div className="flex gap-2">
       <Button onClick={sendTest} disabled={busy || !evidence?.live_enabled}>Send production test email</Button>
       <Button variant="outline" onClick={refresh} disabled={busy}>Refresh delivery events</Button>
