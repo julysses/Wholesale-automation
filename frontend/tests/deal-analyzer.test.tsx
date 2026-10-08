@@ -41,3 +41,11 @@ it('searches and pages beyond the initial lead cohort',()=>{
  fireEvent.change(screen.getByLabelText('Find analysis lead'),{target:{value:'Internal dummy'}});
  expect(mocks.leads).toHaveBeenLastCalledWith({search:'Internal dummy',page:1,pageSize:50});
 });
+
+it('shows zero and negative MAO rather than hiding a rejected calculation',()=>{
+ fireEvent.change(screen.getByLabelText('ARV Override'),{target:{value:'75000'}});
+ expect(screen.getByRole('region',{name:'Maximum allowable offer calculation'})).toHaveTextContent('$0');
+ expect(screen.getByText('These assumptions do not support a positive offer. Review ARV, repairs and fees.')).toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('ARV Override'),{target:{value:'50000'}});
+ expect(screen.getByRole('region',{name:'Maximum allowable offer calculation'})).toHaveTextContent('-$17,500');
+});

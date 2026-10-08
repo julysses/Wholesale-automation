@@ -316,15 +316,15 @@ export function DealAnalyzer() {
         {/* RIGHT: Results */}
         <div className="space-y-5">
           {/* MAO Result */}
-          <div className={cn(
+          <div role="region" aria-label="Maximum allowable offer calculation" className={cn(
             'rounded-xl p-6 text-center',
             mao > 0 ? 'bg-[#1B3A5C] text-white' : 'bg-gray-100 text-gray-400'
           )}>
             <p className="text-sm font-medium opacity-70 uppercase tracking-wide">Maximum Allowable Offer</p>
             <p className="text-5xl font-bold mt-2">
-              {mao > 0 ? formatCurrency(mao) : '—'}
+              {arv > 0 ? formatCurrency(mao) : '—'}
             </p>
-            {mao > 0 && (
+            {arv > 0 && (
               <div className="mt-4 text-sm opacity-70 space-y-1">
                 <p>ARV {formatCurrency(arv)} × 70% = {formatCurrency(arv * 0.7)}</p>
                 <p>− Repairs {formatCurrency(estimatedRepairs)}</p>
@@ -333,6 +333,8 @@ export function DealAnalyzer() {
               </div>
             )}
           </div>
+
+          {arv > 0 && mao <= 0 && <p className="text-amber-800">These assumptions do not support a positive offer. Review ARV, repairs and fees.</p>}
 
           {/* Scenarios */}
           {mao > 0 && (
