@@ -13,7 +13,7 @@ def require_operator(request: Request) -> None:
     path = request.url.path.rstrip("/")
     route = request.scope.get("route")
     route_path = getattr(route, "path", "")
-    if (request.method == "GET" and path in {"/api/health", "/api/config"}) or (
+    if (request.method == "GET" and path in {"/api/health", "/api/readiness", "/api/config"}) or (
         (request.method, route_path) in {
             ("GET", "/api/forms/{form_id}"),
             ("POST", "/api/forms/{form_id}/submit"),

@@ -1,3 +1,4 @@
+import { LaunchMonitorPanel } from '@/components/LaunchMonitorPanel';
 import { apiFetch } from '@/lib/api';
 /**
  * SetupWizard — guided configuration walkthrough.
@@ -549,6 +550,7 @@ function EmailStep({ onNext, onSkip, saved }: StepProps) {
     <div className="space-y-5">
       <FeatureCard icon={<Mail className="h-5 w-5" />} title="Email Outreach" description="Email is the preferred channel (highest trust). Set up SendGrid or Mailgun for compliant email outreach." />
       <EmailDeliveryPanel />
+      <LaunchMonitorPanel />
       <KeyField envKey="EMAIL_PROVIDER" label="Email Provider" description="sendgrid | mailgun | instantly" example="sendgrid" isSecret={false} value={vals.email_provider} onChange={set('email_provider')} />
       <KeyField envKey="SENDGRID_API_KEY" label="SendGrid API Key" description="SendGrid API key (if using SendGrid)" example="SG.xxx..." value={vals.sendgrid_api_key} onChange={set('sendgrid_api_key')} />
       <KeyField envKey="FROM_EMAIL" label="From Email" description="Verified sender email address" example="alex@yourdomain.com" isSecret={false} value={vals.from_email} onChange={set('from_email')} />

@@ -78,3 +78,16 @@ def test_email_controls_require_admin(identity,method,path):
 @pytest.mark.parametrize('method,path',[('post','/api/calls/retell'),('get','/api/calls/retell/call_test')])
 def test_call_controls_require_admin(identity,method,path):
     assert getattr(TestClient(app),method)(path,headers={'Authorization':'Bearer valid'}).status_code==403
+
+
+@pytest.mark.parametrize('method,path',[('get','/api/operations/monitor'),('post','/api/operations/monitor/scan')])
+def test_monitor_controls_require_admin(identity,method,path):
+    assert getattr(TestClient(app),method)(path).status_code==401
+    assert getattr(TestClient(app),method)(path,headers={'Authorization':'Bearer valid'}).status_code==403
+
+
+def test_readiness_route_is_public_but_dependency_failure_is_not_healthy(monkeypatch):
+    from tools import launch_monitor
+    monkeypatch.setattr(launch_monitor,'snapshot',lambda: {'database':True,'intake':False,'owner':True,'aged':{}})
+    response=TestClient(app).get('/api/readiness')
+    assert response.status_code==503 and response.json()=={'status':'unavailable'}
