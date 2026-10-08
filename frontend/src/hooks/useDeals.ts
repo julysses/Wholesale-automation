@@ -1,14 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Deal } from '@/types';
 import { useDealStore } from '@/stores/useDealStore';
 import { toast } from 'sonner';
 import { localDateString } from '@/lib/taskDates';
 import { queryAll } from '@/lib/queryAll';
+import { createPipelineDeal, updatePipelineDeal, pendingDeal, type PendingDeal } from '@/lib/dealWrites';
 
-export type DealWrite = Omit<Partial<Deal>, 'contract_date' | 'closing_date' | 'actual_close_date'> & {
+export type DealWrite = Omit<Partial<Deal>, 'contract_date' | 'inspection_deadline' | 'closing_date' | 'actual_close_date' | 'buyer_id' | 'assigned_to' | 'earnest_money'> & {
+  earnest_money?: number | null;
   contract_date?: string | null;
+  inspection_deadline?: string | null;
+  buyer_id?: string | null;
+  assigned_to?: string | null;
   closing_date?: string | null;
   actual_close_date?: string | null;
 };
@@ -70,47 +75,34 @@ export function useUpcomingClosings() {
 
 export function useCreateDeal() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (deal: DealWrite) => {
-      const { data, error } = await supabase
-        .from('deals')
-        .insert(deal)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Deal;
-    },
+  const [pendingCreate, setPendingCreate] = useState<PendingDeal | null>(() => {
+    try { return pendingDeal(); } catch { return null; }
+  });
+  const mutation = useMutation({
+    mutationFn: (deal: DealWrite) => createPipelineDeal(deal, setPendingCreate),
     onSuccess: async () => {
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ['deals'] }),
-        qc.invalidateQueries({ queryKey: ['kpi'] }),
-        qc.invalidateQueries({ queryKey: ['reports'] }),
-      ]);
+      await Promise.all(['deals','kpi','reports','tasks'].map(key => qc.invalidateQueries({ queryKey:[key] }))).catch(() => {});
       toast.success('Deal created');
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (error: Error) => toast.error(error.message),
   });
+  return { ...mutation, pendingCreate };
 }
 
 export function useUpdateDeal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: DealWrite }) => {
-      const { data, error } = await supabase
-        .from('deals')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Deal;
-    },
-    onSuccess: async () => {
+    mutationFn: ({ id, updates, expected_updated_at }: { id: string; updates: DealWrite; expected_updated_at: string }) =>
+      updatePipelineDeal(id, expected_updated_at, updates),
+    onSuccess: async saved => {
+      const store = useDealStore.getState();
+      store.setDeals(store.deals.map(deal => deal.id === saved.id ? { ...deal, ...saved } : deal));
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['deals'] }),
         qc.invalidateQueries({ queryKey: ['kpi'] }),
         qc.invalidateQueries({ queryKey: ['reports'] }),
-      ]);
+        qc.invalidateQueries({ queryKey: ['tasks'] }),
+      ]).catch(() => {});
       toast.success('Deal updated');
     },
     onError: (e: Error) => toast.error(e.message),

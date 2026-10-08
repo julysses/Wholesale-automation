@@ -1,5 +1,13 @@
 import { supabase } from '@/lib/supabase';
 
+export class ApiError extends Error {
+  status: number;
+  rejectedCreate: boolean;
+  constructor(message: string, status: number, rejectedCreate = false) {
+    super(message); this.status = status; this.rejectedCreate = rejectedCreate;
+  }
+}
+
 /** Send the current session to our API and surface unsuccessful operations. */
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   if (!path.startsWith('/api/') || path.includes('\\')) {
@@ -12,7 +20,8 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   const response = await fetch(path, { ...init, headers });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(typeof body?.detail === 'string' ? body.detail : `Request failed (${response.status})`);
+    throw new ApiError(typeof body?.detail === 'string' ? body.detail : `Request failed (${response.status})`, response.status,
+      response.headers.get('X-Deal-Create-Rejected') === 'true');
   }
   return response;
 }

@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity, type LeadWrite } from '@/hooks/useLeads';
 import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
+import { DealRecoveryPanel } from '@/components/pipeline/DealRecoveryPanel';
 import { OutreachTimeline } from '@/components/leads/OutreachTimeline';
 import { RetellBatchDialog } from '@/components/leads/RetellBatchDialog';
 import { AppointmentBookingDialog } from '@/components/appointments/AppointmentBookingDialog';
@@ -200,7 +201,7 @@ export function Leads() {
       lead_id: lead.id,
       deal_name: lead.property_address,
       stage: 'offer_made',
-      contract_price: lead.offer_price ?? lead.mao ?? undefined,
+      contract_price: lead.offer_price ?? undefined,
       arv: lead.estimated_arv ?? undefined,
       repair_estimate: lead.estimated_repairs ?? undefined,
       seller_name: `${lead.owner_first_name ?? ''} ${lead.owner_last_name ?? ''}`.trim() || undefined,
@@ -209,6 +210,7 @@ export function Leads() {
 
   return (
     <div className="space-y-4">
+      <DealRecoveryPanel pending={createDeal.pendingCreate} busy={createDeal.isPending} retry={() => createDeal.pendingCreate && void createDeal.mutateAsync(createDeal.pendingCreate.deal).catch(() => {})} />
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>

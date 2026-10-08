@@ -24,6 +24,8 @@ import {
 } from '@dnd-kit/core';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { DealRecoveryPanel } from '@/components/pipeline/DealRecoveryPanel';
+import { DealHandoffFields } from '@/components/pipeline/DealHandoffFields';
 
 const COLUMNS = [
   { id: 'offer_made', title: 'Offer Made', color: 'blue-500' },
@@ -81,7 +83,7 @@ export function Pipeline() {
     moveDealStage(dealId, targetStage);
 
     try {
-      await updateDeal.mutateAsync({ id: dealId, updates: {
+      await updateDeal.mutateAsync({ id: dealId, expected_updated_at: deal.updated_at, updates: {
         stage: targetStage,
         ...(targetStage === 'closed' ? { actual_close_date: deal.actual_close_date || localDateString() }
           : deal.stage === 'closed' ? { actual_close_date: null } : {}),
@@ -107,7 +109,10 @@ export function Pipeline() {
       actual_close_date: deal.actual_close_date,
       notes: deal.notes,
       stage: deal.stage,
-      title_company: deal.title_company,
+      title_company: deal.title_company, title_contact: deal.title_contact, title_phone: deal.title_phone,
+      assigned_to: deal.assigned_to, buyer_id: deal.buyer_id, earnest_money: deal.earnest_money,
+      inspection_deadline: deal.inspection_deadline, psa_doc_url: deal.psa_doc_url, assignment_doc_url: deal.assignment_doc_url,
+      seller_name: deal.seller_name,
     });
     setModalOpen(true);
   };
@@ -115,7 +120,7 @@ export function Pipeline() {
   const handleSave = async () => {
     if (!selectedDeal) return;
     try {
-      await updateDeal.mutateAsync({ id: selectedDeal.id, updates: {
+      await updateDeal.mutateAsync({ id: selectedDeal.id, expected_updated_at: selectedDeal.updated_at, updates: {
         ...editForm,
         actual_close_date: editForm.stage === 'closed'
           ? editForm.actual_close_date || localDateString()
@@ -140,7 +145,7 @@ export function Pipeline() {
       await createDeal.mutateAsync({
         ...newDeal,
         deal_name: newDeal.deal_name.trim(),
-        ...(newDeal.stage === 'closed' ? { actual_close_date: localDateString() } : {}),
+        ...(newDeal.stage === 'closed' ? { actual_close_date: newDeal.actual_close_date || localDateString() } : {}),
       });
       setNewDealOpen(false);
       setNewDeal({ stage: 'offer_made' });
@@ -154,15 +159,17 @@ export function Pipeline() {
   const activeDeal = activeDragId ? deals.find((d) => d.id === activeDragId) : null;
 
   const pipelineDeals = displayDeals.filter((d) => !['cancelled'].includes(d.stage));
+  const activeDeals = pipelineDeals.filter(deal => deal.stage !== 'closed');
 
   return (
     <div className="space-y-4">
+      <DealRecoveryPanel pending={createDeal.pendingCreate} busy={createDeal.isPending} retry={() => createDeal.pendingCreate && void createDeal.mutateAsync(createDeal.pendingCreate.deal).catch(() => {})} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {pipelineDeals.length} active deals ·{' '}
-            {formatCurrency(pipelineDeals.reduce((s, d) => s + (d.assignment_fee || 0), 0))} in fees
+            {activeDeals.length} active deals ·{' '}
+            {formatCurrency(activeDeals.reduce((s, d) => s + (d.assignment_fee || 0), 0))} in fees
           </p>
         </div>
         <Button onClick={() => { setNewDeal({ stage: 'offer_made' }); setLeadSearch(''); setLeadPage(1); setNewDealOpen(true); }} icon={<Plus className="h-4 w-4" />}>
@@ -218,6 +225,8 @@ export function Pipeline() {
       {/* New Deal Modal */}
       <Modal open={newDealOpen} onClose={() => setNewDealOpen(false)} title="New Deal" size="lg">
         <div className="p-6 space-y-4">
+          <DealRecoveryPanel pending={createDeal.pendingCreate} busy={createDeal.isPending} retry={() => createDeal.pendingCreate && void createDeal.mutateAsync(createDeal.pendingCreate.deal).then(() => setNewDealOpen(false)).catch(() => {})} />
+          <fieldset disabled={createDeal.isPending || !!createDeal.pendingCreate} className="contents">
           <Input label="Find Lead" value={leadSearch}
             onChange={(e) => { setLeadSearch(e.target.value); setLeadPage(1); }} placeholder="Search address, owner or phone" />
           <Select label="Lead *" value={newDeal.lead_id || ''}
@@ -225,7 +234,7 @@ export function Pipeline() {
               const lead = leadData?.data.find((item) => item.id === e.target.value);
               setNewDeal({ ...newDeal, lead_id: e.target.value,
                 deal_name: lead?.property_address || newDeal.deal_name,
-                contract_price: lead?.offer_price ?? lead?.mao ?? undefined,
+                contract_price: lead?.offer_price ?? undefined,
                 arv: lead?.estimated_arv, repair_estimate: lead?.estimated_repairs,
               });
             }}
@@ -246,19 +255,25 @@ export function Pipeline() {
           <div className="grid grid-cols-2 gap-4">
             <Select label="Stage" value={newDeal.stage || 'offer_made'}
               onChange={(e) => setNewDeal({ ...newDeal, stage: e.target.value })}
-              options={COLUMNS.map((c) => ({ value: c.id, label: c.title }))} />
+              options={[...COLUMNS.map((c) => ({ value: c.id, label: c.title })), { value:'cancelled',label:'Cancelled' }]} />
             <Input label="Contract Price" type="number" value={newDeal.contract_price || ''}
               onChange={(e) => setNewDeal({ ...newDeal, contract_price: Number(e.target.value) })} />
             <Input label="Assignment Fee" type="number" value={newDeal.assignment_fee || ''}
               onChange={(e) => setNewDeal({ ...newDeal, assignment_fee: Number(e.target.value) })} />
+            <Input label="Contract Date" type="date" value={newDeal.contract_date || ''} onChange={e=>setNewDeal({...newDeal,contract_date:e.target.value||null})} />
+            <Input label="Title company" value={newDeal.title_company || ''} onChange={e=>setNewDeal({...newDeal,title_company:e.target.value})} />
             <Input label="Closing Date" type="date" value={newDeal.closing_date || ''}
               onChange={(e) => setNewDeal({ ...newDeal, closing_date: e.target.value || null })} />
           </div>
+          {newDeal.stage === 'closed' && <Input label="Actual Close Date" type="date" value={newDeal.actual_close_date || localDateString()} onChange={e=>setNewDeal({...newDeal,actual_close_date:e.target.value||null})} />}
           <Textarea label="Notes" value={newDeal.notes || ''} rows={2}
             onChange={(e) => setNewDeal({ ...newDeal, notes: e.target.value })} />
+          <DealHandoffFields value={newDeal} onChange={setNewDeal} />
+          <p className="text-sm">Moving beyond Offer Made requires recorded contract evidence, title company and dates. No external action is performed by this form.</p>
+          </fieldset>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setNewDealOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateDeal} loading={createDeal.isPending} icon={<Plus className="h-4 w-4" />}>
+            <Button disabled={!!createDeal.pendingCreate} onClick={handleCreateDeal} loading={createDeal.isPending} icon={<Plus className="h-4 w-4" />}>
               Create Deal
             </Button>
           </div>
@@ -278,10 +293,10 @@ export function Pipeline() {
                 {selectedDeal.lead?.city}, {selectedDeal.lead?.state} {selectedDeal.lead?.zip_code}
               </p>
               <div className="flex gap-4 mt-3">
-                <Select
+                <Select label="Deal stage"
                   value={editForm.stage || selectedDeal.stage}
                   onChange={(e) => setEditForm({ ...editForm, stage: e.target.value })}
-                  options={COLUMNS.map((c) => ({ value: c.id, label: c.title }))}
+                  options={[...COLUMNS.map((c) => ({ value: c.id, label: c.title })), { value:'cancelled',label:'Cancelled' }]}
                   className="text-gray-900"
                 />
               </div>
@@ -347,6 +362,8 @@ export function Pipeline() {
                 onChange={(e) => setEditForm({ ...editForm, title_company: e.target.value })} />
             </div>
 
+            <DealHandoffFields value={editForm} onChange={setEditForm} />
+            <p className="text-sm">Recorded links and stages require operator verification. Saving does not sign a contract, open title, send an offer or contact a buyer.</p>
             {/* Notes */}
             <Textarea label="Notes" value={editForm.notes || ''}
               onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={3} />

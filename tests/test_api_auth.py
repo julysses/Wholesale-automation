@@ -21,6 +21,7 @@ def identity(monkeypatch):
     ("get", "/api/ai/lead-scoring-status"), ("post", "/api/ai/import-master-list"),
     ("post", "/api/buyers/outreach/sms"), ("post", "/api/marketing/bulk-sms-warm"),
     ("get", "/api/lead-gen/forms"), ("post", "/api/appointments"),
+    ("post", "/api/deals"), ("patch", "/api/deals/11234567-0000-4000-8000-000000000001"),
     ("get", "/v1/leads"), ("get", "/webhooks/launch_control/csv-queue"),
     ("post", "/api/calls/retell"), ("get", "/api/calls/retell/call_test"),
 ])
@@ -34,6 +35,11 @@ def test_unapproved_profiles_are_rejected(identity, profile):
     response = TestClient(app).get("/api/ai/lead-scoring-status", headers={"Authorization": "Bearer test-token"})
     assert response.status_code == 403
     identity.auth.get_user.assert_called_once_with("test-token")
+
+@pytest.mark.parametrize('method,path',[('post','/api/deals'),('patch','/api/deals/11234567-0000-4000-8000-000000000001')])
+def test_deal_writes_reject_unapproved_operator(identity,method,path):
+    identity.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data=[{'status':'pending'}]
+    assert getattr(TestClient(app),method)(path,headers={'Authorization':'Bearer valid'}).status_code==403
 
 
 def test_invalid_token_never_reaches_profile_lookup(identity):

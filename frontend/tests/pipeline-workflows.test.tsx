@@ -12,8 +12,8 @@ const mocks = vi.hoisted(() => ({
   dragEnd: undefined as ((event: Drop) => Promise<void>) | undefined,
 }));
 const deals = [
-  { id: 'deal-1', lead_id: 'lead-1', deal_name: '123 Main St', stage: 'offer_made', closing_date: '2026-09-15' },
-  { id: 'deal-2', lead_id: 'lead-2', deal_name: '456 Oak St', stage: 'closed', actual_close_date: '2026-09-01' },
+  { id: 'deal-1', lead_id: 'lead-1', deal_name: '123 Main St', updated_at:'2026-10-08T12:00:00Z', stage: 'offer_made', closing_date: '2026-09-15' },
+  { id: 'deal-2', lead_id: 'lead-2', deal_name: '456 Oak St', updated_at:'2026-10-08T12:00:00Z', stage: 'closed', actual_close_date: '2026-09-01' },
 ] as Deal[];
 const leads = [{ id: 'lead-1', property_address: '123 Main St', city: 'Dallas', mao: 125000 }] as Lead[];
 
@@ -22,6 +22,7 @@ vi.mock('@/hooks/useDeals', () => ({
   useCreateDeal: () => ({ mutateAsync: mocks.create, isPending: false }),
   useUpdateDeal: () => ({ mutateAsync: mocks.update, isPending: false }),
 }));
+vi.mock('@/components/pipeline/DealHandoffFields',()=>({DealHandoffFields:()=>null}));
 vi.mock('@/hooks/useLeads', () => ({ useLeads: (filters: unknown) => mocks.leads(filters) }));
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children, onDragEnd }: { children: ReactNode; onDragEnd: (event: Drop) => Promise<void> }) => { mocks.dragEnd = onDragEnd; return children; },
@@ -53,7 +54,7 @@ it('requires a linked lead and prefills a new deal from that lead', async () => 
   fireEvent.change(screen.getByLabelText('Lead *'), { target: { value: 'lead-1' } });
   expect(screen.getByLabelText('Deal Name / Property Address')).toHaveValue('123 Main St');
   fireEvent.click(screen.getByRole('button', { name: 'Create Deal' }));
-  await waitFor(() => expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ lead_id: 'lead-1', deal_name: '123 Main St', contract_price: 125000 })));
+  await waitFor(() => expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ lead_id: 'lead-1', deal_name: '123 Main St', contract_price: undefined })));
 });
 
 it('allows searching and paging lead selection beyond the initial 50 rows', () => {
@@ -69,7 +70,7 @@ it('allows searching and paging lead selection beyond the initial 50 rows', () =
 it('moves a deal onto another card and records its closing date', async () => {
   render(<Pipeline />);
   await act(async () => { await mocks.dragEnd?.({ active: { id: 'deal-1' }, over: { id: 'deal-2' } }); });
-  expect(mocks.update).toHaveBeenCalledWith({ id: 'deal-1', updates: { stage: 'closed', actual_close_date: localDateString() } });
+  expect(mocks.update).toHaveBeenCalledWith({ id: 'deal-1', expected_updated_at:'2026-10-08T12:00:00Z', updates: { stage: 'closed', actual_close_date: localDateString() } });
   expect(useDealStore.getState().deals.find((deal) => deal.id === 'deal-1')?.stage).toBe('closed');
 });
 
@@ -83,7 +84,7 @@ it('rolls back a rejected stage move', async () => {
 it('clears actual closing date when reopening a closed deal', async () => {
   render(<Pipeline />);
   await act(async () => { await mocks.dragEnd?.({ active: { id: 'deal-2' }, over: { id: 'offer_made' } }); });
-  expect(mocks.update).toHaveBeenCalledWith({ id: 'deal-2', updates: { stage: 'offer_made', actual_close_date: null } });
+  expect(mocks.update).toHaveBeenCalledWith({ id: 'deal-2', expected_updated_at:'2026-10-08T12:00:00Z', updates: { stage: 'offer_made', actual_close_date: null } });
 });
 
 it('sends null when a deal date is cleared and retains failed saves for retry', async () => {
