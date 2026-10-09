@@ -31,7 +31,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from html import escape
 from typing import Any, Optional
-from uuid import UUID, NAMESPACE_URL, uuid5
+from uuid import UUID, NAMESPACE_URL, uuid4, uuid5
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -378,6 +378,7 @@ async def _process_form_submission(
     }
     if submission_id:
         lead_data["form_submission_id"] = submission_id
+        lead_data["_intake_recovery_only"] = not deliver_notifications
     if form_config.get("campaign_id"):
         lead_data["ad_campaign_id"] = form_config["campaign_id"]
 
@@ -408,7 +409,7 @@ async def _process_form_submission(
         # The pending receipt remains recoverable; do not advise a duplicate submission.
         raise HTTPException(503, "Your inquiry was saved, but follow-up is delayed. Please contact us before resubmitting.") from None
 
-    if not deliver_notifications or not created:
+    if not deliver_notifications:
         return lead_id
 
     # Speed-to-lead SMS: confirmation text to the seller (if opted in) plus an
@@ -432,7 +433,7 @@ async def _process_form_submission(
     # inputs; neither exposes a run(lead_id=...) method.
 
     # HOT lead notification (A-tier or score >= 13)
-    if total_score >= 13 and lead_id and form_config.get("slug") != "the-jays-dallas":
+    if created and total_score >= 13 and lead_id and form_config.get("slug") != "the-jays-dallas":
         try:
             _send_hot_lead_notification(lead_id, answers, total_score)
         except Exception as exc:
@@ -473,15 +474,17 @@ def _send_lead_pipeline_sms(
     }
     if source == "facebook_lead_ad":
         notification["metadata"]["consent_receipt"] = answers.get("_facebook_consent")
-    claim = supabase.table("app_notifications").upsert(
-        notification, on_conflict="id", ignore_duplicates=True,
-    ).execute()
-    if not claim.data:
-        # A prior attempt may have sent externally. Never resend on ambiguous receipt.
-        existing = supabase.table("app_notifications").select("id").eq("id", notification_id).limit(1).execute()
-        if existing.data:
-            return
+    claim_id = str(uuid4())
+    claim = supabase.rpc("claim_intake_notification", {
+        "p_lead_id": lead_id, "p_claim_id": claim_id, "p_notification": notification,
+    }).execute().data
+    if not isinstance(claim, dict) or claim.get("notification_id") != notification_id or type(claim.get("claimed")) is not bool:
         raise RuntimeError("Intake notification persistence was not confirmed")
+    if not claim["claimed"]:
+        # A prior claim may have contacted a provider. Never reclaim after uncertainty.
+        return
+    if claim.get("claim_id") != claim_id:
+        raise RuntimeError("Intake notification delivery claim was not confirmed")
 
     outcomes = notification["metadata"].copy()
     name = str(answers.get("first_name") or "").strip() or "there"
@@ -556,10 +559,10 @@ def _send_lead_pipeline_sms(
     summary = (f"{property_address} — source: {source}. "
                f"Owner email: {outcomes['owner_email']}; seller SMS: {outcomes['seller_sms']}. "
                "Review the lead and assign follow-up. Accepted does not confirm delivery.")
-    saved = supabase.table("app_notifications").update(
-        {"metadata": outcomes, "body": summary},
-    ).eq("id", notification_id).execute()
-    if not saved.data:
+    saved = supabase.rpc("finish_intake_notification", {
+        "p_lead_id": lead_id, "p_claim_id": claim_id, "p_outcomes": outcomes, "p_body": summary,
+    }).execute().data
+    if not isinstance(saved, dict) or saved.get("finished") is not True or saved.get("notification_id") != notification_id:
         raise RuntimeError("Intake SMS outcome persistence was not confirmed; reconcile before retry")
 
 
@@ -718,9 +721,12 @@ async def recover_form_submission(submission_id: UUID, request: Request):
     if not rows:
         raise HTTPException(404, "Submission not found")
     receipt = rows[0]
+    configs = supabase.table("lead_form_configs").select("*").eq("id", receipt["form_id"]).limit(1).execute().data
+    if not configs:
+        raise HTTPException(409, "The saved form definition is missing. Keep this inquiry in manual review; do not infer its intent.")
     answers = receipt.get("raw_answers") or {}
     # Process the stored, previously validated receipt even if its form was disabled.
-    lead_id = await _process_form_submission({}, answers, _compute_scores_from_answers(answers),
+    lead_id = await _process_form_submission(configs[0], answers, _compute_scores_from_answers(answers),
         str(submission_id), receipt.get("utm_campaign"), deliver_notifications=False)
     return {"success": True, "lead_id": lead_id, "provider_messages_replayed": False}
 

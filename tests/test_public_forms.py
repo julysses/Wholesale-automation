@@ -110,7 +110,7 @@ def test_recovery_requires_authentication():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("created,delivery,expected_sends", [(True, True, 1), (False, True, 0), (True, False, 0)])
+@pytest.mark.parametrize("created,delivery,expected_sends", [(True, True, 1), (False, True, 1), (True, False, 0)])
 async def test_atomic_finalize_controls_recovery_and_notifications(monkeypatch, created, delivery, expected_sends):
     database = MagicMock()
     database.rpc.return_value.execute.return_value.data = {
