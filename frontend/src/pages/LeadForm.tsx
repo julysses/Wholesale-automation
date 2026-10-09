@@ -4,10 +4,11 @@
  * Mobile-first, large tap targets, 4 steps.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, ChevronRight, ChevronLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { clearPublicIntake, matchesPublicIntakeReceipt, preservePublicIntake, readPublicIntake, UNCONFIRMED_INQUIRY, type PendingPublicIntake } from '@/lib/publicIntakeRecovery';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface FormQuestion {
@@ -45,13 +46,24 @@ const groupByStep = (questions: FormQuestion[]) => {
 
 export function LeadForm() {
   const { formId } = useParams<{ formId: string }>();
+  return <LeadFormInner key={formId} formId={formId || ''} />;
+}
+
+function LeadFormInner({ formId }: { formId: string }) {
+  const [recovery] = useState(() => {
+    try { return { draft: readPublicIntake(window.sessionStorage, formId), blocked: false }; }
+    catch { return { draft: null, blocked: true }; }
+  });
+  const [pending, setPending] = useState<PendingPublicIntake | null>(recovery.draft);
+  const [blocked, setBlocked] = useState(recovery.blocked);
+  const busy = useRef(false);
   const [config, setConfig] = useState<FormConfig | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadAttempt, setLoadAttempt] = useState(0);
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>(recovery.draft?.answers || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -141,7 +153,7 @@ export function LeadForm() {
   };
 
   const handleNext = () => {
-    const errs = validate(currentStep);
+    const errs = pending ? {} : validate(currentStep);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -157,43 +169,76 @@ export function LeadForm() {
   };
 
   const handleSubmit = async () => {
-    const errs = validate(currentStep);
+    if (busy.current || blocked) return;
+    const errs = pending ? {} : validate(currentStep);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
     }
 
+    busy.current = true;
+    let draft: PendingPublicIntake | null;
+    let firstAttempt = false;
+    try {
+      draft = readPublicIntake(window.sessionStorage, formId);
+      firstAttempt = draft === null;
+      if (!draft) {
+        const params = new URLSearchParams(window.location.search);
+        draft = preservePublicIntake(window.sessionStorage, {
+          version: 1, formId, createdAt: new Date().toISOString(), answers: { ...answers },
+          payload: {
+            request_id: crypto.randomUUID(),
+            answers: {
+              ...answers,
+              sms_consent_text: config.questions.find(q => q.field_name === 'sms_opt_in' && q.type === 'checkbox')?.label || '',
+              sms_consent_source: window.location.origin + window.location.pathname,
+            },
+            utm_source: params.get('utm_source'), utm_medium: params.get('utm_medium'), utm_campaign: params.get('utm_campaign'),
+          },
+        });
+      }
+    } catch {
+      busy.current = false;
+      setBlocked(true);
+      setSubmitError('This browser cannot safely save or recover your inquiry. Contact our team before submitting again.');
+      return;
+    }
+    setPending(draft);
+    setAnswers(draft.answers);
     setSubmitting(true);
     setSubmitError(null);
-
-    // UTM params from URL
-    const params = new URLSearchParams(window.location.search);
-
     try {
-      const resp = await fetch(`/api/forms/${formId}/submit`, {
+      const resp = await fetch(`/api/forms/${encodeURIComponent(formId)}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answers: {
-            ...answers,
-            sms_consent_text: config.questions.find(q => q.field_name === 'sms_opt_in' && q.type === 'checkbox')?.label,
-            sms_consent_source: window.location.origin + window.location.pathname,
-          },
-          utm_source: params.get('utm_source'),
-          utm_medium: params.get('utm_medium'),
-          utm_campaign: params.get('utm_campaign'),
-        }),
+        body: JSON.stringify(draft.payload),
+        signal: AbortSignal.timeout(45000),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || 'Submission failed');
-      if (data.redirect_url) {
-        window.location.href = data.redirect_url;
-      } else {
-        setSubmitted(true);
+      if (!resp.ok || !matchesPublicIntakeReceipt(data, draft)) {
+        if (firstAttempt && (resp.status === 400 || resp.status === 422)) {
+          clearPublicIntake(window.sessionStorage, draft);
+          setPending(null);
+          setSubmitError(typeof data.detail === 'string' ? data.detail : 'Please check your contact details and try again.');
+        } else {
+          setSubmitError(UNCONFIRMED_INQUIRY);
+        }
+        return;
       }
-    } catch (e: unknown) {
-      setSubmitError(e instanceof Error ? e.message : 'Something went wrong. Please call us directly.');
+      try { clearPublicIntake(window.sessionStorage, draft); } catch {
+        // A confirmed receipt remains success; retained recovery safely replays.
+      }
+      setSubmitted(true);
+      if (typeof data.redirect_url === 'string' && data.redirect_url) {
+        try {
+          const target = new URL(data.redirect_url, window.location.origin);
+          if ((target.protocol === 'https:' || target.origin === window.location.origin) && !target.username && !target.password) window.location.href = target.href;
+        } catch { /* Keep the confirmed receipt visible for an invalid redirect. */ }
+      }
+    } catch {
+      setSubmitError(UNCONFIRMED_INQUIRY);
     } finally {
+      busy.current = false;
       setSubmitting(false);
     }
   };
@@ -206,6 +251,7 @@ export function LeadForm() {
           <CheckCircle className="h-14 w-14 mx-auto mb-4" style={{ color: brandColor }} />
           <h2 className="text-2xl font-bold text-gray-900 mb-3">You're All Set!</h2>
           <p className="text-gray-600 leading-relaxed">{config.thank_you_message}</p>
+          {pending && <p className="text-xs text-gray-500 mt-4">Inquiry reference: {pending.payload.request_id}</p>}
         </div>
       </div>
     );
@@ -241,6 +287,7 @@ export function LeadForm() {
       {/* Form body */}
       <div className="max-w-lg mx-auto px-4 pb-12">
         <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
+          <fieldset disabled={blocked || !!pending || submitting} className="space-y-5">
           {currentQuestions.map((q) => (
             <QuestionField
               key={q.id}
@@ -254,19 +301,25 @@ export function LeadForm() {
               }}
             />
           ))}
+          </fieldset>
 
-          {submitError && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          {(submitError || blocked || (pending && !submitting)) && (
+            <div role="alert" className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              {submitError}
+              {submitError || (blocked ? 'This browser cannot recover a previous inquiry. Contact our team before submitting again.' : UNCONFIRMED_INQUIRY)}
             </div>
           )}
+          {pending && !submitted && <div className="space-y-3">
+            <p className="text-xs text-gray-500">Saved inquiry reference: {pending.payload.request_id}. Original answers remain locked while we confirm receipt.</p>
+            <button type="button" onClick={handleSubmit} disabled={blocked || submitting} style={{ backgroundColor: brandColor }} className="w-full rounded-xl px-4 py-3 text-white text-sm font-semibold disabled:opacity-60">{submitting ? 'Confirming your inquiry…' : 'Retry Saved Inquiry'}</button>
+          </div>}
 
           {/* Navigation */}
           <div className="flex gap-3 pt-2">
             {currentStep > 1 && (
               <button
                 onClick={handleBack}
+                disabled={submitting}
                 className="flex items-center gap-1 px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" /> Back
@@ -275,6 +328,7 @@ export function LeadForm() {
             {currentStep < totalSteps ? (
               <button
                 onClick={handleNext}
+                disabled={blocked || submitting}
                 className="flex-1 flex items-center justify-center gap-1 py-3 rounded-xl text-sm font-semibold text-white transition-colors"
                 style={{ backgroundColor: brandColor }}
               >
@@ -283,7 +337,7 @@ export function LeadForm() {
             ) : (
               <button
                 onClick={handleSubmit}
-                disabled={submitting}
+                disabled={blocked || submitting || !!pending}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-60"
                 style={{ backgroundColor: brandColor }}
               >
@@ -298,7 +352,7 @@ export function LeadForm() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          Your information is secure and will never be shared or sold.
+          We use your information to respond to your inquiry.
         </p>
       </div>
     </div>
@@ -371,11 +425,12 @@ function QuestionField({
 
   return (
     <div>
-      <label className="block text-sm font-semibold text-gray-800 mb-2">
+      <label htmlFor={`question-${question.id}`} className="block text-sm font-semibold text-gray-800 mb-2">
         {question.label}
         {question.required && <span className="text-red-400 ml-1">*</span>}
       </label>
       <input
+        id={`question-${question.id}`}
         type={question.type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
