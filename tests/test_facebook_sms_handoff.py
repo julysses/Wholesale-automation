@@ -43,6 +43,35 @@ class DB(MemoryDB):
         return Query(self, name)
 
     def rpc(self, name, _payload):
+        if name == 'claim_intake_notification':
+            def claim():
+                notice = _payload['p_notification']
+                notice_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{_payload['p_lead_id']}"))
+                assert notice['id'] == notice_id
+                rows = self.tables.setdefault('app_notifications', {})
+                row = rows.setdefault(notice_id, {
+                    **notice, 'metadata': {**notice['metadata'], 'delivery_state': 'pending'},
+                })
+                if row['metadata'].get('delivery_state') != 'pending':
+                    return SimpleNamespace(data={'claimed': False, 'notification_id': notice_id})
+                row['metadata'].update(delivery_state='processing', delivery_claim=_payload['p_claim_id'])
+                return SimpleNamespace(data={'claimed': True, 'notification_id': notice_id,
+                                             'claim_id': _payload['p_claim_id']})
+            return SimpleNamespace(execute=claim)
+        if name == 'finish_intake_notification':
+            def finish():
+                notice_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{_payload['p_lead_id']}"))
+                row = self.tables['app_notifications'][notice_id]
+                claimed = (row['metadata'].get('delivery_state') == 'processing'
+                           and row['metadata'].get('delivery_claim') == _payload['p_claim_id'])
+                if claimed:
+                    outcomes = _payload['p_outcomes']
+                    complete = (outcomes['owner_email'] == 'accepted' and outcomes['seller_sms'] in
+                                ('accepted', 'no_consent_or_phone', 'suppressed_or_duplicate'))
+                    row['metadata'].update(outcomes, delivery_state='completed' if complete else 'review')
+                    row['body'] = _payload['p_body']
+                return SimpleNamespace(data={'finished': claimed, 'notification_id': notice_id})
+            return SimpleNamespace(execute=finish)
         if name == 'claim_twilio_sms':
             existing = _payload['p_id'] in self.tables.get('sms_events', {})
             if not existing:
@@ -98,6 +127,7 @@ async def test_native_intake_notifies_owner_and_separates_channels(intake, sms, 
     assert len(db.tables.get('sms_events', {})) == expected
     notice = next(iter(db.tables['app_notifications'].values()))
     assert notice['metadata']['seller_sms'] == ('accepted' if expected else 'no_consent_or_phone')
+    assert notice['metadata']['delivery_state'] == 'completed'
     assert notice['metadata']['consent_receipt']['phone'] == PHONE
     lead = next(iter(db.tables['leads'].values()))
     assert lead['assigned_to'] == 'owner-1'
@@ -167,6 +197,8 @@ async def test_ambiguous_sms_attempt_alerts_operator_and_never_replays(intake):
     assert sdk.messages.create.call_count == 1
     email.send.assert_called_once()
     assert next(iter(db.tables['sms_events'].values()))['status'] == 'unknown'
+    notice = next(row for row in db.tables['app_notifications'].values() if row.get('type') == 'pipeline_step')
+    assert notice['metadata']['delivery_state'] == 'review'
     alerts = [row for row in db.tables['app_notifications'].values() if row.get('metadata', {}).get('integration_failure')]
     assert len(alerts) == 1
     assert alerts[0]['metadata']['provider'] == 'twilio'
