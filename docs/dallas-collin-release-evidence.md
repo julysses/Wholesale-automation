@@ -2,6 +2,15 @@
 
 Status: **draft; not production-ready**. Original archive commit c9a7cbcf30076719e3f88a496dec240595e4d366 restored using its Git bundle. All 23 SHA-256 file checksums matched. Branch pushed to GitHub. Separate worktree preserves prior checkout and unrelated files.
 
+## Current continuation status
+
+The early counts and open-step notes below are historical. The checkpoint is authoritative for later evidence. As of the tracing-ledger continuation:
+
+- Full CI38318215054 passed forca8f0f5. Actual Deno ingress success, overlapping duplicate requests, replay/conflict/expiry and restricted-role checks passed against local PostgreSQL/TLS.
+- Human offer review includes UI, paginated audit history, expiry checks and actual simultaneous PostgreSQL decision tests. Signed-in browser/deployed acceptance and offer dispatch enforcement remain open.
+- Retell requests now pin and preserve agent identity/version; provider acknowledgements, callbacks and polling validate it. Live agent review and controlled provider acceptance remain open.
+- FR9 now has tested atomic reservations/settlement/unknown holds and actual concurrent budget cap proof. Provider connection, billing/contact evidence, freshness and operator recovery remain incomplete; no tracing enabled.
+
 ## Verified this session
 
 - Existing backend suite: 630 passed. Ten added HTTP regressions cover approved-admin list controls, missing/invalid worker secrets, human-only price input and invalid prices. Final combined result recorded in checkpoint.
@@ -17,13 +26,13 @@ Status: **draft; not production-ready**. Original archive commit c9a7cbcf3007671
 |---|---|---|
 | FR-1 Source settings | Disabled seeds, admin HTTP denial tests, DB foreclosure constraints | Admin UI save/recovery, schedule/threshold configuration |
 | FR-2 Source status | Contract enum/coverage tests | Actual collector delivery and per-source failure handling |
-| FR-3 Strict contract | Node contract tests | Execute Edge handler/runtime and authenticated ingress writes |
-| FR-4 Idempotency | Hash contract and reviewed-record replay tests | HTTP replay/conflict/lost ACK and true overlapping requests |
+| FR-3 Strict contract | Actual Deno handler and restricted-role PostgreSQL/TLS acceptance | Deployed Edge endpoint and collector credentials |
+| FR-4 Idempotency | Actual handler replay/conflict/lost ACK and two overlapping database sessions | Deployed endpoint/collector acceptance |
 | FR-5 Retention | Raw-content purge retains receipt hashes and normalized provenance; local and rehearsal SQL proofs | Scheduled execution and full Edge expiry/replay acceptance |
 | FR-6 Property identity | County/unit aliases and one reviewed-record replay | Parcel enrichment, conflicting aliases, legacy matching and full dedup matrix |
 | FR-7 Windows | Foreclosure 31-day rejection | All inclusive boundaries, future dates and source-specific semantics |
 | FR-8 Blocked sources | Local and rehearsal blocked incidents reuse assigned task identity | External alert delivery and operational acceptance |
-| FR-9 Tracing | Private tables only | Provider adapter, atomic cap, idempotency and unknown-outcome reconciliation |
+| FR-9 Tracing | Atomic ledger, replay, cancellation, confirmed settlement, unknown holds; true concurrent cap test | Adapter integration, current input/contact checks, authenticated provider evidence and operator recovery |
 | FR-10 Compliance | Existing backend suite remains green; seeds disabled | List-specific DNC freshness, consent, opt-out, quiet-hours and dispatch caps |
 | FR-11 Scoring | Existing scoring preserved | Validated list scoring, stored reasons/version/input hash, stale input rejection |
 | FR-12 Lot routing | Existing underwriting preserved | Verified list-to-underwriting handoff and acknowledgement |

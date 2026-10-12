@@ -1,6 +1,7 @@
 // Real PostgreSQL/TLS integration; refuse all remote hosts and non-test databases.
 import postgres from 'npm:postgres@3.4.5';
 import {verifyOfferConcurrency} from './offer-concurrency.ts';
+import {verifyTraceConcurrency} from './trace-concurrency.ts';
 import {canonicalJSON,sha256} from '../../frontend/supabase/functions/daily-list-ingest/core.mjs';
 import fixture from '../fixtures/synthetic.json' with {type:'json'};
 const adminURL=Deno.env.get('INGRESS_TEST_ADMIN_URL')||'';
@@ -66,6 +67,7 @@ try{
   }
  }finally{await restricted.end();}
  await verifyOfferConcurrency(adminURL);
+ await verifyTraceConcurrency(adminURL);
  console.log('PASS actual ingress success, overlapping duplicate requests, lost-ACK replay, conflict, expiry, disabled source and restricted-role checks');
 }finally{
  if(locked)await locker`select pg_advisory_unlock(hashtextextended(${run},0))`;
