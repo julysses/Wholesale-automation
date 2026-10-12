@@ -5,7 +5,8 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from uuid import UUID
 from fastapi import APIRouter, Header, HTTPException, Query, Request
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing import Literal
 from starlette.concurrency import run_in_threadpool
 from tools.crm import get_supabase_client
 
@@ -110,4 +111,48 @@ async def cancel_trace(trace_id: UUID, body: CancelTrace, request: Request):
         or not isinstance(row,dict) or row.get('id')!=str(trace_id) or row.get('state')!='failed'
         or row.get('actual_cents')!=0 or row.get('provider_job_id')!='not_submitted'):
         raise HTTPException(503,'Cancellation is unconfirmed. Retry the same event reference.')
+    return value
+
+
+class ScoringOperation(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    event_id: UUID
+    action: Literal['threshold','complete_received']
+    expected_version: int | None = Field(default=None, ge=1, le=999999999, strict=True)
+    score_threshold: int | None = Field(default=None, ge=0, le=100, strict=True)
+    job_id: UUID | None = None
+
+    @model_validator(mode='after')
+    def action_fields(self):
+        if self.action=='threshold':
+            if self.expected_version is None or self.score_threshold is None or self.job_id is not None:
+                raise ValueError('Threshold and current version are required')
+        elif self.job_id is None or self.expected_version is not None or self.score_threshold is not None:
+            raise ValueError('A saved scoring job is required')
+        return self
+
+@router.get('/api/operations/lists/scoring')
+async def scoring_operations(request: Request, offset: int = Query(default=0,ge=0)):
+    return await rpc('list_scoring_operations',{'p_operator':operator(request),'p_offset':offset})
+
+@router.post('/api/operations/lists/scoring/actions')
+async def scoring_action(body: ScoringOperation, request: Request):
+    actor=operator(request)
+    payload=body.model_dump(mode='json',exclude={'event_id','action'},exclude_none=True)
+    value=await rpc('apply_list_scoring_operation',{'p_id':str(body.event_id),'p_operator':actor,'p_action':body.action,'p_payload':payload})
+    if isinstance(value,dict) and value.get('blocked'):
+        raise HTTPException(409,'Scoring action conflicts with current state. Refresh before another action.')
+    event=value.get('event') if isinstance(value,dict) else None
+    if (not isinstance(event,dict) or event.get('id')!=str(body.event_id) or event.get('operator_id')!=actor
+        or event.get('action')!=body.action or event.get('payload')!=payload or not isinstance(event.get('result'),dict)):
+        raise HTTPException(503,'Scoring action is unconfirmed. Retry the same event reference.')
+    result=event['result']
+    if body.action=='threshold':
+        confirmed=(type(result.get('score_threshold')) is int and result['score_threshold']==body.score_threshold
+            and type(result.get('version')) is int and result['version']==body.expected_version+1)
+    else:
+        confirmed=(result.get('job_id')==str(body.job_id) and result.get('state') in ('completed','obsolete','review')
+            and (result.get('state')!='completed' or result.get('evaluation_id')==str(body.job_id)))
+    if not confirmed:
+        raise HTTPException(503,'Scoring result is unconfirmed. Retry the same event reference.')
     return value
