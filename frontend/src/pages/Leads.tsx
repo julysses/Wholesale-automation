@@ -196,12 +196,11 @@ export function Leads() {
   };
 
   const handleMoveToPipeline = async (lead: Lead) => {
-    if (!confirm(`Create a pipeline deal for ${lead.property_address}?`)) return;
+    if (!confirm(`Create a pipeline record for ${lead.property_address}? Enter the contract price manually in Pipeline; this action does not approve or send an offer.`)) return;
     await createDeal.mutateAsync({
       lead_id: lead.id,
       deal_name: lead.property_address,
       stage: 'offer_made',
-      contract_price: lead.offer_price ?? undefined,
       arv: lead.estimated_arv ?? undefined,
       repair_estimate: lead.estimated_repairs ?? undefined,
       seller_name: `${lead.owner_first_name ?? ''} ${lead.owner_last_name ?? ''}`.trim() || undefined,
@@ -409,7 +408,7 @@ export function Leads() {
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="relative">
-                      <button
+                      <button aria-label={`Actions for ${lead.property_address}`}
                         onClick={() => setOpenMenuId(openMenuId === lead.id ? null : lead.id)}
                         className="p-1 rounded hover:bg-gray-100 text-gray-400"
                       >
