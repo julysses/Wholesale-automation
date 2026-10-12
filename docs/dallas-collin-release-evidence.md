@@ -70,3 +70,7 @@ Private append-only offer events, immutable term revisions, expected-version app
 
 ### October 12 tracing operator recovery
 Approved-admin budget/hold view and audited cancellation of unsubmitted reservations implemented. Current-schema local tests and real rehearsal rollback passed; pending UI cancellation survives reload using the same event identity. No commercial tracing activation or production deployment. See latest checkpoint for evidence and remaining FR9 provider/configuration/worker acceptance.
+
+
+### October 12 weighted list scoring
+FR11 now has database snapshots, validated five-category Claude response handling, evidence-linked persisted results, exact replay and stale-input/digest filtering, verified locally and in rehearsal. Equity/ODN unknowns remain explicit; no contact authorization. Durable job execution/recovery, threshold administration, evidence enrichment, live Claude acceptance and scoring calibration remain open. See latest checkpoint; historical FR11 notes above predate this implementation.
