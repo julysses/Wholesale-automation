@@ -4,12 +4,14 @@ export async function verifyTraceConcurrency(adminURL:string){
  const one=postgres(adminURL,{ssl:'require',max:1,connection:{application_name:'trace-budget-one'}});
  const two=postgres(adminURL,{ssl:'require',max:1,connection:{application_name:'trace-budget-two'}});
  const leads=[crypto.randomUUID(),crypto.randomUUID()],ids=[crypto.randomUUID(),crypto.randomUUID()];
- const hash='a'.repeat(64),assert=(v:unknown,m:string)=>{if(!v)throw new Error(m);};
+ const assert=(v:unknown,m:string)=>{if(!v)throw new Error(m);};
  let locked=false;
  try{
   await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261012224412_list_trace_budget.sql',import.meta.url)));
+  await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261012225103_list_trace_contacts.sql',import.meta.url)));
+  await admin.unsafe('ALTER TABLE public.leads ADD COLUMN owner_first_name text');
   for(const lead of leads){
-   await admin`insert into public.leads(id,property_address) values(${lead},'SYNTHETIC TRACE TEST')`;
+   await admin`insert into public.leads(id,property_address,city,owner_first_name) values(${lead},'SYNTHETIC TRACE TEST','Dallas','Synthetic')`;
    await admin`insert into wholesale_ingest.properties(state,county,address_std,lead_id) values('TX','Dallas',${lead},${lead})`;
   }
   await admin`insert into wholesale_ingest.daily_budgets(spend_day,cap_cents) values((clock_timestamp() AT TIME ZONE 'America/Chicago')::date,100)`;
@@ -17,7 +19,7 @@ export async function verifyTraceConcurrency(adminURL:string){
   await one.unsafe('SET ROLE service_role');await two.unsafe('SET ROLE service_role');
   await admin.unsafe('BEGIN');locked=true;
   await admin`select * from wholesale_ingest.daily_budgets for update`;
-  const reserve=(db:ReturnType<typeof postgres>,i:number)=>db`select public.reserve_list_trace(${ids[i]},${leads[i]},'synthetic',${hash},80) AS receipt`.execute();
+  const reserve=(db:ReturnType<typeof postgres>,i:number)=>db`select public.prepare_list_trace(${ids[i]},${leads[i]},'synthetic',80) AS receipt`.execute();
   const pending=[reserve(one,0),reserve(two,1)];
   let waiters:{pid:number}[]=[];
   for(let i=0;i<100;i++){
@@ -33,13 +35,17 @@ export async function verifyTraceConcurrency(adminURL:string){
   assert(results.filter(r=>r.request).length===1&&results.filter(r=>r.blocked==='daily_cap').length===1,'Concurrent reservations exceeded daily cap');
   const [budget]=await admin`select reserved_cents,actual_cents from wholesale_ingest.daily_budgets`;
   assert(budget.reserved_cents===80&&budget.actual_cents===0,'Unexpected budget accounting');
-  const winner=results.find(r=>r.request).request.id;
+  const winning=results.find(r=>r.request).request;
+  const winner=winning.id,hash=winning.input_hash;
   await one`select public.claim_list_trace(${winner},${hash})`;
   await one`select public.settle_list_trace(${winner},'unknown',NULL,NULL,NULL)`;
   const [held]=await admin`select reserved_cents from wholesale_ingest.daily_budgets`;
   assert(held.reserved_cents===80,'Unknown outcome released reserved money');
   const [retry]=await two`select public.claim_list_trace(${winner},${hash}) AS receipt`;
   assert(retry.receipt.dispatch===false,'Unknown provider outcome permitted resend');
+  const contacts=[{phone:'+12145550198',phone_type:'mobile'}];
+  const [complete]=await one`select public.complete_list_trace(${winner},'synthetic',${hash},50,'synthetic-confirmed-receipt',${one.json(contacts)}) AS receipt`;
+  assert(complete.receipt.contacts_saved===1&&complete.receipt.request.actual_cents===50,'Contact/billing receipt failed');
   console.log('PASS real concurrent trace cap and uncertain-outcome hold; no provider invoked');
  }finally{
   if(locked)await admin.unsafe('ROLLBACK');

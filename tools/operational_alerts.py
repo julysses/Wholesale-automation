@@ -2,7 +2,7 @@
 from uuid import NAMESPACE_URL, uuid5
 
 
-LABELS = {'twilio': 'SMS', 'sendgrid': 'Email', 'retell': 'AI call', 'test': 'Launch drill'}
+LABELS = {'twilio': 'SMS', 'sendgrid': 'Email', 'retell': 'AI call', 'test': 'Launch drill', 'skip_trace': 'Skip tracing'}
 
 
 def record_provider_alert(sb, provider: str, reference: str, status: str, lead_id=None) -> str:

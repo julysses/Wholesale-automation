@@ -9,7 +9,7 @@ The early counts and open-step notes below are historical. The checkpoint is aut
 - Full CI38318215054 passed forca8f0f5. Actual Deno ingress success, overlapping duplicate requests, replay/conflict/expiry and restricted-role checks passed against local PostgreSQL/TLS.
 - Human offer review includes UI, paginated audit history, expiry checks and actual simultaneous PostgreSQL decision tests. Signed-in browser/deployed acceptance and offer dispatch enforcement remain open.
 - Retell requests now pin and preserve agent identity/version; provider acknowledgements, callbacks and polling validate it. Live agent review and controlled provider acceptance remain open.
-- FR9 now has tested atomic reservations/settlement/unknown holds and actual concurrent budget cap proof. Provider connection, billing/contact evidence, freshness and operator recovery remain incomplete; no tracing enabled.
+- FR9 now has tested atomic reservations/settlement/unknown holds and actual concurrent budget cap proof. Current input snapshots, default-disabled provider interface and atomic validated contact/billing receipts are implemented. Commercial adapter, authenticated provider evidence, worker wiring and operator recovery remain incomplete; no tracing enabled.
 
 ## Verified this session
 
