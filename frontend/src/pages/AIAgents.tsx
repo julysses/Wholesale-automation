@@ -176,6 +176,8 @@ function OfferGeneratorPanel({ leads }: { leads: any[] }) {
   const [arv, setArv] = useState('');
   const [repairs, setRepairs] = useState('');
   const [fee, setFee] = useState('15000');
+  const [offerPrice, setOfferPrice] = useState('');
+  const [closingTerms, setClosingTerms] = useState('');
   const { generate, loading, result, error } = useOfferGenerator();
 
   const selectedLead = leads.find((l) => l.id === leadId);
@@ -186,7 +188,10 @@ function OfferGeneratorPanel({ leads }: { leads: any[] }) {
 
   const handleRun = () => {
     if (!leadId) return toast.error('Select a lead');
+    if (!Number.isFinite(Number(offerPrice)) || Number(offerPrice) <= 0) return toast.error('Enter your offer price');
     generate({
+      human_offer_price: Number(offerPrice),
+      close_timeline: closingTerms || 'To be agreed',
       lead_id: leadId,
       property_address: selectedLead?.property_address || '',
       ai_qualification_summary: selectedLead?.ai_qualification_summary || '',
@@ -204,8 +209,8 @@ function OfferGeneratorPanel({ leads }: { leads: any[] }) {
         <div className="flex items-center gap-2">
           <div className="p-2 bg-blue-50 rounded-lg"><Zap className="h-5 w-5 text-blue-600" /></div>
           <div>
-            <CardTitle>Offer Generator</CardTitle>
-            <p className="text-xs text-gray-400 mt-0.5">Generate 3 strategic offer options with objection scripts</p>
+            <CardTitle>Offer Draft</CardTitle>
+            <p className="text-xs text-gray-400 mt-0.5">Enter your terms. Every offer requires human approval before delivery.</p>
           </div>
         </div>
       </CardHeader>
@@ -219,9 +224,11 @@ function OfferGeneratorPanel({ leads }: { leads: any[] }) {
           <Input label="Repairs" type="number" value={repairs} onChange={(e) => setRepairs(e.target.value)} placeholder="e.g. 35000" />
           <Input label="Fee Target" type="number" value={fee} onChange={(e) => setFee(e.target.value)} />
         </div>
+        <Input label="Your offer price" type="number" min="1" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} />
+        <Input label="Your closing terms" value={closingTerms} onChange={(e) => setClosingTerms(e.target.value)} />
         {mao && <p className="text-sm text-gray-500">Calculated MAO: <span className="font-bold text-[#1B3A5C]">{formatCurrency(mao)}</span></p>}
         <Button onClick={handleRun} loading={loading} className="w-full" icon={<Zap className="h-4 w-4" />}>
-          Generate Offer Options
+          Prepare Draft
         </Button>
 
         {loading && <TypingIndicator />}

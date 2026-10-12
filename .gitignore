@@ -16,3 +16,7 @@ build/
 .railway/
 data/*.db
 frontend/supabase/.temp/
+
+# Local pipeline dependencies and runtime links
+pipeline/node_modules/
+pipeline/node_modules

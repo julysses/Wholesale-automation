@@ -115,6 +115,8 @@ app.include_router(sendgrid_router)
 app.include_router(email_router)
 app.include_router(calls_router)
 app.include_router(operations_router)
+from web.api.list_pipeline_api import router as list_pipeline_router
+app.include_router(list_pipeline_router)
 app.include_router(monitoring_router)
 app.include_router(nurture_router)
 app.include_router(webhook_router)     # POST /webhooks/* — dialer + SMS inbound events

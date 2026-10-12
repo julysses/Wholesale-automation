@@ -4,7 +4,7 @@ These replace the four Supabase Edge Functions from wholesale-control-center.
 
 Routes:
   POST /api/ai/qualify-lead      → Lead qualification (5-factor scoring)
-  POST /api/ai/generate-offer    → Strategic offer generation
+  POST /api/ai/generate-offer    → Human-entered offer drafts
   POST /api/ai/write-outreach    → Compliant outreach copy
   POST /api/ai/match-buyers      → Buyer matching & blast templates
 """
@@ -18,7 +18,7 @@ from typing import Any
 
 import anthropic
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config.settings import settings
 
@@ -930,6 +930,8 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
 # ── 2. Offer Generator ─────────────────────────────────────────────────────────
 
 class GenerateOfferRequest(BaseModel):
+    human_offer_price: float | None = Field(default=None, gt=0, le=100_000_000, allow_inf_nan=False)
+    close_timeline: str = Field(default="To be agreed", max_length=200)
     lead_id: str | None = None
     property_address: str = ""
     city: str | None = None
@@ -944,55 +946,21 @@ class GenerateOfferRequest(BaseModel):
 
 @router.post("/generate-offer")
 def generate_offer(body: GenerateOfferRequest) -> dict:
-    arv = body.arv or 0.0
-    repairs = body.repair_estimate or 0.0
-    assignment_fee = 10_000.0
-    mao = body.mao if body.mao is not None else (arv * 0.70 - repairs - assignment_fee)
-
-    lead_data = body.model_dump(exclude_none=True)
-
-    system = (
-        "You are an expert Texas real estate wholesaler and negotiation specialist. "
-        "Output ONLY valid JSON, no prose or markdown."
+    # Prices and terms are exclusively operator-entered. This endpoint never calls AI
+    # or sends offers. MAO/ARV inputs are analysis context, not authorization to price.
+    recommendation = (
+        "Review verified comparable sales, repairs, title, closing costs and assignment fee. "
+        "Enter your offer price and closing terms, then approve the offer in your deal workflow."
     )
-    user = f"""Generate 3 strategic offer options for this wholesale deal.
-
-LEAD: {json.dumps(lead_data, default=str, indent=2)}
-ARV: ${arv:,.0f}
-Repair Estimate: ${repairs:,.0f}
-Assignment Fee Target: ${assignment_fee:,.0f}
-MAO (70% rule − repairs − fee): ${mao:,.0f}
-
-Return ONLY this JSON:
-{{
-  "options": [
-    {{
-      "name": "<offer name e.g. 'Fast Cash Close'>",
-      "offer_price": <number>,
-      "close_timeline": "<e.g. '7-10 business days'>",
-      "selling_points": ["<point1>", "<point2>", "<point3>"],
-      "pitch": "<2-3 sentence seller pitch>"
-    }}
-  ],
-  "objections": [
-    {{
-      "objection": "<common seller objection>",
-      "script": "<word-for-word response>"
-    }}
-  ]
-}}
-
-Create 3 options: (1) at MAO with fastest close, (2) slightly above MAO with standard close,
-(3) creative terms (subject-to, seller finance, or delayed close). Include 3 objection handlers.
-All offers must be ethical — no pressure, no fake urgency."""
-
-    try:
-        return _call_claude(system, user, max_tokens=2500)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(502, f"Claude returned invalid JSON: {exc}")
-    except Exception as exc:
-        logger.exception("generate-offer failed")
-        raise HTTPException(500, str(exc))
+    if body.human_offer_price is None:
+        return {"options": [], "objections": [], "recommendation": recommendation,
+                "approval_required": True, "sent": False}
+    return {"options": [{"name": "Human-entered draft", "offer_price": body.human_offer_price,
+        "close_timeline": body.close_timeline, "selling_points": [],
+        "pitch": f"Proposed purchase price: ${body.human_offer_price:,.2f}. "
+                 "Subject to your review and approved written terms."}],
+        "objections": [], "recommendation": recommendation,
+        "approval_required": True, "sent": False}
 
 
 # ── 3. Outreach Writer ─────────────────────────────────────────────────────────

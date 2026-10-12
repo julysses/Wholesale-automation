@@ -1,0 +1,297 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WholesaleOS ingest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_key",
+    "run_id",
+    "scheduled_for",
+    "pulled_at",
+    "source",
+    "status",
+    "status_reason",
+    "lookback_days",
+    "window_start",
+    "window_end",
+    "coverage_complete",
+    "source_as_of",
+    "records_sha256",
+    "records"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "source_key": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]{3,100}$"
+    },
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "scheduled_for": {
+      "type": "string",
+      "format": "date"
+    },
+    "pulled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "county",
+        "jurisdiction",
+        "list_type",
+        "source_url"
+      ],
+      "properties": {
+        "state": {
+          "const": "TX"
+        },
+        "county": {
+          "enum": [
+            "Dallas",
+            "Collin"
+          ]
+        },
+        "jurisdiction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "list_type": {
+          "enum": [
+            "pre_foreclosure",
+            "tax_delinquent",
+            "code_violation",
+            "probate"
+          ]
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2000
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "success",
+        "partial",
+        "blocked",
+        "failed"
+      ]
+    },
+    "status_reason": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "lookback_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365
+    },
+    "window_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "window_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "coverage_complete": {
+      "type": "boolean"
+    },
+    "source_as_of": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "records_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_record_id",
+          "case_number",
+          "property_address",
+          "unit",
+          "city",
+          "parcel_id",
+          "owner_name",
+          "mailing_address",
+          "filed_date",
+          "auction_date",
+          "state",
+          "zip",
+          "amount_owed",
+          "amount_type",
+          "source_url",
+          "raw"
+        ],
+        "properties": {
+          "source_record_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "case_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "property_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "parcel_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "owner_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "mailing_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "filed_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "auction_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Z]{2}$"
+          },
+          "zip": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{5}(-[0-9]{4})?$"
+          },
+          "amount_owed": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "amount_type": {
+            "enum": [
+              "tax_due",
+              "mortgage_balance",
+              "lien",
+              "judgment",
+              "unknown"
+            ]
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://",
+            "maxLength": 2000
+          },
+          "raw": {
+            "type": "object",
+            "maxProperties": 20,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "batch_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 999
+    },
+    "batch_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    }
+  }
+}
