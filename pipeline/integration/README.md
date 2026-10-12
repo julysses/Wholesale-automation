@@ -17,6 +17,7 @@ Evidence covered:
 - Two independent handler instances contending on the same run lock. The test observes two distinct PostgreSQL backend PIDs waiting simultaneously before releasing the lock; simply using `Promise.all` is insufficient.
 - Exact duplicate/lost-ack replay, changed-content conflict, expired retention rejection, disabled-source rejection, and database privilege denial.
 - Two actual PostgreSQL sessions reserving tracing spend against the same daily cap; one reservation succeeds, the other is capped, and unknown outcomes retain the hold and deny redispatch. No provider is invoked.
+- Two actual PostgreSQL sessions selecting work behind the same lead lock; both return one shared durable job and only one row is created.
 - Two actual PostgreSQL sessions claiming the same scoring job while blocked on its row lock. Exactly one may dispatch; the submitted job cannot redispatch, and its saved model response completes without another model invocation.
 - Two actual PostgreSQL sessions making competing offer decisions at the same version. Exactly one succeeds and one conflicts; only one new event is saved. Replaying the successful approval after revocation cannot restore approval.
 

@@ -96,7 +96,7 @@ def receive_score_receipt(db, pending):
     return job
 
 
-def score_list_lead(db, client, evaluation_id: UUID, lead_id: UUID, *, enabled=False):
+def score_list_lead(db, client, evaluation_id: UUID, lead_id: UUID, *, enabled=False, model: str | None = None):
     """Persist/claim before one Claude call; resume received jobs without a call.
 
     A crash or timeout after dispatch retains submitted state. It cannot authorize
@@ -105,10 +105,11 @@ def score_list_lead(db, client, evaluation_id: UUID, lead_id: UUID, *, enabled=F
     if enabled is not True:
         return {'blocked':'scoring_disabled'}
     lead, reference = str(lead_id), str(evaluation_id)
-    prepared = _rpc(db, 'prepare_list_score_job', {'p_id':reference,'p_lead':lead,'p_model':settings.claude_model})
+    requested_model = model or settings.claude_model
+    prepared = _rpc(db, 'prepare_list_score_job', {'p_id':reference,'p_lead':lead,'p_model':requested_model})
     if prepared.get('blocked'):
         return prepared
-    job = _job(prepared, reference, lead, settings.claude_model)
+    job = _job(prepared, reference, lead, requested_model)
     pending = None
     try:
         if job.get('state') in ('received','completed'):

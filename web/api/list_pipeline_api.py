@@ -156,3 +156,17 @@ async def scoring_action(body: ScoringOperation, request: Request):
     if not confirmed:
         raise HTTPException(503,'Scoring result is unconfirmed. Retry the same event reference.')
     return value
+
+@router.get('/webhooks/_worker/list-scoring')
+async def scoring_worker(authorization: str = Header(default='')):
+    secret=os.getenv('CRON_SECRET','')
+    if not secret:
+        raise HTTPException(503,'Scoring worker secret is not configured')
+    if not hmac.compare_digest(authorization,f'Bearer {secret}'):
+        raise HTTPException(401,'Unauthorized')
+    from tools.list_scoring_worker import process_scoring_batch
+    try:
+        result=await run_in_threadpool(process_scoring_batch)
+    except Exception:
+        raise HTTPException(503,'Scoring worker could not confirm its batch. Inspect saved jobs before retrying.')
+    return result

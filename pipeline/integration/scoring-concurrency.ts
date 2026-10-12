@@ -3,11 +3,12 @@ export async function verifyScoringConcurrency(adminURL:string){
  const admin=postgres(adminURL,{ssl:'require',max:1});
  const one=postgres(adminURL,{ssl:'require',max:1,connection:{application_name:'score-claim-one'}});
  const two=postgres(adminURL,{ssl:'require',max:1,connection:{application_name:'score-claim-two'}});
- const lead=crypto.randomUUID(),property=crypto.randomUUID(),run=crypto.randomUUID(),signal=crypto.randomUUID(),job=crypto.randomUUID();
+ const lead=crypto.randomUUID(),property=crypto.randomUUID(),run=crypto.randomUUID(),signal=crypto.randomUUID();
+ let job=crypto.randomUUID();
  const assert=(v:unknown,m:string)=>{if(!v)throw new Error(m);};
  let locked=false;
  try{
-  for(const file of ['20261012231220_list_scoring_receipts.sql','20261012232054_list_scoring_jobs.sql','20261012232711_list_scoring_monitor.sql'])
+  for(const file of ['20261012231220_list_scoring_receipts.sql','20261012232054_list_scoring_jobs.sql','20261012232711_list_scoring_monitor.sql','20261012234031_list_scoring_worker.sql'])
    await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/'+file,import.meta.url)));
   await admin`insert into public.leads(id,property_address,city) values(${lead},'SYNTHETIC SCORE TEST','Dallas')`;
   await admin`insert into wholesale_ingest.properties(id,state,county,address_std,lead_id) values(${property},'TX','Dallas',${lead},${lead})`;
@@ -15,8 +16,25 @@ export async function verifyScoringConcurrency(adminURL:string){
    select ${run},id,current_date,now(),'success','synthetic',repeat('a',64),1 from wholesale_ingest.sources where source_key='tx-dallas-pre_foreclosure'`;
   await admin`insert into wholesale_ingest.distress_signals(id,property_id,source_id,source_record_id,list_type,filed_date,source_url,first_run_id,last_run_id)
    select ${signal},${property},source_id,'synthetic','pre_foreclosure',current_date,'https://example.invalid/fixture',${run},${run} from wholesale_ingest.ingest_runs where id=${run}`;
-  await admin`select public.prepare_list_score_job(${job},${lead},'claude-fixture')`;
   await one.unsafe('SET ROLE service_role');await two.unsafe('SET ROLE service_role');
+  await admin.unsafe('BEGIN');locked=true;
+  await admin`select pg_advisory_xact_lock(hashtextextended(${'score-job-lead:'+lead},0))`;
+  const selections=[one`select public.next_list_scoring_jobs('claude-fixture',1) AS receipt`.execute(),two`select public.next_list_scoring_jobs('claude-fixture',1) AS receipt`.execute()];
+  let selecting:{pid:number}[]=[];
+  for(let i=0;i<100;i++){
+   await admin`select pg_stat_clear_snapshot()`;
+   selecting=await admin`select pid from pg_stat_activity where application_name in ('score-claim-one','score-claim-two') and wait_event_type='Lock'`;
+   if(selecting.length===2)break;
+   await new Promise(resolve=>setTimeout(resolve,50));
+  }
+  assert(selecting.length===2&&selecting[0].pid!==selecting[1].pid,'Two scoring selections must overlap on the lead lock');
+  console.log('Verified overlapping scoring selection backend PIDs:',selecting.map(r=>r.pid).join(','));
+  await admin.unsafe('COMMIT');locked=false;
+  const picked=(await Promise.all(selections)).map(rows=>rows[0].receipt.jobs);
+  assert(picked.every(jobs=>jobs.length===1)&&picked[0][0].id===picked[1][0].id,'Concurrent selection created competing job identities');
+  job=picked[0][0].id;
+  const [count]=await admin`select count(*)::int n from wholesale_ingest.scoring_jobs where lead_id=${lead}`;
+  assert(count.n===1,'Concurrent selection inserted duplicate work');
   await admin.unsafe('BEGIN');locked=true;
   await admin`select id from wholesale_ingest.scoring_jobs where id=${job} for update`;
   const pending=[one`select public.claim_list_score_job(${job}) AS receipt`.execute(),two`select public.claim_list_score_job(${job}) AS receipt`.execute()];
