@@ -59,31 +59,89 @@ def _rpc(db, name, params):
     return value
 
 
-def score_list_lead(db, client, evaluation_id: UUID, lead_id: UUID, *, enabled=False):
-    """One model attempt. Caller persists evaluation identity; no automatic retry.
+def _job(value, reference, lead, model):
+    job = value.get('job')
+    if (not isinstance(job, dict) or job.get('id') != reference or job.get('lead_id') != lead
+        or job.get('requested_model') != model or job.get('prompt_version') != PROMPT_VERSION
+        or not isinstance(job.get('input_snapshot'), dict) or job['input_snapshot'].get('lead_id') != lead
+        or not re.fullmatch(r'[a-f0-9]{64}', str(job.get('input_hash', '')))):
+        raise ScoringUnconfirmed('Scoring job identity is unconfirmed')
+    return job
 
-    DB atomically rechecks current input before saving. A caller must retain the
-    model receipt/result to reconcile a lost save acknowledgement before another
-    model invocation. Scheduling and durable job recovery are separate work.
+
+def _complete_job(db, job):
+    value = _rpc(db, 'complete_list_score_job', {'p_id':job['id']})
+    saved_job = _job(value, job['id'], job['lead_id'], job['requested_model'])
+    if value.get('blocked'):
+        return value
+    row = value.get('evaluation')
+    if (saved_job.get('state') != 'completed' or not isinstance(row, dict)
+        or row.get('id') != job['id'] or row.get('lead_id') != job['lead_id']
+        or row.get('input_hash') != job['input_hash'] or row.get('model_receipt') != job.get('model_receipt')
+        or row.get('model_version') != job.get('model_version') or row.get('prompt_version') != PROMPT_VERSION
+        or row.get('reasons') != job.get('assessment') or type(row.get('score')) is not int
+        or not 0 <= row['score'] <= 100 or value.get('outreach_authorized') is not False):
+        raise ScoringUnconfirmed('Scoring completion is unconfirmed; resume the saved job')
+    return value
+
+
+def receive_score_receipt(db, pending):
+    """Retry the exact provider receipt; this never invokes Claude."""
+    value = _rpc(db, 'receive_list_score_job', pending)
+    job = value.get('job')
+    if (value.get('blocked') or not isinstance(job, dict) or job.get('id') != pending['p_id']
+        or job.get('claim_token') != pending['p_token'] or job.get('model_version') != pending['p_model']
+        or job.get('model_receipt') != pending['p_receipt'] or job.get('assessment') != pending['p_result']):
+        raise ScoringUnconfirmed('Model receipt is unconfirmed', pending_save=pending)
+    return job
+
+
+def score_list_lead(db, client, evaluation_id: UUID, lead_id: UUID, *, enabled=False):
+    """Persist/claim before one Claude call; resume received jobs without a call.
+
+    A crash or timeout after dispatch retains submitted state. It cannot authorize
+    another provider attempt. Scheduler/operator recovery remains separate work.
     """
     if enabled is not True:
         return {'blocked':'scoring_disabled'}
     lead, reference = str(lead_id), str(evaluation_id)
-    snapshot = _rpc(db, 'list_scoring_input', {'p_lead':lead})
-    if snapshot.get('blocked'):
-        return snapshot
-    doc, fingerprint = snapshot.get('input'), snapshot.get('input_hash')
-    if not isinstance(doc, dict) or doc.get('lead_id') != lead or not isinstance(fingerprint, str) or not re.fullmatch(r'[a-f0-9]{64}', fingerprint):
-        raise ScoringUnconfirmed('Scoring input identity is invalid')
-    response = client.with_options(max_retries=0).messages.create(
-        model=settings.claude_model, max_tokens=3000, temperature=0,
-        system=SYSTEM,
-        messages=[{'role':'user','content':json.dumps({'input':doc,'schema':ListAssessment.model_json_schema()})}],
-    )
-    if response.stop_reason != 'end_turn' or len(response.content) != 1 or response.content[0].type != 'text':
-        raise ScoringUnconfirmed('Claude did not return a complete scoring result')
-    result = ListAssessment.model_validate_json(response.content[0].text)
-    return save_score_receipt(db, evaluation_id, lead_id, fingerprint, response.model, response.id, result)
+    prepared = _rpc(db, 'prepare_list_score_job', {'p_id':reference,'p_lead':lead,'p_model':settings.claude_model})
+    if prepared.get('blocked'):
+        return prepared
+    job = _job(prepared, reference, lead, settings.claude_model)
+    pending = None
+    try:
+        if job.get('state') in ('received','completed'):
+            return _complete_job(db, job)
+        if job.get('state') != 'queued':
+            return {'job':job,'dispatch':False}
+        claimed = _rpc(db, 'claim_list_score_job', {'p_id':reference})
+        active = _job(claimed, reference, lead, job['requested_model'])
+        if claimed.get('dispatch') is not True:
+            return claimed
+        if (active.get('state') != 'submitted' or active.get('input_hash') != job['input_hash']
+            or active.get('input_snapshot') != job['input_snapshot'] or not active.get('claim_token')):
+            raise ScoringUnconfirmed('Scoring claim does not match the prepared job')
+        response = client.with_options(max_retries=0).messages.create(
+            model=job['requested_model'], max_tokens=3000, temperature=0,
+            system=SYSTEM,
+            messages=[{'role':'user','content':json.dumps({'input':job['input_snapshot'],'schema':ListAssessment.model_json_schema()})}],
+        )
+        if (response.stop_reason != 'end_turn' or len(response.content) != 1
+            or response.content[0].type != 'text' or response.model != job['requested_model']):
+            raise ScoringUnconfirmed('Claude result is incomplete or uses another model')
+        result = ListAssessment.model_validate_json(response.content[0].text)
+        pending = {'p_id':reference,'p_token':active['claim_token'],'p_model':response.model,
+                   'p_receipt':response.id,'p_result':result.model_dump()}
+        received = receive_score_receipt(db, pending)
+        return _complete_job(db, received)
+    except Exception as exc:
+        from tools.operational_alerts import record_provider_alert
+        try:
+            record_provider_alert(db, 'claude', reference, 'scoring_unconfirmed', lead)
+        except Exception:
+            pass  # Original error remains visible; submitted job cannot redispatch.
+        raise ScoringUnconfirmed('Scoring requires reconciliation; do not repeat the model call', pending_save=pending) from exc
 
 
 def save_score_receipt(db, evaluation_id: UUID, lead_id: UUID, input_hash: str,
