@@ -29,6 +29,19 @@ def render_digest(summary):
         lines.append(f"- {_text(incident.get('day'))} / {_text(incident.get('source_id'))}: {_text(incident.get('kind'))}")
     if len(summary.get('open_incidents', [])) > 100:
         lines.append('Additional incidents are available in the CRM; this email is truncated.')
+    scoring = summary.get('scoring_monitor')
+    lines += ['', 'Scoring processing:']
+    if not isinstance(scoring, dict) or scoring.get('busy'):
+        lines.append('Scoring monitor status is unavailable; review the CRM before assuming processing is complete.')
+    else:
+        incidents = scoring.get('open_incidents', [])
+        lines.append(f"Unresolved scoring incidents: {len(incidents)}.")
+        if not scoring.get('owner_configured'):
+            lines.append('A lead owner is not configured for scoring recovery tasks.')
+        for incident in incidents[:100]:
+            lines.append(f"- Job {_text(incident.get('job_id'))}: {_text(incident.get('kind'))}; task {_text(incident.get('task_id'))}")
+        if len(incidents) > 100:
+            lines.append('Additional scoring incidents are available in the CRM; this email is truncated.')
     lines += ['', 'Top scored leads (stored evaluations; permission to contact must be checked separately):']
     for lead in summary.get('top_ten', [])[:10]:
         lines.append(f"- Lead {_text(lead.get('lead_id'))}: score {_text(lead.get('score'))}; route {_text(lead.get('route'))}")

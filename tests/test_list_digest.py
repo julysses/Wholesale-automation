@@ -86,3 +86,12 @@ def test_missing_owner_email_still_reconciles_deadline_alerts(setup,monkeypatch)
  db,sender=setup;monkeypatch.setattr(digest.settings,'notification_email','')
  assert digest.deliver_digest(SUMMARY,NOW)['status']=='owner_email_not_configured'
  db.rpc.assert_called_once_with('reconcile_list_digests',{});sender.send.assert_not_called()
+
+
+def test_digest_reports_stalled_scoring_without_claiming_processing_complete():
+    from tools.list_digest import render_digest
+    text=render_digest({**SUMMARY,'scoring_monitor':{'owner_configured':False,'open_incidents':[{'job_id':'synthetic-job','kind':'model_outcome_unknown','task_id':None}]}})
+    assert 'Unresolved scoring incidents: 1' in text
+    assert 'synthetic-job: model_outcome_unknown' in text
+    assert 'owner is not configured' in text
+    assert 'unavailable' in render_digest(SUMMARY)
