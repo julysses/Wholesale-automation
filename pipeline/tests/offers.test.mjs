@@ -12,6 +12,7 @@ async function setup(t){
  INSERT INTO public.profiles VALUES('${admin}','approved','admin'),('${user}','approved','user');
  INSERT INTO public.leads VALUES('${lead}');GRANT SELECT ON public.profiles,public.leads TO service_role;`);
  await db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261012213446_human_offer_review.sql',import.meta.url),'utf8'));
+ await db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261012222753_offer_review_history.sql',import.meta.url),'utf8'));
  return db;
 }
 const record=async(db,id,version,action,revision,body=null,operator=admin)=>(await db.query('SELECT public.record_offer_review($1,$2,$3,$4,$5,$6,$7::jsonb) AS result',[uid(id),lead,operator,version,action,uid(revision),body===null?null:JSON.stringify(body)])).rows[0].result;
@@ -52,4 +53,16 @@ test('browser roles and non-admin actors cannot create approvals or mutate audit
  assert.equal((await record(db,10,0,'draft',10,terms)).current.version,1);
  await assert.rejects(db.query("update offer_review.events set action='approve'"),/permission denied/);
  await assert.rejects(db.query('delete from offer_review.events'),/permission denied/);
+});
+
+test('history preserves revoked actors and stable pages as new events arrive',async t=>{
+ const db=await setup(t);
+ for(let i=0;i<53;i++)await record(db,100+i,i,'draft',100+i,terms);
+ const history=async(before=null,operator=admin)=>(await db.query('select public.offer_review_history($1,$2,$3) AS value',[lead,operator,before])).rows[0].value;
+ const first=await history();assert.equal(first.events.length,50);assert.equal(first.next_before,3);
+ await record(db,200,53,'approve',152);await record(db,201,54,'revoke',152);
+ const second=await history(first.next_before);assert.deepEqual(second.events.map(e=>e.expected_version),[2,1,0]);assert.equal(second.next_before,null);
+ const newest=await history();assert.equal(newest.events[0].action,'revoke');assert.equal(newest.events[0].operator_id,admin);
+ await assert.rejects(history(null,user),/administrator/);
+ for(const role of ['anon','authenticated']){await db.exec(`SET ROLE ${role}`);await assert.rejects(history(),/permission denied/);await db.exec('RESET ROLE');}
 });

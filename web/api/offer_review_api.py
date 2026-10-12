@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 from starlette.concurrency import run_in_threadpool
 from tools.crm import get_supabase_client
@@ -77,3 +77,24 @@ async def decide(lead_id: UUID, body: Decision, request: Request):
             and current.get('outbound_enabled') is False):
             return value
     raise HTTPException(503, 'Offer review outcome is unconfirmed. Retry the same reference and details. Nothing was sent.')
+
+@router.get('/{lead_id}/history')
+async def history(lead_id: UUID, request: Request, before: int | None = Query(default=None, ge=0)):
+    value = await rpc('offer_review_history', {'p_lead': str(lead_id), 'p_before': before}, request)
+    valid = isinstance(value, dict) and value.get('lead_id') == str(lead_id)
+    events = value.get('events') if valid else None
+    cursor = value.get('next_before') if valid else None
+    valid = valid and isinstance(events, list) and len(events) <= 50
+    previous = before
+    for event in events if valid else []:
+        version = event.get('expected_version') if isinstance(event, dict) else None
+        if (type(version) is not int or version < 0 or event.get('lead_id') != str(lead_id)
+            or (previous is not None and version >= previous)):
+            valid = False
+            break
+        previous = version
+    if cursor is not None and (type(cursor) is not int or not events or len(events) != 50 or cursor != previous):
+        valid = False
+    if not valid:
+        raise HTTPException(503, 'Offer history could not be confirmed')
+    return value

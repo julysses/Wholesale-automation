@@ -37,3 +37,17 @@ export async function writeOffer(actor:string,lead:string,decision:OfferDecision
  sessionStorage.removeItem(key(actor,lead));
  return current;
 }
+
+const historySchema=z.object({lead_id:z.string().uuid(),events:z.array(eventSchema).max(50),next_before:z.number().int().nonnegative().nullable()});
+export type OfferHistoryPage=z.infer<typeof historySchema>;
+export async function readOfferHistory(lead:string,before:number|null=null):Promise<OfferHistoryPage>{
+ const page=historySchema.parse(await(await apiFetch(`/api/operations/offers/${lead}/history${before===null?'':`?before=${before}`}`)).json());
+ let previous=before;
+ if(page.lead_id!==lead)throw new Error('Offer history returned a different lead.');
+ for(const event of page.events){
+  if(event.lead_id!==lead||(previous!==null&&event.expected_version>=previous))throw new Error('Offer history order could not be confirmed.');
+  previous=event.expected_version;
+ }
+ if(page.next_before!==null&&(page.events.length!==50||page.next_before!==previous))throw new Error('Offer history cursor could not be confirmed.');
+ return page;
+}

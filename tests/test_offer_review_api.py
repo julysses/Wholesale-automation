@@ -57,3 +57,16 @@ def test_request_cannot_claim_identity_approval_or_replace_decision_terms(setup,
     client,db,_=setup
     assert client.post('/api/operations/offers/'+LEAD,json={**payload(),**change},headers={'Authorization':'Bearer test'}).status_code==422
     db.rpc.assert_not_called()
+
+@pytest.mark.parametrize('result,status',[
+ ({'lead_id':LEAD,'events':[],'next_before':None},200),
+ ({'lead_id':str(uuid4()),'events':[],'next_before':None},503),
+ ({'lead_id':LEAD,'events':[{'lead_id':LEAD,'expected_version':5}],'next_before':None},503),
+ ({'lead_id':LEAD,'events':[],'next_before':0},503),
+])
+def test_history_identity_cursor_and_derived_operator(setup,result,status):
+    client,db,_=setup
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data=result)
+    response=client.get('/api/operations/offers/'+LEAD+'/history?before=5',headers={'Authorization':'Bearer test'})
+    assert response.status_code==status
+    db.rpc.assert_called_once_with('offer_review_history',{'p_lead':LEAD,'p_before':5,'p_operator':OPERATOR})

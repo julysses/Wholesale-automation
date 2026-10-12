@@ -1,3 +1,4 @@
+import { OfferHistory } from './OfferHistory';
 import { useEffect, useState } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { pendingOffer, readOffer, writeOffer, type OfferDecision, type OfferSnapshot, type OfferTerms } from '@/lib/offerReview';
@@ -93,6 +94,7 @@ function Review({actor,lead}:{actor:string;lead:string}) {
    <label><input type="checkbox" checked={confirmed} disabled={!canDecide} onChange={e=>setConfirmed(e.target.checked)}/> I reviewed the exact saved price, recipient, channel, dates and conditions.</label>
    <button className="rounded border px-3 py-2 disabled:opacity-50" type="button" disabled={!canDecide||!confirmed||snapshot.approved} onClick={()=>void submit('approve')}>Approve saved terms</button>
    <button className="rounded border px-3 py-2 disabled:opacity-50" type="button" disabled={busy||!!pending||!snapshot.approval||!!error} onClick={()=>void submit('revoke')}>Revoke approval</button>
+   <OfferHistory key={`${lead}:${snapshot.version}`} lead={lead}/>
   </>}
  </section>;
 }
