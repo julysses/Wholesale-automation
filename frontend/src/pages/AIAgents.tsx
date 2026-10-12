@@ -308,7 +308,7 @@ function OutreachWriterPanel({ leads }: { leads: any[] }) {
           <div className="p-2 bg-purple-50 rounded-lg"><MessageSquare className="h-5 w-5 text-purple-600" /></div>
           <div>
             <CardTitle>Outreach Writer</CardTitle>
-            <p className="text-xs text-gray-400 mt-0.5">Generate personalized SMS, email, voicemail & direct mail</p>
+            <p className="text-xs text-gray-400 mt-0.5">Prepare fixed SMS, email, voicemail & direct-mail drafts for review</p>
           </div>
         </div>
       </CardHeader>
@@ -331,7 +331,6 @@ function OutreachWriterPanel({ leads }: { leads: any[] }) {
             options={[
               { value: 'Friendly', label: 'Friendly' },
               { value: 'Professional', label: 'Professional' },
-              { value: 'Urgent', label: 'Urgent' },
             ]} />
         </div>
         <Button onClick={handleRun} loading={loading} className="w-full" icon={<MessageSquare className="h-4 w-4" />}>
@@ -343,7 +342,7 @@ function OutreachWriterPanel({ leads }: { leads: any[] }) {
 
         {result && !loading && (
           <div className="space-y-3 border-t border-gray-100 pt-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase">3 Variations</p>
+            <p className="text-xs font-semibold text-gray-500">Drafts for review — nothing sent or approved</p>
             {result.map((v, i) => (
               <div key={i} className="border border-gray-200 rounded-xl p-4 space-y-2">
                 <div className="flex items-center justify-between">
