@@ -1,5 +1,5 @@
 // Reference ingress implementation; stage and reconcile with deployed schema before release.
-import {Ajv} from 'npm:ajv@8.17.1';
+import {Ajv} from 'npm:ajv@8.20.0';
 import {fullFormats} from 'npm:ajv-formats@3.0.1/dist/formats.js';
 import postgres from 'npm:postgres@3.4.5';
 import schema from './ingest.schema.json' with { type: 'json' };
@@ -12,7 +12,7 @@ type IngestPayload = {
  source:{state:string;county:string;jurisdiction:string;list_type:string;source_url:string};
  status:string;status_reason:string;lookback_days:number;window_start:string;window_end:string;
  coverage_complete:boolean;source_as_of:string|null;records_sha256:string;
- records:Array<Record<string,any>>;batch_index?:number;batch_count?:number;
+ records:Array<Record<string,unknown> & {source_url:string;source_record_id:string|null}>;batch_index?:number;batch_count?:number;
 };
 const validate = ajv.compile<IngestPayload>(schema);
 const LIMIT = 2 * 1024 * 1024;
@@ -50,7 +50,9 @@ export async function handler(req:Request):Promise<Response> {
   if(!equalHash(recordsHash,p.records_sha256)) return response(422,{error:'records_hash_mismatch',fields:[{path:'/records_sha256',message:'recompute canonical records hash'}]});
   const batchIndex=p.batch_index??0,batchCount=p.batch_count??1;
   const payloadHash=await sha256(canonicalJSON(p));
-  const {records,records_sha256,batch_index,...manifest}=p;
+  const records=p.records;
+  const manifest={...p} as Partial<IngestPayload>;
+  delete manifest.records; delete manifest.records_sha256; delete manifest.batch_index;
   const manifestHash=await sha256(canonicalJSON({...manifest,batch_count:batchCount}));
   // Use a dedicated LOGIN role that inherits wholesale_ingestor, not postgres/service_role.
   sql??=postgres(dbURL,{prepare:false,max:1,connect_timeout:10,idle_timeout:20,ssl:'require'});
@@ -61,7 +63,7 @@ export async function handler(req:Request):Promise<Response> {
    if(!src||!src.enabled) throw new HttpError(403,'source_disabled_or_unknown');
    if(src.county!==p.source.county||src.state!==p.source.state||src.list_type!==p.source.list_type||src.jurisdiction!==p.source.jurisdiction) throw new HttpError(422,'source_metadata_mismatch');
    if(p.lookback_days>Math.max(src.lookback_days,src.backfill_days)) throw new HttpError(422,'lookback_exceeds_source_config');
-   for(const u of [p.source.source_url,...records.map((r:any)=>r.source_url)]) if(!src.allowed_hosts.includes(new URL(u).hostname)) throw new HttpError(422,'source_url_not_allowed');
+   for(const u of [p.source.source_url,...records.map(r=>r.source_url)]) if(!src.allowed_hosts.includes(new URL(u).hostname)) throw new HttpError(422,'source_url_not_allowed');
    const [run]=await tx`select id,manifest_hash from wholesale_ingest.ingest_runs where id=${p.run_id}`;
    if(run&&run.manifest_hash!==manifestHash) throw new HttpError(409,'run_id_reused_with_changed_manifest');
    const [batch]=await tx`select payload_hash from wholesale_ingest.raw_payloads where run_id=${p.run_id} and batch_index=${batchIndex}`;
@@ -69,7 +71,7 @@ export async function handler(req:Request):Promise<Response> {
    if(!run)await tx`insert into wholesale_ingest.ingest_runs(id,source_id,scheduled_for,pulled_at,status,status_reason,manifest_hash,expected_batches) values (${p.run_id},${src.id},${p.scheduled_for},${p.pulled_at},${p.status},${p.status_reason},${manifestHash},${batchCount})`;
    await tx`insert into wholesale_ingest.raw_payloads(run_id,batch_index,payload_hash,records_hash,payload,records_in) values(${p.run_id},${batchIndex},${payloadHash},${recordsHash},${tx.json(JSON.parse(JSON.stringify(p)))},${records.length})`;
    if(records.length){
-    const rows=records.map((r:any,i:number)=>({run_id:p.run_id,batch_index:batchIndex,ordinal:i,source_record_id:r.source_record_id,record:tx.json(r),review_reason:resolutionGate(p,r)}));
+    const rows=records.map((r,i)=>({run_id:p.run_id,batch_index:batchIndex,ordinal:i,source_record_id:r.source_record_id,record:tx.json(r),review_reason:resolutionGate(p,r)}));
     await tx`insert into wholesale_ingest.records ${tx(rows)}`;
     await tx`insert into wholesale_ingest.jobs(run_id,batch_index,kind) values(${p.run_id},${batchIndex},'normalize')`;
    }

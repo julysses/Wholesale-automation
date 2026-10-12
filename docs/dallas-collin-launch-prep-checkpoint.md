@@ -36,3 +36,11 @@ Local combined file `20261012174446_list_operations.sql` therefore does not map 
 ## Resume
 
 Inspect the working tree, this commit and rehearsal state first. Finish missing integrations against the target PRD; run backend/frontend/build/lint and meaningful SQL/HTTP/concurrency/recovery tests. Preserve existing consent and live recipient gates. Prepare a draft PR/reviewable release. Do not deploy or contact sellers without separate authorization.
+
+## Recovered October 12 in local Codex
+
+Archive c9a7cbc verified and restored to separate worktree `work/wholesale-launch-prep` under the September 28 task. Exact original commit pushed to origin/codex/dallas-collin-launch-prep. Source-recovery blocker resolved. See `dallas-collin-release-evidence.md` for FR-1 through FR-15 evidence and open work.
+
+Rehearsal reconciliation: resolve_list_record exists (original history20261012181414); scan_list_pipeline absent. Added batch completeness/expiry guard after matching original remote function body to archive source. Guard applied in rehearsal only as20261012202141 (source20261012201949). Zero rollback QA fixtures retained. Production unchanged by this work.
+
+Fixed five new lint regressions, patched Ajv, added pipeline CI and SQL/HTTP guard tests. Follow the release-evidence next step; do not mistake these tests for downstream implementation or launch acceptance.
