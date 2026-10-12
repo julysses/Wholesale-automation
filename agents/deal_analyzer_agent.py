@@ -21,9 +21,7 @@ Outputs:
   • repair tier + cost estimate (low / mid / high)
   • as-is value
   • MAO
-  • recommended offer range
-  • projected assignment fee
-  • deal spread
+  • offer-dependent outputs remain unknown pending human terms
   • recommended exit strategy
 """
 
@@ -168,10 +166,11 @@ class DealAnalysis:
     # Key outputs
     mao: float = 0.0                     # Max Allowable Offer
     as_is_value: float = 0.0             # ARV minus cost to make retail-ready
-    offer_range_low: float = 0.0
-    offer_range_high: float = 0.0
-    projected_assignment_fee: float = 0.0
-    deal_spread: float = 0.0             # MAO − offer_range_high (margin)
+    # Legacy outputs: analysis cannot establish a purchase price or realized fee.
+    offer_range_low: Optional[float] = None
+    offer_range_high: Optional[float] = None
+    projected_assignment_fee: Optional[float] = None
+    deal_spread: Optional[float] = None
 
     # Strategy
     exit_strategy: str = "wholesale"     # wholesale | wholetail | novation | investor_resale
@@ -186,7 +185,7 @@ class DealAnalysis:
 
     @property
     def offer_range_str(self) -> str:
-        return f"${self.offer_range_low:,.0f} – ${self.offer_range_high:,.0f}"
+        return "Awaiting human-entered price and approval"
 
     @property
     def mao_str(self) -> str:
@@ -194,7 +193,7 @@ class DealAnalysis:
 
     @property
     def assignment_fee_str(self) -> str:
-        return f"${self.projected_assignment_fee:,.0f}"
+        return "Unknown — requires agreed purchase and resale terms"
 
 
 # ── Core calculation engine ───────────────────────────────────────────────────
@@ -322,8 +321,7 @@ def build_deal_analysis(
     Build a complete DealAnalysis from raw property inputs.
 
     Uses PRD MAO formula and repair tier model.
-    Returns offer_range as (MAO × 0.92) to (MAO × 0.97) to maintain
-    a $3k–$8k margin below MAO for negotiation room.
+    MAO is an underwriting estimate, not an offer. No offer price is generated.
     """
     arv = ARVEstimate(
         low=arv_low, mid=arv_mid, high=arv_high,
@@ -348,19 +346,11 @@ def build_deal_analysis(
         assignment_fee=assignment_fee,
     )
 
-    # Offer range: 92–97% of MAO (keeps negotiation room)
-    offer_low  = round(mao * 0.92, -3)
-    offer_high = round(mao * 0.97, -3)
-
     # As-is value ≈ ARV − repair_mid − transaction costs
     as_is = max(0.0, arv_low - repair.cost_mid - closing_costs)
 
-    # Projected assignment fee = MAO − offer_high (what we keep)
-    projected_fee = max(0.0, mao - offer_high)
-    deal_spread   = max(0.0, mao - offer_high)
-
     # Exit strategy heuristic
-    if mao <= 0 or offer_high <= 0:
+    if mao <= 0:
         exit_strategy = "too_risky"
         is_viable = False
         reasons = ["MAO ≤ 0 — deal has insufficient spread"]
@@ -388,10 +378,6 @@ def build_deal_analysis(
         investor_buy_ratio=INVESTOR_BUY_RATIO_LOW,
         mao=mao,
         as_is_value=as_is,
-        offer_range_low=offer_low,
-        offer_range_high=offer_high,
-        projected_assignment_fee=projected_fee,
-        deal_spread=deal_spread,
         exit_strategy=exit_strategy,
         is_viable=is_viable,
         weak_deal_reasons=reasons,
@@ -399,8 +385,8 @@ def build_deal_analysis(
         summary=(
             f"ARV: ${arv_low:,.0f}–${arv_high:,.0f} | "
             f"Repairs ({repair.tier_label}): {repair.range_str} | "
-            f"MAO: ${mao:,.0f} | Offer: {offer_low:,.0f}–{offer_high:,.0f} | "
-            f"Proj. fee: ${projected_fee:,.0f}"
+            f"MAO underwriting estimate: ${mao:,.0f} | "
+            "Offer requires human-entered price and approval"
         ),
     )
 
@@ -414,7 +400,7 @@ class DealAnalyzerAgent:
     Uses BatchData as the primary ARV source, falling back to Claude (LLM)
     to estimate ARV from property characteristics when no
     real data is available, then applies the deterministic PRD formula
-    for repair cost, MAO, and offer range.
+    for repair cost and MAO underwriting context.
 
     Falls back to conservative heuristics if ANTHROPIC_API_KEY is not set.
     """

@@ -49,3 +49,7 @@ Final local backend result: **640 passed**, 352 existing datetime deprecation wa
 Latest continuation supersedes earlier missing-scan/Deno notes: monitor installed in rehearsal under split history entries; 22 pipeline tests and Deno Edge rejection/typecheck passed. See checkpoint for exact mappings. Nothing promoted to production.
 
 Digest continuation: owner-only delivery code now present (default disabled);25pipeline tests and rehearsal rollback proof passed. No actual provider send or scheduled delivery has been accepted. See daily-digest-activation.md.
+
+
+### October 12 offer-safety follow-up
+Qualification ranges, deal-analysis ranges and negotiation midpoint pricing have been removed from their generators. Acquisition cards suppress historical generated price cards and identify saved prose as unapproved historical material. New regression tests cover model-injected offer prose and historical UI data. Full human approval/dispatch enforcement remains an open gate; this is not a go-live approval. See the latest checkpoint for exact validation and next steps.
