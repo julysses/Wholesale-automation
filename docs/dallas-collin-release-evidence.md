@@ -27,7 +27,7 @@ Status: **draft; not production-ready**. Original archive commit c9a7cbcf3007671
 | FR-10 Compliance | Existing backend suite remains green; seeds disabled | List-specific DNC freshness, consent, opt-out, quiet-hours and dispatch caps |
 | FR-11 Scoring | Existing scoring preserved | Validated list scoring, stored reasons/version/input hash, stale input rejection |
 | FR-12 Lot routing | Existing underwriting preserved | Verified list-to-underwriting handoff and acknowledgement |
-| FR-13 Digest | Source/latest receipt counts, incidents and latest-score top ten tested | Validated downstream scoring and actual owner delivery by 07:30 Central |
+| FR-13 Digest | Immutable delivery reservation, deterministic email ID, matching-event reconciliation and deadline tasks tested locally and in rehearsal; summary counts/top ten retained | Validated scoring, controlled live email receipt, scheduler and actual owner delivery by07:30 Central |
 | FR-14 Heartbeat | Rehearsal scan installed; local deadline, DST, missing/partial/failure and retry tests pass | Scheduler execution, delivered alerts, outages exceeding seven-day backfill |
 | FR-15 Provenance | Review creates source observation; local SQL assertion | End-to-end normalized signals and retention acceptance |
 
@@ -47,3 +47,5 @@ Finish the scan/heartbeat and retention design with integration tests before ins
 Final local backend result: **640 passed**, 352 existing datetime deprecation warnings. Rehearsal security advisors: 10 no-policy informational findings (including the two service-only private operations tables); 3 existing authenticated definer-function warnings; leaked-password protection and MFA options remain configuration warnings. No guard-function privilege finding. Track remediation: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable and https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection . Do not grant browser access just to silence intentionally service-only table findings.
 
 Latest continuation supersedes earlier missing-scan/Deno notes: monitor installed in rehearsal under split history entries; 22 pipeline tests and Deno Edge rejection/typecheck passed. See checkpoint for exact mappings. Nothing promoted to production.
+
+Digest continuation: owner-only delivery code now present (default disabled);25pipeline tests and rehearsal rollback proof passed. No actual provider send or scheduled delivery has been accepted. See daily-digest-activation.md.

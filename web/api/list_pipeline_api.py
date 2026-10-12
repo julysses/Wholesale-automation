@@ -72,4 +72,12 @@ async def worker(authorization: str = Header(default='')):
         raise HTTPException(503, 'List worker secret is not configured')
     if not hmac.compare_digest(authorization, f'Bearer {secret}'):
         raise HTTPException(401, 'Unauthorized')
-    return await scan()
+    summary = await scan()
+    if summary.get('busy') is True:
+        return summary
+    from tools.list_digest import deliver_digest
+    try:
+        delivery = await run_in_threadpool(deliver_digest, summary)
+    except Exception:
+        raise HTTPException(503, 'Digest delivery could not be confirmed. Inspect its saved receipt before retrying.')
+    return {**summary, 'digest_delivery': delivery}

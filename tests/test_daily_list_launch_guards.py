@@ -53,3 +53,24 @@ def test_offer_endpoint_uses_only_operator_price_and_never_calls_ai(client,monke
 @pytest.mark.parametrize('price',[-1,0,100000001])
 def test_invalid_human_prices_rejected(client,price):
     assert client.post('/api/ai/generate-offer',headers={'Authorization':'Bearer test'},json={'human_offer_price':price}).status_code==422
+
+def test_digest_worker_propagates_unconfirmed_delivery(client,monkeypatch):
+    from tools import list_digest
+    monkeypatch.setenv('CRON_SECRET','synthetic-worker-secret-for-tests-only')
+    monkeypatch.setattr(lists,'rpc',AsyncMock(return_value={'day':'2026-10-12'}))
+    delivery=MagicMock(side_effect=RuntimeError('lost delivery acknowledgement'))
+    monkeypatch.setattr(list_digest,'deliver_digest',delivery)
+    response=client.get('/webhooks/_worker/daily-lists',headers={'Authorization':'Bearer synthetic-worker-secret-for-tests-only'})
+    assert response.status_code==503
+    assert 'saved receipt' in response.json()['detail']
+    delivery.assert_called_once_with({'day':'2026-10-12'})
+
+
+def test_busy_list_scan_never_attempts_digest(client,monkeypatch):
+    from tools import list_digest
+    monkeypatch.setenv('CRON_SECRET','synthetic-worker-secret-for-tests-only')
+    monkeypatch.setattr(lists,'rpc',AsyncMock(return_value={'busy':True}))
+    delivery=MagicMock();monkeypatch.setattr(list_digest,'deliver_digest',delivery)
+    response=client.get('/webhooks/_worker/daily-lists',headers={'Authorization':'Bearer synthetic-worker-secret-for-tests-only'})
+    assert response.status_code==200 and response.json()=={'busy':True}
+    delivery.assert_not_called()
