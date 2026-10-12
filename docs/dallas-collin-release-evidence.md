@@ -53,3 +53,7 @@ Digest continuation: owner-only delivery code now present (default disabled);25p
 
 ### October 12 offer-safety follow-up
 Qualification ranges, deal-analysis ranges and negotiation midpoint pricing have been removed from their generators. Acquisition cards suppress historical generated price cards and identify saved prose as unapproved historical material. New regression tests cover model-injected offer prose and historical UI data. Full human approval/dispatch enforcement remains an open gate; this is not a go-live approval. See the latest checkpoint for exact validation and next steps.
+
+
+### October 12 durable human offer review
+Private append-only offer events, immutable term revisions, expected-version approval/revocation and admin-only API implemented and verified in rehearsal. Real rollback leaves zero records. Operator UI, real concurrency/expiry acceptance and any offer dispatch integration remain open; this foundation does not certify end-to-end offer approval or launch.
