@@ -34,3 +34,27 @@ def test_scoring_admin_access_denied(client_db):
     rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
     assert client.get('/api/operations/lists/scoring',headers=HEADERS).status_code==403
     db.rpc.assert_not_called()
+
+def test_inspection_is_read_only_scoped_and_strips_dispatch_token(client_db):
+    client,db,_=client_db;job=str(uuid4())
+    value={'job':{'id':job,'state':'submitted','claim_token':'internal-only'},'freshness':{'current':True},'evaluation':None,'outreach_authorized':False}
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data=value)
+    response=client.get(f'/api/operations/lists/scoring/jobs/{job}',headers=HEADERS)
+    assert response.status_code==200
+    assert response.headers['cache-control']=='no-store'
+    assert 'internal-only' not in response.text and 'claim_token' not in response.text
+    db.rpc.assert_called_once_with('inspect_list_scoring_job',{'p_operator':OPERATOR,'p_id':job})
+    value['job']['id']=str(uuid4())
+    assert client.get(f'/api/operations/lists/scoring/jobs/{job}',headers=HEADERS).status_code==503
+
+def test_inspection_rejects_missing_invalid_and_unauthorized_requests(client_db):
+    client,db,rows=client_db;path=f'/api/operations/lists/scoring/jobs/{uuid4()}'
+    assert client.get(path).status_code==401
+    assert client.get('/api/operations/lists/scoring/jobs/not-uuid',headers=HEADERS).status_code==422
+    db.rpc.assert_not_called()
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={'blocked':'job_missing'})
+    assert client.get(path,headers=HEADERS).status_code==404
+    db.rpc.reset_mock()
+    rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
+    assert client.get(path,headers=HEADERS).status_code==403
+    db.rpc.assert_not_called()

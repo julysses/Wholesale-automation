@@ -170,3 +170,20 @@ async def scoring_worker(authorization: str = Header(default='')):
     except Exception:
         raise HTTPException(503,'Scoring worker could not confirm its batch. Inspect saved jobs before retrying.')
     return result
+
+@router.get('/api/operations/lists/scoring/jobs/{job_id}')
+async def inspect_scoring_job(job_id: UUID, request: Request):
+    from fastapi.responses import JSONResponse
+    value = await rpc('inspect_list_scoring_job', {'p_operator': operator(request), 'p_id': str(job_id)})
+    if isinstance(value, dict) and value.get('blocked') == 'job_missing':
+        raise HTTPException(404, 'Scoring job not found')
+    job = value.get('job') if isinstance(value, dict) else None
+    if (not isinstance(job, dict) or job.get('id') != str(job_id)
+        or not isinstance(value.get('freshness'), dict) or value.get('outreach_authorized') is not False):
+        raise HTTPException(503, 'Scoring evidence could not be confirmed')
+    # Explicit fields prevent internal dispatch credentials from reaching browsers.
+    fields = ('id','lead_id','state','requested_model','model_version','prompt_version','model_receipt',
+              'input_hash','input_snapshot','assessment','error_code','created_at','claimed_at','received_at','completed_at')
+    return JSONResponse({'job': {key: job.get(key) for key in fields}, 'freshness': value['freshness'],
+                         'evaluation': value.get('evaluation'), 'outreach_authorized': False},
+                        headers={'Cache-Control': 'no-store'})

@@ -20,7 +20,7 @@ Status: implemented and tested in the launch-preparation branch and rehearsal da
 3. Confirm the actual Claude model identifier, structured-response compatibility, cost expectations and scoring rubric using controlled synthetic evidence. Verify unknown equity/ODN handling and evidence-backed reasons.
 4. Measure full invocation duration, candidate selection query performance and backlog drain with representative volume. Prove the collection-to-ready target of 60 minutes; the batch cap alone is insufficient. Configure database timeouts and runtime headroom based on the measured deployment.
 5. Install an authenticated scheduler only after these checks. Verify overlapping invocations, saved-response recovery, uncertain-call holds and actual operator incident visibility. Configure an independent missing-worker alert.
-6. Confirm administrator threshold editing, saved-response completion, evidence review and escalation in the signed-in UI. Complete compliance, tracing, lot handoff and all other launch acceptance separately.
+6. Confirm administrator threshold editing, saved-response completion, evidence review and escalation in the signed-in UI. Daily Lists now offers read-only inspection of submitted/review jobs with original inputs, saved responses, validation reasons and changed-input sections. This does not reconcile an uncertain provider outcome. Complete compliance, tracing, lot handoff and all other launch acceptance separately.
 
 ## Disable / recover
 

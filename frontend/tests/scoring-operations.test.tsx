@@ -37,3 +37,24 @@ it('only received jobs offer model-free completion and malformed acknowledgement
 it('hides controls and performs no request for non-administrators',async()=>{
  mocks.admin=false;mount();await waitFor(()=>expect(mocks.fetch).not.toHaveBeenCalled());
 });
+const evidence={job:{id:job,lead_id:actor,state:'submitted',requested_model:'claude-fixture',model_version:null,prompt_version:'daily-list-score-v1',model_receipt:null,input_hash:'a'.repeat(64),input_snapshot:{property:{address:'SYNTHETIC ADDRESS'}},assessment:null,error_code:null,created_at:'2026-10-12',claimed_at:'2026-10-12',received_at:null,completed_at:null},freshness:{current:false,blocked:null,input_hash:'b'.repeat(64),changed_sections:['score_threshold']},evaluation:null,outreach_authorized:false};
+it('inspects evidence on demand without mutating or redispatching a held job',async()=>{
+ mocks.fetch.mockImplementation(async(path:string)=>({json:async()=>path.includes('/jobs/')?evidence:snapshot}));
+ mount();await screen.findByText('1 unresolved scoring jobs');expect(mocks.fetch).toHaveBeenCalledTimes(1);
+ fireEvent.click(screen.getByRole('button',{name:'Inspect scoring evidence'}));
+ await screen.findByText(/Provider outcome is unconfirmed/);expect(screen.getByText(/Changed: score threshold/)).toBeTruthy();
+ expect(screen.getByText(/SYNTHETIC ADDRESS/)).toBeTruthy();
+ expect(mocks.fetch.mock.calls.every(call=>call[1]===undefined)).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Close scoring evidence'}));expect(screen.queryByRole('region',{name:'Scoring evidence'})).toBeNull();
+});
+it('rejects mismatched job evidence instead of displaying another lead',async()=>{
+ mocks.fetch.mockImplementation(async(path:string)=>({json:async()=>path.includes('/jobs/')?{...evidence,job:{...evidence.job,id:actor}}:snapshot}));
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Inspect scoring evidence'}));
+ await screen.findByText(/Scoring evidence belongs to another job/);expect(screen.queryByText(/SYNTHETIC ADDRESS/)).toBeNull();
+});
+it('renders rejected model text as escaped content with no active HTML',async()=>{
+ const malicious='<img src=x onerror=alert(1)>';
+ mocks.fetch.mockImplementation(async(path:string)=>({json:async()=>path.includes('/jobs/')?{...evidence,job:{...evidence.job,state:'review',error_code:'equity_unknown',assessment:{reason:malicious}}}:snapshot}));
+ const view=mount();fireEvent.click(await screen.findByRole('button',{name:'Inspect scoring evidence'}));
+ await screen.findByText(/Validation issue: equity unknown/);expect(screen.getByText(/<img src=x/)).toBeTruthy();expect(view.container.querySelector('img')).toBeNull();
+});
