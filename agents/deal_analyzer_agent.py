@@ -470,7 +470,7 @@ Rules:
         2. Fall back to LLM (Claude) if BatchData fails or returns 0
         3. Fall back to heuristic if LLM is unavailable
         4. Repair tier determined from condition signals
-        5. PRD formula calculates MAO, offer range, assignment fee
+        5. PRD formula calculates MAO for underwriting; no offer is generated
         """
         arv_data = None
         arv_source = "heuristic"

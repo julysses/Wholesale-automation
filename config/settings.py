@@ -18,6 +18,7 @@ class Settings:
     agency_state: str = os.getenv("AGENCY_STATE", "TX")
     agency_contact_name: str = os.getenv("AGENCY_CONTACT_NAME", "Alex")
     agency_phone: str = os.getenv("AGENCY_PHONE", "")
+    agency_mailing_address: str = os.getenv("AGENCY_MAILING_ADDRESS", "")
 
     # Lead pipeline
     distress_score_threshold: int = int(os.getenv("DISTRESS_SCORE_THRESHOLD", "45"))
