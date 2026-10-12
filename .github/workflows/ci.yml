@@ -70,3 +70,22 @@ jobs:
       - name: Edge runtime typecheck and rejection tests
         working-directory: .
         run: npx --yes deno@2.9.6 test --lock=deno.lock --frozen --node-modules-dir=none --allow-env --allow-read pipeline/tests/edge-deno.ts
+
+  postgres-integration:
+    name: Real PostgreSQL ingestion and offer contention
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install PostgreSQL test runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 openssl
+          npm install --global deno@2.9.6
+      - name: Run isolated TLS database acceptance
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: python3 pipeline/integration/run_local.py
