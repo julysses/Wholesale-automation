@@ -68,4 +68,4 @@ jobs:
       - run: npm test
       - run: npm audit --audit-level=moderate
       - name: Edge runtime typecheck and rejection tests
-        run: npx --yes deno@2.9.6 test --node-modules-dir=none --allow-env --allow-read tests/edge-deno.ts
+        run: npx --yes deno@2.9.6 test --lock=../deno.lock --frozen --node-modules-dir=none --allow-env --allow-read tests/edge-deno.ts
