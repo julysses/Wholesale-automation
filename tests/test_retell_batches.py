@@ -38,7 +38,7 @@ class DB(Database):
             if name=='outreach_recipient_limits':
                 active=any(r['phone_number']==args['p_phone'] and r['status']!='completed' for r in self.tables.get('retell_call_requests',[]))
                 return SimpleNamespace(data={'blocker':'unresolved_attempt' if active else None})
-            if name=='claim_retell_call':
+            if name=='claim_retell_call_versioned':
                 active=any(r['phone_number']==args['p_phone'] and r['status']!='completed' for r in self.tables.get('retell_call_requests',[]))
                 if active:return SimpleNamespace(data={'claimed':False,'reason':'unresolved_attempt'})
                 self.table('retell_call_requests').upsert({'id':args['p_id'],'lead_id':args['p_lead'],

@@ -14,7 +14,8 @@ def creation(monkeypatch):
         monkeypatch.setattr(calls.settings,key,value)
     sdk=MagicMock()
     response=sdk.__enter__.return_value.post.return_value
-    response.json.return_value={'call_id':'call_fixture','call_status':'registered'}
+    response.json.return_value={'call_id':'call_fixture','call_status':'registered',
+        'agent_id':'agent_fixture','agent_version':7,'from_number':'+14698049920','to_number':'+12147010100'}
     monkeypatch.setattr(calls.httpx,'Client',lambda **_:sdk)
     req=calls.CallRequest(lead_id='fixture-lead',phone_number='+12147010100',
                           property_address='TEST ONLY',owner_name='Launch Verification')
@@ -83,5 +84,26 @@ def test_numeric_version_is_not_overridden_by_request_metadata(creation,monkeypa
     adapter,req,sdk=creation
     monkeypatch.setattr(calls.settings,'retell_agent_version',version)
     req.metadata={'override_agent_version':'latest_published'}
+    sdk.post.return_value.json.return_value['agent_version']=int(version)
     adapter.create_call(req)
     assert sdk.post.call_args.kwargs['json']['override_agent_version']==int(version)
+
+@pytest.mark.parametrize('field,value',[
+    ('agent_id','other_agent'),('agent_id',None),('agent_version',8),('agent_version','7'),
+    ('agent_version',True),('agent_version',None),('from_number','+12145550199'),
+    ('to_number','+12145550199'),('call_status','dry_run'),('call_status',None),
+])
+def test_mismatched_provider_receipt_is_uncertain_and_submitted_only_once(creation,field,value):
+    adapter,req,sdk=creation
+    sdk.post.return_value.json.return_value[field]=value
+    with pytest.raises(RuntimeError,match='acknowledgement does not match'):
+        adapter.create_call(req)
+    assert sdk.post.call_count==1
+
+@pytest.mark.parametrize('receipt',[None,[],{'call_id':'contains spaces'}, {'call_id':'x'*256}])
+def test_malformed_receipt_never_becomes_accepted_call(creation,receipt):
+    adapter,req,sdk=creation
+    sdk.post.return_value.json.return_value=receipt
+    with pytest.raises(RuntimeError,match='no call ID'):
+        adapter.create_call(req)
+    assert sdk.post.call_count==1

@@ -199,8 +199,9 @@ def start_call(body: StartCall, operator_id: str):
     claim={'id':reference,'lead_id':str(body.lead_id),'phone_number':phone,
            'requested_by':operator_id,'status':'submitting'}
     try:
-        result=sb.rpc('claim_retell_call',{'p_id':reference,'p_lead':str(body.lead_id),
-            'p_phone':phone,'p_operator':operator_id}).execute().data
+        result=sb.rpc('claim_retell_call_versioned',{'p_id':reference,'p_lead':str(body.lead_id),
+            'p_phone':phone,'p_operator':operator_id,'p_agent':settings.retell_agent_id,
+            'p_version':configured_retell_version(),'p_from':settings.retell_from_number}).execute().data
         saved=isinstance(result,dict) and result.get('claimed') is True
     except Exception:
         raise HTTPException(409,'Call claim unavailable or an earlier call remains unresolved')
@@ -235,6 +236,18 @@ def start_call(body: StartCall, operator_id: str):
     return _record({**claim,'status':record.status,'provider_call_id':record.call_id})
 
 
+def _verify_claim_identity(row, call):
+    # Legacy rows have no pinned identity. Never guess it from mutable settings.
+    if (not row.get('requested_agent_id') or type(row.get('requested_agent_version')) is not int
+        or not row.get('requested_from_number')
+        or call.get('agent_id') != row['requested_agent_id']
+        or type(call.get('agent_version')) is not int
+        or call['agent_version'] != row['requested_agent_version']
+        or call.get('from_number') != row['requested_from_number']
+        or call.get('to_number') != row['phone_number']):
+        raise ValueError('Provider call does not match the saved initiation identity; manual reconciliation required')
+
+
 def call_status(call_id: str):
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,255}',call_id):
         raise HTTPException(404,'Call not found')
@@ -248,6 +261,7 @@ def call_status(call_id: str):
         result=RetellAdapter().get_call_status(call_id)
         if result.get('call_id')!=call_id or result.get('call_status') not in ('registered','not_connected','ongoing','ended','error'):
             raise ValueError('Invalid provider status')
+        _verify_claim_identity(rows[0],result)
         if result['call_status'] in ('ended','error','not_connected'):
             saved=sb.table('retell_call_requests').update({'status':'completed'}).eq('id',rows[0]['id']).execute().data
             if not saved:
@@ -280,6 +294,7 @@ def reconcile_call(payload):
         row=rows[0]
         if row['lead_id']!=metadata.get('lead_id') or row['phone_number']!=_phone(call.get('to_number')):
             raise ValueError('Call does not match the durable claim')
+        _verify_claim_identity(row,call)
         if row.get('provider_call_id') not in (None,call_id):
             raise ValueError('Conflicting provider call ID')
         if row['status']=='completed':
