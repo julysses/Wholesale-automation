@@ -175,7 +175,7 @@ class Settings:
     seller_score_dialer_min_tier: str = os.getenv("SELLER_SCORE_DIALER_MIN_TIER", "B")
     seller_score_sms_min_tier: str = os.getenv("SELLER_SCORE_SMS_MIN_TIER", "C")
     # Skip trace all leads by default before scoring
-    auto_skip_trace: bool = os.getenv("AUTO_SKIP_TRACE", "true").lower() == "true"
+    auto_skip_trace: bool = os.getenv("AUTO_SKIP_TRACE", "false").lower() == "true"
     # Auto-push A/B leads to BatchDialer after scoring
     auto_push_to_dialer: bool = os.getenv("AUTO_PUSH_TO_DIALER", "false").lower() == "true"
     # Auto-enroll C leads in Launch Control SMS
