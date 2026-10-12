@@ -66,3 +66,7 @@ Qualification ranges, deal-analysis ranges and negotiation midpoint pricing have
 
 ### October 12 durable human offer review
 Private append-only offer events, immutable term revisions, expected-version approval/revocation and admin-only API implemented and verified in rehearsal. Real rollback leaves zero records. Operator UI, real concurrency/expiry acceptance and any offer dispatch integration remain open; this foundation does not certify end-to-end offer approval or launch.
+
+
+### October 12 tracing operator recovery
+Approved-admin budget/hold view and audited cancellation of unsubmitted reservations implemented. Current-schema local tests and real rehearsal rollback passed; pending UI cancellation survives reload using the same event identity. No commercial tracing activation or production deployment. See latest checkpoint for evidence and remaining FR9 provider/configuration/worker acceptance.

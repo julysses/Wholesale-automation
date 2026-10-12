@@ -81,3 +81,33 @@ async def worker(authorization: str = Header(default='')):
     except Exception:
         raise HTTPException(503, 'Digest delivery could not be confirmed. Inspect its saved receipt before retrying.')
     return {**summary, 'digest_delivery': delivery}
+
+
+class CancelTrace(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    event_id: UUID
+
+
+@router.get('/api/operations/lists/tracing')
+async def tracing_snapshot(request: Request, offset: int = Query(default=0,ge=0)):
+    value=await rpc('list_trace_operations',{'p_operator':operator(request),'p_offset':offset})
+    if not isinstance(value,dict) or not isinstance(value.get('requests'),list) or type(value.get('open_count')) is not int:
+        raise HTTPException(503,'Tracing status could not be confirmed')
+    return value
+
+
+@router.post('/api/operations/lists/tracing/{trace_id}/cancel')
+async def cancel_trace(trace_id: UUID, body: CancelTrace, request: Request):
+    actor=operator(request)
+    value=await rpc('cancel_list_trace_as_operator',{'p_id':str(body.event_id),'p_request':str(trace_id),'p_operator':actor})
+    if isinstance(value,dict) and value.get('blocked'):
+        raise HTTPException(409,'Reservation is no longer cancelable or the reference conflicts. Refresh its saved status.')
+    event=value.get('event') if isinstance(value,dict) else None
+    result=event.get('result') if isinstance(event,dict) else None
+    row=result.get('request') if isinstance(result,dict) else None
+    if (not isinstance(event,dict) or event.get('id')!=str(body.event_id) or event.get('operator_id')!=actor
+        or event.get('request_id')!=str(trace_id) or event.get('action')!='cancel_reserved'
+        or not isinstance(row,dict) or row.get('id')!=str(trace_id) or row.get('state')!='failed'
+        or row.get('actual_cents')!=0 or row.get('provider_job_id')!='not_submitted'):
+        raise HTTPException(503,'Cancellation is unconfirmed. Retry the same event reference.')
+    return value

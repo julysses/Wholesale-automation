@@ -1,3 +1,4 @@
+import { TraceOperations } from '@/components/lists/TraceOperations';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
@@ -83,6 +84,7 @@ export function DailyLists() {
   return <div className="space-y-5">
     <h1 className="text-2xl font-bold">Daily county lists</h1>
     <p>Dallas and Collin only. Code enforcement covers the named municipality, not the entire county. Reviewed records feed the CRM; contact permissions remain separate.</p>
+    <TraceOperations />
     <Button onClick={scan} disabled={scanning}>Refresh processing and heartbeat</Button>
     {message && <p role="status">{message}</p>}
     {query.isLoading && <p>Loading list status…</p>}

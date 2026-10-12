@@ -16,7 +16,7 @@ def record_provider_alert(sb, provider: str, reference: str, status: str, lead_i
         'body': ('This is an authorized in-app launch drill. No external message or call was sent.' if drill else
                  f'{LABELS[provider]} outcome: {status}. Review the provider receipt and follow up manually. '
                  'Do not resend an uncertain attempt until its outcome is reconciled.'),
-        'action_url': '/setup', 'action_label': 'Review delivery',
+        'action_url': '/daily-lists' if provider == 'skip_trace' else '/setup', 'action_label': 'Review tracing' if provider == 'skip_trace' else 'Review delivery',
         'metadata': {'integration_failure': True, 'provider': provider, 'reference': reference,
                      'status': status, 'test_drill': drill},
     }
