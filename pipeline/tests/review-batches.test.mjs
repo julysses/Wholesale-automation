@@ -12,7 +12,7 @@ test('review waits for complete unexpired batches, then deduplicates and preserv
    CREATE TABLE public.tasks(id uuid PRIMARY KEY,title text,description text,status text,priority text,type text,assigned_to uuid,due_date timestamptz);
    CREATE TABLE public.app_settings(key text,value text);`);
   const dir = new URL('../../frontend/supabase/migrations/', import.meta.url);
-  for (const suffix of ['_daily_list_ingestion.sql','_list_operations.sql','_list_review_batch_guard.sql']) {
+  for (const suffix of ['_daily_list_ingestion.sql','_list_operations.sql','_list_review_batch_guard.sql','_list_monitor_receipts.sql']) {
    const file = fs.readdirSync(dir).find(x => x.endsWith(suffix));
    await db.exec(fs.readFileSync(new URL(file,dir),'utf8'));
   }
@@ -39,6 +39,12 @@ test('review waits for complete unexpired batches, then deduplicates and preserv
   assert.equal((await db.query('SELECT run_id FROM wholesale_ingest.signal_observations')).rows[0].run_id,run);
   const lead=(await db.query('SELECT * FROM public.leads')).rows[0];
   assert.equal(lead.sms_sequence_active,false); assert.equal(lead.email_sequence_active,false);
+  await db.exec("UPDATE wholesale_ingest.raw_payloads SET expires_at=now()-interval '1 second'");
+  await db.query('SELECT wholesale_ingest.scan_at(now())');
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM wholesale_ingest.records')).rows[0].n,0);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM wholesale_ingest.signal_observations')).rows[0].n,1);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.leads')).rows[0].n,1);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM wholesale_ingest.raw_payloads WHERE payload IS NULL')).rows[0].n,2);
   await db.exec('SET ROLE authenticated');
   await assert.rejects(resolve,/permission denied/);
  } finally {await db.close();}

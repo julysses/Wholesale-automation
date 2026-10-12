@@ -19,16 +19,16 @@ Status: **draft; not production-ready**. Original archive commit c9a7cbcf3007671
 | FR-2 Source status | Contract enum/coverage tests | Actual collector delivery and per-source failure handling |
 | FR-3 Strict contract | Node contract tests | Execute Edge handler/runtime and authenticated ingress writes |
 | FR-4 Idempotency | Hash contract and reviewed-record replay tests | HTTP replay/conflict/lost ACK and true overlapping requests |
-| FR-5 Retention | 90-day schema/scan source exists | Scheduled cleanup, post-expiry replay rejection and provenance proof |
+| FR-5 Retention | Raw-content purge retains receipt hashes and normalized provenance; local and rehearsal SQL proofs | Scheduled execution and full Edge expiry/replay acceptance |
 | FR-6 Property identity | County/unit aliases and one reviewed-record replay | Parcel enrichment, conflicting aliases, legacy matching and full dedup matrix |
 | FR-7 Windows | Foreclosure 31-day rejection | All inclusive boundaries, future dates and source-specific semantics |
-| FR-8 Blocked sources | Status validation and source_review jobs | Deduplicated assigned blocked-source tasks and alert delivery |
+| FR-8 Blocked sources | Local and rehearsal blocked incidents reuse assigned task identity | External alert delivery and operational acceptance |
 | FR-9 Tracing | Private tables only | Provider adapter, atomic cap, idempotency and unknown-outcome reconciliation |
 | FR-10 Compliance | Existing backend suite remains green; seeds disabled | List-specific DNC freshness, consent, opt-out, quiet-hours and dispatch caps |
 | FR-11 Scoring | Existing scoring preserved | Validated list scoring, stored reasons/version/input hash, stale input rejection |
 | FR-12 Lot routing | Existing underwriting preserved | Verified list-to-underwriting handoff and acknowledgement |
-| FR-13 Digest | Generated summary source only | Complete counts/top ten/failures and actual owner delivery by 07:30 Central |
-| FR-14 Heartbeat | Scan source exists locally | Rehearsal scan RPC still absent; blocked/missing/partial coverage, DST, retry tests |
+| FR-13 Digest | Source/latest receipt counts, incidents and latest-score top ten tested | Validated downstream scoring and actual owner delivery by 07:30 Central |
+| FR-14 Heartbeat | Rehearsal scan installed; local deadline, DST, missing/partial/failure and retry tests pass | Scheduler execution, delivered alerts, outages exceeding seven-day backfill |
 | FR-15 Provenance | Review creates source observation; local SQL assertion | End-to-end normalized signals and retention acceptance |
 
 ## Other release blockers
@@ -45,3 +45,5 @@ Status: **draft; not production-ready**. Original archive commit c9a7cbcf3007671
 Finish the scan/heartbeat and retention design with integration tests before installing its missing rehearsal RPC. In parallel within the same implementation sequence, remove remaining automated offer-price generation with consumer tests; then implement the gated downstream pipeline. Preserve existing intake and provider restrictions. This checklist documents work remaining, not approval to enable outreach.
 
 Final local backend result: **640 passed**, 352 existing datetime deprecation warnings. Rehearsal security advisors: 10 no-policy informational findings (including the two service-only private operations tables); 3 existing authenticated definer-function warnings; leaked-password protection and MFA options remain configuration warnings. No guard-function privilege finding. Track remediation: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable and https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection . Do not grant browser access just to silence intentionally service-only table findings.
+
+Latest continuation supersedes earlier missing-scan/Deno notes: monitor installed in rehearsal under split history entries; 22 pipeline tests and Deno Edge rejection/typecheck passed. See checkpoint for exact mappings. Nothing promoted to production.

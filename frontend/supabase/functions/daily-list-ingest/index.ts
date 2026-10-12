@@ -12,7 +12,7 @@ type IngestPayload = {
  source:{state:string;county:string;jurisdiction:string;list_type:string;source_url:string};
  status:string;status_reason:string;lookback_days:number;window_start:string;window_end:string;
  coverage_complete:boolean;source_as_of:string|null;records_sha256:string;
- records:Array<Record<string,unknown> & {source_url:string;source_record_id:string|null}>;batch_index?:number;batch_count?:number;
+ records:Array<Record<string,postgres.JSONValue> & {source_url:string;source_record_id:string|null}>;batch_index?:number;batch_count?:number;
 };
 const validate = ajv.compile<IngestPayload>(schema);
 const LIMIT = 2 * 1024 * 1024;
@@ -66,6 +66,8 @@ export async function handler(req:Request):Promise<Response> {
    for(const u of [p.source.source_url,...records.map(r=>r.source_url)]) if(!src.allowed_hosts.includes(new URL(u).hostname)) throw new HttpError(422,'source_url_not_allowed');
    const [run]=await tx`select id,manifest_hash from wholesale_ingest.ingest_runs where id=${p.run_id}`;
    if(run&&run.manifest_hash!==manifestHash) throw new HttpError(409,'run_id_reused_with_changed_manifest');
+   const [expired]=await tx`select 1 from wholesale_ingest.raw_payloads where run_id=${p.run_id} and (expires_at<=now() or purged_at is not null) limit 1`;
+   if(expired) throw new HttpError(410,'run_retention_expired');
    const [batch]=await tx`select payload_hash from wholesale_ingest.raw_payloads where run_id=${p.run_id} and batch_index=${batchIndex}`;
    if(batch){if(batch.payload_hash!==payloadHash)throw new HttpError(409,'batch_reused_with_changed_payload');return {run_id:p.run_id,batch_index:batchIndex,replayed:true,state:'accepted'};}
    if(!run)await tx`insert into wholesale_ingest.ingest_runs(id,source_id,scheduled_for,pulled_at,status,status_reason,manifest_hash,expected_batches) values (${p.run_id},${src.id},${p.scheduled_for},${p.pulled_at},${p.status},${p.status_reason},${manifestHash},${batchCount})`;
