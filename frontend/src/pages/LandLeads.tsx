@@ -334,7 +334,7 @@ function LeadDrawer({ lead, onClose }: { lead: LandLead; onClose: () => void }) 
         {/* Drawer content */}
         <div className="flex-1 overflow-y-auto p-4">
           {drawerTab === 'vetting' && <SevenMustsForm lead={lead} existing={lead.vetting} onComplete={() => setDrawerTab('comps')} />}
-          {drawerTab === 'comps'   && <QuickCompCalculator lead={lead} existing={lead.comps} />}
+          {drawerTab === 'comps'   && <QuickCompCalculator key={lead.id} lead={lead} existing={lead.comps} />}
           {drawerTab === 'buyers'  && <LandBuyerHub lead={lead} />}
         </div>
       </div>
@@ -507,7 +507,7 @@ export function LandLeads() {
                     <p className="text-sm font-bold text-gray-900">{lead.property_address}</p>
                     <span className="text-xs text-gray-400">· {lead.owner_name} · {acr(lead.lot_size_acres)}</span>
                   </div>
-                  <QuickCompCalculator lead={lead} existing={lead.comps} />
+                  <QuickCompCalculator key={lead.id} lead={lead} existing={lead.comps} />
                 </div>
               ))}
             </div>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { LandLead, LandComps } from '@/types';
-import { Calculator, TrendingUp, DollarSign, FileText, Info } from 'lucide-react';
+import { Calculator, TrendingUp, FileText, Info } from 'lucide-react';
 
 interface Props {
   lead: LandLead;
@@ -34,6 +34,7 @@ const emptyRow = (): CompRow => ({ address: '', price: '', sqft: '', date: '', d
 
 export function QuickCompCalculator({ lead, existing }: Props) {
   const qc = useQueryClient();
+  const [savedId,setSavedId]=useState(existing?.id);
 
   // Method 1: Direct land comps
   const [directRows, setDirectRows] = useState<CompRow[]>(
@@ -63,11 +64,8 @@ export function QuickCompCalculator({ lead, existing }: Props) {
 
   const arv15pct = avgHouseArv ? Number(avgHouseArv) * 0.15 : undefined;
 
-  // Recommended offer: 70% of the lowest of the three methods
+  // Valuation comparisons are decision support; humans establish offer prices.
   const values = [directCompAvg, arv15pct, tav ? Number(tav) : undefined].filter((v): v is number => v !== undefined);
-  const lowestValue = values.length > 0 ? Math.min(...values) : undefined;
-  const recommendedLow  = lowestValue ? lowestValue * 0.65 : undefined;
-  const recommendedHigh = lowestValue ? lowestValue * 0.75 : undefined;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -86,24 +84,18 @@ export function QuickCompCalculator({ lead, existing }: Props) {
         house_comp_count:   houseCompCount ? Number(houseCompCount) : null,
         tav:                tav ? Number(tav) : null,
         tav_source:         tavSource,
-        recommended_offer_low:  recommendedLow,
-        recommended_offer_high: recommendedHigh,
         comp_notes: notes,
       };
 
-      if (existing?.id) {
-        const { error } = await supabase.from('land_comps').update(payload).eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('land_comps').insert(payload);
-        if (error) throw error;
-      }
+      const write = savedId
+        ? supabase.from('land_comps').update(payload).eq('id', savedId).eq('land_lead_id', lead.id)
+        : supabase.from('land_comps').insert(payload);
+      const {data,error}=await write.select('id,land_lead_id').single();
+      if(error)throw error;
+      if(!data?.id||data.land_lead_id!==lead.id||(savedId&&data.id!==savedId))throw new Error('Valuation acknowledgement is unconfirmed');
+      setSavedId(data.id);
 
-      await supabase.from('land_leads').update({
-        status: 'comped',
-        mao: recommendedHigh,
-        tav: tav ? Number(tav) : undefined,
-      }).eq('id', lead.id);
+      // Saving valuation evidence does not set a price or advance the lead stage.
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['land_leads'] }),
   });
@@ -218,7 +210,7 @@ export function QuickCompCalculator({ lead, existing }: Props) {
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-green-700" />
           <span className="text-sm font-bold text-green-800">Method 3 — Tax Assessed Value (TAV)</span>
-          <InfoTip text="The county's assessed value. Usually conservative — useful as a floor, not a ceiling." />
+          <InfoTip text="Tax assessed value is a separate reference and may differ from market value. Verify its source and assessment date." />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -240,39 +232,11 @@ export function QuickCompCalculator({ lead, existing }: Props) {
         </div>
       </div>
 
-      {/* ── Recommended Offer ─────────────────────────────────────────────── */}
-      {lowestValue && (
-        <div className="bg-[#1B3A5C] text-white rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <DollarSign className="h-5 w-5 text-[#E8720C]" />
-            <span className="font-bold text-base">Recommended Offer Range</span>
-          </div>
-          <div className="grid grid-cols-3 gap-4 text-center mb-3">
-            {directCompAvg && (
-              <div>
-                <p className="text-white/60 text-xs mb-1">Direct Comps</p>
-                <p className="text-white font-bold text-lg">{fmt(directCompAvg)}</p>
-              </div>
-            )}
-            {arv15pct && (
-              <div>
-                <p className="text-white/60 text-xs mb-1">15% Rule</p>
-                <p className="text-white font-bold text-lg">{fmt(arv15pct)}</p>
-              </div>
-            )}
-            {tav && (
-              <div>
-                <p className="text-white/60 text-xs mb-1">TAV</p>
-                <p className="text-white font-bold text-lg">{fmt(Number(tav))}</p>
-              </div>
-            )}
-          </div>
-          <div className="border-t border-white/20 pt-3">
-            <p className="text-white/60 text-xs mb-1">Offer range (65–75% of lowest value)</p>
-            <p className="text-[#E8720C] font-black text-2xl">{fmt(recommendedLow)} – {fmt(recommendedHigh)}</p>
-          </div>
-        </div>
-      )}
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+        These estimates support valuation review. A human must establish the offer price
+        and approve its exact terms in Human Offer Review. Saving this analysis does not
+        set an offer, change the lead stage, or contact the seller.
+      </div>
 
       {/* Notes + Save */}
       <div className="space-y-3">
@@ -286,6 +250,8 @@ export function QuickCompCalculator({ lead, existing }: Props) {
           className="w-full py-2.5 bg-[#E8720C] text-white font-bold text-sm rounded-lg hover:bg-[#d4660b] disabled:opacity-50">
           {saveMutation.isPending ? 'Saving…' : 'Save Comp Analysis'}
         </button>
+        {saveMutation.isError&&<p role="alert">Analysis save could not be confirmed. Inspect saved records before retrying.</p>}
+        {saveMutation.isSuccess&&<p role="status">Valuation analysis saved. Lead stage and offer price are unchanged.</p>}
       </div>
     </div>
   );
