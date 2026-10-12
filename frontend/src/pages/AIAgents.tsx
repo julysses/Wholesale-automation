@@ -1,4 +1,4 @@
-import { OfferReview } from '@/components/offers/OfferReview';
+import { OfferLeadPicker } from '@/components/offers/OfferLeadPicker';
 import { useState } from 'react';
 import { useLeads } from '@/hooks/useLeads';
 import { useDeals } from '@/hooks/useDeals';
@@ -51,7 +51,7 @@ export function AIAgents() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <LeadQualifierPanel leads={leads} />
-        <OfferGeneratorPanel leads={leads} />
+        <OfferGeneratorPanel />
         <OutreachWriterPanel leads={leads} />
         <BuyerMatcherPanel deals={deals} />
       </div>
@@ -170,13 +170,8 @@ function LeadQualifierPanel({ leads }: { leads: any[] }) {
 }
 
 // ─── Agent 2: Offer Generator ─────────────────────────────────────────────────
-function OfferGeneratorPanel({ leads }: { leads: any[] }) {
-  const [leadId, setLeadId] = useState('');
-  return <Card><CardHeader><CardTitle>Human Offer Review</CardTitle></CardHeader><CardContent className="space-y-4">
-    <Select label="Offer lead" value={leadId} onChange={e=>setLeadId(e.target.value)}
-      options={leads.map(lead=>({value:lead.id,label:lead.property_address}))} placeholder="Choose a lead..."/>
-    {leadId&&<OfferReview key={leadId} leadId={leadId}/>}
-  </CardContent></Card>;
+function OfferGeneratorPanel() {
+  return <Card><CardHeader><CardTitle>Human Offer Review</CardTitle></CardHeader><CardContent><OfferLeadPicker/></CardContent></Card>;
 }
 
 // ─── Agent 3: Outreach Writer ─────────────────────────────────────────────────
