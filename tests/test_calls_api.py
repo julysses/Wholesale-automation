@@ -16,7 +16,7 @@ PHONE='+12147010100'
 @pytest.fixture
 def setup(monkeypatch):
     for key,value in {'ai_calling_live_enabled':True,'ai_calling_allowed_recipients':PHONE,
-        'retell_api_key':'test-key','retell_agent_id':'agent_test','retell_from_number':'+14698049920',
+        'retell_agent_version':'7','retell_api_key':'test-key','retell_agent_id':'agent_test','retell_from_number':'+14698049920',
         'retell_webhook_secret':'test-secret','tcpa_allowed_start_hour':9,'tcpa_allowed_end_hour':19}.items():
         monkeypatch.setattr(calls.settings,key,value)
     body=calls.StartCall(request_id=uuid4(),lead_id=uuid4(),phone_number=PHONE)
@@ -295,3 +295,15 @@ def test_failed_review_receipt_cannot_unpause(setup,monkeypatch):
     assert error.value.status_code==503
     lead_query.update.assert_not_called()
     provider.create_call.assert_not_called()
+
+@pytest.mark.parametrize('version',['','latest_published'])
+def test_agent_version_blocks_before_claim_and_is_visible_in_readiness(setup,monkeypatch,version):
+    body,_,_,db,provider=setup
+    monkeypatch.setattr(calls.settings,'retell_agent_version',version)
+    with pytest.raises(HTTPException) as exc:
+        calls.start_call(body,str(uuid4()))
+    assert exc.value.status_code==503
+    db.rpc.assert_not_called()
+    provider.create_call.assert_not_called()
+    readiness=calls.lead_readiness(body.lead_id)
+    assert any('numeric Retell agent version' in message for message in readiness['blockers'])

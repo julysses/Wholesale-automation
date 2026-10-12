@@ -74,7 +74,7 @@ def fixture(monkeypatch):
     db=DB({'leads':leads,'app_notifications':notices})
     monkeypatch.setattr(calls,'get_supabase_client',lambda:db)
     for key,value in {'ai_calling_live_enabled':True,'ai_calling_allowed_recipients':','.join(r['owner_phone_1'] for r in leads),
-        'retell_api_key':'test-only','retell_agent_id':'agent_test','retell_from_number':'+14698049920',
+        'retell_agent_version':'7','retell_api_key':'test-only','retell_agent_id':'agent_test','retell_from_number':'+14698049920',
         'retell_webhook_secret':'test-only','tcpa_allowed_start_hour':9,'tcpa_allowed_end_hour':19}.items():
         monkeypatch.setattr(calls.settings,key,value)
     monkeypatch.setattr(calls,'_texas_now',lambda:datetime(2026,10,8,12,tzinfo=ZoneInfo('America/Chicago')))

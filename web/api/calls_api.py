@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 from config.settings import settings
 from tools.crm import get_supabase_client
 from tools.facebook_consent import matching_native_consent, normalize_us_phone
-from tools.retell_adapter import CallRequest, RetellAdapter
+from tools.retell_adapter import CallRequest, RetellAdapter, configured_retell_version
 from tools.operational_alerts import record_provider_alert
 from tools.sms_client import _texas_now
 
@@ -69,6 +69,8 @@ def lead_readiness(lead_id):
         if not settings.ai_calling_live_enabled:blockers.append('AI calling is disabled pending launch acceptance')
         if not all((settings.retell_api_key,settings.retell_agent_id,settings.retell_from_number,settings.retell_webhook_secret)):
             blockers.append('Retell agent, number and signature configuration is incomplete')
+        try:configured_retell_version()
+        except RuntimeError:blockers.append('A reviewed numeric Retell agent version must be configured')
         try:
             allowed={_phone(value) for value in settings.ai_calling_allowed_recipients.split(',') if value.strip()}
         except HTTPException:allowed=set()
@@ -159,6 +161,9 @@ def start_call(body: StartCall, operator_id: str):
         raise HTTPException(409,'AI calling is disabled pending launch acceptance')
     if not all((settings.retell_api_key,settings.retell_agent_id,settings.retell_from_number,settings.retell_webhook_secret)):
         raise HTTPException(503,'Retell agent, number, API key and signed webhook must be configured')
+    try:configured_retell_version()
+    except RuntimeError:
+        raise HTTPException(503,'A reviewed numeric Retell agent version must be configured')
     phone=_phone(body.phone_number)
     allowed={_phone(item) for item in settings.ai_calling_allowed_recipients.split(',') if item.strip()}
     if phone not in allowed:

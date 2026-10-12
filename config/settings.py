@@ -129,6 +129,7 @@ class Settings:
     # Retell AI (primary AI calling provider)
     retell_api_key: str = os.getenv("RETELL_API_KEY", "")
     retell_agent_id: str = os.getenv("RETELL_AGENT_ID", "")
+    retell_agent_version: str = os.getenv("RETELL_AGENT_VERSION", "")
     retell_from_number: str = os.getenv("RETELL_FROM_NUMBER", "")
     retell_webhook_secret: str = os.getenv("RETELL_WEBHOOK_SECRET", "")
     ai_calling_live_enabled: bool = os.getenv("AI_CALLING_LIVE_ENABLED", "false").lower() == "true"

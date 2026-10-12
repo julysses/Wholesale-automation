@@ -733,6 +733,14 @@ def extract_lead_signals(
 
 # ── Blueprint call payload builder ────────────────────────────────────────────
 
+def configured_retell_version() -> int:
+    """Require an explicit version; mutable aliases cannot preserve a reviewed script."""
+    value = settings.retell_agent_version
+    if not isinstance(value, str) or not re.fullmatch(r"0|[1-9][0-9]{0,8}", value):
+        raise RuntimeError("A reviewed numeric RETELL_AGENT_VERSION is required")
+    return int(value)
+
+
 def build_retell_call_payload(
     req: CallRequest,
     agent_id: str,
@@ -751,7 +759,7 @@ def build_retell_call_payload(
 
     return {
         "override_agent_id": agent_id,
-        "override_agent_version": "latest_published",
+        "override_agent_version": configured_retell_version(),
         "idempotency_key": req.request_id,
         "honor_internal_dnc": True,
         "from_number": from_number,

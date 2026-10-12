@@ -9,7 +9,7 @@ from tools import retell_adapter as calls
 
 @pytest.fixture
 def creation(monkeypatch):
-    for key,value in {'retell_api_key':'fixture-key','retell_agent_id':'agent_fixture',
+    for key,value in {'retell_agent_version':'7','retell_api_key':'fixture-key','retell_agent_id':'agent_fixture',
                       'retell_from_number':'+14698049920'}.items():
         monkeypatch.setattr(calls.settings,key,value)
     sdk=MagicMock()
@@ -27,7 +27,7 @@ def test_current_payload_and_stable_provider_reference(creation):
     payload=sdk.post.call_args.kwargs['json']
     assert record.call_id=='call_fixture'
     assert payload['override_agent_id']=='agent_fixture'
-    assert payload['override_agent_version']=='latest_published'
+    assert payload['override_agent_version']==7
     assert 'agent_id' not in payload
     assert payload['honor_internal_dnc'] is True
     assert payload['idempotency_key']==req.request_id
@@ -69,3 +69,19 @@ def test_invalid_reference_rejected_before_provider(creation,reference):
     with pytest.raises(ValueError):
         adapter.create_call(req)
     sdk.post.assert_not_called()
+
+@pytest.mark.parametrize('version',['','latest','latest_published','prod','-1','1.2',' 7','7 ',None,True])
+def test_unpinned_agent_never_contacts_provider(creation,monkeypatch,version):
+    adapter,req,sdk=creation
+    monkeypatch.setattr(calls.settings,'retell_agent_version',version)
+    with pytest.raises(RuntimeError,match='numeric RETELL_AGENT_VERSION'):
+        adapter.create_call(req)
+    sdk.post.assert_not_called()
+
+@pytest.mark.parametrize('version',["0","1","123"])
+def test_numeric_version_is_not_overridden_by_request_metadata(creation,monkeypatch,version):
+    adapter,req,sdk=creation
+    monkeypatch.setattr(calls.settings,'retell_agent_version',version)
+    req.metadata={'override_agent_version':'latest_published'}
+    adapter.create_call(req)
+    assert sdk.post.call_args.kwargs['json']['override_agent_version']==int(version)
