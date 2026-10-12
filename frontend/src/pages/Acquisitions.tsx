@@ -356,21 +356,13 @@ function LeadCard({ lead, onSchedule }: { lead: AcquisitionLead; onSchedule?: (i
         {qual?.sentiment && <SentimentBadge sentiment={qual.sentiment} />}
       </div>
 
-      {/* Offer range / asking price */}
-      {(qual?.offer_range_low || qual?.asking_price) && (
+      {/* Seller facts and underwriting only; qualification is not offer approval. */}
+      {qual?.asking_price && (
         <div className="mt-2 flex gap-4 text-xs">
           {qual.asking_price && (
             <div>
               <span className="text-gray-400">Asking</span>
               <span className="ml-1 font-semibold text-gray-700">{formatCurrency(qual.asking_price)}</span>
-            </div>
-          )}
-          {qual.offer_range_low && qual.offer_range_high && (
-            <div>
-              <span className="text-gray-400">Offer range</span>
-              <span className="ml-1 font-semibold text-green-700">
-                {formatCurrency(qual.offer_range_low)} – {formatCurrency(qual.offer_range_high)}
-              </span>
             </div>
           )}
           {lead.estimated_arv && (
@@ -725,8 +717,6 @@ function leadsToCSVRows(leads: AcquisitionLead[]) {
     qualification_score: l.qual?.qualification_score ?? '',
     sentiment: l.qual?.sentiment ?? '',
     asking_price: l.qual?.asking_price ?? '',
-    offer_range_low: l.qual?.offer_range_low ?? '',
-    offer_range_high: l.qual?.offer_range_high ?? '',
     estimated_arv: l.estimated_arv ?? '',
     mao: l.mao ?? '',
     called_at: l.called_at ?? '',

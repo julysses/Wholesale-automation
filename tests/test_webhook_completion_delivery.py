@@ -488,3 +488,27 @@ async def test_unknown_analyzed_without_transcript_remains_retryable(completion)
     assert webhooks._retell_receipt_id("call-1", "completion") not in db.tables["webhook_jobs"]
     qualify.assert_not_called()
     hot.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_hot_alert_never_promotes_legacy_range_or_mao_to_offer(monkeypatch):
+    from config.settings import settings
+    db = MemoryDB()
+    monkeypatch.setattr(webhooks, "_launch_control_configured", lambda: False)
+    monkeypatch.setattr(settings, "notification_email", "test@example.invalid")
+    email = SimpleNamespace(_configured=True, send=MagicMock(return_value=True))
+    monkeypatch.setattr(webhooks, "EmailClient", lambda: email)
+    qual = QualificationResult(classification="HOT", asking_price=300000,
+                               offer_range_low=210000, offer_range_high=255000)
+    await webhooks._trigger_hot_lead_automation(
+        db, "lead-1", "call-1", "Test address", "Test Owner", qual, 400000, 275000,
+    )
+    description = next(iter(db.tables["tasks"].values()))["description"]
+    assert "$300,000" in description
+    assert "Awaiting human-entered price and approval" in description
+    for price in ("$210,000", "$255,000", "$275,000"):
+        assert price not in description
+    assert email.send.call_args.kwargs["body"] == description
+    metadata = next(iter(db.tables["app_notifications"].values()))["metadata"]
+    assert metadata["offer_range_low"] is None
+    assert metadata["offer_range_high"] is None

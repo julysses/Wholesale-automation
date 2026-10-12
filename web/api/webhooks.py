@@ -1088,8 +1088,8 @@ async def _run_retell_completion(sb: Any, event: AICallResultEvent, raw_payload:
                 "qualification_score": qual.qualification_score,
                 "classification":      qual.classification,
                 "score_breakdown":     qual.score_breakdown,
-                "offer_range_low":     qual.offer_range_low,
-                "offer_range_high":    qual.offer_range_high,
+                "offer_range_low":     None,
+                "offer_range_high":    None,
                 "summary":             qual.summary,
                 "key_quotes":          qual.key_quotes,
             }).execute()
@@ -1106,8 +1106,8 @@ async def _run_retell_completion(sb: Any, event: AICallResultEvent, raw_payload:
                 "qual_score":      qual.qualification_score,
                 "classification":  qual.classification,
                 "sentiment":       qual.sentiment,
-                "offer_range_low": qual.offer_range_low,
-                "offer_range_high":qual.offer_range_high,
+                "offer_range_low": None,
+                "offer_range_high":None,
                 "call_notes":      qual.summary,
                 "qual_result_id":  qual_record_id,
             }).eq("call_id", event.call_id).execute()
@@ -1232,11 +1232,6 @@ async def _trigger_hot_lead_automation(
 
     # 1. Create acquisition task
     asking_str = f"${qual.asking_price:,.0f}" if qual.asking_price else "Unknown"
-    offer_str  = (
-        f"${qual.offer_range_low:,.0f}–${qual.offer_range_high:,.0f}"
-        if qual.offer_range_low and qual.offer_range_high
-        else (f"${mao:,.0f}" if mao else "TBD")
-    )
     arv_str = f"${arv:,.0f}" if arv else "Unknown"
 
     task_description = (
@@ -1248,7 +1243,7 @@ async def _trigger_hot_lead_automation(
         f"Occupancy:   {qual.occupancy.replace('_', ' ').title()}\n"
         f"Asking:      {asking_str}\n"
         f"Est. Value:  {arv_str}\n"
-        f"Offer Range: {offer_str}\n"
+        "Offer:       Awaiting human-entered price and approval\n"
         f"Sentiment:   {qual.sentiment.title()}\n\n"
         f"Summary: {qual.summary}\n\n"
         + (f"Key quotes:\n" + "\n".join(f'  • "{q}"' for q in qual.key_quotes[:3]) if qual.key_quotes else "")
@@ -1318,8 +1313,8 @@ async def _trigger_hot_lead_automation(
                 "qualification_score": qual.qualification_score,
                 "classification":      qual.classification,
                 "asking_price":        qual.asking_price,
-                "offer_range_low":     qual.offer_range_low,
-                "offer_range_high":    qual.offer_range_high,
+                "offer_range_low":     None,
+                "offer_range_high":    None,
             },
         }).execute()
         if not notification_result.data:
@@ -1648,8 +1643,8 @@ async def _handle_vapi_call_result(result: VapiCallResult) -> None:
                     "named_price":          qual.named_price,
                     "qualification_score":  qual.qualification_score,
                     "classification":       qual.classification,
-                    "offer_range_low":      qual.offer_range_low,
-                    "offer_range_high":     qual.offer_range_high,
+                    "offer_range_low":      None,
+                    "offer_range_high":     None,
                     "raw_signals":          qual.raw_signals if hasattr(qual, "raw_signals") else {},
                 }).execute()
 

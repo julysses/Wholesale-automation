@@ -222,10 +222,8 @@ Rules:
         result.classification = classify_score(score)
         result.score_breakdown = breakdown
 
-        # Estimate offer range if asking_price is known
-        if result.asking_price:
-            result.offer_range_high = round(result.asking_price * 0.85, -3)
-            result.offer_range_low  = round(result.asking_price * 0.70, -3)
+        # Qualification records seller facts; only a human may establish offer terms.
+        # Legacy range fields remain null for compatible persistence/readers.
 
         logger.info(
             f"[{self.name}] score={score} class={result.classification} "
