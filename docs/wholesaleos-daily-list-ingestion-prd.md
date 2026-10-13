@@ -12,7 +12,7 @@ The supplied video summary informs the design; its vendor pricing and volume cla
 
 ## Source configuration and daily schedule
 
-All times use America/Chicago, including daylight saving time. Existing GPT schedules were previously configured; inspect before duplicating. Endpoint delivery and credentials remain unverified. The migration seeds sources **disabled**.
+All times use America/Chicago, including daylight saving time. On October 13 the owner clarified that no operating collection schedule exists; the earlier task was unfinished. Rebuild and verify delivery before installing a recurring schedule. No local Codex automation definitions were found in the inspected default automation location; this does not inventory cloud ChatGPT Tasks. Endpoint delivery and credentials remain unverified. The migration seeds sources **disabled**.
 
 | County | List | Pull time | Initial window / recurrence |
 | --- | --- | --- | --- |
@@ -97,7 +97,7 @@ Do not certify launch from code or unit tests alone. Verify provider configurati
 
 - Counties fixed to Dallas and Collin; foreclosure first.
 - All four list types daily, configurable; official publication frequency may be slower.
-- Skip-trace provider not selected; adapter remains replaceable.
+- October 13: PropStream browser workflow selected. Latest authorization: use only the existing $50 prepaid balance, no refill or upgrade; this is a total cap, not a recurring allowance. Verify quotes and reconcile results. API adapter remains deferred.
 - GPT HTTPS/secret-store delivery has not been verified; no fallback integration is assumed working.
 - Owner and counsel confirm legal/contact rules before outreach activation.
 - Official county evidence and reviewed procedures are required before automatic matching.

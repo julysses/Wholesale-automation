@@ -16,12 +16,12 @@
 
 | Gate | Current state | Next action / acceptance evidence | Responsible |
 | --- | --- | --- | --- |
-| Stable rehearsal session | Waiting for login | Sign in to the open stable branch preview; use this origin for subsequent builds | Julio |
-| Offer review UI | Date fix tested; browser acceptance pending | Save/reopen synthetic draft, explicit review, property-change rejection, history and retry recovery | Codex + Julio for human operator acceptance |
+| Stable rehearsal session | Verified signed in October 13 | Continue using the stable branch origin | Codex |
+| Offer review UI | Synthetic save/reload/approve/revoke passed; three events independently verified in SQL | Property-change rejection and retry recovery in browser; separate human operator acceptance | Codex + Julio |
 | Final offer delivery | Incomplete | Freeze final channel-specific recipient/from/body/footer/unsubscribe envelope; require exact human approval; recheck consent/DNC/quiet hours/caps at queue and dispatch; durable single-attempt provider receipts and uncertain-outcome recovery | Codex; Julio approves real terms |
 | Lot routing / valuation | Core SQL/concurrency tests and one browser valuation save passed | Synthetic review → score → handoff → correct assigned inbox → receipt → stale/hold/reaffirm; lost-response/concurrent UI cases; reassignment recovery | Codex |
-| Paid tracing | No configured daily budget; disabled | Specify provider/account and daily dollar cap, implement/verify adapter, billing/contact receipts and reconciliation | Julio then Codex |
-| Official collectors |8sources disabled; no accepted deliveries | Inspect existing signed-in Tasks schedules without duplicates, verify scoped Edge ingestion, evidence review and county-specific delivered receipts | Julio for login; Codex for configuration/tests |
+| PropStream tracing | Browser account verified; latest authorization is existing $50 total balance only | Quote each eligible batch; cumulative spend plus uncertain reservations must stay within $50 and current balance; no refill/upgrade. Reconcile results before retracing; no API adapter assumed | Codex |
+| Official collectors | User confirms no operating schedule; rebuilding. Dallas endpoint corrected in rehearsal; sources remain disabled | Follow collector-rebuild.md; complete supervised collection and verified delivery before scheduling | Codex |
 | Model scoring | Default disabled; live calibration incomplete | Current-model evidence calibration, receipt recovery and runtime bounds | Codex with authorized account/budget |
 | Owner digest / monitoring | Default disabled; actual scheduling/delivery unverified | Connect scheduler, verify owner delivery, overdue/failed receipt routing and independent missing-worker alerts | Codex + Julio receipt confirmation |
 | Buyer workflow | Incomplete | Verified top3cash buyers by area/price/history, wholesaler exclusions and actual outcome recording | Codex + Julio business criteria |
@@ -39,3 +39,10 @@ The technical items above remain work to do, not merely credentials to enter. No
 Stable preview: https://wholesale-automation-git-codex-dallas-de1768-julysses-projects.vercel.app
 
 Detailed chronological evidence, migration mappings and synthetic fixtures: [launch checkpoint](dallas-collin-launch-prep-checkpoint.md). The older release-evidence file contains historical rows; use this checklist plus the latest checkpoint for current status. No production promotion has occurred.
+
+## October 13 follow-up
+
+- Current code af68671 verified READY as deployment dpl_9vUGWepiWnTVsYUvPNxyckX5w22b. Stable-origin offer rehearsal passed with synthetic records only.
+- New offline collector preflight plus source correction: 22 targeted tests passed. Preflight is not a collection runner or a delivery receipt.
+- Dallas source correction applied only in rehearsal; migration mapping and next steps are in the checkpoint. Production remains unchanged.
+- PropStream Legacy account shows $50 prepaid credit, 25,000 saves/exports, renewal November 1. No included 100-trace allowance confirmed. Latest user instruction authorizes using the existing $50, superseding the earlier free-only answer. No trace order or paid debit was submitted this session.
