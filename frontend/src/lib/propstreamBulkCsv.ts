@@ -32,3 +32,11 @@ export function parseBulkCsv(csv:string,action:Action):Batch{
  if(new Set(items.map(x=>x.lead_id)).size!==items.length)throw new Error('Duplicate lead rows are not allowed.');
  return batchSchema.parse({batch_id:crypto.randomUUID(),items});
 }
+
+// Exact headers from PropStream's publicly linked Contacts import template.
+// Preserve the verified full owner name; do not guess surname or mailing address.
+export function propstreamContactRows(manifest:Record<string,unknown>[]){
+ return manifest.map(r=>({'First Name':r.owner_name||'','Last Name':'','Email':'','Phone':'','Mobile Phone':'','Landline':'',
+ 'Street Address':r.property_address||'','City':r.city||'','State':r.state||'','Zip':r.zip_code||'',
+ 'Mail Street Address':'','Mail City':'','Mail State':'','Mail Zip':'','Mail Address Same':'','Type':'Owner','Status':'New'}));
+}

@@ -105,4 +105,10 @@ test('bulk is atomic, enforces aggregate balance, replays safely and tombstones 
  assert.equal((await rpc(db,'propstream_bulk_recover',[id(401),id(1)])).result.count,2);
  await rpc(db,'propstream_bulk_recover',[id(402),id(1)]);
  await assert.rejects(()=>bulk(402,items),/abandoned/);
+ const completed=items.map((x,i)=>({...x,event_id:id(220+i),action:'reconcile',payload:{input_hash:x.payload.input_hash,actual_cents:20,provider_receipt:'bulk-receipt-'+i,contacts:[],confirmed_match:true}}));
+ const settled=await bulk(403,completed);assert.equal(settled.count,2);
+ assert.equal((await snap()).total_budget.actual_cents,40);
+ assert.equal((await db.query('select count(*)::int n from public.tasks')).rows[0].n,2);
+ await bulk(403,completed);
+ assert.equal((await db.query('select count(*)::int n from public.tasks')).rows[0].n,2);
 });
