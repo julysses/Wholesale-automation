@@ -211,3 +211,10 @@ Implementation51d51e7 is deployed READY to the stable rehearsal preview (Vercel 
 All202frontend and129pipeline tests passed locally, seven targeted backend API tests passed, and build/lint regression passed. GitHub backend, frontend, pipeline and real PostgreSQL checks passed for51d51e7. Browser evidence saved in this chat's `outputs/foreclosure-high-priority-actions.jpg` and `outputs/foreclosure-dashboard-priority.jpg`.
 
 This feature is live in the REHEARSAL app, not the production URL. These are notices first imported today from the September14–October13 window, not all filed today. Full notice verification, qualified contact enrichment and outreach remain separate unfinished gates. Daily collection is still PAUSED. Resume with all-page notice review/current property status and remaining readiness gates; do not duplicate the accepted imports.
+
+
+## October 13 — PropStream and outreach handoff requirement
+
+Owner confirmed that high-priority foreclosure opportunities must proceed through PropStream tracing and into outreach/follow-up inside WholesaleOS. Controlling implementation plan: `docs/foreclosure-propstream-outreach-plan.md`. Required stages: new notice → verified/ready to trace → tracing → contact found → channel-specific ready for outreach → follow-up due, with visible review/suppression reasons. Existing $50 prepaid TOTAL cap and UI-only PropStream approach remain in effect.
+
+Current tracing budget/receipt services are implemented; the complete candidate selection and PropStream order/result interface is not. Live SQL confirms no resolved real foreclosure observations after excluding the known synthetic property. The654notice inbox cannot be treated as a verified trace batch. No provider order/spend, outreach, schedule activation or production change occurred. Next: real identity/current-status verification, then eligible batch selection, exact quote/order reconciliation, contact readiness and controlled follow-up acceptance.
