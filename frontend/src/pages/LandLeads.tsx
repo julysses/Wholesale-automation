@@ -108,7 +108,7 @@ function LandLeadCard({ lead, onSelect }: { lead: LandLead; onSelect: (l: LandLe
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500">{lead.city}, {lead.state} {lead.zip_code} · {lead.owner_name}</p>
+          <p className="text-xs text-gray-500">{lead.city}, {lead.state} {lead.zip_code} · {lead.owner_name??'Owner not verified'}</p>
         </div>
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
           {lead.status.replace('_', ' ')}
@@ -316,7 +316,7 @@ function LeadDrawer({ lead, onClose }: { lead: LandLead; onClose: () => void }) 
         <div className="flex items-center justify-between p-4 border-b">
           <div>
             <p className="text-sm font-bold text-[#1B3A5C]">{lead.property_address}</p>
-            <p className="text-xs text-gray-500">{lead.owner_name} · {acr(lead.lot_size_acres)}</p>
+            <p className="text-xs text-gray-500">{lead.owner_name??'Owner not verified'} · {acr(lead.lot_size_acres)}</p>
           </div>
           <button onClick={onClose}><X className="h-5 w-5 text-gray-400 hover:text-gray-600" /></button>
         </div>
@@ -478,7 +478,7 @@ export function LandLeads() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="text-sm font-bold text-gray-900">{lead.property_address}</p>
-                      <p className="text-xs text-gray-500">{lead.owner_name} · {acr(lead.lot_size_acres)}</p>
+                      <p className="text-xs text-gray-500">{lead.owner_name??'Owner not verified'} · {acr(lead.lot_size_acres)}</p>
                     </div>
                     <Clock className="h-4 w-4 text-yellow-500" />
                   </div>
@@ -505,7 +505,7 @@ export function LandLeads() {
                   <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
                     <CheckCircle className="h-4 w-4 text-green-500" />
                     <p className="text-sm font-bold text-gray-900">{lead.property_address}</p>
-                    <span className="text-xs text-gray-400">· {lead.owner_name} · {acr(lead.lot_size_acres)}</span>
+                    <span className="text-xs text-gray-400">· {lead.owner_name??'Owner not verified'} · {acr(lead.lot_size_acres)}</span>
                   </div>
                   <QuickCompCalculator key={lead.id} lead={lead} existing={lead.comps} />
                 </div>

@@ -326,7 +326,7 @@ export interface LandLead {
   lead_id?: string;
   xleads_id?: string;
   source: string;
-  owner_name: string;
+  owner_name: string | null;
   owner_phone_1?: string;
   owner_phone_2?: string;
   owner_mailing_address?: string;

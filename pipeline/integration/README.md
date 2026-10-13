@@ -19,6 +19,7 @@ Evidence covered:
 - Two actual PostgreSQL sessions reserving tracing spend against the same daily cap; one reservation succeeds, the other is capped, and unknown outcomes retain the hold and deny redispatch. No provider is invoked.
 - Two actual PostgreSQL sessions selecting work behind the same lead lock; both return one shared durable job and only one row is created.
 - Two actual PostgreSQL sessions claiming the same scoring job while blocked on its row lock. Exactly one may dispatch; the submitted job cannot redispatch, and its saved model response completes without another model invocation.
+- Two actual PostgreSQL sessions handing the same reviewed lot to underwriting: one linked land destination and one task; competing receiver acknowledgements preserve the first actor and timestamp.
 - Two actual PostgreSQL sessions making competing offer decisions at the same version. Exactly one succeeds and one conflicts; only one new event is saved. Replaying the successful approval after revocation cannot restore approval.
 
 Local verification uses PostgreSQL 17. CI runs PostgreSQL 16 on Ubuntu 24.04. This establishes transaction behavior against real PostgreSQL and the actual handler; it does not establish deployed Edge routing, production credentials, collector delivery, signed-in browser workflow, or live provider delivery. Those launch gates remain separate.

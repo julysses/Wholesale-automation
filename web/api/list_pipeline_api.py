@@ -187,3 +187,64 @@ async def inspect_scoring_job(job_id: UUID, request: Request):
     return JSONResponse({'job': {key: job.get(key) for key in fields}, 'freshness': value['freshness'],
                          'evaluation': value.get('evaluation'), 'outreach_authorized': False},
                         headers={'Cache-Control': 'no-store'})
+
+class LotReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    request_id: UUID
+    lead_id: UUID
+    input_hash: str = Field(pattern='^[a-f0-9]{64}$')
+    is_vacant_lot: bool = Field(strict=True)
+    evidence_url: str = Field(pattern=r'^https://\S+$', max_length=2000)
+    notes: str = Field(min_length=1, max_length=2000)
+
+class LotHandoff(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    request_id: UUID
+    evaluation_id: UUID
+    assigned_to: UUID
+
+@router.get('/api/operations/lists/lots')
+async def lot_candidates(request: Request, offset: int = Query(default=0, ge=0)):
+    return await rpc('list_lot_candidates', {'p_operator': operator(request), 'p_offset': offset})
+
+@router.post('/api/operations/lists/lots/review')
+async def review_lot(body: LotReview, request: Request):
+    actor = operator(request)
+    value = await rpc('review_list_lot', {'p_id':str(body.request_id),'p_operator':actor,'p_lead':str(body.lead_id),
+        'p_input_hash':body.input_hash,'p_is_lot':body.is_vacant_lot,'p_evidence':body.evidence_url,'p_notes':body.notes})
+    if isinstance(value,dict) and value.get('blocked'):
+        raise HTTPException(409, 'Lot review conflicts with current evidence. Refresh before another action.')
+    review = value.get('review') if isinstance(value,dict) else None
+    expected = {'id':str(body.request_id),'operator_id':actor,'lead_id':str(body.lead_id),'input_hash':body.input_hash,
+                'is_vacant_lot':body.is_vacant_lot,'evidence_url':body.evidence_url,'notes':body.notes}
+    if not isinstance(review,dict) or any(review.get(key)!=value for key,value in expected.items()):
+        raise HTTPException(503, 'Lot review is unconfirmed. Retry the same reference and evidence.')
+    return value
+
+@router.post('/api/operations/lists/lots/handoff')
+async def handoff_lot(body: LotHandoff, request: Request):
+    actor=operator(request)
+    value=await rpc('handoff_list_lot',{'p_id':str(body.request_id),'p_operator':actor,'p_evaluation':str(body.evaluation_id),'p_assignee':str(body.assigned_to)})
+    if isinstance(value,dict) and value.get('blocked'):
+        raise HTTPException(409, 'Lot handoff requires current reviewed evidence, an available assignee and a reconciled land identity. Inspect existing handoffs before retrying.')
+    handoff=value.get('handoff') if isinstance(value,dict) else None
+    expected={'id':str(body.request_id),'operator_id':actor,'evaluation_id':str(body.evaluation_id),'assigned_to':str(body.assigned_to)}
+    if (not isinstance(handoff,dict) or any(handoff.get(key)!=value for key,value in expected.items())
+        or not handoff.get('land_lead_id') or not handoff.get('task_id') or value.get('outreach_authorized') is not False):
+        raise HTTPException(503, 'Lot handoff is unconfirmed. Retry the same reference.')
+    return value
+
+@router.get('/api/land-underwriting/handoffs')
+async def received_lot_handoffs(request: Request, offset: int = Query(default=0, ge=0)):
+    return await rpc('list_lot_handoffs',{'p_operator':operator(request),'p_offset':offset})
+
+@router.post('/api/land-underwriting/handoffs/{handoff_id}/acknowledge')
+async def acknowledge_lot(handoff_id: UUID, request: Request):
+    value=await rpc('acknowledge_list_lot',{'p_id':str(handoff_id),'p_operator':operator(request)})
+    if isinstance(value,dict) and value.get('blocked'):
+        raise HTTPException(409, 'Underwriting destination is unavailable. Inspect the handoff before acknowledgement.')
+    handoff=value.get('handoff') if isinstance(value,dict) else None
+    if (not isinstance(handoff,dict) or handoff.get('id')!=str(handoff_id) or not handoff.get('acknowledged_by')
+        or not handoff.get('acknowledged_at') or value.get('outreach_authorized') is not False):
+        raise HTTPException(503, 'Receipt acknowledgement is unconfirmed. Retry the same handoff.')
+    return value

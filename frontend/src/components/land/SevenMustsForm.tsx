@@ -326,7 +326,7 @@ export function SevenMustsForm({ lead, existing, onComplete }: Props) {
         <h3 className="text-base font-bold text-[#1B3A5C]">
           Must #{step + 1}: {STEPS[step].title}
         </h3>
-        <p className="text-xs text-gray-400">{lead.property_address} · {lead.owner_name}</p>
+        <p className="text-xs text-gray-400">{lead.property_address} · {lead.owner_name??'Owner not verified'}</p>
       </div>
 
       {/* Step content */}
