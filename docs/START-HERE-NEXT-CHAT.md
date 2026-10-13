@@ -1,0 +1,68 @@
+# WholesaleOS — new-chat handoff
+
+Saved October 13, 2026, America/Chicago, at the owner's request. Stop work after saving; owner will resume in a new chat.
+
+## Resume objective and checkout
+
+Continue preparing WholesaleOS for production, beginning with the unfinished Dallas/Collin collection system and PropStream reconciliation. Do not restart setup or treat historical connections as fresh acceptance evidence.
+
+- Local repository: `/Users/juliodominguez/Documents/Codex/2026-09-28/make-sure-to-review-my-wholesale/work/wholesale-launch-prep`
+- GitHub: https://github.com/julysses/Wholesale-automation
+- Branch: `codex/dallas-collin-launch-prep`
+- Implementation checkpoint commit: `c4fc81b`, pushed. This handoff is a subsequent documentation commit.
+- Draft PR #20: https://github.com/julysses/Wholesale-automation/pull/20
+- Production/base branch: `claude/ai-wholesaling-agency-KkDF1`
+- Pull before updates and commit/push each logical update. Keep this handoff and detailed checkpoint accurate. No subagents unless explicitly authorized by user or applicable instructions.
+
+## Latest controlling owner decisions
+
+1. Use PropStream directly through computer use. Account is signed in in Chrome; verify fresh tab inventory in the next chat.
+2. **Maximum authorized tracing spend: the existing $50 prepaid balance TOTAL.** No refill, card fallback, auto-reload, upgrade, or recurring replenishment. Latest $50 authorization supersedes the earlier free-only answer. This session spent **$0** and submitted no trace orders. Verify live balance and each exact quote; reserve uncertain orders against the cap and reconcile before retrying.
+3. No operating collector schedule exists. Prior task was unfinished. Rebuild and verify it; do not ask the owner to find an already-working schedule. Check residual cloud Tasks before eventually installing duplicates.
+4. User signed into the stable rehearsal preview. Login should be verified, not unnecessarily requested again.
+5. Release remains draft-only; do not promote production, activate outreach, start paid model workers, or message actual sellers as a shortcut to readiness. Human sets real offer prices and approves real terms.
+
+## Environments
+
+- Stable rehearsal: https://wholesale-automation-git-codex-dallas-de1768-julysses-projects.vercel.app
+- Rehearsal Supabase: `tbhwxgfzbiaqjurghntj`, name `wholesale-restore-rehearsal-20261008`.
+- Production Supabase: `dvzhzlipbwzzcliujzyz`; production https://wholesale-automation.vercel.app . Production was not modified in this session.
+- Vercel project `prj_ZRURRXQ1GbBiIUBtmGFiYZdVMNgd`, team slug `julysses-projects`.
+- Last verified READY deployment: `dpl_9vUGWepiWnTVsYUvPNxyckX5w22b`, code `af68671`. The later c4fc81b push is verified, but its deployment was not inspected.
+- Preview branch has matching rehearsal Supabase URL/public/service credentials. Approved earlier; do not request that permission again. Eight preview flags are false: SMS_LIVE_ENABLED, EMAIL_LIVE_ENABLED, AI_CALLING_LIVE_ENABLED, SMS_NURTURE_ENABLED, AUTO_SKIP_TRACE, LIST_LOT_ROUTING_ENABLED, LIST_SCORING_ENABLED, LIST_DIGEST_ENABLED.
+
+## Verified work this session
+
+- PropStream Account/Manage Plan: Legacy $99/month, $50 prepaid, 25,000 saves/exports remaining, November 1 renewal/reset. **100 included monthly traces was not confirmed.** Save/export counts are not tracing credits. Existing July foreclosure group is historical, not verified current distress inventory.
+- Stable CRM synthetic offer: saved, refreshed, approved for QA, revoked, refreshed. Final review version3, unapproved. Three events independently verified in `offer_review.events` (one draft, one approve, one revoke). Nothing sent; not Julio's business approval.
+- Synthetic lead ID `65692b3e-e0dc-4088-914a-9f050ca623bd`, address `QA REHEARSAL 20261013 — NOT A REAL PROPERTY`, revision `d46c34f8-a15f-491c-8c27-24ef2fa0e80c`. Test amount100.00, closing2026-11-01, expiry2026-10-20T22:00:00Z, manual recipient `Synthetic QA recipient — no delivery`, explicit fictitious/test conditions. Keep separate from actual sellers.
+- Dallas county clerk directs recent notices to https://dallas.tx.publicsearch.us/ . Corrected old seeded source URL and exact allowed host in rehearsal while preserving disabled state, schedule and history. New local migration `20261013154257_dallas_foreclosure_public_search.sql`; remote rehearsal migration version `20261013154336`, name `dallas_foreclosure_public_search`. SQL confirmed correct URL/hosts and enabledfalse. Do not replay historical migrations.
+- New offline `pipeline/collectors/preflight.mjs`: strict schema/identity/host/hash/size/window validation for Dallas/Collin foreclosure manifests. It never collects or submits and always labels `delivered:false`. Six new tests +14 contract tests +2 migration tests =22 targeted passes. CLI smoke passed. No application runtime code changed in c4fc81b.
+- Earlier regression baseline:837 backend tests,197 frontend tests, build and lint regression passed;146 pre-existing lint findings and bundle warning. Do not describe these as newly rerun for this docs handoff.
+
+## Exact next steps
+
+1. Read `docs/production-readiness.md`, `docs/collector-rebuild.md`, then the latest sections of `docs/dallas-collin-launch-prep-checkpoint.md`.
+2. Verify Git state, current preview deployment, and browser sessions. Use computer-use tools for browser actions; never extract browser auth tokens or hidden state. Keep secrets out of chat/files/Git.
+3. Finish the supervised foreclosure collection procedures. Dallas Advanced Search → Department Foreclosures → Recorded Date Range September14–October13 inclusive, clear both sale-date bounds. Observed479 indexed notices, only first50 inspected. URL: https://dallas.tx.publicsearch.us/results?department=FC&recordedDateRange=20260914%2C20261013&searchType=advancedSearch . Quick Search defaults to Sale Date; do not use that as a filing window. Verify filing stamps, all pages, stable document IDs, property identity and current status. These479 are candidates, not verified new leads.
+4. Collin source https://apps2.collincountytx.gov/ForeclosureNotices/ exposes Filed Date Start/End separately from Sale Dates, with pagination and individual notices. Complete coverage and extraction remain unverified. Stop at access restrictions. Keep partial/blocked/failed outcomes honest.
+5. Produce reviewed manifests; run `node pipeline/collectors/preflight.mjs /path/to/manifest.json`. Verify source-scoped Edge delivery and durable receipt in rehearsal, replay/lost-response handling, staged records and review tasks. No collection runner/delivery path is yet accepted.
+6. Build and verify PropStream eligible-batch selection, quote/budget ledger and CRM result reconciliation before spending. Use existing usable contacts first; no blind retracing of historical lists. Discovery never supplies outreach consent.
+7. Verify missing-worker alerts and owner digest; then install recurring schedules after verified delivery. PRD05:00–05:35Central times and07:30digest are proposed, not installed. No scheduler was created this session.
+8. Continue remaining matrix gates: offer property-change/retry UI, final approved delivery envelope/dispatch, lot routing/reassignment, valuation concurrency recovery, controlled STOP/email unsubscribe, Meta/Retell acceptance, buyer workflows, recovery/access and final production rollout approval. Five clean supervised foreclosure runs per county and14 unattended days still required; do not fabricate elapsed observation.
+
+## Other useful fixtures and contact permissions
+
+- Synthetic land: `e377a5fd-2bd9-4165-9105-240643ad2507`, `QA REHEARSAL 20261013 — SYNTHETIC LAND`; prior browser valuation save/reload verified one immutable event. No real prices/stage/contact changed.
+- Authorized controlled destination214-701-0100, emailjulio@hilltophome.co; Twilio sender469-804-9920. Earlier delivery confirmed.0100STOP acceptance remains open; unsubscribe previously confirmed from a different0280number. Never mark DNC manually just to make the test pass.
+- Secondary controlled email for unsubscribe test remains unprovided.
+
+## Evidence and tools
+
+- Rehearsal screenshot `/tmp/wholesale-offer-rehearsal-verified.png` (temporary; may not survive restart). Durable evidence/IDs are recorded above and in checkpoint.
+- Chrome id3 in previous session; handles/tab IDs may be stale. Inventory fresh. Rehearsal, PropStream Account and Dallas results tabs were left open. Browser sessions do not imply permission to buy other services.
+- Python test runtime: `/Users/juliodominguez/Documents/Codex/2026-09-28/i-x20/work/launch-venv/bin/python`.
+- Pipeline targeted tests: `node --test pipeline/tests/collector-preflight.test.mjs pipeline/tests/contract.test.mjs pipeline/tests/collector-source-migration.test.mjs`.
+- Supabase CLI: `/Users/juliodominguez/.npm/_npx/aa8e5c70f9d8d161/node_modules/@supabase/cli-darwin-arm64/bin/supabase`. Read applicable skill before Supabase work. CLI startup needs permission for its telemetry write. Use exact migration reconciliation, not bulk db push.
+
+**Readiness: full automated launch remains NO-GO.** Work is saved; no further operations are scheduled by this handoff.
