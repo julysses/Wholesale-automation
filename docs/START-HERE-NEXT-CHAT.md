@@ -1,5 +1,24 @@
 # WholesaleOS — new-chat handoff
 
+## Paused at owner request — October 13, 2026
+
+**Controlling product requirement:** bulk county sourcing → AI-assisted verification and deduplication → PropStream skip trace of only new eligible leads → outreach preparation and CRM follow-up, inside WholesaleOS, with no routine manual entry. The owner explicitly rejected the current Daily Lists worksheet (CSV imports, evidence URLs, hashes, quote/contact entry). Do not continue expanding manual forms. Replace the daily page with factual pipeline progress, high-priority leads and exceptions; implement the underlying automation before claiming it is operational.
+
+Saved implementation: `pipeline/collectors/collin_notice_details.py` is a resumable public Collin detail collector. The live run finished before the pause: **164 attempted, 103 metadata/first-page captures, 61 parse failures, zero trace-eligible certifications**. The first reported failures lacked the expected Property Information section; root cause is not yet investigated. Metadata and first-page capture do not establish full notice review, owner identity or current sale status. Script syntax was checked; dedicated tests, full-page acquisition and durable in-app evidence delivery remain unfinished. Collector is not scheduled or integrated into production.
+
+Private resumable evidence (never commit personal data): `/Users/juliodominguez/Documents/Codex/2026-10-13/resume-wholesaleos-from-docs-start-here/work/county-sources/collin-bulk-details/summary.json`, with per-document receipts, HTML and first-page JPEG. Input: sibling `collin-index-review-manifests/inventory.json`. Collector checks saved file hashes on resume. Investigate the 61 failed responses before retries; do not assume these are zero records or verified identities.
+
+DailyLists.tsx and ForeclosureActions.tsx were inspected, but **no UI replacement has been implemented yet**. Existing manual UI remains. Prior pushed commit `9186851` provides bulk result matching; it does not fulfill unattended automation. No provider order, paid trace, seller message or production promotion occurred. The $50 total prepaid ceiling remains. Daily collection automation remains paused.
+
+Resume next:
+1. Pull this branch and inspect this checkpoint. Replace the Daily Lists worksheet with account-scoped read-only progress, priority leads and exceptions based on actual receipts; do not display simulated automation status.
+2. Investigate Collin parse failures, test the collector, acquire all notice pages and implement evidence extraction/independent identity/current-status verification in bulk. Continue Dallas detail collection too.
+3. Deliver evidence and verified candidates into WholesaleOS without duplicate notices or invented certification. Implement AI-assisted provider quote/result handling against the existing idempotent batch/budget APIs; signed-in PropStream UI only, no credential extraction or invented API.
+4. Verify real bulk provider results, CRM follow-ups and channel eligibility, then remaining launch gates. Production and unattended schedules remain gated. Continue updating these files and pushing each logical update.
+
+No collection process remains running. Work is paused, not complete.
+
+
 Updated October 13, 2026, America/Chicago. Current summary and next steps below control; dated entries later in this file preserve historical evidence and may describe states that have since changed.
 
 Latest update: foreclosure priority actions are implemented for the dashboard and Daily County Lists; rehearsal SQL returns490Dallas and164Collin unique notices. See the final checkpoint for deployment/acceptance status. The guarded monitoring scan is completed.
