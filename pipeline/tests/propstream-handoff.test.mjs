@@ -7,7 +7,7 @@ const rpc=async(db,name,args)=>(await db.query(`select public.${name}(${args.map
 async function setup(t){
  const db=await database(); t.after(()=>db.close());
  const dir=new URL('../../frontend/supabase/migrations/',import.meta.url);
- for(const suffix of ['_list_reviewed_identity.sql','_list_trace_budget.sql','_list_trace_contacts.sql','_list_trace_operations.sql','_list_trace_total_cap.sql','_propstream_operator_handoff.sql','_collin_appraisal_evidence_host.sql'])await db.exec(fs.readFileSync(new URL(fs.readdirSync(dir).find(x=>x.endsWith(suffix)),dir),'utf8'));
+ for(const suffix of ['_list_reviewed_identity.sql','_list_trace_budget.sql','_list_trace_contacts.sql','_list_trace_operations.sql','_list_trace_total_cap.sql','_propstream_operator_handoff.sql','_collin_appraisal_evidence_host.sql','_foreclosure_status_review.sql','_propstream_bulk_actions.sql'])await db.exec(fs.readFileSync(new URL(fs.readdirSync(dir).find(x=>x.endsWith(suffix)),dir),'utf8'));
  await db.exec(`ALTER TABLE public.tasks ADD lead_id uuid; ALTER TABLE public.leads ADD owner_first_name text; ALTER TABLE public.leads ADD owner_last_name text;ALTER TABLE public.leads ADD dnc boolean DEFAULT false;
  INSERT INTO public.profiles VALUES('${id(1)}','admin','approved');
  INSERT INTO public.leads(id,property_address,city,state,zip_code,owner_first_name,status) VALUES('${id(2)}','QA TEST PROPERTY','Dallas','TX','75201','Synthetic','new');
@@ -64,4 +64,45 @@ test('cap, stale sale and empty results stay conservative; submitted suppression
  assert.equal((await snap()).total_budget.remaining_cents,5000);
  await db.exec(`UPDATE public.leads SET dnc=false`);
  await assert.rejects(()=>act(23,'prepare',payload,11),/already_enriched/);
+});
+
+ test('audited status reviews activate verified signals, reject stale edits, and invalidate reserved quotes',async t=>{
+ const {db,snap,payload,act}=await setup(t);
+ await db.exec('UPDATE wholesale_ingest.distress_signals SET active=false');
+ const held=(await snap()).items[0];
+ const review={signal_id:held.signal_id,signal_hash:held.signal_hash,active:true,auction_date:held.auction_date,status_evidence_url:'https://www.dallascounty.org/test',notes:'Synthetic current trustee status independently confirmed',confirmed_current_status:true};
+ await assert.rejects(()=>act(30,'review_status',{...review,status_evidence_url:'https://example.org'}),/Official/);
+ await assert.rejects(()=>act(30,'review_status',{...review,confirmed_current_status:false}),/review/);
+ assert.equal((await act(30,'review_status',review)).status_reviewed,true);
+ assert.equal((await act(30,'review_status',review)).replayed,true);
+ await assert.rejects(()=>act(31,'review_status',review),/evidence changed/);
+ const ready=(await snap()).items[0];assert.equal(ready.stage,'quote_and_evidence_required');
+ await act(32,'prepare',{...payload,signal_hash:ready.signal_hash});
+ await act(33,'review_status',{...review,signal_hash:ready.signal_hash,active:false});
+ await assert.rejects(()=>act(34,'start',{input_hash:payload.input_hash}),/Recheck/);
+ assert.equal((await db.query("select count(*)::int n from wholesale_ingest.propstream_events where status_review is not null")).rows[0].n,2);
+ assert.equal((await rpc(db,'propstream_recover_event',[id(1),id(30)])).result.status_reviewed,true);
+ });
+
+test('bulk is atomic, enforces aggregate balance, replays safely and tombstones lost requests',async t=>{
+ const {db,payload,snap}=await setup(t);
+ await db.exec(`INSERT INTO public.leads(id,property_address,city,state,zip_code,owner_first_name,status) VALUES('${id(102)}','SECOND QA PROPERTY','Dallas','TX','75201','Synthetic','new');
+ INSERT INTO wholesale_ingest.properties(id,state,county,address_std,city,zip,lead_id) VALUES('${id(103)}','TX','Dallas','SECOND QA PROPERTY','Dallas','75201','${id(102)}');
+ INSERT INTO wholesale_ingest.distress_signals(id,property_id,source_id,source_record_id,list_type,source_url,first_run_id,last_run_id,auction_date,active) SELECT '${id(105)}','${id(103)}',source_id,'second','pre_foreclosure',source_url,first_run_id,last_run_id,auction_date,true FROM wholesale_ingest.distress_signals WHERE id='${id(5)}'`);
+ const rows=(await snap()).items;
+ const items=rows.map((r,i)=>({event_id:id(200+i),request_id:id(300+i),lead_id:r.lead_id,action:'prepare',payload:{...payload,signal_id:r.signal_id,signal_hash:r.signal_hash,input_hash:r.input_hash,quote_cents:30,prepaid_balance_cents:50}}));
+ const bulk=(n,list)=>rpc(db,'propstream_bulk_action',[id(n),id(1),JSON.stringify(list)]);
+ await assert.rejects(()=>bulk(400,items),/Batch quote exceeds/);
+ items.forEach(x=>x.payload.prepaid_balance_cents=5000);
+ const bad=structuredClone(items);bad[1].payload.signal_hash='f'.repeat(32);
+ await assert.rejects(()=>bulk(400,bad),/evidence changed/);
+ assert.equal((await db.query('select count(*)::int n from wholesale_ingest.skip_trace_requests')).rows[0].n,0);
+ assert.equal((await bulk(400,items)).count,2);
+ assert.equal((await bulk(400,items)).dispatch,false);
+ assert.equal((await snap()).total_budget.committed_cents,60);
+ const starts=items.map((x,i)=>({...x,event_id:id(210+i),action:'start',payload:{input_hash:x.payload.input_hash}}));
+ assert.equal((await bulk(401,starts)).dispatch,true);assert.equal((await bulk(401,starts)).dispatch,false);
+ assert.equal((await rpc(db,'propstream_bulk_recover',[id(401),id(1)])).result.count,2);
+ await rpc(db,'propstream_bulk_recover',[id(402),id(1)]);
+ await assert.rejects(()=>bulk(402,items),/abandoned/);
 });

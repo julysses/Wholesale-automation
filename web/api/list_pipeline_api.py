@@ -340,17 +340,27 @@ class PropstreamReconcile(PropstreamStart):
     contacts: list[Contact] = Field(max_length=20)
     confirmed_match: Literal[True]
 
+class ForeclosureStatusReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    signal_id: UUID
+    signal_hash: str = Field(pattern='^[a-f0-9]{32}$')
+    active: bool = Field(strict=True)
+    auction_date: str = Field(pattern='^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+    status_evidence_url: str = Field(pattern='^https://',max_length=2000)
+    notes: str = Field(min_length=20,max_length=2000)
+    confirmed_current_status: Literal[True]
+
 class PropstreamAction(BaseModel):
     model_config = ConfigDict(extra='forbid')
     event_id: UUID
     request_id: UUID
     lead_id: UUID
-    action: Literal['prepare','start','reconcile']
+    action: Literal['prepare','start','reconcile','review_status']
     payload: dict
 
     @model_validator(mode='after')
     def check_payload(self):
-        model={'prepare':PropstreamPrepare,'start':PropstreamStart,'reconcile':PropstreamReconcile}[self.action]
+        model={'prepare':PropstreamPrepare,'start':PropstreamStart,'reconcile':PropstreamReconcile,'review_status':ForeclosureStatusReview}[self.action]
         self.payload=model.model_validate(self.payload).model_dump(mode='json')
         return self
 
@@ -373,3 +383,23 @@ async def propstream_action(body: PropstreamAction, request: Request):
         or result.get('outreach_authorized') is not False):
         raise HTTPException(503,'Handoff acknowledgement is unconfirmed. Recover the saved action before another order.')
     return result
+
+class PropstreamBatch(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    batch_id: UUID
+    items: list[PropstreamAction] = Field(min_length=1,max_length=500)
+
+@router.post('/api/operations/lists/propstream/batches')
+async def propstream_bulk(body: PropstreamBatch, request: Request):
+    actor=operator(request)
+    result=await rpc('propstream_bulk_action',{'p_batch':str(body.batch_id),'p_operator':actor,
+        'p_items':[item.model_dump(mode='json') for item in body.items]})
+    if (not isinstance(result,dict) or result.get('batch_id')!=str(body.batch_id)
+        or result.get('operator_id')!=actor or result.get('count')!=len(body.items)
+        or result.get('outreach_authorized') is not False):
+        raise HTTPException(503,'Batch acknowledgement unconfirmed. Recover the saved batch.')
+    return result
+
+@router.post('/api/operations/lists/propstream/batches/{batch_id}/recover')
+async def propstream_bulk_recover(batch_id: UUID, request: Request):
+    return await rpc('propstream_bulk_recover',{'p_batch':str(batch_id),'p_operator':operator(request)})

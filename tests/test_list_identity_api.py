@@ -62,3 +62,14 @@ def test_propstream_action_validates_actor_and_matching_ack(client_db):
     rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
     assert client.get('/api/operations/lists/propstream',headers=headers).status_code==403
     db.rpc.assert_not_called()
+
+def test_bulk_handoff_session_actor_and_limit(client_db):
+    client,db,_=client_db;headers={'Authorization':'Bearer test'}
+    item={'event_id':str(uuid4()),'request_id':str(uuid4()),'lead_id':str(uuid4()),'action':'start','payload':{'input_hash':'a'*64}}
+    body={'batch_id':str(uuid4()),'items':[item]}
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={'batch_id':body['batch_id'],'operator_id':OPERATOR,'count':1,'outreach_authorized':False})
+    assert client.post('/api/operations/lists/propstream/batches',json=body,headers=headers).status_code==200
+    assert db.rpc.call_args.args[1]['p_operator']==OPERATOR
+    db.rpc.reset_mock()
+    assert client.post('/api/operations/lists/propstream/batches',json={**body,'items':[]},headers=headers).status_code==422
+    db.rpc.assert_not_called()

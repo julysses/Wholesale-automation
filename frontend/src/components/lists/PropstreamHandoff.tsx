@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { useProfile } from '@/hooks/useProfile';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-const intentSchema=z.object({event_id:z.string().uuid(),request_id:z.string().uuid(),lead_id:z.string().uuid(),action:z.enum(['prepare','start','reconcile']),payload:z.record(z.string(),z.unknown())});
+const intentSchema=z.object({event_id:z.string().uuid(),request_id:z.string().uuid(),lead_id:z.string().uuid(),action:z.enum(['prepare','start','reconcile','review_status']),payload:z.record(z.string(),z.unknown())});
 type Intent=z.infer<typeof intentSchema>;
 type Contact={name:string;phone:string;email:string;phone_type:'mobile'|'landline'|'voip'|'unknown'};
 type Candidate={lead_id:string;county:string;address_std:string;city:string;zip:string;stage:string;signal_id:string;signal_hash:string;auction_date:string|null;input_hash:string|null;input:Record<string,string>|null;
@@ -29,7 +29,7 @@ function Controls({actor}:{actor:string}){
    const r=await(await apiFetch('/api/operations/lists/propstream/actions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(intent)})).json();
    if(r.event_id!==intent.event_id||r.request_id!==intent.request_id||r.lead_id!==intent.lead_id||r.operator_id!==actor||r.action!==intent.action||r.outreach_authorized!==false)throw new Error('Handoff receipt did not match. Check the saved action before another order.');
    sessionStorage.removeItem(key);setPending(null);
-   setMessage(r.replayed?'Saved action recovered. Do not repeat any PropStream purchase.':intent.action==='start'&&r.dispatch===true?'Handoff started. Submit this exact lead once in PropStream. If interrupted, check the provider order before retrying.':intent.action==='prepare'?'Quote reserved. Start the handoff before submitting in PropStream.':'Result saved. Review the matched contacts and the assigned follow-up task. No outreach was sent.');
+   setMessage(r.replayed?'Saved action recovered. Do not repeat any PropStream purchase.':intent.action==='start'&&r.dispatch===true?'Handoff started. Submit this exact lead once in PropStream. If interrupted, check the provider order before retrying.':intent.action==='review_status'?'Current sale review saved. Recheck the updated queue before tracing.':intent.action==='prepare'?'Quote reserved. Start the handoff before submitting in PropStream.':'Result saved. Review the matched contacts and the assigned follow-up task. No outreach was sent.');
    await refresh();
   }catch(e){setMessage(e instanceof Error?e.message:'Outcome unconfirmed. Recover the saved action.');}finally{lock.current=false;setBusy(false);}
  }
@@ -52,19 +52,20 @@ function Controls({actor}:{actor:string}){
   {query.isLoading&&<p>Loading verified leads…</p>}{query.error&&<p role="alert">PropStream handoff unavailable. <Button onClick={()=>query.refetch()}>Refresh handoff</Button></p>}
   {query.data&&<><p>${dollars(query.data.total_budget.remaining_cents)} remaining · ${dollars(query.data.total_budget.committed_cents)} committed across all days. No card fallback or replenishment.</p>
    {!query.data.total&&<p>No verified foreclosure properties yet. Complete notice review in the priority inbox above.</p>}
-   {query.data.items.map(row=><CandidateControl key={`${row.lead_id}:${row.input_hash}:${row.request?.state}`} row={row} disabled={busy||!!pending||!!initial.error||!!query.error} run={execute}/>)}
+   {query.data.items.map(row=><CandidateControl key={`${row.lead_id}:${row.signal_hash}:${row.input_hash}:${row.request?.state}`} row={row} disabled={busy||!!pending||!!initial.error||!!query.error} run={execute}/>)}
    <div className="flex gap-2"><Button disabled={offset===0||busy} onClick={()=>setOffset(Math.max(0,offset-50))}>Previous verified leads</Button><Button disabled={offset+50>=query.data.total||busy} onClick={()=>setOffset(offset+50)}>Next verified leads</Button></div>
   </>}
  </section>;
 }
 function CandidateControl({row,disabled,run}:{row:Candidate;disabled:boolean;run:(intent:Intent)=>Promise<void>}){
  const [quote,setQuote]=useState('');const [balance,setBalance]=useState('');const [reference,setReference]=useState('');const [ownerUrl,setOwnerUrl]=useState('');const [statusUrl,setStatusUrl]=useState('');const [notes,setNotes]=useState('');const [reviewed,setReviewed]=useState(false);
+ const [statusConfirmed,setStatusConfirmed]=useState(false);const [saleDate,setSaleDate]=useState(row.auction_date||'');const [saleActive,setSaleActive]=useState(false);
  const [actual,setActual]=useState('');const [receipt,setReceipt]=useState('');const [matched,setMatched]=useState(false);const [noMatch,setNoMatch]=useState(false);const [error,setError]=useState('');
  const empty=():Contact=>({name:'',phone:'',email:'',phone_type:'unknown'});const [contacts,setContacts]=useState<Contact[]>([empty()]);
  async function act(action:Intent['action']){
   setError('');try{
-   const payload=action==='prepare'?{input_hash:row.input_hash,signal_id:row.signal_id,signal_hash:row.signal_hash,quote_cents:cents(quote),prepaid_balance_cents:cents(balance),quote_reference:reference,owner_evidence_url:ownerUrl,status_evidence_url:statusUrl,notes,all_pages_reviewed:reviewed}:action==='start'?{input_hash:row.request!.input_hash}:{input_hash:row.request!.input_hash,actual_cents:cents(actual),provider_receipt:receipt,contacts:noMatch?[]:contacts.map(c=>({...c,phone:c.phone||null,email:c.email||null,name:c.name||null})),confirmed_match:matched};
-   await run({event_id:crypto.randomUUID(),request_id:action==='prepare'?crypto.randomUUID():row.request!.id,lead_id:row.lead_id,action,payload});
+   const payload=action==='review_status'?{signal_id:row.signal_id,signal_hash:row.signal_hash,active:saleActive,auction_date:saleDate,status_evidence_url:statusUrl,notes,confirmed_current_status:statusConfirmed}:action==='prepare'?{input_hash:row.input_hash,signal_id:row.signal_id,signal_hash:row.signal_hash,quote_cents:cents(quote),prepaid_balance_cents:cents(balance),quote_reference:reference,owner_evidence_url:ownerUrl,status_evidence_url:statusUrl,notes,all_pages_reviewed:reviewed}:action==='start'?{input_hash:row.request!.input_hash}:{input_hash:row.request!.input_hash,actual_cents:cents(actual),provider_receipt:receipt,contacts:noMatch?[]:contacts.map(c=>({...c,phone:c.phone||null,email:c.email||null,name:c.name||null})),confirmed_match:matched};
+   await run({event_id:crypto.randomUUID(),request_id:action==='prepare'||action==='review_status'?crypto.randomUUID():row.request!.id,lead_id:row.lead_id,action,payload});
   }catch(e){setError(e instanceof Error?e.message:'Check entered values.');}
  }
  const update=(index:number,k:keyof Contact,value:string)=>setContacts(old=>old.map((c,i)=>i===index?{...c,[k]:value}:c));
@@ -91,6 +92,15 @@ function CandidateControl({row,disabled,run}:{row:Candidate;disabled:boolean;run
   </div>}
   {row.stage==='identity_incomplete'&&<p>Verify and save the owner name on the CRM lead before requesting a quote.</p>}
   {row.stage==='current_status_review'&&<p>Current active foreclosure evidence is required. This property is not eligible for a trace purchase.</p>}
+  <details className="border p-2"><summary>Review current sale status</summary>
+   <p>Record current official evidence and cancellation/postponement checks. Saving a review does not order a trace or authorize outreach.</p>
+   <Input label="Reviewed sale date (YYYY-MM-DD)" value={saleDate} onChange={e=>setSaleDate(e.target.value)}/>
+   <Input label="Current sale status evidence URL" value={statusUrl} onChange={e=>setStatusUrl(e.target.value)}/>
+   <Input label="Current status review notes" value={notes} onChange={e=>setNotes(e.target.value)}/>
+   <label className="block"><input type="checkbox" checked={saleActive} onChange={e=>setSaleActive(e.target.checked)}/> Sale confirmed active on the reviewed date</label>
+   <label className="block"><input type="checkbox" checked={statusConfirmed} onChange={e=>setStatusConfirmed(e.target.checked)}/> I checked current cancellation/postponement status and recorded the evidence above.</label>
+   <Button disabled={disabled||!statusConfirmed||notes.trim().length<20||!statusUrl||!/^\d{4}-\d{2}-\d{2}$/.test(saleDate)} onClick={()=>act('review_status')}>Save current sale review</Button>
+  </details>
   {row.contacts.length>0&&<div><h3 className="font-semibold">Contact found — outreach eligibility review required</h3>{row.contacts.map((c,i)=><p key={i}>{c.name} · {c.phone} · {c.email}</p>)}<p>A skip trace does not record consent or clear suppression. No outreach has been queued by this handoff.</p></div>}
   {row.stage==='result_saved'&&row.contacts.length===0&&<p>Saved result has no contacts available. Review the original receipt; do not purchase another trace automatically.</p>}
   {row.handoff?.follow_up_task_id&&<a href="/tasks" className="underline">View assigned follow-up task</a>}

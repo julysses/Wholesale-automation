@@ -33,3 +33,16 @@ it('new quote stays blocked until explicit evidence review',async()=>{
  mocks.fetch.mockResolvedValue({json:async()=>snapshot([{...row,stage:'quote_and_evidence_required'}])});show();await screen.findByText(/Synthetic verified property/);fireEvent.click(screen.getByText(/Synthetic verified property/));expect(screen.getByRole('button',{name:'Reserve verified quote'})).toBeDisabled();
 });
 it('non-admin never loads the handoff',()=>{mocks.admin=false;show();expect(mocks.fetch).not.toHaveBeenCalled();});
+
+it('status review is explicit, bound to the viewed signal, and does not start tracing',async()=>{
+ mocks.fetch.mockImplementation(async(_url,options)=>({json:async()=>options?.method==='POST'?{...JSON.parse(options.body),operator_id:'00000000-0000-4000-8000-000000000001',outreach_authorized:false}:snapshot([{...row,stage:'current_status_review'}])}));
+ show();await screen.findByText(/Synthetic verified property/);fireEvent.click(screen.getByText(/Synthetic verified property/));fireEvent.click(screen.getByText('Review current sale status'));
+ const save=screen.getByRole('button',{name:'Save current sale review'});expect(save).toBeDisabled();
+ fireEvent.change(screen.getByLabelText('Current sale status evidence URL'),{target:{value:'https://www.dallascounty.org/test'}});
+ fireEvent.change(screen.getByLabelText('Current status review notes'),{target:{value:'Synthetic current trustee status verified today'}});
+ fireEvent.click(screen.getByLabelText('Sale confirmed active on the reviewed date'));
+ fireEvent.click(screen.getByLabelText(/I checked current cancellation/));fireEvent.click(save);
+ await screen.findByText(/Current sale review saved/);
+ const body=JSON.parse(mocks.fetch.mock.calls.find(([,o])=>o?.method==='POST')![1].body);
+ expect(body.action).toBe('review_status');expect(body.payload.signal_hash).toBe(row.signal_hash);expect(body.payload.active).toBe(true);
+});
