@@ -32,7 +32,8 @@ These are required workflow states, not a claim that every stage is implemented 
 - [x] Durable notice first-seen identity prevents repeat imports from appearing new.
 - [x] Existing tracing services support immutable input, reservation/claim/settlement, contacts and uncertain-outcome holds, with cumulative budget enforcement.
 - [ ] Verify real foreclosure property/owner/current-status evidence and create the eligible CRM associations. Current real notices remain unresolved; the existing resolved foreclosure fixture is synthetic and excluded.
-- [ ] Add the verified-candidate batch selector and PropStream quote/order/result reconciliation controls to the app. Existing TraceOperations shows budget/recovery, not a complete PropStream ordering interface.
+- [x] Implement per-lead verified-candidate quote/reservation/start/result controls, linked follow-up tasks and uncertain-action recovery. Rehearsal migration applied; browser acceptance pending.
+- [ ] Extend accepted per-lead handoffs to a verified multi-lead provider batch with exact per-lead receipt/cost mapping.
 - [ ] Demonstrate one authorized eligible PropStream order and exact result/charge reconciliation without retracing on refresh or lost acknowledgement.
 - [ ] Surface Contact Found and per-channel Ready for Outreach states with recorded eligibility reasons.
 - [ ] Complete controlled delivery, STOP/suppression, response and follow-up acceptance before enabling real outreach.

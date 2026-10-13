@@ -218,3 +218,14 @@ This feature is live in the REHEARSAL app, not the production URL. These are not
 Owner confirmed that high-priority foreclosure opportunities must proceed through PropStream tracing and into outreach/follow-up inside WholesaleOS. Controlling implementation plan: `docs/foreclosure-propstream-outreach-plan.md`. Required stages: new notice → verified/ready to trace → tracing → contact found → channel-specific ready for outreach → follow-up due, with visible review/suppression reasons. Existing $50 prepaid TOTAL cap and UI-only PropStream approach remain in effect.
 
 Current tracing budget/receipt services are implemented; the complete candidate selection and PropStream order/result interface is not. Live SQL confirms no resolved real foreclosure observations after excluding the known synthetic property. The654notice inbox cannot be treated as a verified trace batch. No provider order/spend, outreach, schedule activation or production change occurred. Next: real identity/current-status verification, then eligible batch selection, exact quote/order reconciliation, contact readiness and controlled follow-up acceptance.
+
+
+## October 13 — PropStream operator handoff implemented
+
+Added an administrator-only in-app handoff for verified foreclosure properties: current evidence/owner/quote review, exact prepaid reservation under the existing $50 cumulative cap, one-time handoff start, matched provider receipt/contact/charge reconciliation, and one high-priority CRM follow-up task linked to the lead. No API adapter or automated PropStream purchase is implied; provider use remains UI-only. Individual lead handoffs are supported; multi-lead batch ordering remains future work.
+
+Immutable action IDs and hashed payloads bind actor/request/lead. Lost acknowledgements retain the saved intent. Recovery waits for in-flight work and tombstones absent event IDs so delayed requests cannot execute after a fresh attempt. Returned contacts use the existing30day contact store; the audit keeps hashes rather than duplicating phone/email payloads permanently. Submitted orders stay reconcilable after suppression, while new purchases are blocked. A no-match completion blocks automatic repurchase and creates a next-action task.
+
+Three isolated PostgreSQL-engine tests cover exact replay/conflicts, cap/stale-signal/identity/suppression checks, empty outcomes, single follow-up, and delayed-action recovery. Five targeted frontend and eight backend API tests passed; build/lint passed (146existing findings). Migration `20261013202034_propstream_operator_handoff.sql` applied to rehearsal only; deployed browser acceptance follows the branch build.
+
+Remaining: real property/owner/current-status verification, actual PropStream quote/order/result acceptance within the approved balance, per-channel eligibility flags and controlled outreach/follow-up acceptance. No real trace order, spend or seller message occurred. Goal remains active.

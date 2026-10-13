@@ -1,3 +1,4 @@
+import { PropstreamHandoff } from '@/components/lists/PropstreamHandoff';
 import { ReviewControl, type Review } from '@/components/lists/ReviewControl';
 import { ForeclosureActions } from '@/components/lists/ForeclosureActions';
 import { LotOperations } from '@/components/lists/LotOperations';
@@ -60,6 +61,7 @@ export function DailyLists() {
     <h1 className="text-2xl font-bold">Daily county lists</h1>
     <p>Dallas and Collin only. Code enforcement covers the named municipality, not the entire county. Reviewed records feed the CRM; contact permissions remain separate.</p>
     <ForeclosureActions />
+    <PropstreamHandoff />
     <TraceOperations />
     <ScoringOperations />
     <LotOperations />

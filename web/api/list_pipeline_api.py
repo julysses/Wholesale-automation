@@ -313,3 +313,63 @@ async def reconcile_lot(body: LotReconciliation, request: Request):
             or value.get('outreach_authorized') is not False):
         raise HTTPException(503, 'Lot reconciliation is unconfirmed. Retry the same saved decision.')
     return value
+
+# PropStream remains an operator UI handoff; these endpoints never call a provider.
+from tools.list_tracing import Contact
+
+class PropstreamPrepare(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    input_hash: str = Field(pattern='^[a-f0-9]{64}$')
+    signal_id: UUID
+    signal_hash: str = Field(pattern='^[a-f0-9]{32}$')
+    quote_cents: int = Field(strict=True, ge=1, le=5000)
+    prepaid_balance_cents: int = Field(strict=True, ge=0, le=999999999)
+    quote_reference: str = Field(min_length=3,max_length=255)
+    owner_evidence_url: str = Field(pattern='^https://',max_length=2000)
+    status_evidence_url: str = Field(pattern='^https://',max_length=2000)
+    notes: str = Field(min_length=20,max_length=2000)
+    all_pages_reviewed: Literal[True]
+
+class PropstreamStart(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    input_hash: str = Field(pattern='^[a-f0-9]{64}$')
+
+class PropstreamReconcile(PropstreamStart):
+    actual_cents: int = Field(strict=True,ge=0,le=5000)
+    provider_receipt: str = Field(min_length=1,max_length=255)
+    contacts: list[Contact] = Field(max_length=20)
+    confirmed_match: Literal[True]
+
+class PropstreamAction(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    event_id: UUID
+    request_id: UUID
+    lead_id: UUID
+    action: Literal['prepare','start','reconcile']
+    payload: dict
+
+    @model_validator(mode='after')
+    def check_payload(self):
+        model={'prepare':PropstreamPrepare,'start':PropstreamStart,'reconcile':PropstreamReconcile}[self.action]
+        self.payload=model.model_validate(self.payload).model_dump(mode='json')
+        return self
+
+@router.get('/api/operations/lists/propstream')
+async def propstream_snapshot(request: Request, offset: int = Query(default=0,ge=0)):
+    return await rpc('propstream_handoff_snapshot',{'p_operator':operator(request),'p_offset':offset})
+
+@router.post('/api/operations/lists/propstream/events/{event_id}/recover')
+async def propstream_event(event_id: UUID, request: Request):
+    return await rpc('propstream_recover_event',{'p_operator':operator(request),'p_event':str(event_id)})
+
+@router.post('/api/operations/lists/propstream/actions')
+async def propstream_action(body: PropstreamAction, request: Request):
+    actor=operator(request)
+    result=await rpc('propstream_handoff_action',{'p_event':str(body.event_id),'p_operator':actor,
+        'p_request':str(body.request_id),'p_lead':str(body.lead_id),'p_action':body.action,'p_payload':body.payload})
+    if (not isinstance(result,dict) or result.get('event_id')!=str(body.event_id)
+        or result.get('request_id')!=str(body.request_id) or result.get('lead_id')!=str(body.lead_id)
+        or result.get('operator_id')!=actor or result.get('action')!=body.action
+        or result.get('outreach_authorized') is not False):
+        raise HTTPException(503,'Handoff acknowledgement is unconfirmed. Recover the saved action before another order.')
+    return result

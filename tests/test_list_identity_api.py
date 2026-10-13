@@ -47,3 +47,18 @@ def test_foreclosure_actions_validates_filters_and_admin_access(client_db):
     rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
     assert client.get('/api/operations/lists/foreclosures',headers=headers).status_code==403
     db.rpc.assert_not_called()
+
+def test_propstream_action_validates_actor_and_matching_ack(client_db):
+    client,db,rows=client_db;headers={'Authorization':'Bearer test'}
+    event,request,lead=str(uuid4()),str(uuid4()),str(uuid4())
+    body={'event_id':event,'request_id':request,'lead_id':lead,'action':'start','payload':{'input_hash':'a'*64}}
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={**{k:body[k] for k in ['event_id','request_id','lead_id','action']},'operator_id':OPERATOR,'outreach_authorized':False})
+    assert client.post('/api/operations/lists/propstream/actions',json=body,headers=headers).status_code==200
+    name,params=db.rpc.call_args.args
+    assert name=='propstream_handoff_action' and params['p_operator']==OPERATOR
+    db.rpc.reset_mock()
+    assert client.post('/api/operations/lists/propstream/actions',json={**body,'payload':{'input_hash':'a'*64,'send':True}},headers=headers).status_code==422
+    db.rpc.assert_not_called()
+    rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
+    assert client.get('/api/operations/lists/propstream',headers=headers).status_code==403
+    db.rpc.assert_not_called()

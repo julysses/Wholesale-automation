@@ -4,6 +4,7 @@ import {beforeEach,expect,it,vi} from 'vitest';
 const mocks=vi.hoisted(()=>({fetch:vi.fn()}));
 vi.mock('@/lib/api',()=>({apiFetch:mocks.fetch}));
 vi.mock('@/hooks/useProfile',()=>({useProfile:()=>({isAdmin:true})}));
+vi.mock('@/components/lists/PropstreamHandoff',()=>({PropstreamHandoff:()=>null}));
 vi.mock('@/components/lists/ForeclosureActions',()=>({ForeclosureActions:()=>null}));
 vi.mock('@/components/lists/TraceOperations',()=>({TraceOperations:()=>null}));
 vi.mock('@/components/lists/ScoringOperations',()=>({ScoringOperations:()=>null}));
