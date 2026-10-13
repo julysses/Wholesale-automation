@@ -165,3 +165,12 @@ Durable minimal source/notice first-seen receipts deduplicate repeated imports b
 Rehearsal migration `20261013195311_foreclosure_daily_actions.sql` applied independently; SQL verifies490Dallas +164Collin notices new to the system on October13, with50per page. The earlier separate Collin observation does not double-count. These are existing September14–October13 filing-window imports, NOT654filings dated today. Production untouched; collector scheduling remains paused. Browser acceptance follows the branch deployment.
 
 Validation: PostgreSQL-engine regression covers Central-day boundaries, repeated notices, county isolation, retained first-seen identity after staged-record deletion, resolved duplicate suppression and denied authenticated RPC access. Seven backend API tests and five targeted frontend tests pass; production build passed and lint reports no new findings (146existing). Security advisors contain no foreclosure-specific finding. Remote rehearsal migration version20261013195620 maps to local20261013195311; do not replay either.
+
+
+## October 13 — priority inbox deployed and browser verified
+
+Implementation51d51e7 is deployed READY to the stable rehearsal preview (Vercel `dpl_8bYenVk3muX2HwpzyhSjiMJbzWPs`). Signed-in browser verified the dashboard's High Priority Action Items summary and its link to Daily County Lists; the inbox shows654unique new-to-system notices, Dallas490 and Collin164 via county filters. Collin pagination51–100of164 works. Opening Dallas notice330720269 exposes the official link, filing/sale dates and existing evidence form; saving remains disabled until independent property evidence is supplied. No real property association or outreach was submitted during this check.
+
+All202frontend and129pipeline tests passed locally, seven targeted backend API tests passed, and build/lint regression passed. GitHub backend, frontend, pipeline and real PostgreSQL checks passed for51d51e7. Browser evidence saved in this chat's `outputs/foreclosure-high-priority-actions.jpg` and `outputs/foreclosure-dashboard-priority.jpg`.
+
+This feature is live in the REHEARSAL app, not the production URL. These are notices first imported today from the September14–October13 window, not all filed today. Full notice verification, qualified contact enrichment and outreach remain separate unfinished gates. Daily collection is still PAUSED. Resume with all-page notice review/current property status and remaining readiness gates; do not duplicate the accepted imports.
