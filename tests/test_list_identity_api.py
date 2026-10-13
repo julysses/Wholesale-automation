@@ -33,3 +33,17 @@ def test_identity_unconfirmed_ack_not_success_and_nonadmin_denied(client_db):
     db.rpc.reset_mock();rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
     assert client.post('/api/operations/lists/resolve',json=payload(),headers={'Authorization':'Bearer test'}).status_code==403
     db.rpc.assert_not_called()
+
+def test_foreclosure_actions_validates_filters_and_admin_access(client_db):
+    client,db,rows=client_db
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={'total':1,'items':[]})
+    headers={'Authorization':'Bearer test'}
+    assert client.get('/api/operations/lists/foreclosures?county=Collin&offset=50',headers=headers).status_code==200
+    name,params=db.rpc.call_args.args
+    assert name=='foreclosure_daily_actions' and params['p_county']=='Collin' and params['p_offset']==50
+    db.rpc.reset_mock()
+    assert client.get('/api/operations/lists/foreclosures?county=Other',headers=headers).status_code==422
+    db.rpc.assert_not_called()
+    rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
+    assert client.get('/api/operations/lists/foreclosures',headers=headers).status_code==403
+    db.rpc.assert_not_called()

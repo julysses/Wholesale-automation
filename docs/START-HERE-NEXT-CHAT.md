@@ -2,6 +2,8 @@
 
 Updated October 13, 2026, America/Chicago. Current summary and next steps below control; dated entries later in this file preserve historical evidence and may describe states that have since changed.
 
+Latest update: foreclosure priority actions are implemented for the dashboard and Daily County Lists; rehearsal SQL returns490Dallas and164Collin unique notices. See the final checkpoint for deployment/acceptance status. The guarded monitoring scan is completed.
+
 ## Resume objective and checkout
 
 Continue preparing WholesaleOS for production, beginning with the unfinished Dallas/Collin collection system and PropStream reconciliation. Do not restart setup or treat historical connections as fresh acceptance evidence.
@@ -189,3 +191,14 @@ Independent read-only SQL verified:
 - October13digest is `generated`, with null message ID and delivery timestamp: saved, not sent. No seller messages, trace purchases, schedule activation or production changes occurred.
 
 The guarded-scan approval gate is closed. Full launch remains NO-GO: all-page notice extraction, authoritative property/current-sale review and complete coverage evidence remain open, followed by provider reconciliation, controlled contact acceptance, independently verified digest/missing-worker monitoring, five clean runs per county and14unattended days. The scheduler remains PAUSED. Do not regenerate accepted manifests or count partial inventories as clean runs.
+
+
+## October 13 — foreclosure priority actions inside WholesaleOS
+
+Owner requires Dallas/Collin foreclosure arrivals to appear as daily high-priority actions inside the app. Added a dashboard summary linking to a prominent Daily County Lists action inbox, county filtering,50notice pages, official record links and inline verified-property review. Notices first received today (Central time) are HIGH PRIORITY / NEW TODAY; older unresolved notices remain FOLLOW UP / REVIEW PENDING. Priority indicates review urgency, not verified sale status or contact eligibility.
+
+Durable minimal source/notice first-seen receipts deduplicate repeated imports beyond raw-data expiration. The private, RLS-enabled table uses an invoker ingestion trigger; the read RPC is service-only behind existing administrator API authorization. One resolved observation suppresses duplicate review entries while that resolution remains in staging. No seller contact data is retained by the identity receipt.
+
+Rehearsal migration `20261013195311_foreclosure_daily_actions.sql` applied independently; SQL verifies490Dallas +164Collin notices new to the system on October13, with50per page. The earlier separate Collin observation does not double-count. These are existing September14–October13 filing-window imports, NOT654filings dated today. Production untouched; collector scheduling remains paused. Browser acceptance follows the branch deployment.
+
+Validation: PostgreSQL-engine regression covers Central-day boundaries, repeated notices, county isolation, retained first-seen identity after staged-record deletion, resolved duplicate suppression and denied authenticated RPC access. Seven backend API tests and five targeted frontend tests pass; production build passed and lint reports no new findings (146existing). Security advisors contain no foreclosure-specific finding. Remote rehearsal migration version20261013195620 maps to local20261013195311; do not replay either.

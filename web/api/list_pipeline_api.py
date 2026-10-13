@@ -64,6 +64,11 @@ async def snapshot(day: date | None = None, offset: int = Query(default=0, ge=0)
     day = day or datetime.now(ZoneInfo('America/Chicago')).date()
     return await rpc('list_pipeline_snapshot', {'p_day': day.isoformat(), 'p_offset': offset})
 
+@router.get('/api/operations/lists/foreclosures')
+async def foreclosure_actions(county: Literal['Dallas', 'Collin'] | None = None, offset: int = Query(default=0, ge=0)):
+    day = datetime.now(ZoneInfo('America/Chicago')).date()
+    return await rpc('foreclosure_daily_actions', {'p_day': day.isoformat(), 'p_county': county, 'p_offset': offset})
+
 @router.patch('/api/operations/lists/sources/{source_key}')
 async def configure(source_key: str, body: ConfigureSource, request: Request):
     if body.enabled and not (body.procedure_version and len(body.procedure_version.strip()) >= 3):
