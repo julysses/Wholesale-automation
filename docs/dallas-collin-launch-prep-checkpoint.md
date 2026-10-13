@@ -1,5 +1,11 @@
 # Dallas/Collin launch preparation checkpoint — October 12, 2026
 
+## Resumed — Daily pipeline interface, October 13, 2026
+
+Replaced the Daily Lists operator worksheet with a read-only daily pipeline view: collection receipts, high-priority foreclosure notices, tracing holds, the cumulative budget and saved follow-up status. Removed routine evidence/CSV/quote/contact entry and configuration/scan actions from this page. Queries refresh every minute and are scoped to the signed-in account. The page explicitly states that scheduling/provider automation are not active; this UI change does not establish an unattended pipeline. Verification APIs and internal controls remain intact. Build passed, three UI/identity tests passed, lint baseline checked. Preview deployment/browser acceptance remains to be checked after push.
+
+Collector investigation found real notice pages that have the scan but no optional property metadata; this caused the previous failures. A tested parser correction and resumable recapture are in progress. Next: finish captures, full-page extraction and in-app evidence delivery, then bulk provider and outreach-preparation acceptance. No paid trace or outreach sent.
+
 ## Paused at owner request — October 13, 2026
 
 **Controlling product requirement:** bulk county sourcing → AI-assisted verification and deduplication → PropStream skip trace of only new eligible leads → outreach preparation and CRM follow-up, inside WholesaleOS, with no routine manual entry. The owner explicitly rejected the current Daily Lists worksheet (CSV imports, evidence URLs, hashes, quote/contact entry). Do not continue expanding manual forms. Replace the daily page with factual pipeline progress, high-priority leads and exceptions; implement the underlying automation before claiming it is operational.

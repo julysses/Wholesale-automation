@@ -9,11 +9,11 @@ vi.mock('@/components/lists/ForeclosureActions',()=>({ForeclosureActions:()=>nul
 vi.mock('@/components/lists/TraceOperations',()=>({TraceOperations:()=>null}));
 vi.mock('@/components/lists/ScoringOperations',()=>({ScoringOperations:()=>null}));
 vi.mock('@/components/lists/LotOperations',()=>({LotOperations:()=>null}));
-import {DailyLists} from '@/pages/DailyLists';
+import {ReviewControl} from '@/components/lists/ReviewControl';
 const item={run_id:'synthetic',batch_index:0,ordinal:0,source_record_id:'account123',source_key:'tx-dallas-tax_delinquent',property_address:null,city:null,zip:null,unit:null,parcel_id:'parcel123',source_fingerprint:'a'.repeat(32),source_url:'https://www.dallascounty.org/synthetic',review_reason:'verify_property'};
 beforeEach(()=>{vi.resetAllMocks();mocks.fetch.mockResolvedValue({json:async()=>({day:'2026-10-13',sources:[],runs:[],reviews:[item],review_count:1,digest:null})});});
 it('requires independent situs evidence and submits a bound inactive review',async()=>{
- render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><DailyLists/></QueryClientProvider>);
+ render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><ReviewControl item={item} refresh={async()=>undefined}/></QueryClientProvider>);
  const save=await screen.findByRole('button',{name:'Save verified association'});
  expect(save).toBeDisabled();
  fireEvent.change(screen.getByLabelText('Verified property street address'),{target:{value:'1 Verified Site'}});
