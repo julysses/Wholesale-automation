@@ -38,3 +38,11 @@ test('oversized evidence is rejected without truncation', async () => {
   p.records_sha256 = await sha256(canonicalJSON(p.records));
   assert.equal((await preflight(p, now, p.coverage_complete ? coverage() : undefined)).valid, false);
 });
+
+test('tax snapshots preserve review-only provenance and cannot claim current payoff or completeness', async () => {
+ const p=fixture();p.source_key='tx-dallas-tax_delinquent';p.source.list_type='tax_delinquent';p.status='partial';p.status_reason='Snapshot requires review';p.coverage_complete=false;p.window_start='2026-10-12';p.window_end='2026-10-13';p.source_as_of='2026-10-12';
+ p.records[0].raw={snapshot_date:p.source_as_of,snapshot_only:true,identity_verified:false};
+ p.records_sha256=await sha256(canonicalJSON(p.records));assert.equal((await preflight(p,now)).valid,true);
+ p.records[0].amount_owed=100;p.records[0].amount_type='tax_due';p.records_sha256=await sha256(canonicalJSON(p.records));assert.equal((await preflight(p,now)).valid,false);
+ p.records[0].amount_owed=null;p.records_sha256=await sha256(canonicalJSON(p.records));p.coverage_complete=true;assert.equal((await preflight(p,now,coverage())).valid,false);
+});

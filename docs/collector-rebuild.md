@@ -64,3 +64,12 @@ No scheduler was installed this session. All sources remain disabled. Production
 ## Resumed October 13 investigation
 
 Dallas total changed from 479 to 490 during pagination; pass stopped as incomplete. Collin one traversal returned 164 entries in the filing window across seven pages, with 163 distinct displayed texts. Stable document IDs and complete notice review remain open; these are not verified new leads. The Collin calendar procedure and detailed evidence are in collector-coverage-ledger.md. No trace spend, ingestion, schedule or production mutation occurred.
+
+
+## October 13 — tax collectors and deployed ingestion shell
+
+Implemented official-link tax ZIP fetcher, fixed-width Dallas/Collin parsers, integer-cent control reconciliation, bounded manifests, and scoped HTTP delivery with durable local retry journal. See `docs/county-tax-collectors.md`. Full archives yielded30,516Dallas and9,182Collin review candidates; all81batches validated. Counts are not verified new leads.10Python parser/security tests and23Node collector/preflight/coverage/delivery tests passed. Collin full fetch-discover-download-parse run passed with matching archive hash. Dallas full archive was downloaded and parsed; fetch-wrapper live check remains pending. No county records delivered yet.
+
+Deployed rehearsal `daily-list-ingest` Edge version1, function2967097e-01a8-4559-8543-324ba0d85354, bundle2dc68bfca73dacb05537c284c135fc8d13c569d1c59f4581ad67aa82812e1f13. Body contains explicit hashed/scoped/expiring token authentication; platform JWT check is off to use that custom credential. Exact unauthenticated POST returned503ingest_not_configured, confirming fail-closed missing secrets. Sources remain disabled. Local CLI sign-in was requested because MCP cannot configure Edge secrets; owner reports browser sign-in, CLI still needs authorization. No production or live outreach change.
+
+Private working evidence: `/Users/juliodominguez/Documents/Codex/2026-10-13/resume-wholesaleos-from-docs-start-here/work/county-sources/`. Dallas run68e93ec1-6e54-4c66-a96b-bd30035de6b7; initialCollin rune3616157-5607-494f-93fa-f06939b8f25a; verifiedfetchCollin run892910fa-9b11-4467-993a-d98ae083a8ac. Use only one Collin snapshot run for eventual delivery; preserve originals and replay exact payloads. Tax collectors intentionally leave account/property review incomplete.
