@@ -1,6 +1,6 @@
 # WholesaleOS — new-chat handoff
 
-Updated October 13, 2026, America/Chicago, after resuming collector work. Continue from the latest checkpoint below.
+Updated October 13, 2026, America/Chicago. Current summary and next steps below control; dated entries later in this file preserve historical evidence and may describe states that have since changed.
 
 ## Resume objective and checkout
 
@@ -9,7 +9,7 @@ Continue preparing WholesaleOS for production, beginning with the unfinished Dal
 - Local repository: `/Users/juliodominguez/Documents/Codex/2026-09-28/make-sure-to-review-my-wholesale/work/wholesale-launch-prep`
 - GitHub: https://github.com/julysses/Wholesale-automation
 - Branch: `codex/dallas-collin-launch-prep`
-- Prior handoff commit: `24357e0`, pulled and verified READY on resume. Latest collector coverage update is in this commit; see the final checkpoint entry and `docs/collector-coverage-ledger.md`.
+- Latest verified implementation: `de0ddf407cf1f871f2771db648d49fd07228c90f`; all PR checks passed. This documentation update records the subsequent browser acceptance. See `docs/collector-coverage-ledger.md` for complete-run requirements.
 - Draft PR #20: https://github.com/julysses/Wholesale-automation/pull/20
 - Production/base branch: `claude/ai-wholesaling-agency-KkDF1`
 - Pull before updates and commit/push each logical update. Keep this handoff and detailed checkpoint accurate. No subagents unless explicitly authorized by user or applicable instructions.
@@ -18,7 +18,7 @@ Continue preparing WholesaleOS for production, beginning with the unfinished Dal
 
 1. Use PropStream directly through computer use. Account is signed in in Chrome; verify fresh tab inventory in the next chat.
 2. **Maximum authorized tracing spend: the existing $50 prepaid balance TOTAL.** No refill, card fallback, auto-reload, upgrade, or recurring replenishment. Latest $50 authorization supersedes the earlier free-only answer. This session spent **$0** and submitted no trace orders. Verify live balance and each exact quote; reserve uncertain orders against the cap and reconcile before retrying.
-3. No operating collector schedule exists. Prior task was unfinished. Rebuild and verify it; do not ask the owner to find an already-working schedule. Check residual cloud Tasks before eventually installing duplicates.
+3. Saved daily05:00Central heartbeat `wholesaleos-dallas-and-collin-collection` exists and is PAUSED. No accepted unattended collector operates. Update this definition rather than installing a duplicate; only activate after the remaining acceptance gates.
 4. User signed into the stable rehearsal preview. Login should be verified, not unnecessarily requested again.
 5. Release remains draft-only; do not promote production, activate outreach, start paid model workers, or message actual sellers as a shortcut to readiness. Human sets real offer prices and approves real terms.
 
@@ -28,7 +28,7 @@ Continue preparing WholesaleOS for production, beginning with the unfinished Dal
 - Rehearsal Supabase: `tbhwxgfzbiaqjurghntj`, name `wholesale-restore-rehearsal-20261008`.
 - Production Supabase: `dvzhzlipbwzzcliujzyz`; production https://wholesale-automation.vercel.app . Production was not modified in this session.
 - Vercel project `prj_ZRURRXQ1GbBiIUBtmGFiYZdVMNgd`, team slug `julysses-projects`.
-- Last verified READY deployment: `dpl_9vUGWepiWnTVsYUvPNxyckX5w22b`, code `af68671`. The later c4fc81b push is verified, but its deployment was not inspected.
+- Browser identity acceptance used READY deployment `dpl_8qFFmftAhTHmQP6tYA8eK1PfUb4f` at `e567b3c`. Subsequent `de0ddf4` changed only helper/tests/docs; GitHub reports its Vercel deployment and all CI checks passed.
 - Preview branch has matching rehearsal Supabase URL/public/service credentials. Approved earlier; do not request that permission again. Eight preview flags are false: SMS_LIVE_ENABLED, EMAIL_LIVE_ENABLED, AI_CALLING_LIVE_ENABLED, SMS_NURTURE_ENABLED, AUTO_SKIP_TRACE, LIST_LOT_ROUTING_ENABLED, LIST_SCORING_ENABLED, LIST_DIGEST_ENABLED.
 
 ## Verified work this session
@@ -50,11 +50,11 @@ Continue preparing WholesaleOS for production, beginning with the unfinished Dal
 
 1. Read `docs/production-readiness.md`, `docs/collector-rebuild.md`, then the latest sections of `docs/dallas-collin-launch-prep-checkpoint.md`.
 2. Verify Git state, current preview deployment, and browser sessions. Use computer-use tools for browser actions; never extract browser auth tokens or hidden state. Keep secrets out of chat/files/Git.
-3. Finish the supervised foreclosure collection procedures. Dallas Advanced Search → Department Foreclosures → Recorded Date Range September14–October13 inclusive, clear both sale-date bounds. Observed479 indexed notices, only first50 inspected. URL: https://dallas.tx.publicsearch.us/results?department=FC&recordedDateRange=20260914%2C20261013&searchType=advancedSearch . Quick Search defaults to Sale Date; do not use that as a filing window. Verify filing stamps, all pages, stable document IDs, property identity and current status. These479 are candidates, not verified new leads.
-4. Collin source https://apps2.collincountytx.gov/ForeclosureNotices/ exposes Filed Date Start/End separately from Sale Dates, with pagination and individual notices. Complete coverage and extraction remain unverified. Stop at access restrictions. Keep partial/blocked/failed outcomes honest.
-5. Produce reviewed manifests; run `node pipeline/collectors/preflight.mjs /path/to/manifest.json /path/to/coverage.json`. Verify source-scoped Edge delivery and durable receipt in rehearsal, replay/lost-response handling, staged records and review tasks. No collection runner/delivery path is yet accepted.
-6. Build and verify PropStream eligible-batch selection, quote/budget ledger and CRM result reconciliation before spending. Use existing usable contacts first; no blind retracing of historical lists. Discovery never supplies outreach consent.
-7. Verify missing-worker alerts and owner digest; then install recurring schedules after verified delivery. PRD05:00–05:35Central times and07:30digest are proposed, not installed. No scheduler was created this session.
+3. Finish supervised foreclosure collection. Dallas has two durable sorted index passes of490 unique IDs (250+240 each), recorded September14–October13. Private evidence: `work/county-sources/dallas-two-pass-visible-index.json` under this chat directory. No Dallas notice has completed all-page review/delivery. Open document330724568 /202600002461 has five pages and an indexed October6 sale, already past; do not infer current active distress. Use Recorded Date, not Quick Search Sale Date. Verify every notice page, filing stamp, identity and current status before declaring coverage.
+4. Collin notice4158237 was reviewed across four pages and delivered as partial run90ccda04-b804-44a0-8cf5-3ad97484a12c. Notice/deed discrepancy remains held. Four page images and hashes are saved privately in `work/county-sources/collin-notice-4158237/`. Other notices and the second complete inventory traversal remain outstanding.
+5. Tax collectors and scoped rehearsal delivery are accepted technically: Dallas30,516 and Collin9,182 real review records,81batches. Audited identity-review form and synthetic cross-source CRM dedupe passed live. Resolve actual records only with independent situs/current-status evidence. Use `pipeline/collectors/deliver_keychain.py` for exact manifest replay; never redeliver equivalent snapshots under new run IDs. Complete-coverage preflight still requires a coverage ledger; no full county coverage claim is accepted.
+6. Complete PropStream eligible-batch selection, exact quote/budget ledger and CRM result reconciliation before spending. Use existing usable contacts first; no blind retracing of historical lists. Discovery never supplies outreach consent. No paid tracing occurred.
+7. Verify missing-worker alerts and actual owner-digest delivery before activating the existing paused schedule. Assigned incident tasks and generated digest are proven; external digest delivery is not. Five clean supervised foreclosure runs per county and14 unattended days cannot be inferred from successful tests.
 8. Continue remaining matrix gates: offer property-change/retry UI, final approved delivery envelope/dispatch, lot routing/reassignment, valuation concurrency recovery, controlled STOP/email unsubscribe, Meta/Retell acceptance, buyer workflows, recovery/access and final production rollout approval. Five clean supervised foreclosure runs per county and14 unattended days still required; do not fabricate elapsed observation.
 
 ## Other useful fixtures and contact permissions
@@ -66,7 +66,7 @@ Continue preparing WholesaleOS for production, beginning with the unfinished Dal
 ## Evidence and tools
 
 - Rehearsal screenshot `/tmp/wholesale-offer-rehearsal-verified.png` (temporary; may not survive restart). Durable evidence/IDs are recorded above and in checkpoint.
-- Chrome id3 in previous session; handles/tab IDs may be stale. Inventory fresh. Rehearsal, PropStream Account and Dallas results tabs were left open. Browser sessions do not imply permission to buy other services.
+- Most recent browser was Chrome id1; handles/tab IDs may be stale. Inventory fresh. Rehearsal, PropStream Account and Dallas results tabs were left open. Browser sessions do not imply permission to buy other services.
 - Python test runtime: `/Users/juliodominguez/Documents/Codex/2026-09-28/i-x20/work/launch-venv/bin/python`.
 - Pipeline targeted tests: `node --test pipeline/tests/collector-preflight.test.mjs pipeline/tests/collector-coverage.test.mjs pipeline/tests/contract.test.mjs pipeline/tests/collector-source-migration.test.mjs`.
 - Supabase CLI: `/Users/juliodominguez/.npm/_npx/aa8e5c70f9d8d161/node_modules/@supabase/cli-darwin-arm64/bin/supabase`. Read applicable skill before Supabase work. CLI startup needs permission for its telemetry write. Use exact migration reconciliation, not bulk db push.
@@ -131,3 +131,14 @@ Full local verification at e567b3c:843backend tests,198frontend tests and123pipe
 Dallas full official fetch-wrapper acceptance passed with identical archive hash/counts. Verification-only runb020ad3b-f99d-4f65-a941-bcc0355d27c2 must NOT be delivered. See county-tax-collectors.md for repeatable commands.
 
 Inspected the three SECURITY DEFINER advisories: both administrative setters call `private.is_approved_admin()` (requires non-null auth.uid plus approved admin profile); `is_approved()` returns only the calling user's approved status. A rollback-only authenticated non-member test was rejected by both setters and both predicates returned false. These are intentional guarded entry points, not automatically exploitable merely because the advisor flags them. Separate signed-in second-role browser acceptance and auth configuration advisories remain open.
+
+
+## October 13 — deployed CRM association accepted; current resume boundary
+
+The signed-in stable preview completed the new audited review form for synthetic tax run `b86e3276-a528-4ff3-8568-d5bd48b8bf49`, associating it with existing QA lead `7e62af51-0dc5-4d08-bfbe-2627039f13e5` / property `d444c637-d2fc-4e59-be6e-cc9caeb98fe7`. The receipt showed **zero new leads and one stacked observation**. SQL confirmed original staged street/city remained null, exactly one review event, both synthetic distress signals inactive, SMS/email sequences false, and zero tracing requests. This proves the deployed form/API/database handoff, not a real property identity or qualified opportunity. No real tax record was promoted.
+
+Real unresolved evidence totals39,699 records:39,698 tax records plus one Collin notice. Two synthetic records are resolved and must remain excluded from business opportunity counts. Screenshot saved in this chat's `outputs/rehearsal-crm-receipts.jpg`; raw notice/index evidence stays private outside Git.
+
+At implementation commit `de0ddf4`, GitHub backend, frontend, pipeline contracts/isolated SQL, real PostgreSQL ingestion/offer contention, and Vercel checks all passed. Local regression totals remain843backend,198frontend,123pipeline and13Python collector tests. Existing lint/bundle warnings are recorded above.
+
+Full launch remains **NO-GO**: complete foreclosure collection/current identity review, real provider reconciliation, controlled consent/STOP and unsubscribe acceptance, external digest/missing-worker monitoring, remaining recovery/operator gates, five clean county runs and14 unattended days are still required. The saved heartbeat remains PAUSED. Production was not changed, no paid trace order was submitted, and no seller message was sent. Resume from these remaining gates; do not repeat completed secret setup, tax ingestion or synthetic association.

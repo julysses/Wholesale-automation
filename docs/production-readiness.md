@@ -112,3 +112,14 @@ Full local verification at e567b3c:843backend tests,198frontend tests and123pipe
 Dallas full official fetch-wrapper acceptance passed with identical archive hash/counts. Verification-only runb020ad3b-f99d-4f65-a941-bcc0355d27c2 must NOT be delivered. See county-tax-collectors.md for repeatable commands.
 
 Inspected the three SECURITY DEFINER advisories: both administrative setters call `private.is_approved_admin()` (requires non-null auth.uid plus approved admin profile); `is_approved()` returns only the calling user's approved status. A rollback-only authenticated non-member test was rejected by both setters and both predicates returned false. These are intentional guarded entry points, not automatically exploitable merely because the advisor flags them. Separate signed-in second-role browser acceptance and auth configuration advisories remain open.
+
+
+## October 13 — deployed CRM association accepted; current resume boundary
+
+The signed-in stable preview completed the new audited review form for synthetic tax run `b86e3276-a528-4ff3-8568-d5bd48b8bf49`, associating it with existing QA lead `7e62af51-0dc5-4d08-bfbe-2627039f13e5` / property `d444c637-d2fc-4e59-be6e-cc9caeb98fe7`. The receipt showed **zero new leads and one stacked observation**. SQL confirmed original staged street/city remained null, exactly one review event, both synthetic distress signals inactive, SMS/email sequences false, and zero tracing requests. This proves the deployed form/API/database handoff, not a real property identity or qualified opportunity. No real tax record was promoted.
+
+Real unresolved evidence totals39,699 records:39,698 tax records plus one Collin notice. Two synthetic records are resolved and must remain excluded from business opportunity counts. Screenshot saved in this chat's `outputs/rehearsal-crm-receipts.jpg`; raw notice/index evidence stays private outside Git.
+
+At implementation commit `de0ddf4`, GitHub backend, frontend, pipeline contracts/isolated SQL, real PostgreSQL ingestion/offer contention, and Vercel checks all passed. Local regression totals remain843backend,198frontend,123pipeline and13Python collector tests. Existing lint/bundle warnings are recorded above.
+
+Full launch remains **NO-GO**: complete foreclosure collection/current identity review, real provider reconciliation, controlled consent/STOP and unsubscribe acceptance, external digest/missing-worker monitoring, remaining recovery/operator gates, five clean county runs and14 unattended days are still required. The saved heartbeat remains PAUSED. Production was not changed, no paid trace order was submitted, and no seller message was sent. Resume from these remaining gates; do not repeat completed secret setup, tax ingestion or synthetic association.
