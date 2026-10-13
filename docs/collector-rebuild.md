@@ -53,8 +53,8 @@ The offline validator currently supports the two foreclosure procedures. It chec
 - [x] Add coverage-ledger checks for total drift, repeated/missing pages, filing-window errors and unresolved documents (34 targeted tests passed).
 - [ ] Complete Dallas/Collin pagination, document extraction and filing-stamp validation.
 - [ ] Produce one supervised manifest per county; independently review county/property identity and completeness.
-- [ ] Verify the source-scoped secret delivery path and durable Edge acknowledgement in rehearsal. Keep keys outside prompts, files and logs.
-- [ ] Replay the same run safely and verify uncertain-response reconciliation, staged records and review tasks.
+- [x] Verify the source-scoped secret delivery path and durable Edge acknowledgement in rehearsal. Scoped Keychain secrets, HTTP202acceptance, HTTP200exact replay and SQL counts verified October13.
+- [x] Replay the same run safely and verify uncertain-response reconciliation, staged records and review tasks. Live exact replay and assigned partial-run tasks verified; lost-response behavior covered by delivery-client tests.
 - [ ] Verify failure/missing-run alerts and owner digest delivery independently of the collection worker.
 - [ ] Install schedules only after the preceding delivery path works; check for residual cloud Tasks before creating duplicates. The PRD times remain proposed, not installed.
 - [ ] Complete five supervised clean foreclosure runs per county, then the agreed 14-day unattended observation window.
