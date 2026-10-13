@@ -1,7 +1,7 @@
 import { OfferHistory } from './OfferHistory';
 import { useEffect, useState } from 'react';
 import { useProfile } from '@/hooks/useProfile';
-import { pendingOffer, readOffer, writeOffer, type OfferDecision, type OfferSnapshot, type OfferTerms } from '@/lib/offerReview';
+import { pendingOffer, legacyOfferApproval, reconcileLegacyOffer, readOffer, writeOffer, type OfferDecision, type OfferSnapshot, type OfferTerms } from '@/lib/offerReview';
 
 const empty:OfferTerms={price:'',closing_date:'',expires_at:'',recipient:'',channel:'manual',conditions:''};
 export function OfferReview({leadId}:{leadId:string}) {
@@ -15,6 +15,7 @@ function Review({actor,lead}:{actor:string;lead:string}) {
  const [snapshot,setSnapshot]=useState<OfferSnapshot|null>(null);
  const [terms,setTerms]=useState<OfferTerms>(empty);
  const [pending,setPending]=useState<OfferDecision|null>(null);
+ const [legacy,setLegacy]=useState<string|null>(null);
  const [busy,setBusy]=useState(true);
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
@@ -25,7 +26,7 @@ function Review({actor,lead}:{actor:string;lead:string}) {
  useEffect(()=>{
   let active=true;
   async function load(){
-   try {const saved=pendingOffer(actor,lead);const current=await readOffer(lead);if(active){setPending(saved);accept(current);}}
+   try {const old=legacyOfferApproval(actor,lead);const saved=old?null:pendingOffer(actor,lead);const current=await readOffer(lead);if(active){setLegacy(old);setPending(saved);accept(current);}}
    catch(e){if(active)setError(e instanceof Error?e.message:'Review could not be loaded');}
    finally{if(active)setBusy(false);}
   }
@@ -33,12 +34,19 @@ function Review({actor,lead}:{actor:string;lead:string}) {
  },[actor,lead]);
  const refresh=async()=>{
   setBusy(true);setError('');setNotice('');setConfirmed(false);
-  try{setPending(pendingOffer(actor,lead));accept(await readOffer(lead));}
+  try{const old=legacyOfferApproval(actor,lead);setLegacy(old);setPending(old?null:pendingOffer(actor,lead));accept(await readOffer(lead));}
   catch(e){setSnapshot(null);setError(e instanceof Error?e.message:'Readback failed');}
   finally{setBusy(false);}
  };
+ const recoverLegacy=async()=>{
+  if(!legacy||busy)return;
+  setBusy(true);setError('');setNotice('');setConfirmed(false);
+  try{accept(await reconcileLegacyOffer(actor,lead,legacy));setLegacy(null);setNotice('Current server record loaded. Obsolete local retry removed; no approval was submitted and no server history was changed.');}
+  catch(e){setError(e instanceof Error?e.message:'Recovery could not be confirmed');}
+  finally{setBusy(false);}
+ };
  const submit=async(action:OfferDecision['action'])=>{
-  if(!snapshot || busy)return;
+  if(!snapshot || busy || legacy)return;
   setBusy(true);setError('');setNotice('');setConfirmed(false);
   try {
    let decision=pending;
@@ -65,12 +73,13 @@ function Review({actor,lead}:{actor:string;lead:string}) {
  const saved=snapshot?.revision?.terms;
  const dirty=JSON.stringify(terms)!==JSON.stringify(saved??empty);
  const expired=saved ? Date.parse(saved.expires_at)<=now : false;
- const canDecide=!!snapshot?.binding_valid&&!!saved&&!busy&&!pending&&!error&&!dirty&&!expired;
+ const canDecide=!!snapshot?.binding_valid&&!!saved&&!busy&&!pending&&!legacy&&!error&&!dirty&&!expired;
  return <section className="space-y-3" aria-label="Human offer review">
   <p>Save exact terms, review the saved record, then approve. This screen never sends an offer.</p>
   {error&&<p role="alert" className="text-red-700">{error}</p>}
   {notice&&<p role="status">{notice}</p>}
   <button className="rounded border px-3 py-2 disabled:opacity-50" type="button" onClick={()=>void refresh()} disabled={busy}>Refresh saved record</button>
+  {legacy&&<div role="alert"><p>An older approval retry cannot be resent because it does not identify the reviewed content. Review the saved status and history below before clearing this local retry.</p><button type="button" className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy||!snapshot} onClick={()=>void recoverLegacy()}>Reload saved status and clear obsolete retry</button></div>}
   {pending&&<div role="alert"><p>An unconfirmed {pending.action} is pending. Reference: {pending.request_id}. Recover it before editing.</p><button className="rounded border px-3 py-2 disabled:opacity-50" type="button" disabled={busy||!snapshot} onClick={()=>void submit(pending.action)}>Retry exact decision</button></div>}
   {snapshot&&<>
    <p>Review version {snapshot.version} · {snapshot.approved&&!expired?'Approved':expired?'Expired':'Not approved'}</p>
@@ -83,7 +92,7 @@ function Review({actor,lead}:{actor:string;lead:string}) {
     <dt>Revision</dt><dd>{snapshot.revision?.id}</dd><dt>Recorded by</dt><dd>{snapshot.revision?.operator_id}</dd>
     {snapshot.approval&&<><dt>Approval recorded by</dt><dd>{snapshot.approval.operator_id} at {snapshot.approval.created_at}</dd></>}
    </dl>}
-   <fieldset disabled={busy||!!pending} className="grid gap-2">
+   <fieldset disabled={busy||!!pending||!!legacy} className="grid gap-2">
     <legend>Human-entered terms</legend>
     <label>Offer price<input className="block w-full rounded border px-3 py-2" aria-label="Offer price" value={terms.price} onChange={e=>{setTerms({...terms,price:e.target.value});setConfirmed(false);}}/></label>
     <label>Closing date (YYYY-MM-DD)<input className="block w-full rounded border px-3 py-2" aria-label="Closing date" type="text" placeholder="YYYY-MM-DD" maxLength={10} value={terms.closing_date} onChange={e=>{setTerms({...terms,closing_date:e.target.value});setConfirmed(false);}}/></label>
@@ -96,7 +105,7 @@ function Review({actor,lead}:{actor:string;lead:string}) {
    {dirty&&saved&&<p>Unsaved edits cannot be approved. Save a new revision or refresh to restore saved terms.</p>}
    <label><input type="checkbox" checked={confirmed} disabled={!canDecide} onChange={e=>setConfirmed(e.target.checked)}/> I reviewed the exact saved property, message preview, price, recipient, channel, dates and conditions.</label>
    <button className="rounded border px-3 py-2 disabled:opacity-50" type="button" disabled={!canDecide||!confirmed||snapshot.approved} onClick={()=>void submit('approve')}>Approve saved terms</button>
-   <button className="rounded border px-3 py-2 disabled:opacity-50" type="button" disabled={busy||!!pending||!snapshot.approval||!!error} onClick={()=>void submit('revoke')}>Revoke approval</button>
+   <button className="rounded border px-3 py-2 disabled:opacity-50" type="button" disabled={busy||!!pending||!!legacy||!snapshot.approval||!!error} onClick={()=>void submit('revoke')}>Revoke approval</button>
    <OfferHistory key={`${lead}:${snapshot.version}`} lead={lead}/>
   </>}
  </section>;

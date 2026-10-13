@@ -16,6 +16,21 @@ export function pendingOffer(actor:string,lead:string):OfferDecision|null {
  const raw=sessionStorage.getItem(key(actor,lead));
  return raw ? decisionSchema.parse(JSON.parse(raw)) : null;
 }
+// Older approval retries lack the displayed-content reference required by v2.
+// Never upgrade or resend them automatically; reconcile server state first.
+const legacyApprovalSchema=z.object({request_id:z.string().uuid(),revision_id:z.string().uuid(),expected_version:z.number().int().nonnegative(),action:z.literal('approve')}).strict();
+export function legacyOfferApproval(actor:string,lead:string):string|null {
+ const raw=sessionStorage.getItem(key(actor,lead));
+ if(!raw)return null;
+ try{return legacyApprovalSchema.safeParse(JSON.parse(raw)).success?raw:null;}catch{return null;}
+}
+export async function reconcileLegacyOffer(actor:string,lead:string,expectedRaw:string):Promise<OfferSnapshot>{
+ if(legacyOfferApproval(actor,lead)!==expectedRaw)throw new Error('Pending decision changed. Refresh before recovering.');
+ const current=await readOffer(lead);
+ if(legacyOfferApproval(actor,lead)!==expectedRaw)throw new Error('Pending decision changed. Refresh before recovering.');
+ sessionStorage.removeItem(key(actor,lead));
+ return current;
+}
 export async function readOffer(lead:string):Promise<OfferSnapshot> {
  const value=snapshotSchema.parse(await (await apiFetch(`/api/operations/offers/${lead}`)).json());
  if(value.lead_id!==lead)throw new Error('Offer readback returned a different lead.');

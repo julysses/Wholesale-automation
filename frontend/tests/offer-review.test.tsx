@@ -9,7 +9,7 @@ const mocks=vi.hoisted(()=>({fetch:vi.fn(),admin:true}));
 vi.mock('@/lib/api',async original=>({...await original<typeof import('@/lib/api')>(),apiFetch:mocks.fetch}));
 vi.mock('@/hooks/useProfile',()=>({useProfile:()=>({profile:{id:actor},isAdmin:mocks.admin,loading:false,error:null})}));
 import { OfferReview } from '@/components/offers/OfferReview';
-import { pendingOffer,writeOffer,type OfferDecision } from '@/lib/offerReview';
+import { pendingOffer,writeOffer,reconcileLegacyOffer,type OfferDecision } from '@/lib/offerReview';
 const terms={price:'125000.00',closing_date:'2099-12-31',expires_at:'2099-10-01T00:00:00Z',recipient:'test@example.invalid',channel:'email' as const,conditions:'Subject to reviewed contract'};
 const base={lead_id:lead,version:1,revision:{id:revision,lead_id:lead,operator_id:actor,action:'draft',expected_version:0,revision_id:revision,terms,created_at:'2026-10-12T00:00:00Z'},approval:null,approved:false,outbound_enabled:false,binding_valid:true,content:{revision_id:revision,property_snapshot:{property_address:'SYNTHETIC PROPERTY',city:'Dallas',state:'TX',zip_code:null},renderer_version:'offer-summary-v1',subject:'Offer terms',body:'SYNTHETIC PROPERTY — $125000.00',created_at:'2026-10-12T00:00:00Z'}};
 beforeEach(()=>{sessionStorage.clear();vi.clearAllMocks();mocks.admin=true;mocks.fetch.mockResolvedValue({json:async()=>base});});
@@ -127,4 +127,33 @@ it.each(['2099-02-29','2099-04-31','12/31/2099',''])('rejects invalid or ambiguo
  fireEvent.click(screen.getByRole('button',{name:'Save new revision'}));
  await screen.findByText('Enter a real closing date as YYYY-MM-DD.');
  expect(mocks.fetch.mock.calls.every(call=>!call[1])).toBe(true);
+});
+
+
+it('reconciles a legacy approval locally without resending or changing server history',async()=>{
+ const old=JSON.stringify({request_id:crypto.randomUUID(),revision_id:revision,expected_version:1,action:'approve'});
+ sessionStorage.setItem(`hilltop.offer-review.v1.${actor}.${lead}`,old);
+ render(<OfferReview leadId={lead}/>);
+ await screen.findByText('$125000.00');
+ expect(screen.getByLabelText('Offer price')).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Approve saved terms'})).toBeDisabled();
+ fireEvent.click(screen.getByRole('button',{name:'Reload saved status and clear obsolete retry'}));
+ await screen.findByText(/Obsolete local retry removed/);
+ expect(pendingOffer(actor,lead)).toBeNull();
+ expect(mocks.fetch.mock.calls.every(call=>!call[1])).toBe(true);
+ expect(screen.getByLabelText('Offer price')).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Approve saved terms'})).toBeDisabled();
+});
+
+it('keeps a legacy retry if server reconciliation fails or local pending state changes',async()=>{
+ const key=`hilltop.offer-review.v1.${actor}.${lead}`;
+ const old=JSON.stringify({request_id:crypto.randomUUID(),revision_id:revision,expected_version:1,action:'approve'});
+ sessionStorage.setItem(key,old);
+ mocks.fetch.mockRejectedValueOnce(new Error('Offline'));
+ await expect(reconcileLegacyOffer(actor,lead,old)).rejects.toThrow('Offline');
+ expect(sessionStorage.getItem(key)).toBe(old);
+ const replacement=JSON.stringify({request_id:crypto.randomUUID(),revision_id:revision,expected_version:1,action:'approve',reviewed_content_id:revision});
+ mocks.fetch.mockImplementationOnce(async()=>{sessionStorage.setItem(key,replacement);return {json:async()=>base};});
+ await expect(reconcileLegacyOffer(actor,lead,old)).rejects.toThrow('Pending decision changed');
+ expect(sessionStorage.getItem(key)).toBe(replacement);
 });
