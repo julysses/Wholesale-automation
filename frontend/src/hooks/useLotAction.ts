@@ -18,7 +18,7 @@ export function useLotAction(actor:string){
    sessionStorage.removeItem(storageKey);setPending(null);setNotice(message);
    await Promise.all(['lot-candidates','lot-inbox','land_leads','list-scoring'].map(key=>queries.invalidateQueries({queryKey:[key]})));
   }catch(e){
-   if(e instanceof ApiError&&e.status===409){sessionStorage.removeItem(storageKey);setPending(null);await queries.invalidateQueries({queryKey:['lot-candidates',actor]});}
+   if(e instanceof ApiError&&e.status===409){sessionStorage.removeItem(storageKey);setPending(null);await Promise.all(['lot-candidates','lot-inbox'].map(key=>queries.invalidateQueries({queryKey:[key,actor]})));}
    setError(e instanceof Error?e.message:'Lot action is unconfirmed. Retry its saved reference.');
   }finally{setBusy(false);}
  }

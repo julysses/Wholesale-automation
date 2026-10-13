@@ -50,11 +50,12 @@ def render_digest(summary):
         if not lots.get('owner_configured'):
             lines.append('A lead owner is not configured for automatic lot routing and recovery tasks.')
         for label, key, identity in [('Blocked routing', 'open_incidents', 'lead_id'),
-                                      ('Overdue receipt', 'overdue_receipts', 'handoff_id')]:
+                                      ('Overdue receipt', 'overdue_receipts', 'handoff_id'),
+                                      ('Stale or held handoff', 'stale_handoffs', 'handoff_id')]:
             entries = lots.get(key, [])
             lines.append(f"{label}: {len(entries)}.")
             for entry in entries[:100]:
-                lines.append(f"- {_text(entry.get(identity))}: {_text(entry.get('blocked', label))}; task {_text(entry.get('task_id'))}")
+                lines.append(f"- {_text(entry.get(identity))}: {_text(entry.get('blocked', entry.get('reasons', label)))}; task {_text(entry.get('task_id'))}")
             if len(entries) > 100:
                 lines.append('Additional lot incidents are available in the CRM; this email is truncated.')
     lines += ['', 'Top scored leads (stored evaluations; permission to contact must be checked separately):']

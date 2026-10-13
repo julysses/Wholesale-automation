@@ -261,3 +261,28 @@ async def lot_worker(authorization: str = Header(default='')):
         return await run_in_threadpool(process_lot_batch)
     except Exception:
         raise HTTPException(503, 'Lot routing is unconfirmed. Inspect durable handoffs and routing incidents.')
+
+class LotReconciliation(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    request_id: UUID
+    handoff_id: UUID
+    expected_version: int = Field(ge=0, strict=True)
+    action: Literal['hold', 'reaffirm']
+    evidence_hash: str = Field(pattern='^[a-f0-9]{64}$')
+    notes: str = Field(min_length=1, max_length=2000)
+
+@router.post('/api/operations/lists/lots/reconcile')
+async def reconcile_lot(body: LotReconciliation, request: Request):
+    actor = operator(request)
+    value = await rpc('reconcile_list_lot', {'p_id':str(body.request_id),'p_operator':actor,
+        'p_handoff':str(body.handoff_id),'p_version':body.expected_version,'p_action':body.action,
+        'p_evidence_hash':body.evidence_hash,'p_notes':body.notes})
+    if isinstance(value, dict) and value.get('blocked'):
+        raise HTTPException(409, 'Reconciliation conflicts with current evidence or a newer decision. Refresh the inbox and review again.')
+    event = value.get('event') if isinstance(value, dict) else None
+    expected = {'id':str(body.request_id),'handoff_id':str(body.handoff_id),'operator_id':actor,
+        'version':body.expected_version+1,'action':body.action,'evidence_hash':body.evidence_hash,'notes':body.notes}
+    if (not isinstance(event, dict) or any(event.get(key)!=item for key,item in expected.items())
+            or value.get('outreach_authorized') is not False):
+        raise HTTPException(503, 'Lot reconciliation is unconfirmed. Retry the same saved decision.')
+    return value

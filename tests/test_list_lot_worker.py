@@ -68,3 +68,9 @@ def test_digest_discloses_lot_holds_overdue_receipts_and_monitor_absence():
     assert 'Lot routing monitor is unavailable' in render_digest({})
     result=render_digest({'lot_routing_monitor':{'owner_configured':False,'open_incidents':[{'lead_id':'fixture','blocked':'lot_review_required'}],'overdue_receipts':[{'handoff_id':'receipt','task_id':'task'}]}})
     assert 'Blocked routing: 1' in result and 'Overdue receipt: 1' in result and 'lead owner is not configured for automatic lot routing' in result
+
+
+def test_digest_reports_stale_handoff_reasons_without_claiming_underwriting_completion():
+    result=render_digest({'lot_routing_monitor':{'owner_configured':True,'open_incidents':[],
+        'overdue_receipts':[],'stale_handoffs':[{'handoff_id':'receipt','task_id':'original-task','reasons':['destination_identity_conflict']}]}})
+    assert 'Stale or held handoff: 1' in result and 'destination_identity_conflict' in result and 'original-task' in result

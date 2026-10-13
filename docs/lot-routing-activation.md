@@ -31,3 +31,13 @@ Implementation is on the launch-preparation branch; production activation and si
 - Add/reconcile stale existing handoffs, durable valuation-save recovery, concurrent editing and validated underwriting inputs.
 - Establish independent missing-worker alerts; this monitor cannot prove its own scheduler is running.
 - Human pricing, compliance, provider/collector acceptance, buyer ranking and all other launch gates remain required.
+
+## Stale handoff reconciliation
+
+The inbox now compares the latest score and lot review, the full reviewed property snapshot, current lot classification, receiver approval and linked land identity (including known parcel/ZIP). Missing property links retain the original reviewed address in the inbox and remain blocked for review.
+
+Administrators can record a hold or reaffirm current evidence. Each immutable decision saves the reviewed evidence fingerprint, prior version, actor and notes. Reaffirmation requires an opened destination and a current qualifying score, matching positive lot review, approved receiver and matching land identity. Changed evidence or competing decisions cause a conflict; retries with the same request return the original decision without restoring it over a newer one.
+
+Original routing and receiving receipts remain unchanged. The inbox separates the original handoff evidence from the latest reconciliation evidence. Monitoring and owner digests include stale/held handoffs, even after receipt acknowledgement, and reopen the original follow-up task without creating another land record/task. These decisions do not modify land prices, seller contact permissions or certify completed underwriting.
+
+Signed-in acceptance remains required. This is a routing evidence review; downstream valuation completeness and exact offer approval/dispatch still require their own controls.

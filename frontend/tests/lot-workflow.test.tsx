@@ -73,3 +73,39 @@ it('accepts and acknowledges a worker handoff without attributing initiation to 
  expect(await screen.findByRole('status')).toHaveTextContent('Underwriting remains pending');
  expect(onOpen).toHaveBeenCalledWith(land,lead);
 });
+const reconciliation={version:0,evidence_hash:'b'.repeat(64),current:false,reaffirmable:true,reasons:['new_evidence_requires_review'],last_decision:null,latest_evaluation:{score:75},latest_review:{notes:'<script>unsafe()</script>'},property:{city:'Dallas'},destination:{city:'Dallas'}};
+it('requires reviewed notes and an opened destination before reaffirmation; preserves exact decision after lost response',async()=>{
+ const bodies:string[]=[];
+ mocks.fetch.mockImplementation(async(_path:string,init?:RequestInit)=>{
+  if(!init)return {json:async()=>({count:1,handoffs:[{...received,current:false,reconciliation}]})};
+  bodies.push(init.body as string);if(bodies.length===1)throw new Error('Reconciliation response lost');
+  const {request_id,expected_version,...fields}=JSON.parse(init.body as string);
+  return {json:async()=>({event:{id:request_id,operator_id:actor,version:expected_version+1,...fields},outreach_authorized:false})};
+ });
+ const first=render(mount(<LotInbox onOpen={vi.fn().mockResolvedValue(undefined)}/>));
+ expect(await screen.findByRole('button',{name:'Reaffirm reviewed evidence'})).toBeDisabled();
+ fireEvent.change(screen.getByLabelText(`Reconciliation notes for ${handoff}`),{target:{value:'Reviewed correction'}});
+ fireEvent.click(screen.getByLabelText(/I reviewed the current evidence/));
+ expect(screen.getByRole('button',{name:'Reaffirm reviewed evidence'})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Hold this handoff'})).toBeEnabled();
+ fireEvent.click(screen.getByRole('button',{name:'Open linked land record'}));
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Reaffirm reviewed evidence'})).toBeEnabled());
+ expect(document.querySelector('script')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Reaffirm reviewed evidence'}));await screen.findByText('Reconciliation response lost');first.unmount();
+ render(mount(<LotInbox onOpen={vi.fn().mockResolvedValue(undefined)}/>));fireEvent.click(await screen.findByRole('button',{name:'Retry saved lot action'}));
+ expect(await screen.findByRole('status')).toHaveTextContent('Reconciliation decision 1 recorded');expect(bodies[0]).toBe(bodies[1]);
+ const body=JSON.parse(bodies[0]);expect(body.handoff_id).toBe(handoff);expect(body.evidence_hash).toBe(reconciliation.evidence_hash);expect(body.expected_version).toBe(0);
+});
+it('assigned non-admin receiver can inspect reconciliation evidence but cannot decide',async()=>{
+ mocks.admin=false;mocks.fetch.mockResolvedValue({json:async()=>({count:1,handoffs:[{...received,reconciliation}]})});
+ render(mount(<LotInbox onOpen={vi.fn()}/>));await screen.findByText('Current evidence for reconciliation');
+ expect(screen.queryByRole('button',{name:'Hold this handoff'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Reaffirm reviewed evidence'})).toBeNull();
+});
+it('cannot reaffirm when current reviewed evidence is incomplete',async()=>{
+ mocks.fetch.mockResolvedValue({json:async()=>({count:1,handoffs:[{...received,reconciliation:{...reconciliation,reaffirmable:false}}]})});
+ render(mount(<LotInbox onOpen={vi.fn().mockResolvedValue(undefined)}/>));await screen.findByRole('button',{name:'Hold this handoff'});
+ fireEvent.change(screen.getByLabelText(`Reconciliation notes for ${handoff}`),{target:{value:'Investigating'}});fireEvent.click(screen.getByLabelText(/I reviewed the current evidence/));
+ fireEvent.click(screen.getByRole('button',{name:'Open linked land record'}));await waitFor(()=>expect(screen.getByRole('button',{name:'Hold this handoff'})).toBeEnabled());
+ expect(screen.getByRole('button',{name:'Reaffirm reviewed evidence'})).toBeDisabled();
+});

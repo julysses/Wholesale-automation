@@ -20,6 +20,8 @@ export async function verifyLotConcurrency(adminURL:string){
   await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261012235926_list_lot_handoff.sql',import.meta.url)));
   await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261013004341_list_lot_receiving_evidence.sql',import.meta.url)));
   await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261013013234_list_lot_worker.sql',import.meta.url)));
+  await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261013025354_list_lot_reconciliation.sql',import.meta.url)));
+  await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261013030331_list_lot_missing_property.sql',import.meta.url)));
   await admin`insert into public.profiles(id,role,status) values(${actor},'admin','approved'),(${owner},'user','approved')`;
   await admin`insert into public.leads(id,property_address,city) values(${lead},'SYNTHETIC LOT','Dallas')`;
   await admin`insert into wholesale_ingest.properties(id,state,county,address_std,city,lead_id) values(${property},'TX','Dallas','SYNTHETIC LOT','Dallas',${lead})`;
@@ -81,7 +83,25 @@ export async function verifyLotConcurrency(adminURL:string){
   assert(!repeat.value.outcomes.some((r:{lead_id:string})=>r.lead_id===workerLead),'Rerun must exclude saved handoff');
   const [monitor]=await one`select public.monitor_list_lots() value`;
   assert(Array.isArray(monitor.value.open_incidents)&&Array.isArray(monitor.value.overdue_receipts),'Restricted role must persist monitor results');
+  // Exact-version administrator decisions contend on the same immutable handoff.
+  const [stateRow]=await one`select wholesale_ingest.lot_handoff_state(${automatic.id}) value`;
+  const state=stateRow.value,decisionOne=crypto.randomUUID(),decisionTwo=crypto.randomUUID();
+  await admin.unsafe('BEGIN');locked=true;await admin`select id from wholesale_ingest.lot_handoffs where id=${automatic.id} for update`;
+  const decisions=[one`select public.reconcile_list_lot(${decisionOne},${actor},${automatic.id},${state.version},'hold',${state.evidence_hash},'Synthetic concurrent review') value`.execute(),two`select public.reconcile_list_lot(${decisionTwo},${actor},${automatic.id},${state.version},'reaffirm',${state.evidence_hash},'Synthetic concurrent review') value`.execute()];
+  await overlapping();await admin.unsafe('COMMIT');locked=false;
+  const decided=(await Promise.all(decisions)).map(rows=>rows[0].value);
+  assert(decided.filter(x=>x.event).length===1&&decided.filter(x=>x.blocked==='version_conflict').length===1,'Concurrent lot decisions must have one winner and one conflict');
+  const winner=decided.find(x=>x.event).event;
+  const [after]=await one`select wholesale_ingest.lot_handoff_state(${automatic.id}) value`;
+  const next=after.value;
+  await one`select public.reconcile_list_lot(${crypto.randomUUID()},${actor},${automatic.id},${next.version},'hold',${next.evidence_hash},'Synthetic subsequent hold')`;
+  const [replay]=await one`select public.reconcile_list_lot(${winner.id},${actor},${automatic.id},${state.version},${winner.action},${state.evidence_hash},'Synthetic concurrent review') value`;
+  assert(replay.value.replayed===true,'Exact historical decision must replay');
+  const [held]=await one`select wholesale_ingest.lot_handoff_state(${automatic.id}) value`;
+  assert(held.value.version===2&&held.value.current===false&&held.value.last_decision.action==='hold','Historical replay must not overwrite newer hold');
+  console.log('PASS concurrent lot reconciliation has one winner, one conflict and historical retries preserve newer decisions');
   await admin.unsafe(await Deno.readTextFile(new URL('../../tests/sql/list_lot_worker.sql',import.meta.url)));
+  await admin.unsafe(await Deno.readTextFile(new URL('../../tests/sql/list_lot_reconciliation.sql',import.meta.url)));
   console.log('PASS overlapping lot workers return busy and persist one automatic receipt without a human initiator');
   console.log('PASS concurrent lot handoff creates one destination and retains first receiver acknowledgement; no model or outreach');
  }finally{

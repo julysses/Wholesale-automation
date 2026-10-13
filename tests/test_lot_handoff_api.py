@@ -43,3 +43,33 @@ def test_receiving_operator_uses_separate_authenticated_route(client_db):
     assert client.post(f'/api/land-underwriting/handoffs/{handoff}/acknowledge',headers=HEADERS).status_code==200
     db.rpc.assert_called_with('acknowledge_list_lot',{'p_id':handoff,'p_operator':OPERATOR})
     assert client.post('/api/operations/lists/lots/review',headers=HEADERS,json=review_body()).status_code==403
+
+def reconciliation_body():
+    return {'request_id':str(uuid4()),'handoff_id':str(uuid4()),'expected_version':2,
+            'action':'hold','evidence_hash':'b'*64,'notes':'Review corrected parcel evidence'}
+
+
+def test_reconciliation_correlates_exact_actor_version_and_notes(client_db):
+    client,db,_=client_db;body=reconciliation_body()
+    event={key:value for key,value in body.items() if key not in ('request_id','expected_version')}
+    event.update(id=body['request_id'],version=3,operator_id=OPERATOR)
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={'event':event,'outreach_authorized':False})
+    assert client.post('/api/operations/lists/lots/reconcile',headers=HEADERS,json=body).status_code==200
+    assert db.rpc.call_args.args[1]['p_operator']==OPERATOR
+    event['notes']='Other evidence'
+    assert client.post('/api/operations/lists/lots/reconcile',headers=HEADERS,json=body).status_code==503
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={'blocked':'version_conflict'})
+    assert client.post('/api/operations/lists/lots/reconcile',headers=HEADERS,json=body).status_code==409
+
+
+@pytest.mark.parametrize('change',[{'expected_version':True},{'action':'approve_offer'},{'operator_id':OPERATOR},{'evidence_hash':'bad'}])
+def test_reconciliation_rejects_invalid_payload_before_storage(client_db,change):
+    client,db,_=client_db
+    assert client.post('/api/operations/lists/lots/reconcile',headers=HEADERS,json={**reconciliation_body(),**change}).status_code==422
+    db.rpc.assert_not_called()
+
+
+def test_reconciliation_is_admin_only(client_db):
+    client,db,rows=client_db;rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
+    assert client.post('/api/operations/lists/lots/reconcile',headers=HEADERS,json=reconciliation_body()).status_code==403
+    db.rpc.assert_not_called()

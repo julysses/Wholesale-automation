@@ -8,6 +8,8 @@ export async function fixture(t){
  await f.db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261012235926_list_lot_handoff.sql',import.meta.url),'utf8'));
  await f.db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261013004341_list_lot_receiving_evidence.sql',import.meta.url),'utf8'));
  await f.db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261013013234_list_lot_worker.sql',import.meta.url),'utf8'));
+ await f.db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261013025354_list_lot_reconciliation.sql',import.meta.url),'utf8'));
+ await f.db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261013030331_list_lot_missing_property.sql',import.meta.url),'utf8'));
  const hash=(await rpc(f.db,'list_scoring_input',[id(1)])).input_hash;
  const review=()=>rpc(f.db,'review_list_lot',[id(20),id(10),id(1),hash,true,'https://example.invalid/official-lot','Reviewed exact parcel classification']);
  const score=async()=>{const s=await rpc(f.db,'list_scoring_input',[id(1)]);return rpc(f.db,'save_list_score',[id(5),id(1),s.input_hash,'claude-fixture','daily-list-score-v1','msg-fixture',JSON.stringify(f.result)]);};
