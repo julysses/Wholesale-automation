@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inventoryManifests,normalizeDallasCapture} from '../collectors/foreclosure_inventory.mjs';
+import {inventoryManifests,normalizeDallasCapture,normalizeCollinCapture} from '../collectors/foreclosure_inventory.mjs';
 const now=new Date('2026-10-13T19:00:00Z');
 function fixture(county='Dallas'){
  const id='12345';const d={document_id:id,document_number:'202600000001',document_url:county==='Dallas'?`https://dallas.tx.publicsearch.us/doc/${id}`:`https://apps2.collincountytx.gov/ForeclosureNotices/DetailPage/${id}`,filed_date:'2026-10-01',auction_date:'2026-10-06',indexed_address:'Two properties, SYNTHETIC COUNTY INDEX ONLY'};
@@ -34,4 +34,13 @@ test('Dallas adapter binds displayed range and IDs, not sale-date filters or gue
  const sale=structuredClone(c);sale.source+='&saleDateRange=20260914%2C20261013';assert.throws(()=>normalizeDallasCapture(sale),/sale-date/);
  const drift=structuredClone(c);drift.passes[1][0].status='1-1 of 1 results for "09/01/2026-10/13/2026"';assert.throws(()=>normalizeDallasCapture(drift),/filter/);
  c.passes[0][0].rows[0].id='Unknown';assert.throws(()=>normalizeDallasCapture(c),/layout/);
+});
+
+test('Collin visible text normalization preserves distinct IDs behind identical displayed rows',async()=>{
+ const text='SYNTHETIC ONLY\nCity: Plano\nSale Date: 11/03/2026\nFile Date: 10/01/2026Property Type:Residential';
+ const pass=[1,2].map((id,row)=>({page:1,row,text,url:`https://apps2.collincountytx.gov/ForeclosureNotices/DetailPage/${id}`,captured_at:'2026-10-13T18:00:00Z'}));
+ const c={source:'https://apps2.collincountytx.gov/ForeclosureNotices/',window_start:'2026-09-14',window_end:'2026-10-13',page_size:25,total:2,passes:[pass,pass.map(r=>({...r,text:r.text.replace('2026Property','2026\nProperty'),captured_at:'2026-10-13T18:05:00Z'}))]};
+ const result=await inventoryManifests(normalizeCollinCapture(c),now);assert.equal(result.records,2);assert.deepEqual(result.batches[0].records.map(r=>r.source_record_id),['1','2']);
+ const changed=structuredClone(c);changed.passes[1][1].text=changed.passes[1][1].text.replace('File Date: 10/01','File Date: 10/02');await assert.rejects(inventoryManifests(normalizeCollinCapture(changed),now),/changed/);
+ c.passes[1].pop();assert.throws(()=>normalizeCollinCapture(c),/Missing Collin/);
 });

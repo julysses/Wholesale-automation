@@ -43,6 +43,26 @@ export function normalizeDallasCapture(capture){
  });
  return {schema_version:'1.0',county:'Dallas',window_start,window_end,page_size,scans};
 }
+export function normalizeCollinCapture(capture){
+ if(capture.source!=='https://apps2.collincountytx.gov/ForeclosureNotices/'||capture.page_size!==25||!Number.isInteger(capture.total)||capture.total<1||!Array.isArray(capture.passes)||capture.passes.length!==2)fail('Expected complete Collin visible index captures');
+ isoDate(capture.window_start);isoDate(capture.window_end);
+ const scans=capture.passes.map(pass=>{
+  if(!Array.isArray(pass)||pass.length!==capture.total)fail('Missing Collin rows');
+  const pages=[];
+  pass.forEach((r,i)=>{
+   const page=Math.floor(i/25)+1;
+   if(r.page!==page||r.row!==i%25)fail('Collin row order or page gap');
+   const id=r.url?.match(/^https:\/\/apps2\.collincountytx\.gov\/ForeclosureNotices\/DetailPage\/(\d+)$/)?.[1];
+   const m=typeof r.text==='string'&&r.text.match(/^([\s\S]*?)City:\s*([\s\S]*?)Sale Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*File Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s*Property Type:[\s\S]*)?\s*$/);
+   if(!id||!m)fail('Unexpected Collin row or missing stable detail URL');
+   if(!pages[page-1])pages.push({page,total:capture.total,captured_at:r.captured_at,documents:[]});
+   pages[page-1].captured_at=r.captured_at;
+   pages[page-1].documents.push({document_id:id,document_number:'',document_url:r.url,filed_date:mmddyyyy(m[4]),auction_date:mmddyyyy(m[3]),indexed_address:m[1].replace(/\s+/g,' ').trim()});
+  });
+  return pages;
+ });
+ return {schema_version:'1.0',county:'Collin',window_start:capture.window_start,window_end:capture.window_end,page_size:25,scans};
+}
 export async function inventoryManifests(capture,now=new Date()){
  const {county,window_start,window_end,page_size,scans}=capture;
  if(capture.schema_version!=='1.0'||!Object.hasOwn(countySources,county))fail('Unsupported inventory source');
@@ -101,9 +121,9 @@ export async function inventoryManifests(capture,now=new Date()){
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  try{
   const [input,output,format]=process.argv.slice(2);
-  if(!input||!output||process.argv.length>5||format&&format!=='--dallas-visible')fail('Usage: node foreclosure_inventory.mjs capture.json new-output-dir [--dallas-visible]');
+  if(!input||!output||process.argv.length>5||format&&!['--dallas-visible','--collin-visible'].includes(format))fail('Usage: node foreclosure_inventory.mjs capture.json new-output-dir [--dallas-visible|--collin-visible]');
   if(fs.statSync(input).size>10*1024*1024)fail('Inventory exceeds 10 MiB');
-  let capture=JSON.parse(fs.readFileSync(input,'utf8'));if(format)capture=normalizeDallasCapture(capture);
+  let capture=JSON.parse(fs.readFileSync(input,'utf8'));if(format)capture=format==='--dallas-visible'?normalizeDallasCapture(capture):normalizeCollinCapture(capture);
   const result=await inventoryManifests(capture);
   fs.mkdirSync(output,{mode:0o700});
   fs.writeFileSync(path.join(output,'inventory.json'),JSON.stringify(capture),{mode:0o600,flag:'wx'});
