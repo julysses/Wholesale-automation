@@ -1,0 +1,35 @@
+from types import SimpleNamespace
+from uuid import uuid4
+import pytest
+from tests.test_trace_operations_api import client_db
+from tests.test_offer_review_api import setup, OPERATOR
+
+def payload():
+    return {'run_id':str(uuid4()),'batch_index':0,'ordinal':0,'county':'Dallas',
+        'evidence_url':'https://www.dallascad.org/synthetic','review':{
+        'source_fingerprint':'a'*32,'notes':'Official situs and account match.',
+        'identity':{'property_address':'1 Synthetic Site','city':'Dallas','state':'TX','zip':'75201','parcel_id':None,'unit':None}}}
+
+def test_identity_uses_session_actor_and_defaults_signal_inactive(client_db):
+    client,db,_=client_db;body=payload()
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={
+        'property_id':str(uuid4()),'lead_id':str(uuid4()),'outreach_authorized':False,
+        **{k:body[k] for k in ['run_id','batch_index','ordinal','review']}})
+    assert client.post('/api/operations/lists/resolve',json=body,headers={'Authorization':'Bearer test'}).status_code==200
+    name,params=db.rpc.call_args.args
+    assert name=='resolve_reviewed_list_record' and params['p_operator']==OPERATOR
+    assert params['p_active'] is False and params['p_review']==body['review']
+
+@pytest.mark.parametrize('change',[{'operator_id':OPERATOR},{'review':None},{'active_signal':'true'}, {'review':{'identity':{}}}])
+def test_malformed_or_spoofed_identity_denied(client_db,change):
+    client,db,_=client_db
+    assert client.post('/api/operations/lists/resolve',json={**payload(),**change},headers={'Authorization':'Bearer test'}).status_code==422
+    db.rpc.assert_not_called()
+
+def test_identity_unconfirmed_ack_not_success_and_nonadmin_denied(client_db):
+    client,db,rows=client_db
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={'property_id':str(uuid4()),'lead_id':str(uuid4()),'outreach_authorized':False})
+    assert client.post('/api/operations/lists/resolve',json=payload(),headers={'Authorization':'Bearer test'}).status_code==503
+    db.rpc.reset_mock();rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
+    assert client.post('/api/operations/lists/resolve',json=payload(),headers={'Authorization':'Bearer test'}).status_code==403
+    db.rpc.assert_not_called()

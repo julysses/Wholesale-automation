@@ -27,6 +27,21 @@ class ConfigureSource(BaseModel):
     lookback_days: int = Field(ge=1, le=365)
     procedure_version: str | None = Field(default=None, max_length=200)
 
+class ReviewedIdentity(BaseModel):
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+    property_address: str = Field(min_length=1, max_length=300)
+    city: str = Field(min_length=1, max_length=100)
+    state: Literal['TX']
+    zip: str = Field(pattern=r'^[0-9]{5}(-[0-9]{4})?$')
+    parcel_id: str | None = Field(default=None, max_length=100)
+    unit: str | None = Field(default=None, max_length=100)
+
+class PropertyReview(BaseModel):
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+    source_fingerprint: str = Field(pattern='^[a-f0-9]{32}$')
+    identity: ReviewedIdentity
+    notes: str = Field(min_length=10, max_length=2000)
+
 class ResolveRecord(BaseModel):
     model_config = ConfigDict(extra='forbid')
     run_id: UUID
@@ -35,7 +50,8 @@ class ResolveRecord(BaseModel):
     county: str = Field(pattern='^(Dallas|Collin)$')
     evidence_url: str = Field(pattern='^https://', max_length=2000)
     lead_id: UUID | None = None
-    active_signal: bool = True
+    active_signal: bool = Field(default=False, strict=True)
+    review: PropertyReview
 
 def operator(request):
     value = getattr(request.state, 'user_id', None)
@@ -57,10 +73,16 @@ async def configure(source_key: str, body: ConfigureSource, request: Request):
 
 @router.post('/api/operations/lists/resolve')
 async def resolve(body: ResolveRecord, request: Request):
-    return await rpc('resolve_list_record', {'p_run': str(body.run_id), 'p_batch': body.batch_index,
+    value = await rpc('resolve_reviewed_list_record', {'p_run': str(body.run_id), 'p_batch': body.batch_index,
         'p_ordinal': body.ordinal, 'p_operator': operator(request), 'p_county': body.county,
         'p_evidence_url': body.evidence_url, 'p_lead': str(body.lead_id) if body.lead_id else None,
-        'p_active': body.active_signal})
+        'p_active': body.active_signal, 'p_review': body.review.model_dump(mode='json')})
+    if (not isinstance(value, dict) or not value.get('property_id') or not value.get('lead_id')
+            or value.get('outreach_authorized') is not False or value.get('run_id') != str(body.run_id)
+            or value.get('batch_index') != body.batch_index or value.get('ordinal') != body.ordinal
+            or value.get('review') != body.review.model_dump(mode='json')):
+        raise HTTPException(503, 'Property association is unconfirmed. Retry the same evidence.')
+    return value
 
 @router.post('/api/operations/lists/scan')
 async def scan():

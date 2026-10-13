@@ -56,3 +56,10 @@ Only the exact Supabase ingestion HTTPS path is accepted. Redirects are rejected
 - Synthetic delivery/replay/denial proof, followed by reviewed bounded real ingestion and task reconciliation.
 - Validate duplicate/supplemental Dallas rows, current tax-account status and county/property identity; no trace spending from these candidate counts.
 - Foreclosure notice extraction, full document review and supervised coverage remain separate.
+
+
+## October 13 — audited property identity review
+
+Added a service-only reviewed-association RPC and CRM review fields for independently verified situs street/unit/city/ZIP/parcel, source fingerprint and evidence notes. Original county records and payload hashes are preserved. Review events retain the exact identity evidence, authenticated actor, county, active-status decision and selected lead. Changed or stale reviews are rejected; exact replay returns the same property/lead. An explicitly selected legacy lead must match verified street/city/state/ZIP. Active distress defaults false; association cannot authorize outreach.
+
+Local migration `20261013173054_list_reviewed_identity.sql` applied ONLY to rehearsal as remote `20261013173439`. Verified service execution allowed, browser/collector execution denied, snapshot fingerprints present. Security advisor has no new finding; previously recorded auth advisories remain. Two database scenario tests (including cross-source deduplication, immutable county facts, expired batches and replay conflicts), six API checks, one UI workflow test and TypeScript check passed. Full deployed browser acceptance of the new form remains next; no real tax property has been promoted based on inferred situs data.
