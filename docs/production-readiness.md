@@ -147,7 +147,7 @@ Collin completed two full seven-page traversals under the September14–October1
 
 Collin run `a0c09287-a888-4e8e-97ea-ab4964e5ab69` accepted164records; inventory hash `bd845380298478eaa7f1bc2fc11ffe17e90530cab2d6cb9ab1be2264e68d8fac`. SQL confirms654records across this run and Dallas `db1c2221-ed79-4ece-bf12-386a84d59477`, zero resolved properties. The earlier individual Collin4158237receipt is an additional observation, not a655thdistinct foreclosure notice. The new Collin adapter and four inventory tests pass; supported repeatable procedure is `docs/foreclosure-inventory-collection.md`. This completes supervised index discovery/review delivery, not all-page extraction or clean complete-run credit.
 
-Monitoring scan was rejected by automatic approval review because it changes run/job states, tasks and digest and contains retention cleanup. Read-only inspection verified zero expired payloads, staged records or contacts and four existing source incidents. A guarded scan that aborts on any expired data was also rejected; approval requested explicitly and pending. Do not call another route to bypass that decision. Remaining live tests and observation gates still apply; all outreach flags remain off and heartbeat paused.
+Monitoring scan was rejected by automatic approval review because it changes run/job states, tasks and digest and contains retention cleanup. Read-only inspection verified zero expired payloads, staged records or contacts and four existing source incidents. A guarded scan that aborts on any expired data was also initially rejected. Julio subsequently approved that exact guarded scan; it completed as recorded below. Remaining live tests and observation gates still apply; all outreach flags remain off and heartbeat paused.
 
 
 ## October 13 — final read-only acceptance for e6341f6
@@ -156,4 +156,17 @@ Signed-in CRM reload showed both foreclosure runs as partial/received, zero new 
 
 All GitHub backend, frontend typecheck/build/lint, pipeline and real PostgreSQL contention jobs passed for e6341f6. Vercel status was still pending at the last check; the prior stable preview displayed both database receipts. Read-only rehearsal health, production health/readiness, and production Hilltop form configuration returnedHTTP200. These probes are availability evidence, not new intake, owner delivery or full-launch acceptance.
 
-Next: obtain the pending guarded-monitoring-scan approval; finish all-page foreclosure notice extraction, independent situs/current-sale review and complete coverage evidence; then provider reconciliation/controlled contact tests, independent monitoring and five clean runs plus14unattended days. Saved index manifests are accepted already—replay identical saved directories, never regenerate them to simulate fresh opportunities. No trace spending, outreach, schedule activation or production writes occurred.
+Next: finish all-page foreclosure notice extraction, independent situs/current-sale review and complete coverage evidence; then provider reconciliation/controlled contact tests, independent monitoring and five clean runs plus14unattended days. Saved index manifests are accepted already—replay identical saved directories, never regenerate them to simulate fresh opportunities. No trace spending, outreach, schedule activation or production writes occurred.
+
+
+## October 13 — approved guarded monitoring scan completed
+
+Julio explicitly approved the guarded rehearsal scan. Executed successfully at2026-10-13T18:50:51.781673Z on rehearsal only. The transaction locked raw payloads, staged records and contacts and aborted on any expired payload/contact before calling the monitor; no retention cleanup affected data.
+
+Independent read-only SQL verified:
+- Dallas run `db1c2221-ed79-4ece-bf12-386a84d59477` and Collin run `a0c09287-a888-4e8e-97ea-ab4964e5ab69` remain partial and now have processing status `review`; all four associated jobs are `review`.
+- All654index evidence records remain present, with zero property associations, new leads or stacked records from these runs. Total unresolved staging remains40,353. Purged payloads, expired payloads and expired contacts are all zero.
+- Four partial-source incidents have pending tasks assigned to the configured approved owner. Existing incident tasks were refreshed.
+- October13digest is `generated`, with null message ID and delivery timestamp: saved, not sent. No seller messages, trace purchases, schedule activation or production changes occurred.
+
+The guarded-scan approval gate is closed. Full launch remains NO-GO: all-page notice extraction, authoritative property/current-sale review and complete coverage evidence remain open, followed by provider reconciliation, controlled contact acceptance, independently verified digest/missing-worker monitoring, five clean runs per county and14unattended days. The scheduler remains PAUSED. Do not regenerate accepted manifests or count partial inventories as clean runs.
