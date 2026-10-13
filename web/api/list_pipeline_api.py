@@ -248,3 +248,16 @@ async def acknowledge_lot(handoff_id: UUID, request: Request):
         or not handoff.get('acknowledged_at') or value.get('outreach_authorized') is not False):
         raise HTTPException(503, 'Receipt acknowledgement is unconfirmed. Retry the same handoff.')
     return value
+
+@router.get('/webhooks/_worker/list-lots')
+async def lot_worker(authorization: str = Header(default='')):
+    secret = os.getenv('CRON_SECRET', '')
+    if not secret:
+        raise HTTPException(503, 'Lot worker secret is not configured')
+    if not hmac.compare_digest(authorization, f'Bearer {secret}'):
+        raise HTTPException(401, 'Unauthorized')
+    from tools.list_lot_worker import process_lot_batch
+    try:
+        return await run_in_threadpool(process_lot_batch)
+    except Exception:
+        raise HTTPException(503, 'Lot routing is unconfirmed. Inspect durable handoffs and routing incidents.')

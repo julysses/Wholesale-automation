@@ -62,3 +62,14 @@ it('acknowledgement for a different destination stays unconfirmed',async()=>{
  mocks.fetch.mockImplementation(async(_path:string,init?:RequestInit)=>init?{json:async()=>({handoff:{...received,land_lead_id:actor,acknowledged_by:actor,acknowledged_at:'2026-10-12'},outreach_authorized:false})}:{json:async()=>({count:1,handoffs:[received]})});
  render(mount(<LotInbox onOpen={vi.fn()}/>));fireEvent.click(await screen.findByRole('button',{name:'Retry saved lot action'}));await screen.findByText('Receiving acknowledgement is unconfirmed.');expect(sessionStorage.getItem(`hilltop.lot-action.v1.${actor}`)).not.toBeNull();expect(screen.queryByRole('status')).toBeNull();
 });
+it('accepts and acknowledges a worker handoff without attributing initiation to a human',async()=>{
+ const automatic={...received,operator_id:null,initiation:'worker'};
+ mocks.fetch.mockImplementation(async(_path:string,init?:RequestInit)=>init?{json:async()=>({handoff:{...automatic,acknowledged_by:actor,acknowledged_at:'2026-10-12T21:00:00Z'},outreach_authorized:false})}:{json:async()=>({count:1,handoffs:[automatic]})});
+ const onOpen=vi.fn().mockResolvedValue(undefined);render(mount(<LotInbox onOpen={onOpen}/>));
+ await screen.findByText('Automatically routed after administrator lot review.');
+ fireEvent.click(screen.getByRole('button',{name:'Open linked land record'}));
+ await waitFor(()=>expect(screen.getByRole('checkbox')).toBeEnabled());fireEvent.click(screen.getByRole('checkbox'));
+ fireEvent.click(screen.getByRole('button',{name:'Acknowledge underwriting receipt'}));
+ expect(await screen.findByRole('status')).toHaveTextContent('Underwriting remains pending');
+ expect(onOpen).toHaveBeenCalledWith(land,lead);
+});

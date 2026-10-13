@@ -36,6 +36,7 @@ function Inbox({actor,onOpen}:{actor:string;onOpen:OpenLand}){
     <p>Score: {row.score}/100 · {row.current?'Scoring evidence is current.':'Scoring evidence has changed; review before relying on the score.'}</p>
     <a className="underline" href={row.evidence_url} target="_blank" rel="noreferrer">Reviewed lot source</a><p>{row.review_notes}</p>
     <details><summary>Scoring evidence and reasons</summary><pre className="whitespace-pre-wrap break-all text-sm">{JSON.stringify({input:row.scoring_input,reasons:row.reasons,flags:row.flags},null,2)}</pre></details>
+    <p>{row.initiation==='worker'?'Automatically routed after administrator lot review.':'Routed by an administrator.'}</p>
     <p className="break-all">Task {row.task_id} · Handoff {row.id}</p>
     <Button disabled={opening} onClick={()=>void open(row.id,row.land_lead_id,row.lead_id)}>Open linked land record</Button>
     {row.acknowledged_at?<p>Receipt acknowledged by {row.acknowledged_by} at {row.acknowledged_at}. Underwriting task remains separate.</p>:<>

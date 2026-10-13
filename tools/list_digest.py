@@ -42,6 +42,21 @@ def render_digest(summary):
             lines.append(f"- Job {_text(incident.get('job_id'))}: {_text(incident.get('kind'))}; task {_text(incident.get('task_id'))}")
         if len(incidents) > 100:
             lines.append('Additional scoring incidents are available in the CRM; this email is truncated.')
+    lots = summary.get('lot_routing_monitor')
+    lines += ['', 'Lot underwriting routing:']
+    if not isinstance(lots, dict) or lots.get('busy'):
+        lines.append('Lot routing monitor is unavailable; review the CRM before assuming receipt.')
+    else:
+        if not lots.get('owner_configured'):
+            lines.append('A lead owner is not configured for automatic lot routing and recovery tasks.')
+        for label, key, identity in [('Blocked routing', 'open_incidents', 'lead_id'),
+                                      ('Overdue receipt', 'overdue_receipts', 'handoff_id')]:
+            entries = lots.get(key, [])
+            lines.append(f"{label}: {len(entries)}.")
+            for entry in entries[:100]:
+                lines.append(f"- {_text(entry.get(identity))}: {_text(entry.get('blocked', label))}; task {_text(entry.get('task_id'))}")
+            if len(entries) > 100:
+                lines.append('Additional lot incidents are available in the CRM; this email is truncated.')
     lines += ['', 'Top scored leads (stored evaluations; permission to contact must be checked separately):']
     for lead in summary.get('top_ten', [])[:10]:
         lines.append(f"- Lead {_text(lead.get('lead_id'))}: score {_text(lead.get('score'))}; route {_text(lead.get('route'))}")
