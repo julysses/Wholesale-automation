@@ -5,7 +5,7 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { useProfile } from '@/hooks/useProfile';
 const count=z.number().int().nonnegative();
 const requestSchema=z.object({id:z.string().uuid(),lead_id:z.string().uuid(),provider:z.string(),spend_day:z.string(),reserved_cents:count,state:z.enum(['reserved','submitted','unknown']),created_at:z.string()});
-const snapshotSchema=z.object({day:z.string(),budget:z.object({cap_cents:count,reserved_cents:count,actual_cents:count}).nullable(),total_held_cents:count,open_count:count,requests:z.array(requestSchema).max(50),recent_actions:z.array(z.object({id:z.string().uuid(),operator_id:z.string().uuid(),request_id:z.string().uuid(),action:z.literal('cancel_reserved'),created_at:z.string()})).max(20)});
+const snapshotSchema=z.object({total_budget:z.object({cap_cents:count,reserved_cents:count,actual_cents:count,committed_cents:count,remaining_cents:count}).optional(),day:z.string(),budget:z.object({cap_cents:count,reserved_cents:count,actual_cents:count}).nullable(),total_held_cents:count,open_count:count,requests:z.array(requestSchema).max(50),recent_actions:z.array(z.object({id:z.string().uuid(),operator_id:z.string().uuid(),request_id:z.string().uuid(),action:z.literal('cancel_reserved'),created_at:z.string()})).max(20)});
 const pendingSchema=z.object({event_id:z.string().uuid(),trace_id:z.string().uuid()});
 const receiptSchema=z.object({event:z.object({id:z.string().uuid(),operator_id:z.string().uuid(),request_id:z.string().uuid(),action:z.literal('cancel_reserved'),result:z.object({request:z.object({id:z.string().uuid(),state:z.literal('failed'),actual_cents:z.literal(0),provider_job_id:z.literal('not_submitted')})})})});
 const money=(cents:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
@@ -50,6 +50,7 @@ function Controls({actor}:{actor:string}){
   {notice&&<p role="status">{notice}</p>}
   {pending&&<div role="alert"><p>Unconfirmed cancellation: {pending.trace_id}. Event: {pending.event_id}.</p><button className="rounded border px-3 py-2" type="button" disabled={busy} onClick={()=>void cancel(pending.trace_id)}>Retry saved cancellation</button></div>}
   {data&&<>
+   {data.total_budget?<p>Total authorization: {money(data.total_budget.cap_cents)} · Committed across all days: {money(data.total_budget.committed_cents)} · Remaining: {money(data.total_budget.remaining_cents)}. This cap does not reset daily; verify the provider balance separately.</p>:<p role="alert">Total authorization status unavailable. Do not submit paid tracing until the cumulative budget is verified.</p>}
    <p>{data.day} · Central time</p>
    {data.budget?<p>Daily cap: {money(data.budget.cap_cents)} · Reserved today: {money(data.budget.reserved_cents)} · Confirmed spend: {money(data.budget.actual_cents)}</p>:<p>No daily budget configured. New tracing reservations are blocked.</p>}
    <p>Reserved across all days: {money(data.total_held_cents)} · {data.open_count} unresolved requests</p>
