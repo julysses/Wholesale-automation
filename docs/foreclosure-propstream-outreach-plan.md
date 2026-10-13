@@ -31,8 +31,8 @@ These are required workflow states, not a claim that every stage is implemented 
 - [x] Daily high-priority notice inbox and dashboard link deployed to rehearsal; 490 Dallas +164 Collin unique notices.
 - [x] Durable notice first-seen identity prevents repeat imports from appearing new.
 - [x] Existing tracing services support immutable input, reservation/claim/settlement, contacts and uncertain-outcome holds, with cumulative budget enforcement.
-- [ ] Verify real foreclosure property/owner/current-status evidence and create the eligible CRM associations. Current real notices remain unresolved; the existing resolved foreclosure fixture is synthetic and excluded.
-- [x] Implement per-lead verified-candidate quote/reservation/start/result controls, linked follow-up tasks and uncertain-action recovery. Rehearsal migration applied; browser acceptance pending.
+- [ ] Verify real foreclosure property/owner/current-status evidence and create the eligible CRM associations. One real Collin property/owner association is verified; its signal remains inactive pending current trustee cancellation/postponement verification. Remaining unresolved unique notices: 490 Dallas + 163 Collin. The synthetic fixture is excluded.
+- [x] Implement per-lead verified-candidate quote/reservation/start/result controls, linked follow-up tasks and uncertain-action recovery. Rehearsal migration applied and read-only handoff/budget UI verified; real purchase/result acceptance remains pending.
 - [ ] Extend accepted per-lead handoffs to a verified multi-lead provider batch with exact per-lead receipt/cost mapping.
 - [ ] Demonstrate one authorized eligible PropStream order and exact result/charge reconciliation without retracing on refresh or lost acknowledgement.
 - [ ] Surface Contact Found and per-channel Ready for Outreach states with recorded eligibility reasons.
