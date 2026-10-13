@@ -5,6 +5,9 @@ import postgres from 'npm:postgres@3.4.5';
 import schema from './ingest.schema.json' with { type: 'json' };
 import {canonicalJSON, sha256, equalHash, semanticErrors, resolutionGate} from './core.mjs';
 
+import {coverageSchema} from './coverage.mjs';
+import {collectorErrors} from './collector-policy.mjs';
+
 const ajv = new Ajv({allErrors:true, strict:true});
 for (const name of ['date','date-time','uuid','uri'] as const) ajv.addFormat(name,fullFormats[name]);
 type IngestPayload = {
@@ -15,6 +18,7 @@ type IngestPayload = {
  records:Array<Record<string,postgres.JSONValue> & {source_url:string;source_record_id:string|null}>;batch_index?:number;batch_count?:number;
 };
 const validate = ajv.compile<IngestPayload>(schema);
+const validateCoverage = ajv.compile(coverageSchema);
 const LIMIT = 2 * 1024 * 1024;
 type TokenConfig = {sha256:string; source_keys:string[]; expires_at:string};
 const response=(status:number,body:unknown)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
@@ -46,6 +50,8 @@ export async function handler(req:Request):Promise<Response> {
   if(!validate(p)) return response(422,{error:'schema_invalid',fields:validate.errors?.map(e=>({path:e.instancePath,message:e.message,keyword:e.keyword}))});
   const errs=semanticErrors(p); if(errs.length) return response(422,{error:'semantic_invalid',fields:errs});
   if(!entry.source_keys.includes(p.source_key)) return response(403,{error:'source_not_authorized'});
+  const collectorErrs=collectorErrors(p,new Date(),validateCoverage);
+  if(collectorErrs.length) return response(422,{error:'collector_evidence_invalid',fields:collectorErrs});
   const recordsHash=await sha256(canonicalJSON(p.records));
   if(!equalHash(recordsHash,p.records_sha256)) return response(422,{error:'records_hash_mismatch',fields:[{path:'/records_sha256',message:'recompute canonical records hash'}]});
   const batchIndex=p.batch_index??0,batchCount=p.batch_count??1;

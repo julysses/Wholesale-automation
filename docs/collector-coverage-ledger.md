@@ -1,6 +1,6 @@
 # Supervised collector coverage ledger
 
-The local preflight now requires a separate coverage ledger whenever `coverage_complete` is true. This is an offline consistency check, not an authenticated reviewer signature, a source-completeness guarantee, a delivery receipt or outreach permission. The Edge ingestion contract is unchanged; a future delivery runner must call preflight and preserve the reviewed evidence before signing/submitting.
+The local preflight now requires a separate coverage ledger whenever `coverage_complete` is true. This is an offline consistency check, not an authenticated reviewer signature, a source-completeness guarantee, a delivery receipt or outreach permission. The Edge handler now enforces the same rules. The delivery runner embeds the ledger as `coverage` in the bounded authenticated payload, and the server retains it under the payload/run hash. Partial manifests remain byte-compatible. A ledger validates consistency, not the truth of a reviewer attestation.
 
 ```sh
 node pipeline/collectors/preflight.mjs manifest.json coverage.json

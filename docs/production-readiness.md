@@ -123,3 +123,10 @@ Real unresolved evidence totals39,699 records:39,698 tax records plus one Collin
 At implementation commit `de0ddf4`, GitHub backend, frontend, pipeline contracts/isolated SQL, real PostgreSQL ingestion/offer contention, and Vercel checks all passed. Local regression totals remain843backend,198frontend,123pipeline and13Python collector tests. Existing lint/bundle warnings are recorded above.
 
 Full launch remains **NO-GO**: complete foreclosure collection/current identity review, real provider reconciliation, controlled consent/STOP and unsubscribe acceptance, external digest/missing-worker monitoring, remaining recovery/operator gates, five clean county runs and14 unattended days are still required. The saved heartbeat remains PAUSED. Production was not changed, no paid trace order was submitted, and no seller message was sent. Resume from these remaining gates; do not repeat completed secret setup, tax ingestion or synthetic association.
+
+
+## October 13 — server-enforced collector evidence
+
+Closed the local-preflight bypass: the Edge handler now shares the same reviewed-source, tax-snapshot and complete-coverage validation as the collector. Complete manifests carry their coverage ledger inside the bounded authenticated body; ledger contents participate in payload/run hashes and durable raw storage. Changed review evidence cannot reuse an old delivery journal. Unsupported source procedures fail closed. Existing partial manifests retain identical wire bytes and replay identity. Complete multi-batch coverage remains deliberately unsupported.
+
+Validation:124pipeline tests,2Deno handler tests, and the full disposable PostgreSQL/TLS concurrency suite passed. Real PostgreSQL acceptance confirmed coverage persisted with the payload and exact duplicate/lost-ack, changed-content conflict and expiry handling. Rehearsal deployment/live acceptance follows this checkpoint; production untouched.

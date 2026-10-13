@@ -7,6 +7,7 @@ import {verifyScoringConcurrency} from './scoring-concurrency.ts';
 import {verifyLotConcurrency} from './lot-concurrency.ts';
 import {canonicalJSON,sha256} from '../../frontend/supabase/functions/daily-list-ingest/core.mjs';
 import fixture from '../fixtures/synthetic.json' with {type:'json'};
+import coverageFixture from '../fixtures/synthetic-coverage.json' with {type:'json'};
 const adminURL=Deno.env.get('INGRESS_TEST_ADMIN_URL')||'';
 const url=new URL(adminURL);
 if(url.hostname!=='127.0.0.1'||url.pathname!=='/wholesale_ingress_test')throw new Error('Local disposable test database required');
@@ -34,7 +35,7 @@ try{
  // Separate module instances model separate Edge workers with independent pools.
  const one=await import('../../frontend/supabase/functions/daily-list-ingest/index.ts?worker=one');
  const two=await import('../../frontend/supabase/functions/daily-list-ingest/index.ts?worker=two');
- const payload={...fixture,run_id:run,pulled_at:new Date().toISOString()};
+ const payload={...fixture,run_id:run,pulled_at:new Date().toISOString(),coverage:{...coverageFixture,run_id:run}};
  const request=(body:unknown)=>new Request('https://local-ingress.invalid',{method:'POST',headers:{'Content-Type':'application/json','X-Ingest-Key-Id':'test',Authorization:'Bearer '+token},body:JSON.stringify(body)});
  await locker`select pg_advisory_lock(hashtextextended(${run},0))`;locked=true;
  const first=one.handler(request(payload)),second=two.handler(request(payload));
@@ -54,12 +55,14 @@ try{
  assert(receipts.every(r=>r.run_id===run)&&receipts.filter(r=>r.replayed).length===1,'Exact durable replay acknowledgement');
  const counts=await admin`select (select count(*)::int from wholesale_ingest.ingest_runs) runs,(select count(*)::int from wholesale_ingest.raw_payloads) batches,(select count(*)::int from wholesale_ingest.records) records,(select count(*)::int from wholesale_ingest.jobs) jobs`;
  assert(JSON.stringify(counts[0])==='{"runs":1,"batches":1,"records":1,"jobs":1}','Concurrent duplicate produced extra data');
+ const [evidence]=await admin`select payload->'coverage'->>'run_id' as ledger_run from wholesale_ingest.raw_payloads where run_id=${run}`;
+ assert(evidence.ledger_run===run,'Coverage must be durably stored with the exact payload');
  const replay=await one.handler(request(payload));assert(replay.status===200,'Lost acknowledgement retry must replay');
- const changed=structuredClone(payload);changed.records[0].case_number='CHANGED';changed.records_sha256=await sha256(canonicalJSON(changed.records));
+ const changed=structuredClone(payload);changed.records[0].case_number='CHANGED';changed.records_sha256=await sha256(canonicalJSON(changed.records));changed.coverage.records_sha256=changed.records_sha256;
  assert((await two.handler(request(changed))).status===409,'Changed duplicate payload must conflict');
  await admin`update wholesale_ingest.raw_payloads set expires_at=now()-interval '1 second' where run_id=${run}`;
  assert((await one.handler(request(payload))).status===410,'Expired replay must fail closed');
- const disabled={...payload,run_id:crypto.randomUUID()};
+ const disabled=structuredClone(payload);disabled.run_id=crypto.randomUUID();disabled.coverage.run_id=disabled.run_id;
  await admin`update wholesale_ingest.sources set enabled=false where source_key=${fixture.source_key}`;
  assert((await two.handler(request(disabled))).status===403,'Disabled source must reject successful-shape payload');
  const restricted=postgres(restrictedURL.toString(),{ssl:'require',max:1});

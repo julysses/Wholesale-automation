@@ -33,3 +33,15 @@ test('batch gaps and cross-batch duplicates rejected before delivery',async()=>{
  b.records[0].source_record_id='SYNTHETIC-SECOND';b.records_sha256=await sha256(canonicalJSON(b.records));assert.equal((await validateBatches([b,a])).length,2);
  b.status_reason='different manifest';await assert.rejects(validateBatches([a,b]),/identity mismatch/);
 });
+
+test('complete delivery transmits and journals exact coverage; changed review cannot replay',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'collector-test-'));t.after(()=>fs.rmSync(dir,{recursive:true}));
+ const p=JSON.parse(fs.readFileSync(new URL('../fixtures/synthetic.json',import.meta.url)));
+ const coverage=JSON.parse(fs.readFileSync(new URL('../fixtures/synthetic-coverage.json',import.meta.url)));
+ let wire; const journalPath=path.join(dir,'receipt.json');
+ const opts={...options,journalPath,coverage,fetcher:async(_url,init)=>{wire=JSON.parse(init.body);return response(wire);}};
+ await deliver([p],opts);assert.deepEqual(wire.coverage,coverage);
+ assert.equal(JSON.parse(fs.readFileSync(journalPath)).accepted[0].payload_sha256,await sha256(canonicalJSON(wire)));
+ coverage.reviews[0].note+=' Changed review';
+ await assert.rejects(deliver([p],opts),/different payloads/);
+});

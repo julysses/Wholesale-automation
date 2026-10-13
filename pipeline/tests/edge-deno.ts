@@ -1,5 +1,6 @@
 import {handler} from '../../frontend/supabase/functions/daily-list-ingest/index.ts';
 import {sha256} from '../../frontend/supabase/functions/daily-list-ingest/core.mjs';
+import coverageData from '../fixtures/synthetic-coverage.json' with {type:'json'};
 import fixtureData from '../fixtures/synthetic.json' with {type:'json'};
 Deno.test('real handler rejects unauthorized and invalid requests before database access',async()=>{
  const fixture={...fixtureData,pulled_at:new Date().toISOString()};
@@ -9,6 +10,18 @@ Deno.test('real handler rejects unauthorized and invalid requests before databas
  const hash=await sha256(token);set([fixture.source_key]);
  const call=(body:unknown,auth=true,method='POST',contentType='application/json')=>handler(new Request('https://ingest.invalid',{method,headers:{'Content-Type':contentType,'X-Ingest-Key-Id':'test',...(auth?{Authorization:'Bearer '+token}:{})},...(method==='POST'?{body:typeof body==='string'?body:JSON.stringify(body)}:{})}));
  const expect=async(p:Promise<Response>,status:number)=>{const r=await p;if(r.status!==status)throw new Error(`Expected ${status}, got ${r.status}: ${await r.text()}`);};
+ // Coverage errors must be rejected before any connection to the intentionally invalid DB.
+ const evidenceRejected=async(body:unknown)=>{const r=await call(body);const b=await r.json();if(r.status!==422||b.error!=='collector_evidence_invalid')throw new Error('Expected collector evidence rejection');};
+ await evidenceRejected(fixture);
+ await evidenceRejected({...fixture,coverage:{}});
+ const changed=structuredClone(coverageData);changed.scans[1].pages[0].documents[0].document_id='changed-index';
+ await evidenceRejected({...fixture,coverage:changed});
+ await evidenceRejected({...fixture,coverage:{...coverageData,run_id:crypto.randomUUID()}});
+ await evidenceRejected({...fixture,coverage:coverageData,batch_count:2});
+ await evidenceRejected({...fixture,status:'partial',coverage_complete:false,status_reason:'partial',coverage:coverageData});
+ set(['tx-dallas-probate']);
+ await evidenceRejected({...fixture,status:'partial',coverage_complete:false,status_reason:'partial',source_key:'tx-dallas-probate',source:{...fixture.source,list_type:'probate'}});
+ set([fixture.source_key]);
  await expect(call(fixture,false),401);
  await expect(call(null,true,'GET'),405);
  await expect(call('{}',true,'POST','text/plain'),415);

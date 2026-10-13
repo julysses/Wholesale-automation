@@ -38,7 +38,8 @@ export async function sendBatch(payload,{endpoint,keyId,token,fetcher=fetch}){
 }
 export async function deliver(payloads,{journalPath,coverage,...options}){
  const batches=await validateBatches(payloads,new Date(),coverage);
- const identity=await sha256(canonicalJSON(batches));
+ const wireBatches=batches.map(p=>coverage===undefined?p:{...p,coverage});
+ const identity=await sha256(canonicalJSON(wireBatches));
  let journal={run_id:batches[0].run_id,payload_set_sha256:identity,accepted:[]};
  if(fs.existsSync(journalPath)){
   journal=JSON.parse(fs.readFileSync(journalPath,'utf8'));
@@ -48,7 +49,7 @@ export async function deliver(payloads,{journalPath,coverage,...options}){
  save();
  // Replays every batch, including previously acknowledged batches, so local
  // journal corruption cannot substitute for an actual durable server receipt.
- for(const p of batches){
+ for(const p of wireBatches){
   journal.pending_batch=p.batch_index??0;save();
   const ack=await sendBatch(p,options);
   journal.accepted=journal.accepted.filter(x=>x.batch_index!==ack.batch_index);journal.accepted.push(ack);delete journal.pending_batch;save();
