@@ -39,10 +39,10 @@ For each source, record source_key, a code-generated UUID run_id, Chicago schedu
 Generate the manifest using the checked-in ingestion schema and shared canonicalJSON/SHA-256 helpers. Run:
 
 ```sh
-node pipeline/collectors/preflight.mjs /path/to/manifest.json
+node pipeline/collectors/preflight.mjs /path/to/manifest.json /path/to/coverage.json
 ```
 
-The offline validator currently supports the two foreclosure procedures. It checks structure, source identity, exact HTTPS hosts, hash, size, filing-window semantics and honest empty-result status. It prints `delivered: false` even when valid. It does not collect, sign, submit, establish factual completeness, or acknowledge CRM ingestion. Other source procedures must be reviewed before extending the registry. Keep sensitive source files outside Git.
+The offline validator currently supports the two foreclosure procedures. It checks structure, source identity, exact HTTPS hosts, hash, size, filing-window semantics and honest empty-result status. It prints `delivered: false` even when valid. Complete claims now require a reviewed coverage ledger: two matching ordered page inventories, stable document IDs, explicit review dispositions and exact manifest reconciliation. See [coverage ledger procedure](collector-coverage-ledger.md). Partial/blocked runs omit the ledger and retain incomplete evidence separately. It does not collect, sign, submit, establish factual completeness, or acknowledge CRM ingestion. Other source procedures must be reviewed before extending the registry. Keep sensitive source files outside Git.
 
 ## Implementation sequence and acceptance
 
@@ -50,6 +50,7 @@ The offline validator currently supports the two foreclosure procedures. It chec
 - [x] Verify current county entry points and correct Dallas in rehearsal.
 - [x] Add offline preflight and targeted tests (22 passed with existing contract tests).
 - [x] Verify Dallas advanced recorded-date search independently from sale date.
+- [x] Add coverage-ledger checks for total drift, repeated/missing pages, filing-window errors and unresolved documents (34 targeted tests passed).
 - [ ] Complete Dallas/Collin pagination, document extraction and filing-stamp validation.
 - [ ] Produce one supervised manifest per county; independently review county/property identity and completeness.
 - [ ] Verify the source-scoped secret delivery path and durable Edge acknowledgement in rehearsal. Keep keys outside prompts, files and logs.
@@ -59,3 +60,7 @@ The offline validator currently supports the two foreclosure procedures. It chec
 - [ ] Complete five supervised clean foreclosure runs per county, then the agreed 14-day unattended observation window.
 
 No scheduler was installed this session. All sources remain disabled. Production promotion, seller outreach and the other launch gates remain open.
+
+## Resumed October 13 investigation
+
+Dallas total changed from 479 to 490 during pagination; pass stopped as incomplete. Collin one traversal returned 164 entries in the filing window across seven pages, with 163 distinct displayed texts. Stable document IDs and complete notice review remain open; these are not verified new leads. The Collin calendar procedure and detailed evidence are in collector-coverage-ledger.md. No trace spend, ingestion, schedule or production mutation occurred.

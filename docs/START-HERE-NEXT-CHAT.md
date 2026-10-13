@@ -1,6 +1,6 @@
 # WholesaleOS — new-chat handoff
 
-Saved October 13, 2026, America/Chicago, at the owner's request. Stop work after saving; owner will resume in a new chat.
+Updated October 13, 2026, America/Chicago, after resuming collector work. Continue from the latest checkpoint below.
 
 ## Resume objective and checkout
 
@@ -9,7 +9,7 @@ Continue preparing WholesaleOS for production, beginning with the unfinished Dal
 - Local repository: `/Users/juliodominguez/Documents/Codex/2026-09-28/make-sure-to-review-my-wholesale/work/wholesale-launch-prep`
 - GitHub: https://github.com/julysses/Wholesale-automation
 - Branch: `codex/dallas-collin-launch-prep`
-- Implementation checkpoint commit: `c4fc81b`, pushed. This handoff is a subsequent documentation commit.
+- Prior handoff commit: `24357e0`, pulled and verified READY on resume. Latest collector coverage update is in this commit; see the final checkpoint entry and `docs/collector-coverage-ledger.md`.
 - Draft PR #20: https://github.com/julysses/Wholesale-automation/pull/20
 - Production/base branch: `claude/ai-wholesaling-agency-KkDF1`
 - Pull before updates and commit/push each logical update. Keep this handoff and detailed checkpoint accurate. No subagents unless explicitly authorized by user or applicable instructions.
@@ -40,13 +40,19 @@ Continue preparing WholesaleOS for production, beginning with the unfinished Dal
 - New offline `pipeline/collectors/preflight.mjs`: strict schema/identity/host/hash/size/window validation for Dallas/Collin foreclosure manifests. It never collects or submits and always labels `delivered:false`. Six new tests +14 contract tests +2 migration tests =22 targeted passes. CLI smoke passed. No application runtime code changed in c4fc81b.
 - Earlier regression baseline:837 backend tests,197 frontend tests, build and lint regression passed;146 pre-existing lint findings and bundle warning. Do not describe these as newly rerun for this docs handoff.
 
+## Latest resumed findings
+
+- Dallas changed479→490during pagination; no complete run. Collin one7-page traversal returned164entries,163distinct displayed texts, all filing dates in the requested window. Stable IDs, second traversal and full notice review remain open. In-memory capture was lost during a browser download timeout; do not imply a durable manifest exists.
+- Local complete preflight now requires a separate coverage ledger. Use `node pipeline/collectors/preflight.mjs manifest.json coverage.json`; partial/blocked with false coverage omit the ledger.34targeted tests passed. Complete multi-batch reconciliation remains unsupported.
+- Starting24357e0 preview verified READY asdpl_AY1fGsN9LUb5LgMuYe1ULBgYaavg. Stable CRM remains signed in, synthetic offer version3/unapproved. No new decisions, spend, delivery, schedules or production changes.
+
 ## Exact next steps
 
 1. Read `docs/production-readiness.md`, `docs/collector-rebuild.md`, then the latest sections of `docs/dallas-collin-launch-prep-checkpoint.md`.
 2. Verify Git state, current preview deployment, and browser sessions. Use computer-use tools for browser actions; never extract browser auth tokens or hidden state. Keep secrets out of chat/files/Git.
 3. Finish the supervised foreclosure collection procedures. Dallas Advanced Search → Department Foreclosures → Recorded Date Range September14–October13 inclusive, clear both sale-date bounds. Observed479 indexed notices, only first50 inspected. URL: https://dallas.tx.publicsearch.us/results?department=FC&recordedDateRange=20260914%2C20261013&searchType=advancedSearch . Quick Search defaults to Sale Date; do not use that as a filing window. Verify filing stamps, all pages, stable document IDs, property identity and current status. These479 are candidates, not verified new leads.
 4. Collin source https://apps2.collincountytx.gov/ForeclosureNotices/ exposes Filed Date Start/End separately from Sale Dates, with pagination and individual notices. Complete coverage and extraction remain unverified. Stop at access restrictions. Keep partial/blocked/failed outcomes honest.
-5. Produce reviewed manifests; run `node pipeline/collectors/preflight.mjs /path/to/manifest.json`. Verify source-scoped Edge delivery and durable receipt in rehearsal, replay/lost-response handling, staged records and review tasks. No collection runner/delivery path is yet accepted.
+5. Produce reviewed manifests; run `node pipeline/collectors/preflight.mjs /path/to/manifest.json /path/to/coverage.json`. Verify source-scoped Edge delivery and durable receipt in rehearsal, replay/lost-response handling, staged records and review tasks. No collection runner/delivery path is yet accepted.
 6. Build and verify PropStream eligible-batch selection, quote/budget ledger and CRM result reconciliation before spending. Use existing usable contacts first; no blind retracing of historical lists. Discovery never supplies outreach consent.
 7. Verify missing-worker alerts and owner digest; then install recurring schedules after verified delivery. PRD05:00–05:35Central times and07:30digest are proposed, not installed. No scheduler was created this session.
 8. Continue remaining matrix gates: offer property-change/retry UI, final approved delivery envelope/dispatch, lot routing/reassignment, valuation concurrency recovery, controlled STOP/email unsubscribe, Meta/Retell acceptance, buyer workflows, recovery/access and final production rollout approval. Five clean supervised foreclosure runs per county and14 unattended days still required; do not fabricate elapsed observation.
@@ -62,7 +68,7 @@ Continue preparing WholesaleOS for production, beginning with the unfinished Dal
 - Rehearsal screenshot `/tmp/wholesale-offer-rehearsal-verified.png` (temporary; may not survive restart). Durable evidence/IDs are recorded above and in checkpoint.
 - Chrome id3 in previous session; handles/tab IDs may be stale. Inventory fresh. Rehearsal, PropStream Account and Dallas results tabs were left open. Browser sessions do not imply permission to buy other services.
 - Python test runtime: `/Users/juliodominguez/Documents/Codex/2026-09-28/i-x20/work/launch-venv/bin/python`.
-- Pipeline targeted tests: `node --test pipeline/tests/collector-preflight.test.mjs pipeline/tests/contract.test.mjs pipeline/tests/collector-source-migration.test.mjs`.
+- Pipeline targeted tests: `node --test pipeline/tests/collector-preflight.test.mjs pipeline/tests/collector-coverage.test.mjs pipeline/tests/contract.test.mjs pipeline/tests/collector-source-migration.test.mjs`.
 - Supabase CLI: `/Users/juliodominguez/.npm/_npx/aa8e5c70f9d8d161/node_modules/@supabase/cli-darwin-arm64/bin/supabase`. Read applicable skill before Supabase work. CLI startup needs permission for its telemetry write. Use exact migration reconciliation, not bulk db push.
 
 **Readiness: full automated launch remains NO-GO.** Work is saved; no further operations are scheduled by this handoff.

@@ -46,3 +46,10 @@ Detailed chronological evidence, migration mappings and synthetic fixtures: [lau
 - New offline collector preflight plus source correction: 22 targeted tests passed. Preflight is not a collection runner or a delivery receipt.
 - Dallas source correction applied only in rehearsal; migration mapping and next steps are in the checkpoint. Production remains unchanged.
 - PropStream Legacy account shows $50 prepaid credit, 25,000 saves/exports, renewal November 1. No included 100-trace allowance confirmed. Latest user instruction authorizes using the existing $50, superseding the earlier free-only answer. No trace order or paid debit was submitted this session.
+
+## October 13 resumed collector work
+
+- Starting commit24357e0 verified READY as previewdpl_AY1fGsN9LUb5LgMuYe1ULBgYaavg. Stable rehearsal remains signed in; synthetic offer still shows version3/unapproved. No new offer decision made.
+- Added local coverage-ledger enforcement and12regression cases;34targeted tests passed. It rejects complete claims without matching traversals and document review. Edge enforcement/delivery integration remains open.
+- Dallas count drift479→490 prevented complete coverage. Collin164filtered entries were traversed once; document IDs, complete notice review and second traversal remain unverified. No ingestion or clean-run credit. See collector-coverage-ledger.md.
+- No PropStream order, collector schedule, worker activation or production change. Existing release and observation gates remain open.
