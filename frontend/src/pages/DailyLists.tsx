@@ -118,7 +118,7 @@ export function DailyLists() {
       </article>)}
       <h2 className="text-xl font-semibold">Property evidence review</h2>
       {query.data.reviews.map(item => <ReviewControl key={`${item.run_id}:${item.batch_index}:${item.ordinal}`} item={item} refresh={refresh} />)}
-      <div className="flex gap-3"><Button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 100))}>Previous 100</Button><Button disabled={offset + 100 >= query.data.review_count} onClick={() => setOffset(offset + 100)}>Next 100</Button></div>
+      <div className="flex gap-3"><Button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 100))}>Previous 100</Button><Button disabled={offset + 100 >= query.data.review_count} onClick={() => setOffset(offset + 100)}>Next 100</Button><Button disabled={offset + 100 >= query.data.review_count} onClick={() => setOffset(Math.floor(Math.max(0, query.data!.review_count - 1) / 100) * 100)}>Last page</Button></div>
     </>}
   </div>;
 }

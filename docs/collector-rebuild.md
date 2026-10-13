@@ -88,3 +88,10 @@ Synthetic run `75453257-33a1-494c-bc99-b3c958e1cd65` created QA-only lead `7e62a
 Remaining delivery gap: tax snapshots lack verified situs city (Dallas also lacks situs street), intentionally excluding mailing geography. Add an audited operator identity-evidence workflow before resolving these tax records; never copy mailing address into property fields. Foreclosure document review, cross-source live dedupe, paid-provider reconciliation, controlled consent/STOP acceptance, five clean supervised runs per county and14unattended days remain open. Full launch remains NO-GO.
 
 Dallas foreclosure index evidence: two complete sorted traversals on October13,250+240 rows each,490unique document IDs, document numbers202600002420–202600002909. Durable private inventory at `work/county-sources/dallas-document-inventory.json` under this chat's directory. Indexed filing/sale dates are not reviewed notice evidence; no complete-coverage credit or real foreclosure delivery yet. Prior479 count is superseded by this later observation.
+
+
+## October 13 — Collin notice review delivery
+
+Visually reviewed all four pages of Collin notice4158237 and delivered partial run `90ccda04-b804-44a0-8cf5-3ad97484a12c` (one batch/record accepted). Notice filing stamp October1,2026,13:59; advertised sale December1. Original principal is not current amount owed. The notice and Exhibit A reference deed instrument20210604001132350, while the county detail page says20210604001132340. Preserved the discrepancy and unverified current-sale/CAD identity flags in raw evidence; no CRM association, tracing or outreach authorized. Other Collin notices and second inventory traversal remain incomplete. Rehearsal Collin foreclosure delivery enabled only for this supervised procedure; schedule remains paused.
+
+Preview deployment `dpl_BgCbBvSiRymuX3ovm83UNWuDAwsR` is READY for7c3c0a0. Added a Last page control so operators can reach newly arrived evidence without hundreds of page clicks. Synthetic tax run `b86e3276-a528-4ff3-8568-d5bd48b8bf49` is reserved for browser association acceptance against existing QA lead; do not count it as a business opportunity.
