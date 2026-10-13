@@ -147,3 +147,17 @@ it('does not convert a legacy lead offer price into contract terms', async () =>
   expect(state.create.mock.calls[0][0].lead_id).toBe('qa-lead');
   vi.restoreAllMocks();
 });
+
+
+it('saves a typed follow-up day exactly and rejects impossible calendar dates', async () => {
+  renderDrawer();
+  const date = screen.getByLabelText('Next Follow-up');
+  expect(date).toHaveAttribute('type', 'text');
+  fireEvent.change(date, { target: { value: '2026-02-29' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('real follow-up date');
+  expect(state.update).not.toHaveBeenCalled();
+  fireEvent.change(date, { target: { value: '2026-10-13' } });
+  await save();
+  expect(state.update).toHaveBeenCalledWith('leads', { next_follow_up_date: '2026-10-13' });
+});

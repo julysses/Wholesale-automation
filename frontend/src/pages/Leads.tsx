@@ -984,6 +984,10 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
   const handleSave = async () => {
     setSaveError(null);
     try {
+      const followUp = edits.next_follow_up_date;
+      if (followUp && (!/^\d{4}-\d{2}-\d{2}$/.test(followUp) || !Number.isFinite(Date.parse(followUp + 'T00:00:00Z')) || new Date(followUp + 'T00:00:00Z').toISOString().slice(0, 10) !== followUp)) {
+        throw new Error('Enter a real follow-up date as YYYY-MM-DD.');
+      }
       if (Object.keys(edits).length) {
         await updateLead.mutateAsync({ id: lead.id, updates: edits });
       }
@@ -1069,7 +1073,7 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
             options={MOTIVATION_OPTIONS.filter(o => o.value)} placeholder="Select motivation" />
           <Input label="Asking Price" type="number" value={form.asking_price ?? ''} onChange={(e) => set('asking_price', e.target.value === '' ? null : Number(e.target.value))} />
           <Input label="Est. Equity %" type="number" value={form.estimated_equity_pct ?? ''} onChange={(e) => set('estimated_equity_pct', e.target.value === '' ? null : Number(e.target.value))} />
-          <Input label="Next Follow-up" type="date" value={form.next_follow_up_date || ''} onChange={(e) => set('next_follow_up_date', e.target.value || null)} />
+          <Input label="Next Follow-up" type="text" placeholder="YYYY-MM-DD" maxLength={10} value={form.next_follow_up_date || ''} onChange={(e) => set('next_follow_up_date', e.target.value || null)} />
         </div>
 
         <Textarea label="Seller Notes" value={form.seller_notes || ''} onChange={(e) => set('seller_notes', e.target.value)} rows={3} />
