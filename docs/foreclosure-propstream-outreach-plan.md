@@ -42,3 +42,5 @@ These are required workflow states, not a claim that every stage is implemented 
 No PropStream order, spend, seller message, schedule activation or production promotion was performed while recording this requirement. Resume with the real identity-verification gate, then candidate selection and provider reconciliation. Do not mark the pipeline complete from the existence of this plan.
 
 Primary workflow is bulk processing (owner clarification October13): automated notice extraction and verification queues, eligible batch selection, one provider upload/order, matched bulk result import, and assigned follow-ups. Individual lead forms are exception handling, not the daily operating model.
+
+Bulk result matching now has an in-app two-file column mapper and exact owner/property matching with exception exports. Real provider-file acceptance remains open; the implementation does not imply a real trace was completed.

@@ -1,3 +1,4 @@
+import {PropstreamResultMatch} from './PropstreamResultMatch';
 import {useRef,useState} from 'react';
 import Papa from 'papaparse';
 import {useQueryClient} from '@tanstack/react-query';
@@ -45,7 +46,7 @@ function Bulk({actor}:{actor:string}){
  const disabled=busy||!!pending||!!initial.error;
  return <section aria-label="Bulk PropStream workflow" className="rounded-xl border bg-white p-5 space-y-3"><h2 className="text-xl font-semibold">Bulk foreclosure → PropStream → follow-up</h2>
  <p>Process up to 500 verified leads together. Export the current step’s sheet, complete it in bulk, and import it for review. Duplicate or ineligible leads cannot reserve spending. The $50 cap includes every prior order.</p>
- <label>Batch step <select disabled={disabled} value={action} onChange={e=>{setAction(e.target.value as Action);setDraft(null);}}><option value="review_status">1. Review current sales</option><option value="prepare">2. Reserve verified quotes</option><option value="start">3. Start reserved batch</option><option value="reconcile">4. Import matched results</option></select></label>
+ <PropstreamResultMatch /><label>Batch step <select disabled={disabled} value={action} onChange={e=>{setAction(e.target.value as Action);setDraft(null);}}><option value="review_status">1. Review current sales</option><option value="prepare">2. Reserve verified quotes</option><option value="start">3. Start reserved batch</option><option value="reconcile">4. Import matched results</option></select></label>
  <Button disabled={disabled} onClick={sheet}>Download eligible batch sheet</Button>
  <label className="block">Import completed batch CSV <input type="file" accept=".csv,text/csv" disabled={disabled} onChange={async e=>{const file=e.target.files?.[0];setDraft(null);if(!file)return;try{if(file.size>2_000_000)throw new Error('CSV limit is 2 MB.');setDraft(parseBulkCsv(await file.text(),action));setMessage('Review the batch count and cost before saving.');}catch(error){setMessage(error instanceof Error?error.message:'Invalid CSV');}e.target.value='';}}/></label>
  {draft&&<div><p>{draft.items.length} leads · {action.replaceAll('_',' ')} · ${(draft.items.reduce((n,x)=>n+Number(x.payload.quote_cents||x.payload.actual_cents||0),0)/100).toFixed(2)} quoted/actual total</p><Button disabled={disabled} onClick={()=>submit(draft)}>Save {draft.items.length}-lead batch</Button></div>}
