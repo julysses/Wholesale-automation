@@ -1,6 +1,6 @@
 # Collector rebuild and PropStream operating checkpoint
 
-Updated October 13, 2026. Status: implementation and supervised acceptance, not scheduled operation.
+Updated October 13, 2026. Current status: both county foreclosure indexes reconciled and delivered (Dallas490, Collin164); tax review delivery39,698; all-page foreclosure extraction and launch gates remain open. See the final entries for current evidence; earlier entries preserve historical states. No scheduled operation.
 
 ## Owner decisions
 
@@ -51,7 +51,8 @@ The offline validator currently supports the two foreclosure procedures. It chec
 - [x] Add offline preflight and targeted tests (22 passed with existing contract tests).
 - [x] Verify Dallas advanced recorded-date search independently from sale date.
 - [x] Add coverage-ledger checks for total drift, repeated/missing pages, filing-window errors and unresolved documents (34 targeted tests passed).
-- [ ] Complete Dallas/Collin pagination, document extraction and filing-stamp validation.
+- [x] Complete two matching Dallas/Collin index traversals and review-only delivery (490/164 stable notice IDs).
+- [ ] Complete all-page notice extraction, filing-stamp validation and current property/status review.
 - [ ] Produce one supervised manifest per county; independently review county/property identity and completeness.
 - [x] Verify the source-scoped secret delivery path and durable Edge acknowledgement in rehearsal. Scoped Keychain secrets, HTTP202acceptance, HTTP200exact replay and SQL counts verified October13.
 - [x] Replay the same run safely and verify uncertain-response reconciliation, staged records and review tasks. Live exact replay and assigned partial-run tasks verified; lost-response behavior covered by delivery-client tests.
@@ -131,3 +132,12 @@ Collin completed two full seven-page traversals under the September14–October1
 Collin run `a0c09287-a888-4e8e-97ea-ab4964e5ab69` accepted164records; inventory hash `bd845380298478eaa7f1bc2fc11ffe17e90530cab2d6cb9ab1be2264e68d8fac`. SQL confirms654records across this run and Dallas `db1c2221-ed79-4ece-bf12-386a84d59477`, zero resolved properties. The earlier individual Collin4158237receipt is an additional observation, not a655thdistinct foreclosure notice. The new Collin adapter and four inventory tests pass; supported repeatable procedure is `docs/foreclosure-inventory-collection.md`. This completes supervised index discovery/review delivery, not all-page extraction or clean complete-run credit.
 
 Monitoring scan was rejected by automatic approval review because it changes run/job states, tasks and digest and contains retention cleanup. Read-only inspection verified zero expired payloads, staged records or contacts and four existing source incidents. A guarded scan that aborts on any expired data was also rejected; approval requested explicitly and pending. Do not call another route to bypass that decision. Remaining live tests and observation gates still apply; all outreach flags remain off and heartbeat paused.
+
+
+## October 13 — final read-only acceptance for e6341f6
+
+Signed-in CRM reload showed both foreclosure runs as partial/received, zero new leads and zero stacked observations, and40,353total unresolved review records. This count includes the earlier separate Collin notice observation. New receipt screenshot: this chat's `outputs/foreclosure-inventory-receipts.jpg`. No monitoring-refresh button was used to bypass the rejected scan.
+
+All GitHub backend, frontend typecheck/build/lint, pipeline and real PostgreSQL contention jobs passed for e6341f6. Vercel status was still pending at the last check; the prior stable preview displayed both database receipts. Read-only rehearsal health, production health/readiness, and production Hilltop form configuration returnedHTTP200. These probes are availability evidence, not new intake, owner delivery or full-launch acceptance.
+
+Next: obtain the pending guarded-monitoring-scan approval; finish all-page foreclosure notice extraction, independent situs/current-sale review and complete coverage evidence; then provider reconciliation/controlled contact tests, independent monitoring and five clean runs plus14unattended days. Saved index manifests are accepted already—replay identical saved directories, never regenerate them to simulate fresh opportunities. No trace spending, outreach, schedule activation or production writes occurred.
