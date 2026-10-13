@@ -8,6 +8,7 @@ async function fixture(t){
  INSERT INTO public.profiles VALUES('${id(10)}','admin','approved'),('${id(11)}','user','approved'),('${id(12)}','user','approved');
  UPDATE wholesale_ingest.properties SET city='Dallas';UPDATE wholesale_ingest.settings SET score_threshold=30;`);
  await f.db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261012235926_list_lot_handoff.sql',import.meta.url),'utf8'));
+ await f.db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261013004341_list_lot_receiving_evidence.sql',import.meta.url),'utf8'));
  const hash=(await rpc(f.db,'list_scoring_input',[id(1)])).input_hash;
  const review=()=>rpc(f.db,'review_list_lot',[id(20),id(10),id(1),hash,true,'https://example.invalid/official-lot','Reviewed exact parcel classification']);
  const score=async()=>{const s=await rpc(f.db,'list_scoring_input',[id(1)]);return rpc(f.db,'save_list_score',[id(5),id(1),s.input_hash,'claude-fixture','daily-list-score-v1','msg-fixture',JSON.stringify(f.result)]);};
@@ -21,6 +22,7 @@ test('reviewed lot creates one linked destination/task, preserving unknowns and 
  assert.equal((await handoff()).handoff.id,first.handoff.id);assert.equal((await handoff(id(22))).blocked,'existing_handoff');
  const land=(await db.query('select * from public.land_leads')).rows;assert.equal(land.length,1);assert.equal(land[0].owner_name,null);assert.equal(land[0].offer_price,null);assert.equal(land[0].mao,null);assert.equal(land[0].sms_sequence_active,false);assert.equal(land[0].status,'new');
  assert.equal((await db.query('select count(*)::int n from public.tasks')).rows[0].n,1);
+ const inbox=await rpc(db,'list_lot_handoffs',[id(11),0]);assert.equal(inbox.handoffs[0].evidence_url,'https://example.invalid/official-lot');assert.equal(inbox.handoffs[0].score,32);assert.ok(inbox.handoffs[0].scoring_input);
  const ack=await rpc(db,'acknowledge_list_lot',[id(21),id(11)]);assert.equal(ack.handoff.acknowledged_by,id(11));assert.ok(ack.handoff.acknowledged_at);
  const replay=await rpc(db,'acknowledge_list_lot',[id(21),id(10)]);assert.equal(replay.handoff.acknowledged_by,id(11));assert.equal(replay.replayed,true);
  assert.equal((await db.query('select status from public.tasks')).rows[0].status,'pending');

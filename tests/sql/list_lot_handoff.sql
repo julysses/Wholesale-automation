@@ -40,6 +40,8 @@ BEGIN
  IF v->>'replayed' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'Lost ACK replay failed'; END IF;
  v:=public.handoff_list_lot(gen_random_uuid(),actor,evaluation,actor);
  IF v->>'blocked' IS DISTINCT FROM 'existing_handoff' THEN RAISE EXCEPTION 'Duplicate handoff accepted'; END IF;
+ v:=public.list_lot_handoffs(actor,0);
+ IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v->'handoffs') h WHERE h->>'id'=handoff::text AND h->>'evidence_url'='https://example.invalid/lot' AND h ? 'scoring_input' AND (h->>'score')::int=7) THEN RAISE EXCEPTION 'Receiving evidence missing'; END IF;
  v:=public.acknowledge_list_lot(handoff,actor);
  IF v#>>'{handoff,acknowledged_by}' IS DISTINCT FROM actor::text THEN RAISE EXCEPTION 'Receiving acknowledgement failed'; END IF;
  v:=public.acknowledge_list_lot(handoff,actor);

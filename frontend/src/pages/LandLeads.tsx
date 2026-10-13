@@ -1,3 +1,4 @@
+import { LotInbox } from '@/components/land/LotInbox';
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -361,6 +362,12 @@ export function LandLeads() {
     refetchInterval: 30000,
   });
 
+  async function openLinkedLand(id:string,leadId:string){
+    const {data,error}=await supabase.from('land_leads').select('*').eq('id',id).eq('lead_id',leadId).single();
+    if(error)throw error;
+    if(!data||data.id!==id||data.lead_id!==leadId)throw new Error('Linked land record could not be confirmed.');
+    setSelectedLead(data as LandLead);
+  }
   const counts = {
     total:     allLeads.length,
     vetting:   allLeads.filter(l => l.status === 'vetting' || l.status === 'new').length,
@@ -389,6 +396,7 @@ export function LandLeads() {
         </button>
       </div>
 
+      <LotInbox onOpen={openLinkedLand}/>
       {/* Funnel strip */}
       <div className="grid grid-cols-5 gap-3">
         {[

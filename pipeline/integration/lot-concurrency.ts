@@ -18,6 +18,7 @@ export async function verifyLotConcurrency(adminURL:string){
  try{
   await admin.unsafe(`CREATE TABLE public.land_leads(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),lead_id uuid,source text,owner_name text NOT NULL,property_address text,city text,state text,zip_code text,county text,apn text,status text,assigned_to uuid,sms_sequence_active boolean,offer_price numeric,mao numeric)`);
   await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261012235926_list_lot_handoff.sql',import.meta.url)));
+  await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261013004341_list_lot_receiving_evidence.sql',import.meta.url)));
   await admin`insert into public.profiles(id,role,status) values(${actor},'admin','approved'),(${owner},'user','approved')`;
   await admin`insert into public.leads(id,property_address,city) values(${lead},'SYNTHETIC LOT','Dallas')`;
   await admin`insert into wholesale_ingest.properties(id,state,county,address_std,city,lead_id) values(${property},'TX','Dallas','SYNTHETIC LOT','Dallas',${lead})`;
@@ -37,6 +38,8 @@ export async function verifyLotConcurrency(adminURL:string){
   const outputs=(await Promise.all(requests)).map(rows=>rows[0].value);
   assert(outputs.filter(x=>!x.blocked).length===1&&outputs.filter(x=>x.blocked==='existing_handoff').length===1,'Duplicate lot handoff');
   const saved=outputs.find(x=>!x.blocked).handoff;
+  const [inbox]=await one`select public.list_lot_handoffs(${owner},0) value`;
+  assert(inbox.value.handoffs.length===1&&inbox.value.handoffs[0].evidence_url==='https://example.invalid/lot'&&inbox.value.handoffs[0].score===7&&inbox.value.handoffs[0].scoring_input.lead_id===lead,'Assigned receiver evidence is missing or mismatched');
   const [count]=await admin`select count(*)::int n from public.land_leads where lead_id=${lead}`;assert(count.n===1,'Duplicate land record');
   await admin.unsafe('BEGIN');locked=true;await admin`select id from wholesale_ingest.lot_handoffs where id=${saved.id} for update`;
   const acks=[one`select public.acknowledge_list_lot(${saved.id},${actor}) value`.execute(),two`select public.acknowledge_list_lot(${saved.id},${owner}) value`.execute()];

@@ -1,3 +1,4 @@
+import { LotOperations } from '@/components/lists/LotOperations';
 import { ScoringOperations } from '@/components/lists/ScoringOperations';
 import { TraceOperations } from '@/components/lists/TraceOperations';
 import { useState } from 'react';
@@ -87,6 +88,7 @@ export function DailyLists() {
     <p>Dallas and Collin only. Code enforcement covers the named municipality, not the entire county. Reviewed records feed the CRM; contact permissions remain separate.</p>
     <TraceOperations />
     <ScoringOperations />
+    <LotOperations />
     <Button onClick={scan} disabled={scanning}>Refresh processing and heartbeat</Button>
     {message && <p role="status">{message}</p>}
     {query.isLoading && <p>Loading list status…</p>}
