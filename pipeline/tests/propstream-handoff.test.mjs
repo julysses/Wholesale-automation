@@ -7,7 +7,7 @@ const rpc=async(db,name,args)=>(await db.query(`select public.${name}(${args.map
 async function setup(t){
  const db=await database(); t.after(()=>db.close());
  const dir=new URL('../../frontend/supabase/migrations/',import.meta.url);
- for(const suffix of ['_list_trace_budget.sql','_list_trace_contacts.sql','_list_trace_operations.sql','_list_trace_total_cap.sql','_propstream_operator_handoff.sql'])await db.exec(fs.readFileSync(new URL(fs.readdirSync(dir).find(x=>x.endsWith(suffix)),dir),'utf8'));
+ for(const suffix of ['_list_reviewed_identity.sql','_list_trace_budget.sql','_list_trace_contacts.sql','_list_trace_operations.sql','_list_trace_total_cap.sql','_propstream_operator_handoff.sql','_collin_appraisal_evidence_host.sql'])await db.exec(fs.readFileSync(new URL(fs.readdirSync(dir).find(x=>x.endsWith(suffix)),dir),'utf8'));
  await db.exec(`ALTER TABLE public.tasks ADD lead_id uuid; ALTER TABLE public.leads ADD owner_first_name text; ALTER TABLE public.leads ADD owner_last_name text;ALTER TABLE public.leads ADD dnc boolean DEFAULT false;
  INSERT INTO public.profiles VALUES('${id(1)}','admin','approved');
  INSERT INTO public.leads(id,property_address,city,state,zip_code,owner_first_name,status) VALUES('${id(2)}','QA TEST PROPERTY','Dallas','TX','75201','Synthetic','new');
