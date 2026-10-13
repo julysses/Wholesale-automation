@@ -45,6 +45,7 @@ function Review({actor,lead}:{actor:string;lead:string}) {
    if(!decision){
     const id=crypto.randomUUID();
     if(action==='draft'){
+     if(!/^\d{4}-\d{2}-\d{2}$/.test(terms.closing_date)||!Number.isFinite(Date.parse(terms.closing_date+'T00:00:00Z'))||new Date(terms.closing_date+'T00:00:00Z').toISOString().slice(0,10)!==terms.closing_date)throw new Error('Enter a real closing date as YYYY-MM-DD.');
      if(!/^\d+(\.\d{1,2})?$/.test(terms.price)||Number(terms.price)<=0||Number(terms.price)>100000000||!terms.closing_date||!terms.recipient.trim()||!terms.conditions.trim()||(!/(Z|[+-]\d{2}:\d{2})$/.test(terms.expires_at)||!Number.isFinite(Date.parse(terms.expires_at))))throw new Error('Enter a positive price, closing date, expiry, recipient and conditions.');
      decision={request_id:id,revision_id:id,expected_version:snapshot.version,action,terms:{...terms,expires_at:new Date(terms.expires_at).toISOString()}};
     }else{
@@ -85,7 +86,7 @@ function Review({actor,lead}:{actor:string;lead:string}) {
    <fieldset disabled={busy||!!pending} className="grid gap-2">
     <legend>Human-entered terms</legend>
     <label>Offer price<input className="block w-full rounded border px-3 py-2" aria-label="Offer price" value={terms.price} onChange={e=>{setTerms({...terms,price:e.target.value});setConfirmed(false);}}/></label>
-    <label>Closing date<input className="block w-full rounded border px-3 py-2" aria-label="Closing date" type="date" value={terms.closing_date} onChange={e=>{setTerms({...terms,closing_date:e.target.value});setConfirmed(false);}}/></label>
+    <label>Closing date (YYYY-MM-DD)<input className="block w-full rounded border px-3 py-2" aria-label="Closing date" type="text" placeholder="YYYY-MM-DD" maxLength={10} value={terms.closing_date} onChange={e=>{setTerms({...terms,closing_date:e.target.value});setConfirmed(false);}}/></label>
     <label>Expiry (include time zone)<input className="block w-full rounded border px-3 py-2" aria-label="Expiry (include time zone)" placeholder="2026-10-20T17:00:00-05:00" value={terms.expires_at} onChange={e=>{setTerms({...terms,expires_at:e.target.value});setConfirmed(false);}}/></label>
     <label>Recipient<input className="block w-full rounded border px-3 py-2" aria-label="Recipient" value={terms.recipient} onChange={e=>{setTerms({...terms,recipient:e.target.value});setConfirmed(false);}}/></label>
     <label>Intended channel<select className="block w-full rounded border px-3 py-2" aria-label="Intended channel" value={terms.channel} onChange={e=>{setTerms({...terms,channel:e.target.value as OfferTerms['channel']});setConfirmed(false);}}><option value="manual">Manual</option><option value="email">Email</option><option value="sms">SMS</option></select></label>

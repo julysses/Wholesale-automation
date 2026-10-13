@@ -99,3 +99,32 @@ it('shows immutable preview and blocks stale or unbound property approval',async
  expect(screen.getByRole('button',{name:'Save new revision'})).toBeEnabled();
  expect(screen.getByText(/Property details changed/)).toBeTruthy();
 });
+
+
+it('saves a typed calendar date with the exact draft and does not approve it',async()=>{
+ mocks.fetch.mockImplementation(async(_path:string,init?:RequestInit)=>{
+  if(!init)return {json:async()=>({...base,version:0,revision:null,content:null,binding_valid:false})};
+  const body=JSON.parse(init.body as string);
+  expect(body.action).toBe('draft');
+  expect(body.terms.closing_date).toBe('2099-12-31');
+  const event={...base.revision,id:body.request_id,revision_id:body.request_id,terms:body.terms};
+  return {json:async()=>({event,current:{...base,revision:event,content:{...base.content,revision_id:body.request_id}}})};
+ });
+ render(<OfferReview leadId={lead}/>);
+ await screen.findByText(/Review version 0/);
+ for(const [label,value] of Object.entries({'Offer price':'100.00','Closing date':'2099-12-31','Expiry (include time zone)':'2099-10-01T00:00:00Z','Recipient':'Synthetic QA','Conditions':'Not a real offer'})){
+  fireEvent.change(screen.getByLabelText(label),{target:{value}});
+ }
+ fireEvent.click(screen.getByRole('button',{name:'Save new revision'}));
+ await screen.findByText(/Decision recorded/);
+ expect(screen.getByText(/Review version 1 · Not approved/)).toBeTruthy();
+ expect(screen.getByRole('button',{name:'Approve saved terms'})).toBeDisabled();
+});
+
+it.each(['2099-02-29','2099-04-31','12/31/2099',''])('rejects invalid or ambiguous closing date %s before posting',async value=>{
+ render(<OfferReview leadId={lead}/>);await screen.findByText('$125000.00');
+ fireEvent.change(screen.getByLabelText('Closing date'),{target:{value}});
+ fireEvent.click(screen.getByRole('button',{name:'Save new revision'}));
+ await screen.findByText('Enter a real closing date as YYYY-MM-DD.');
+ expect(mocks.fetch.mock.calls.every(call=>!call[1])).toBe(true);
+});
