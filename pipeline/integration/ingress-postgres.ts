@@ -1,3 +1,4 @@
+import {verifyValuationConcurrency} from './valuation-concurrency.ts';
 // Real PostgreSQL/TLS integration; refuse all remote hosts and non-test databases.
 import postgres from 'npm:postgres@3.4.5';
 import {verifyOfferConcurrency} from './offer-concurrency.ts';
@@ -72,6 +73,7 @@ try{
  await verifyTraceConcurrency(adminURL);
  await verifyScoringConcurrency(adminURL);
  await verifyLotConcurrency(adminURL);
+ await verifyValuationConcurrency(adminURL);
  console.log('PASS actual ingress success, overlapping duplicate requests, lost-ACK replay, conflict, expiry, disabled source and restricted-role checks');
 }finally{
  if(locked)await locker`select pg_advisory_unlock(hashtextextended(${run},0))`;
