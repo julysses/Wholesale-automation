@@ -26,9 +26,12 @@ class Decision(BaseModel):
     action: Literal['draft', 'approve', 'revoke']
     revision_id: UUID
     terms: Terms | None = None
+    reviewed_content_id: UUID | None = None
 
     @model_validator(mode='after')
     def shape(self):
+        if (self.action == 'approve' and self.reviewed_content_id != self.revision_id) or (self.action != 'approve' and self.reviewed_content_id is not None):
+            raise ValueError('Approval requires the displayed content revision')
         if self.action == 'draft':
             if self.terms is None or self.revision_id != self.request_id:
                 raise ValueError('A new draft needs terms and matching request/revision IDs')
@@ -56,9 +59,10 @@ async def snapshot(lead_id: UUID, request: Request):
 
 @router.post('/{lead_id}')
 async def decide(lead_id: UUID, body: Decision, request: Request):
-    value = await rpc('record_offer_review', {
+    value = await rpc('record_offer_review_v2', {
         'p_id': str(body.request_id), 'p_lead': str(lead_id), 'p_expected': body.expected_version,
         'p_action': body.action, 'p_revision': str(body.revision_id),
+        'p_reviewed_content': str(body.reviewed_content_id) if body.reviewed_content_id else None,
         'p_terms': body.terms.model_dump(mode='json') if body.terms else None,
     }, request)
     if isinstance(value, dict):

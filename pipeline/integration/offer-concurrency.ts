@@ -10,14 +10,15 @@ export async function verifyOfferConcurrency(adminURL:string){
  let locked=false;
  try{
   await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261012213446_human_offer_review.sql',import.meta.url)));
+  await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/20261013035456_offer_content_binding.sql',import.meta.url)));
   await admin`insert into public.profiles(id,role,status) values(${actor},'admin','approved')`;
-  await admin`insert into public.leads(id,property_address) values(${lead},'SYNTHETIC CONCURRENT OFFER TEST')`;
-  await admin.unsafe('GRANT SELECT ON public.profiles,public.leads TO service_role');
+  await admin`insert into public.leads(id,property_address,city) values(${lead},'SYNTHETIC CONCURRENT OFFER TEST','Dallas')`;
+  await admin.unsafe('GRANT SELECT ON public.profiles,public.leads TO service_role; GRANT UPDATE ON public.leads TO service_role');
   await one.unsafe('SET ROLE service_role');await two.unsafe('SET ROLE service_role');
   const terms={price:'125000',closing_date:'2099-12-31',expires_at:'2099-10-01T00:00:00Z',recipient:'fixture@example.invalid',channel:'email',conditions:'Synthetic only; never send'};
-  await one`select public.record_offer_review(${revision},${lead},${actor},0,'draft',${revision},${one.json(terms)})`;
+  await one`select public.record_offer_review_v2(${revision},${lead},${actor},0,'draft',${revision},${one.json(terms)},NULL)`;
   await admin`select pg_advisory_lock(hashtextextended(${key},0))`;locked=true;
-  const approve=(db:ReturnType<typeof postgres>,id:string)=>db`select public.record_offer_review(${id},${lead},${actor},1,'approve',${revision},NULL) AS receipt`.execute();
+  const approve=(db:ReturnType<typeof postgres>,id:string)=>db`select public.record_offer_review_v2(${id},${lead},${actor},1,'approve',${revision},NULL,${revision}) AS receipt`.execute();
   const first=approve(one,firstID),second=approve(two,secondID);
   let waiters:{pid:number}[]=[];
   for(let i=0;i<100;i++){
@@ -33,9 +34,22 @@ export async function verifyOfferConcurrency(adminURL:string){
   const [count]=await admin`select count(*)::int n from offer_review.events where lead_id=${lead}`;
   assert(count.n===2,'Losing decision must not append an event');
   const winner=receipts.find(r=>r.event).event.id;
-  await one`select public.record_offer_review(${crypto.randomUUID()},${lead},${actor},2,'revoke',${revision},NULL)`;
-  const [replayed]=await one`select public.record_offer_review(${winner},${lead},${actor},1,'approve',${revision},NULL) AS receipt`;
+  await one`select public.record_offer_review_v2(${crypto.randomUUID()},${lead},${actor},2,'revoke',${revision},NULL,NULL)`;
+  const [replayed]=await one`select public.record_offer_review_v2(${winner},${lead},${actor},1,'approve',${revision},NULL,${revision}) AS receipt`;
   assert(replayed.receipt.replayed===true&&replayed.receipt.current.approved===false,'Old approval replay must not restore revoked approval');
+  await admin.unsafe('BEGIN');
+  await admin`update public.leads set city='CHANGED WHILE APPROVING' where id=${lead}`;
+  const changed=one`select public.record_offer_review_v2(${crypto.randomUUID()},${lead},${actor},3,'approve',${revision},NULL,${revision}) AS receipt`.execute();
+  let propertyWait=false;
+  for(let i=0;i<100;i++){
+   const waiting=await admin`select pid from pg_stat_activity where application_name='offer-contention-one' and wait_event_type='Lock'`;
+   if(waiting.length){propertyWait=true;break;}
+   await new Promise(resolve=>setTimeout(resolve,50));
+  }
+  await admin.unsafe('COMMIT');
+  const [changedResult]=await changed;
+  assert(propertyWait&&changedResult.receipt.conflict===true,'Approval must wait for concurrent property edit and reject the changed identity');
+  console.log('PASS property update contention: approval waits, rechecks committed identity, and rejects stale content');
   console.log('PASS actual overlapping offer decisions: one winner, one conflict, no duplicate event, revoked approval stays revoked on replay');
  }finally{
   if(locked)await admin`select pg_advisory_unlock(hashtextextended(${key},0))`;

@@ -11,7 +11,7 @@ vi.mock('@/hooks/useProfile',()=>({useProfile:()=>({profile:{id:actor},isAdmin:m
 import { OfferReview } from '@/components/offers/OfferReview';
 import { pendingOffer,writeOffer,type OfferDecision } from '@/lib/offerReview';
 const terms={price:'125000.00',closing_date:'2099-12-31',expires_at:'2099-10-01T00:00:00Z',recipient:'test@example.invalid',channel:'email' as const,conditions:'Subject to reviewed contract'};
-const base={lead_id:lead,version:1,revision:{id:revision,lead_id:lead,operator_id:actor,action:'draft',expected_version:0,revision_id:revision,terms,created_at:'2026-10-12T00:00:00Z'},approval:null,approved:false,outbound_enabled:false};
+const base={lead_id:lead,version:1,revision:{id:revision,lead_id:lead,operator_id:actor,action:'draft',expected_version:0,revision_id:revision,terms,created_at:'2026-10-12T00:00:00Z'},approval:null,approved:false,outbound_enabled:false,binding_valid:true,content:{revision_id:revision,property_snapshot:{property_address:'SYNTHETIC PROPERTY',city:'Dallas',state:'TX',zip_code:null},renderer_version:'offer-summary-v1',subject:'Offer terms',body:'SYNTHETIC PROPERTY — $125000.00',created_at:'2026-10-12T00:00:00Z'}};
 beforeEach(()=>{sessionStorage.clear();vi.clearAllMocks();mocks.admin=true;mocks.fetch.mockResolvedValue({json:async()=>base});});
 it('requires exact saved-term acknowledgement and blocks approval during edits',async()=>{
  render(<OfferReview leadId={lead}/>);
@@ -57,13 +57,13 @@ it('retains exact identity across lost acknowledgement and remount',async()=>{
 });
 it('non-admin cannot load or approve offers',()=>{mocks.admin=false;render(<OfferReview leadId={lead}/>);expect(mocks.fetch).not.toHaveBeenCalled();});
 it('rejects mismatched receipts and preserves recovery reference',async()=>{
- const decision:OfferDecision={request_id:crypto.randomUUID(),revision_id:revision,expected_version:1,action:'approve'};
+ const decision:OfferDecision={request_id:crypto.randomUUID(),revision_id:revision,expected_version:1,action:'approve',reviewed_content_id:revision};
  mocks.fetch.mockResolvedValue({json:async()=>({event:{...base.revision,action:'approve',terms:null},current:base})});
  await expect(writeOffer(actor,lead,decision)).rejects.toThrow();expect(pendingOffer(actor,lead)?.request_id).toBe(decision.request_id);
 });
 it('definite conflict clears pending reference but never reports success',async()=>{
  mocks.fetch.mockRejectedValue(new ApiError('Conflict',409));
- const decision:OfferDecision={request_id:crypto.randomUUID(),revision_id:revision,expected_version:1,action:'approve'};
+ const decision:OfferDecision={request_id:crypto.randomUUID(),revision_id:revision,expected_version:1,action:'approve',reviewed_content_id:revision};
  await expect(writeOffer(actor,lead,decision)).rejects.toThrow('Conflict');expect(pendingOffer(actor,lead)).toBeNull();
 });
 it('normalizes equivalent expiry timestamps without losing a confirmed draft receipt',async()=>{
@@ -72,7 +72,7 @@ it('normalizes equivalent expiry timestamps without losing a confirmed draft rec
  mocks.fetch.mockImplementation(async(_path:string,init:RequestInit)=>{
   const body=JSON.parse(init.body as string);
   const event={...base.revision,id,revision_id:id,terms:{...body.terms,expires_at:'2099-10-01T00:00:00Z'}};
-  return {json:async()=>({event,current:{...base,revision:event}})};
+  return {json:async()=>({event,current:{...base,revision:event,content:{...base.content,revision_id:id}}})};
  });
  const saved=await writeOffer(actor,lead,decision);
  expect(saved.revision?.terms?.price).toBe('125000.00');expect(pendingOffer(actor,lead)).toBeNull();
@@ -89,4 +89,13 @@ it('revocation receipt removes approved status without sending',async()=>{
  fireEvent.click(screen.getByRole('button',{name:'Revoke approval'}));
  await screen.findByText(/Review version 3 · Not approved/);
  expect(screen.getByRole('button',{name:'Revoke approval'})).toBeDisabled();
+});
+
+it('shows immutable preview and blocks stale or unbound property approval',async()=>{
+ mocks.fetch.mockResolvedValue({json:async()=>({...base,binding_valid:false})});
+ render(<OfferReview leadId={lead}/>);
+ await screen.findByText('SYNTHETIC PROPERTY — $125000.00');
+ expect(screen.getByRole('button',{name:'Approve saved terms'})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Save new revision'})).toBeEnabled();
+ expect(screen.getByText(/Property details changed/)).toBeTruthy();
 });

@@ -70,3 +70,21 @@ def test_history_identity_cursor_and_derived_operator(setup,result,status):
     response=client.get('/api/operations/offers/'+LEAD+'/history?before=5',headers={'Authorization':'Bearer test'})
     assert response.status_code==status
     db.rpc.assert_called_once_with('offer_review_history',{'p_lead':LEAD,'p_before':5,'p_operator':OPERATOR})
+
+@pytest.mark.parametrize('reviewed',[None,str(uuid4())])
+def test_approval_requires_displayed_content_reference(setup,reviewed):
+    client,db,_=setup
+    body=payload()
+    body.update(action='approve',terms=None,reviewed_content_id=reviewed)
+    assert client.post('/api/operations/offers/'+LEAD,json=body,headers={'Authorization':'Bearer test'}).status_code==422
+    db.rpc.assert_not_called()
+
+def test_approval_uses_versioned_rpc_and_content_reference(setup):
+    client,db,_=setup
+    body=payload()
+    body.update(action='approve',terms=None,reviewed_content_id=body['revision_id'])
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={'conflict':True})
+    assert client.post('/api/operations/offers/'+LEAD,json=body,headers={'Authorization':'Bearer test'}).status_code==409
+    name,params=db.rpc.call_args.args
+    assert name=='record_offer_review_v2'
+    assert params['p_reviewed_content']==body['revision_id']

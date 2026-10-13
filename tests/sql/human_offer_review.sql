@@ -8,17 +8,17 @@ BEGIN
  INSERT INTO public.leads(id,property_address,city) VALUES(lead,'SYNTHETIC OFFER REVIEW ROLLBACK QA','Dallas');
  terms:=jsonb_build_object('price','123456.78','closing_date','2099-12-31','expires_at','2099-10-01T00:00:00Z',
    'recipient','synthetic@example.invalid','channel','email','conditions','Synthetic rollback test only; no seller contact');
- v:=public.record_offer_review(draft,lead,actor,0,'draft',draft,terms);
+ v:=public.record_offer_review_v2(draft,lead,actor,0,'draft',draft,terms,NULL);
  IF (v#>>'{current,version}')::int<>1 OR (v#>>'{current,approved}')::boolean THEN RAISE EXCEPTION 'Draft failed'; END IF;
- v:=public.record_offer_review(approval,lead,actor,1,'approve',draft,NULL);
+ v:=public.record_offer_review_v2(approval,lead,actor,1,'approve',draft,NULL,draft);
  IF NOT (v#>>'{current,approved}')::boolean OR (v#>>'{current,outbound_enabled}')::boolean THEN RAISE EXCEPTION 'Approval failed'; END IF;
- v:=public.record_offer_review(revoke_id,lead,actor,2,'revoke',draft,NULL);
+ v:=public.record_offer_review_v2(revoke_id,lead,actor,2,'revoke',draft,NULL,NULL);
  IF (v#>>'{current,approved}')::boolean THEN RAISE EXCEPTION 'Revocation failed'; END IF;
- v:=public.record_offer_review(approval,lead,actor,1,'approve',draft,NULL);
+ v:=public.record_offer_review_v2(approval,lead,actor,1,'approve',draft,NULL,draft);
  IF NOT (v->>'replayed')::boolean OR (v#>>'{current,approved}')::boolean THEN RAISE EXCEPTION 'Replay restored approval'; END IF;
- v:=public.record_offer_review(gen_random_uuid(),lead,actor,1,'approve',draft,NULL);
+ v:=public.record_offer_review_v2(gen_random_uuid(),lead,actor,1,'approve',draft,NULL,draft);
  IF NOT (v->>'conflict')::boolean THEN RAISE EXCEPTION 'Stale version accepted'; END IF;
- IF has_function_privilege('authenticated','public.record_offer_review(uuid,uuid,uuid,integer,text,uuid,jsonb)','execute')
+ IF has_function_privilege('authenticated','public.record_offer_review_v2(uuid,uuid,uuid,integer,text,uuid,jsonb,uuid)','execute')
  OR has_function_privilege('anon','public.offer_review_snapshot(uuid,uuid)','execute')
  OR has_table_privilege('service_role','offer_review.events','UPDATE')
  OR has_table_privilege('service_role','offer_review.events','DELETE') THEN RAISE EXCEPTION 'Offer permissions unsafe'; END IF;
