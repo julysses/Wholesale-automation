@@ -1,5 +1,14 @@
 # Foreclosure priority list → PropStream → outreach → follow-up
 
+## Paused at owner request — October 13, 2026
+
+Work is **paused for today**, not complete. The owner reports Supabase is experiencing issues; no outage investigation, database calls, collector runs, tracing or outreach should continue during this pause. The active Codex goal is paused. The existing daily collection schedule remains paused and production remains unchanged.
+
+Saved checkpoint: implementation5ee71a0 passed all GitHub checks; documentationbef8097 records acceptance. Collin164notices/420pages captured and locally extracted, with67text-quality flags; Dallas1notice/5pages captured and extracted, with2flags, leaving489Dallas full notices unfinished. Rehearsal stores425page extraction receipts, and the in-app counts were verified before the reported service issues. Current service health has not been rechecked. No trace orders or spend; the $50total prepaid allowance remains untouched. No local background collector or OCR process was running at pause.
+
+Resume only when the owner asks: first check Supabase recovery and reconcile existing capture/extraction receipts without replaying migrations or inventing new ingestion runs. Then continue structured property extraction, independent ownership/current-sale verification, Dallas bulk-download reliability, only-new eligible PropStream processing and CRM outreach/follow-up preparation. Do not activate schedules, seller outreach or production as part of service recovery.
+
+
 ## CI acceptance checkpoint — October 13, 2026
 
 Implementation5ee71a0 passed every GitHub push and PR check: backend, frontend, pipeline, real PostgreSQL/TLS and Vercel. This fixes the earlier frozen integration-lock failure. No change to eligibility or $50spend authorization. In-app extraction/capture acceptance atf0d99de remains valid; the follow-on change is test-command/lock/docs only. Current implementation is pushed and the working tree was clean before this documentation update.
