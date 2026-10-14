@@ -1,5 +1,11 @@
 # WholesaleOS — new-chat handoff
 
+## Dashboard verification accepted; use signed-in Supabase page — October 14, 2026
+
+Owner does not know a CLI password and requested the already-open Supabase dashboard. Stop CLI authentication attempts; no password reset or credential entry is needed. The last CLI verification failed with AccessTokenRequiredError; it did not undo the earlier successful recovery transaction. Signed-in rehearsal dashboard SQL Editor successfully verified **75 completed A1903016 requests,473 saved contacts,145 DNC-listed records,$0actual/$0reserved/$50remaining**. Saved read-only query: https://supabase.com/dashboard/project/tbhwxgfzbiaqjurghntj/sql/3de6ec11-c899-4f57-8eec-c8cdc48213a2 . Screenshot in this chat's outputs/supabase-bulk-recovery-verified.jpg.
+
+WholesaleOS browser acceptance now covers both property pages:49saved-result/follow-up states on page1 and28on page2 =77completed results including the original2. Tasks shows73returned-contact review items and2no-match items from the75batch. No outreach or new paid order. Implementation3f077fa and prior299e704 are pushed;154pipeline tests pass. Full foreclosure/channel verification and launch readiness remain open as documented below. Resume through the signed-in dashboard where needed, without asking the owner for a CLI password or replaying imports/orders.
+
 ## Completed 75-row provider job recovered into WholesaleOS — October 14, 2026
 
 A new external PropStream job **A1903016 / WholesaleOS Collin Verification** appeared while checking the accepted group. Codex did not submit it. It progressed from Processing to **Complete**. Captured all75 visible result rows, matched every row to the exact saved owner and full property address, and confirmed billing **Skip Trace(73),10/14/2026,$0**. Results: **73 rows with contacts,2 no-result rows,473 contact records,145 provider-marked DNC phone records,7 provider Litigator warnings**. Provider flags are retained as provider assertions, not independently verified facts.
