@@ -1,10 +1,26 @@
 import unittest
+import tempfile
+import json
+from pathlib import Path
 from pipeline.collectors.collin_notice_details import parse_detail
+from pipeline.collectors.verify_detail_inventory import verify
 
 SCAN = '<span>Page : 1 of 5</span><img alt="Scan of Foreclosure Notice" src="data:image/jpeg;base64,/9j/">'
 METADATA = '<p>Property Information</p><p>Address</p><p>1 TEST ST</p><p>Legal Description</p><p>TEST LOT</p><p>Deed Number</p><p>123</p><p>Improvement Information</p><p>Owner Information</p><p>Name</p><p>SYNTHETIC OWNER</p><p>Address</p><p>2 TEST ST</p><p>Tax Information</p><a href="https://collincad.org/propertysearch?prop_id=123">CAD</a>'
 
 class DetailTest(unittest.TestCase):
+    def test_bulk_metadata_binds_original_bytes_and_rejects_changed_parcel(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); (root/'123').mkdir()
+            html = (METADATA+'\r\n'+SCAN)
+            (root/'123'/'detail.html').write_bytes(html.encode())
+            receipt, _ = parse_detail(html, '123')
+            inventory = root/'summary.json'; inventory.write_text(json.dumps([receipt]))
+            self.assertEqual(verify(root, inventory), 1)
+            receipt['cad_property_id'] = '999'
+            inventory.write_text(json.dumps([receipt]))
+            with self.assertRaises(ValueError): verify(root, inventory)
+
     def test_scan_without_property_metadata_is_retained_but_not_verified(self):
         receipt, image = parse_detail(SCAN, '123')
         self.assertEqual(image, b'\xff\xd8\xff')

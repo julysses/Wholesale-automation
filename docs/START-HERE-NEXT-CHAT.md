@@ -1,5 +1,16 @@
 # WholesaleOS — new-chat handoff
 
+## Bulk processor saved in rehearsal — October 14, 2026
+
+Implemented a whole-inventory processor instead of continuing individual home lookups. Collin's official daily Owner Prop List publicly supports batched parcel queries. Live run fetched101distinct county-linked parcels in2requests; all101returned records haveOctober14data dates. All164captured notices/420OCR pages were then processed offline, with original HTML/page/text/snapshot hash binding and no paid model.
+
+Result:103notice addresses match fresh appraisal situs;162property/unresolved-notice groups preserve separate liens and all observations;21have exact full situs support in scan text;162have extraction/matching exceptions and2pass initial triage. This grantszero tracing eligibility. OCR case-number errors are held rather than guessed; the bulk extractor still needs broader structured/legal/owner/current-status support. The two independently verified properties from the earlier checkpoint remain separate valid examples.
+
+Rehearsal source migration20261014153604 / remote20261014154144 adds private immutable bulk receipts, service-only atomic save and batch results on capture status. Batchd6db4a47-83ed-4f57-9069-8fbeecf401d9 is saved and SQL verified with evidence_current:true. Browser read/save grants arefalse. No new security WARN; prior warnings remain. Daily Lists adds no-input Bulk property matching; deployment/browser acceptance is pending push.146pipeline tests,4Python parser/metadata tests,2DailyLists tests, frontend build and lint baseline check pass.
+
+See docs/foreclosure-bulk-processing.md for the batch workflow and accepted worker. Private owners/snapshot and reports: this chat'swork/county-sources/collin-owner-batch-processor/ andcollin-assessment-20261014/. Remaining: broader bulk corroboration, Dallas capture/bulk appraisal adapter, only-new eligible PropStream quote/order/reconciliation and CRM follow-up, unattended worker/scheduling and launch checks. No provider upload/order, tracing spend, seller outreach, schedule activation or production changes;$50total remains intact.
+
+
 ## Bulk-first verification checkpoint — October 14, 2026
 
 Owner clarified that the operating process must handle whole batches, with no routine per-home entry or review. Two verified Collin properties are acceptance examples, not the daily operating model. Next implementation: official appraisal bulk matching, structured county-notice extraction and property grouping, exception-only review, existing-contact reuse and a single eligible PropStream batch. The app should show progress and follow-up actions; scheduled execution remains paused until accepted.

@@ -7,7 +7,8 @@ import { ForeclosureActions } from '@/components/lists/ForeclosureActions';
 
 type Snapshot = { day: string; review_count: number; runs: { id: string; status: string; processing_status: string; records_new: number; records_stacked: number; status_reason: string }[] };
 type TraceSnapshot = { total: number; total_budget: { remaining_cents: number; committed_cents: number }; items: { lead_id: string; county: string; address_std: string; stage: string; handoff: { follow_up_task_id: string | null } | null }[] };
-type CaptureStatus = { counties: { county: string; documents: number; complete_documents: number; captured_pages: number; expected_pages: number; extracted_pages?: number; extracted_documents?: number; quality_review_pages?: number; updated_at: string | null }[] };
+type CaptureStatus = { counties: { county: string; documents: number; complete_documents: number; captured_pages: number; expected_pages: number; extracted_pages?: number; extracted_documents?: number; quality_review_pages?: number; updated_at: string | null }[];
+  bulk_batches?: { batch_id: string; day: string; evidence_current: boolean; summary: { county: string; documents: number; appraisal_situs_matched: number; property_groups: number; exception_documents: number } }[] };
 const stages: Record<string, string> = {
   current_status_review: 'On hold — current sale needs verification',
   identity_incomplete: 'On hold — owner identity needs verification',
@@ -57,6 +58,21 @@ function Pipeline({ actor }: { actor: string }) {
         {county.extracted_pages !== undefined && <p className="text-sm">Text extracted from {county.extracted_pages} pages across {county.extracted_documents} complete documents · {county.quality_review_pages} pages flagged for text-quality review</p>}
       </div>)}
       <p className="text-sm text-gray-600">Counts cover saved capture receipts. Document capture is followed by content extraction, property matching and current-sale verification; it does not establish county coverage or tracing eligibility.</p>
+    </section>
+    <section aria-label="Bulk property matching" className="rounded-xl border bg-white p-5 space-y-3">
+      <h2 className="text-xl font-semibold">Bulk property matching</h2>
+      <p>County notices are processed together and matched to official appraisal data. Repeat property filings share one group; separate liens retain their own evidence.</p>
+      {captures.isPending && <p>Loading batch results…</p>}
+      {captures.error && <p role="alert">Bulk matching status unavailable.</p>}
+      {captures.data && !captures.error && (!captures.data.bulk_batches?.length
+        ? <p>No completed property-matching batch saved yet.</p>
+        : captures.data.bulk_batches.map(batch => <article key={batch.batch_id} className="border-t pt-3">
+          <p><strong>{batch.summary.county}</strong> · {batch.day} · {batch.summary.documents} notices processed together</p>
+          <p>{batch.summary.appraisal_situs_matched} notice addresses matched to fresh appraisal data · {batch.summary.property_groups} property or unresolved-notice groups</p>
+          <p>{batch.summary.exception_documents} notices have extraction or matching exceptions.</p>
+          {!batch.evidence_current && <p className="text-amber-800">County evidence has changed since this batch. Matching needs to run again.</p>}
+        </article>))}
+      <p className="text-sm text-gray-600">Batch matching prepares the verification queue. It does not confirm an active foreclosure, authorize tracing, or send outreach.</p>
     </section>
     <ForeclosureActions />
     <section aria-label="Skip tracing and follow-up" className="rounded-xl border bg-white p-5 space-y-3">
