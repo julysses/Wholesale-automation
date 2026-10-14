@@ -1,5 +1,14 @@
 # WholesaleOS — new-chat handoff
 
+## Bulk app accepted; provider upload blocked — October 14, 2026
+
+Implementationa4b580a passed every GitHub push/PR check, including real PostgreSQL/TLS and Vercel. Signed-in live Daily Lists confirms164Collin notices processed together,103fresh appraisal-address matches,162groups and162extraction/matching exceptions. Zero input/textarea controls; capture counts and the$50remaining/$0committed budget remain intact. Screenshot: this chat'soutputs/wholesaleos-bulk-matching.jpg.
+
+Prepared a private two-property PropStream template from independently reviewed owners/situs, as one acceptance batch. The signed-in Choose File attempt stalled roughly11minutes and returned with Importstilldisabled/no selected filename. No Import or Skip Trace submission occurred. Dialog canceled; no accepted import, quote, order or charge. Do not describe this as provider delivery or repeat the upload until the browser file-access setting is enabled. Browser troubleshooting requires the owner to enable Allow access to file URLs under the ChatGPT browser extension's Details in chrome://extensions. We explained this setup blocker to the owner; no extension security setting was changed by the agent.
+
+Next: resume the existing private batch file only after file-upload support is enabled; confirm both provider rows and exact quote, then reserve/claim, order once and reconcile original results/charge/CRM follow-up. Continue independent bulk work on structured scan extraction and the Dallas official appraisal adapter/capture reliability. Initial triage never grants eligibility; do not manually clear162exceptions or guess case IDs. No active scheduling, real seller outreach or production changes. Plan and private evidence locations are in the preceding checkpoint.
+
+
 ## Bulk processor saved in rehearsal — October 14, 2026
 
 Implemented a whole-inventory processor instead of continuing individual home lookups. Collin's official daily Owner Prop List publicly supports batched parcel queries. Live run fetched101distinct county-linked parcels in2requests; all101returned records haveOctober14data dates. All164captured notices/420OCR pages were then processed offline, with original HTML/page/text/snapshot hash binding and no paid model.

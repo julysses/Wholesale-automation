@@ -26,5 +26,5 @@ The164-notice Collin batch matched103notice addresses to fresh appraisal data an
 
 - Broader structured extraction and legal/owner/current-sale corroboration, including missing parcel IDs and low-quality text.
 - Complete Dallas acquisition and an accepted Dallas bulk appraisal adapter.
-- Actual eligible PropStream batch quote/order/result/charge and CRM follow-up acceptance; currently$0spent.
+- Actual eligible PropStream batch quote/order/result/charge and CRM follow-up acceptance; currently$0spent. A two-property acceptance file is prepared privately, but the browser upload did not select it; enable the ChatGPT extension file-URL setting before retrying. No provider import/order was submitted.
 - Reliable unattended county/provider worker, daily scheduling acceptance and remaining security/operator checks. Scheduling stays paused; production and seller outreach remain unchanged.
