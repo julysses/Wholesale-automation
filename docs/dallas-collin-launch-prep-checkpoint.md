@@ -1,5 +1,17 @@
 # Dallas/Collin launch preparation checkpoint — October 12, 2026
 
+## Latest verified checkpoint — October 13, 2026
+
+**Work is active and unfinished.** Rehearsal Daily Lists was verified in the signed-in browser after deployment: Daily lead pipeline title; zero input/textarea controls;653 unresolved new notices; $50 cap remaining/$0 committed; two associated properties (one synthetic fixture) held for current-sale verification. Screenshot: this chat's `outputs/wholesaleos-daily-pipeline.jpg`. Removing forms is completed; unattended sourcing/verification/provider processing is not completed.
+
+Collin now has164 detail/first-page captures with zero errors and **40 complete documents /104 page images** in private `work/county-sources/collin-bulk-details/`. Total inventory expects420 pages. Resume full-page capture at inventory offset39; notice4158245 was additionally captured out of sequence. Prefer scanning receipts and letting `captureNotice` resume by hash rather than trusting offsets. Existing CUA helper was loaded from `work/collin_notice_pages_v3.mjs`; repo source is authoritative and adds expected-page bounds. Summary and page evidence remain private, not committed. Inventory dates:26 October6(past),75 November3,56 December1,6 January5,1 April6; dates alone do not establish current status.
+
+Added a local macOS Vision OCR prototype `pipeline/collectors/notice_ocr.swift`, successfully compiled. Sandbox execution failed; the request to run outside the sandbox was **rejected by the user**. Do not repeat that escalation or treat OCR as validated. No OCR results were produced. Continue permitted collection and evidence work; local text extraction still needs an accepted runtime. No paid model workers enabled.
+
+Browser connection recovered with Chrome ID3 (earlier ID1 now denotes MCP Apps). Use fresh tool inventory when resuming. Fresh county tab1348648456 is at the last captured notice; preview deliverable tab1348648465. Older claimed tabs may report debugger unattached; a fresh same-browser tab worked. Avoid the Download PDF event approach, which timed out; visible Next Page traversal succeeded. No collector process remains running between batches.
+
+Next work: remaining124 complete Collin documents, Dallas full-notice collection, accepted bulk extraction and independent identity/current-status checks, durable evidence integration inside WholesaleOS, then exact eligible PropStream batch/quote/result reconciliation and CRM outreach/follow-up flags. Signed-in PropStream UI only, $50 prepaid total, no refills. No real trace purchase, outreach or production promotion occurred.
+
 ## Bulk county capture update — October 13, 2026
 
 Collin detail recapture is complete: **164/164 saved, zero errors** after retrying six transient network failures. Optional property metadata is no longer mistaken for a missing notice. Every saved item remains unverified and ineligible for tracing until full evidence review. Three parser tests pass.

@@ -15,6 +15,7 @@ export async function captureNotice(tab, root, documentId) {
   if (!/^\d{1,30}$/.test(documentId)) throw Error('Invalid document ID');
   const folder = join(root, documentId), receipt = JSON.parse(await readFile(join(folder, 'receipt.json'), 'utf8'));
   if (receipt.document_id !== documentId || receipt.source_url !== prefix + documentId) throw Error('Receipt identity mismatch');
+  if (!Number.isInteger(receipt.notice_pages_expected) || receipt.notice_pages_expected < 1 || receipt.notice_pages_expected > 100) throw Error('Invalid expected page count');
   const target = join(folder, 'all-pages-capture.json');
   try {
     const saved = JSON.parse(await readFile(target, 'utf8'));
