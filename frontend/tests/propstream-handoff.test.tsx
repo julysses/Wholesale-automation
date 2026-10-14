@@ -18,7 +18,11 @@ it('requires a stable saved action for start and preserves it on an uncertain re
  const first=JSON.parse(mocks.fetch.mock.calls.find(([,o])=>o?.method==='POST')![1].body);
  expect(first.action).toBe('start');expect(first.request_id).toBe(request);
  expect(JSON.parse(sessionStorage.getItem('wholesaleos.propstream.v1.00000000-0000-4000-8000-000000000001')!)).toEqual(first);
- fireEvent.click(screen.getByRole('button',{name:'Retry exact saved action'}));
+ // The saved-intent alert renders before the request's finally block unlocks
+ // retry. Wait for the same readiness an operator needs before clicking.
+ const retry=screen.getByRole('button',{name:'Retry exact saved action'});
+ await waitFor(()=>expect(retry).toBeEnabled());
+ fireEvent.click(retry);
  await waitFor(()=>expect(mocks.fetch.mock.calls.filter(([,o])=>o?.method==='POST')).toHaveLength(2));
  expect(JSON.parse(mocks.fetch.mock.calls.filter(([,o])=>o?.method==='POST')[1][1].body)).toEqual(first);
 });

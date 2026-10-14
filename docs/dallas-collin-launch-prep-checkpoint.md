@@ -1,5 +1,14 @@
 # Dallas/Collin launch preparation checkpoint — October 12, 2026
 
+## Bulk and CRM browser acceptance; retry-test synchronization — October 14, 2026
+
+Signed-in Daily Lists confirms79associated properties and$50available/$0committed. Both209TateLn and341RegencyDr visibly show Result saved and Follow-up task saved in the CRM across the two property pages. Accepted75-row group C1239517 remains open in PropStream. No new eligibility, spend or outreach.
+
+Implementation289cf26 passed hosted pipeline, backend, realPostgreSQL/TLS andVercel. FrontendCI exposed an existing asynchronous test race: the saved-intent alert appears while the first request is stillbusy, so an immediate retry click is correctly ignored. Updated that test to wait for the Retrybutton to becomeenabled, retaining exact-payload and two-call assertions; product behavior unchanged. **All219frontend tests pass locally**, alongside150pipeline tests. Hosted acceptance of this test-only fix is pending push.
+
+Resume with the75candidate bulk-verification queue and only-new contact reuse, not another import of accepted groups. Originaltwo-provider requests/results/zerocharge and assigned follow-ups are reconciled. Full daily unattended operation and Dallas captures remain unfinished as detailed below.
+
+
 ## Original provider results saved and follow-up created — October 14, 2026
 
 The accepted75-row PropStream group C1239517 and79in-app associations remain intact. Implementation9ed11e5 is pushed. The original two-record external job **A1902777** is now **Complete**, with exact source owner/property row IDs4472334311and4472334312 matched to their saved requests. Signed-in Billing History explicitly shows **Skip Trace(2),10/14/2026,$0**. This explains the earlier zero-total quote; do not reorder this completed job.
