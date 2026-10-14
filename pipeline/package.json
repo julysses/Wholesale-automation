@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.mjs collectors/*.test.mjs"
+    "test": "node --test tests/*.test.mjs collectors/*.test.mjs",
+    "bulk:reconcile": "node collectors/bulk_reconcile.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",

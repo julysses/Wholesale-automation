@@ -1,5 +1,11 @@
 # WholesaleOS — new-chat handoff
 
+## Faster bulk processing entrypoint — October 14, 2026
+
+Owner rejected an all-day process for75leads. Added one-command `pipeline/collectors/bulk_reconcile.mjs` / `npm run bulk:reconcile -- private-config.json`: completed provider results and county listing evidence are matched together, with deterministic input-hash identity, private reconciliation package, minimal receipt, DNC/warning preservation and explicit exception reasons. Existing75-row evidence processed in17ms locally and reproduced73contact matches/2no-results/473contacts/145DNCflags/7provider warnings/16current-listing matches. This excludes source collection, provider transfer/wait, database delivery and full verification; it is not unattended operation or end-to-end timing.
+
+All155pipeline tests pass, including deterministic replay and incomplete-provider rejection. Plan and acceptance checklist: docs/bulk-throughput-plan.md. Priorities are durable worker/atomic delivery, reliable supported provider transport, incremental collection and structured verification, then exception-focused UI and scheduling acceptance. Existing completed jobs are never repurchased. No provider, database, schedule or production changes in this update. Private config/output are work/verification-20261014/bulk-reconcile-config.json and reconciled-batches/582414f160ab88da225f77cc9ac50b6b5d2bbd1da8d7dc3814d222a09dfc314a/. Full contact data stays outsidegit.
+
 ## Dashboard verification accepted; use signed-in Supabase page — October 14, 2026
 
 Owner does not know a CLI password and requested the already-open Supabase dashboard. Stop CLI authentication attempts; no password reset or credential entry is needed. The last CLI verification failed with AccessTokenRequiredError; it did not undo the earlier successful recovery transaction. Signed-in rehearsal dashboard SQL Editor successfully verified **75 completed A1903016 requests,473 saved contacts,145 DNC-listed records,$0actual/$0reserved/$50remaining**. Saved read-only query: https://supabase.com/dashboard/project/tbhwxgfzbiaqjurghntj/sql/3de6ec11-c899-4f57-8eec-c8cdc48213a2 . Screenshot in this chat's outputs/supabase-bulk-recovery-verified.jpg.

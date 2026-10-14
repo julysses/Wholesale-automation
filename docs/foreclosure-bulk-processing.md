@@ -24,10 +24,12 @@ The164-notice Collin batch matched103notice addresses to fresh appraisal data an
 
 ## Remaining launch gates
 
-- Broader structured extraction and legal/owner/current-sale corroboration, including missing parcel IDs and low-quality text.
-- Complete Dallas acquisition and full-notice corroboration; the bulk appraisal index-discovery adapter is exercised.
-- Actual eligible PropStream batch quote/order/result/charge and CRM follow-up acceptance; currently$0spent. A two-property acceptance file is prepared privately, but the browser upload did not select it; enable the ChatGPT extension file-URL setting before retrying. No provider import/order was submitted.
-- Reliable unattended county/provider worker, daily scheduling acceptance and remaining security/operator checks. Scheduling stays paused; production and seller outreach remain unchanged.
+Current throughput plan: [bulk-throughput-plan.md](bulk-throughput-plan.md). The75-row provider job and original2-row job are completed and reconciled; never repeat those imports/orders. The historical entries below preserve earlier evidence and are superseded by their later checkpoints.
+
+- Broader structured notice/owner/legal/current-sale verification.
+- Complete Dallas capture and verification.
+- Durable worker, reliable supported provider transport and atomic CRM delivery without interactive recovery.
+- Accepted daily scheduling and remaining production/security/operator checks. Scheduling stays paused.
 
 ## Dallas index-discovery adapter
 
