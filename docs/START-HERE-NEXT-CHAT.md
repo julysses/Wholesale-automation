@@ -1,5 +1,14 @@
 # WholesaleOS — new-chat handoff
 
+## Dallas capture support — October 13, 2026
+
+Added Dallas PNG support to the county capture manifest validator, with explicit county selection, image signatures, expected-page bounds and existing identity/hash checks. Six Python tests pass, including wrong-county, tampered-file, duplicate-page and incomplete-manifest rejection. All164 Collin captures previously accepted remain unchanged.
+
+Dallas notice330724568 now has five distinct original PNG pages saved privately in `work/county-sources/dallas-bulk-details/330724568/`. Rendered county Summary HTML is the receipt's hashed `detail.html`; no signed download URLs are persisted in its receipt. The existing rehearsal service function accepted the capture and live SQL confirms Dallas1complete/5pages plus Collin164complete/420pages. This Dallas sale date is past; no eligibility granted. Remaining489 Dallas full-notice captures are unfinished.
+
+The Dallas viewer's page counter advances before its image changes. Never accept counter-only traversal as page evidence. The pageAssets inventory retained all five document-specific numbered assets, which were downloaded and checked for contiguous page numbers and distinct hashes. Downloads were extremely slow: approximately144seconds for page1 and668seconds for the remaining4; this is a bulk launch bottleneck. Do not repeat large downloads without a bounded, recoverable collection strategy. Current OCR extraction remains unfinished; a sandbox-compatible local OCR option is being investigated. No trace spend/outreach/production change.
+
+
 ## Collin full-page capture accepted — October 13, 2026
 
 All **164 Collin notices /420 expected pages** now have complete, hash-checked local page sets. Four transient viewer failures were recovered through the visible viewer; no incomplete notices remain in this saved inventory. The private capture manifest passed all identity/file-hash checks and was replayed through the existing service-only receipt function in rehearsal `tbhwxgfzbiaqjurghntj`. Live SQL and the deployed Daily Lists page both confirmed **164 complete documents,420/420 pages**. Screenshot: this chat's `outputs/wholesaleos-daily-pipeline.jpg`. Latest capture UI deployment285a375 is accepted; no manual input controls were introduced.
