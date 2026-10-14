@@ -1,5 +1,13 @@
 # WholesaleOS — new-chat handoff
 
+## Bulk current-listing pass and 75 CRM follow-ups — October 14, 2026
+
+Captured all 52 visible Collin-only Auction.com inventory rows in one browser pass (nearby radius disabled), then matched the existing 75-property queue by street/city/state/ZIP and advertised sale date. **16 current foreclosure-listing/date matches; 59 not found in this source.** Absence is not cancellation. Street-suffix normalization retains directions and units. Listing matches alone do not verify borrower, legal description, trustee case or paid-trace eligibility.
+
+Added `pipeline/collectors/foreclosure_current_inventory.mjs` with exact source/day validation, duplicate/ambiguous/wrong-date/non-foreclosure holds and no dispatch authorization. **152 pipeline tests pass.** One atomic, replay-safe rehearsal operation saved **75 assigned high-priority pending verification follow-ups**, including16 listing matches and1 explicit deceased-grantor/estate hold. SQL confirmed all75. These are verification tasks, not outreach-ready labels. Original2completed traces/follow-ups remain intact; no new provider orders, spend or outreach.
+
+Private evidence: this chat's `work/verification-20261014/auction-county-visible.json`, `bulk-current-status.json`, `save-bulk-verification-tasks.sql`, and `bulk-verification-task-ids.json`. Full notice owner/legal/case corroboration and existing-provider-contact reuse remain unresolved for the75. Do not reimport C1239517 or reorder A1902777. Next: process the16 matched cases together, verify exact notice/trustee binding, reuse existing contacts, then prepare only newly eligible rows under the cumulative$50cap. Supabase MCP catalog failed; signed-in CLI successfully saved/verified rehearsal tasks. Production and schedule unchanged.
+
 ## Supabase incident checked — October 14, 2026, 1:02 PM Central
 
 Owner shared the Supabase Realtime latency banner. Current officialstatus.supabase.com still lists that incident as Monitoring, with impacted users stabilized; platform-wide recovery is not confirmed. Read-only SQL succeeds in both rehearsal and production. Rehearsal confirms78realCollin property associations,8saved original trace contacts and$0actual/$0reserved/$50available. Fresh signed-in DailyLists loads79total associations (including1syntheticDallas), saved-result state and$50available without status errors.
