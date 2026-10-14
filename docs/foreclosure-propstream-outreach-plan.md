@@ -1,5 +1,12 @@
 # Foreclosure priority list → PropStream → outreach → follow-up
 
+## Collin full-page capture accepted — October 13, 2026
+
+All **164 Collin notices /420 expected pages** now have complete, hash-checked local page sets. Four transient viewer failures were recovered through the visible viewer; no incomplete notices remain in this saved inventory. The private capture manifest passed all identity/file-hash checks and was replayed through the existing service-only receipt function in rehearsal `tbhwxgfzbiaqjurghntj`. Live SQL and the deployed Daily Lists page both confirmed **164 complete documents,420/420 pages**. Screenshot: this chat's `outputs/wholesaleos-daily-pipeline.jpg`. Latest capture UI deployment285a375 is accepted; no manual input controls were introduced.
+
+This completes document acquisition for the saved Collin index inventory, not content extraction, current-sale verification, county-wide completeness, or tracing eligibility. Dallas still has490 index records and zero saved full-notice capture receipts. Next: bulk content extraction and independent property/current-sale corroboration, Dallas full-notice acquisition, durable verified candidates, then the actual PropStream eligible-batch handoff and CRM follow-up. The Vision escalation remains declined; do not repeat it. No trace orders, spend, seller outreach, schedule activation or production changes. $50 total authorization remains unspent.
+
+
 ## Current checkpoint — in-app capture receipts, October 13, 2026
 
 Rehearsal now stores capture receipts for all164 Collin notices: **276/420 pages,88 complete documents**. Includes single-page notices already complete from their initial captures.69 notices have separate all-pages traversal receipts (inventory offsets0–67 plus4158245);76 notices still lack complete page sets. Next bulk traversal offset68; prefer receipt/hash resume to fixed offsets. No document has been newly certified as identity/current-status verified, and no trace purchase or outreach occurred.
