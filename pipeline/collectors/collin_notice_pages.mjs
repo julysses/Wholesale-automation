@@ -47,11 +47,13 @@ export async function captureNotice(tab, root, documentId) {
         // The server-rendered viewer can show controls before Blazor attaches them.
         // Retry only after observing that the page has not changed at all.
         const unchanged = pageState(await tab.playwright.domSnapshot());
-        if (unchanged.page !== number || unchanged.total !== state.total) throw error;
+        if (unchanged.total !== state.total || ![number, number + 1].includes(unchanged.page)) throw error;
+        if (unchanged.page === number) {
         const current = await tab.playwright.getByRole('img', { name: 'Scan of Foreclosure Notice', exact: true }).getAttribute('src');
         if (current !== src) throw error;
         await tab.playwright.getByRole('button', { name: 'Next Page', exact: true }).click();
         await tab.playwright.getByText(`Page : ${number + 1} of ${state.total}`, { exact: true }).waitFor({ state: 'visible', timeoutMs: 10000 });
+        }
       }
     }
   }

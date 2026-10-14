@@ -1,5 +1,17 @@
 # WholesaleOS — new-chat handoff
 
+## Current checkpoint — in-app capture receipts, October 13, 2026
+
+Rehearsal now stores capture receipts for all164 Collin notices: **276/420 pages,88 complete documents**. Includes single-page notices already complete from their initial captures.69 notices have separate all-pages traversal receipts (inventory offsets0–67 plus4158245);76 notices still lack complete page sets. Next bulk traversal offset68; prefer receipt/hash resume to fixed offsets. No document has been newly certified as identity/current-status verified, and no trace purchase or outreach occurred.
+
+Added private `wholesale_ingest.foreclosure_captures` and service-only, SECURITY INVOKER save/status functions. Batch save binds to existing ingested notices, checks official URL/IDs, hashes, ordered unique pages and timestamp, rejects conflicts, preserves richer receipts on partial replay, and is atomic. No lead or eligibility mutation. Browser roles have no direct read/write grants; server status validates the approved session administrator. Rehearsal migration is20261014012158; source migration20261014011940_foreclosure_capture_receipts.sql. Production untouched.
+
+`capture_receipt_manifest.py` validates saved HTML/page files before producing the private upload manifest. MCP mutation calls repeatedly failed with catalog-change errors; read-only queries and migration worked. Authenticated CLI fallback succeeded: `supabase db query --linked --project-ref tbhwxgfzbiaqjurghntj --file <private SQL>`. Do not omit --linked or use an implicit project. The upload remains idempotent. CLI returned the counts above; live grants were verified.
+
+Daily Lists adds a no-input County document capture section through GET /api/operations/lists/captures. Frontend build and3 component tests pass;10 API tests pass; capture database test passes (atomicity, conflict/replay/access controls);4 viewer tests pass including late observation recovery. Lint has no new findings (146 baseline). Security advisor: new private table has intentional RLS/no browser policies; remaining auth/definer warnings are pre-existing launch items, not cleared by this update. UI deployment/browser acceptance of this newest section is pending push.
+
+Continue remaining page capture, permitted extraction (Vision escalation remains declined), independent owner/property/current-sale verification and durable verification results; then PropStream eligible batches under the existing $50 cap. The trustee search for1000Canal did not establish current-sale status; leave its hold intact. No messages to trustee or sellers sent.
+
 ## Latest verified checkpoint — October 13, 2026
 
 **Work is active and unfinished.** Rehearsal Daily Lists was verified in the signed-in browser after deployment: Daily lead pipeline title; zero input/textarea controls;653 unresolved new notices; $50 cap remaining/$0 committed; two associated properties (one synthetic fixture) held for current-sale verification. Screenshot: this chat's `outputs/wholesaleos-daily-pipeline.jpg`. Removing forms is completed; unattended sourcing/verification/provider processing is not completed.

@@ -73,3 +73,12 @@ def test_bulk_handoff_session_actor_and_limit(client_db):
     db.rpc.reset_mock()
     assert client.post('/api/operations/lists/propstream/batches',json={**body,'items':[]},headers=headers).status_code==422
     db.rpc.assert_not_called()
+
+def test_capture_status_uses_session_actor_and_denies_nonadmin(client_db):
+    client,db,rows=client_db;headers={'Authorization':'Bearer test'}
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={'counties':[],'verification_granted':False})
+    assert client.get('/api/operations/lists/captures',headers=headers).status_code==200
+    assert db.rpc.call_args.args==('foreclosure_capture_status',{'p_operator':OPERATOR})
+    db.rpc.reset_mock();rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
+    assert client.get('/api/operations/lists/captures',headers=headers).status_code==403
+    db.rpc.assert_not_called()

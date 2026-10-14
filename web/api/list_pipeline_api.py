@@ -69,6 +69,10 @@ async def foreclosure_actions(county: Literal['Dallas', 'Collin'] | None = None,
     day = datetime.now(ZoneInfo('America/Chicago')).date()
     return await rpc('foreclosure_daily_actions', {'p_day': day.isoformat(), 'p_county': county, 'p_offset': offset})
 
+@router.get('/api/operations/lists/captures')
+async def capture_status(request: Request):
+    return await rpc('foreclosure_capture_status', {'p_operator': operator(request)})
+
 @router.patch('/api/operations/lists/sources/{source_key}')
 async def configure(source_key: str, body: ConfigureSource, request: Request):
     if body.enabled and not (body.procedure_version and len(body.procedure_version.strip()) >= 3):
