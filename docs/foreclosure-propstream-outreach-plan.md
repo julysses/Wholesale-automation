@@ -1,5 +1,14 @@
 # Foreclosure priority list → PropStream → outreach → follow-up
 
+## Both county bulk displays accepted — October 14, 2026
+
+Implementation1a32240passed every GitHub push/PR check and Vercel deployment. Signed-in WholesaleOS DailyLists visibly shows Dallas490index notices processed together/201single-account address matches/289matching exceptions and Collin164captured notices/103fresh appraisal-address matches/162groups/162extraction or matching exceptions. The page clearly separates Dallas index discovery from complete-notice verification, with zero input/textarea controls. Screenshot: this chat'soutputs/wholesaleos-bulk-matching.jpg.
+
+Bulk matching and its in-app receipts are implemented and accepted; unattended daily sourcing, full foreclosure clearance, PropStream delivery and launch readiness remain incomplete. Today's batch used the savedOctober13notice inventory withOctober14appraisal data; no new county ingestion receipt was invented. The priority panel correctly reports0new notices today and650earlier notices awaiting review. Budgets remain$50remaining/$0committed; no import/order/charge or seller outreach. The two reviewed properties still await an accepted provider quote.
+
+Resume from the batch workflow in docs/foreclosure-bulk-processing.md and the private source/receipt locations below. Complete independent batch extraction/verification and remaining489Dallasfull captures; retain holds instead of routine manual entry. The PropStream file-upload attempt remains blocked until the owner enables the ChatGPT extension'sAllow access to fileURLssetting. Do not retry or claim an accepted import; once enabled, use the existing two-property acceptance file and verify provider rows/quote before reservation, single submission, reconciliation and CRM follow-up. Production and scheduling stay unchanged. No local collector/OCR process remains running.
+
+
 ## Dallas bulk appraisal discovery saved — October 14, 2026
 
 Added an offline Dallas current-ownership adapter. Navigated the officialwww.dallascad.orghomepage/DataProducts.aspx to its2027current-ownershipZIP; homepage showsAppraisalDataUpdated10/14/2026. An obsoletewww.miscaddress had a certificate mismatch; it was not bypassed. One bounded171472108-byteZIP is retained privately with its hash/download receipt; do not download it again unnecessarily or treat current2027ownership as2026certified values.
