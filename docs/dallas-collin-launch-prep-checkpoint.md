@@ -1,5 +1,16 @@
 # Dallas/Collin launch preparation checkpoint — October 12, 2026
 
+## Bulk-first verification checkpoint — October 14, 2026
+
+Owner clarified that the operating process must handle whole batches, with no routine per-home entry or review. Two verified Collin properties are acceptance examples, not the daily operating model. Next implementation: official appraisal bulk matching, structured county-notice extraction and property grouping, exception-only review, existing-contact reuse and a single eligible PropStream batch. The app should show progress and follow-up actions; scheduled execution remains paused until accepted.
+
+Three complete mortgage notices were reconciled into two real CRM properties. Two filings of the same trustee case share one property/lead; separate HOA/mortgage liens are not treated as duplicates. Independent current-year CAD matches and exact trustee-advertised property pages support the two primary current-status signals. Both now reach quote/evidence stage through an audited atomic status batch. Current advertising is not a guarantee against later cancellation or cure. An older real property and the synthetic fixture remain held.
+
+Added property-bound trustee status evidence support: exact street/city/TX/ZIP must match the CRM property; this source cannot verify ownership. Source migration20261014150607 corresponds to rehearsal20261014151307. Six handoff tests and the full143-test pipeline suite pass. Security advisor introduced no new warning. Private source pages, names, receipts and SQL remain outside git.
+
+PropStream's complete16728-contact grid was loaded before checking the two properties; no existing contacts matched those addresses. Import dialog canceled; no upload, order or paid tracing. App/provider budget still$0spent/reserved and$50remaining. No outreach, schedule activation or production changes. Recovery evidence and prior425OCR receipts remain valid. Resume from the bulk workflow work, not additional isolated property checks.
+
+
 ## Resumed — October 14, 2026
 
 Owner resumed work. Rehearsal Supabase SQL and the signed-in WholesaleOS page are responding; all425saved extraction receipts remain intact (Collin420/164documents; Dallas5/1document). Production also answered a read-only SQL connectivity query; no production changes. Supabase's public status page still reports a Realtime latency incident in monitoring, so this verifies our database/app path rather than a platform-wide all-clear. No migrations or ingestion runs replayed during recovery. Branch pulled successfully after a sandbox DNS failure.

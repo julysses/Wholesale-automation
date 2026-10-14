@@ -7,7 +7,7 @@ const rpc=async(db,name,args)=>(await db.query(`select public.${name}(${args.map
 async function setup(t){
  const db=await database(); t.after(()=>db.close());
  const dir=new URL('../../frontend/supabase/migrations/',import.meta.url);
- for(const suffix of ['_list_reviewed_identity.sql','_list_trace_budget.sql','_list_trace_contacts.sql','_list_trace_operations.sql','_list_trace_total_cap.sql','_propstream_operator_handoff.sql','_collin_appraisal_evidence_host.sql','_foreclosure_status_review.sql','_propstream_bulk_actions.sql'])await db.exec(fs.readFileSync(new URL(fs.readdirSync(dir).find(x=>x.endsWith(suffix)),dir),'utf8'));
+ for(const suffix of ['_list_reviewed_identity.sql','_list_trace_budget.sql','_list_trace_contacts.sql','_list_trace_operations.sql','_list_trace_total_cap.sql','_propstream_operator_handoff.sql','_collin_appraisal_evidence_host.sql','_foreclosure_status_review.sql','_propstream_bulk_actions.sql','_foreclosure_trustee_status_evidence.sql'])await db.exec(fs.readFileSync(new URL(fs.readdirSync(dir).find(x=>x.endsWith(suffix)),dir),'utf8'));
  await db.exec(`ALTER TABLE public.tasks ADD lead_id uuid; ALTER TABLE public.leads ADD owner_first_name text; ALTER TABLE public.leads ADD owner_last_name text;ALTER TABLE public.leads ADD dnc boolean DEFAULT false;
  INSERT INTO public.profiles VALUES('${id(1)}','admin','approved');
  INSERT INTO public.leads(id,property_address,city,state,zip_code,owner_first_name,status) VALUES('${id(2)}','QA TEST PROPERTY','Dallas','TX','75201','Synthetic','new');
@@ -48,6 +48,19 @@ test('rejects missing review, unverified owner, expired or suppressed foreclosur
  assert.equal((await db.query('select count(*)::int n from wholesale_ingest.skip_trace_requests')).rows[0].n,0);
 });
 
+test('trustee status evidence binds to the exact verified property and never becomes owner evidence',async t=>{
+ const {db,payload,act}=await setup(t);
+ const valid='https://www.xome.com/auctions/qa-test-property-dallas-tx-75201-123456789';
+ for(const url of [valid.replace('75201','75001'),valid.replace('qa-test-property','another-property'),valid.replace('dallas','plano'),valid+'?override=true',valid.replace('www.xome.com','xome.com.example.org'),'https://www.xome.com/auctions']){
+  await assert.rejects(()=>act(20,'prepare',{...payload,status_evidence_url:url}),/Property-bound/);
+ }
+ await assert.rejects(()=>act(20,'prepare',{...payload,owner_evidence_url:valid,status_evidence_url:valid}),/Official owner/);
+ assert.equal((await act(20,'prepare',{...payload,status_evidence_url:valid})).request.state,'reserved');
+ assert.equal((await db.query('select count(*)::int n from wholesale_ingest.skip_trace_requests')).rows[0].n,1);
+ await db.exec('SET ROLE authenticated');
+ await assert.rejects(()=>db.query('select wholesale_ingest.foreclosure_status_evidence_allowed($1,$2,$3)',[id(2),'Dallas',valid]),/permission denied/);
+});
+
 test('cap, stale sale and empty results stay conservative; submitted suppression does not hide reconciliation',async t=>{
  const {db,payload,act,snap}=await setup(t);
  await act(20,'prepare',{...payload,quote_cents:5000});
@@ -71,7 +84,7 @@ test('cap, stale sale and empty results stay conservative; submitted suppression
  await db.exec('UPDATE wholesale_ingest.distress_signals SET active=false');
  const held=(await snap()).items[0];
  const review={signal_id:held.signal_id,signal_hash:held.signal_hash,active:true,auction_date:held.auction_date,status_evidence_url:'https://www.dallascounty.org/test',notes:'Synthetic current trustee status independently confirmed',confirmed_current_status:true};
- await assert.rejects(()=>act(30,'review_status',{...review,status_evidence_url:'https://example.org'}),/Official/);
+ await assert.rejects(()=>act(30,'review_status',{...review,status_evidence_url:'https://example.org'}),/current-sale evidence required/);
  await assert.rejects(()=>act(30,'review_status',{...review,confirmed_current_status:false}),/review/);
  assert.equal((await act(30,'review_status',review)).status_reviewed,true);
  assert.equal((await act(30,'review_status',review)).replayed,true);
