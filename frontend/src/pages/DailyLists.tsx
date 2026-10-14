@@ -8,7 +8,8 @@ import { ForeclosureActions } from '@/components/lists/ForeclosureActions';
 type Snapshot = { day: string; review_count: number; runs: { id: string; status: string; processing_status: string; records_new: number; records_stacked: number; status_reason: string }[] };
 type TraceSnapshot = { total: number; total_budget: { remaining_cents: number; committed_cents: number }; items: { lead_id: string; county: string; address_std: string; stage: string; handoff: { follow_up_task_id: string | null } | null }[] };
 type CaptureStatus = { counties: { county: string; documents: number; complete_documents: number; captured_pages: number; expected_pages: number; extracted_pages?: number; extracted_documents?: number; quality_review_pages?: number; updated_at: string | null }[];
-  bulk_batches?: { batch_id: string; day: string; evidence_current: boolean; summary: { county: string; documents: number; appraisal_situs_matched: number; property_groups: number; exception_documents: number } }[] };
+  bulk_batches?: { batch_id: string; day: string; evidence_current: boolean; summary: { county: string; documents: number; appraisal_situs_matched: number; property_groups: number; exception_documents: number } }[];
+  appraisal_batches?: { batch_id: string; source_as_of: string; summary: { county: string; documents: number; unique_situs_matches: number; exception_documents: number } }[] };
 const stages: Record<string, string> = {
   current_status_review: 'On hold — current sale needs verification',
   identity_incomplete: 'On hold — owner identity needs verification',
@@ -64,6 +65,11 @@ function Pipeline({ actor }: { actor: string }) {
       <p>County notices are processed together and matched to official appraisal data. Repeat property filings share one group; separate liens retain their own evidence.</p>
       {captures.isPending && <p>Loading batch results…</p>}
       {captures.error && <p role="alert">Bulk matching status unavailable.</p>}
+      {captures.data && !captures.error && captures.data.appraisal_batches?.map(batch => <article key={batch.batch_id} className="border-t pt-3">
+        <p><strong>{batch.summary.county}</strong> · Appraisal data as of {batch.source_as_of} · {batch.summary.documents} index notices processed together</p>
+        <p>{batch.summary.unique_situs_matches} addresses matched to one appraisal account · {batch.summary.exception_documents} matching exceptions</p>
+        <p className="text-sm text-gray-600">Index discovery only. Complete notice pages and current-sale verification remain required.</p>
+      </article>)}
       {captures.data && !captures.error && (!captures.data.bulk_batches?.length
         ? <p>No completed property-matching batch saved yet.</p>
         : captures.data.bulk_batches.map(batch => <article key={batch.batch_id} className="border-t pt-3">

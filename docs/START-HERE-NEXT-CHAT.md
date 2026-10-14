@@ -1,5 +1,16 @@
 # WholesaleOS — new-chat handoff
 
+## Dallas bulk appraisal discovery saved — October 14, 2026
+
+Added an offline Dallas current-ownership adapter. Navigated the officialwww.dallascad.orghomepage/DataProducts.aspx to its2027current-ownershipZIP; homepage showsAppraisalDataUpdated10/14/2026. An obsoletewww.miscaddress had a certificate mismatch; it was not bypassed. One bounded171472108-byteZIP is retained privately with its hash/download receipt; do not download it again unnecessarily or treat current2027ownership as2026certified values.
+
+Streamed863253account rows plus112547multi-owner rows against the saved490notice inventory in one pass.201indexed addresses match exactly one appraisal account;289remain matching exceptions. Address normalization retains units/building IDs/directions, maps explicit street abbreviations, accepts5/9-digitZIP formats and the district'sDallasCOcity annotation. Excluded owners are withheld; mailing addresses/phone fields never establish situs or contact evidence. No identity/current-sale/tracing eligibility granted. Full Dallas notice capture is still1of490; these areindex-discoverymatches only.
+
+Private receiptbd1375c6-3434-45f5-b1ea-e33a0a09b1d7saved in rehearsal and SQL verified. Source migration20261014161013 / remote20261014161254 adds private atomic immutable receipts bound to the exact saved Dallasrun/batch/hash/documents; counts computed by server, no browser read/save grants. Raw payload deletion cascades the related appraisal receipt. Security advisor has no newWARN. DailyLists adds separate Dallasindex-discoverycounts beside Collin's completed-document batch; this newest display awaits deployment/browser acceptance.
+
+147pipeline tests,10Pythoncollector tests (including units, exclusion, ambiguous accounts and source binding),2DailyLists tests, build and lint baseline pass. Collector Python tests now run in pipeline CI. Next: accept the deployed Dallas display; improve bulk full-notice/owner/legal/current-sale corroboration and missing-address holds; provider upload still blocked on the owner-controlled extension setting described above. No import/order/spend/outreach, schedule activation or production changes. Private source/report roots:work/county-sources/dallas-current-appraisal-20261014/ anddallas-appraisal-matches-20261014/.
+
+
 ## Bulk app accepted; provider upload blocked — October 14, 2026
 
 Implementationa4b580a passed every GitHub push/PR check, including real PostgreSQL/TLS and Vercel. Signed-in live Daily Lists confirms164Collin notices processed together,103fresh appraisal-address matches,162groups and162extraction/matching exceptions. Zero input/textarea controls; capture counts and the$50remaining/$0committed budget remain intact. Screenshot: this chat'soutputs/wholesaleos-bulk-matching.jpg.

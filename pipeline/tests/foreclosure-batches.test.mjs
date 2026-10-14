@@ -34,3 +34,24 @@ test('bulk receipts bind all extracted pages, reject eligibility claims, replay 
  await assert.rejects(()=>save(),/permission denied/);await assert.rejects(()=>status(),/permission denied/);
  await assert.rejects(()=>db.query('SELECT * FROM wholesale_ingest.foreclosure_batches'),/permission denied/);
 });
+
+test('Dallas appraisal discovery binds the exact saved index and never needs or grants complete-notice verification',async t=>{
+ const db=await database();t.after(()=>db.close());
+ for(const name of ['20261014011940_foreclosure_capture_receipts.sql','20261014021657_foreclosure_extraction_receipts.sql','20261014153604_foreclosure_batch_receipts.sql','20261014161013_foreclosure_appraisal_index_receipts.sql'])await db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/'+name,import.meta.url),'utf8'));
+ await db.exec(`INSERT INTO public.profiles VALUES('${owner}','admin','approved');
+ INSERT INTO wholesale_ingest.ingest_runs(id,source_id,scheduled_for,pulled_at,status,status_reason,manifest_hash,expected_batches) SELECT '${run}',id,current_date,now(),'partial','synthetic index',repeat('a',64),1 FROM wholesale_ingest.sources WHERE source_key='tx-dallas-pre_foreclosure';
+ INSERT INTO wholesale_ingest.raw_payloads VALUES('${run}',0,repeat('a',64),repeat('b',64),'{}',2,now(),now()+interval '90 days');
+ INSERT INTO wholesale_ingest.records(run_id,batch_index,ordinal,source_record_id,record) VALUES('${run}',0,0,'123','{}'),('${run}',0,1,'124','{}');`);
+ const receipt={processor:'dallas-appraisal-batch/1.0',run_id:run,batch_index:0,records_sha256:'b'.repeat(64),archive_sha256:'c'.repeat(64),report_sha256:'d'.repeat(64),source_as_of:'2026-01-02',processed_at:'2026-01-02T12:00:00Z',verification_granted:false,dispatch_authorized:false,outreach_authorized:false,
+  items:[{document_id:'123',match_count:1,held:false},{document_id:'124',match_count:0,held:true}]};
+ const save=async(r=receipt,id=batch)=>(await db.query('SELECT public.save_foreclosure_appraisal_batch($1,$2,$3) value',[owner,id,JSON.stringify(r)])).rows[0].value;
+ const result=await save();assert.equal(result.unique_situs_matches,1);assert.equal(result.verification_granted,false);await save();
+ const status=(await db.query('SELECT public.foreclosure_capture_status($1) value',[owner])).rows[0].value;
+ assert.equal(status.appraisal_batches[0].summary.documents,2);assert.equal(status.counties.find(c=>c.county==='Dallas').complete_documents,0);
+ for(const bad of [{...receipt,records_sha256:'e'.repeat(64)},{...receipt,verification_granted:true},{...receipt,items:[receipt.items[0],receipt.items[0]]},{...receipt,items:[receipt.items[0],{document_id:'999',match_count:1,held:false}]},{...receipt,items:[receipt.items[0],{document_id:'124',match_count:0,held:false}]}])await assert.rejects(()=>save(bad,'00000000-0000-4000-8000-000000000004'));
+ await assert.rejects(()=>save({...receipt,report_sha256:'e'.repeat(64)}),/conflict/);
+ assert.equal((await db.query('SELECT count(*)::int n FROM wholesale_ingest.foreclosure_appraisal_batches')).rows[0].n,1);
+ assert.equal((await db.query('SELECT count(*)::int n FROM public.leads')).rows[0].n,0);
+ await db.exec('SET ROLE authenticated');await assert.rejects(()=>save(),/permission denied/);
+ await assert.rejects(()=>db.query('SELECT * FROM wholesale_ingest.foreclosure_appraisal_batches'),/permission denied/);
+});

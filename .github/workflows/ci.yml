@@ -66,6 +66,9 @@ jobs:
           cache-dependency-path: pipeline/package-lock.json
       - run: npm ci --ignore-scripts
       - run: npm test
+      - name: County collector regression tests
+        working-directory: .
+        run: python3 -m unittest discover -s pipeline/collectors -p 'test_*.py'
       - run: npm audit --audit-level=moderate
       - name: Edge runtime typecheck and rejection tests
         working-directory: .
