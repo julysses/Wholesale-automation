@@ -1,5 +1,12 @@
 # WholesaleOS — new-chat handoff
 
+## Supabase incident checked — October 14, 2026, 1:02 PM Central
+
+Owner shared the Supabase Realtime latency banner. Current officialstatus.supabase.com still lists that incident as Monitoring, with impacted users stabilized; platform-wide recovery is not confirmed. Read-only SQL succeeds in both rehearsal and production. Rehearsal confirms78realCollin property associations,8saved original trace contacts and$0actual/$0reserved/$50available. Fresh signed-in DailyLists loads79total associations (including1syntheticDallas), saved-result state and$50available without status errors.
+
+DailyLists, source/capture status and tracing panels use API queries with60-second refresh, not Realtime subscriptions. The banner therefore does not currently block these verified app/database paths. It does not establish the health of everySupabasecomponent or otherappfeature. No migrations, collection/trace jobs or production writes were replayed; existing75-provider group and two completed trace receipts remain intact. Continue from the bulk-verification checkpoint below; scheduling and production promotion remain paused.
+
+
 ## Bulk and CRM browser acceptance; retry-test synchronization — October 14, 2026
 
 Signed-in Daily Lists confirms79associated properties and$50available/$0committed. Both209TateLn and341RegencyDr visibly show Result saved and Follow-up task saved in the CRM across the two property pages. Accepted75-row group C1239517 remains open in PropStream. No new eligibility, spend or outreach.
