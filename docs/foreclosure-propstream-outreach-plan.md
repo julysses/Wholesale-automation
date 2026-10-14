@@ -1,5 +1,13 @@
 # Foreclosure priority list → PropStream → outreach → follow-up
 
+## Bulk county capture update — October 13, 2026
+
+Collin detail recapture is complete: **164/164 saved, zero errors** after retrying six transient network failures. Optional property metadata is no longer mistaken for a missing notice. Every saved item remains unverified and ineligible for tracing until full evidence review. Three parser tests pass.
+
+Added `pipeline/collectors/collin_notice_pages.mjs`, invoked with the approved CUA browser tab. It traverses the visible county viewer, verifies page counters, JPEG hashes, first-page identity and final pagination, resumes verified local captures, and handles one observed inert click during viewer initialization. Three tests cover counters, capture/resume, loading recovery and tamper rejection. First 15 inventory notices plus notice4158245 have complete local page captures. Full inventory capture and OCR/identity/current-status review remain ongoing. No new records or verified status were written to CRM by these collectors.
+
+UI commit764b288 passed GitHub push/PR CI; Vercel rehearsal deployment dpl_EReBzyuu3xpYrdYjjSeVxaazYF9f is READY at that SHA. Browser acceptance remains outstanding. Production untouched; no trace spend or outreach. Next: complete full-page batches, extract/corroborate evidence, save durable in-app verification results, then eligible PropStream batches with exact budget/receipt reconciliation.
+
 ## Resumed — Daily pipeline interface, October 13, 2026
 
 Replaced the Daily Lists operator worksheet with a read-only daily pipeline view: collection receipts, high-priority foreclosure notices, tracing holds, the cumulative budget and saved follow-up status. Removed routine evidence/CSV/quote/contact entry and configuration/scan actions from this page. Queries refresh every minute and are scoped to the signed-in account. The page explicitly states that scheduling/provider automation are not active; this UI change does not establish an unattended pipeline. Verification APIs and internal controls remain intact. Build passed, three UI/identity tests passed, lint baseline checked. Preview deployment/browser acceptance remains to be checked after push.

@@ -34,10 +34,12 @@ def parse_detail(html, document_id):
     if not re.fullmatch(r'\d{1,30}',document_id): raise ValueError('Invalid document ID')
     p=DetailParser();p.feed(html)
     def section(first,last):
+        if first not in p.text and last not in p.text: return []
         start=p.text.index(first)+1;end=p.text.index(last,start);return p.text[start:end]
     prop=section('Property Information','Improvement Information')
     owner=section('Owner Information','Tax Information')
     def value(items,label):
+        if not items: return None
         index=items.index(label)
         if index+1>=len(items): raise ValueError('Missing field value')
         return items[index+1]
@@ -48,12 +50,13 @@ def parse_detail(html, document_id):
     image=base64.b64decode(p.images[0].split(',',1)[1],validate=True)
     if not image.startswith(b'\xff\xd8\xff'): raise ValueError('Invalid notice JPEG')
     cad=[x for x in p.links if re.fullmatch(r'https?://(?:www\.)?collincad\.org/propertysearch\?prop_id=\d+',x)]
-    if len(cad)!=1: raise ValueError('Missing unique official appraisal reference')
+    if len(cad)>1: raise ValueError('Ambiguous official appraisal reference')
     result={'document_id':document_id,'source_url':PREFIX+document_id,
         'indexed_property_address':value(prop,'Address'),'indexed_owner_name':value(owner,'Name'),
         'indexed_owner_address':value(owner,'Address'),'indexed_legal_description':value(prop,'Legal Description'),
-        'indexed_deed_number':value(prop,'Deed Number'),'cad_reference_url':cad[0],
-        'cad_property_id':cad[0].split('=')[-1],'notice_pages_expected':int(pages[0][2]),
+        'indexed_deed_number':value(prop,'Deed Number'),'cad_reference_url':cad[0] if cad else None,
+        'cad_property_id':cad[0].split('=')[-1] if cad else None,
+        'county_property_metadata_available':bool(prop and owner and cad),'notice_pages_expected':int(pages[0][2]),
         'notice_pages_captured':[1],'all_notice_pages_captured':int(pages[0][2])==1,
         'all_notice_pages_reviewed':False,'identity_verified':False,'current_status_verified':False,
         'trace_eligible':False,'review_reason':'County detail metadata only. Review notice pages, independent property identity and current sale status.',
