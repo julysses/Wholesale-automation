@@ -1,5 +1,12 @@
 # WholesaleOS — new-chat handoff
 
+## CI acceptance checkpoint — October 13, 2026
+
+Implementation5ee71a0 passed every GitHub push and PR check: backend, frontend, pipeline, real PostgreSQL/TLS and Vercel. This fixes the earlier frozen integration-lock failure. No change to eligibility or $50spend authorization. In-app extraction/capture acceptance atf0d99de remains valid; the follow-on change is test-command/lock/docs only. Current implementation is pushed and the working tree was clean before this documentation update.
+
+Dallas follow-up investigation:392of490saved index notices show future sale dates; dates establish review priority only. Newly filed notice331583022 /202600002888 is four pages, filedOctober13 and indexedNovember3sale, address onlyDALLASTEXAS. It was opened but **not captured or verified**. The supported media-download helper does not recognize its SVG image link; pageAssets remains the proven but slow download path. Do not count this as a second complete Dallas notice. Resume from the saved localOCR/capture receipts and this latest checkpoint; no local background process is running.
+
+
 ## Extraction UI accepted and CI lock repaired — October 13, 2026
 
 Preview codef0d99de deployed READY as `dpl_6bbXs4R38tkR2ZQusWYJmvt8vVnA`. Signed-in Daily Lists visibly confirms Collin420extracted pages/164complete documents/67quality flags, Dallas5pages/1document/2flags, with zero input/textarea controls. Screenshot: this chat's `outputs/wholesaleos-daily-pipeline.jpg`. Captures/extraction are accepted; property verification, tracing and outreach are not.
