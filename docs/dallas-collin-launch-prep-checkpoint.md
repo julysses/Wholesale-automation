@@ -929,3 +929,5 @@ WholesaleOS browser acceptance now covers both property pages:49saved-result/fol
 ## October14 — scheduled supervision implementation
 
 Added private durable supervisor, retention guard, exception task reuse and rollback-on-scan-error;158pipeline tests passed. Installed through the open rehearsal dashboard and two live scans returned healthy. Scheduling authorization now exists, but unattended county capture and PropStream transport remain concrete unimplemented dependencies. No paid orders, contact imports, seller messages or production changes. Cumulative$50cap retained. Resume from START-HERE-NEXT-CHAT.md and bulk-throughput-plan.md.
+
+Activation accepted: rehearsal cron job2 is active every five minutes after25automatic successful acceptance runs, zero failures.158localpipeline tests and both GitHub CI runs passed for85f34dc. Budget$0committed/$50remaining. No collector/provider timer was claimed active.
