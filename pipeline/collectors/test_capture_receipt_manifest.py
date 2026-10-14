@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from pipeline.collectors.capture_receipt_manifest import build
+from pipeline.collectors.extraction_receipt_manifest import build as build_extractions
 
 
 class CaptureManifestTest(unittest.TestCase):
@@ -61,6 +62,26 @@ class CaptureManifestTest(unittest.TestCase):
         (self.folder / 'detail.html').write_text('changed')
         with self.assertRaisesRegex(ValueError, 'Detail hash mismatch'):
             build(self.root, 'Dallas')
+
+    def test_extraction_export_rejects_altered_text_and_verified_claims(self):
+        captures = build(self.root, 'Dallas')
+        for page in self.pages:
+            saved = {'document_id': '123', 'source_url': self.receipt['source_url'],
+                     'page': page['page'], 'image_sha256': page['sha256'],
+                     'engine': 'test/1', 'text': 'synthetic',
+                     'text_sha256': hashlib.sha256(b'synthetic').hexdigest(),
+                     'confidence': 90, 'review_required': False, 'verified': False,
+                     'trace_eligible': False, 'extracted_at': '2026-10-13T20:00:00Z'}
+            self.save(f"page-{page['page']}.json", saved)
+        self.assertEqual(len(build_extractions(captures, self.root)), 2)
+        saved['text'] = 'changed'
+        self.save('page-2.json', saved)
+        with self.assertRaisesRegex(ValueError, 'text hash mismatch'):
+            build_extractions(captures, self.root)
+        saved['text'] = 'synthetic'; saved['verified'] = True
+        self.save('page-2.json', saved)
+        with self.assertRaisesRegex(ValueError, 'authorization mismatch'):
+            build_extractions(captures, self.root)
 
 
 if __name__ == '__main__':

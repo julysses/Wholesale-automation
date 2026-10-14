@@ -1,5 +1,16 @@
 # Foreclosure priority list → PropStream → outreach → follow-up
 
+## In-app extraction receipts — October 13, 2026
+
+Rehearsal now durably stores **425 extraction receipts:420 Collin pages/164documents and5Dallas pages/1document**. Live SQL confirms67Collin and2Dallas text-quality review pages, with verification_granted:false. Full OCR text/blocks remain in private local evidence files; the database validates the supplied text hash and stores only page/source linkage, text hash/length, engine, confidence, quality flag and timestamps. It does not copy the full text into another retention store.
+
+Added private RLS table `wholesale_ingest.foreclosure_extractions`, service-only SECURITY INVOKER `save_foreclosure_extractions`, and extraction counts on the existing approved-admin capture-status API. Complete capture/page hashes must match; text hashes, input bounds, timestamp, immutable replay and atomic batches are enforced. New snapshot captures do not inherit old extraction credit. No lead/signal/contact/follow-up mutation. Live browser-role read/write/execute grants are false; server execute true. Rehearsal migration20261014022100 corresponds to source20261014021657_foreclosure_extraction_receipts.sql. Production unchanged.
+
+`extraction_receipt_manifest.py` builds private uploads from hash-bound OCR/capture receipts and rejects invented verification claims. Seven Python tests, two database integration tests, three frontend tests, build and lint check pass (146existing lint findings; existing bundle warning). Security advisor's new table INFO is intentional RLS with no browser policies; pre-existing auth/definer warnings remain. Daily Lists now includes extracted-page/document counts and text-quality exceptions without entry forms; deployment/browser acceptance is pending this push.
+
+Resume with latest preview acceptance, structured property extraction and page-specific evidence, independent property/current-sale verification, remaining489Dallas full notices, then only-new PropStream reuse/trace/result reconciliation and CRM follow-up. No new eligibility, trace order, spend, seller message, schedule activation or production promotion. All local extraction processes finished.
+
+
 ## Bulk local OCR accepted — October 13, 2026
 
 **Collin:420/420 pages across164 documents extracted; Dallas:5/5 pages for notice330724568 extracted. Zero processing failures and zero empty-text pages.** Collin67pages across52documents and Dallas2pages were flagged below85confidence. OCR occasionally logged an unrecognized tiny line; page success is not a claim that every character was read. No identity/current-status/tracing eligibility was granted.

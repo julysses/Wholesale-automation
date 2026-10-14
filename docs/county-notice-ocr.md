@@ -15,3 +15,7 @@ Concurrency is bounded to1–4. The worker validates every manifest identity, of
 Empty or below85-confidence text is marked for additional review. This is an extraction-quality flag, not a calibrated probability and not a property-status decision. Every output has `verified:false` and `trace_eligible:false`, including high-confidence pages. OCR can confuse numbers, dates, legal descriptions, names and filing stamps; it does not establish title, present ownership, cancellation/postponement status or permission to contact.
 
 This worker is an accepted local extraction component after a live smoke test; it is not an active daily schedule, production worker or completed structured-property verification pipeline. County matching, authoritative current-sale review, durable in-app verification and actual PropStream result acceptance remain separate gates. No paid tracing or outreach can be triggered by this script.
+
+## Rehearsal delivery
+
+`extraction_receipt_manifest.py captures.json ocr-root output.json` binds OCR output to the capture identity and creates a private1–500page service batch. The service-only database function validates the supplied text against its hash, then stores metadata only: source/page/image/text hashes, text length, engine, confidence and review flag. Full text and blocks stay in private local evidence. Daily Lists reads aggregate extraction counts; extraction never creates verification or tracing eligibility.

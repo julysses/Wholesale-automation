@@ -7,7 +7,7 @@ import { ForeclosureActions } from '@/components/lists/ForeclosureActions';
 
 type Snapshot = { day: string; review_count: number; runs: { id: string; status: string; processing_status: string; records_new: number; records_stacked: number; status_reason: string }[] };
 type TraceSnapshot = { total: number; total_budget: { remaining_cents: number; committed_cents: number }; items: { lead_id: string; county: string; address_std: string; stage: string; handoff: { follow_up_task_id: string | null } | null }[] };
-type CaptureStatus = { counties: { county: string; documents: number; complete_documents: number; captured_pages: number; expected_pages: number; updated_at: string | null }[] };
+type CaptureStatus = { counties: { county: string; documents: number; complete_documents: number; captured_pages: number; expected_pages: number; extracted_pages?: number; extracted_documents?: number; quality_review_pages?: number; updated_at: string | null }[] };
 const stages: Record<string, string> = {
   current_status_review: 'On hold — current sale needs verification',
   identity_incomplete: 'On hold — owner identity needs verification',
@@ -52,9 +52,10 @@ function Pipeline({ actor }: { actor: string }) {
       <h2 className="text-xl font-semibold">County document capture</h2>
       {captures.isPending && <p>Loading saved document receipts…</p>}
       {captures.error && <p role="alert">Document capture status unavailable. <Button onClick={() => captures.refetch()}>Retry document status</Button></p>}
-      {captures.data && !captures.error && captures.data.counties.map(county => <p key={county.county}>
-        <strong>{county.county}</strong> · {county.documents} notices captured · {county.complete_documents} complete documents · {county.captured_pages}/{county.expected_pages} pages saved
-      </p>)}
+      {captures.data && !captures.error && captures.data.counties.map(county => <div key={county.county}>
+        <p><strong>{county.county}</strong> · {county.documents} {county.documents === 1 ? 'notice' : 'notices'} captured · {county.complete_documents} complete {county.complete_documents === 1 ? 'document' : 'documents'} · {county.captured_pages}/{county.expected_pages} pages saved</p>
+        {county.extracted_pages !== undefined && <p className="text-sm">Text extracted from {county.extracted_pages} pages across {county.extracted_documents} complete documents · {county.quality_review_pages} pages flagged for text-quality review</p>}
+      </div>)}
       <p className="text-sm text-gray-600">Counts cover saved capture receipts. Document capture is followed by content extraction, property matching and current-sale verification; it does not establish county coverage or tracing eligibility.</p>
     </section>
     <ForeclosureActions />
