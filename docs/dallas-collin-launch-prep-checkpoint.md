@@ -1,5 +1,18 @@
 # Dallas/Collin launch preparation checkpoint — October 12, 2026
 
+## Bulk property queue imported — October 14, 2026
+
+User prioritized scaling beyond the two acceptance examples. Added `pipeline/collectors/foreclosure_property_batch.mjs`: one whole-inventory pass binds original capture/OCR hashes, fresh appraisal situs and exact legal descriptions to saved county records, groups by parcel, reuses known properties and generates both address-only and PropStream Contacts-template CSVs. Full owner names remain intact; no guessed surname or mailing address. All new candidates remain inactive/current_status_review, with full-notice/current-sale and paid tracing holds.
+
+The 164-notice Collin batch produced **75 new property associations**, 84 held notices and 5 reused observations. Saved together in rehearsal via the existing audited identity RPC: **71 new CRM leads plus 4 uniquely matched existing CRM leads reused**. SQL and signed-in Daily Lists confirm **79 associated properties:78 real Collin plus1 synthetic Dallas fixture**, with575unresolved notice observations. This does not mean75fully verified or outreach-ready foreclosures.
+
+PropStream accepted one75-row upload into **WholesaleOS Collin Verification Queue 20261014**, group `https://app.propstream.com/contact/C1239517`; total contacts increased16730→16805 and the selected group visibly loads75rows. No tracing order for this group. Browser file-transfer infrastructure stalled about35minutes before succeeding; the data/import steps themselves are batched. Screenshot: this chat's `outputs/propstream-75-property-batch.jpg`. Private batch queue, legacy matches and atomic SQL remain under `work/verification-20261014/bulk-property-queue/`. Never reimport this accepted group blindly.
+
+The earlier two-property group C1239481 was also accepted. A corresponding provider job **A1902777 / WholesaleOS Collin Trace 20261014** appeared and remains **Processing**, with both expected property rows and no returned contacts. The agent did not click Place Order. Quote was2×12cents; prepaid/total fields were inconsistent. Original requests caf9a39a-1c14-4a27-93b7-a0a4c378dd59 and738f8d8f-d1e1-455a-8b40-2b1f7843850f retain24cents reservation, ledger49.76available. Actual billing is unconfirmed. **Do not reorder, cancel or expire the hold while this provider job exists.** Next immediately reconcile external submission into an audited non-dispatching hold before midnight; then recover original results/billing and CRM follow-up.
+
+Existing-provider whole-contact export did not yield a confirmed file, so reuse checks for the75are incomplete. Next: complete bulk full-notice/current-status corroboration and existing-contact reuse, recover the original two-record processing job, then one only-new eligible batch within the cumulative$50cap. Dallas still201index/address candidates with489full notices uncaptured. Daily scheduler and production remain unchanged; no seller outreach. **149pipeline tests pass**; no frontend change in this update. Unattended launch readiness remains incomplete.
+
+
 ## Both county bulk displays accepted — October 14, 2026
 
 Implementation1a32240passed every GitHub push/PR check and Vercel deployment. Signed-in WholesaleOS DailyLists visibly shows Dallas490index notices processed together/201single-account address matches/289matching exceptions and Collin164captured notices/103fresh appraisal-address matches/162groups/162extraction or matching exceptions. The page clearly separates Dallas index discovery from complete-notice verification, with zero input/textarea controls. Screenshot: this chat'soutputs/wholesaleos-bulk-matching.jpg.
