@@ -31,10 +31,16 @@ Measured October 14: existing 75-row evidence processed in 17 ms locally, reprod
 3. **Incremental county processing:** discover only new/changed filings, cache original pages and OCR by hash, fetch ownership in bounded batches, and process independent documents with bounded concurrency and retry limits.
 4. **Structured verification:** expand notice-format extraction and full legal/owner/case corroboration. Compare current-sale inventories once per source/day. Isolate ambiguous, estate and contradictory records without stopping unrelated records. Unmatched listings are not cancellations.
 5. **Operator presentation:** show one batch progress card, stage counts, age and actionable exceptions. Keep ordinary successful stages out of the manual task queue. Create an outreach follow-up only when its required channel checks pass; return contact availability separately.
-6. **Scheduling acceptance:** exercise two consecutive runs plus interruption/replay. Then accept the daily schedule and production rollout explicitly. Current schedule remains paused.
+6. **Scheduling acceptance:** exercise two consecutive runs plus interruption/replay. Then accept the daily schedule and production rollout explicitly. Owner authorized scheduling on October14. Receipt supervision is now being enabled in rehearsal; source/provider execution remains unimplemented and must not be labeled active collection.
 
 ## Acceptance measurements
 
 Record count and elapsed time for discovery, capture, extraction, verification, provider transfer, provider processing and CRM delivery separately. Track records/hour, manual interventions per batch, exception rate, duplicate orders and charge reconciliation. Set an end-to-end service target after measuring the actual source/provider waits; do not promise minutes while those dependencies remain unaccepted.
 
 Required before unattended launch: no duplicate leads, orders or follow-ups on replay; zero extra spend on already completed/no-match jobs; one cumulative $50 cap; billing uncertainty held; no silent truncation; no result marked outreach-ready solely because a phone was returned.
+
+## October 14 scheduled supervision
+
+Added a database-native five-minute supervision function and durable status. It calls the existing list receipt scan without external credentials and creates/reuses an exception task on scanner failure or retention guard. Locks expiry-bearing tables through the check and scan; a failed scanner rolls back its partial changes. No retention deletion, provider call, trace reservation or seller messaging is performed. Service-only execution and private RLS protect status; browser roles cannot invoke the function.158pipeline tests pass. Two live rehearsal runs returned healthy supervision with collection_executed/provider_ordered/outreach_sent all false.
+
+This closes scheduling of receipt supervision, not scheduling of collection or enrichment. The remaining concrete dependency is an unattended runner with supported source/provider transport. Current authorized PropStream access is interactive UI only; a database cron cannot drive that signed-in browser. Do not substitute a timer firing for delivery evidence or invent API availability. Keep missing-source incidents visible in WholesaleOS until actual new daily receipts arrive. Cron setup/inspection/pause SQL is scripts/sql/enable_bulk_supervision.sql; use rehearsal only.

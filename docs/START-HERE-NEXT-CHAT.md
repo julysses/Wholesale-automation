@@ -1,5 +1,12 @@
 # WholesaleOS — new-chat handoff
 
+## Scheduled supervision — October 14, 2026
+
+The owner explicitly authorized scheduled bulk operation. Implemented and installed `20261014200149_scheduled_bulk_supervision.sql` through the signed-in rehearsal Supabase SQL Editor (no CLI authentication/password). Two live scans passed. All158pipeline tests pass, including repeated scans, one-task failure handling, failure rollback, browser-role denial and preservation of expired evidence. The supervisor calls the existing receipt/incident/digest scan, blocks the legacy retention deletes whenever expired evidence exists, and stores a durable last-check/last-success record. It never orders traces, collects county documents or sends outreach. Successful checks produce no routine new tasks; existing source/day incidents remain deduplicated.
+
+**Do not call this a finished unattended sourcing workflow.** County capture and PropStream transfer still depend on the signed-in interactive browser. A supported unattended provider connection and a persistent collector worker remain missing. Daily sourcing, full foreclosure verification and production launch remain incomplete. The new timer is receipt supervision only; completed/no-result traces remain excluded, and the cumulative$50cap is unchanged. See docs/bulk-throughput-plan.md for remaining work. The existing retention job remains disabled.
+
+
 ## Faster bulk processing entrypoint — October 14, 2026
 
 Owner rejected an all-day process for75leads. Added one-command `pipeline/collectors/bulk_reconcile.mjs` / `npm run bulk:reconcile -- private-config.json`: completed provider results and county listing evidence are matched together, with deterministic input-hash identity, private reconciliation package, minimal receipt, DNC/warning preservation and explicit exception reasons. Existing75-row evidence processed in17ms locally and reproduced73contact matches/2no-results/473contacts/145DNCflags/7provider warnings/16current-listing matches. This excludes source collection, provider transfer/wait, database delivery and full verification; it is not unattended operation or end-to-end timing.
