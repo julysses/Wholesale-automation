@@ -48,3 +48,15 @@ The earlier two-property group C1239481 was also accepted. A corresponding provi
 
 Existing-provider whole-contact export did not yield a confirmed file, so reuse checks for the75are incomplete. Next: complete bulk full-notice/current-status corroboration and existing-contact reuse, recover the original two-record processing job, then one only-new eligible batch within the cumulative$50cap. Dallas still201index/address candidates with489full notices uncaptured. Daily scheduler and production remain unchanged; no seller outreach. **149pipeline tests pass**; no frontend change in this update. Unattended launch readiness remains incomplete.
 
+
+## Original provider results saved and follow-up created — October 14, 2026
+
+The accepted75-row PropStream group C1239517 and79in-app associations remain intact. Implementation9ed11e5 is pushed. The original two-record external job **A1902777** is now **Complete**, with exact source owner/property row IDs4472334311and4472334312 matched to their saved requests. Signed-in Billing History explicitly shows **Skip Trace(2),10/14/2026,$0**. This explains the earlier zero-total quote; do not reorder this completed job.
+
+Added service-only audited `recover_propstream_external_submission`, source migration20261014174808 / rehearsal20261014174948. It adopts an already-visible job into an unknown hold, returnsdispatch:false, preserves original identity/budget, atomically rejects mismatched members and replays immutably. Browser execution/read grants arefalse. Recoverye98b9c02-b5c5-4b24-b320-0b1075e00a27 adopted both original requests without ordering; reconciliation7478aca3-ff1b-49a7-8fe0-a1e8bcd66c19 then saved exact results/confirmedzerocharge.
+
+**8contact records saved** (4phones/4emails across2leads), **2assigned pending high-priority follow-up tasks created**, original requestscompleted, budget **$0actual/$0reserved/$50remaining**. One returned mobile is provider-markedDNC and storedlisted with checked timestamp; all other DNC/channel checks stayunknown. No consent inferred and no outreachsent/authorized. Tasks explain matched-result/channel review and theDNCexclusion. Contacts are provider returns, not independent proof that each channel reaches the owner.
+
+**150pipeline tests pass**, including atomic external-job recovery, mismatched inputs, immutable replay, midnight hold, settlement and denied browser access. Security advisor adds only intentional privateRLS/no-policyINFO; no newWARN. Full private result/billing text, recovery/reconciliationJSONandSQL and screenshots are in this chat'swork/verification-20261014/ andoutputs/propstream-batch-complete.jpg. Never put contacts or billing data in git.
+
+Next: process the75-property verification queue in bulk (full notice/case/current-sale corroboration and existing-provider contact reuse), add a durable unattended worker and accepted scheduling, complete489Dallasfull captures, then trace only new eligible rows as one bounded batch. Bulk import and original2lead-result/CRMfollow-up handoff are accepted; **75are not yet paid-trace or outreach-ready**, and launch is not complete. Production and existing paused daily schedule unchanged.

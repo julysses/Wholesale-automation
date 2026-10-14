@@ -14,12 +14,35 @@ async function setup(t){
  INSERT INTO wholesale_ingest.properties(id,state,county,address_std,city,zip,lead_id) VALUES('${id(3)}','TX','Dallas','QA TEST PROPERTY','Dallas','75201','${id(2)}');
  INSERT INTO wholesale_ingest.ingest_runs(id,source_id,scheduled_for,pulled_at,status,status_reason,manifest_hash,expected_batches) SELECT '${id(4)}',id,current_date,now(),'partial','test',repeat('a',64),1 FROM wholesale_ingest.sources WHERE source_key='tx-dallas-pre_foreclosure';
  INSERT INTO wholesale_ingest.distress_signals(id,property_id,source_id,source_record_id,list_type,source_url,first_run_id,last_run_id,auction_date,active) SELECT '${id(5)}','${id(3)}',id,'test','pre_foreclosure','https://www.dallascounty.org/test','${id(4)}','${id(4)}',current_date+30,true FROM wholesale_ingest.sources WHERE source_key='tx-dallas-pre_foreclosure';`);
+ await db.exec(fs.readFileSync(new URL(fs.readdirSync(dir).find(x=>x.endsWith('_propstream_external_submission_recovery.sql')),dir),'utf8'));
  const snap=()=>rpc(db,'propstream_handoff_snapshot',[id(1),0]);
  const row=(await snap()).items[0];
  const payload={input_hash:row.input_hash,signal_id:row.signal_id,signal_hash:row.signal_hash,quote_cents:50,prepaid_balance_cents:5000,quote_reference:'synthetic quote',owner_evidence_url:'https://www.dallascad.org/test',status_evidence_url:'https://dallas.tx.publicsearch.us/doc/test',notes:'Synthetic fixture all pages and owner verified',all_pages_reviewed:true};
  const act=(event,action,p,request=10)=>rpc(db,'propstream_handoff_action',[id(event),id(1),id(request),id(2),action,JSON.stringify(p)]);
  return {db,snap,row,payload,act};
 }
+test('external provider job recovery retains the original hold through midnight without dispatch or duplicate submission',async t=>{
+ const {db,snap,payload,act}=await setup(t);
+ await act(20,'prepare',payload);
+ const proof={provider_job_id:'A12345',evidence_sha256:'a'.repeat(64),notes:'Synthetic externally visible job and exact reserved row matched',
+ items:[{request_id:id(10),lead_id:id(2),input_hash:payload.input_hash}]};
+ const recover=p=>rpc(db,'recover_propstream_external_submission',[id(90),id(1),JSON.stringify(p)]);
+ // A later-invalid row must roll back the earlier matched row atomically.
+ await assert.rejects(()=>recover({...proof,items:[...proof.items,{request_id:id(11),lead_id:id(999),input_hash:payload.input_hash}]}),/Matching unresolved/);
+ assert.equal((await snap()).items[0].request.state,'reserved');
+ await assert.rejects(()=>recover({...proof,items:[{...proof.items[0],input_hash:'b'.repeat(64)}]}),/Matching unresolved/);
+ const accepted=await recover(proof);assert.equal(accepted.dispatch,false);assert.equal(accepted.results[0].state,'unknown');
+ assert.equal((await recover(proof)).replayed,true);
+ await assert.rejects(()=>recover({...proof,provider_job_id:'A54321'}),/reference conflict/);
+ await db.exec(`UPDATE wholesale_ingest.daily_budgets SET spend_day=CURRENT_DATE-1; ALTER TABLE wholesale_ingest.skip_trace_requests DISABLE TRIGGER trace_identity_immutable; UPDATE wholesale_ingest.skip_trace_requests SET spend_day=CURRENT_DATE-1; ALTER TABLE wholesale_ingest.skip_trace_requests ENABLE TRIGGER trace_identity_immutable;`);
+ assert.equal((await rpc(db,'claim_list_trace',[id(10),payload.input_hash])).dispatch,false);
+ assert.equal((await rpc(db,'cancel_reserved_list_trace',[id(10)])).blocked,'already_claimed');
+ assert.equal((await snap()).total_budget.remaining_cents,4950);
+ const settled=await act(22,'reconcile',{input_hash:payload.input_hash,actual_cents:40,provider_receipt:'A12345',contacts:[],confirmed_match:true});
+ assert.equal(settled.contacts_saved,0);assert.equal((await snap()).total_budget.actual_cents,40);
+ await db.exec('SET ROLE authenticated');await assert.rejects(()=>recover(proof),/permission denied/);
+ await assert.rejects(()=>db.query('select * from wholesale_ingest.propstream_external_submissions'),/permission denied/);
+});
 test('PropStream handoff reserves once, never reauthorizes replay, reconciles contacts and creates one follow-up',async t=>{
  const {db,snap,payload,act}=await setup(t);
  assert.equal((await snap()).items[0].stage,'quote_and_evidence_required');
