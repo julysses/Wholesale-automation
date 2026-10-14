@@ -1,5 +1,14 @@
 # WholesaleOS — new-chat handoff
 
+## Resumed — October 14, 2026
+
+Owner resumed work. Rehearsal Supabase SQL and the signed-in WholesaleOS page are responding; all425saved extraction receipts remain intact (Collin420/164documents; Dallas5/1document). Production also answered a read-only SQL connectivity query; no production changes. Supabase's public status page still reports a Realtime latency incident in monitoring, so this verifies our database/app path rather than a platform-wide all-clear. No migrations or ingestion runs replayed during recovery. Branch pulled successfully after a sandbox DNS failure.
+
+PropStream live Account confirms$50prepaid; the app ledger confirms$0committed/$50remaining. Existing schedule remains paused. Verification in progress: Collin4160692and4160707 describe the same209TateLn property and same2026-27711-TXtrustee case. Current2026CAD2849782 matches owner, situs and legal description. Xome's exact property426830698, named by the notice as a sale-information source, shows Marketing andDecember1,10AM, refreshedOctober14. Another candidate341RegencyDr has separate HOA/mortgage notices withdifferentdates; do not combine them as the same lien or infer postponement. No trace order/spend/outreach.
+
+Next: save complete reviewed evidence, add tightly property-bound support for the trustee-marketed Xome status source (currently county-only URL guards reject it), verify additional candidates, then bulk-only-new provider handoff with exact quote/reservation/result/charge and CRM follow-up. Raw evidence stays private under this chat'swork/verification-20261014/.
+
+
 ## Paused at owner request — October 13, 2026
 
 Work is **paused for today**, not complete. The owner reports Supabase is experiencing issues; no outage investigation, database calls, collector runs, tracing or outreach should continue during this pause. The active Codex goal is paused. The existing daily collection schedule remains paused and production remains unchanged.
