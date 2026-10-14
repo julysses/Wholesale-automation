@@ -1,5 +1,14 @@
 # WholesaleOS — new-chat handoff
 
+## Persistent worker implementation and connection decisions — October14,2026
+
+Added `pipeline/collectors/persistent_worker.py`: durable SQLite scheduling for Dallas/Collin TAX collection and scoped rehearsal delivery, OS single-process lock, crash-safe states, unchanged-manifest retries/backoff, maximum3delivery attempts and private status/exception output. Four targeted tests and all14Python collector tests pass. This is NOT a completed foreclosure or PropStream worker, and it has not been deployed or run against live counties.
+
+Live discovery: Railway `mellow-luck` project84e1c85f-f9c9-4ceb-8538-0a0092d22d1c / service de22f391-bc4b-4857-aff1-e2cb0385e2c6 runs production on `claude/ai-wholesaling-agency-KkDF1`, with no variables/volume/domain. Do not replace it. PropStream Account still shows$50prepaid/Legacy, a Connect trial offer and BatchDialer as the only displayed integration; no general API connection exposed. No subscription, credentials or provider changes made.
+
+Pending user answers: localMac(alwaysawake/existingKeychain) versus separateRailwayworker(possiblehostingcost); existing approvedPropStreamAPI/partner access versus access-requestdraft. Request drafted in docs/propstream-access-request-draft.md; NOT sent. Deployment details and exact remaining gates in docs/persistent-worker-setup.md. Existing five-minute supervision remains active; full daily sourcing/tracing is not operational.
+
+
 ## Scheduled supervision — October 14, 2026
 
 The owner explicitly authorized scheduled bulk operation. Implemented and installed `20261014200149_scheduled_bulk_supervision.sql` through the signed-in rehearsal Supabase SQL Editor (no CLI authentication/password). Two live scans passed. Rehearsal cron job2 `wholesaleos-bulk-supervision` is ACTIVE every five minutes. A temporary one-minute acceptance interval produced25automatic successful runs and0failures (20:07–20:31UTC); restored five minutes afterward. Implementation85f34dc is pushed and both GitHub CI runs passed. All158pipeline tests pass, including repeated scans, one-task failure handling, failure rollback, browser-role denial and preservation of expired evidence. The supervisor calls the existing receipt/incident/digest scan, blocks the legacy retention deletes whenever expired evidence exists, and stores a durable last-check/last-success record. It never orders traces, collects county documents or sends outreach. Successful checks produce no routine new tasks; existing source/day incidents remain deduplicated.

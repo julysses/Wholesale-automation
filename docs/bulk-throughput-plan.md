@@ -46,3 +46,7 @@ Added a database-native five-minute supervision function and durable status. It 
 This closes scheduling of receipt supervision, not scheduling of collection or enrichment. The remaining concrete dependency is an unattended runner with supported source/provider transport. Current authorized PropStream access is interactive UI only; a database cron cannot drive that signed-in browser. Do not substitute a timer firing for delivery evidence or invent API availability. Keep missing-source incidents visible in WholesaleOS until actual new daily receipts arrive. Cron setup/inspection/pause SQL is scripts/sql/enable_bulk_supervision.sql; use rehearsal only.
 
 Live acceptance: job2 / wholesaleos-bulk-supervision recorded25automatic successes and0failures during the one-minute acceptance interval, then restored to five minutes. Two initial direct scans also passed. Budget remained$0committed/$50remaining. Existing refresh-lead-retention cron remains inactive. RLS enabled and schema migration20261014200149 registered. Implementation85f34dc passed both GitHub CI runs.
+
+## Persistent collector implementation
+
+Restart-safe tax collection/delivery worker implemented; deployment host and approved PropStream transport decisions pending. Four new tests cover restart deduplication, uncertain-delivery retry identity/limits, interrupted collection and Chicago daily scheduling. See docs/persistent-worker-setup.md. No live collection/worker activation or provider changes in this update.

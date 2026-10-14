@@ -931,3 +931,11 @@ WholesaleOS browser acceptance now covers both property pages:49saved-result/fol
 Added private durable supervisor, retention guard, exception task reuse and rollback-on-scan-error;158pipeline tests passed. Installed through the open rehearsal dashboard and two live scans returned healthy. Scheduling authorization now exists, but unattended county capture and PropStream transport remain concrete unimplemented dependencies. No paid orders, contact imports, seller messages or production changes. Cumulative$50cap retained. Resume from START-HERE-NEXT-CHAT.md and bulk-throughput-plan.md.
 
 Activation accepted: rehearsal cron job2 is active every five minutes after25automatic successful acceptance runs, zero failures.158localpipeline tests and both GitHub CI runs passed for85f34dc. Budget$0committed/$50remaining. No collector/provider timer was claimed active.
+
+## Persistent worker implementation and connection decisions — October14,2026
+
+Added `pipeline/collectors/persistent_worker.py`: durable SQLite scheduling for Dallas/Collin TAX collection and scoped rehearsal delivery, OS single-process lock, crash-safe states, unchanged-manifest retries/backoff, maximum3delivery attempts and private status/exception output. Four targeted tests and all14Python collector tests pass. This is NOT a completed foreclosure or PropStream worker, and it has not been deployed or run against live counties.
+
+Live discovery: Railway `mellow-luck` project84e1c85f-f9c9-4ceb-8538-0a0092d22d1c / service de22f391-bc4b-4857-aff1-e2cb0385e2c6 runs production on `claude/ai-wholesaling-agency-KkDF1`, with no variables/volume/domain. Do not replace it. PropStream Account still shows$50prepaid/Legacy, a Connect trial offer and BatchDialer as the only displayed integration; no general API connection exposed. No subscription, credentials or provider changes made.
+
+Pending user answers: localMac(alwaysawake/existingKeychain) versus separateRailwayworker(possiblehostingcost); existing approvedPropStreamAPI/partner access versus access-requestdraft. Request drafted in docs/propstream-access-request-draft.md; NOT sent. Deployment details and exact remaining gates in docs/persistent-worker-setup.md. Existing five-minute supervision remains active; full daily sourcing/tracing is not operational.
