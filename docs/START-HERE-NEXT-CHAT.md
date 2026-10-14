@@ -1,5 +1,12 @@
 # WholesaleOS — new-chat handoff
 
+## Extraction UI accepted and CI lock repaired — October 13, 2026
+
+Preview codef0d99de deployed READY as `dpl_6bbXs4R38tkR2ZQusWYJmvt8vVnA`. Signed-in Daily Lists visibly confirms Collin420extracted pages/164complete documents/67quality flags, Dallas5pages/1document/2flags, with zero input/textarea controls. Screenshot: this chat's `outputs/wholesaleos-daily-pipeline.jpg`. Captures/extraction are accepted; property verification, tracing and outreach are not.
+
+GitHub's PostgreSQL CI job exposed a stale integration Deno workspace lock after the OCR dependencies were added. Regenerated that lock from the pipeline package context; both frozen Edge tests and the full disposable real PostgreSQL/TLS concurrency/ingress suite now pass locally. Normal pipeline test command now includes collector/OCR tests: **142tests pass**. No frozen-lock checks were disabled. The new fix still needs GitHub acceptance after push. No local collectors/OCR processes remain running; production and schedules remain unchanged.
+
+
 ## In-app extraction receipts — October 13, 2026
 
 Rehearsal now durably stores **425 extraction receipts:420 Collin pages/164documents and5Dallas pages/1document**. Live SQL confirms67Collin and2Dallas text-quality review pages, with verification_granted:false. Full OCR text/blocks remain in private local evidence files; the database validates the supplied text hash and stores only page/source linkage, text hash/length, engine, confidence, quality flag and timestamps. It does not copy the full text into another retention store.

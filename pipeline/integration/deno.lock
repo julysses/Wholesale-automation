@@ -44,9 +44,11 @@
     "packageJson": {
       "dependencies": [
         "npm:@electric-sql/pglite@0.3.14",
+        "npm:@tesseract.js-data/eng@1.0.0",
         "npm:ajv-formats@3.0.1",
         "npm:ajv@8.20.0",
-        "npm:postgres@3.4.5"
+        "npm:postgres@3.4.5",
+        "npm:tesseract.js@7.0.0"
       ]
     }
   }
