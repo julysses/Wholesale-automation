@@ -1,5 +1,16 @@
 # Dallas/Collin launch preparation checkpoint — October 12, 2026
 
+## Bulk local OCR accepted — October 13, 2026
+
+**Collin:420/420 pages across164 documents extracted; Dallas:5/5 pages for notice330724568 extracted. Zero processing failures and zero empty-text pages.** Collin67pages across52documents and Dallas2pages were flagged below85confidence. OCR occasionally logged an unrecognized tiny line; page success is not a claim that every character was read. No identity/current-status/tracing eligibility was granted.
+
+Implemented `pipeline/collectors/notice_ocr.mjs` using pinned Tesseract.js7.0.0 and local English package1.0.0. Installation used npm with scripts disabled; audit reported zero vulnerabilities. This worker ran successfully **inside the normal sandbox**, with local image bytes and local language data, no paid model API or document transmission. The earlier native Vision outside-sandbox request remains declined and was not retried. Two OCR tests plus four county viewer tests pass; inputs are county/identity/hash checked, complete-page-only; page outputs are private, atomic and resumable with image/text hashes and explicit verified:false/trace_eligible:false. See `docs/county-notice-ocr.md`.
+
+Private evidence under this chat's `work/county-sources/collin-ocr/` and `dallas-ocr/`; full capture roots are the sibling `*-bulk-details/` directories. Existing capture manifests remain in `work/capture-receipts.json` and `work/dallas-capture-receipts.json`. A full Collin replay verified420cached outputs without repeating recognition. OCR is not yet stored or displayed in the app; only capture receipts are. Live Daily Lists confirms Collin164complete/420pages and Dallas1complete/5pages. PropStream signed-in Contacts was revalidated (existing historical contacts present), import dialog canceled with no upload/order/spend.
+
+Next: structured extraction with page-specific evidence and quality exceptions, durable in-app extraction/verification statuses, independent property/current-sale corroboration, remaining489Dallas notices, then only-new PropStream batch/result/charge and follow-up acceptance. A direct public Collin CAD request returned403; do not use that HTTP route as an accepted collector or work around restrictions. Supported browser verification remains available. No trace spend, seller outreach, schedule activation or production changes. Local OCR processes are finished.
+
+
 ## Dallas capture support — October 13, 2026
 
 Added Dallas PNG support to the county capture manifest validator, with explicit county selection, image signatures, expected-page bounds and existing identity/hash checks. Six Python tests pass, including wrong-county, tampered-file, duplicate-page and incomplete-manifest rejection. All164 Collin captures previously accepted remain unchanged.

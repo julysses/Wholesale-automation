@@ -10,5 +10,9 @@
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "postgres": "3.4.5"
+  },
+  "dependencies": {
+    "@tesseract.js-data/eng": "1.0.0",
+    "tesseract.js": "7.0.0"
   }
 }
