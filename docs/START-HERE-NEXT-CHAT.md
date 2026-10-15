@@ -1,3 +1,13 @@
+## Retell callback connected — October15,12:24Central
+
+Explicit owner approval received for dedicated project-wide Vercel automation bypass token. Created it with note Retell rehearsal callbacks - launch prep; calls/SMS OFF, preserving standard Vercel authentication. Token scope is all deployments in this project; it is configured only on the rehearsal Retell agent callback. Never place the secret callback URL in git or logs. RETELL_WEBHOOK_SECRET remains branch-preview-only. Deployment13c137a READY; both hosted CI workflows passed.
+
+Saved agent webhook URL to stable rehearsal /webhooks/retell with authenticated bypass parameter. Retell's built-in webhook Test sent signed call_started successfully: live rehearsal SQL confirms ai_call_records call_id=test_call, provider=retell, agent_id=test_agent, lead_id=null, initiated at2026-10-15T17:24:03.376089Z. This verifies actual Retell-to-CRM authenticated ingress; it is NOT a phone call or completed-call acceptance. Draft remains unpublished.
+
+Prepared synthetic excluded leads f2e5be24-14f0-4cef-8b51-ecf0bf5e1bd1 and f2e5be24-14f0-4cef-8b51-ecf0bf5e1bd2 with ai_calling_paused=true, sms_sequence_active=false, no owner phone. Callback/duplicate/opt-out acceptance still pending. Automatic approval review rejected writing the bypass secret to a temporary file because storage was previously limited to Retell; no bypass file was written. Owner clarification pending for owner-only temporary verification storage plus immediate deletion. Verification runner prepared privately at /private/tmp/wholesale-retell-rehearsal/verify.py; credentials must not enter git/output. Existing private signing-key file must be deleted after verification (or on stop).
+
+Evidence: chat outputs/retell-rehearsal-secret-scope.png, retell-callback-access-configured.png, retell-rehearsal-draft-connected.png. No calls, SMS, number binding, spend or production data changes.
+
 ## Approved rehearsal signing setup — October15, in progress
 
 Owner approved rehearsal signing credential and authenticated callback access. Saved Retell's existing Webhook-badged key as secret RETELL_WEBHOOK_SECRET scoped only Preview / codex/dallas-collin-launch-prep; production value unchanged. UI confirmed successful save. New deployment required. No RETELL_API_KEY was added to preview; no calls/SMS enabled. Evidence: chat outputs/retell-rehearsal-secret-scope.png.
