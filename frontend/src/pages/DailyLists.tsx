@@ -98,8 +98,8 @@ function Pipeline({ actor }: { actor: string }) {
     <ForeclosureActions />
     <section aria-label="Skip tracing and follow-up" className="rounded-xl border bg-white p-5 space-y-3">
       <h2 className="text-xl font-semibold">Skip tracing and follow-up</h2>
-      <Button disabled={exporting} onClick={exportDialer}>{exporting ? 'Preparing all properties…' : 'Export dialer preparation'}</Button>
-      <p className="text-sm">One ZIP covers all property pages: contacts for review and excluded records. Call and SMS readiness remain on hold until channel checks are recorded. No campaign is started.</p>
+      <Button disabled={exporting} onClick={exportDialer}>{exporting ? 'Preparing all properties…' : 'Export dialer and SMS preparation'}</Button>
+      <p className="text-sm">One ZIP covers all property pages: contacts for review, Retell SMS message drafts, and excluded records. SMS drafts use your Dallas investor message and show missing identity, consent, and clearance checks. Call and SMS readiness remain on hold until channel checks are recorded. No campaign is started.</p>
       {exportError && <p role="alert">{exportError}</p>}
       <p>Only new eligible leads proceed. Existing results are reused; uncertain orders stay on hold to avoid duplicate charges.</p>
       {traces.isPending && <p>Loading saved tracing status…</p>}

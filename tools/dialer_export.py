@@ -4,6 +4,7 @@ import io
 import zipfile
 from datetime import datetime, timezone
 from tools.facebook_consent import normalize_us_phone
+from tools.retell_sms import INITIAL_MESSAGE, SMS_REVIEW_HEADERS, sms_review_row
 
 
 def csv_bytes(headers, rows):
@@ -60,10 +61,14 @@ def prepare_export(items, now=None):
         archive.writestr('contacts-for-review.csv', csv_bytes(
             ['LeadID','ContactName','Phone','PropertyAddress','City','State','Zip','County',
              'TraceRequestID','FollowUpTaskID','ProviderDNCStatus','CallReady','SMSReady','HoldReason'], review))
+        archive.writestr('retell-sms-review.csv', csv_bytes(SMS_REVIEW_HEADERS, [sms_review_row(row) for row in review]))
+        archive.writestr('sms-message-template.txt', INITIAL_MESSAGE + '\n')
         archive.writestr('excluded.csv', csv_bytes(['LeadID','PropertyAddress','County','ContactID','Reason'], excluded))
         archive.writestr('README.txt',
             'WholesaleOS bulk dialer preparation\n'
             f'Created: {now.isoformat()}\nReview contacts: {len(review)}\nExclusions: {len(excluded)}\n'
+            'retell-sms-review.csv contains held message drafts, NOT a Retell upload file.\n'
+            'Unresolved first_name/sender_name tokens must not be sent; traced contact names are not confirmed sellers.\n'
             'This is a review package, not an approved campaign import. No calls or SMS are authorized.\n'
             'CallReady and SMSReady remain false: the current county workflow has no durable per-channel clearance receipt.\n'
             'Review provider warnings, ownership/current-sale evidence and channel eligibility before campaign use.\n'
