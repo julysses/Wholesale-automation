@@ -1,5 +1,7 @@
 # PropStream integration access request — draft, not sent
 
+Owner subsequently declined additional API cost and selected Mac hosting. Do not send this draft or treat paid/API access as the chosen path. Browser handoff remains unfinished.
+
 Hello PropStream team,
 
 We use PropStream and are building a private CRM, WholesaleOS, for our Dallas and Collin County property research workflow. We want to submit verified property-owner batches for skip tracing and retrieve job status, returned contacts, DNC indicators and exact charges automatically.

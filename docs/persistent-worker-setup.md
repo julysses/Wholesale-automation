@@ -33,3 +33,9 @@ Do not confuse PropStream with Prostream, Propstreet or PropSpace search results
 - Obtain/document supported PropStream transport and verify quote, single submission, receipt and billing reconciliation under the existing total cap.
 - Verify new eligible-only selection and no orders for completed/no-result/uncertain receipts.
 - Keep contact availability distinct from channel clearance and outreach authorization.
+
+### First live Mac run — accepted Collin, Dallas source exception
+
+Collin run311ee85d-e46c-4c49-bdf6-c46bd3272a19 has19accepted batches /9,182tax-reviewrecords, one delivery attempt and no pendingbatch. These are review observations, not9,182qualified/newleads. Dallas collection halted before generating/delivering manifests: the official tax-roll page links to `https://www.dallascounty.org/Assets/uploads/docs/tax/trw/trwfile.754635.zip`, which returnedHTTP404on an independent exact-link check. No fallbackURLguess, fabricatedemptyrun or duplicateimport. SQLite holdsDallas ascollection_failed; its missing receipt remains an appmonitor exception. Nextday's job discovers the current officiallink again.
+
+Private live state: `/Users/juliodominguez/Library/Application Support/WholesaleOS/rehearsal-worker/state`. LaunchAgent labelcom.wholesaleos.rehearsal.collector; logs contain no credentials/contacts. Installationa80887f pushed. No PropStreamcharge/upgrade/APIpurchase; no selleroutreach or productionmutation. Foreclosurecapture and PropStreambrowserhandoff remain unfinished.

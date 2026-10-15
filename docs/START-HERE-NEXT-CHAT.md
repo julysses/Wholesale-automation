@@ -1,5 +1,11 @@
 # WholesaleOS — new-chat handoff
 
+### First live Mac run — accepted Collin, Dallas source exception
+
+Collin run311ee85d-e46c-4c49-bdf6-c46bd3272a19 has19accepted batches /9,182tax-reviewrecords, one delivery attempt and no pendingbatch. These are review observations, not9,182qualified/newleads. Dallas collection halted before generating/delivering manifests: the official tax-roll page links to `https://www.dallascounty.org/Assets/uploads/docs/tax/trw/trwfile.754635.zip`, which returnedHTTP404on an independent exact-link check. No fallbackURLguess, fabricatedemptyrun or duplicateimport. SQLite holdsDallas ascollection_failed; its missing receipt remains an appmonitor exception. Nextday's job discovers the current officiallink again.
+
+Private live state: `/Users/juliodominguez/Library/Application Support/WholesaleOS/rehearsal-worker/state`. LaunchAgent labelcom.wholesaleos.rehearsal.collector; logs contain no credentials/contacts. Installationa80887f pushed. No PropStreamcharge/upgrade/APIpurchase; no selleroutreach or productionmutation. Foreclosurecapture and PropStreambrowserhandoff remain unfinished.
+
 ## Mac worker installed; no paid PropStream API — October14,2026
 
 Owner selected thisMac/existingcredentials and declined extra PropStreamAPI expense. Do not re-ask hosting or propose a paid API/plan upgrade. Installed `com.wholesaleos.rehearsal.collector` as a per-user LaunchAgent. Initial Documents runtime hit macOS file protection; replaced with a scoped packaged runtime in `~/Library/Application Support/WholesaleOS/rehearsal-worker/runtime` and private sibling `state`. No privacy permissions, power settings, KeychainACLs, providerplan or production settings changed. Installer `scripts/install_mac_collector.py` retains source hashes and copies only needed runtime/dependencies.14Pythoncollector tests pass.
