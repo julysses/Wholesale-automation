@@ -1,3 +1,7 @@
+## Approved Retell worker credential saved — October15,2026
+
+Owner approved rehearsal Retell API connection. Saved existing Retell credential as RETELL_SMS_API_KEY Secret ONLY Preview/codex/dallas-collin-launch-prep through prepared Vercel form. UI confirmed success and branch-only scope; production excluded. No key files/logs/git. Screenshot outputs/retell-sms-credential-saved.png. Calls/SMS and reply routing remain OFF; no phone assignments changed. Added authenticated read-only check_connection=true worker option to GET the known rehearsal chat agent, refusing redirects and returning only connected/status booleans, never agent content or secret callback URLs. Deployment and live connection verification pending below; this is not SMS delivery acceptance.
+
 ## Retell version saved and deployment READY; dispatch credential prepared — October15,13:59Central
 
 62e35f6 pushed and deployment dpl_FtJvkEexPcbz6VGTyGn9wbP1kPXy READY. Frontend build passed in addition to100 targeted Python tests and live rehearsal SQL rollback assertions. Published SMS agent V0 named Website SMS rehearsal - SENDING OFF; auto-created editable DraftV1. This publishes a version only: phone assignments remain None, no chat/call/message initiated. Retell briefly showed dashboard initialization error; one normal retry recovered. Screenshot outputs/retell-sms-version-published-off.png in chat workspace.

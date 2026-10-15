@@ -87,3 +87,32 @@ def test_provider_deadline_and_timeout(monkeypatch, window, hours, should_send):
     assert finish.call_args.args[2] == 'review'
     assert post.call_args.kwargs['json']['honor_internal_dnc'] is True
     assert post.call_args.kwargs['json']['metadata']['submission_id'] == 's'
+
+
+@pytest.mark.parametrize('status,agent,connected',[(200,'agent_193fc3ebd9844b50d54352f200',True),(200,'other',False),(401,'other',False),(302,'other',False)])
+def test_connection_probe_is_read_only_and_redacted(monkeypatch,status,agent,connected):
+    monkeypatch.setenv('RETELL_SMS_API_KEY','probe-secret')
+    get=MagicMock(return_value=SimpleNamespace(status_code=status,json=lambda:{'agent_id':agent,'webhook_url':'secret-callback'}))
+    post=MagicMock()
+    monkeypatch.setattr(sms.requests,'get',get)
+    monkeypatch.setattr(sms.requests,'post',post)
+    result=sms.check_connection()
+    assert result['connected'] is connected
+    assert result['dispatch_authorized'] is False
+    assert 'secret' not in str(result)
+    assert get.call_args.kwargs['allow_redirects'] is False
+    post.assert_not_called()
+
+
+def test_connection_probe_requires_worker_auth(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from web.api.nurture_api import router
+    monkeypatch.setenv('CRON_SECRET','worker-test')
+    probe=MagicMock(return_value={'connected':True,'dispatch_authorized':False})
+    monkeypatch.setattr(sms,'check_connection',probe)
+    app=FastAPI();app.include_router(router);client=TestClient(app)
+    path='/webhooks/_worker/retell-form-sms?check_connection=true'
+    assert client.get(path).status_code==401
+    probe.assert_not_called()
+    assert client.get(path,headers={'Authorization':'Bearer worker-test'}).json()['connected'] is True

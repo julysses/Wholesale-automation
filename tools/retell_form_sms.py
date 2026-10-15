@@ -124,3 +124,21 @@ def process_claim(sb, job):
         finish(sb, job, 'review', 'Provider outcome uncertain; reconcile before retry')
         return
     finish(sb, job, 'accepted', 'Retell accepted; delivery not yet confirmed', result['chat_id'])
+
+
+def check_connection():
+    """Read only the known rehearsal agent; return no secrets or agent content."""
+    key = os.getenv('RETELL_SMS_API_KEY', '')
+    if not key:
+        return {'connected': False, 'reason': 'credential_missing', 'dispatch_authorized': False}
+    agent_id = 'agent_193fc3ebd9844b50d54352f200'
+    try:
+        response = requests.get('https://api.retellai.com/get-chat-agent/' + agent_id,
+            headers={'Authorization': 'Bearer ' + key}, timeout=15, allow_redirects=False)
+        if response.status_code != 200:
+            return {'connected': False, 'provider_status': response.status_code, 'dispatch_authorized': False}
+        data = response.json()
+        return {'connected': data.get('agent_id') == agent_id,
+                'dispatch_authorized': False}
+    except (requests.RequestException, ValueError, TypeError, AttributeError):
+        return {'connected': False, 'reason': 'provider_check_failed', 'dispatch_authorized': False}
