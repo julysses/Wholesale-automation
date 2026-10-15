@@ -1,3 +1,15 @@
+## LIVE production SMS — October 15, 2026
+
+Owner explicitly requested live activation without recipient restriction. Production code b94d086 deployed READY as dpl_F1jXupfYoa6HUx6C27SwzYg5e8nY; wholesale-automation.vercel.app alias assigned. Saved production RETELL_FORM_SMS_ENABLED=true, RETELL_SMS_LIVE_ENABLED=true, SMS_LIVE_ENABLED=true, RETELL_SMS_LAUNCH_APPROVED=true and RETELL_SMS_ALL_CONSENTED_FORMS=true. No acceptance-verification claim: real handset evidence pending owner test.
+
+Production Supabase scheduler enabled=true and cron wholesaleos-retell-form-sms active=true, every10seconds. Tick verified idle/requestedfalse with zerojobs. Authenticated production worker request6 returned200 processed0/sending_enabled=true. Read-only request5 returned200 connectedtrue with agent/version/published/callback checks alltrue. Calls, nurture and experimental AI reply forwarding remainOFF (production flags absent/defaultfalse). Replies/STOP go through existing Twilio production CRM handler. No county collection, PropStream spend or cold-lead campaign activated; $50 cap preserved.
+
+Final backend705 passed; targetedSMS/form102 passed; frontend140 passed, production build passed, lint no new findings. Earlier production rollback SQL verified queue timing/claims/sharedledger/expiry/DNC and carrier reply/duplicate/STOP/START/followup. No actual SMS sent during QA. Owner will test Hilltop https://hilltophome.co/get-an-offer and Jays https://thejaysdallas.com/sell with SMS consent. Expect due+60seconds plus up to10seconds scheduler and carrier delay, within9am–7pm Central.15-minute expiry means after-hours forms may expire without automatic SMS. Prior accepted-chat guard and24h shared cooldown block second initial SMS to samephone across forms. Do not clear DNC or ledger to force test. Actual delivery, real reply and STOP acceptance still need observation. Do not ask for an owner-phone allowlist again.
+
+Emergency stop: deactivate cron and private.retell_sms_scheduler.enabled; disable production RETELL_SMS_LIVE_ENABLED and redeploy. Never replay uncertain/review or expired jobs without reconciliation.
+
+Continue SMS work in ../wholesale-sms-production, branch codex/retell-sms-production. Code b94d086 live, progress9df5c51 pushed. Do not promote full collector branch. Historical notes below are superseded by live activation above.
+
 ## Production credential connection VERIFIED — October15,2026
 
 Approval fulfilled in isolated production checkout ../wholesale-sms-production. Existing Retell API and signing credential saved in Production Vercel; dedicated scheduler bearer stored in Production Vercel and encrypted Supabase Vault. Do not ask again. Production deployment dpl_8GuNAwL4TWNKmGqcS4HABrJavfZC READY with published Retell V1 settings. Invalid worker bearer401, valid read-only probe200 connected=true/dispatch_authorized=false; normal worker200 processed0/sendingfalse. Retell built-in callback test succeeded. Both public website endpoints reached upstream validation with deliberately invalid non-contactable payloads, creating no lead or outreach.
