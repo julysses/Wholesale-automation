@@ -1,5 +1,14 @@
 # WholesaleOS — new-chat handoff
 
+## Bulk dialer preparation export — October 15, 2026
+
+Owner selected a dialer-ready export for now, not a provider connection or paid plan. Added administrator-only `/api/operations/lists/dialer-export` and an **Export dialer preparation** button on Daily Lists. One ZIP covers all property pages (bounded10,000), rejects incomplete/changing pagination, deduplicates a lead/phone pair, escapes spreadsheet formulas, and prevents response caching. ZIP contains contacts-for-review.csv, excluded.csv and README.txt. Lead/property/trace/follow-up identifiers survive the handoff.
+
+This is preparation, NOT campaign clearance: CallReady/SMSReady remain false because the current county workflow lacks durable per-channel clearance receipts. DNC-listed/unrecognized, suppressed, expired, invalid and incomplete trace records are excluded from the contact file; unknown DNC contacts stay explicitly on review hold. No-result completions are excluded with a do-not-reorder reason. Provider warnings and ownership/current-sale checks must be reviewed from saved evidence; no new phone implies permission. No external platform transfer, trace order, subscription, spend or outreach. The$50cap is unchanged.
+
+Validation:4backend export tests cover all-page retrieval, admin denial, incomplete pagination, duplicates, formula escaping and exclusion/hold behavior;3frontend pipeline tests pass;frontend build passes. Live download acceptance remains pending deployment. Existing75completed results/follow-ups are reused. Next: verify live ZIP, finish foreclosure verification and record channel eligibility before generating campaign-ready imports. Dialer choice is resolved as export-only; do not re-ask which vendor.
+
+
 ## Weekly bulk collection and new-property alerts — October 14, 2026
 
 Implementation `fec4b75` is pushed. All hosted checks passed: frontend, backend, pipeline, real PostgreSQL and Vercel. The signed-in preview now visibly shows weekly tax collection and new-property notification behavior. Browser evidence: this chat's `outputs/weekly-crm-alerts-live.png`; rollback-only database acceptance: `outputs/crm-new-property-alert-test.png`. No new real property imports or external handoffs were performed in this update.

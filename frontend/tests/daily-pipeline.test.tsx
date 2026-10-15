@@ -38,3 +38,17 @@ it('reports failures instead of displaying an empty successful queue', async () 
   fireEvent.click(screen.getByRole('button', { name: 'Retry collection status' }));
   expect(screen.queryByText(/No collection receipts/)).not.toBeInTheDocument();
 });
+it('downloads one bulk package rather than exporting the visible page', async () => {
+  const create = vi.fn(() => 'blob:test');
+  vi.stubGlobal('URL', Object.assign(URL, {createObjectURL:create,revokeObjectURL:vi.fn()}));
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  const previous=mocks.fetch.getMockImplementation()!;
+  mocks.fetch.mockImplementation(async (url:string) => url.endsWith('/dialer-export')
+    ? {ok:true,blob:async()=>new Blob(['test'])} : previous(url));
+  const view=render(<QueryClientProvider client={new QueryClient()}><DailyLists /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole('button',{name:'Export dialer preparation'}));
+  await waitFor(()=>expect(click).toHaveBeenCalledOnce());
+  expect(mocks.fetch).toHaveBeenCalledWith('/api/operations/lists/dialer-export');
+  expect(create).toHaveBeenCalledOnce();
+  view.unmount();click.mockRestore();
+});

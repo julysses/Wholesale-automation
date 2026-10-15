@@ -25,6 +25,20 @@ export function DailyLists() {
 }
 function Pipeline({ actor }: { actor: string }) {
   const [offset, setOffset] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  async function exportDialer() {
+    setExporting(true); setExportError('');
+    try {
+      const response = await apiFetch('/api/operations/lists/dialer-export');
+      if (!response.ok) throw new Error('Export unavailable');
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url; link.download = 'wholesaleos-dialer-preparation.zip';
+      link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch { setExportError('Export could not be completed. Refresh the queue and try again.'); }
+    finally { setExporting(false); }
+  }
   const query = useQuery<Snapshot>({ queryKey: ['daily-lists', actor], refetchInterval: 60000,
     queryFn: async () => (await apiFetch('/api/operations/lists?offset=0')).json() });
   const traces = useQuery<TraceSnapshot>({ queryKey: ['propstream-handoff', actor, offset], refetchInterval: 60000,
@@ -84,6 +98,9 @@ function Pipeline({ actor }: { actor: string }) {
     <ForeclosureActions />
     <section aria-label="Skip tracing and follow-up" className="rounded-xl border bg-white p-5 space-y-3">
       <h2 className="text-xl font-semibold">Skip tracing and follow-up</h2>
+      <Button disabled={exporting} onClick={exportDialer}>{exporting ? 'Preparing all properties…' : 'Export dialer preparation'}</Button>
+      <p className="text-sm">One ZIP covers all property pages: contacts for review and excluded records. Call and SMS readiness remain on hold until channel checks are recorded. No campaign is started.</p>
+      {exportError && <p role="alert">{exportError}</p>}
       <p>Only new eligible leads proceed. Existing results are reused; uncertain orders stay on hold to avoid duplicate charges.</p>
       {traces.isPending && <p>Loading saved tracing status…</p>}
       {traces.error && <p role="alert">Tracing status unavailable. <Button onClick={() => traces.refetch()}>Retry tracing status</Button></p>}

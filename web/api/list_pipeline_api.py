@@ -407,3 +407,32 @@ async def propstream_bulk(body: PropstreamBatch, request: Request):
 @router.post('/api/operations/lists/propstream/batches/{batch_id}/recover')
 async def propstream_bulk_recover(batch_id: UUID, request: Request):
     return await rpc('propstream_bulk_recover',{'p_batch':str(batch_id),'p_operator':operator(request)})
+
+
+@router.get('/api/operations/lists/dialer-export')
+async def dialer_export(request: Request):
+    """Download every page together; no provider or outreach side effects."""
+    from fastapi.responses import Response
+    from tools.dialer_export import prepare_export
+    actor = operator(request)
+    items, seen, total = [], set(), None
+    for offset in range(0, 10000, 50):
+        page = await rpc('propstream_handoff_snapshot', {'p_operator': actor, 'p_offset': offset})
+        if (not isinstance(page, dict) or type(page.get('total')) is not int
+                or not isinstance(page.get('items'), list) or page['total'] > 10000
+                or page['total'] < 0 or (total is not None and total != page['total'])):
+            raise HTTPException(409, 'Queue changed or is incomplete. Refresh and export again.')
+        total = page['total']
+        if len(page['items']) != min(50, total-offset):
+            raise HTTPException(409, 'Queue pagination is incomplete. Refresh and export again.')
+        for item in page['items']:
+            if not isinstance(item, dict) or not item.get('lead_id') or item['lead_id'] in seen:
+                raise HTTPException(409, 'Queue changed. Refresh and export again.')
+            seen.add(item['lead_id'])
+            items.append(item)
+        if len(items) == total:
+            break
+    package = prepare_export(items)
+    return Response(package, media_type='application/zip', headers={
+        'Content-Disposition': 'attachment; filename="wholesaleos-dialer-preparation.zip"',
+        'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'})
