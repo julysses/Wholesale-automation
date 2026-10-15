@@ -1,3 +1,7 @@
+## SMS delivery hold — October15,2026
+
+Production scheduler and cron PAUSED after confirmed Twilio30007 undelivered owner test. Retell generated/accepted chat but handset delivery failed. Owner START and fresh consent reconciled with audited review; original STOP preserved. Production changes/checkpoint pushed36c717b on codex/retell-sms-production in ../wholesale-sms-production. High-priority CRM task created: SMS delivery failed: carrier review required. Continue there. Do not claim live SMS works, enable scheduler, replay accepted/review jobs, or contact provider support without user authorization. Verified A2P service exists; failed Retell send omitted Messaging Service SID and used different copy than registered inquiry acknowledgement. Cause of filtering not confirmed. Provider support draft prepared, not sent. Calls remainoff; PropStreamcapunchanged.
+
 ## LIVE production SMS — October 15, 2026
 
 Owner explicitly requested live activation without recipient restriction. Production code b94d086 deployed READY as dpl_F1jXupfYoa6HUx6C27SwzYg5e8nY; wholesale-automation.vercel.app alias assigned. Saved production RETELL_FORM_SMS_ENABLED=true, RETELL_SMS_LIVE_ENABLED=true, SMS_LIVE_ENABLED=true, RETELL_SMS_LAUNCH_APPROVED=true and RETELL_SMS_ALL_CONSENTED_FORMS=true. No acceptance-verification claim: real handset evidence pending owner test.
