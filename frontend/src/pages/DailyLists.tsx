@@ -50,9 +50,9 @@ function Pipeline({ actor }: { actor: string }) {
       <p>Dallas and Collin · Bulk sourcing → verification → skip tracing → outreach preparation</p></header>
     <section aria-label="Automation readiness" className="rounded-xl border border-amber-400 bg-amber-50 p-5 space-y-2">
       <h2 className="text-lg font-semibold">Automation setup in progress</h2>
-      <p>Tax files are collected at most once per county each week by the Mac worker. Foreclosure collection and automatic provider handoff are still being completed.</p>
+      <p>GPT schedules bulk processing while your Mac and GPT app are available. Foreclosure collection is limited to once daily and tax files to once weekly per county. The first unattended end-to-end run still needs verification.</p>
       <p>New CRM properties create a notification and a high-priority daily task. Repeat imports do not create duplicate alerts.</p>
-      <p>This page shows saved results and exceptions. No CSV uploads or lead-by-lead entry are required here.</p>
+      <p>Dated Excel batches are saved in your local WholesaleOS folder. GPT prepares new eligible properties for PropStream and brings completed results back here. DNC and unresolved contact checks stay out of campaign files.</p>
     </section>
     {query.isPending && <p>Loading collection receipts…</p>}
     {query.error && <p role="alert">Collection status unavailable. <Button onClick={() => query.refetch()}>Retry collection status</Button></p>}
