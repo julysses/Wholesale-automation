@@ -1,4 +1,11 @@
-# Provider investigation draft — NOT SENT
+## Provider support submitted — October15,2026
+
+User explicitly approved sending the prepared investigation to Twilio and Retell. Both submissions verified in authenticated portals:
+- Twilio ticket29953072, P2 Degraded, New, https://help.twilio.com/tickets/29953072 . Submitted3:44pmCentral. Includes failed messageSID, Retellchat/agent/version, verified serviceSID, prior delivered example, START/fresh form consent timeline, paused state and request for filtering/routing/delivery-callback investigation.
+- Retell ticket65825, Open, https://support.retellai.com/?durationMs=31536000000&tab=issues&issueNumber=65825 . User completed email-code login. Portal confirmed request received; references Twilio ticket29953072.
+No credentials or recipient phone/address included in submitted text. No paid support upgrade, retries or sends. Scheduler remains paused per previous verified state; no activation changes this turn. Await provider response before concluding cause or resuming. Submission proof screenshots in chat outputs/twilio-support-29953072.png and retell-support-65825.png. Existing authorization covers these support investigations; do not ask again just to continue them.
+
+# Provider investigation — submitted to both providers
 
 For Twilio and Retell support:
 

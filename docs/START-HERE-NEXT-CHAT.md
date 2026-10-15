@@ -1,3 +1,10 @@
+## Provider support submitted — October15,2026
+
+User explicitly approved sending the prepared investigation to Twilio and Retell. Both submissions verified in authenticated portals:
+- Twilio ticket29953072, P2 Degraded, New, https://help.twilio.com/tickets/29953072 . Submitted3:44pmCentral. Includes failed messageSID, Retellchat/agent/version, verified serviceSID, prior delivered example, START/fresh form consent timeline, paused state and request for filtering/routing/delivery-callback investigation.
+- Retell ticket65825, Open, https://support.retellai.com/?durationMs=31536000000&tab=issues&issueNumber=65825 . User completed email-code login. Portal confirmed request received; references Twilio ticket29953072.
+No credentials or recipient phone/address included in submitted text. No paid support upgrade, retries or sends. Scheduler remains paused per previous verified state; no activation changes this turn. Await provider response before concluding cause or resuming. Submission proof screenshots in chat outputs/twilio-support-29953072.png and retell-support-65825.png. Existing authorization covers these support investigations; do not ask again just to continue them.
+
 ## DELIVERY BLOCKED — scheduler PAUSED October15,2026
 
 Twilio Console confirms owner test SM0ad8ce793ccef33ea439760c1de917e0 UNDELIVERED error30007, created20:33:32UTC. Retell accepted/generated message, but carrier delivery failed. UCS2,5segments,$0.0415 listed. Message had no Messaging Service SID. Earlier Oct7 delivered message SM86c2dfa57821f764b97254659f925191 used MGaf5837f7a7cad183e8b38b1147728562. Do not assume missing serviceSID caused30007. Sender belongs to verified A2P Low Volume Mixed service; current campaign expressly covers opted-in property inquiry updates and registered sample begins 'Thanks for requesting an offer.' Failed text used longer investor pitch.
