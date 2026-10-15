@@ -1,3 +1,12 @@
+## Provider support submitted — October15,2026
+
+User explicitly approved sending the prepared investigation to Twilio and Retell. Both submissions verified in authenticated portals:
+- Twilio ticket29953072, P2 Degraded, New, https://help.twilio.com/tickets/29953072 . Submitted3:44pmCentral. Includes failed messageSID, Retellchat/agent/version, verified serviceSID, prior delivered example, START/fresh form consent timeline, paused state and request for filtering/routing/delivery-callback investigation.
+- Retell ticket65825, Open, https://support.retellai.com/?durationMs=31536000000&tab=issues&issueNumber=65825 . User completed email-code login. Portal confirmed request received; references Twilio ticket29953072.
+No credentials or recipient phone/address included in submitted text. No paid support upgrade, retries or sends. Scheduler remains paused per previous verified state; no activation changes this turn. Await provider response before concluding cause or resuming. Submission proof screenshots in chat outputs/twilio-support-29953072.png and retell-support-65825.png. Existing authorization covers these support investigations; do not ask again just to continue them.
+
+Production progress fdb730c pushed in ../wholesale-sms-production.
+
 ## SMS delivery hold — October15,2026
 
 Production scheduler and cron PAUSED after confirmed Twilio30007 undelivered owner test. Retell generated/accepted chat but handset delivery failed. Owner START and fresh consent reconciled with audited review; original STOP preserved. Production changes/checkpoint pushed36c717b on codex/retell-sms-production in ../wholesale-sms-production. High-priority CRM task created: SMS delivery failed: carrier review required. Continue there. Do not claim live SMS works, enable scheduler, replay accepted/review jobs, or contact provider support without user authorization. Verified A2P service exists; failed Retell send omitted Messaging Service SID and used different copy than registered inquiry acknowledgement. Cause of filtering not confirmed. Provider support draft prepared, not sent. Calls remainoff; PropStreamcapunchanged.
