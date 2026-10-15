@@ -105,6 +105,12 @@ def record_chat_event(sb, payload):
             if not result.data:
                 raise RuntimeError('SMS follow-up cancellation not confirmed')
     elif any(isinstance(m, dict) and m.get('role') == 'user' for m in messages):
+        paused = sb.table('leads').update({'ai_calling_paused': True, 'sms_sequence_active': False}).eq(
+            'id', lead_id).eq('dnc', False).execute()
+        if not paused.data:
+            current = sb.table('leads').select('dnc').eq('id', lead_id).limit(1).execute().data
+            if not current or current[0].get('dnc') is not True:
+                raise RuntimeError('SMS reply automation pause not confirmed')
         recipient_text = '\n'.join(str(m.get('content') or '') for m in messages
                                    if isinstance(m, dict) and m.get('role') == 'user')[-3000:]
         result = sb.table('tasks').upsert({
@@ -115,6 +121,15 @@ def record_chat_event(sb, payload):
         }, on_conflict='id', ignore_duplicates=True).execute()
         if not result.data and not sb.table('tasks').select('id').eq('id', task_id).execute().data:
             raise RuntimeError('SMS follow-up not confirmed')
+        # A concurrent opt-out may have cancelled before this task was inserted.
+        # Recheck after insertion so the late reply cannot leave a fresh pending task.
+        current = sb.table('leads').select('dnc').eq('id', lead_id).limit(1).execute().data
+        if not current:
+            raise RuntimeError('SMS reply suppression recheck not confirmed')
+        if current[0].get('dnc') is not False:
+            sb.table('tasks').update({'status': 'cancelled'}).eq('id', task_id).eq('status', 'pending').execute()
+            if sb.table('tasks').select('id').eq('id', task_id).eq('status', 'pending').execute().data:
+                raise RuntimeError('Late SMS task suppression not confirmed')
     # Archive after side effects: retries repair partial failures. The digest keeps
     # successive transcript updates distinct and duplicate deliveries identical.
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()

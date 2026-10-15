@@ -18,6 +18,8 @@ def test_reply_duplicate_then_optout_then_late_reply():
     record_chat_event(db, event())
     record_chat_event(db, event())
     assert len(db.tables['tasks']) == len(db.tables['webhook_jobs']) == 1
+    assert db.tables['leads']['lead-1']['ai_calling_paused'] is True
+    assert db.tables['leads']['lead-1']['sms_sequence_active'] is False
     assert len(db.tables['sms_events']) == 1
     assert next(iter(db.tables['sms_events'].values()))['direction'] == 'inbound'
     record_chat_event(db, event('STOP'))
@@ -100,3 +102,20 @@ def test_receipt_storage_failure_returns_retryable_error(monkeypatch):
 @pytest.mark.parametrize('text', ['Call me at the end of the day', 'Can we stop by tomorrow?', 'I need to cancel my appointment'])
 def test_ordinary_reply_is_not_keyword_optout(text):
     assert not recipient_opted_out([{'role': 'user', 'content': text}])
+
+
+def test_optout_arriving_during_task_insert_cancels_late_task():
+    from tests.test_webhook_completion_delivery import MemoryTable
+    class RaceTable(MemoryTable):
+        def execute(self):
+            result = super().execute()
+            if self.name == 'tasks' and self.action == 'upsert':
+                self.db.tables['leads']['lead-1']['dnc'] = True
+            return result
+    class RaceDB(MemoryDB):
+        def table(self, name):
+            return RaceTable(self, name)
+    db = RaceDB()
+    db.tables['leads'] = {'lead-1': {'id': 'lead-1', 'dnc': False}}
+    record_chat_event(db, event())
+    assert next(iter(db.tables['tasks'].values()))['status'] == 'cancelled'
