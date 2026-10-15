@@ -2,7 +2,7 @@
 
 The cloud scheduler polls every 10 seconds. A form response becomes eligible at submission + 60 seconds; the intended handoff is therefore about 60–70 seconds after submission under normal load, plus provider/carrier delay. Exact handset delivery at 60 seconds is not guaranteed. Measure the actual owner test before claiming readiness.
 
-Migration `20261015181957_retell_sms_scheduler.sql` installs an inactive cron job and disabled private configuration. It does not transmit credentials, invoke HTTP, enable messages, or change county collection. Rehearsal only has been migrated.
+Migration `20261015181957_retell_sms_scheduler.sql` installs an inactive cron job and disabled private configuration. It does not transmit credentials, invoke HTTP, enable messages, or change county collection. Production was migrated separately with `20261015192903_retell_form_sms_production.sql`, preserving its shared call/SMS limits and existing private-schema grants. Both schedulers remain disabled.
 
 The private function accepts only the two known WholesaleOS worker URLs. It invokes the existing authenticated worker only for due jobs or stale claims requiring reconciliation, suppresses overlapping requests for up to 90 seconds, and stores only the request ID/time. The existing worker retains consent, suppression, recipient allowlist, expiry and activation gates. An HTTP request ID is not delivery evidence.
 

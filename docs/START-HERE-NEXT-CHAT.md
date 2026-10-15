@@ -1,3 +1,17 @@
+## Production credential approval fulfilled — October15,2026
+
+Owner explicitly approved production API/signing/scheduler credentials. Saved existing Retell key as Production RETELL_SMS_API_KEY; aligned Production RETELL_WEBHOOK_SECRET; saved new Production CRON_SECRET and matching encrypted production Vault retell_sms_worker_bearer. No secret values/files/logs/git. Do not ask again for this scope.
+
+Credential deployment dpl_3jedu2s9tqHe4UTu1Y4D5svPoi2r READY. Production pg_net checks: request1 invalid bearer401; request2 valid200 connected=true, dispatch_authorized=false; normal worker request3 returned200 processed=0,sending_enabled=false. Retell built-in callback Test visibly reported success. No SMS/calls created; this is connection verification, not delivery evidence.
+
+Published Retell V1 Production website SMS - SENDING OFF with callback https://wholesale-automation.vercel.app/webhooks/retell. V0 rehearsal preserved; editable draft now V2. Config saved Production RETELL_SMS_AGENT_ID=agent_193fc3ebd9844b50d54352f200, VERSION=1, FROM_NUMBER=+14698049920, SENDER_NAME=the automated assistant. Deployment dpl_8GuNAwL4TWNKmGqcS4HABrJavfZC applying those config values; verify READY. All activation flags remain false/unset and scheduler/cron inactive. No phone agents assigned.
+
+Both website repository handlers default to production CRM: Hilltop /api/get-offer -> /api/forms/hilltop-home-co/submit; Jays /api/intake sell -> /api/forms/the-jays-dallas/submit. Deliberately invalid non-contactable live submissions returned upstream422 (Hilltop) and email-validation422 (Jays); no leads/messages created. This verifies upstream validation, not successful intake/delivery. Environment overrides still possible; actual owner receipt must be observed in production.
+
+Next: owner identifies their own form submission while sending OFF, so phone is captured through website as requested. Do not guess owner from latest lead. Verify successful receipt/consent/CRM notification before scoped sending. Build finite owner-only testing for both forms without disabling global cooldowns or DNC. Existing prior accepted chat guard and 24h cooldown block same-phone second test. Provider-native reply redirect compatibility remains unproven; routing flag OFF. Verify actual chat delivery/reply/STOP under bounded owner test, then disable test again. Do not claim one-minute handset delivery is ready or guaranteed.
+
+Screenshots in chat outputs: production-retell-callback-success.png and production-scheduler-vault-saved.png. User approval is complete, not a remaining blocker.
+
 ## Latest update
 
 Release 421a373 pushed and production deployment dpl_GyRNtdbmQanGo8J7QDnWmSRoVSzc READY with public aliases. Callback fix f492bad production deployment dpl_6K6BP6u648RjBofA1oyvUEMEqXV2 verified READY with wholesale-automation.vercel.app assigned. Production credentials approval requested in chat; prepared Vercel Secret RETELL_SMS_API_KEY, Production only, value EMPTY. Do not save until answered. Bundle approval covers API key, production webhook signing alignment, scheduler bearer in production Vault; no bypass needed.
