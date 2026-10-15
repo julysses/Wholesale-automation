@@ -1,3 +1,9 @@
+## Approved scheduler credentials saved; ingress verification underway — October 15, 2026
+
+Owner explicitly approved encrypted Supabase Vault storage of the rehearsal worker credential and existing Vercel bypass. Saved fresh CRON_SECRET as Secret type only for Preview branch codex/dallas-collin-launch-prep (production not selected), and matching retell_sms_worker_bearer plus retell_sms_preview_bypass in rehearsal Vault. Browser verified masked entries; no secret files or git values. Existing API connector lacked env-list permission; CLI had no login, so used authenticated dashboard. New deployment required before worker authentication test. Screenshots in chat outputs: retell-scheduler-vault.png and retell-scheduler-preview-secret.png.
+
+All sending and scheduler activation remain OFF. Next verify deployed worker rejects wrong bearer, accepts approved Vault bearer and reports sending_enabled=false; then record results. Credential-storage blocker is resolved. Production rollout, real Retell replies/STOP routing and owner form test remain unfinished.
+
 ## Approved Twilio credential connection SAVED — October 15, 2026
 
 Owner explicitly approved existing Twilio Account SID/Auth Token storage in Retell Hilltop workspace for9920. Completed through existing authenticated Twilio/Retell browser sessions; no credentials logged or written to files/git. Copied token only into runtime for approved form transfer, cleared browser clipboard and runtime token/identifier variables afterward. Retell save completed and refresh shows SMS Added plus inbound/outbound SMS agent controls, both None. Voice agents also None; balance9.96unchanged. No publish, outbound SMS, test chat, call or paid add-on. Screenshot: /Users/juliodominguez/Documents/Codex/2026-10-13/resume-wholesaleos-from-docs-start-here/outputs/retell-twilio-sms-connected-off.png.
