@@ -1,3 +1,13 @@
+## Production SMS release checkpoint — October15,2026
+
+Production setup now uses isolated checkout `../wholesale-sms-production`, branch `codex/retell-sms-production`, based on newer production 5c138f1. DO NOT promote this full launch-prep branch: it would lose production intake fixes and include unrelated collector work.
+
+Pushed production release421a373 and callback fixf492bad. Release421a373 deployed READY at dpl_GyRNtdbmQanGo8J7QDnWmSRoVSzc with production aliases; follow-up f492bad deployment initiated, verify status in production checkpoint. Production SMS_LIVE_ENABLED=false redeployed first. Production retell_form_sms_production migration installed; schedulerfalse, croninactive, zerojobs, no HTTP request. Production private-schema permissions and shared call/SMS limits preserved. Rollback SQL passed replies/duplicate/phone-wide STOP/late reply/START/task preservation.143 targeted Python tests and frontend build pass. No calls or messages sent.
+
+Production credential approval requested in current chat: existing Retell SMS API key to Production Vercel Secret, webhook signing alignment, scheduler bearer to production Supabase Vault (no bypass). Previous approvals rehearsal-only. Prepared empty Production RETELL_SMS_API_KEY form in Chrome4 tab1348648919, marked handoff. No production credential saved. Screenshot chat outputs/production-sms-secret-prepared.png.
+
+Continue from `../wholesale-sms-production/docs/START-HERE-NEXT-CHAT.md`. Need credential approval, pinned production Retell version/callback, authenticated no-send worker checks, exact website backend routing, and owner-identified two-form acceptance. Do not tell owner the one-minute text is ready yet. Owner enters number on actual form; don't ask to paste it here or infer newest lead as owner. Calls/SMS remain OFF. $50 PropStream cap unchanged.
+
 ## Retell API connection LIVE VERIFIED; sending remains OFF — October15,2026
 
 2326225 deployed READY as dpl_HTszEgFNcJ9BVFE6FbNrUYvhaiFF. From rehearsal Supabase Vault-authenticated pg_net, read-only worker probe request3 rejected invalid bearer401; request4 returned200 {connected:true,dispatch_authorized:false}. The deployed app successfully read the known Retell chat agent using approved RETELL_SMS_API_KEY; no agent contents or callback secrets returned. No outbound chat/message endpoint called. Subsequent normal worker request5 invalid401; request6 valid200 {processed:0,sending_enabled:false}. Scheduler configfalse and croninactive verified together.105 targeted tests passed. Added reusable scripts/sql/verify_retell_sms_connection.sql without secrets. Credential access approval is resolved; do not ask again for this same rehearsal scope.
