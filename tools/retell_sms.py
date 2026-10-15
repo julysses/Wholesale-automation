@@ -54,15 +54,19 @@ def record_chat_event(sb, payload):
     if not isinstance(metadata, dict):
         raise ValueError('Chat metadata must be an object')
     lead_id = metadata.get('lead_id')
-    if not lead_id:
-        # Some later provider events omit metadata. Resolve only the exact saved
-        # chat ID, never the latest lead sharing a phone number.
+    phone = chat.get('from_number') if chat.get('direction') == 'inbound' else chat.get('to_number')
+    if not lead_id or not phone:
+        # The documented chat response may omit telephone fields. Resolve the
+        # exact provider chat receipt, never a newest lead or phone match.
         jobs = sb.table('retell_form_sms_jobs').select('lead_id,phone_number').eq(
             'chat_id', chat['chat_id']).limit(2).execute().data or []
-        phone = chat.get('from_number') if chat.get('direction') == 'inbound' else chat.get('to_number')
-        if len(jobs) != 1 or not phone or jobs[0].get('phone_number') != phone:
+        if (len(jobs) != 1 or (lead_id and jobs[0].get('lead_id') != lead_id)
+                or (phone and jobs[0].get('phone_number') != phone)):
             raise ValueError('Chat must identify an existing CRM lead')
         lead_id = jobs[0].get('lead_id')
+        phone = jobs[0].get('phone_number')
+        if not phone:
+            raise ValueError('Chat recipient must be known')
     leads = sb.table('leads').select('id,dnc').eq('id', lead_id).limit(1).execute().data if lead_id else []
     if not leads:
         raise ValueError('Chat must identify an existing CRM lead')
@@ -71,7 +75,6 @@ def record_chat_event(sb, payload):
     messages = chat.get('message_with_tool_calls') or []
     if not isinstance(messages, list):
         raise ValueError('Chat messages must be a list')
-    phone = chat.get('from_number') if chat.get('direction') == 'inbound' else chat.get('to_number')
     # Persist individual messages for CRM SMS history and cross-provider reply checks.
     # Message IDs, not event IDs, keep successive full transcripts from duplicating turns.
     for message in messages:
@@ -95,7 +98,6 @@ def record_chat_event(sb, payload):
     custom = analysis.get('custom_analysis_data') or {}
     opted_out = recipient_opted_out(messages) or custom.get('disposition') == 'dnc'
     if opted_out:
-        phone = chat.get('from_number') if chat.get('direction') == 'inbound' else chat.get('to_number')
         result = sb.table('dnc_registry').upsert({
             'id': str(uuid5(NAMESPACE_URL, f'wholesaleos:retell-sms-optout:{chat_id}')),
             'lead_id': lead_id, 'phone_number': phone or None, 'reason': 'sms_opt_out',

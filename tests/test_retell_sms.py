@@ -121,3 +121,17 @@ def test_missing_metadata_resolves_only_exact_saved_chat():
     payload['chat']['chat_id']='unknown-chat'
     with pytest.raises(ValueError):
         record_chat_event(db,payload)
+
+
+def test_documented_chat_without_phone_uses_saved_receipt():
+    db = MemoryDB()
+    db.tables['leads'] = {'lead-1': {'id':'lead-1','dnc':False}}
+    db.tables['retell_form_sms_jobs'] = {'job-1':{'id':'job-1','lead_id':'lead-1',
+        'chat_id':'sms-1','phone_number':'+12145551234'}}
+    payload=event('STOP'); payload['chat'].pop('to_number')
+    record_chat_event(db,payload)
+    assert next(iter(db.tables['dnc_registry'].values()))['phone_number']=='+12145551234'
+    assert next(iter(db.tables['sms_events'].values()))['phone_number']=='+12145551234'
+    payload['chat']['metadata']['lead_id']='different-lead'
+    with pytest.raises(ValueError):
+        record_chat_event(db,payload)
