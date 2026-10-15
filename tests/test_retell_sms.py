@@ -18,6 +18,8 @@ def test_reply_duplicate_then_optout_then_late_reply():
     record_chat_event(db, event())
     record_chat_event(db, event())
     assert len(db.tables['tasks']) == len(db.tables['webhook_jobs']) == 1
+    assert len(db.tables['sms_events']) == 1
+    assert next(iter(db.tables['sms_events'].values()))['direction'] == 'inbound'
     record_chat_event(db, event('STOP'))
     record_chat_event(db, event('STOP'))
     record_chat_event(db, event())

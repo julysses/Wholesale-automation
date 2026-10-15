@@ -60,6 +60,26 @@ def record_chat_event(sb, payload):
     messages = chat.get('message_with_tool_calls') or []
     if not isinstance(messages, list):
         raise ValueError('Chat messages must be a list')
+    phone = chat.get('from_number') if chat.get('direction') == 'inbound' else chat.get('to_number')
+    # Persist individual messages for CRM SMS history and cross-provider reply checks.
+    # Message IDs, not event IDs, keep successive full transcripts from duplicating turns.
+    for message in messages:
+        if not isinstance(message, dict) or message.get('role') not in {'user', 'agent'}:
+            continue
+        content = str(message.get('content') or '')
+        message_key = message.get('message_id') or hashlib.sha256(
+            json.dumps(message, sort_keys=True).encode()).hexdigest()
+        saved = sb.table('sms_events').upsert({
+            'id': str(uuid5(NAMESPACE_URL, f'wholesaleos:retell-sms-message:{chat_id}:{message_key}')),
+            'lead_id': lead_id, 'provider': 'retell',
+            'direction': 'inbound' if message['role'] == 'user' else 'outbound',
+            'phone_number': phone, 'body': content, 'status': 'received' if message['role'] == 'user' else 'recorded',
+            'opt_out': bool(recipient_opted_out([message])),
+            'raw_payload': {'chat_id': chat_id, 'message_id': message_key, 'source': 'retell_chat_transcript'},
+        }, on_conflict='id', ignore_duplicates=True).execute()
+        if not saved.data and not sb.table('sms_events').select('id').eq('id', str(uuid5(
+            NAMESPACE_URL, f'wholesaleos:retell-sms-message:{chat_id}:{message_key}'))).execute().data:
+            raise RuntimeError('SMS message history not confirmed')
     analysis = chat.get('chat_analysis') or {}
     custom = analysis.get('custom_analysis_data') or {}
     opted_out = recipient_opted_out(messages) or custom.get('disposition') == 'dnc'
