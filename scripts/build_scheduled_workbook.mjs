@@ -28,7 +28,7 @@ for (const spec of packet.sheets) {
   } else {
     sheet.freezePanes.freezeRows(1);
     sheet.freezePanes.freezeColumns(1);
-    sheet.tables.add(range, true, spec.name.replaceAll(' ', '') + 'Table');
+    if (spec.rows.length) sheet.tables.add(range, true, spec.name.replaceAll(' ', '') + 'Table');
     if (spec.name === 'Completed properties') {
       sheet.getRange('B1:B500').format.columnWidth = 32;
       sheet.getRange('E1:E500').format.columnWidth = 60;

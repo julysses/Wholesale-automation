@@ -9,6 +9,16 @@ from pathlib import Path
 import sqlite3
 from datetime import date, timedelta
 
+# PropStream's accepted contact-import mapping, then Retell's documented CSV
+# contract. Keep owner_name/property_address aligned with our Retell agent API.
+PROPSTREAM_HEADERS = ['First Name', 'Last Name', 'Email', 'Phone', 'Mobile Phone', 'Landline',
+                     'Street Address', 'City', 'State', 'Zip', 'Mail Street Address',
+                     'Mail City', 'Mail State', 'Mail Zip', 'Mail Address Same', 'Type', 'Status']
+RETELL_HEADERS = ['phone number', 'owner_name', 'contact_name', 'property_address',
+                  'property_city', 'property_state', 'property_zip', 'county',
+                  'lead_id', 'parcel_id', 'trace_request_id', 'follow_up_task_id',
+                  'agent_name', 'agency_name', 'metadata']
+
 
 def claim(root, county, kind, day, legacy=None):
     """Commit before fetching. A crash/failure consumes this collection window."""
@@ -93,6 +103,8 @@ def package_completed(source, root, day):
         {'name': 'Batch status', 'headers': ['Item', 'Value'], 'rows': summary},
         {'name': 'Completed properties', 'headers': headers, 'rows': properties},
         {'name': 'Excluded phones', 'headers': ['Parcel ID', 'Last four', 'DNC status', 'Reason'], 'rows': excluded},
+        {'name': 'PropStream upload', 'headers': PROPSTREAM_HEADERS, 'rows': []},
+        {'name': 'Retell call upload', 'headers': RETELL_HEADERS, 'rows': []},
     ]}
     (folder / 'workbook-input.json').write_text(json.dumps(workbook, indent=2), encoding='utf-8')
     (folder / 'workbook-input.json').chmod(0o600)
@@ -100,6 +112,22 @@ def package_completed(source, root, day):
     # Deliberately header-only until authoritative per-channel clearance is wired in.
     write_csv(folder / 'dialer-ready.csv', ['LeadID', 'Name', 'Phone', 'CallReady'], [])
     write_csv(folder / 'sms-ready.csv', ['LeadID', 'Name', 'Phone', 'SMSReady'], [])
+    write_csv(folder / 'propstream-upload.csv', PROPSTREAM_HEADERS, [])
+    write_csv(folder / 'retell-call-upload.csv', RETELL_HEADERS, [])
+    (folder / 'UPLOAD-README.txt').write_text(
+        'STAGE 1: propstream-upload.csv contains only newly eligible, never-traced properties.\n'
+        'This completed batch has zero such rows. Do not re-upload the completed-property sheet.\n'
+        'STAGE 2: retell-call-upload.csv contains only cleared call recipients after tracing.\n'
+        'This batch has zero cleared recipients. DNC listed and unknown numbers are excluded.\n'
+        'Retell CSV requires the exact phone number header and E.164 values such as +12145551234.\n'
+        'Do not add an apostrophe to E.164 phone values in the machine upload CSV.\n'
+        'Other columns are agent variables. owner_name and property_address match WholesaleOS.\n'
+        'metadata must be JSON carrying lead, parcel, trace and follow-up IDs for CRM reconciliation.\n'
+        'Before populated export, verify current suppression, identity, consent/channel receipts and expiry.\n'
+        'Retell agent, outbound number, calling windows and draft import must still be verified in account.\n'
+        'SMS needs separate eligibility and platform setup; this is a call CSV, not an SMS campaign.\n'
+        'Official format: https://docs.retellai.com/deploy/make-batch-call\n', encoding='utf-8')
+    (folder / 'UPLOAD-README.txt').chmod(0o600)
     receipt = {'source_sha256': digest, 'day': day, 'source_day': packet['day'],
                'properties': len(items), 'excluded_phones': len(excluded), 'held_contacts': len(held),
                'new_trace_orders': 0, 'outreach_ready': 0, 'fresh_collection': False,

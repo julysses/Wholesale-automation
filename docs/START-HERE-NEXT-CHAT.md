@@ -1,5 +1,11 @@
 # WholesaleOS — new-chat handoff
 
+## PropStream and Retell upload contract — October15
+
+Owner clarified the same batch must be prepared for PropStream FIRST and Retell AFTER tracing, then explicitly requested setup using the open Retell account. Added docs/retell-bulk-integration.md with exact verified Retell CSV contract, existing agent variables, proposed draft behavior and connection checklist. Generator now adds PropStream upload and Retell call upload sheets and separate CSVs, carrying seller/contact/address/city/state/ZIP, stable IDs, agency/agent variables and JSON metadata for Retell. Existing75completed baseline remains excluded from new PropStream orders; all304phone records remain listed/unknown DNC holds, so both upload files are header-only. No actual upload-ready population yet.
+
+Computer-use discovered Retell tab1348648871 but twice failed before reading the page with Unable to load browser request-header policy. No account configuration or live integration was performed; do not claim connected. Resume browser setup from that tab when access recovers. No paid Retell plan/number, agent publish, call, SMS, secrets or production change. Dated workbook regenerated with both layouts; source/master fields preserved. Continue preserving progress and git updates.
+
 ## GPT schedule and dated Excel workflow — October 15, 2026
 
 Owner replaced the standalone Mac worker with GPT-scheduled browser batches. Existing heartbeat `wholesaleos-dallas-and-collin-collection` is now ACTIVE daily05:00 local Mac time (Chicago at setup), renamed WholesaleOS daily bulk sourcing and skip tracing. Read `docs/gpt-scheduled-bulk-workflow.md` first: it is the run contract. Local GPT/app/browser must be available; the first unattended wake and browser/file access are NOT yet proven. No cloud-offline guarantee. Local folder write permission was granted for this interactive turn; future unattended access must be verified, not assumed.

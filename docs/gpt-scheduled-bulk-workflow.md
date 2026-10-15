@@ -1,5 +1,7 @@
 # GPT scheduled bulk workflow
 
+October15 update: owner selected Retell setup. Follow `docs/retell-bulk-integration.md` for PropStream-first/Retell-second files and exact field mapping. Retell account connection is pending browser access; campaigns remain disabled. Preserve both upload layouts in every batch from the beginning.
+
 Owner instruction, October 15, 2026: GPT owns scheduling and browser work. No separate Mac collector, paid PropStream API, subscription upgrade, or always-running program. Files live in `/Users/juliodominguez/Documents/WholesaleOS/YYYY-MM-DD/`. Retell is a possible future destination, not selected. Export only; no calls/SMS dispatch.
 
 ## Execution contract

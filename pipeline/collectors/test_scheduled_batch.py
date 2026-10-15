@@ -3,7 +3,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from scheduled_batch import claim, package_completed
+from scheduled_batch import claim, package_completed, PROPSTREAM_HEADERS, RETELL_HEADERS
 
 
 class ScheduledBatchTests(unittest.TestCase):
@@ -43,6 +43,14 @@ class ScheduledBatchTests(unittest.TestCase):
             self.assertEqual(receipt['outreach_ready'], 0)
             self.assertEqual(len((folder/'dialer-ready.csv').read_text().splitlines()), 1)
             self.assertEqual(len((folder/'sms-ready.csv').read_text().splitlines()), 1)
+            import csv
+            for name, headers in [('propstream-upload.csv', PROPSTREAM_HEADERS), ('retell-call-upload.csv', RETELL_HEADERS)]:
+                with (folder/name).open(encoding='utf-8-sig') as stream:
+                    self.assertEqual(list(csv.reader(stream)), [headers])
+            self.assertEqual(RETELL_HEADERS[0], 'phone number')
+            self.assertIn('owner_name', RETELL_HEADERS)
+            self.assertIn('property_address', RETELL_HEADERS)
+            self.assertIn('metadata', RETELL_HEADERS)
             self.assertIn("'=FORMULA", (folder/'contacts-on-hold.csv').read_text())
             self.assertNotIn('12145551234', (folder/'workbook-input.json').read_text())
             self.assertEqual(package_completed(source, root, '2026-10-15')[0], folder)
