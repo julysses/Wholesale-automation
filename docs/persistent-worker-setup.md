@@ -8,27 +8,25 @@ Accepted jobs are not rerun. An interrupted collection is held rather than silen
 
 No trace order, reservation, reload, seller outreach, browser session copying or production access exists in this worker. The cumulative$50PropStream cap remains enforced by the existing database functions and is unaffected.
 
-## Deployment decision pending
+## Mac deployment selected and installed — October14
 
-The owner was asked to choose this Mac versus a separate Railway worker. Do not deploy before that answer: the existing Railway `Wholesale-automation` service is production, connected to `claude/ai-wholesaling-agency-KkDF1`, with no variables, persistent volume or public domain. It must not be replaced or treated as a configured rehearsal worker. Cloud deployment needs separate storage and source-scoped credentials; current Keychain delivery is local-Mac only.
+Owner selected this Mac with existing credentials and explicitly declined additional PropStream/API cost. Do not ask again about hosting, API purchases, a trial or an upgrade. No cloud worker is authorized/needed for this deployment.
 
-Local invocation, after selecting the Mac and confirming its always-awake operation:
+Installer: `python3 scripts/install_mac_collector.py`. It packages only the collector/runtime dependencies into `~/Library/Application Support/WholesaleOS/rehearsal-worker/runtime`, saves exact source hashes, and registers `~/Library/LaunchAgents/com.wholesaleos.rehearsal.collector.plist`. Private SQLite state, logs and raw county evidence live in the sibling `state` directory. No tokens are stored in the plist; existing source-scoped Keychain credentials are used. The initial direct-from-Documents service was blocked by macOS; the packaged runtime starts successfully without changing privacy permissions.
 
-```
-python3 pipeline/collectors/persistent_worker.py --state /absolute/private/worker-state
-```
+The service starts at login, restarts after process failure and checks daily work every minute. Collection is due after06:00America/Chicago; waking later collects the current day. Mac must be awake, online and logged in. Power settings are unchanged. Successful unchanged status is quiet; exceptions are retained in the private status file and missing/partial source receipts are monitored inside WholesaleOS.
 
-Use `--once` for a bounded acceptance run. A persistent supervisor must restart the command after process failure. Keep the state directory outside Git on persistent storage. Do not delete/reinitialize it to retry uncertain jobs. Do not claim that a background process alone survives reboot; install and verify the selected platform's service supervision first.
+Inspect: `launchctl print gui/501/com.wholesaleos.rehearsal.collector`. Stop: `launchctl bootout gui/501/com.wholesaleos.rehearsal.collector`. Reinstall only when collection is idle: stopping during capture deliberately holds the interrupted job instead of manufacturing a new run. Preserve the state directory across upgrades/reboots; never reset it to retry uncertain delivery.
 
 ## PropStream connection evidence — October14
 
-Signed-in Account shows Legacy plan, $50 prepaid, PropStream Connect **Start Free Trial**, and a single displayed integration: **BatchDialer / Connect**. No WholesaleOS/API integration is displayed. Official [BatchDialer integration documentation](https://www.propstream.com/news/push-to-batchdialer-seamless-api-sync-from-propstream-to-batchdialer-for-high-volume-calling) describes pushing selected contacts to BatchDialer; it does not document a general inbound skip-trace API for WholesaleOS. This does not prove private partner APIs do not exist. The owner was asked whether approved partner/API access already exists or whether to prepare an access request.
+Signed-in Account shows Legacy plan, $50 prepaid, PropStream Connect **Start Free Trial**, and a single displayed integration: **BatchDialer / Connect**. No WholesaleOS/API integration is displayed. Official [BatchDialer integration documentation](https://www.propstream.com/news/push-to-batchdialer-seamless-api-sync-from-propstream-to-batchdialer-for-high-volume-calling) describes pushing selected contacts to BatchDialer; it does not document a general inbound skip-trace API for WholesaleOS. This does not prove private partner APIs do not exist. The owner declined additional API cost. Keep the browser handoff; do not pursue a paid API or activate the offered trial. The existing access-request document is unsent and no longer a prerequisite chosen by the owner.
 
 Do not confuse PropStream with Prostream, Propstreet or PropSpace search results. No provider API endpoint or authentication scheme should be invented. Do not extract signed-in cookies/tokens, start a trial, add a subscription or repurchase the75completed traces.
 
 ## Acceptance still required
 
-- Choose and deploy the persistent host, storage and scoped credentials.
+- [x] Mac host selected; persistent state/runtime and login service installed using existing scoped credentials.
 - Verify a real county collection/delivery, crash recovery and the next scheduled run.
 - Connect local worker exceptions/heartbeat to the existing CRM incident mechanism.
 - Implement unattended foreclosure capture and structured verification.

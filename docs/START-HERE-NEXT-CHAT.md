@@ -1,5 +1,12 @@
 # WholesaleOS — new-chat handoff
 
+## Mac worker installed; no paid PropStream API — October14,2026
+
+Owner selected thisMac/existingcredentials and declined extra PropStreamAPI expense. Do not re-ask hosting or propose a paid API/plan upgrade. Installed `com.wholesaleos.rehearsal.collector` as a per-user LaunchAgent. Initial Documents runtime hit macOS file protection; replaced with a scoped packaged runtime in `~/Library/Application Support/WholesaleOS/rehearsal-worker/runtime` and private sibling `state`. No privacy permissions, power settings, KeychainACLs, providerplan or production settings changed. Installer `scripts/install_mac_collector.py` retains source hashes and copies only needed runtime/dependencies.14Pythoncollector tests pass.
+
+Service starts at login, restarts on failure, and runs daily taxcollection after06:00Chicago while Mac is awake/online/loggedin. First liveCollin collection reached scoped ingestion with durable acknowledgements; Dallas queued next. Full accepted receipt counts to be recorded below after verification. This does not automate foreclosure capture or PropStreambrowserorders. Those remain unfinished, with no paidAPI fallback. No trace spend or selleroutreach.
+
+
 ## Persistent worker implementation and connection decisions — October14,2026
 
 Added `pipeline/collectors/persistent_worker.py`: durable SQLite scheduling for Dallas/Collin TAX collection and scoped rehearsal delivery, OS single-process lock, crash-safe states, unchanged-manifest retries/backoff, maximum3delivery attempts and private status/exception output. Four targeted tests and all14Python collector tests pass. This is NOT a completed foreclosure or PropStream worker, and it has not been deployed or run against live counties.

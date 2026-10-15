@@ -110,7 +110,7 @@ def tick(root, now=None, collector=collect, sender=deliver):
             status = {'project': PROJECT, 'checked_at': now.isoformat(), 'jobs': jobs,
                       'exceptions': [row for row in jobs if row['state'] == 'exception'],
                       'foreclosure_collection': 'browser_worker_required',
-                      'propstream': 'approved_connection_required',
+                      'propstream': 'browser_handoff_pending_no_paid_api',
                       'trace_spend_cents': 0, 'outreach_sent': False}
             tmp = root / 'status.json.tmp'
             tmp.write_text(json.dumps(status, indent=2)); tmp.chmod(0o600)
@@ -125,11 +125,17 @@ def main():
     parser.add_argument('--state', type=Path, required=True)
     parser.add_argument('--once', action='store_true')
     args = parser.parse_args()
+    previous = None
     while True:
         status = tick(args.state)
         # No source records, credentials or raw exception contents in logs.
-        print(json.dumps({'status': status.get('status', 'checked'),
-                          'exception_count': len(status.get('exceptions', []))}), flush=True)
+        summary = {'status': status.get('status', 'checked'),
+                   'exception_count': len(status.get('exceptions', [])),
+                   'jobs': [{k: row[k] for k in ('day', 'county', 'state', 'attempts', 'reason')}
+                            for row in status.get('jobs', [])]}
+        if summary != previous:
+            print(json.dumps(summary), flush=True)
+            previous = summary
         if args.once:
             return
         time.sleep(60)
