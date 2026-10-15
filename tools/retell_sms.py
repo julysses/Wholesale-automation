@@ -51,7 +51,18 @@ def record_chat_event(sb, payload):
     if not isinstance(chat, dict) or not chat.get('chat_id'):
         raise ValueError('Chat ID required')
     metadata = chat.get('metadata') or {}
+    if not isinstance(metadata, dict):
+        raise ValueError('Chat metadata must be an object')
     lead_id = metadata.get('lead_id')
+    if not lead_id:
+        # Some later provider events omit metadata. Resolve only the exact saved
+        # chat ID, never the latest lead sharing a phone number.
+        jobs = sb.table('retell_form_sms_jobs').select('lead_id,phone_number').eq(
+            'chat_id', chat['chat_id']).limit(2).execute().data or []
+        phone = chat.get('from_number') if chat.get('direction') == 'inbound' else chat.get('to_number')
+        if len(jobs) != 1 or not phone or jobs[0].get('phone_number') != phone:
+            raise ValueError('Chat must identify an existing CRM lead')
+        lead_id = jobs[0].get('lead_id')
     leads = sb.table('leads').select('id,dnc').eq('id', lead_id).limit(1).execute().data if lead_id else []
     if not leads:
         raise ValueError('Chat must identify an existing CRM lead')

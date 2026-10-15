@@ -119,3 +119,20 @@ def test_optout_arriving_during_task_insert_cancels_late_task():
     db.tables['leads'] = {'lead-1': {'id': 'lead-1', 'dnc': False}}
     record_chat_event(db, event())
     assert next(iter(db.tables['tasks'].values()))['status'] == 'cancelled'
+
+
+def test_missing_metadata_resolves_only_exact_saved_chat():
+    db = MemoryDB()
+    db.tables['leads'] = {'lead-1': {'id':'lead-1','dnc':False}}
+    db.tables['retell_form_sms_jobs'] = {'job-1':{'id':'job-1','lead_id':'lead-1',
+        'chat_id':'sms-1','phone_number':'+12145551234'}}
+    payload=event();payload['chat'].pop('metadata')
+    record_chat_event(db,payload)
+    assert next(iter(db.tables['tasks'].values()))['lead_id']=='lead-1'
+    payload['chat']['to_number']='+12145559999'
+    with pytest.raises(ValueError):
+        record_chat_event(db,payload)
+    payload['chat']['to_number']='+12145551234'
+    payload['chat']['chat_id']='unknown-chat'
+    with pytest.raises(ValueError):
+        record_chat_event(db,payload)

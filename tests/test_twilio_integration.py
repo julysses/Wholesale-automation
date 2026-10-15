@@ -207,3 +207,25 @@ def test_unintegrated_sms_providers_never_bypass_launch_guards(monkeypatch, prov
     assert sender.send(message, PHONE) is False
     assert message.status == OutreachStatus.STOPPED
     dispatch.assert_not_called()
+
+
+def test_natural_language_stop_classified_after_signature(setup):
+    client,db=setup
+    payload={'AccountSid':SID,'MessageSid':MESSAGE,'From':PHONE,'To':SENDER,'Body':'Please remove me'}
+    response=signed(client,data=payload)
+    assert response.status_code==200
+    assert '<Redirect' not in response.text
+    assert db.rpc.call_args.args[1]['p_payload']['crm_opt_out'] is True
+
+
+def test_handoff_only_after_durable_receipt(setup,monkeypatch):
+    client,db=setup
+    handoff=MagicMock(return_value='https://api.retellai.com/twilio-sms-webhook/org_test')
+    monkeypatch.setattr(hooks,'reply_redirect',handoff)
+    payload={'AccountSid':SID,'MessageSid':MESSAGE,'From':PHONE,'To':SENDER,'Body':'Tomorrow works'}
+    response=signed(client,data=payload)
+    assert response.status_code==200 and '<Redirect method="POST">' in response.text
+    db.rpc.return_value.execute.side_effect=RuntimeError('offline')
+    handoff.reset_mock()
+    assert signed(client,data=payload).status_code==503
+    handoff.assert_not_called()
