@@ -1,3 +1,9 @@
+## Live test diagnosis — October 15, 2026, 3:17 p.m. Central
+
+User reported Hilltop submission without SMS. Production has no recent Hilltop receipt (latest October9 Central); one new Jays seller receipt at20:17:31UTC, submission557529d4-8225-4428-88a8-0791935a046f, lead50bc5279-2a96-4176-a6b4-adc364313387. Consent accepted and rendered disclosure matches. Intake notification seller_sms=consent_or_suppression_hold; owner_email=accepted. No Retell job/provider attempt created. Phone ending0280 matches durable Twilio STOP opt-out dated October6 Central (October7 03:30UTC), registrya412d09e-fe46-513b-b2d8-bfc8f252f259. intake_phone_status suppressed=true; current lead dnc=false does not override phone-wide registry.
+
+Asked user to confirm whether3:17p.m./ending0280 is their test because reportedHilltop differs from storedJays source. Do not assume identity or remove DNC. Twilio START can re-subscribe carrier side; current CRM deliberately retains STOP until reviewed, so START alone is not sufficient to promise app delivery. Need confirm test identity, observe new opt-in and reconcile suppression explicitly before any fresh test. No sending configuration changed. Production scheduler remains enabled; empty queue is expected for suppressed inquiry.
+
 ## LIVE production SMS — October 15, 2026
 
 Owner explicitly requested live activation without recipient restriction. Production code b94d086 deployed READY as dpl_F1jXupfYoa6HUx6C27SwzYg5e8nY; wholesale-automation.vercel.app alias assigned. Saved production RETELL_FORM_SMS_ENABLED=true, RETELL_SMS_LIVE_ENABLED=true, SMS_LIVE_ENABLED=true, RETELL_SMS_LAUNCH_APPROVED=true and RETELL_SMS_ALL_CONSENTED_FORMS=true. No acceptance-verification claim: real handset evidence pending owner test.
