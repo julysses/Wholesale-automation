@@ -1,5 +1,15 @@
 # WholesaleOS — new-chat handoff
 
+## Retell draft prepared in account — October 15, 11:53am Central
+
+Browser access restored using the current Chrome connection (browser3); prior browser-policy blocker below is superseded. In Hilltop Home Co workspace `org_A7WQTvreWdPMlzic`, created **WholesaleOS Seller Follow-up - DRAFT**, agent `agent_046b002f8f0255951376ea5fe9`, Draft V0. Retell visibly confirmed Auto saved at 11:52. Prompt includes AI/business identification, seller/contact/full address variables, lead/parcel/trace/follow-up IDs, respectful qualification, wrong-party handling, immediate opt-out ending, and no sensitive foreclosure disclosure. Existing end_call function is present. No test, publication, campaign, call or SMS ran.
+
+Phone inventory verified: existing Hilltop Home Co — Twilio Voice custom-telephony number ending9920; inbound and outbound agents both None (disabled). Retell requires identity verification to make outbound calls. SMS shows Setup SMS Function, not verified ready. Trial balance remains $9.96. No number, plan or add-on purchased; PropStream cumulative $50 cap unchanged.
+
+Agent webhook URL is blank, so CRM result/suppression/follow-up delivery is NOT connected. Next: inspect and verify the rehearsal webhook authentication and result mapping, configure post-call extraction, validate the account's actual batch template, complete owner identity verification, and test with an owner-approved test destination/budget before publication or binding the number. Do not claim a prompt alone enforces DNC or persists suppression. Existing PropStream-first/Retell-after files remain structural templates, with no channel-cleared rows; do not re-trace the completed75.
+
+Evidence: chat workspace `outputs/retell-draft-prepared.png`. Live draft: https://dashboard.retellai.com/org_A7WQTvreWdPMlzic/agents/agent_046b002f8f0255951376ea5fe9 . No production changes or credentials created.
+
 ## Browser retry and provider file validation — October15, 11:45am Central
 
 Retried requested Retell tab, then reset computer-use session and retried. Both attempts failed before account access with Unable to load browser request-header policy; the tool also reports its own network403. No Retell account setup, integration or upload occurred. Browser-control service recovery is required; do not bypass policy loading through another transport. User can leave Retell open while restarting/reconnecting the desktop browser integration. No need to reset Retell credentials.
