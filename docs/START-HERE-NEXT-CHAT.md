@@ -1,3 +1,7 @@
+### Verification checkpoint — October15
+
+117 Retell-related local tests pass (creation, batches, transcript ordering, signatures, completion delivery, release hardening). Retell phone routing reverified: inboundNone/outboundNone, SMS unconfigured; no paid tests or calls. Live signed call_started receipt is confirmed; completed-result/opt-out/follow-up live acceptance remains pending temporary verification-file approval. Temporary signing-key file removed while waiting; no local bypass-token file exists. Runtime-only values must not be printed or committed. Owner approval for the project-wide token is already granted and must not be requested again. Only the temporary local test-file handling question remains pending.
+
 ## Retell callback connected — October15,12:24Central
 
 Explicit owner approval received for dedicated project-wide Vercel automation bypass token. Created it with note Retell rehearsal callbacks - launch prep; calls/SMS OFF, preserving standard Vercel authentication. Token scope is all deployments in this project; it is configured only on the rehearsal Retell agent callback. Never place the secret callback URL in git or logs. RETELL_WEBHOOK_SECRET remains branch-preview-only. Deployment13c137a READY; both hosted CI workflows passed.
