@@ -1,5 +1,16 @@
 # Dallas/Collin launch preparation checkpoint — October 12, 2026
 
+## Weekly bulk collection and new-property alerts — October 14, 2026
+
+Implemented and installed weekly tax limits in the Mac worker: one attempt per county per Monday–Sunday week, including failed attempts; the daily calendar wake checks local state only when that week already has a job. No immediate collection during installation. Rehearsal migration `20261015023121_weekly_tax_monitoring.sql` aligns expected receipts and digest status to weekly tax collection, including midweek catch-up; foreclosure monitoring remains daily. Both migrations were applied through the existing signed-in Supabase page and recorded in migration history.
+
+Migration `20261015022555_county_property_notifications.sql` adds one unread in-app notification and one assigned high-priority task per day when a genuinely new CRM property association arrives. Further new properties update that day's count; replay and legacy associations do not generate false new alerts. Missing-owner events remain recoverable. Live rollback-only synthetic acceptance returned alerts=1, high_priority=true, unread_app_link=true; no synthetic test lead persisted. Existing79associated properties and5000cents available confirmed before acceptance; no new real properties were verified or imported this turn. Notifications now listen to updates and refresh every60seconds if Realtime is delayed, retaining last known data on errors.
+
+Validation:162pipeline tests,14Pythoncollector tests,3targeted frontend tests and frontend production build pass. Full foreclosure collection/verification and direct PropStream/dialer transfer remain incomplete. Existing75completed trace results/follow-ups must not be ordered again. No provider orders, spend or seller outreach occurred. Dallas tax source404remains an exception;9,182Collin tax observations remain review data, not qualified leads.
+
+Dialer destination requested from owner (BatchDialer, existing named platform, or export); no reply yet. Existing BatchDialer adapter is present but not proven connected; it has dry-run behavior and must not be treated as successful delivery without an actual provider receipt. Next: implement cached incremental foreclosure retrieval, complete bulk verification, and connect the chosen provider handoff with per-channel eligibility and idempotent receipts. Do not purchase a PropStream API or upgrade.
+
+
 ## Supabase incident checked — October 14, 2026, 1:02 PM Central
 
 Owner shared the Supabase Realtime latency banner. Current officialstatus.supabase.com still lists that incident as Monitoring, with impacted users stabilized; platform-wide recovery is not confirmed. Read-only SQL succeeds in both rehearsal and production. Rehearsal confirms78realCollin property associations,8saved original trace contacts and$0actual/$0reserved/$50available. Fresh signed-in DailyLists loads79total associations (including1syntheticDallas), saved-result state and$50available without status errors.

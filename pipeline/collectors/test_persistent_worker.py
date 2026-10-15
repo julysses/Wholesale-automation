@@ -47,6 +47,8 @@ class WorkerTests(unittest.TestCase):
             collect=lambda c,p:calls.append(c)
             w.tick(tmp,NOW,collect,lambda p:None)
             result=w.tick(tmp,NOW+timedelta(days=1),collect,lambda p:None)
+            self.assertEqual(len(calls),2);self.assertEqual(len(result['jobs']),2)
+            result=w.tick(tmp,NOW+timedelta(days=7),collect,lambda p:None)
             self.assertEqual(len(calls),4);self.assertEqual(len(result['jobs']),4)
 
 if __name__=='__main__': unittest.main()

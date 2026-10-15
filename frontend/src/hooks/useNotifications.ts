@@ -57,31 +57,35 @@ export function useNotifications(): UseNotificationsResult {
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('app_notifications')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(50);
-    setNotifications(data ?? []);
+    if (!error) setNotifications(data ?? []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     fetch();
 
-    // Subscribe to INSERT events for real-time notifications
+    // Polling keeps the bell current when Realtime is delayed or disconnected.
+    const refresh = window.setInterval(fetch, 60000);
+
+    // Daily bulk alerts update as new properties arrive.
     const channel = supabase
       .channel(`app_notifications-${id}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'app_notifications' },
+        { event: '*', schema: 'public', table: 'app_notifications' },
         (payload) => {
+          if (payload.eventType === 'DELETE') { fetch(); return; }
           const n = payload.new as AppNotification;
-          setNotifications((prev) => [n, ...prev]);
+          setNotifications((prev) => [n, ...prev.filter(item => item.id !== n.id)].slice(0, 50));
 
           // Pop a toast for high-priority types
           const deliveryFailure = n.type === 'system' && n.metadata?.integration_failure === true;
-          if (TOAST_TYPES.has(n.type) || deliveryFailure) {
+          if (payload.eventType === 'INSERT' && (TOAST_TYPES.has(n.type) || deliveryFailure)) {
             const icon = TOAST_ICONS[n.type] ?? '🔔';
             const toastFn = n.type === 'access_denied' || deliveryFailure ? toast.error : toast.success;
             toastFn(`${icon} ${n.title}`, {
@@ -96,7 +100,7 @@ export function useNotifications(): UseNotificationsResult {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { window.clearInterval(refresh); supabase.removeChannel(channel); };
   }, [fetch]);
 
   const markRead = useCallback(async (id: string) => {

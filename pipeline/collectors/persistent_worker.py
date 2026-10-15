@@ -4,7 +4,7 @@ One process owns a persistent state directory; interrupted collection requires
 review, while interrupted delivery replays exactly the saved manifest set.
 """
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import fcntl
 import json
 import os
@@ -64,7 +64,11 @@ def tick(root, now=None, collector=collect, sender=deliver):
             # regenerate a new collection/run ID on top of that uncertain state.
             db.execute("UPDATE jobs SET state='exception',reason='collection_interrupted' WHERE state='collecting'")
             if local.hour >= 6:
+                week_start = (local.date() - timedelta(days=local.weekday())).isoformat()
                 for county in ('Dallas', 'Collin'):
+                    if db.execute('SELECT 1 FROM jobs WHERE county=? AND day>=? AND day<=?',
+                                  (county, week_start, local.date().isoformat())).fetchone():
+                        continue
                     db.execute("INSERT OR IGNORE INTO jobs(day,county,state) VALUES(?,?,'queued')",
                                (local.date().isoformat(), county))
             db.commit()

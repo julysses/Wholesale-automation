@@ -1,5 +1,16 @@
 # WholesaleOS — new-chat handoff
 
+## Weekly bulk collection and new-property alerts — October 14, 2026
+
+Implemented and installed weekly tax limits in the Mac worker: one attempt per county per Monday–Sunday week, including failed attempts; the daily calendar wake checks local state only when that week already has a job. No immediate collection during installation. Rehearsal migration `20261015023121_weekly_tax_monitoring.sql` aligns expected receipts and digest status to weekly tax collection, including midweek catch-up; foreclosure monitoring remains daily. Both migrations were applied through the existing signed-in Supabase page and recorded in migration history.
+
+Migration `20261015022555_county_property_notifications.sql` adds one unread in-app notification and one assigned high-priority task per day when a genuinely new CRM property association arrives. Further new properties update that day's count; replay and legacy associations do not generate false new alerts. Missing-owner events remain recoverable. Live rollback-only synthetic acceptance returned alerts=1, high_priority=true, unread_app_link=true; no synthetic test lead persisted. Existing79associated properties and5000cents available confirmed before acceptance; no new real properties were verified or imported this turn. Notifications now listen to updates and refresh every60seconds if Realtime is delayed, retaining last known data on errors.
+
+Validation:162pipeline tests,14Pythoncollector tests,3targeted frontend tests and frontend production build pass. Full foreclosure collection/verification and direct PropStream/dialer transfer remain incomplete. Existing75completed trace results/follow-ups must not be ordered again. No provider orders, spend or seller outreach occurred. Dallas tax source404remains an exception;9,182Collin tax observations remain review data, not qualified leads.
+
+Dialer destination requested from owner (BatchDialer, existing named platform, or export); no reply yet. Existing BatchDialer adapter is present but not proven connected; it has dry-run behavior and must not be treated as successful delivery without an actual provider receipt. Next: implement cached incremental foreclosure retrieval, complete bulk verification, and connect the chosen provider handoff with per-channel eligibility and idempotent receipts. Do not purchase a PropStream API or upgrade.
+
+
 ## Collection frequency correction — October14,2026
 
 Owner explicitly rejected continuous collection due to IP concerns. Stopped the live LaunchAgent, removed the worker's minute loop, disabled RunAtLoad/KeepAlive and reinstalled a calendar-only service at06:17Maclocaltime daily. No immediate run, login run, automatic restart or delivery-failure retry. Each launch performs one pass and exits; accepted source/day jobs remain deduplicated. Failed deliveries become exceptions immediately.14collector tests pass, including no-repeat-after-failure. No county requests were made while applying this correction.
