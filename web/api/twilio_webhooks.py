@@ -13,6 +13,8 @@ from config.settings import settings
 from tools.crm import get_supabase_client
 from tools.operational_alerts import record_provider_alert
 from tools.twilio_receipts import reconcile_twilio_callback
+from tools.retell_sms import recipient_opted_out
+from tools.retell_reply_routing import reply_redirect
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/twilio", tags=["Twilio"])
@@ -67,6 +69,10 @@ async def _receive(request: Request, kind: str) -> Response:
             data["app_message_id"] = str(UUID(request.query_params["message_id"]))
         except ValueError:
             raise HTTPException(400, "Invalid message reference")
+    if kind == 'inbound':
+        # Derived only after signature validation. Retain the original carrier
+        # fields and attach a separate classification for natural-language STOP.
+        data['crm_opt_out'] = recipient_opted_out([{'role': 'user', 'content': data.get('Body')}])
     event_key = f"twilio:{data['AccountSid']}:{kind}:{data['MessageSid']}"
     if kind == "status":
         event_key += ":" + data["MessageStatus"]
@@ -87,6 +93,19 @@ async def _receive(request: Request, kind: str) -> Response:
     except Exception:
         logger.exception("Twilio receipt failed for %s", data["MessageSid"])
         raise HTTPException(503, "Receipt storage unavailable")
+    if kind == 'inbound':
+        try:
+            target = reply_redirect(sb, data, result)
+        except Exception:
+            # The receipt and human task already committed. Do not replay an
+            # uncertain handoff; keep the human follow-up when checks fail.
+            logger.warning("Retell reply routing held for %s", data["MessageSid"])
+            target = None
+        if target:
+            from twilio.twiml.messaging_response import MessagingResponse
+            response = MessagingResponse()
+            response.redirect(target, method='POST')
+            return Response(str(response), media_type='application/xml')
     # Twilio Advanced Opt-Out supplies STOP/HELP responses; no duplicate SMS here.
     return Response('<?xml version="1.0" encoding="UTF-8"?><Response/>', media_type="application/xml")
 

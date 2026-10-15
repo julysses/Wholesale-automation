@@ -526,6 +526,23 @@ async def retell_webhook(
     except Exception:
         raise HTTPException(400, "Invalid JSON payload")
 
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Invalid webhook object")
+    if payload.get("event") in {"chat_started", "chat_ended", "chat_analyzed"} or (
+        payload.get("event") == "transcript_updated" and "chat" in payload
+    ):
+        from tools.retell_sms import record_chat_event
+        sb = _get_supabase()
+        if sb is None:
+            raise HTTPException(503, "SMS receipt storage unavailable")
+        try:
+            return await run_in_threadpool(record_chat_event, sb, payload)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        except Exception:
+            logger.exception("Retell SMS receipt persistence failed")
+            raise HTTPException(503, "SMS receipt not confirmed; retry required")
+
     event_type = payload.get("event") or payload.get("event_type", "")
     call_data  = payload.get("call", {})
     call_id    = call_data.get("call_id", "")

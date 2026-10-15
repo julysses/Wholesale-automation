@@ -166,13 +166,19 @@ export function useOutreachActivity(leadId: string | null) {
     queryKey: ['outreach', leadId],
     queryFn: async () => {
       if (!leadId) return [];
-      const { data, error } = await supabase
-        .from('outreach_activity')
-        .select('*')
-        .eq('lead_id', leadId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      const [activity, sms] = await Promise.all([
+        supabase.from('outreach_activity').select('*').eq('lead_id', leadId)
+          .order('created_at', { ascending: false }),
+        supabase.from('sms_events').select('id,created_at,direction,body,status,opt_out')
+          .eq('lead_id', leadId).or('provider.eq.retell,and(provider.eq.twilio,direction.eq.inbound)')
+          .order('created_at', { ascending: false }),
+      ]);
+      if (activity.error) throw activity.error;
+      if (sms.error) throw sms.error;
+      return [...(activity.data ?? []), ...(sms.data ?? []).map(event => ({
+        ...event, id: `sms-${event.id}`, channel: 'sms', message: event.body,
+        status: event.opt_out ? 'opted out' : event.status,
+      }))].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
     },
     enabled: !!leadId,
     staleTime: 30000,
