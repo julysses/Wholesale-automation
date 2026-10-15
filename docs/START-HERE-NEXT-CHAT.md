@@ -1,3 +1,9 @@
+## Production credential connection VERIFIED — October15,2026
+
+Approval fulfilled in isolated production checkout ../wholesale-sms-production. Existing Retell API and signing credential saved in Production Vercel; dedicated scheduler bearer stored in Production Vercel and encrypted Supabase Vault. Do not ask again. Production deployment dpl_8GuNAwL4TWNKmGqcS4HABrJavfZC READY with published Retell V1 settings. Invalid worker bearer401, valid read-only probe200 connected=true/dispatch_authorized=false; normal worker200 processed0/sendingfalse. Retell built-in callback test succeeded. Both public website endpoints reached upstream validation with deliberately invalid non-contactable payloads, creating no lead or outreach.
+
+Production branch checkpoint c912520 pushed. Calls/SMS/scheduler remainOFF. Next capture owner-identified website submission while off; verify receipt and consent before finite phone test. Same-phone second-form cooldown and native reply redirect compatibility remain acceptance gates; no actual SMS delivery claimed. Continue in ../wholesale-sms-production/docs/START-HERE-NEXT-CHAT.md. $50 PropStream cap unchanged.
+
 ## Production SMS release checkpoint — October15,2026
 
 Production setup now uses isolated checkout `../wholesale-sms-production`, branch `codex/retell-sms-production`, based on newer production 5c138f1. DO NOT promote this full launch-prep branch: it would lose production intake fixes and include unrelated collector work.
