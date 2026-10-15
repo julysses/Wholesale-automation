@@ -94,6 +94,18 @@ def process_claim(sb, job):
     if not first_name or not street:
         finish(sb, job, 'stopped', 'Missing form name or property address')
         return
+    # Earlier jobs in the same batch can take time. Recheck the deadline and
+    # contact window at the actual handoff, not only when the batch was claimed.
+    try:
+        due = datetime.fromisoformat(job['due_at'].replace('Z', '+00:00'))
+        expires = datetime.fromisoformat(job['expires_at'].replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        within_deadline = due <= now < expires
+    except (KeyError, TypeError, ValueError):
+        within_deadline = False
+    if not within_deadline or not SMSClient()._in_allowed_hours():
+        finish(sb, job, 'stopped', 'Dispatch deadline or contact hours no longer valid')
+        return
     payload = {'from_number': os.environ['RETELL_SMS_FROM_NUMBER'], 'to_number': job['phone_number'],
                'override_agent_id': os.environ['RETELL_SMS_AGENT_ID'],
                'override_agent_version': os.environ['RETELL_SMS_AGENT_VERSION'],

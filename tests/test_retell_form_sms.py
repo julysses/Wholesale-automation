@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import pytest
 from unittest.mock import MagicMock
 from types import SimpleNamespace
 from tools import retell_form_sms as sms
@@ -48,7 +49,11 @@ def test_disabled_after_claim_stops_without_provider(monkeypatch):
     post.assert_not_called()
 
 
-def test_provider_timeout_is_review_not_retry(monkeypatch):
+@pytest.mark.parametrize('window, hours, should_send', [
+    ('valid', True, True), ('expired', True, False), ('future', True, False),
+    ('missing', True, False), ('naive', True, False), ('valid', False, False),
+])
+def test_provider_deadline_and_timeout(monkeypatch, window, hours, should_send):
     monkeypatch.setattr(sms, 'activation_ready', lambda: True)
     monkeypatch.setattr(sms.settings, 'sms_allowed_recipients', '+12145551234')
     monkeypatch.setattr(sms, 'sms_consent_blocker', lambda *args: None)
@@ -60,7 +65,24 @@ def test_provider_timeout_is_review_not_retry(monkeypatch):
     post = MagicMock(side_effect=TimeoutError())
     monkeypatch.setattr(sms, 'finish', finish)
     monkeypatch.setattr(sms.requests, 'post', post)
-    sms.process_claim(db, {'id': 'j', 'lead_id': 'l', 'submission_id': 's', 'phone_number': '+12145551234'})
+    monkeypatch.setattr(sms.SMSClient, '_in_allowed_hours', lambda self: hours)
+    now = datetime.now(timezone.utc)
+    job = {'id': 'j', 'lead_id': 'l', 'submission_id': 's', 'phone_number': '+12145551234',
+           'due_at': (now-timedelta(seconds=5)).isoformat(),
+           'expires_at': (now+timedelta(minutes=14)).isoformat()}
+    if window == 'expired':
+        job['expires_at'] = (now-timedelta(seconds=1)).isoformat()
+    elif window == 'future':
+        job['due_at'] = (now+timedelta(seconds=30)).isoformat()
+    elif window == 'missing':
+        job.pop('expires_at')
+    elif window == 'naive':
+        job['expires_at'] = now.replace(tzinfo=None).isoformat()
+    sms.process_claim(db, job)
+    if not should_send:
+        post.assert_not_called()
+        assert finish.call_args.args[2] == 'stopped'
+        return
     assert post.call_count == 1
     assert finish.call_args.args[2] == 'review'
     assert post.call_args.kwargs['json']['honor_internal_dnc'] is True

@@ -1,3 +1,11 @@
+## Dispatch deadline recheck — October 15, 2026
+
+Continued independent work while explicit Twilio-to-Retell credential approval remains pending. User asked which provider to use; recommendation is retain existing Twilio number/registration and connect Retell for AI conversations. That question is not approval to transmit the Auth Token.
+
+Fixed a batch timing gap: process_claim now validates timezone-aware due_at <= current time < expires_at and allowed contact hours immediately before provider handoff. A job that expired while previous jobs ran, is premature, lacks its deadline, or has a naive timestamp stops without contacting Retell.25 targeted SMS/queue tests pass, including six deadline/contact-window scenarios and provider timeout review without retry. No real messages, credentials, routing or activation changed.
+
+Remaining full objective is unchanged: credential connection; provider-native replies/STOP to CRM; production deployment/form routing; frequent worker and measured timing; owner-only form test after verification. Due-at+60 seconds is scheduling intent, not a verified delivery guarantee. Sending remains OFF. Previous goal turn was recommendation/research, not deployment progress; this turn changes tested dispatch behavior.
+
 ## Twilio authenticated; verified campaign and protected routing — October 15, 2026
 
 Owner completed Twilio sign-in. Read-only console verification: existing number +14698049920 belongs to Low Volume Mixed A2P Messaging Service; connected campaign status Verified and service A2P Compliant. Campaign explicitly covers opted-in Hilltop property inquiries, offer status, appointments and closing updates; excludes purchased-list outreach, unrelated marketing, lending and AI-call consent. Advanced Opt-Out ENABLED with STOP/CANCEL/END/OPTOUT/QUIT/REVOKE/STOPALL/UNSUBSCRIBE and branded HELP/unblock responses.
