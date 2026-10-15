@@ -1,3 +1,13 @@
+## Cloud scheduler installed inactive and cadence verified — October 15, 2026
+
+Applied only migration20261015181957_retell_sms_scheduler to rehearsal tbhwxgfzbiaqjurghntj. Official CLI created migration filename. Added pg_net, private RLS-protected singleton configuration (enabled=false), owner-only SECURITY INVOKER tick function, and inactive10-second cron job wholesaleos-retell-form-sms. No credentials copied into Vault. Function accepts only known rehearsal/production worker endpoints, checks due queue work, and avoids overlapping requests. Existing worker retains all send gates.
+
+SQL rollback assertions passed for disabled configuration and missing credential refusal. Confirmed RLStrue, anon schema accessfalse, authenticated function executefalse, last_request_id/time NULL. Temporarily activated cron with configuration still disabled:3successful runs at18:21:29.056976Z,18:21:39.067597Z,18:21:49.077708Z (~10.01seconds). Deactivated afterward; no HTTP or SMS request. This proves database cadence only, not HTTP ingress/provider/carrier latency. Expected healthy handoff with10-second polling is60–70seconds plus provider/carrier delay, not guaranteed exact handset delivery at60seconds.
+
+Security advisor flags private table RLS without policy (intentional owner-only access); existing unrelated authenticated definer/Auth configuration warnings remain and were not changed. See docs/retell-sms-scheduler.md for explicit activation/acceptance and rollback steps. Long-term cron history retention remains a launch item.
+
+Pending approvals: Twilio Auth Token connection to Retell remains unanswered. Preview scheduler also needs separate approved storage of worker/bypass credentials in Supabase Vault; earlier approval limited bypass to Retell and temporary local verification. Do not silently broaden it. Full objective remains unfinished: provider-native STOP/replies, production form routing/deployment, authenticated scheduler HTTP test and owner-controlled one-minute text test. Calls/SMS OFF; production and county schedule untouched.
+
 ## Dispatch deadline recheck — October 15, 2026
 
 Continued independent work while explicit Twilio-to-Retell credential approval remains pending. User asked which provider to use; recommendation is retain existing Twilio number/registration and connect Retell for AI conversations. That question is not approval to transmit the Auth Token.
