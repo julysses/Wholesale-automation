@@ -1,6 +1,6 @@
 ## Latest update
 
-Release 421a373 pushed; production deployment dpl_GyRNtdbmQanGo8J7QDnWmSRoVSzc initiated (verify READY and aliases). Production credentials approval requested in chat; prepared Vercel Secret RETELL_SMS_API_KEY, Production only, value EMPTY. Do not save until answered. Bundle approval covers API key, production webhook signing alignment, scheduler bearer in production Vault; no bypass needed.
+Release 421a373 pushed and production deployment dpl_GyRNtdbmQanGo8J7QDnWmSRoVSzc READY with public aliases. Callback fix f492bad production deployment dpl_6K6BP6u648RjBofA1oyvUEMEqXV2 initiated; verify READY. Production credentials approval requested in chat; prepared Vercel Secret RETELL_SMS_API_KEY, Production only, value EMPTY. Do not save until answered. Bundle approval covers API key, production webhook signing alignment, scheduler bearer in production Vault; no bypass needed.
 
 Retell documented Get Chat omits phone fields. Updated callback resolver to use exact saved chat ID when telephone fields are absent, rejecting conflicting lead/phone metadata. 143 targeted tests pass. Native callback delivery remains unverified.
 
@@ -28,3 +28,9 @@ Checkout: `work/wholesale-sms-production` beside `work/wholesale-launch-prep`.
 7. Perform controlled delivery/reply/STOP acceptance only after checks. SMS dispatch due at 60 seconds, scheduler 10-second cadence plus provider delivery latency. Keep calls off; no general sending.
 
 Original bulk progress remains in wholesale-launch-prep/docs/START-HERE-NEXT-CHAT.md. Cumulative PropStream cap $50 unchanged.
+
+## Live no-send checks
+Production /api/health returned200; /api/forms/hilltop-home-co returned200 active=true. Unauthenticated worker probe returned503 because production scheduler authentication is not configured yet (closed, not a successful connection test). Hilltop public client posts to /api/get-offer; its server-side destination still requires verification. Jays sell page loads, server submission destination not yet established. Do not equate public availability with end-to-end submission evidence.
+
+## Controlled owner acceptance procedure
+Keep all sends off until configuration and signed callback checks pass. Have owner identify their own website submission, then set a finite allowlist to that exact phone. Do not guess from recency. Prepare each site separately; currently a prior accepted chat and 24-hour contact cooldown prevent testing the same phone twice immediately. Build an explicit owner-test exception scoped to submission ID and expiring authorization if needed; do not globally disable suppression/cooldowns or erase consent history. Verify first receipt, due+60sec handoff, provider receipt, handset arrival, reply task and STOP suppression; turn switches off again. Carrier latency is measured, not guaranteed exactly60seconds.
