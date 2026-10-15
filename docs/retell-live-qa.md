@@ -1,10 +1,20 @@
+## LIVE production SMS — October 15, 2026
+
+Owner explicitly requested live activation without recipient restriction. Production code b94d086 deployed READY as dpl_F1jXupfYoa6HUx6C27SwzYg5e8nY; wholesale-automation.vercel.app alias assigned. Saved production RETELL_FORM_SMS_ENABLED=true, RETELL_SMS_LIVE_ENABLED=true, SMS_LIVE_ENABLED=true, RETELL_SMS_LAUNCH_APPROVED=true and RETELL_SMS_ALL_CONSENTED_FORMS=true. No acceptance-verification claim: real handset evidence pending owner test.
+
+Production Supabase scheduler enabled=true and cron wholesaleos-retell-form-sms active=true, every10seconds. Tick verified idle/requestedfalse with zerojobs. Authenticated production worker request6 returned200 processed0/sending_enabled=true. Read-only request5 returned200 connectedtrue with agent/version/published/callback checks alltrue. Calls, nurture and experimental AI reply forwarding remainOFF (production flags absent/defaultfalse). Replies/STOP go through existing Twilio production CRM handler. No county collection, PropStream spend or cold-lead campaign activated; $50 cap preserved.
+
+Final backend705 passed; targetedSMS/form102 passed; frontend140 passed, production build passed, lint no new findings. Earlier production rollback SQL verified queue timing/claims/sharedledger/expiry/DNC and carrier reply/duplicate/STOP/START/followup. No actual SMS sent during QA. Owner will test Hilltop https://hilltophome.co/get-an-offer and Jays https://thejaysdallas.com/sell with SMS consent. Expect due+60seconds plus up to10seconds scheduler and carrier delay, within9am–7pm Central.15-minute expiry means after-hours forms may expire without automatic SMS. Prior accepted-chat guard and24h shared cooldown block second initial SMS to samephone across forms. Do not clear DNC or ledger to force test. Actual delivery, real reply and STOP acceptance still need observation. Do not ask for an owner-phone allowlist again.
+
+Emergency stop: deactivate cron and private.retell_sms_scheduler.enabled; disable production RETELL_SMS_LIVE_ENABLED and redeploy. Never replay uncertain/review or expired jobs without reconciliation.
+
 # Production SMS acceptance — October 15, 2026
 
 Scope: consented seller inquiries from Hilltop and Jays. Calls, nurture and county campaigns remain OFF. PropStream budget untouched.
 
 | Check | Evidence | Result |
 |---|---|---|
-| Backend suite | 692 tests before final narrow QA fixes | Pass |
+| Backend suite | 705 tests on final live code | Pass |
 | Frontend suite | 140 tests across 32 files | Pass |
 | Final SMS changes | 102 targeted tests, including wrong-number suppression and pinned-release mismatch checks | Pass |
 | Frontend production build | TypeScript and Vite build | Pass |
