@@ -1,3 +1,11 @@
+## Retell CRM preparation — October 15, 2026
+
+Implemented deterministic per-call follow-up tasks for callback, appointment and warm outcomes, including late analyzed events. Retries preserve completed tasks; opt-outs take precedence and cancel this integration's pending follow-up. Added warm_lead mapping and explicit SMS_LIVE_ENABLED gate before Retell-triggered SMS enrollment. Existing signed webhook result/suppression handling retained. No calls, SMS, publication, number binding, spend or production change.
+
+Saved and visually verified disposition and callback_time post-call extraction in Retell agent agent_046b002f8f0255951376ea5fe9, Draft V0 (autosaved12:10). Call summary remains enabled. Webhook remains unconnected: an unsigned data-free probe to the stable rehearsal /webhooks/retell returned Vercel login-protection401 before reaching the app. Vercel browser shows RETELL_API_KEY and RETELL_WEBHOOK_SECRET scoped Production only. Connector env listing denied403; CLI has no login (device login cancelled); authenticated browser settings available. Do not expand production secret scope or disable preview protection silently. Need approved secure callback ingress/authentication setup, then signed synthetic CRM persistence/duplicate/opt-out acceptance with calls/SMS off.
+
+Validation:66 targeted backend tests passed (completion delivery, signature security, transcript ordering, release hardening), including5new follow-up/SMS-off tests. Both dated provider files pass structural validation but are empty templates, dispatch_authorized=false. Existing75completed traces must not be reordered; no fresh DNC clearance was established. Bulk path /Users/juliodominguez/Documents/WholesaleOS/2026-10-15/completed-a83f52dac7da5120/ . Browser proof in chat workspace outputs/retell-crm-fields.png. Live deployment and end-to-end delivery are NOT accepted yet.
+
 # WholesaleOS — new-chat handoff
 
 ## Retell draft prepared in account — October 15, 11:53am Central

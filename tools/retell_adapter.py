@@ -74,6 +74,7 @@ RETELL_DISPOSITION_MAP: dict[str, CallDisposition] = {
     "not_interested":         CallDisposition.NOT_INTERESTED,
     "callback_requested":     CallDisposition.CALLBACK,
     "interested":             CallDisposition.WARM,
+    "warm_lead":              CallDisposition.WARM,
     "hot_lead":               CallDisposition.HOT,
     "appointment_set":        CallDisposition.APPOINTMENT_SET,
     # Retell system statuses
@@ -89,6 +90,7 @@ AIR_DISPOSITION_MAP: dict[str, CallDisposition] = {
     "not_interested":         CallDisposition.NOT_INTERESTED,
     "call_back":              CallDisposition.CALLBACK,
     "interested":             CallDisposition.WARM,
+    "warm_lead":              CallDisposition.WARM,
     "hot":                    CallDisposition.HOT,
     "appointment":            CallDisposition.APPOINTMENT_SET,
     "error":                  CallDisposition.UNKNOWN,

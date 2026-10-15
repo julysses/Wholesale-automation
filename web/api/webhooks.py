@@ -972,6 +972,7 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
         if not saved.data:
             raise RuntimeError("Retell suppressed call outcome was not confirmed")
         return  # A later provider outcome cannot reactivate a suppressed lead.
+    _persist_retell_follow_up(sb, event, raw_payload)
     nonconversation_status = _retell_nonconversation_status(event, call_data)
     if not transcript and not nonconversation_status:
         if event_type in {"call_ended", "retell.call.completed"}:
@@ -1003,6 +1004,33 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
         except Exception:
             logger.exception("Could not park failed Retell completion receipt")
         raise
+
+
+def _persist_retell_follow_up(sb: Any, event: AICallResultEvent, payload: dict) -> None:
+    """Create one review task per call, including late analysis; never dispatch."""
+    if event.disposition.value not in {"callback", "appointment_set", "warm"}:
+        return
+    task_id = _retell_receipt_id(event.call_id, "follow_up")
+    existing = sb.table("tasks").select("id").eq("id", task_id).limit(1).execute().data
+    if existing:
+        return  # Preserve a human's completed task on webhook redelivery.
+    analysis = payload.get("call", {}).get("call_analysis") or {}
+    custom = analysis.get("custom_analysis_data") or {}
+    requested_time = str(custom.get("callback_time") or "Not supplied; confirm with owner")[:500]
+    saved = sb.table("tasks").upsert({
+        "id": task_id, "lead_id": event.lead_id,
+        "title": "Retell follow-up: " + event.disposition.value.replace("_", " "),
+        "description": (
+            f"Call: {event.call_id}\nRequested time (unverified): {requested_time}\n"
+            + str(analysis.get("call_summary") or "Review the saved call transcript.")[:4000]
+            + "\nHuman review required. No call or SMS has been scheduled."
+        ),
+        "priority": "high", "status": "pending", "type": "acquisition_review",
+    }, on_conflict="id", ignore_duplicates=True).execute()
+    if not saved.data:
+        confirmed = sb.table("tasks").select("id").eq("id", task_id).limit(1).execute().data
+        if not confirmed:
+            raise RuntimeError("Retell follow-up persistence was not confirmed")
 
 
 def _retell_opted_out(event: AICallResultEvent, transcript: Any) -> bool:
@@ -1042,6 +1070,13 @@ def _persist_retell_opt_out(sb: Any, event: AICallResultEvent, payload: dict) ->
     }).eq("id", event.lead_id).execute()
     if not saved.data:
         raise RuntimeError("Retell lead suppression was not confirmed")
+    # Close only this integration's pending follow-up, preserving human work.
+    task_id = _retell_receipt_id(event.call_id, "follow_up")
+    pending = sb.table("tasks").select("id").eq("id", task_id).eq("status", "pending").execute().data
+    if pending:
+        saved = sb.table("tasks").update({"status": "cancelled"}).eq("id", task_id).eq("status", "pending").execute()
+        if not saved.data:
+            raise RuntimeError("Retell opt-out follow-up cancellation was not confirmed")
     saved = sb.table("ai_call_records").update({"disposition": "dnc"}).eq("call_id", event.call_id).execute()
     if not saved.data:
         raise RuntimeError("Retell opt-out call outcome was not confirmed")
@@ -1202,6 +1237,8 @@ async def _run_retell_completion(sb: Any, event: AICallResultEvent, raw_payload:
 
 
 def _launch_control_configured() -> bool:
+    if not settings.sms_live_enabled:
+        return False
     if settings.launch_control_mode == "csv_sync":
         return True
     if settings.launch_control_mode == "api_direct":
