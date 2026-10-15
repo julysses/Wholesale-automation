@@ -1,3 +1,9 @@
+## Approved rehearsal signing setup — October15, in progress
+
+Owner approved rehearsal signing credential and authenticated callback access. Saved Retell's existing Webhook-badged key as secret RETELL_WEBHOOK_SECRET scoped only Preview / codex/dallas-collin-launch-prep; production value unchanged. UI confirmed successful save. New deployment required. No RETELL_API_KEY was added to preview; no calls/SMS enabled. Evidence: chat outputs/retell-rehearsal-secret-scope.png.
+
+Vercel automation bypass is project-wide, not endpoint/branch-scoped. Automatic approval review rejected creating it because the approved callback access did not explicitly cover the broader scope. No bypass created; explicit scope clarification is pending. Keep normal preview protection enabled. Once approved/configured, test signed synthetic events and query their exact CRM rows before claiming delivery connected. Prior66test result is local only.
+
 ## Retell CRM preparation — October 15, 2026
 
 Implementation6f8069e pushed. Browser confirmed branch-preview SMS_LIVE_ENABLED=false, AI_CALLING_LIVE_ENABLED=false and SMS_NURTURE_ENABLED=false. Hosted CI was still running at checkpoint; do not claim deployed acceptance. Remaining connection work needs a Retell signing credential scoped to this rehearsal preview and an authenticated route through Vercel preview protection. Browser policy requires action-time approval for adding credentials/security-sensitive access. No such access change has been made.
