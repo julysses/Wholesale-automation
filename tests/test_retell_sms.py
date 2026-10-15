@@ -93,3 +93,8 @@ def test_receipt_storage_failure_returns_retryable_error(monkeypatch):
     response = client.post('/webhooks/retell', content=body,
         headers={'x-retell-signature': _signature(body, 'sms-test')})
     assert response.status_code == 503
+
+
+@pytest.mark.parametrize('text', ['Call me at the end of the day', 'Can we stop by tomorrow?', 'I need to cancel my appointment'])
+def test_ordinary_reply_is_not_keyword_optout(text):
+    assert not recipient_opted_out([{'role': 'user', 'content': text}])

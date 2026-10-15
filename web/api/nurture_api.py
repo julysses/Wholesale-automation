@@ -180,3 +180,14 @@ async def drain(request: Request):
     if not hmac.compare_digest(authorization,"Bearer "+secret):
         raise HTTPException(401,"Unauthorized")
     return await run_in_threadpool(_drain,_db())
+
+
+@router.get("/webhooks/_worker/retell-form-sms")
+async def drain_retell_form_sms(request: Request):
+    secret = os.getenv("CRON_SECRET", "")
+    if not secret:
+        raise HTTPException(503, "Worker secret not configured")
+    if not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + secret):
+        raise HTTPException(401, "Unauthorized")
+    from tools.retell_form_sms import drain as retell_drain
+    return await run_in_threadpool(retell_drain, _db())
