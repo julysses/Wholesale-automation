@@ -50,10 +50,12 @@ def configured_version():
 
 def activation_ready():
     return (enabled('RETELL_FORM_SMS_ENABLED') and enabled('RETELL_SMS_LIVE_ENABLED')
-            and settings.sms_live_enabled and enabled('RETELL_SMS_ACCEPTANCE_VERIFIED')
+            and settings.sms_live_enabled
+            and (enabled('RETELL_SMS_ACCEPTANCE_VERIFIED') or enabled('RETELL_SMS_LAUNCH_APPROVED'))
             and bool(os.getenv('RETELL_SMS_AGENT_ID')) and configured_version() is not None
             and bool(os.getenv('RETELL_SMS_API_KEY')) and bool(os.getenv('RETELL_SMS_FROM_NUMBER'))
-            and bool(os.getenv('RETELL_SMS_SENDER_NAME')) and bool(settings.sms_allowed_recipients))
+            and bool(os.getenv('RETELL_SMS_SENDER_NAME'))
+            and (enabled('RETELL_SMS_ALL_CONSENTED_FORMS') or bool(settings.sms_allowed_recipients)))
 
 
 def drain(sb):
@@ -94,7 +96,8 @@ def process_claim(sb, job):
         same_phone = normalize_us_phone(lead.get('owner_phone_1')) == job['phone_number']
     except ValueError:
         same_phone = False
-    if (job['phone_number'] not in allowed or not same_phone or blocker
+    if ((not enabled('RETELL_SMS_ALL_CONSENTED_FORMS') and job['phone_number'] not in allowed)
+        or not same_phone or blocker
         or lead.get('dnc') is not False or lead.get('status') in {'dnc','dead','closed','sold','under_contract'}):
         finish(sb, job, 'stopped', 'Recipient, consent, or suppression check blocked dispatch')
         return

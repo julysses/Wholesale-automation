@@ -53,9 +53,11 @@ def test_disabled_after_claim_stops_without_provider(monkeypatch):
     ('valid', True, True), ('expired', True, False), ('future', True, False),
     ('missing', True, False), ('naive', True, False), ('valid', False, False),
 ])
-def test_provider_deadline_and_timeout(monkeypatch, window, hours, should_send):
+@pytest.mark.parametrize('all_consented', [False, True])
+def test_provider_deadline_and_timeout(monkeypatch, window, hours, should_send, all_consented):
+    monkeypatch.setenv('RETELL_SMS_ALL_CONSENTED_FORMS', str(all_consented).lower())
     monkeypatch.setattr(sms, 'activation_ready', lambda: True)
-    monkeypatch.setattr(sms.settings, 'sms_allowed_recipients', '+12145551234')
+    monkeypatch.setattr(sms.settings, 'sms_allowed_recipients', '' if all_consented else '+12145551234')
     monkeypatch.setattr(sms, 'sms_consent_blocker', lambda *args: None)
     for key in ['RETELL_SMS_FROM_NUMBER','RETELL_SMS_AGENT_ID','RETELL_SMS_AGENT_VERSION','RETELL_SMS_API_KEY','RETELL_SMS_SENDER_NAME']:
         monkeypatch.setenv(key, '0' if key == 'RETELL_SMS_AGENT_VERSION' else 'test-only')
@@ -140,3 +142,21 @@ def test_connection_probe_rejects_wrong_release(monkeypatch,field,value):
     assert result['connected'] is False
     assert get.call_args.kwargs['params']=={'version':1}
     assert 'https://' not in str(result)
+
+
+def test_owner_approved_launch_requires_explicit_flags_and_other_gates(monkeypatch):
+    monkeypatch.setattr(sms.settings,'sms_live_enabled',True)
+    monkeypatch.setattr(sms.settings,'sms_allowed_recipients','')
+    for key in ['RETELL_FORM_SMS_ENABLED','RETELL_SMS_LIVE_ENABLED','RETELL_SMS_LAUNCH_APPROVED','RETELL_SMS_ALL_CONSENTED_FORMS']:
+        monkeypatch.setenv(key,'true')
+    monkeypatch.delenv('RETELL_SMS_ACCEPTANCE_VERIFIED',raising=False)
+    for key,value in {'RETELL_SMS_AGENT_ID':'agent_expected','RETELL_SMS_AGENT_VERSION':'1',
+                      'RETELL_SMS_API_KEY':'test','RETELL_SMS_FROM_NUMBER':'+14698049920',
+                      'RETELL_SMS_SENDER_NAME':'the automated assistant'}.items():
+        monkeypatch.setenv(key,value)
+    assert sms.activation_ready()
+    monkeypatch.setenv('RETELL_SMS_ALL_CONSENTED_FORMS','false')
+    assert not sms.activation_ready()
+    monkeypatch.setenv('RETELL_SMS_ALL_CONSENTED_FORMS','true')
+    monkeypatch.setattr(sms.settings,'sms_live_enabled',False)
+    assert not sms.activation_ready()

@@ -1,3 +1,7 @@
+## Current launch decision — October 15, 2026
+
+User explicitly said "do not restrict. Make it live and I will test when it is live". Supersedes historical owner-only test instructions below. Added RETELL_SMS_LAUNCH_APPROVED and RETELL_SMS_ALL_CONSENTED_FORMS, retaining consent, DNC, phone match, expiry, contact hours and shared duplicate limits. Production settings saved; deployment and scheduler activation in progress. 102 targeted tests pass. Calls, nurture and experimental AI reply forwarding remain OFF by absent production flags/default false. No handset delivery claimed. See docs/retell-live-qa.md. Do not request owner-phone identification again.
+
 ## Additional QA findings
 
 Frontend production build passed; lint regression gate passed (149 existing findings, zero new). Live unsigned Retell and Twilio callbacks both rejected401. Production rollback tests repeated successfully for carrier replies, duplicates, phone-wide STOP, late replies and task preservation. Fixed missing wrong-number classification to match the agent prompt: those replies now suppress and never forward to Retell.62 targeted SMS tests pass. Pinned-release probe deployment ad2a6b1 was queued; superseding with this fix. Live handset test still awaits owner-identified form submission; no messages sent.
