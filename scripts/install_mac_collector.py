@@ -45,7 +45,7 @@ for package in packages:
 receipt = {relative:hashlib.sha256((runtime/relative).read_bytes()).hexdigest() for relative in files}
 (base/'installed-source-hashes.json').write_text(json.dumps(receipt,indent=2))
 config = {'Label':label,'ProgramArguments':['/usr/bin/python3',str(runtime/'pipeline/collectors/persistent_worker.py'),'--state',str(state)],
-          'WorkingDirectory':str(runtime),'RunAtLoad':True,'KeepAlive':True,'ThrottleInterval':60,'Umask':63,
+          'WorkingDirectory':str(runtime),'RunAtLoad':False,'KeepAlive':False,'StartCalendarInterval':{'Hour':6,'Minute':17},'Umask':63,
           'EnvironmentVariables':{'PATH':str(Path(node).parent)+':/usr/bin:/bin:/usr/sbin:/sbin','PYTHONUNBUFFERED':'1'},
           'StandardOutPath':str(state/'worker.log'),'StandardErrorPath':str(state/'worker-error.log')}
 plist.parent.mkdir(parents=True,exist_ok=True)

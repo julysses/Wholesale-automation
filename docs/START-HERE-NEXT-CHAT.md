@@ -1,5 +1,11 @@
 # WholesaleOS — new-chat handoff
 
+## Collection frequency correction — October14,2026
+
+Owner explicitly rejected continuous collection due to IP concerns. Stopped the live LaunchAgent, removed the worker's minute loop, disabled RunAtLoad/KeepAlive and reinstalled a calendar-only service at06:17Maclocaltime daily. No immediate run, login run, automatic restart or delivery-failure retry. Each launch performs one pass and exits; accepted source/day jobs remain deduplicated. Failed deliveries become exceptions immediately.14collector tests pass, including no-repeat-after-failure. No county requests were made while applying this correction.
+
+The previous loop checked local state eachminute rather than downloading counties eachminute; nevertheless it has been removed. Supabase's five-minute database supervision does not access county sites and is unchanged. Mac may run a missed calendar event when waking; one job per county/day remains enforced. Foreclosure and PropStreambrowserautomation remain unfinished; no paidAPI or new providercost authorized.
+
 ### First live Mac run — accepted Collin, Dallas source exception
 
 Collin run311ee85d-e46c-4c49-bdf6-c46bd3272a19 has19accepted batches /9,182tax-reviewrecords, one delivery attempt and no pendingbatch. These are review observations, not9,182qualified/newleads. Dallas collection halted before generating/delivering manifests: the official tax-roll page links to `https://www.dallascounty.org/Assets/uploads/docs/tax/trw/trwfile.754635.zip`, which returnedHTTP404on an independent exact-link check. No fallbackURLguess, fabricatedemptyrun or duplicateimport. SQLite holdsDallas ascollection_failed; its missing receipt remains an appmonitor exception. Nextday's job discovers the current officiallink again.

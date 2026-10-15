@@ -12,7 +12,6 @@ from pathlib import Path
 import sqlite3
 import subprocess
 import sys
-import time
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent
@@ -102,7 +101,7 @@ def tick(root, now=None, collector=collect, sender=deliver):
                     sender(folder)
                 except Exception:
                     db.execute("UPDATE jobs SET state=?,reason='delivery_unconfirmed',retry_at=? WHERE day=? AND county=?",
-                               ('exception' if attempts == 3 else 'delivering', now.timestamp() + 300 * attempts, *key))
+                               ('exception', 0, *key))
                 else:
                     db.execute("UPDATE jobs SET state='accepted',reason=NULL WHERE day=? AND county=?", key)
                 db.commit()
@@ -125,20 +124,13 @@ def main():
     parser.add_argument('--state', type=Path, required=True)
     parser.add_argument('--once', action='store_true')
     args = parser.parse_args()
-    previous = None
-    while True:
-        status = tick(args.state)
-        # No source records, credentials or raw exception contents in logs.
-        summary = {'status': status.get('status', 'checked'),
-                   'exception_count': len(status.get('exceptions', [])),
-                   'jobs': [{k: row[k] for k in ('day', 'county', 'state', 'attempts', 'reason')}
-                            for row in status.get('jobs', [])]}
-        if summary != previous:
-            print(json.dumps(summary), flush=True)
-            previous = summary
-        if args.once:
-            return
-        time.sleep(60)
+    status = tick(args.state)
+    # Exactly one pass per launch. Network failures become exceptions, not retries.
+    summary = {'status': status.get('status', 'checked'),
+               'exception_count': len(status.get('exceptions', [])),
+               'jobs': [{k: row[k] for k in ('day', 'county', 'state', 'attempts', 'reason')}
+                        for row in status.get('jobs', [])]}
+    print(json.dumps(summary), flush=True)
 
 
 if __name__ == '__main__':

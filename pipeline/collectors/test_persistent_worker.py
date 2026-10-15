@@ -18,7 +18,7 @@ class WorkerTests(unittest.TestCase):
             self.assertEqual(len(calls),4)
             self.assertEqual(len(w.tick(tmp,NOW,collect,send)['exceptions']),0)
 
-    def test_uncertain_delivery_retries_identical_folder_without_collection(self):
+    def test_uncertain_delivery_is_held_without_automatic_retries(self):
         with TemporaryDirectory() as tmp:
             paths=[];collections=[]
             def collect(c,p): p.mkdir(parents=True);collections.append(c)
@@ -26,11 +26,10 @@ class WorkerTests(unittest.TestCase):
             w.tick(tmp,NOW,collect,send)
             w.tick(tmp,NOW+timedelta(minutes=6),collect,send)
             result=w.tick(tmp,NOW+timedelta(minutes=17),collect,send)
-            self.assertEqual(len(collections),2);self.assertEqual(len(paths),6)
-            self.assertEqual(paths[:2],paths[2:4]);self.assertEqual(paths[:2],paths[4:])
+            self.assertEqual(len(collections),2);self.assertEqual(len(paths),2)
             self.assertEqual(len(result['exceptions']),2)
             self.assertNotIn('secret',Path(tmp,'status.json').read_text())
-            w.tick(tmp,NOW+timedelta(hours=1),collect,send);self.assertEqual(len(paths),6)
+            w.tick(tmp,NOW+timedelta(hours=1),collect,send);self.assertEqual(len(paths),2)
 
     def test_crash_in_collection_holds_incomplete_files(self):
         with TemporaryDirectory() as tmp:

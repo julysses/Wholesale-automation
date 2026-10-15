@@ -52,3 +52,5 @@ Live acceptance: job2 / wholesaleos-bulk-supervision recorded25automatic success
 Restart-safe tax collection/delivery worker implemented; deployment host and approved PropStream transport decisions pending. Four new tests cover restart deduplication, uncertain-delivery retry identity/limits, interrupted collection and Chicago daily scheduling. See docs/persistent-worker-setup.md. No live collection/worker activation or provider changes in this update.
 
 Mac hosting selected and installed October14; no additional PropStreamAPI cost authorized. See persistent-worker-setup.md. Runtime runs from Application Support with private durable state and existing Keychain credentials; foreclosure/provider browser automation remains separate unfinished work.
+
+Owner frequency correction: Mac service now runs once daily at06:17localtime, without RunAtLoad, KeepAlive, minute polling or automatic failed-delivery retries. Existing per-source/day deduplication remains.14collector tests passed.
