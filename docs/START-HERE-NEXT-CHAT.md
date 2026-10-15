@@ -1,3 +1,16 @@
+## Retell live rehearsal acceptance COMPLETE — October15,2026
+
+Owner approved owner-only temporary credential files for synthetic verification. Ran against stable rehearsal /webhooks/retell only; no actual calls, SMS, campaign, publication, spend, or production data mutation. Both temporary files /private/tmp/wholesale-retell-rehearsal/{signing-key,bypass} were deleted immediately after verification and absence confirmed. Do not recreate without a verification need; do not log credentials or the token-bearing callback URL.
+
+Live acceptance evidence:
+- Invalid signed payload:HTTP401 Invalid webhook signature. Valid synthetic callback:HTTP200 accepted.
+- callback lead f2e5be24-14f0-4cef-8b51-ecf0bf5e1bd1 became callback, contact_attempts1, pausedtrue, SMSfalse. One high-priority pending task822bbb84-58a8-56af-af47-d72fa172ce23 retained the requested time and review-only instructions. Duplicate callback remained one task, one qualification and one attempt.
+- no-answer lead f2e5be24-14f0-4cef-8b51-ecf0bf5e1bd2 became no_answer with one attempt. Call record completed/no_answer.
+- Opt-out and duplicate opt-out:HTTP200. SQL confirms lead dnc=true/statusdnc/pausedtrue/SMSfalse; one dnc_registry receipt; pending callback task cancelled. Replayed later callback did not reactivate the lead/task; call disposition remained dnc, attempts1, qualifications1.
+- Both synthetic leads are excluded from reportable_leads (count0). Retained as explicit internal QA audit evidence, not real sellers/properties. Synthetic call IDs internal_qa_retell_callback_20261015 and internal_qa_retell_noanswer_20261015.
+
+Rehearsal signing, authenticated ingress, result persistence, duplicate handling, opt-outs and follow-ups are now accepted end-to-end with synthetic events. Retell's own built-in signed test was also verified in the previous checkpoint. Agent remains Draft V0/unpublished; phone inbound/outboundNone; calls and SMS stay off. Prior117local Retell tests passed; no code changes in this acceptance step. Not a claim of a real-call test or outreach launch readiness. Existing bulk templates have zero cleared recipients; DNC/consent eligibility, real-call owner-approved testing and activation remain separate gates. PropStream $50 cap unchanged. No pending credential-handling approval remains.
+
 ### Verification checkpoint — October15
 
 117 Retell-related local tests pass (creation, batches, transcript ordering, signatures, completion delivery, release hardening). Retell phone routing reverified: inboundNone/outboundNone, SMS unconfigured; no paid tests or calls. Live signed call_started receipt is confirmed; completed-result/opt-out/follow-up live acceptance remains pending temporary verification-file approval. Temporary signing-key file removed while waiting; no local bypass-token file exists. Runtime-only values must not be printed or committed. Owner approval for the project-wide token is already granted and must not be requested again. Only the temporary local test-file handling question remains pending.
