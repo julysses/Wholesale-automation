@@ -92,7 +92,9 @@ def test_provider_deadline_and_timeout(monkeypatch, window, hours, should_send):
 @pytest.mark.parametrize('status,agent,connected',[(200,'agent_193fc3ebd9844b50d54352f200',True),(200,'other',False),(401,'other',False),(302,'other',False)])
 def test_connection_probe_is_read_only_and_redacted(monkeypatch,status,agent,connected):
     monkeypatch.setenv('RETELL_SMS_API_KEY','probe-secret')
-    get=MagicMock(return_value=SimpleNamespace(status_code=status,json=lambda:{'agent_id':agent,'webhook_url':'secret-callback'}))
+    monkeypatch.setenv('RETELL_SMS_AGENT_ID','agent_193fc3ebd9844b50d54352f200')
+    monkeypatch.setenv('RETELL_SMS_AGENT_VERSION','1')
+    get=MagicMock(return_value=SimpleNamespace(status_code=status,json=lambda:{'agent_id':agent,'version':1,'is_published':True,'webhook_url':'https://wholesale-automation.vercel.app/webhooks/retell'}))
     post=MagicMock()
     monkeypatch.setattr(sms.requests,'get',get)
     monkeypatch.setattr(sms.requests,'post',post)
@@ -122,3 +124,19 @@ def test_connection_probe_requires_worker_auth(monkeypatch):
 def test_agent_release_is_pinned_numeric(monkeypatch,value,expected):
     monkeypatch.setenv('RETELL_SMS_AGENT_VERSION',value)
     assert sms.configured_version()==expected
+
+
+@pytest.mark.parametrize('field,value',[('version',2),('is_published',False),('webhook_url','https://wrong.example')])
+def test_connection_probe_rejects_wrong_release(monkeypatch,field,value):
+    monkeypatch.setenv('RETELL_SMS_API_KEY','probe-secret')
+    monkeypatch.setenv('RETELL_SMS_AGENT_ID','agent_expected')
+    monkeypatch.setenv('RETELL_SMS_AGENT_VERSION','1')
+    data={'agent_id':'agent_expected','version':1,'is_published':True,
+          'webhook_url':'https://wholesale-automation.vercel.app/webhooks/retell'}
+    data[field]=value
+    get=MagicMock(return_value=SimpleNamespace(status_code=200,json=lambda:data))
+    monkeypatch.setattr(sms.requests,'get',get)
+    result=sms.check_connection()
+    assert result['connected'] is False
+    assert get.call_args.kwargs['params']=={'version':1}
+    assert 'https://' not in str(result)

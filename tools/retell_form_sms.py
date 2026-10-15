@@ -136,18 +136,27 @@ def process_claim(sb, job):
 
 
 def check_connection():
-    """Read only the known rehearsal agent; return no secrets or agent content."""
+    """Read the configured published release; return only redacted readiness checks."""
     key = os.getenv('RETELL_SMS_API_KEY', '')
     if not key:
         return {'connected': False, 'reason': 'credential_missing', 'dispatch_authorized': False}
-    agent_id = 'agent_193fc3ebd9844b50d54352f200'
+    agent_id = os.getenv('RETELL_SMS_AGENT_ID', '')
+    version = configured_version()
+    if not re.fullmatch(r'agent_[A-Za-z0-9]+', agent_id) or version is None:
+        return {'connected': False, 'reason': 'pinned_agent_missing', 'dispatch_authorized': False}
     try:
         response = requests.get('https://api.retellai.com/get-chat-agent/' + agent_id,
-            headers={'Authorization': 'Bearer ' + key}, timeout=15, allow_redirects=False)
+            headers={'Authorization': 'Bearer ' + key}, params={'version': version},
+            timeout=15, allow_redirects=False)
         if response.status_code != 200:
             return {'connected': False, 'provider_status': response.status_code, 'dispatch_authorized': False}
         data = response.json()
-        return {'connected': data.get('agent_id') == agent_id,
+        checks = {'agent_matches': data.get('agent_id') == agent_id,
+                  'version_matches': data.get('version') == version,
+                  'published': data.get('is_published') is True,
+                  'callback_matches': data.get('webhook_url') ==
+                      'https://wholesale-automation.vercel.app/webhooks/retell'}
+        return {'connected': all(checks.values()), 'checks': checks,
                 'dispatch_authorized': False}
     except (requests.RequestException, ValueError, TypeError, AttributeError):
         return {'connected': False, 'reason': 'provider_check_failed', 'dispatch_authorized': False}

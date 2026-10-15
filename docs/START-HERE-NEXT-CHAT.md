@@ -1,3 +1,11 @@
+## Live-test QA in progress — October15,2026
+
+User requested all QA and live testing. Full backend suite692 passed; frontend140 passed. Strengthened read-only production probe to verify configured agent ID, pinned version, published=true and exact production callback.23 targeted probe/worker tests pass (includes3 new negative cases). No sending enabled.
+
+Added tests/sql/retell_form_sms_production_qa.sql and executed against production in a rolled-back transaction: no early claim, one due claim, no duplicate claim, shared Retell/Twilio limits, expiry, DNC and restricted queue access passed. Initial fixture omitted required city; corrected fixture and reran successfully. No test records persisted.
+
+Owner test identification requested: submit Hilltop form with their own mobile and SMS consent, then identify name/time. No answer yet; do not guess owner from recent leads or use historical allowlist. Pending real carrier delivery/reply/STOP test cannot be replaced by unit tests. Native Retell redirect still unverified/OFF. Retell UI shows chat_started, chat_ended, transcript_updated and chat_analyzed selected on draft inherited from V1.
+
 ## Production credential approval fulfilled — October15,2026
 
 Owner explicitly approved production API/signing/scheduler credentials. Saved existing Retell key as Production RETELL_SMS_API_KEY; aligned Production RETELL_WEBHOOK_SECRET; saved new Production CRON_SECRET and matching encrypted production Vault retell_sms_worker_bearer. No secret values/files/logs/git. Do not ask again for this scope.
