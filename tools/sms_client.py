@@ -8,7 +8,8 @@ Enforces Sections 4 & 5 rules:
 - Approved A2P 10DLC providers: Twilio, Telnyx, MessageBird
 - MANDATORY: if compliance is uncertain, do not send
 
-Supported providers: twilio (default), telnyx, messagebird
+Live dispatch: Twilio only. Legacy Telnyx/MessageBird providers remain disabled
+until equivalent consent, suppression, durable claims and receipt checks exist.
 """
 
 from __future__ import annotations
@@ -88,7 +89,7 @@ class SMSClient:
     - No valid phone number
     - Provider not in approved A2P 10DLC list
 
-    Supported providers: twilio, telnyx, messagebird
+    Live provider: twilio. Other provider configurations fail closed.
     """
 
     def __init__(self, provider: Optional[str] = None) -> None:
@@ -181,8 +182,12 @@ class SMSClient:
 
         # Missing credentials never count as a send. Twilio stays disabled until
         # carrier approval and controlled delivery acceptance are complete.
-        if not self._configured or (self._provider == "twilio" and not settings.sms_live_enabled):
+        if not self._configured or not settings.sms_live_enabled:
             message.mark_stopped("SMS credentials missing or live sending disabled")
+            return False
+
+        if self._provider != "twilio":
+            message.mark_stopped("SMS provider has not completed durable delivery and consent integration")
             return False
 
         return self._dispatch(message, to_number)
@@ -192,10 +197,6 @@ class SMSClient:
         try:
             if self._provider == "twilio":
                 return self._send_twilio(message, to_number)
-            if self._provider == "telnyx":
-                return self._send_telnyx(message, to_number)
-            if self._provider == "messagebird":
-                return self._send_messagebird(message, to_number)
             logger.error(f"[SMSClient] Unknown provider: {self._provider}")
             return False
         except Exception as exc:
@@ -268,37 +269,6 @@ class SMSClient:
             return False
         message.mark_sent()
         message.a2p_provider = "twilio"
-        return True
-
-    def _send_telnyx(self, message: OutreachMessage, to_number: str) -> bool:
-        import telnyx  # type: ignore
-
-        telnyx.api_key = settings.telnyx_api_key
-        if not settings.telnyx_from_number:
-            logger.error("[SMSClient] TELNYX_FROM_NUMBER not configured")
-            return False
-        result = telnyx.Message.create(
-            from_=settings.telnyx_from_number,
-            to=to_number,
-            text=message.body,
-        )
-        message.mark_sent()
-        message.a2p_provider = "telnyx"
-        logger.info(f"[SMSClient] Sent via Telnyx | msg={message.id} | ID={result.id}")
-        return True
-
-    def _send_messagebird(self, message: OutreachMessage, to_number: str) -> bool:
-        import messagebird  # type: ignore
-
-        client = messagebird.Client(settings.messagebird_api_key)
-        result = client.message_create(
-            settings.messagebird_originator,
-            [to_number],
-            message.body,
-        )
-        message.mark_sent()
-        message.a2p_provider = "messagebird"
-        logger.info(f"[SMSClient] Sent via MessageBird | msg={message.id} | ID={result.id}")
         return True
 
     def send_batch(

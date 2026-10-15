@@ -356,21 +356,13 @@ function LeadCard({ lead, onSchedule }: { lead: AcquisitionLead; onSchedule?: (i
         {qual?.sentiment && <SentimentBadge sentiment={qual.sentiment} />}
       </div>
 
-      {/* Offer range / asking price */}
-      {(qual?.offer_range_low || qual?.asking_price) && (
+      {/* Seller facts and underwriting only; qualification is not offer approval. */}
+      {qual?.asking_price && (
         <div className="mt-2 flex gap-4 text-xs">
           {qual.asking_price && (
             <div>
               <span className="text-gray-400">Asking</span>
               <span className="ml-1 font-semibold text-gray-700">{formatCurrency(qual.asking_price)}</span>
-            </div>
-          )}
-          {qual.offer_range_low && qual.offer_range_high && (
-            <div>
-              <span className="text-gray-400">Offer range</span>
-              <span className="ml-1 font-semibold text-green-700">
-                {formatCurrency(qual.offer_range_low)} – {formatCurrency(qual.offer_range_high)}
-              </span>
             </div>
           )}
           {lead.estimated_arv && (
@@ -533,8 +525,7 @@ function DealAnalysisCard({ deal }: { deal: DealAnalysis }) {
         {[
           { label: 'ARV',       value: deal.arv_low != null ? formatCurrency(deal.arv_low)   : '—', color: 'text-blue-700' },
           { label: 'Repairs',   value: deal.repair_cost_high != null ? formatCurrency(deal.repair_cost_high) : '—', color: 'text-orange-600' },
-          { label: 'MAO',       value: deal.mao != null ? formatCurrency(deal.mao)       : '—', color: 'text-gray-800' },
-          { label: 'Proj. Fee', value: deal.projected_assignment_fee ? formatCurrency(deal.projected_assignment_fee) : '—', color: 'text-green-700' },
+          { label: 'MAO estimate', value: deal.mao != null ? formatCurrency(deal.mao)       : '—', color: 'text-gray-800' },
         ].map((s) => (
           <div key={s.label} className="bg-gray-50 rounded-lg p-2 border border-gray-100">
             <p className="text-gray-400">{s.label}</p>
@@ -543,20 +534,16 @@ function DealAnalysisCard({ deal }: { deal: DealAnalysis }) {
         ))}
       </div>
 
-      {/* Offer range */}
-      {deal.offer_range_low != null && deal.offer_range_high != null && deal.offer_range_high > 0 && (
-        <div className="mt-2 text-xs">
-          <span className="text-gray-400">Offer range: </span>
-          <span className="font-semibold text-green-700">
-            {formatCurrency(deal.offer_range_low)} – {formatCurrency(deal.offer_range_high)}
-          </span>
-        </div>
-      )}
+      <p className="mt-2 text-xs text-amber-800">Underwriting estimates only. A human must enter and approve every offer price.</p>
 
       {/* Expanded */}
       {open && (
         <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-          {deal.summary && <p className="text-xs text-gray-600 italic">{deal.summary}</p>}
+          {deal.summary && <details className="text-xs text-gray-600">
+            <summary>Saved analysis notes — not approved offer terms</summary>
+            <p className="mt-1">Historical notes may contain retired automated price suggestions. Do not use them as offer instructions.</p>
+            <p className="italic">{deal.summary}</p>
+          </details>}
           {deal.operator_inputs && <div className="text-xs space-y-2">
             <p>Operator estimate · saved {new Date(deal.analyzed_at).toLocaleString()} · reference {deal.id}</p>
             <p>Subject: {deal.operator_inputs.address || 'Address not entered'} · {deal.operator_inputs.sqft} sqft · {deal.operator_inputs.beds} beds · {deal.operator_inputs.baths} baths</p>
@@ -623,19 +610,7 @@ function OfferRecCard({ rec }: { rec: OfferRec }) {
         </button>
       </div>
 
-      {/* Offer trio */}
-      <div className="mt-3 flex gap-3 text-xs">
-        {[
-          { label: 'Open with', value: rec.opening_offer, color: 'text-gray-700' },
-          { label: 'Target',    value: rec.target_offer,  color: 'text-blue-700' },
-          { label: 'Ceiling',   value: rec.ceiling_offer, color: 'text-red-700' },
-        ].map((o) => (
-          <div key={o.label} className="flex-1 bg-gray-50 rounded-lg p-2 border border-gray-100 text-center">
-            <p className="text-gray-400">{o.label}</p>
-            <p className={cn('font-bold', o.color)}>{o.value ? formatCurrency(o.value) : '—'}</p>
-          </div>
-        ))}
-      </div>
+      <p className="mt-3 text-xs text-amber-800">Saved negotiation research — not approved offer terms. A human must establish and approve any offer before it is communicated.</p>
 
       {/* Pain points */}
       {rec.pain_points && rec.pain_points.length > 0 && (
@@ -654,7 +629,7 @@ function OfferRecCard({ rec }: { rec: OfferRec }) {
           {rec.opening_script && (
             <div>
               <p className="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
-                <Lightbulb className="h-3.5 w-3.5" /> Opening script
+                <Lightbulb className="h-3.5 w-3.5" /> Archived script — review required, do not send
               </p>
               <p className="text-xs text-gray-700 bg-blue-50 border border-blue-100 rounded-lg p-2.5 italic">
                 "{rec.opening_script}"
@@ -669,7 +644,7 @@ function OfferRecCard({ rec }: { rec: OfferRec }) {
           {rec.objection_handlers && rec.objection_handlers.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5" /> Objection handlers
+                <ShieldCheck className="h-3.5 w-3.5" /> Archived objection notes — not approved responses
               </p>
               <div className="space-y-2">
                 {rec.objection_handlers.slice(0, 3).map((oh, i) => (
@@ -725,8 +700,6 @@ function leadsToCSVRows(leads: AcquisitionLead[]) {
     qualification_score: l.qual?.qualification_score ?? '',
     sentiment: l.qual?.sentiment ?? '',
     asking_price: l.qual?.asking_price ?? '',
-    offer_range_low: l.qual?.offer_range_low ?? '',
-    offer_range_high: l.qual?.offer_range_high ?? '',
     estimated_arv: l.estimated_arv ?? '',
     mao: l.mao ?? '',
     called_at: l.called_at ?? '',

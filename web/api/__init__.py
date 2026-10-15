@@ -4,7 +4,7 @@ These replace the four Supabase Edge Functions from wholesale-control-center.
 
 Routes:
   POST /api/ai/qualify-lead      → Lead qualification (5-factor scoring)
-  POST /api/ai/generate-offer    → Strategic offer generation
+  POST /api/ai/generate-offer    → Human-entered offer drafts
   POST /api/ai/write-outreach    → Compliant outreach copy
   POST /api/ai/match-buyers      → Buyer matching & blast templates
 """
@@ -14,11 +14,11 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, Literal
 
 import anthropic
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config.settings import settings
 
@@ -930,6 +930,8 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
 # ── 2. Offer Generator ─────────────────────────────────────────────────────────
 
 class GenerateOfferRequest(BaseModel):
+    human_offer_price: float | None = Field(default=None, gt=0, le=100_000_000, allow_inf_nan=False)
+    close_timeline: str = Field(default="To be agreed", max_length=200)
     lead_id: str | None = None
     property_address: str = ""
     city: str | None = None
@@ -944,112 +946,77 @@ class GenerateOfferRequest(BaseModel):
 
 @router.post("/generate-offer")
 def generate_offer(body: GenerateOfferRequest) -> dict:
-    arv = body.arv or 0.0
-    repairs = body.repair_estimate or 0.0
-    assignment_fee = 10_000.0
-    mao = body.mao if body.mao is not None else (arv * 0.70 - repairs - assignment_fee)
-
-    lead_data = body.model_dump(exclude_none=True)
-
-    system = (
-        "You are an expert Texas real estate wholesaler and negotiation specialist. "
-        "Output ONLY valid JSON, no prose or markdown."
+    # Prices and terms are exclusively operator-entered. This endpoint never calls AI
+    # or sends offers. MAO/ARV inputs are analysis context, not authorization to price.
+    recommendation = (
+        "Review verified comparable sales, repairs, title, closing costs and assignment fee. "
+        "Enter your offer price and closing terms, then approve the offer in your deal workflow."
     )
-    user = f"""Generate 3 strategic offer options for this wholesale deal.
-
-LEAD: {json.dumps(lead_data, default=str, indent=2)}
-ARV: ${arv:,.0f}
-Repair Estimate: ${repairs:,.0f}
-Assignment Fee Target: ${assignment_fee:,.0f}
-MAO (70% rule − repairs − fee): ${mao:,.0f}
-
-Return ONLY this JSON:
-{{
-  "options": [
-    {{
-      "name": "<offer name e.g. 'Fast Cash Close'>",
-      "offer_price": <number>,
-      "close_timeline": "<e.g. '7-10 business days'>",
-      "selling_points": ["<point1>", "<point2>", "<point3>"],
-      "pitch": "<2-3 sentence seller pitch>"
-    }}
-  ],
-  "objections": [
-    {{
-      "objection": "<common seller objection>",
-      "script": "<word-for-word response>"
-    }}
-  ]
-}}
-
-Create 3 options: (1) at MAO with fastest close, (2) slightly above MAO with standard close,
-(3) creative terms (subject-to, seller finance, or delayed close). Include 3 objection handlers.
-All offers must be ethical — no pressure, no fake urgency."""
-
-    try:
-        return _call_claude(system, user, max_tokens=2500)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(502, f"Claude returned invalid JSON: {exc}")
-    except Exception as exc:
-        logger.exception("generate-offer failed")
-        raise HTTPException(500, str(exc))
+    if body.human_offer_price is None:
+        return {"options": [], "objections": [], "recommendation": recommendation,
+                "approval_required": True, "sent": False}
+    return {"options": [{"name": "Human-entered draft", "offer_price": body.human_offer_price,
+        "close_timeline": body.close_timeline, "selling_points": [],
+        "pitch": f"Proposed purchase price: ${body.human_offer_price:,.2f}. "
+                 "Subject to your review and approved written terms."}],
+        "objections": [], "recommendation": recommendation,
+        "approval_required": True, "sent": False}
 
 
 # ── 3. Outreach Writer ─────────────────────────────────────────────────────────
 
 class WriteOutreachRequest(BaseModel):
     lead_id: str | None = None
-    property_address: str = ""
+    property_address: str = Field(default="", max_length=500)
     city: str | None = None
-    owner_first_name: str | None = None
+    owner_first_name: str | None = Field(default=None, max_length=100)
     motivation_tag: str | None = None
-    contact_attempts: int = 0
-    channel: str = "sms"
+    contact_attempts: int = Field(default=0, ge=0)
+    channel: Literal["sms", "email", "voicemail", "direct_mail"] = "sms"
     tone: str = "friendly"
     model_config = {"extra": "allow"}
 
 
 @router.post("/write-outreach")
 def write_outreach(body: WriteOutreachRequest) -> list:
-    lead_data = body.model_dump(exclude_none=True)
-
-    system = (
-        "You are a TCPA/CAN-SPAM compliant Texas real estate outreach specialist. "
-        "Never use pressure tactics, fake urgency, or imply physical surveillance. "
-        "Output ONLY a valid JSON array, no prose or markdown."
-    )
-    user = f"""Write 3 outreach message variations.
-
-Channel: {body.channel}
-Tone: {body.tone}
-LEAD: {json.dumps(lead_data, default=str, indent=2)}
-
-Section 4 & 5 compliance rules:
-- No pressure, urgency language, or fake deadlines
-- Source leads via "public records" — never say you drove by or watched the property
-- SMS: include "Reply STOP to opt out", keep segments ≤160 chars
-- Email: include [Unsubscribe] placeholder and physical mailing address
-- Contact hours: 9am–7pm CT, Mon–Fri only
-- Personalize with seller first name and property address
-
-Return ONLY a JSON array:
-[
-  {{
-    "channel": "{body.channel}",
-    "subject": "<email subject line or null for SMS>",
-    "body": "<full message body>",
-    "estimated_response_rate_notes": "<one sentence on why this variation converts>"
-  }}
-]"""
-
-    try:
-        result = _call_claude(system, user, max_tokens=2000)
-        return result if isinstance(result, list) else [result]
-    except json.JSONDecodeError as exc:
-        raise HTTPException(502, f"Claude returned invalid JSON: {exc}")
-    except Exception as exc:
-        logger.exception("write-outreach failed")
-        raise HTTPException(500, str(exc))
+    """Fixed operator-review drafts only: no model pricing, approval or dispatch."""
+    mailing = settings.agency_mailing_address.strip()
+    if body.channel in ("email", "direct_mail") and not mailing:
+        raise HTTPException(503, "Configure the business mailing address before drafting email or direct mail.")
+    owner = " ".join((body.owner_first_name or "there").split())
+    address = " ".join(body.property_address.split())
+    sender = settings.agency_contact_name
+    agency = settings.agency_name
+    # Extra input (including inferred prices, purported approvals and tone demands)
+    # is never forwarded to a model or substituted into offer terms.
+    questions = [
+        "Would you be open to discussing your property?",
+        "Would a conversation about your plans for the property be helpful?",
+        "Are you considering selling, or would you prefer that we do not follow up?",
+    ]
+    greeting = "Hello" if body.tone.lower() == "professional" else "Hi"
+    drafts = []
+    for question in questions:
+        text = f"{greeting} {owner}, this is {sender} with {agency}. {question}"
+        subject = None
+        if body.channel == "sms":
+            text += " Reply STOP to opt out."
+        elif body.channel == "voicemail":
+            text += " There is no pressure to respond."
+            if settings.agency_phone:
+                text += f" You can reach us at {settings.agency_phone}."
+        else:
+            subject = f"A question about {address or 'your property'}" if body.channel == "email" else None
+            text += " There is no pressure or rush. Any offer terms require human review and approval."
+            if body.channel == "email":
+                text += "\nReply UNSUBSCRIBE to stop receiving messages."
+            text += f"\n\n{sender}\n{agency}\n{settings.agency_phone}\n{mailing}"
+        drafts.append({
+            "channel": body.channel, "subject": subject, "body": text,
+            "estimated_response_rate_notes": "Fixed draft for operator review. Verify consent and contact details before use; nothing has been sent.",
+            "approval_required": True, "sent": False,
+        })
+    return drafts
 
 
 # ── 4. Buyer Matcher ───────────────────────────────────────────────────────────

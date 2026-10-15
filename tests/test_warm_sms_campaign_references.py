@@ -36,7 +36,9 @@ def test_changed_template_cannot_reuse_campaign_reference(campaign):
     db, row, body, sender = campaign
     db.tables["sms_events"] = [receipt(row, body, "delivered")]
     body.template = "Different request for {address}. Reply STOP to opt out."
-    assert marketing_api._process_bulk_sms(body)["failed_count"] == 1
+    with pytest.raises(marketing_api.HTTPException) as error:
+        marketing_api._process_bulk_sms(body)
+    assert error.value.status_code == 422
     assert not sender.sends
 
 
@@ -78,3 +80,13 @@ def test_uncertain_dispatch_is_unknown_not_failed(campaign, monkeypatch):
 def test_campaign_reference_required_before_any_dispatch():
     with pytest.raises(ValueError):
         marketing_api.BulkSMSRequest(lead_ids=[uuid4()])
+
+
+@pytest.mark.parametrize("text", [
+    "We offer $100000 for {address}. Reply STOP to opt out.",
+    "A different informational message to {first_name}",
+    marketing_api.WARM_FOLLOWUP_TEMPLATE + " Additional offer terms.",
+])
+def test_arbitrary_content_cannot_bypass_offer_review(text):
+    with pytest.raises(ValueError, match="Only the standard"):
+        marketing_api.BulkSMSRequest(request_id=uuid4(), lead_ids=[uuid4()], template=text)

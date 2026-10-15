@@ -2,7 +2,7 @@
 from uuid import NAMESPACE_URL, uuid5
 
 
-LABELS = {'twilio': 'SMS', 'sendgrid': 'Email', 'retell': 'AI call', 'test': 'Launch drill'}
+LABELS = {'twilio': 'SMS', 'sendgrid': 'Email', 'retell': 'AI call', 'test': 'Launch drill', 'skip_trace': 'Skip tracing', 'claude': 'Claude scoring'}
 
 
 def record_provider_alert(sb, provider: str, reference: str, status: str, lead_id=None) -> str:
@@ -16,7 +16,7 @@ def record_provider_alert(sb, provider: str, reference: str, status: str, lead_i
         'body': ('This is an authorized in-app launch drill. No external message or call was sent.' if drill else
                  f'{LABELS[provider]} outcome: {status}. Review the provider receipt and follow up manually. '
                  'Do not resend an uncertain attempt until its outcome is reconciled.'),
-        'action_url': '/setup', 'action_label': 'Review delivery',
+        'action_url': '/daily-lists' if provider in ('skip_trace','claude') else '/setup', 'action_label': 'Review scoring' if provider == 'claude' else ('Review tracing' if provider == 'skip_trace' else 'Review delivery'),
         'metadata': {'integration_failure': True, 'provider': provider, 'reference': reference,
                      'status': status, 'test_drill': drill},
     }

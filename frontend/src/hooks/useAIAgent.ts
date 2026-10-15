@@ -98,6 +98,8 @@ export function useOfferGenerator() {
     city?: string;
     motivation_tag?: string;
     ai_qualification_summary?: string;
+    human_offer_price?: number;
+    close_timeline?: string;
     asking_price?: number;
     mao?: number;
     arv?: number;
