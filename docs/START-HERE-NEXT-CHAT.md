@@ -1,5 +1,11 @@
 # WholesaleOS — new-chat handoff
 
+## Browser retry and provider file validation — October15, 11:45am Central
+
+Retried requested Retell tab, then reset computer-use session and retried. Both attempts failed before account access with Unable to load browser request-header policy; the tool also reports its own network403. No Retell account setup, integration or upload occurred. Browser-control service recovery is required; do not bypass policy loading through another transport. User can leave Retell open while restarting/reconnecting the desktop browser integration. No need to reset Retell credentials.
+
+Added `scheduled_batch.py validate-upload --provider propstream|retell --path FILE`. Exact separate header contracts, seller/address fields, TX ZIP, Retell E.164, agency/agent context, duplicate property/phone and stable CRM metadata matches are checked. Diagnostics contain line numbers/reasons, not personal data. Validation is structural only and always returns dispatch_authorized=false. Both dated CSVs validated as empty templates, not eligible lead lists. Five collector tests pass, including malformed/duplicate Retell rows and empty templates. Files stay PropStream FIRST, Retell AFTER completed tracing plus fresh channel clearance. No repeated order, campaign, spend or production change.
+
 ## PropStream and Retell upload contract — October15
 
 Owner clarified the same batch must be prepared for PropStream FIRST and Retell AFTER tracing, then explicitly requested setup using the open Retell account. Added docs/retell-bulk-integration.md with exact verified Retell CSV contract, existing agent variables, proposed draft behavior and connection checklist. Generator now adds PropStream upload and Retell call upload sheets and separate CSVs, carrying seller/contact/address/city/state/ZIP, stable IDs, agency/agent variables and JSON metadata for Retell. Existing75completed baseline remains excluded from new PropStream orders; all304phone records remain listed/unknown DNC holds, so both upload files are header-only. No actual upload-ready population yet.

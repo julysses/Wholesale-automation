@@ -3,10 +3,51 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from scheduled_batch import claim, package_completed, PROPSTREAM_HEADERS, RETELL_HEADERS
+from scheduled_batch import claim, package_completed, validate_upload, PROPSTREAM_HEADERS, RETELL_HEADERS
 
 
 class ScheduledBatchTests(unittest.TestCase):
+    def test_retell_validation_preserves_e164_and_rejects_duplicates_and_bad_metadata(self):
+        import csv
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root)/'retell.csv'
+            row = dict.fromkeys(RETELL_HEADERS, 'test')
+            row.update({'phone number':'+12145551234', 'property_state':'TX', 'property_zip':'75001', 'county':'Dallas'})
+            row['metadata'] = json.dumps({key:row[key] for key in ('lead_id','parcel_id','trace_request_id','follow_up_task_id')})
+            def save(rows):
+                with path.open('w', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=RETELL_HEADERS)
+                    writer.writeheader(); writer.writerows(rows)
+            save([row])
+            self.assertTrue(validate_upload(path,'retell')['format_valid'])
+            self.assertFalse(validate_upload(path,'retell')['dispatch_authorized'])
+            save([row, row])
+            self.assertIn('duplicate_recipient', validate_upload(path,'retell')['errors'][0]['reasons'])
+            row['phone number'] = "'+12145551234"
+            row['metadata'] = '{}'
+            row['owner_name'] = ''
+            save([row])
+            reasons = validate_upload(path,'retell')['errors'][0]['reasons']
+            self.assertIn('invalid_us_e164_phone', reasons)
+            self.assertIn('crm_metadata_mismatch', reasons)
+            self.assertIn('required_context_missing', reasons)
+
+    def test_propstream_format_and_empty_templates(self):
+        import csv
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root)/'propstream.csv'
+            with path.open('w', newline='') as f:
+                csv.writer(f).writerow(PROPSTREAM_HEADERS)
+            result = validate_upload(path,'propstream')
+            self.assertTrue(result['format_valid'])
+            self.assertTrue(result['empty_template'])
+            self.assertFalse(result['dispatch_authorized'])
+            with path.open('a', newline='') as f:
+                csv.writer(f).writerow(['']*len(PROPSTREAM_HEADERS))
+            self.assertFalse(validate_upload(path,'propstream')['format_valid'])
+            path.write_text('Phone,Name\n')
+            self.assertFalse(validate_upload(path,'retell')['format_valid'])
+
     def test_source_windows_and_failed_attempts_are_not_repeated(self):
         with tempfile.TemporaryDirectory() as root:
             self.assertTrue(claim(root, 'Dallas', 'tax', '2026-10-15'))

@@ -4,6 +4,8 @@ Owner selected Retell setup/integration on October15 and opened the account. Thi
 
 ## File contract
 
+Before upload run `python3 pipeline/collectors/scheduled_batch.py validate-upload --provider propstream|retell --path FILE`. It checks the exact header contract, required fields, duplicate recipient/property, Retell phone format and CRM metadata identity. A format pass is never eligibility or dispatch authorization. Header-only files are explicitly reported as empty templates. Five targeted tests pass. October15 retry after computer-use reset still failed at browser policy loading; account setup remains pending.
+
 Each dated batch retains the master Excel and two distinct CSVs. Do not upload the whole workbook into either service.
 
 1. `propstream-upload.csv`: accepted existing17-column contact import format (First Name, Last Name, Email, Phone, Mobile Phone, Landline, Street Address, City, State, Zip, Mail Street Address, Mail City, Mail State, Mail Zip, Mail Address Same, Type, Status). Only new eligible properties. Preserve the verified full owner name; do not guess first/last splits for entities or joint owners. Retain mailing fields only when sourced. Keep CRM/parcel/source IDs in the master/sidecar for exact reconciliation. Completed/no-result/uncertain jobs are excluded from new orders.

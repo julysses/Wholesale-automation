@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from pathlib import Path
 import sqlite3
 from datetime import date, timedelta
@@ -18,6 +19,57 @@ RETELL_HEADERS = ['phone number', 'owner_name', 'contact_name', 'property_addres
                   'property_city', 'property_state', 'property_zip', 'county',
                   'lead_id', 'parcel_id', 'trace_request_id', 'follow_up_task_id',
                   'agent_name', 'agency_name', 'metadata']
+
+
+def validate_upload(path, provider):
+    """Validate transport format only. Never grants tracing/channel authorization."""
+    expected = {'propstream': PROPSTREAM_HEADERS, 'retell': RETELL_HEADERS}[provider]
+    errors, seen, count = [], set(), 0
+    with Path(path).open(encoding='utf-8-sig', newline='') as stream:
+        reader = csv.DictReader(stream)
+        if reader.fieldnames != expected:
+            return {'format_valid': False, 'rows': 0, 'errors': ['header_contract_mismatch'],
+                    'dispatch_authorized': False}
+        for line, row in enumerate(reader, 2):
+            count += 1
+            reasons = []
+            if None in row or any(value is None for value in row.values()):
+                errors.append({'line': line, 'reasons': ['column_count_mismatch']})
+                continue
+            if provider == 'propstream':
+                if not (row['First Name'].strip() or row['Last Name'].strip()):
+                    reasons.append('seller_name_missing')
+                if any(not row[k].strip() for k in ('Street Address', 'City', 'State', 'Zip')):
+                    reasons.append('property_address_incomplete')
+                if row['State'] != 'TX' or not re.fullmatch(r'\d{5}(?:-\d{4})?', row['Zip']):
+                    reasons.append('invalid_state_or_zip')
+                key = tuple(row[k].strip().casefold() for k in ('Street Address', 'City', 'State', 'Zip'))
+            else:
+                if not re.fullmatch(r'\+1[2-9]\d{2}[2-9]\d{6}', row['phone number']):
+                    reasons.append('invalid_us_e164_phone')
+                required = [k for k in RETELL_HEADERS if k != 'metadata']
+                if any(not row[k].strip() for k in required):
+                    reasons.append('required_context_missing')
+                if row['property_state'] != 'TX' or not re.fullmatch(r'\d{5}(?:-\d{4})?', row['property_zip']):
+                    reasons.append('invalid_state_or_zip')
+                if row['county'] not in ('Dallas', 'Collin'):
+                    reasons.append('unsupported_county')
+                try:
+                    metadata = json.loads(row['metadata'])
+                    ids = ('lead_id', 'parcel_id', 'trace_request_id', 'follow_up_task_id')
+                    if not isinstance(metadata, dict) or any(not row[k] or metadata.get(k) != row[k] for k in ids):
+                        reasons.append('crm_metadata_mismatch')
+                except (ValueError, TypeError):
+                    reasons.append('invalid_metadata_json')
+                key = row['phone number']
+            if key in seen:
+                reasons.append('duplicate_property' if provider == 'propstream' else 'duplicate_recipient')
+            seen.add(key)
+            if reasons:
+                errors.append({'line': line, 'reasons': reasons})
+    return {'format_valid': not errors, 'rows': count, 'errors': errors,
+            'empty_template': count == 0, 'dispatch_authorized': False,
+            'remaining_gate': 'Fresh CRM eligibility, suppression, history and provider acceptance required'}
 
 
 def claim(root, county, kind, day, legacy=None):
@@ -150,10 +202,17 @@ if __name__ == '__main__':
     pack.add_argument('--source', required=True)
     pack.add_argument('--root', required=True)
     pack.add_argument('--day', required=True)
+    validate = commands.add_parser('validate-upload')
+    validate.add_argument('--path', required=True)
+    validate.add_argument('--provider', required=True, choices=['propstream', 'retell'])
     args = vars(parser.parse_args())
     action = args.pop('action')
     if action == 'claim':
         print(json.dumps({'collection_allowed': claim(**args)}))
+    elif action == 'validate-upload':
+        result = validate_upload(**args)
+        print(json.dumps(result))
+        raise SystemExit(0 if result['format_valid'] else 2)
     else:
         folder, receipt = package_completed(**args)
         print(json.dumps({'folder': str(folder), **receipt}))
