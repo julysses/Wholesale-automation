@@ -39,7 +39,7 @@ def test_duplicate_preserves_human_completed_task():
     assert next(iter(db.tables['tasks'].values()))['status'] == 'completed'
 
 
-@pytest.mark.parametrize('text', ['STOP', 'unsubscribe', 'Please remove me', "Don't text me", 'QUIT'])
+@pytest.mark.parametrize('text', ['STOP', 'unsubscribe', 'Please remove me', "Don't text me", 'QUIT', 'Wrong number', 'You have the wrong number'])
 def test_recipient_optouts_only(text):
     assert recipient_opted_out([{'role': 'user', 'content': text}])
     assert not recipient_opted_out([{'role': 'agent', 'content': text}])

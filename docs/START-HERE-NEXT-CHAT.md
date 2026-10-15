@@ -1,3 +1,7 @@
+## Additional QA findings
+
+Frontend production build passed; lint regression gate passed (149 existing findings, zero new). Live unsigned Retell and Twilio callbacks both rejected401. Production rollback tests repeated successfully for carrier replies, duplicates, phone-wide STOP, late replies and task preservation. Fixed missing wrong-number classification to match the agent prompt: those replies now suppress and never forward to Retell.62 targeted SMS tests pass. Pinned-release probe deployment ad2a6b1 was queued; superseding with this fix. Live handset test still awaits owner-identified form submission; no messages sent.
+
 ## Live-test QA in progress — October15,2026
 
 User requested all QA and live testing. Full backend suite692 passed; frontend140 passed. Strengthened read-only production probe to verify configured agent ID, pinned version, published=true and exact production callback.23 targeted probe/worker tests pass (includes3 new negative cases). No sending enabled.

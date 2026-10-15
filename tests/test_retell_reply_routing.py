@@ -25,7 +25,7 @@ def test_known_consented_chat_handoff(ready):
     db,data,receipt,_=ready
     assert route.reply_redirect(db,data,receipt)==route.RETELL_REPLY_URL
 
-@pytest.mark.parametrize('text',['STOP','Stop!','HELP','START','UNSTOP','YES','Please remove me',"Don't text me"])
+@pytest.mark.parametrize('text',['STOP','Stop!','HELP','START','UNSTOP','YES','Please remove me',"Don't text me",'Wrong number'])
 def test_controls_never_forward(ready,text):
     db,data,receipt,_=ready;data['Body']=text
     assert route.reply_redirect(db,data,receipt) is None

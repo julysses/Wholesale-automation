@@ -35,7 +35,7 @@ def recipient_opted_out(messages):
     """Inspect only recipient turns; agent's 'Reply STOP' must never suppress."""
     keyword = re.compile(r"^\s*(?:stop|stopall|unsubscribe|cancel|end|quit|revoke|opt\s*out)[.!?\s]*$", re.I)
     request = re.compile(r"\b(?:do not|don't|dont|never)\s+(?:call|text|contact)\b|"
-                         r"\bstop\s+(?:calling|texting|contacting)\b|\bremove\s+me\b", re.I)
+                         r"\bstop\s+(?:calling|texting|contacting)\b|\bremove\s+me\b|\bwrong\s+number\b", re.I)
     return any(isinstance(m, dict) and m.get('role') == 'user'
                and (keyword.search(str(m.get('content') or ''))
                     or request.search(str(m.get('content') or '').replace('’', "'"))) for m in messages)
