@@ -1,6 +1,6 @@
 ## Latest update
 
-Release 421a373 pushed and production deployment dpl_GyRNtdbmQanGo8J7QDnWmSRoVSzc READY with public aliases. Callback fix f492bad production deployment dpl_6K6BP6u648RjBofA1oyvUEMEqXV2 initiated; verify READY. Production credentials approval requested in chat; prepared Vercel Secret RETELL_SMS_API_KEY, Production only, value EMPTY. Do not save until answered. Bundle approval covers API key, production webhook signing alignment, scheduler bearer in production Vault; no bypass needed.
+Release 421a373 pushed and production deployment dpl_GyRNtdbmQanGo8J7QDnWmSRoVSzc READY with public aliases. Callback fix f492bad production deployment dpl_6K6BP6u648RjBofA1oyvUEMEqXV2 verified READY with wholesale-automation.vercel.app assigned. Production credentials approval requested in chat; prepared Vercel Secret RETELL_SMS_API_KEY, Production only, value EMPTY. Do not save until answered. Bundle approval covers API key, production webhook signing alignment, scheduler bearer in production Vault; no bypass needed.
 
 Retell documented Get Chat omits phone fields. Updated callback resolver to use exact saved chat ID when telephone fields are absent, rejecting conflicting lead/phone metadata. 143 targeted tests pass. Native callback delivery remains unverified.
 
