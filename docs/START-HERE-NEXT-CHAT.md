@@ -1,5 +1,7 @@
 ## Trustee-reference parsing repaired and server validation verified — 2026-10-16, 23:42 UTC
 
+Code commit **c166aafa07b2be566154bd5103ecf433690978b2** is pushed. GitHub CI **38982841303** completed successfully in all four jobs (frontend, backend, pipeline and real PostgreSQL). Prior capture-helper commit 68cc638 also passed CI 38982378240.
+
 **Progress; goal remains active.** Full-notice evidence upload still awaits the specific approval requested in the prior turn. No fresh notice text, captures, OCR receipts or batch assessment was uploaded during this continuation. Collection, tracing and SMS remain paused.
 
 The bulk parser accepted only a four-digit-year TS reference. Added explicitly labelled PLG, Firm File Number and short TS formats in processor **foreclosure-batch/1.1**, retaining their label as a prefix. It rejects missing hyphens, attached suffixes, unlabelled instrument/loan numbers and references split onto an unrelated line. Multiple distinct references remain unresolved; original OCR and page-hash provenance stay unchanged. No identity, current-sale or eligibility grant.
