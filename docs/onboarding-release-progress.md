@@ -22,10 +22,12 @@ Three unassigned historical website leads are closed synthetic/test records. Two
 ## Release sequence
 - [x] Reconcile branch and selectively integrate source.
 - [x] Test combined application and exact migration sequence locally.
-- [ ] Apply manifest migrations to production and verify protected API contracts there.
+- [x] Apply all 32 manifest migrations to production; rollback QA confirms ownership, per-lead task, replay preservation, notifications, suppression and snapshot/access contracts.
 - [ ] Deploy current application and inspect authenticated Daily Lists.
 - [ ] Reconcile/transfer existing source and PropStream receipt graph without duplicating leads, requests or spending.
 - [ ] Verify a matched batch in production including ownership, task and held contact history.
 - [ ] Connect scheduled ingestion to production after acceptance; observe a genuine source run.
 
 Do not activate SMS, order new traces, erase suppression history, copy credentials, or promote the collector branch wholesale. All source collection starts disabled in the production migration. Historical raw data expiry and missing provider delivery evidence remain explicit review items.
+
+Weekly monitoring retains expired raw evidence and contacts for explicit maintenance review; it no longer purges them as a side effect. A transient connector request error was reconciled against migration history and absent columns before applying successfully. No data transferred or sending enabled. Live rehearsal inventory: 79 properties, 77 trace requests, 481 contacts, 8 runs, 105 raw payload batches, 49,537 source records and 81 review events.

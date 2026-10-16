@@ -35,7 +35,9 @@
     "frontend/supabase/migrations/20261015023121_weekly_tax_monitoring.sql",
     "frontend/supabase/migrations/20261016193454_county_intake_assignment.sql"
   ],
-  "production_applied": false,
+  "production_applied": true,
   "data_transferred": false,
-  "scope": "County intake, verified identity, receipt monitoring, tracing and scoring. Existing SMS, offer and land behavior preserved."
+  "scope": "County intake, verified identity, receipt monitoring, tracing and scoring. Existing SMS, offer and land behavior preserved.",
+  "production_project": "dvzhzlipbwzzcliujzyz",
+  "applied_date": "2026-10-16"
 }

@@ -38,6 +38,9 @@ test('selected production migration sequence installs together with sending and 
  await db.query("update public.tasks set status='completed' where lead_id=$1",[lead]);
  await db.query('update wholesale_ingest.properties set lead_id=$1 where lead_id=$1',[lead]);
  assert.equal((await q('select status from public.tasks where lead_id is not null'))[0].status,'completed');
+ await db.query("insert into wholesale_ingest.contacts(lead_id,provider,traced_at,expires_at,email) values($1,'synthetic',now()-interval '2 days',now()-interval '1 day','synthetic@example.invalid')",[lead]);
+ await db.exec('select wholesale_ingest.scan_at(now())');
+ assert.equal((await q('select count(*)::int n from wholesale_ingest.contacts'))[0].n,1,'Monitoring must retain expired evidence for explicit review');
  await db.exec('SET ROLE authenticated');
  await assert.rejects(q('select * from wholesale_ingest.contacts'),/permission denied/);
  await assert.rejects(q('select public.list_pipeline_snapshot(current_date,0)'),/permission denied/);

@@ -88,11 +88,7 @@ BEGIN
  INSERT INTO wholesale_ingest.daily_digests(day,generated_at,status,summary) VALUES(today,p_now,'generated',summary)
  ON CONFLICT(day) DO UPDATE SET generated_at=p_now,summary=excluded.summary;
 
- -- Hash receipts remain, preventing expired payloads from being accepted as new batches.
- DELETE FROM wholesale_ingest.records r USING wholesale_ingest.raw_payloads b
- WHERE r.run_id=b.run_id AND r.batch_index=b.batch_index AND b.expires_at<=p_now;
- UPDATE wholesale_ingest.raw_payloads SET payload=NULL,purged_at=coalesce(purged_at,p_now) WHERE expires_at<=p_now;
- DELETE FROM wholesale_ingest.contacts WHERE expires_at<=p_now;
+ -- Retention is an explicit maintenance action. Monitoring never deletes intake evidence or contacts.
  RETURN summary;
 END; $$;
 COMMIT;
