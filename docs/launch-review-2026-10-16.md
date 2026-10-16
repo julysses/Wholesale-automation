@@ -1,6 +1,6 @@
 # WholesaleOS operational review and launch status
 
-Updated October 16, 2026, after the 22:06 UTC tax transfer. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
+Updated October 16, 2026, after the tax transfer and missing-address safeguard release. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
 
 ## What is now working
 
@@ -9,6 +9,8 @@ Updated October 16, 2026, after the 22:06 UTC tax transfer. Repairs are deployed
 | Restricted county intake | Actual production Edge request accepted one approved historical Collin notice (HTTP 202); identical replay returned HTTP 200/replayed=true. One saved batch and record. | Fresh collection and unattended scheduling are not yet proven. |
 | CRM association and follow-up | The test reused the existing lead/property and pending assigned follow-up. No duplicate lead, property or task. | New candidates still need property identity and current status evidence. |
 | Historical source handoff | Dallas and Collin foreclosure evidence and canonical tax snapshots are now in production with original receipts and dates. | Historical snapshots do not prove current county coverage, active foreclosure or current debt. |
+| Missing county address | Future parsing preserves missing situs as null; historical all-zero placeholders display as Unresolved property and cannot pass API address validation. Full-archive replay preserved account IDs, parcels and balances. | Original historical evidence remains unchanged. |
+| Scheduled handoff | Paused heartbeat now reads the production checkpoint and corrected collector code instead of defaulting to rehearsal. | Schedule remains paused; a fresh observed run still requires approval. |
 | Review workflow | Live source filters, stable pagination, per-source counts and unchanged global counts verified. | 40,268 records still require evidence; this is a review inventory, not a qualified campaign. |
 | CSV lead import | Authenticated server reconciliation preserves notes/motivation, identifies existing matches and rejects uncertain updates. | Operator acceptance for the complete daily workflow remains necessary. |
 | Website owner alerts | Durable owner alert is claimed before SMS scheduling; an SMS scheduling exception no longer prevents owner notification. | Remaining historical alerts need evidence reconciliation, not mass resend. |
@@ -39,13 +41,13 @@ Keep Twilio and Retell. Before resuming automatic acknowledgements, use the shor
 
 ## Verification and release
 
-Live runtime: e86c92d55905b3e545a08fae64637ff50612df4a, Vercel deployment dpl_6doVwKbFKCHgSMQtMgzeSxxwPMbd, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38972159798 succeeded. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
+Live runtime: 07be512098fddfe97feecca4d86881d892b8b95b, Vercel deployment dpl_4A4xmRtHz15GsvFeapBTpAssJuLa, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38974317180 succeeded. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
 
-Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The earlier full backend suite passed 794 tests and frontend suite passed 162; these are earlier full-suite results, not rerun counts from the tax transfer.
+Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The latest hosted release passed 835 backend tests plus six subtests and 163 frontend tests, alongside pipeline and real PostgreSQL checks. The missing-situs change also passed 12 local parser tests, 14 API tests and three UI tests.
 
 Production rollback assertions passed for the exact intake linkage and tax transfer before commit. All 81 tax batch payload/record SHA256 values matched the original receipts; authoritative PostgreSQL row checksums matched both source snapshots and imported rows. Final read-only checks verified completed receipts, one assigned task per county, correct counts and paused controls. Automatic approval review rejected a second committing promotion run; it was not executed. The completed-state guard was inspected, and saved-state checks replaced that extra run.
 
-Authenticated browser checks verified Dallas/Collin filters, empty tax states before import, populated tax states after import, pagination reset on source change and the global count. CRM health, Daily Lists and both website intake pages return HTTP 200. Availability is not end-to-end submission or handset evidence.
+Authenticated browser checks verified Dallas/Collin filters, empty tax states before import, populated tax states after import, pagination reset on source change and the global count. CRM health, Daily Lists and both website intake pages return HTTP 200. Availability is not end-to-end submission or handset evidence. The affected historical Collin card was verified live as Unresolved property with an empty address input; no placeholder is linked to a CRM property.
 
 ## Remaining work before full launch
 
