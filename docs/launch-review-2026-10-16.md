@@ -1,6 +1,6 @@
 # WholesaleOS operational review and launch status
 
-Updated October 16, 2026, after the tax transfer and missing-address safeguard release. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
+Updated October 16, 2026, after the tax-review acceptance and evidence-context release. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
 
 ## What is now working
 
@@ -11,7 +11,7 @@ Updated October 16, 2026, after the tax transfer and missing-address safeguard r
 | Historical source handoff | Dallas and Collin foreclosure evidence and canonical tax snapshots are now in production with original receipts and dates. | Historical snapshots do not prove current county coverage, active foreclosure or current debt. |
 | Missing county address | Future parsing preserves missing situs as null; historical all-zero placeholders display as Unresolved property and cannot pass API address validation. Full-archive replay preserved account IDs, parcels and balances. | Original historical evidence remains unchanged. |
 | Scheduled handoff | Paused heartbeat now reads the production checkpoint and corrected collector code instead of defaulting to rehearsal. | Schedule remains paused; a fresh observed run still requires approval. |
-| Review workflow | Live source filters, stable pagination, per-source counts and unchanged global counts verified. | 40,268 records still require evidence; this is a review inventory, not a qualified campaign. |
+| Review workflow | Source filters, pagination and historical tax date/amount/warnings verified live. Exact Dallas and Collin property reviews saved through the production interface, with assigned follow-ups and preserved evidence. | 40,266 records still require evidence; historical tax balances do not establish current distress. |
 | CSV lead import | Authenticated server reconciliation preserves notes/motivation, identifies existing matches and rejects uncertain updates. | Operator acceptance for the complete daily workflow remains necessary. |
 | Website owner alerts | Durable owner alert is claimed before SMS scheduling; an SMS scheduling exception no longer prevents owner notification. | Remaining historical alerts need evidence reconciliation, not mass resend. |
 | After-hours SMS scheduling | New inquiries defer to the next 9 AM America/Chicago contact window, including DST; expiry follows that window. Existing jobs are preserved. | Scheduler is paused; this repair does not establish delivery. |
@@ -23,17 +23,17 @@ Updated October 16, 2026, after the tax transfer and missing-address safeguard r
 |---|---:|---:|
 | Dallas foreclosure | 490 | 489 |
 | Collin foreclosure, including the approved transport test | 165 | 81 |
-| Dallas tax snapshot | 30,516 | 30,516 |
-| Collin tax snapshot | 9,182 | 9,182 |
-| Total | 40,353 | 40,268 |
+| Dallas tax snapshot | 30,516 | 30,515 |
+| Collin tax snapshot | 9,182 | 9,181 |
+| Total | 40,353 | 40,266 |
 
-The identical second Collin tax snapshot was excluded. The tax transfer created zero leads or properties and two pending review tasks assigned to the approved owner. Production has 17,448 leads, 138 tasks, 82 associated properties and 77 trace requests. Tracing count and SMS-event fingerprint stayed unchanged throughout the intake acceptance and tax transfer. All source gates, outreach, spending and SMS scheduler remain disabled.
+The identical second Collin tax snapshot was excluded. The tax transfer created zero leads or properties and two pending review tasks assigned to the approved owner. Subsequent reviewed tax associations created one Dallas lead and reused one Collin lead, with two properties and two assigned pending follow-ups. Production now has 17,449 leads, 140 tasks, 84 associated properties and 77 trace requests. Both tax signals remain inactive with current amount unknown. The Collin snapshot balance is $0.39; its existing lead qualification was preserved. The Dallas remaining levy is historical, not a verified current payoff. Tracing count and SMS-event fingerprint stayed unchanged throughout the intake acceptance and tax transfer. All source gates, outreach, spending and SMS scheduler remain disabled.
 
 Existing PropStream history was preserved earlier: 77 completed requests and 481 contacts. Prior contact review found 146 DNC-listed and 335 DNC-unknown; no new contact-clearance review was performed in this continuation. Keep them on hold until current channel permissions are verified. Retain PropStream and the cumulative $50 prepaid cap; no reloads, new purchases or subscriptions were made.
 
 ## SMS blocker
 
-Both provider cases were refreshed after the latest intake work. [Twilio ticket 29953072](https://help.twilio.com/tickets/29953072) remains Hold, with an internal escalation and latest response October 15 at 6:18 PM as displayed. [Retell ticket 65825](https://support.retellai.com/?durationMs=31536000000&tab=issues&issueNumber=65825) remains Open with acknowledgement only.
+Both provider cases were refreshed after the latest intake work. [Twilio ticket 29953072](https://help.twilio.com/tickets/29953072) remains Hold, with an internal escalation and latest response October 15 at 6:18 PM as displayed. [Retell ticket 65825](https://support.retellai.com/?durationMs=31536000000&tab=issues&issueNumber=65825) remains Open and now includes an October 16 reply escalating the issue to a telephony engineer; no technical resolution has been provided.
 
 The owner test was accepted by Retell but marked undelivered by Twilio with error 30007. The failed message lacked a Messaging Service SID, while an earlier delivered message used the registered service; that difference is an investigation lead, not a proven cause. Supported routing and delivery-callback linkage still require resolution. No test retry, support message or sending-worker invocation occurred in this continuation.
 
@@ -41,11 +41,13 @@ Keep Twilio and Retell. Before resuming automatic acknowledgements, use the shor
 
 ## Verification and release
 
-Live runtime: 07be512098fddfe97feecca4d86881d892b8b95b, Vercel deployment dpl_4A4xmRtHz15GsvFeapBTpAssJuLa, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38974317180 succeeded. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
+Live runtime: e70c7ab3fe5c3fb4b57c587432a250ed2fa93f06, Vercel deployment dpl_2jyrgzZXo1ELfqyhfAR26jGFZnt9, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38975929479 succeeded. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
 
-Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The latest hosted release passed 835 backend tests plus six subtests and 163 frontend tests, alongside pipeline and real PostgreSQL checks. The missing-situs change also passed 12 local parser tests, 14 API tests and three UI tests.
+Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The latest hosted release passed 835 backend tests plus six subtests and 165 frontend tests, alongside pipeline and real PostgreSQL checks. The missing-situs change also passed 12 local parser tests, 14 API tests and three UI tests.
 
-Production rollback assertions passed for the exact intake linkage and tax transfer before commit. All 81 tax batch payload/record SHA256 values matched the original receipts; authoritative PostgreSQL row checksums matched both source snapshots and imported rows. Final read-only checks verified completed receipts, one assigned task per county, correct counts and paused controls. Automatic approval review rejected a second committing promotion run; it was not executed. The completed-state guard was inspected, and saved-state checks replaced that extra run.
+Production rollback assertions passed for the exact intake linkage, tax transfer and subsequent two tax identity associations before saving. The tax reviews proved repeat deduplication, correct owner/follow-up, preserved original fingerprints and existing qualification, and no tracing or SMS change. Both live saves were then verified through UI queue removal and direct database receipts. The tax context migration preserves server-only permissions and accepts only the exact official Collin CAD dataset URL for the reviewed parcel. Security advisors remain at 29 INFO and three existing WARN findings.
+
+Production rollback assertions also verified the historical transfer. All 81 tax batch payload/record SHA256 values matched the original receipts; authoritative PostgreSQL row checksums matched both source snapshots and imported rows. Final read-only checks verified completed receipts, one assigned task per county, correct counts and paused controls. Automatic approval review rejected a second committing promotion run; it was not executed. The completed-state guard was inspected, and saved-state checks replaced that extra run.
 
 Authenticated browser checks verified Dallas/Collin filters, empty tax states before import, populated tax states after import, pagination reset on source change and the global count. CRM health, Daily Lists and both website intake pages return HTTP 200. Availability is not end-to-end submission or handset evidence. The affected historical Collin card was verified live as Unresolved property with an empty address input; no placeholder is linked to a CRM property.
 
@@ -58,6 +60,12 @@ Authenticated browser checks verified Dallas/Collin filters, empty tax states be
 5. Resolve unknown DNC status and establish channel permission before exporting contacts for outreach. A tax record, foreclosure notice or returned phone number does not establish SMS permission.
 
 Recommended launch approach: use the CRM for reviewed inventory and human follow-up while these checks are completed. Release automated outreach only after the provider and real-user acceptance checks pass. No fully operational or successful automated campaign claim is made.
+
+## Latest tax-review evidence
+
+The official Collin CAD daily publisher metadata identifies Collin Central Appraisal District at [Texas Open Data](https://data.texas.gov/api/views/ahis-pci3). The exact parcel response was cross-checked against source account, owner, situs and legal description. Dallas identity was verified in the official DCAD account and the saved appraisal archive; property ZIP was used instead of the owner mailing ZIP. Neither appraisal record establishes current tax payoff. Partial-interest and deferral examples remain held.
+
+Private receipts and original evidence are preserved under `work/tax-property-review/`; exact IDs and next steps are in the resume checkpoint.
 
 ## Resume references
 
