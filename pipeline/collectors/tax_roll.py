@@ -104,10 +104,16 @@ def collin(z):
   start=parsed_date(row['deferral_start'],'%m/%d/%Y');end=parsed_date(row['deferral_end'],'%m/%d/%Y')
   if start and start<=asof and (end is None or end>=asof): flags[account].add('active_deferral_review')
   record=base_record(account,COLLIN_URL)
-  record.update(parcel_id=row['parcel'] or None,property_address=' '.join(x for x in (row['number'],row['street']) if x) or None,owner_name=' '.join(x for x in (row['name1'],row['name2']) if x) or None,mailing_address=', '.join(row[k] for k in ('address1','address2','city','state','zip') if row[k]) or None)
+  # The county uses zero-filled numbers for missing situs. A number alone is
+  # not a property address; retain the source fields in raw for review.
+  number=row['number'] if row['number'].strip('0') else ''
+  situs=' '.join(x for x in (number,row['street']) if x) if row['street'] else None
+  record.update(parcel_id=row['parcel'] or None,property_address=situs,owner_name=' '.join(x for x in (row['name1'],row['name2']) if x) or None,mailing_address=', '.join(row[k] for k in ('address1','address2','city','state','zip') if row[k]) or None)
   # Mailing city/state/ZIP are never promoted to property geography. No payoff
   # quote or verified current balance is inferred from an older weekly roll.
   record['raw']={'tax_account':account,'snapshot_date':asof.isoformat(),'snapshot_balance_cents':totals[account],'earliest_delinquency_date':oldest[account].isoformat() if account in oldest else None,'roll_code':row['roll'],'review_flags':','.join(sorted(flags[account])) or 'verify_current_account_status','identity_verified':False,'snapshot_only':True}
+  if not situs:
+   record['raw'].update(situs_missing=True,source_situs_number=row['number'],source_situs_street=row['street'])
   records.append(record)
  counts['candidate_accounts']=len(records); counts['reconciled_balance_cents']=sum(totals.values())
  return asof,records,dict(counts)

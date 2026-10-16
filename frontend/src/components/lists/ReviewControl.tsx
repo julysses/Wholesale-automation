@@ -8,9 +8,10 @@ async function action(path: string, method: string, body?: unknown) {
   return response.json();
 }
 export function ReviewControl({ item, refresh }: { item: Review; refresh: () => Promise<unknown> }) {
+  const sourceAddress = /^0+$/.test(item.property_address?.trim() ?? '') ? '' : item.property_address ?? '';
   const [evidence, setEvidence] = useState('');
   const [leadId, setLeadId] = useState('');
-  const [address, setAddress] = useState(item.property_address ?? '');
+  const [address, setAddress] = useState(sourceAddress);
   const [city, setCity] = useState(item.city ?? '');
   const [zip, setZip] = useState(item.zip ?? '');
   const [parcel, setParcel] = useState(item.parcel_id ?? '');
@@ -33,7 +34,7 @@ export function ReviewControl({ item, refresh }: { item: Review; refresh: () => 
     finally { setPending(false); }
   }
   return <article className="rounded-xl border bg-white p-4 space-y-3">
-    <h3 className="font-semibold">{item.property_address ?? 'Unresolved property'}</h3>
+    <h3 className="font-semibold">{sourceAddress || 'Unresolved property'}</h3>
     <p>{item.source_key} · {item.review_reason.replaceAll('_', ' ')}</p>
     <a href={item.source_url} target="_blank" rel="noreferrer" className="underline">Official source record</a>
     <p className="text-sm">Source account or notice: {item.source_record_id}. Confirm the property location in official records; a mailing address does not establish the property location. The original county record stays unchanged.</p>
@@ -47,7 +48,7 @@ export function ReviewControl({ item, refresh }: { item: Review; refresh: () => 
     <Input label="Existing CRM lead UUID, if already present" value={leadId} onChange={e => setLeadId(e.target.value)} />
     <label className="block"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} /> I verified the exact property and county; probate evidence establishes title, not just a matching name.</label>
     <label className="block"><input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} /> The source confirms a currently active distress signal.</label>
-    <Button disabled={pending || !confirmed || !evidence || !item.source_record_id || !item.source_fingerprint || !address.trim() || !city.trim() || !/^\d{5}(-\d{4})?$/.test(zip.trim()) || notes.trim().length < 10} onClick={resolve}>Save verified association</Button>
+    <Button disabled={pending || !confirmed || !evidence || !item.source_record_id || !item.source_fingerprint || !address.trim() || /^0+$/.test(address.trim()) || !city.trim() || !/^\d{5}(-\d{4})?$/.test(zip.trim()) || notes.trim().length < 10} onClick={resolve}>Save verified association</Button>
     {message && <p role="alert" className="text-red-700">{message}</p>}
   </article>;
 }

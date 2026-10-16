@@ -16,8 +16,8 @@ def archive(files):
  with zipfile.ZipFile(b,'w') as z:
   for name,value in files.items():z.writestr(name,value)
  b.seek(0);return zipfile.ZipFile(b)
-def collin_fixture(roll='001',amount='10.25'):
- master=fixed(MASTER,{'account':'SYNTHETIC-1','roll':roll,'parcel':'000-123','street':'EXAMPLE ST','number':'123','name1':'Synthetic Owner','city':'MAILING CITY','state':'CA','zip':'90001','amount_due':amount,'total_due':amount,'deferral_start':'01/01/9999','deferral_end':'01/01/9999'})
+def collin_fixture(roll='001',amount='10.25',number='123',street='EXAMPLE ST'):
+ master=fixed(MASTER,{'account':'SYNTHETIC-1','roll':roll,'parcel':'000-123','street':street,'number':number,'name1':'Synthetic Owner','city':'MAILING CITY','state':'CA','zip':'90001','amount_due':amount,'total_due':amount,'deferral_start':'01/01/9999','deferral_end':'01/01/9999'})
  ar=fixed(receivable_layout(1),{'account':'SYNTHETIC-1','year':'2025','amount_due':amount,'delinquency_date':'02/01/2026','bankruptcy_date':'01/01/9999','judgment_date':'01/01/9999'})
  return {'AM101026.DAT':master+'\r\n','AR101026.DAT':ar+'\r\n','AS101026.DAT':f'Year\tCount\tAmountDue\r\n2025\t1\t{amount}\r\nALL\t1\t{amount}\r\n'}
 def dallas_line(**values):
@@ -38,6 +38,16 @@ class TaxTests(unittest.TestCase):
  def test_bad_control_rejected(self):
   f=collin_fixture();f['AS101026.DAT']=f['AS101026.DAT'].replace('10.25','10.26')
   with archive(f) as z,self.assertRaisesRegex(ValueError,'reconcile'):collin(z)
+ def test_collin_missing_situs_preserves_evidence_without_placeholder_address(self):
+  for number in ['0000000','123']:
+   f=collin_fixture(number=number,street='')
+   with archive(f) as z:record=collin(z)[1][0]
+   self.assertIsNone(record['property_address']);self.assertTrue(record['raw']['situs_missing'])
+   self.assertEqual(record['raw']['source_situs_number'],number);self.assertEqual(record['parcel_id'],'000-123')
+ def test_collin_zero_number_does_not_hide_known_street(self):
+  f=collin_fixture(number='0000000')
+  with archive(f) as z:record=collin(z)[1][0]
+  self.assertEqual(record['property_address'],'EXAMPLE ST');self.assertFalse(record['raw']['identity_verified'])
  def test_non_real_excluded(self):
   with archive(collin_fixture(roll='002')) as z:self.assertEqual(collin(z)[1],[])
  def test_malformed_width_rejected(self):

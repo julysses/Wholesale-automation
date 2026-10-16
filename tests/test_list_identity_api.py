@@ -26,6 +26,13 @@ def test_malformed_or_spoofed_identity_denied(client_db,change):
     assert client.post('/api/operations/lists/resolve',json={**payload(),**change},headers={'Authorization':'Bearer test'}).status_code==422
     db.rpc.assert_not_called()
 
+@pytest.mark.parametrize('address',['0','0000000',' 0000000 '])
+def test_zero_filled_situs_is_not_a_verified_property(client_db,address):
+    client,db,_=client_db;body=payload()
+    body['review']['identity']['property_address']=address
+    assert client.post('/api/operations/lists/resolve',json=body,headers={'Authorization':'Bearer test'}).status_code==422
+    db.rpc.assert_not_called()
+
 def test_identity_unconfirmed_ack_not_success_and_nonadmin_denied(client_db):
     client,db,rows=client_db
     db.rpc.return_value.execute.return_value=SimpleNamespace(data={'property_id':str(uuid4()),'lead_id':str(uuid4()),'outreach_authorized':False})

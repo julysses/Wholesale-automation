@@ -5,7 +5,7 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from uuid import UUID
 from fastapi import APIRouter, Header, HTTPException, Query, Request
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Literal
 from starlette.concurrency import run_in_threadpool
 from tools.crm import get_supabase_client
@@ -35,6 +35,13 @@ class ReviewedIdentity(BaseModel):
     zip: str = Field(pattern=r'^[0-9]{5}(-[0-9]{4})?$')
     parcel_id: str | None = Field(default=None, max_length=100)
     unit: str | None = Field(default=None, max_length=100)
+
+    @field_validator('property_address')
+    @classmethod
+    def reject_missing_situs_placeholder(cls, value):
+        if not value.strip('0'):
+            raise ValueError('A zero-filled county placeholder is not a verified property address')
+        return value
 
 class PropertyReview(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
