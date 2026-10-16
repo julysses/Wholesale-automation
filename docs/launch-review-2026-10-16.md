@@ -1,77 +1,67 @@
-# Latest onboarding update — October 16
+# WholesaleOS operational review and launch status
 
-Daily Lists and the intake subsystem are deployed at 8feb89b, with 32 migrations applied and production rollback checks passed. County properties now require an approved owner and receive individual follow-up tasks. Property-review and PropStream controls verified in the signed-in live app. Validation: 787 backend, 162 frontend, 128 pipeline tests, 19 Python collector tests, real PostgreSQL concurrency checks, build and hosted CI passed. No new lint findings.
+Updated October 16, 2026, after the 22:06 UTC tax transfer. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
 
-Existing collector data remains in rehearsal while the receipt-preserving transfer is prepared. Four existing production lead matches share the original IDs; preserve them. Automatic collection and SMS remain disabled. See `onboarding-release-progress.md` in Git for the exact next steps.
+## What is now working
 
-# WholesaleOS operational review and recovery
-Updated October 16, 2026. Status: repairs deployed; full automated launch NOT yet verified.
-
-## Outcome
-The failures span separate stages. Website intake has persisted leads, but an SMS scheduling exception could prevent owner alerts. CSV uploads bypassed the server's reconciliation and could create duplicates. Retell's consented test was filtered downstream, and monitoring excluded Retell events. Bulk collection and its saved contacts remain in rehearsal, not production.
-
-## Completed repairs
-| Change | Evidence | Git commit |
+| Process | Verified result | Remaining boundary |
 |---|---|---|
-| Active Leads CSV uploader now uses authenticated server reconciliation, preserves motivation/notes, and reports imported versus existing matches. A missing update result fails explicitly. | Regression tests reproduced lost fields and false-success updates before repair. UI test verifies server route and no retry on uncertain failure. | ae12ad9 |
-| Durable owner alert is claimed before seller SMS scheduling; scheduling errors no longer abort owner email. Uncertain sends are not replayed. | Two failing regression cases passed after repair. | 2dec1ff |
-| Launch monitoring includes Retell outbound failures, unconfirmed delivery after 24h, and review/stalled form-SMS queue entries. | Production SQL regression failed before repair and passed after; synthetic records rolled back. | f5f7934 |
+| Restricted county intake | Actual production Edge request accepted one approved historical Collin notice (HTTP 202); identical replay returned HTTP 200/replayed=true. One saved batch and record. | Fresh collection and unattended scheduling are not yet proven. |
+| CRM association and follow-up | The test reused the existing lead/property and pending assigned follow-up. No duplicate lead, property or task. | New candidates still need property identity and current status evidence. |
+| Historical source handoff | Dallas and Collin foreclosure evidence and canonical tax snapshots are now in production with original receipts and dates. | Historical snapshots do not prove current county coverage, active foreclosure or current debt. |
+| Review workflow | Live source filters, stable pagination, per-source counts and unchanged global counts verified. | 40,268 records still require evidence; this is a review inventory, not a qualified campaign. |
+| CSV lead import | Authenticated server reconciliation preserves notes/motivation, identifies existing matches and rejects uncertain updates. | Operator acceptance for the complete daily workflow remains necessary. |
+| Website owner alerts | Durable owner alert is claimed before SMS scheduling; an SMS scheduling exception no longer prevents owner notification. | Remaining historical alerts need evidence reconciliation, not mass resend. |
+| After-hours SMS scheduling | New inquiries defer to the next 9 AM America/Chicago contact window, including DST; expiry follows that window. Existing jobs are preserved. | Scheduler is paused; this repair does not establish delivery. |
+| Monitoring | Retell failures, unconfirmed delivery, stalled/review jobs and intake handoff outcomes are monitored. | Delivery callbacks and actual handset outcomes require provider acceptance. |
 
-App deployment dpl_2BvKJ7GubD9sxKfMouRgA1DmHzBQ is READY and serves wholesale-automation.vercel.app at 2dec1ffeed7e272e33ad0e8adcfdb6571b0db885. Monitoring migration 20261016191327_monitor_retell_sms_outcomes.sql was applied separately to production. All three code updates pushed to origin/codex/retell-sms-production.
+## Production inventory
 
-## Verification completed
-- Backend: 709 tests passed. Frontend: 142 tests across 33 files passed; production build passed.
-- Lint: no new findings from repairs; 149 preexisting findings remain.
-- GitHub CI passed for application repair commits ae12ad9 and 2dec1ff.
-- Production rollback SQL verified public inquiry replay/conflict handling, consent preservation, atomic lead/task creation, distinct inquiries, and browser access restrictions.
-- Production rollback SQL verified SMS timing, single claim, shared attempt ledger, cooldown, expiry and suppression. Monitoring regression verified failed/accepted/delivered outcomes, queue review/overdue/stopped states, and access restrictions.
-- Post-deploy read-only availability check: CRM readiness, Hilltop website and Jays website all true.
-- These checks do not prove handset delivery, a live reply/STOP cycle, a fresh website submission through every external provider, or unattended collection.
+| Source | Saved source records | Awaiting evidence |
+|---|---:|---:|
+| Dallas foreclosure | 490 | 489 |
+| Collin foreclosure, including the approved transport test | 165 | 81 |
+| Dallas tax snapshot | 30,516 | 30,516 |
+| Collin tax snapshot | 9,182 | 9,182 |
+| Total | 40,353 | 40,268 |
 
-## Current operational evidence
-### Website intake and follow-up
-32 processed website submissions link to leads: 16 Hilltop and 16 Jays. 30 have linked tasks and 29 are assigned. Two missing tasks are historical September 29 submissions for closed test leads. All three unassigned older website leads are closed test records; do not reopen them. One July 10 pending receipt has no form/lead linkage; reconcile manually rather than replay it. Four intake-alert findings also need reconciliation of existing delivery evidence before retrying anything.
+The identical second Collin tax snapshot was excluded. The tax transfer created zero leads or properties and two pending review tasks assigned to the approved owner. Production has 17,448 leads, 138 tasks, 82 associated properties and 77 trace requests. Tracing count and SMS-event fingerprint stayed unchanged throughout the intake acceptance and tax transfer. All source gates, outreach, spending and SMS scheduler remain disabled.
 
-The first SMS window expires 15 minutes after submission, while contact hours are restricted. An after-hours inquiry can expire without a next-day SMS. Decide and implement an explicit next-business-window acknowledgement policy, retaining consent and suppression controls. Accepted/review jobs and shared cooldowns intentionally prevent blind resend.
+Existing PropStream history was preserved earlier: 77 completed requests and 481 contacts. Prior contact review found 146 DNC-listed and 335 DNC-unknown; no new contact-clearance review was performed in this continuation. Keep them on hold until current channel permissions are verified. Retain PropStream and the cumulative $50 prepaid cap; no reloads, new purchases or subscriptions were made.
 
-### Carrier and Retell
-Production automatic SMS scheduler is disabled and its cron inactive. Environment send flags remain enabled: do not manually call the sending worker as a diagnostic.
+## SMS blocker
 
-Twilio ticket 29953072 was read after renewed login: Carlos Ospina confirmed internal escalation; status Hold, last updated October 15 at 6:18 PM as displayed. No technical resolution supplied. Retell ticket 65825 remains open with acknowledgement only.
+Both provider cases were refreshed after the latest intake work. [Twilio ticket 29953072](https://help.twilio.com/tickets/29953072) remains Hold, with an internal escalation and latest response October 15 at 6:18 PM as displayed. [Retell ticket 65825](https://support.retellai.com/?durationMs=31536000000&tab=issues&issueNumber=65825) remains Open with acknowledgement only.
 
-Failed consented SMS: SM0ad8ce793ccef33ea439760c1de917e0; Retell chat chat_3e830c21a691319298d4d773598. Error 30007 indicates filtering. Failed message lacked a Messaging Service SID; an earlier delivered message used MGaf5837f7a7cad183e8b38b1147728562. This is evidence for investigation, not a proven root cause. Delivery callback linkage from Retell to CRM is not verified. Existing Twilio callback matching only covers provider=twilio.
+The owner test was accepted by Retell but marked undelivered by Twilio with error 30007. The failed message lacked a Messaging Service SID, while an earlier delivered message used the registered service; that difference is an investigation lead, not a proven cause. Supported routing and delivery-callback linkage still require resolution. No test retry, support message or sending-worker invocation occurred in this continuation.
 
-The current first-message prompt is a long investor pitch. A short inquiry acknowledgement draft already exists in docs/retell-carrier-support-draft.md. Review it against the approved campaign and supported provider route before publishing. Copy changes alone are not proof of delivery.
+Keep Twilio and Retell. Before resuming automatic acknowledgements, use the short campaign-aligned inquiry acknowledgement already drafted in `retell-carrier-support-draft.md`, confirm the supported route and callback path, then verify actual delivery. Do not substitute repeated sends or relaxed suppression rules for provider resolution.
 
-### Bulk leads and PropStream
-October 16 continuation: the wholesale_ingest schema and Daily Lists app are now deployed to production, with sources disabled and no collector data transferred yet. Rehearsal holds 77 completed PropStream requests, 481 contacts and 77 linked follow-up tasks. Recorded cost is zero; no spend or new tracing performed this session. All 481 contacts are held: 146 DNC-listed, 335 DNC-unknown. None is currently cleared for campaigns. A phone number or paid lookup is not SMS permission.
+## Verification and release
 
-The daily 5 AM Chicago collection automation is paused because the prior chat explicitly paused work. No October 16 foreclosure receipts were generated. Do not label this a failed cron. The standalone Mac worker remains intentionally disabled in favor of the GPT workflow. Prior partial/missing source receipts still require operator review; a healthy supervision run does not mean successful collection.
+Live runtime: e86c92d55905b3e545a08fae64637ff50612df4a, Vercel deployment dpl_6doVwKbFKCHgSMQtMgzeSxxwPMbd, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38972159798 succeeded. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
 
-Retain PropStream and the cumulative $50 prepaid cap. No new purchases, reloads, subscriptions or carrier retries were performed.
+Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The earlier full backend suite passed 794 tests and frontend suite passed 162; these are earlier full-suite results, not rerun counts from the tax transfer.
 
-## Required path to full operation
-1. Obtain Twilio/Retell's supported A2P route and delivery-status integration; resolve the filtering investigation. Keep automatic sends paused until then.
-2. Publish campaign-aligned inquiry copy and verify a controlled, owner-approved fresh form inquiry: receipt → deduplicated lead → assigned task → owner notification → handset delivery → reply history → STOP suppression. Run for both website paths; never erase prior STOP history or replay accepted/uncertain jobs.
-3. Reconcile the historical missing tasks and four unresolved owner-alert receipts with provider evidence. Assign accountable owners to imported leads; do not mass-replay notifications.
-4. Collector schema/service/UI integration is now deployed and verified. Next reconcile and promote existing source/PropStream data with its original receipts; verify the matched batch in production before scaling.
-5. Resume and observe one complete scheduled county collection run using docs/gpt-scheduled-bulk-workflow.md. Verify current-sale identities, completeness, receipts and CRM history; resolve missing/partial sources. Preserve paid-data cap.
-6. Resolve unknown DNC status and document eligible outreach permission. Keep DNC-listed contacts suppressed. Then test one eligible bulk lead through assignment and its permitted follow-up channel.
-7. Define next-business-window behavior, maximum acknowledgement age, and daily owner review of monitor incidents. Finish authenticated browser acceptance for import, lead details, tasks and history.
+Production rollback assertions passed for the exact intake linkage and tax transfer before commit. All 81 tax batch payload/record SHA256 values matched the original receipts; authoritative PostgreSQL row checksums matched both source snapshots and imported rows. Final read-only checks verified completed receipts, one assigned task per county, correct counts and paused controls. Automatic approval review rejected a second committing promotion run; it was not executed. The completed-state guard was inspected, and saved-state checks replaced that extra run.
 
-Full launch remains blocked by steps 1–6; no completion date or successful automated campaign is claimed. Website intake and owner follow-up can be used with human oversight while these gates are closed.
+Authenticated browser checks verified Dallas/Collin filters, empty tax states before import, populated tax states after import, pagination reset on source change and the global count. CRM health, Daily Lists and both website intake pages return HTTP 200. Availability is not end-to-end submission or handset evidence.
 
-## Exact resume checkpoint
-Production checkout: /Users/juliodominguez/Documents/Codex/2026-09-28/make-sure-to-review-my-wholesale/work/wholesale-sms-production
-Branch: codex/retell-sms-production; latest code f5f7934. Pull before changes; commit and push each logical update.
-Collector checkout: sibling wholesale-launch-prep, branch codex/dallas-collin-launch-prep.
-Production database: dvzhzlipbwzzcliujzyz. Rehearsal: tbhwxgfzbiaqjurghntj.
-Previous application deployment for rollback: dpl_F1jXupfYoa6HUx6C27SwzYg5e8nY (b94d086).
-Tests: tests/test_master_list_import.py; tests/test_intake_notification_safety.py; frontend/tests/lead-import-reconciliation.test.tsx; tests/sql/retell_sms_monitor.sql; tests/sql/public_intake_reference.sql; tests/sql/retell_form_sms_production_qa.sql.
-Python test interpreter: /Users/juliodominguez/Documents/Codex/2026-09-28/i-x20/work/launch-venv/bin/python.
-Do not run historical reviewed_sms_resubscription_live_qa.sql unchanged against real records; its assumptions are stale.
+## Remaining work before full launch
 
-## References
-- Twilio support: https://help.twilio.com/tickets/29953072
-- Retell support: https://support.retellai.com/?durationMs=31536000000&tab=issues&issueNumber=65825
-- Twilio 30007: https://www.twilio.com/docs/api/errors/30007
+1. Resolve Twilio/Retell filtering, supported A2P routing and delivery callback linkage. Keep sending paused until verified.
+2. For both Hilltop and Jays, observe a fresh consented inquiry through receipt, deduplicated CRM lead, assigned task, owner notification, handset delivery, reply history and STOP suppression. Preserve cooldowns, original STOP history and uncertain/accepted job holds.
+3. Reconcile the remaining legacy intake and owner-alert exceptions against delivery evidence. Do not reopen closed historical test leads or replay ambiguous notifications.
+4. Validate current county evidence and coverage, then explicitly resume one supervised unattended GPT collection cycle. Confirm original source receipts, deduplication, owner assignment and CRM history before scaling. The one-record exception did not resume scheduled collection.
+5. Resolve unknown DNC status and establish channel permission before exporting contacts for outreach. A tax record, foreclosure notice or returned phone number does not establish SMS permission.
+
+Recommended launch approach: use the CRM for reviewed inventory and human follow-up while these checks are completed. Release automated outreach only after the provider and real-user acceptance checks pass. No fully operational or successful automated campaign claim is made.
+
+## Resume references
+
+- `START-HERE-NEXT-CHAT.md`: newest state first, exact receipts, IDs, private evidence paths and next steps.
+- `onboarding-release-manifest.json`: applied migration sequence and promotion receipts.
+- `pipeline/operations/promote_tax_20261016.sql`: executed historical operation; do not rerun merely to inspect status.
+- Branch `codex/retell-sms-production`. Pull before edits; commit and push each logical update.
+- Production Supabase dvzhzlipbwzzcliujzyz; rehearsal tbhwxgfzbiaqjurghntj.
+- Restricted intake credentials expire January 14, 2027; rotate before expiry. Plain tokens remain in their scoped Mac Keychain entries.

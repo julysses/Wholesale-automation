@@ -43,7 +43,7 @@
   "scope": "County intake, verified identity, receipt monitoring, tracing and scoring. Existing SMS, offer and land behavior preserved.",
   "production_project": "dvzhzlipbwzzcliujzyz",
   "applied_date": "2026-10-16",
-  "data_transfer_scope": "Historical Collin and Dallas foreclosure runs transferred; tax inventory and live collection remain pending",
+  "data_transfer_scope": "Historical Collin and Dallas foreclosure and canonical tax snapshots transferred; live one-record intake accepted and replay-deduplicated; fresh collection and unattended acceptance remain pending",
   "promotion_receipt": "2e91ac73-af2d-410b-860c-b7e249212408",
   "promotion_counts": {
     "properties": 78,
@@ -54,6 +54,14 @@
     "follow_ups": 78
   },
   "additional_promotion_receipts": [
-    "864bcbf3-e3dd-4fca-be7f-0b05ec97035f"
-  ]
+    "864bcbf3-e3dd-4fca-be7f-0b05ec97035f",
+    "bcb76f65-ceaa-48fb-9ee5-33e010b29d38",
+    "79bf66e3-155f-4345-82a1-1a22de9e1500"
+  ],
+  "historical_tax_counts": {
+    "dallas": 30516,
+    "collin": 9182,
+    "new_leads": 0,
+    "assigned_review_tasks": 2
+  }
 }
