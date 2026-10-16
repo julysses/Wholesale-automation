@@ -467,7 +467,6 @@ def _send_lead_pipeline_sms(
     retell_selected = retell_enabled('RETELL_FORM_SMS_ENABLED')
     # Durable form receipt is required, even while sending stays disabled.
     retell_consent = str(answers.get('sms_opt_in', '')).strip().lower() in {'1','true','yes','on','agree','agreed','opted_in'}
-    retell_schedule = (enqueue_retell(supabase, lead_id) if retell_consent else 'no_consent_or_form_confirmation_disabled') if retell_selected else None
     notification_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{lead_id}"))
     notification = {
         "id": notification_id, "recipient_role": "admin", "type": "pipeline_step",
@@ -492,6 +491,16 @@ def _send_lead_pipeline_sms(
         raise RuntimeError("Intake notification delivery claim was not confirmed")
 
     outcomes = notification["metadata"].copy()
+    retell_schedule = 'no_consent_or_form_confirmation_disabled'
+    if retell_selected and retell_consent:
+        try:
+            retell_schedule = enqueue_retell(supabase, lead_id)
+        except Exception:
+            # The queue write may have committed despite a lost response.
+            # Keep the owner notification independent and never fall back to
+            # a second sending provider or replay this claimed notification.
+            retell_schedule = 'schedule_unconfirmed'
+            logger.exception("[lead_forms] Retell schedule unconfirmed for lead %s", lead_id)
     name = str(answers.get("first_name") or "").strip() or "there"
     sms_client = SMSClient()
 

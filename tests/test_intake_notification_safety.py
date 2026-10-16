@@ -259,3 +259,32 @@ def test_legacy_unresolved_alert_is_manual_review_not_proof_of_no_send(pipeline)
     db.tables['app_notifications']={alert_id:{'id':alert_id,'lead_id':LEAD_ID,'metadata':{'owner_email':'unresolved'}}}
     run()
     db.email_client.send.assert_not_called(); sms.send.assert_not_called()
+
+
+def test_retell_queue_failure_still_persists_alert_and_notifies_owner(pipeline, monkeypatch):
+    from tools import retell_form_sms
+    db, sms = pipeline
+    monkeypatch.setenv('RETELL_FORM_SMS_ENABLED', 'true')
+    enqueue = MagicMock(side_effect=RuntimeError('queue unavailable'))
+    monkeypatch.setattr(retell_form_sms, 'enqueue', enqueue)
+    run()
+    assert receipt(db)['metadata']['seller_sms'] == 'schedule_unconfirmed'
+    assert receipt(db)['metadata']['owner_email'] == 'accepted'
+    assert db.email_client.send.call_count == 1
+    sms.send.assert_not_called()
+    run()
+    assert enqueue.call_count == 1
+    assert db.email_client.send.call_count == 1
+
+
+def test_retell_queue_attempt_follows_durable_notification_claim(pipeline, monkeypatch):
+    from tools import retell_form_sms
+    db, sms = pipeline
+    monkeypatch.setenv('RETELL_FORM_SMS_ENABLED', 'true')
+    def enqueue(*args):
+        assert receipt(db)['metadata']['delivery_state'] == 'processing'
+        return 'scheduled_retell_60_seconds'
+    monkeypatch.setattr(retell_form_sms, 'enqueue', enqueue)
+    run()
+    assert receipt(db)['metadata']['seller_sms'] == 'scheduled_retell_60_seconds'
+    sms.send.assert_not_called()
