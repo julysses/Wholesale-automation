@@ -5,6 +5,7 @@ contacted are ever selected; DNC / opted-out leads and anything worked are never
 
 | Lead | Action | When |
 |------|--------|------|
+| Website inquiry (submission reference, web-form channel or source) | Hold for review; excluded from list cleanup | Preserve each inquiry and consent history even when addresses match or an age rule would otherwise apply |
 | Business personal property, minerals, utilities (not real estate) | Delete | Immediately |
 | Duplicate property (same street + city) | Delete extras, keep best-scored copy with a source | Immediately |
 | Pre-foreclosure, never contacted | Re-pull a fresh list, then delete the old rows | 60 days (Texas sales are the first Tuesday monthly) |

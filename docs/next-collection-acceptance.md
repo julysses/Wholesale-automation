@@ -1,6 +1,6 @@
 # Next bounded county collection acceptance
 
-Prepared October 16, 2026. **Not executed or authorized by this document.** The earlier one-record Collin exception is complete. Production collection and the existing GPT heartbeat remain paused.
+Prepared October 16, 2026. **User approved this bounded cycle on October 16; not executed yet.** The earlier one-record Collin exception is complete. Production collection gates and the existing GPT heartbeat remain paused outside this exception.
 
 ## Proposed scope
 
@@ -26,7 +26,7 @@ A successful run proves fresh supervised index capture and production handoff fo
 - [x] Current collector supports explicit production routing and source-scoped credentials.
 - [x] Existing heartbeat is paused; no replacement worker is required.
 - [x] Historical single-record acceptance already proved HTTP acceptance and exact replay behavior.
-- [ ] User authorizes this new bounded cycle while collection is paused.
+- [x] User authorizes this new bounded cycle while collection is paused.
 - [ ] Shared claim state and browser access verified for this cycle.
 - [ ] Both fresh inventories saved, validated and accepted with gates reclosed.
 - [ ] Production receipts and unchanged sending/spend controls verified.
