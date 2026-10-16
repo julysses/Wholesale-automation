@@ -8,7 +8,7 @@ import { apiFetch } from '@/lib/api';
  * in any blanks on each backend cold start.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -193,16 +193,16 @@ function WelcomeStep({ onNext, onSkip }: StepProps) {
       <div className="bg-gradient-to-br from-[#1B3A5C] to-[#2a5580] rounded-2xl p-6 text-white">
         <h3 className="text-xl font-bold mb-2">Welcome to WholesaleOS</h3>
         <p className="text-white/80 text-sm leading-relaxed">
-          This wizard connects all the services that power your automated wholesale
-          pipeline — from lead intake to closing.
+          Review the services used by your wholesale workflow. Connection checks,
+          successful lead intake and provider delivery are separate verification steps.
         </p>
       </div>
       <div className="space-y-3">
         {[
           { icon: <Bot className="h-4 w-4" />, label: 'AI scoring + underwriting', color: 'bg-purple-100 text-purple-700' },
           { icon: <Phone className="h-4 w-4" />, label: 'Skip trace + dialer automation', color: 'bg-blue-100 text-blue-700' },
-          { icon: <MessageSquare className="h-4 w-4" />, label: 'TCPA-compliant SMS nurture', color: 'bg-green-100 text-green-700' },
-          { icon: <Shield className="h-4 w-4" />, label: 'Compliance gate at every step', color: 'bg-orange-100 text-orange-700' },
+          { icon: <MessageSquare className="h-4 w-4" />, label: 'SMS consent and delivery checks', color: 'bg-green-100 text-green-700' },
+          { icon: <Shield className="h-4 w-4" />, label: 'Contact restrictions and review controls', color: 'bg-orange-100 text-orange-700' },
         ].map(({ icon, label, color }) => (
           <div key={label} className="flex items-center gap-3">
             <div className={cn('p-2 rounded-lg', color)}>{icon}</div>
@@ -374,7 +374,7 @@ function AgencyStep({ onNext, onSkip, saved }: StepProps) {
 
 function BatchDataStep({ onNext, onSkip, saved }: StepProps) {
   const [key, setKey] = useState(saved['batchdata_api_key'] ?? '');
-  const [autoTrace, setAutoTrace] = useState(saved['auto_skip_trace'] ?? 'true');
+  const [autoTrace, setAutoTrace] = useState(saved['auto_skip_trace'] ?? 'false');
 
   return (
     <div className="space-y-5">
@@ -384,13 +384,41 @@ function BatchDataStep({ onNext, onSkip, saved }: StepProps) {
         description="BatchData enriches each lead with mobile phone numbers and emails before scoring. Tier A/B leads need a mobile number to reach the dialer."
       />
       <KeyField envKey="BATCHDATA_API_KEY" label="BatchData API Key" description="Used for property skip tracing (owner phone + email enrichment)." example="bd_live_..." docsUrl="https://developer.batchdata.com" docsLabel="BatchData portal" value={key} onChange={setKey} />
-      <KeyField envKey="AUTO_SKIP_TRACE" label="Auto Skip Trace" description="Set to true to automatically skip trace every ingested lead." example="true" isFlag isSecret={false} value={autoTrace} onChange={setAutoTrace} />
+      <KeyField envKey="AUTO_SKIP_TRACE" label="Auto Skip Trace" description="Optional BatchData automation for the legacy pipeline. Keep off for the selected PropStream workflow." example="false" isFlag isSecret={false} value={autoTrace} onChange={setAutoTrace} />
       <div className="flex gap-3">
         <Button variant="outline" onClick={onSkip} className="flex-1"><SkipForward className="h-4 w-4 mr-1" /> Skip</Button>
         <Button onClick={() => onNext({ batchdata_api_key: key, auto_skip_trace: autoTrace })} className="flex-1">Save & Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
       </div>
     </div>
   );
+}
+
+function PropStreamStep(props: StepProps) {
+  return <div className="space-y-5">
+    <FeatureCard icon={<Phone className="h-5 w-5" />} title="PropStream — property and contact review"
+      description="Use your existing PropStream account. Daily Lists preserves completed orders, matches returned contacts and assigns follow-up work." />
+    <p className="text-sm text-gray-700">Review county evidence and existing results before preparing new rows. New orders require an exact quote and a CRM reservation within the cumulative $50 prepaid limit.</p>
+    <p className="text-sm text-gray-700">No API purchase or additional tracing provider is required for this workflow. Contact results retain DNC and channel restrictions.</p>
+    <Link to="/daily-lists" className="block text-sm text-blue-700 underline">Open Daily Lists and PropStream controls</Link>
+    <Button onClick={() => props.onNext()} className="w-full">Continue <ChevronRight className="h-4 w-4 ml-1" /></Button>
+    <details className="rounded-lg border p-3">
+      <summary className="cursor-pointer text-sm">Optional alternate provider: BatchData</summary>
+      <div className="mt-4"><BatchDataStep {...props} /></div>
+    </details>
+  </div>;
+}
+
+function SmsSetupStep({ onNext }: StepProps) {
+  return <div className="space-y-5">
+    <FeatureCard icon={<MessageSquare className="h-5 w-5" />} title="Twilio + Retell SMS"
+      description="Twilio supplies the messaging number and transport. Retell manages configured text conversations; WholesaleOS records the lead, follow-up and message history." />
+    <p className="text-sm text-gray-700">Production SMS uses server-managed credentials and activation settings. This wizard does not enable sending. Review the sender, approved campaign, Retell SMS agent and webhook routing before an authorized delivery test.</p>
+    <p className="text-sm text-gray-700">Confirm delivered status, an inbound reply and STOP handling in the CRM. A provider acceptance response or a recorded transcript alone does not prove carrier delivery.</p>
+    <p className="text-sm text-gray-700">County imports and skip-trace results do not establish SMS consent. Eligible website submissions use their saved consent receipt; held contacts remain excluded.</p>
+    <LaunchMonitorPanel />
+    <Link to="/leads" className="block text-sm text-blue-700 underline">Review lead and message history</Link>
+    <Button onClick={() => onNext()} className="w-full">Continue configuration review <ChevronRight className="h-4 w-4 ml-1" /></Button>
+  </div>;
 }
 
 function BatchDialerStep({ onNext, onSkip, saved }: StepProps) {
@@ -404,7 +432,7 @@ function BatchDialerStep({ onNext, onSkip, saved }: StepProps) {
 
   return (
     <div className="space-y-5">
-      <FeatureCard icon={<Phone className="h-5 w-5" />} title="Outbound Dialer — Tier A & B Leads" description="Tier A (score 70+) and B (50–69) leads are pushed to BatchDialer for outbound calling." />
+      <FeatureCard icon={<Phone className="h-5 w-5" />} title="Outbound Dialer — Tier A & B Leads" description="Optional alternative to Retell. This connector requires its own configuration and eligibility checks; a score alone does not authorize calling." />
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2 text-xs text-amber-800">
         <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
         <span>Create your campaign in BatchDialer first, then paste the Campaign ID below.</span>
@@ -453,7 +481,7 @@ function LaunchControlStep({ onNext, onSkip, saved }: StepProps) {
 
   return (
     <div className="space-y-5">
-      <FeatureCard icon={<MessageSquare className="h-5 w-5" />} title="SMS Nurture — Tier C Leads" description="Tier C leads (score 30–49) are enrolled in Launch Control SMS campaigns. Opt-out replies trigger automatic DNC suppression." />
+      <FeatureCard icon={<MessageSquare className="h-5 w-5" />} title="SMS Nurture — Tier C Leads" description="Optional legacy connector, separate from the selected Twilio and Retell workflow. Enrollment requires consent, suppression checks and an enabled, verified integration." />
       <div className="flex rounded-xl border border-gray-200 overflow-hidden">
         {(['zapier_webhook', 'csv_sync'] as const).map(m => (
           <button key={m} onClick={() => setMode(m)} className={cn('flex-1 py-2.5 text-sm font-medium transition-colors', mode === m ? 'bg-[#1B3A5C] text-white' : 'text-gray-600 hover:bg-gray-50')}>
@@ -581,7 +609,7 @@ function TestStep({ onNext }: StepProps) {
     } catch { next.ai = 'error'; }
     setResults(next);
     setRunning(false);
-    if (Object.values(next).every(v => v === 'ok')) toast.success('All systems verified!');
+    if (Object.values(next).every(v => v === 'ok')) toast.success('Connection checks passed. Verify intake and provider delivery separately.');
     else toast.error('Some checks failed — see items in red');
   };
 
@@ -602,6 +630,7 @@ function TestStep({ onNext }: StepProps) {
           </div>
         ))}
       </div>
+      <p className="text-sm text-gray-700">These checks cover connectivity only. Verify a saved lead with an assigned task, a genuine county collection and provider delivery before launch.</p>
       <Button onClick={runTests} loading={running} variant="outline" className="w-full" icon={<RefreshCw className="h-4 w-4" />}>
         {running ? 'Running...' : 'Run Checks'}
       </Button>
@@ -632,10 +661,11 @@ const STEPS: WizardStep[] = [
   { id: 'welcome',        title: 'Welcome',          subtitle: 'Overview of the system',     icon: <Building2 className="h-5 w-5" />,     content: WelcomeStep },
   { id: 'anthropic',      title: 'AI Engine',         subtitle: 'Anthropic API key',          icon: <Bot className="h-5 w-5" />,           content: AnthropicStep },
   { id: 'agency',         title: 'Agency Identity',   subtitle: 'Your name + contact info',   icon: <Building2 className="h-5 w-5" />,     content: AgencyStep },
-  { id: 'batchdata',      title: 'Skip Tracing',      subtitle: 'BatchData API key',          icon: <Phone className="h-5 w-5" />,         optional: true, content: BatchDataStep },
-  { id: 'batchdialer',    title: 'Dialer',            subtitle: 'BatchDialer + webhook',      icon: <Phone className="h-5 w-5" />,         optional: true, content: BatchDialerStep },
+  { id: 'propstream',      title: 'Skip Tracing',      subtitle: 'PropStream workflow',          icon: <Phone className="h-5 w-5" />,         optional: true, content: PropStreamStep },
   { id: 'retell',         title: 'AI Calling',        subtitle: 'Retell AI voice agent',      icon: <Bot className="h-5 w-5" />,           optional: true, content: RetellStep },
-  { id: 'launch_control', title: 'SMS Nurture',       subtitle: 'Launch Control setup',       icon: <MessageSquare className="h-5 w-5" />, optional: true, content: LaunchControlStep },
+  { id: 'sms',            title: 'Text Messaging',    subtitle: 'Twilio + Retell delivery',    icon: <MessageSquare className="h-5 w-5" />, optional: true, content: SmsSetupStep },
+  { id: 'batchdialer',    title: 'Other Dialer',      subtitle: 'Optional BatchDialer connector',      icon: <Phone className="h-5 w-5" />,         optional: true, content: BatchDialerStep },
+  { id: 'launch_control', title: 'Other SMS',         subtitle: 'Optional Launch Control connector',       icon: <MessageSquare className="h-5 w-5" />, optional: true, content: LaunchControlStep },
   { id: 'email',          title: 'Email Provider',    subtitle: 'SendGrid / Mailgun',         icon: <Mail className="h-5 w-5" />,          optional: true, content: EmailStep },
   { id: 'test_complete',  title: 'Test & Verify',     subtitle: 'Run connection checks',      icon: <Zap className="h-5 w-5" />,           content: TestStep },
 ];

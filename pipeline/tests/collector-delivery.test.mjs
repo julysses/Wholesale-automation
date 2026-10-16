@@ -21,6 +21,19 @@ test('lost response retains pending identity and retry uses same payload',async 
  await deliver([p],{...options,journalPath,fetcher:async()=>response(p,200)});
  p.status_reason='changed';await assert.rejects(deliver([p],{...options,journalPath}),/different payloads/);
 });
+test('a receipt from another project or credential scope cannot authorize delivery',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'collector-test-'));t.after(()=>fs.rmSync(dir,{recursive:true}));
+ const p=make(),journalPath=path.join(dir,'receipt.json');
+ await deliver([p],{...options,journalPath,fetcher:async()=>response(p)});
+ const original=fs.readFileSync(journalPath,'utf8');
+ for(const override of [{endpoint:'https://dvzhzlipbwzzcliujzyz.supabase.co/functions/v1/daily-list-ingest'},{keyId:'another-source'}]){
+  let dispatched=false;
+  await assert.rejects(deliver([p],{...options,...override,journalPath,fetcher:async()=>{dispatched=true;return response(p);}}),/destination/);
+  assert.equal(dispatched,false);assert.equal(fs.readFileSync(journalPath,'utf8'),original);
+ }
+ const legacy=JSON.parse(original);delete legacy.endpoint;fs.writeFileSync(journalPath,JSON.stringify(legacy));
+ await assert.rejects(deliver([p],{...options,journalPath}),/destination/);
+});
 test('wrong identity, redirects and denial cannot become acceptance',async()=>{
  const p=make();
  for(const r of [response(p,202,{run_id:crypto.randomUUID()}),response(p,202,{records_received:2}),new Response('',{status:403}),new Response('',{status:302})])await assert.rejects(sendBatch(p,{...options,fetcher:async()=>r}));

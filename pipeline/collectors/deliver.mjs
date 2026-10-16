@@ -40,10 +40,11 @@ export async function deliver(payloads,{journalPath,coverage,...options}){
  const batches=await validateBatches(payloads,new Date(),coverage);
  const wireBatches=batches.map(p=>coverage===undefined?p:{...p,coverage});
  const identity=await sha256(canonicalJSON(wireBatches));
- let journal={run_id:batches[0].run_id,payload_set_sha256:identity,accepted:[]};
+ let journal={run_id:batches[0].run_id,payload_set_sha256:identity,endpoint:options.endpoint,key_id:options.keyId,accepted:[]};
  if(fs.existsSync(journalPath)){
   journal=JSON.parse(fs.readFileSync(journalPath,'utf8'));
   if(journal.run_id!==batches[0].run_id||journal.payload_set_sha256!==identity||!Array.isArray(journal.accepted))throw new Error('Saved journal belongs to different payloads');
+  if(journal.endpoint!==options.endpoint||journal.key_id!==options.keyId)throw new Error('Saved journal destination is missing or different; reconcile it before delivery');
  }
  const save=()=>{const tmp=journalPath+'.tmp';fs.writeFileSync(tmp,JSON.stringify(journal,null,2),{mode:0o600});fs.renameSync(tmp,journalPath);};
  save();
@@ -63,7 +64,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const files=fs.readdirSync(dir).filter(x=>/^batch-\d{4}\.json$/.test(x)).sort();
   const payloads=files.map(file=>{const name=path.join(dir,file);if(fs.statSync(name).size>2*1024*1024)throw new Error('Batch too large');return JSON.parse(fs.readFileSync(name,'utf8'));});
   const coverage=coveragePath?JSON.parse(fs.readFileSync(coveragePath,'utf8')):undefined;
-  const result=await deliver(payloads,{coverage,journalPath:path.join(dir,'delivery-receipts.json'),endpoint:`https://${project}.supabase.co/functions/v1/daily-list-ingest`,keyId:process.env.INGEST_KEY_ID??'',token:process.env.INGEST_TOKEN??''});
+  if(!/^[a-z0-9]{20}$/.test(project))throw new Error('Invalid project reference');
+  const result=await deliver(payloads,{coverage,journalPath:path.join(dir,`delivery-receipts.${project}.json`),endpoint:`https://${project}.supabase.co/functions/v1/daily-list-ingest`,keyId:process.env.INGEST_KEY_ID??'',token:process.env.INGEST_TOKEN??''});
   console.log(JSON.stringify(result,null,2));
  }catch(e){console.error(e instanceof Error?e.message:'Delivery failed');process.exitCode=1;}
 }

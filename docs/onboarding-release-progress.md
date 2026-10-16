@@ -1,3 +1,15 @@
+## Latest: production intake transport and setup guidance (2026-10-16)
+
+Historical Collin promotion remains complete (78 properties, 77 completed traces, 481 contacts and 78 assigned follow-ups). Production Edge Function `daily-list-ingest` version 1 is ACTIVE (id `86013dad-a079-40f4-8ada-4dc40452dbc6`), but its HTTP response is `ingest_not_configured`: production `INGEST_DATABASE_URL` and `INGEST_TOKEN_CONFIG` are absent. Dashboard confirmed both missing. No production LOGIN ingestion role or collector credentials have been provisioned. Sources, trace spending, outreach and SMS scheduler remain disabled.
+
+Current changes: delivery explicitly selects rehearsal or production, requires the corresponding source-scoped Keychain credential, and stores destination/key identity in project-specific receipt journals. Cross-project and cross-key receipt reuse is rejected before network access. Legacy generic journals are preserved; they are not proof of production acceptance. Added credential-routing tests to CI. Full pipeline suite: 129 passing; Keychain routing: 6 passing.
+
+Setup guidance now uses PropStream and Twilio + Retell, marks other providers optional, removes obsolete manual migration instructions and distinguishes connection checks from actual intake/message delivery. The SMS step exposes existing launch monitoring without enabling sending. Frontend build and all 162 tests passed; lint has no new findings (149 preexisting). Production deployment of this UI update is still pending at this checkpoint.
+
+Supabase CLI read-only `db query` and `projects list` stalled without output; process inspection confirmed they remained running. They were deliberately interrupted instead of interpreting a timeout as failure. MCP SQL/deployment and authenticated Dashboard access work. Use a working supported secret-configuration path; never substitute an administrator DB connection or rehearsal collector credential.
+
+Next: publish/verify the updated setup UI, provision the restricted production ingestion connection and source credentials, validate a real source receipt and downstream normalization/assignment, then update the paused GPT schedule to the production checkout. Preserve the original full scope: Dallas and Collin foreclosure/tax intake, remaining 85 unresolved Collin notices, PropStream reconciliation within the cumulative $50 limit, actual provider delivery/reply/STOP verification. No full operational launch claimed.
+
 ## Latest: historical Collin data now live (2026-10-16 20:09 UTC)
 See docs/onboarding-promotion-2026-10-16.md for the authoritative current checkpoint. Promotion 2e91ac73-af2d-410b-860c-b7e249212408 is complete: 78 properties, 74 new leads + 4 reused, 77 completed traces, 481 contacts, 78 assigned follow-ups. Exact rollback validation and committed replay passed. Authenticated UI confirmed saved results/contacts/follow-up. Collection, spending and outbound messaging remain disabled. Broader Dallas/tax inventory, 85 unresolved Collin notices, live scheduled ingestion, stale workflow guidance and carrier delivery remain pending. Older empty-production/data-not-transferred notes below are historical.
 
