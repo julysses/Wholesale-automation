@@ -1,3 +1,7 @@
+# October 16 onboarding continuation
+
+Read `onboarding-release-progress.md` first. Production now includes Daily Lists and the 32-migration intake subsystem at deployed code 8feb89b (deployment dpl_ERRBVokFmZdqXUubwJn2umGNMQR4 READY, CI passed). Authenticated UI verified. Collector data has NOT been transferred; source collection and SMS remain off. Next: preserve and promote the existing receipt graph and completed traces, resolving four existing production lead matches. Goal remains active.
+
 # October 16 recovery checkpoint
 
 Read `launch-review-2026-10-16.md` first. App repairs ae12ad9 and 2dec1ff are deployed; monitoring f5f7934 applied to production. Full automated launch remains blocked by carrier filtering and rehearsal-to-production collector handoff. SMS scheduler stays paused. Twilio ticket 29953072 is Hold with internal escalation confirmed. No spend or SMS sent in this review.

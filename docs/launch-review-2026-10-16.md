@@ -1,3 +1,9 @@
+# Latest onboarding update — October 16
+
+Daily Lists and the intake subsystem are deployed at 8feb89b, with 32 migrations applied and production rollback checks passed. County properties now require an approved owner and receive individual follow-up tasks. Property-review and PropStream controls verified in the signed-in live app. Validation: 787 backend, 162 frontend, 128 pipeline tests, 19 Python collector tests, real PostgreSQL concurrency checks, build and hosted CI passed. No new lint findings.
+
+Existing collector data remains in rehearsal while the receipt-preserving transfer is prepared. Four existing production lead matches share the original IDs; preserve them. Automatic collection and SMS remain disabled. See `onboarding-release-progress.md` in Git for the exact next steps.
+
 # WholesaleOS operational review and recovery
 Updated October 16, 2026. Status: repairs deployed; full automated launch NOT yet verified.
 
@@ -24,7 +30,7 @@ App deployment dpl_2BvKJ7GubD9sxKfMouRgA1DmHzBQ is READY and serves wholesale-au
 
 ## Current operational evidence
 ### Website intake and follow-up
-32 processed website submissions link to leads: 16 Hilltop and 16 Jays. 30 have linked tasks and 29 are assigned. Two missing tasks are historical September 29 submissions. One July 10 pending receipt has no form/lead linkage; reconcile manually rather than replay it. Four intake-alert findings also need reconciliation of existing delivery evidence before retrying anything.
+32 processed website submissions link to leads: 16 Hilltop and 16 Jays. 30 have linked tasks and 29 are assigned. Two missing tasks are historical September 29 submissions for closed test leads. All three unassigned older website leads are closed test records; do not reopen them. One July 10 pending receipt has no form/lead linkage; reconcile manually rather than replay it. Four intake-alert findings also need reconciliation of existing delivery evidence before retrying anything.
 
 The first SMS window expires 15 minutes after submission, while contact hours are restricted. An after-hours inquiry can expire without a next-day SMS. Decide and implement an explicit next-business-window acknowledgement policy, retaining consent and suppression controls. Accepted/review jobs and shared cooldowns intentionally prevent blind resend.
 
@@ -38,7 +44,7 @@ Failed consented SMS: SM0ad8ce793ccef33ea439760c1de917e0; Retell chat chat_3e830
 The current first-message prompt is a long investor pitch. A short inquiry acknowledgement draft already exists in docs/retell-carrier-support-draft.md. Review it against the approved campaign and supported provider route before publishing. Copy changes alone are not proof of delivery.
 
 ### Bulk leads and PropStream
-Production has no wholesale_ingest schema. Rehearsal holds 77 completed PropStream requests, 481 contacts and 77 linked follow-up tasks. Recorded cost is zero; no spend or new tracing performed this session. All 481 contacts are held: 146 DNC-listed, 335 DNC-unknown. None is currently cleared for campaigns. A phone number or paid lookup is not SMS permission.
+October 16 continuation: the wholesale_ingest schema and Daily Lists app are now deployed to production, with sources disabled and no collector data transferred yet. Rehearsal holds 77 completed PropStream requests, 481 contacts and 77 linked follow-up tasks. Recorded cost is zero; no spend or new tracing performed this session. All 481 contacts are held: 146 DNC-listed, 335 DNC-unknown. None is currently cleared for campaigns. A phone number or paid lookup is not SMS permission.
 
 The daily 5 AM Chicago collection automation is paused because the prior chat explicitly paused work. No October 16 foreclosure receipts were generated. Do not label this a failed cron. The standalone Mac worker remains intentionally disabled in favor of the GPT workflow. Prior partial/missing source receipts still require operator review; a healthy supervision run does not mean successful collection.
 
@@ -48,7 +54,7 @@ Retain PropStream and the cumulative $50 prepaid cap. No new purchases, reloads,
 1. Obtain Twilio/Retell's supported A2P route and delivery-status integration; resolve the filtering investigation. Keep automatic sends paused until then.
 2. Publish campaign-aligned inquiry copy and verify a controlled, owner-approved fresh form inquiry: receipt → deduplicated lead → assigned task → owner notification → handset delivery → reply history → STOP suppression. Run for both website paths; never erase prior STOP history or replay accepted/uncertain jobs.
 3. Reconcile the historical missing tasks and four unresolved owner-alert receipts with provider evidence. Assign accountable owners to imported leads; do not mass-replay notifications.
-4. Selectively port the collector schema/service/UI changes into the newer production branch. Review schema dependencies and data reconciliation first; do not merge/promote the older collector branch wholesale. Run a small matched batch through production CRM before scaling.
+4. Collector schema/service/UI integration is now deployed and verified. Next reconcile and promote existing source/PropStream data with its original receipts; verify the matched batch in production before scaling.
 5. Resume and observe one complete scheduled county collection run using docs/gpt-scheduled-bulk-workflow.md. Verify current-sale identities, completeness, receipts and CRM history; resolve missing/partial sources. Preserve paid-data cap.
 6. Resolve unknown DNC status and document eligible outreach permission. Keep DNC-listed contacts suppressed. Then test one eligible bulk lead through assignment and its permitted follow-up channel.
 7. Define next-business-window behavior, maximum acknowledgement age, and daily owner review of monitor incidents. Finish authenticated browser acceptance for import, lead details, tasks and history.
