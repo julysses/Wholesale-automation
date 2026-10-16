@@ -1,3 +1,13 @@
+## SMS intake diagnostics repaired; release validation pending — 2026-10-16
+
+Continuing the full launch goal; evidence upload approval remains pending. The remaining Jays alert 5d3173c4-7b8e-5608-9c02-3351709d938c is still review. Read-only production evidence shows submission 9b245407-6422-4d04-a487-546c90014a4a at 2026-10-15T12:19:04.036311Z (07:19 Central), notification claimed at 12:19:04.718011Z, owner email accepted, seller SMS failed_or_blocked, no SMS event and no Retell job. Before-hours blocking is consistent with these records, not proven historical cause. No incident was closed or replayed.
+
+Found and fixed a diagnostic gap: early SMS guards discarded their reason, and the shared dispatch wrapper swallowed uncertain exceptions into a generic false result. SMSClient retains a bounded per-attempt outcome/reason while preserving its boolean interface, existing checks and durable claims. Intake saves the attempt ID and allowlisted reason in notification metadata and a readable reason in the alert body. Provider uncertainty remains unknown; known provider failure stays failed; acceptance still does not establish delivery. Diagnostics are excluded from generic model serialization, so no CRM column migration is needed. Raw provider exceptions do not enter the new metadata.
+
+Targeted real-client integration: **91 tests passed**. Full backend: **852 tests plus six subtests passed**. Tests cover quiet hours, disabled sending, invalid recipient/configuration, duplicate/uncertain claims, provider timeout, callback-before-response success/failure, independent owner email, no replay and unchanged model serialization. Local logs: work/intake-sms-diagnostics/backend-tests.log. No provider was contacted by tests.
+
+Pre-release production gates verified: active SMS schedulers=0, enabled county sources=0, outreach=false, tracing cap=0. SMS fingerprint unchanged 5b888c800d9ce2ec73d6bba19a8d1e49. Live app before release is deployment dpl_BaYVvbSHAr2ryW8WDRnHRL71A77F at 0fdc9f0. GitHub validation and pinned production deployment for this repair are next; do not claim this code live until deployment/alias/runtime checks pass. No form submission or test SMS is authorized by this diagnostic release. Keep Twilio, Retell and PropStream.
+
 ## Trustee-reference parsing repaired and server validation verified — 2026-10-16, 23:42 UTC
 
 Code commit **c166aafa07b2be566154bd5103ecf433690978b2** is pushed. GitHub CI **38982841303** completed successfully in all four jobs (frontend, backend, pipeline and real PostgreSQL). Prior capture-helper commit 68cc638 also passed CI 38982378240.

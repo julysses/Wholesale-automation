@@ -509,10 +509,17 @@ def _send_lead_pipeline_sms(
             return "not_configured"
         message = OutreachMessage(lead_id=lead_id, channel=OutreachChannel.SMS,
                                   body=body, is_inbound_reply=True, compliance_cleared=True)
+        outcomes["seller_sms_message_id"] = str(message.id)
+        from tools.sms_client import SMS_OUTCOME_REASONS
         try:
             accepted = sms_client.send(message, to_number)
         except Exception:
             logger.exception("[lead_forms] SMS outcome unknown for lead %s", lead_id)
+            outcomes["seller_sms_reason"] = "dispatch_unconfirmed"
+            return "unknown"
+        if message.sms_reason in SMS_OUTCOME_REASONS:
+            outcomes["seller_sms_reason"] = message.sms_reason
+        if message.sms_outcome == "unknown":
             return "unknown"
         if message.a2p_provider.endswith(":dry-run"):
             return "dry_run"
@@ -572,8 +579,11 @@ def _send_lead_pipeline_sms(
             phone, f"Hi {name}, thanks for reaching out to Hilltop Home Co. about "
             f"{property_address}. We'll be in touch shortly. Reply STOP to opt out.",
         )
+    from tools.sms_client import SMS_OUTCOME_REASONS
+    reason = SMS_OUTCOME_REASONS.get(outcomes.get("seller_sms_reason"), "")
+    reason_summary = f" {reason}." if reason else ""
     summary = (f"{property_address} — source: {source}. "
-               f"Owner email: {outcomes['owner_email']}; seller SMS: {outcomes['seller_sms']}. "
+               f"Owner email: {outcomes['owner_email']}; seller SMS: {outcomes['seller_sms']}.{reason_summary} "
                "Review the lead and assign follow-up. Accepted does not confirm delivery.")
     saved = supabase.rpc("finish_intake_notification", {
         "p_lead_id": lead_id, "p_claim_id": claim_id, "p_outcomes": outcomes, "p_body": summary,

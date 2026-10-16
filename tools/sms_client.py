@@ -25,7 +25,7 @@ except ImportError:
     from backports.zoneinfo import ZoneInfo  # type: ignore
 
 from config.settings import settings
-from schemas.outreach import APPROVED_SMS_PROVIDERS, OutreachMessage, OutreachStatus
+from schemas.outreach import APPROVED_SMS_PROVIDERS, OutreachMessage
 from tools.facebook_consent import matching_native_consent, normalize_us_phone
 from tools.operational_alerts import record_provider_alert
 from tools.twilio_receipts import reconcile_twilio_receipt
@@ -34,6 +34,34 @@ logger = logging.getLogger(__name__)
 
 TEXAS_TZ = "America/Chicago"
 CONFIRMED_SUPPRESSION = "Confirmed phone or lead suppression"
+SMS_OUTCOME_REASONS = {
+    "compliance_not_cleared": "Compliance review has not cleared this message",
+    "outside_contact_hours": "Outside configured contact hours",
+    "weekend_contact_blocked": "Weekend contact is blocked for this message",
+    "invalid_phone": "The recipient phone number is invalid",
+    "credentials_missing": "SMS credentials are not configured",
+    "sending_disabled": "Live SMS sending is paused",
+    "provider_not_ready": "The selected provider has not completed delivery setup",
+    "recipient_not_allowed": "The recipient is outside the approved launch list",
+    "sender_route_not_configured": "The SMS sender route or callback is not configured",
+    "receipt_store_unavailable": "The message receipt store is unavailable",
+    "confirmed_suppression": "The phone or lead has a confirmed suppression",
+    "consent_or_suppression_hold": "Consent or suppression checks require review",
+    "dispatch_claim_unconfirmed": "Dispatch claim was not confirmed; review before retry",
+    "dispatch_unconfirmed": "Provider outcome is unconfirmed; reconcile before retry",
+    "provider_failed": "The provider reported a delivery failure",
+    "provider_receipt_unconfirmed": "The provider receipt requires reconciliation",
+    "provider_accepted": "The provider accepted the message; delivery is tracked separately",
+}
+
+
+def _sms_outcome(message: OutreachMessage, outcome: str, reason: str) -> bool:
+    message.sms_outcome = outcome
+    message.sms_reason = reason
+    if outcome == "blocked":
+        message.mark_stopped(SMS_OUTCOME_REASONS[reason])
+    return outcome == "accepted"
+
 
 
 def _texas_now() -> datetime:
@@ -153,8 +181,7 @@ class SMSClient:
             logger.error(
                 f"[SMSClient] BLOCKED msg {message.id}: not compliance cleared"
             )
-            message.status = OutreachStatus.STOPPED
-            return False
+            return _sms_outcome(message, "blocked", "compliance_not_cleared")
 
         # Guard 2: Texas allowed hours (9am–7pm CT)
         if not self._in_allowed_hours():
@@ -163,7 +190,7 @@ class SMSClient:
                 f"[SMSClient] BLOCKED msg {message.id}: outside allowed hours "
                 f"(current Texas time: {now.strftime('%H:%M %Z')})"
             )
-            return False
+            return _sms_outcome(message, "blocked", "outside_contact_hours")
 
         # Guard 3: weekend SMS block (unless inbound-initiated)
         if (
@@ -175,23 +202,23 @@ class SMSClient:
                 f"[SMSClient] BLOCKED msg {message.id}: weekend SMS blocked "
                 f"({_texas_now().strftime('%A')}). Only allowed if seller initiated."
             )
-            return False
+            return _sms_outcome(message, "blocked", "weekend_contact_blocked")
 
         # Guard 4: valid phone number
         to_number = to_number.strip()
         if not to_number or len(to_number) < 10:
             logger.error(f"[SMSClient] BLOCKED invalid phone: {to_number!r}")
-            return False
+            return _sms_outcome(message, "blocked", "invalid_phone")
 
         # Missing credentials never count as a send. Twilio stays disabled until
         # carrier approval and controlled delivery acceptance are complete.
-        if not self._configured or not settings.sms_live_enabled:
-            message.mark_stopped("SMS credentials missing or live sending disabled")
-            return False
+        if not self._configured:
+            return _sms_outcome(message, "blocked", "credentials_missing")
+        if not settings.sms_live_enabled:
+            return _sms_outcome(message, "blocked", "sending_disabled")
 
         if self._provider != "twilio":
-            message.mark_stopped("SMS provider has not completed durable delivery and consent integration")
-            return False
+            return _sms_outcome(message, "blocked", "provider_not_ready")
 
         return self._dispatch(message, to_number)
 
@@ -201,10 +228,10 @@ class SMSClient:
             if self._provider == "twilio":
                 return self._send_twilio(message, to_number)
             logger.error(f"[SMSClient] Unknown provider: {self._provider}")
-            return False
+            return _sms_outcome(message, "blocked", "provider_not_ready")
         except Exception as exc:
-            logger.error(f"[SMSClient] Send failed for msg {message.id}: {exc}")
-            return False
+            logger.error("[SMSClient] Dispatch outcome unconfirmed for msg %s (%s)", message.id, type(exc).__name__)
+            return _sms_outcome(message, "unknown", "dispatch_unconfirmed")
 
     def _send_twilio(self, message: OutreachMessage, to_number: str) -> bool:
         from twilio.rest import Client
@@ -212,32 +239,28 @@ class SMSClient:
         from tools.crm import get_supabase_client
 
         if not settings.sms_live_enabled:
-            return False
+            return _sms_outcome(message, "blocked", "sending_disabled")
         try:
             to_number = normalize_us_phone(to_number)
         except ValueError:
-            return False
+            return _sms_outcome(message, "blocked", "invalid_phone")
         if settings.sms_allowed_recipients:
             allowed = {number.strip() for number in settings.sms_allowed_recipients.split(',') if number.strip()}
             if to_number not in allowed:
-                message.mark_stopped("Recipient outside launch allowlist")
-                return False
+                return _sms_outcome(message, "blocked", "recipient_not_allowed")
         base = settings.twilio_webhook_base_url.rstrip("/")
         if not base.startswith("https://") or not settings.twilio_messaging_service_sid:
-            return False
+            return _sms_outcome(message, "blocked", "sender_route_not_configured")
         sb = get_supabase_client()
         if sb is None:
-            return False
+            return _sms_outcome(message, "blocked", "receipt_store_unavailable")
         blocker = sms_consent_blocker(sb, str(message.lead_id), to_number)
         if blocker:
-            message.mark_stopped(blocker)
-            return False
+            return _sms_outcome(message, "blocked", "confirmed_suppression" if blocker == CONFIRMED_SUPPRESSION else "consent_or_suppression_hold")
         claim = sb.rpc("claim_twilio_sms", {"p_id": str(message.id), "p_lead": str(message.lead_id),
             "p_phone": to_number, "p_body": message.body}).execute().data
         if not isinstance(claim, dict) or claim.get("claimed") is not True:
-            reason = claim.get("reason", "claim_unconfirmed") if isinstance(claim, dict) else "claim_unconfirmed"
-            message.mark_stopped(f"SMS dispatch blocked: {reason}")
-            return False  # Never replay an ambiguous or duplicate attempt.
+            return _sms_outcome(message, "unknown", "dispatch_claim_unconfirmed")  # Never replay an ambiguous or duplicate attempt.
         client = Client(settings.twilio_account_sid, settings.twilio_auth_token,
             http_client=TwilioHttpClient(timeout=5, max_retries=0))
         try:
@@ -256,10 +279,10 @@ class SMSClient:
                     message.provider_message_id = sid
                     message.mark_sent()
                     message.a2p_provider = "twilio"
-                    return True  # A verified callback already confirmed provider acceptance.
+                    return _sms_outcome(message, "accepted", "provider_accepted")  # Verified callback confirms acceptance.
                 if sid and receipt.get("status") in {"failed", "undelivered", "canceled"}:
                     message.provider_message_id = sid
-                    return False
+                    return _sms_outcome(message, "failed", "provider_failed")
             record_provider_alert(sb, 'twilio', str(message.id), 'unknown', message.lead_id)
             raise
         message.provider_message_id = result.sid
@@ -268,11 +291,13 @@ class SMSClient:
         except Exception:
             record_provider_alert(sb, 'twilio', str(message.id), 'unknown', message.lead_id)
             raise RuntimeError("Provider accepted SMS but local receipt is unconfirmed; reconcile before retry")
-        if outcome in {"failed", "undelivered", "canceled", "unknown"}:
-            return False
+        if outcome in {"failed", "undelivered", "canceled"}:
+            return _sms_outcome(message, "failed", "provider_failed")
+        if outcome == "unknown":
+            return _sms_outcome(message, "unknown", "provider_receipt_unconfirmed")
         message.mark_sent()
         message.a2p_provider = "twilio"
-        return True
+        return _sms_outcome(message, "accepted", "provider_accepted")
 
     def send_batch(
         self,
