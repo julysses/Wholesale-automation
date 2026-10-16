@@ -1,3 +1,17 @@
+## Latest: Retell intake handoff alerts corrected (2026-10-16)
+
+Production UI code fbfa71046af54757553a0ad5ac11e617e0e961fe is deployed READY as dpl_6oYGkHv9rCTEVhHrU6VVd7fmkjAN on wholesale-automation.vercel.app. CI 38962289678 passed all four jobs. Authenticated setup UI verified PropStream and Twilio + Retell with live monitoring; proof is in the current chat outputs/WholesaleOS-SMS-Setup-Live.png.
+
+Applied reconcile_retell_intake_handoffs migration to production. Old notification finalization did not recognize Retell queue acknowledgements or no-SMS-required outcomes. Five historical alerts reconciled; monitoring resolved five incidents (13 to 8), with no new incidents. Scheduled handoff requires a persisted queue row; uncertainty, missing schedules, consent/suppression holds and failed owner email remain review. Completion describes intake handoff, never message delivery. Existing SMS queue and SMS-event fingerprints are exactly unchanged. Scheduler remains false.
+
+Validation: all 130 pipeline tests pass, including future and historical outcome classification, missing queue receipts, claimant restrictions and no replay. Real production rollback QA passed with zero retained fixtures; Retell review jobs remain independently monitored. Security advisors unchanged: 29 INFO and three existing WARN findings. No messages or trace orders sent.
+
+Remaining findings: SMS 2, form SMS 2, intake alerts 3, legacy intake 1. The legacy July 10 submission has no current form configuration or request manifest; investigate its source and contents before assigning a recovery disposition. Do not delete it or treat it as processed without evidence.
+
+Credential blocker: official Supabase CLI v2.79.0 completed browser sign-in, but Keychain retrieval failed. Resumed check launched macOS SecurityAgent; computer-use explicitly refuses that protected app. User has been asked to approve the Keychain prompt themselves. No production ingest login role or source credentials created; Edge still needs INGEST_DATABASE_URL and INGEST_TOKEN_CONFIG. Do not bypass the OS prompt, weaken Keychain access or substitute admin/rehearsal credentials. Sources and GPT collection schedule remain paused pending genuine intake acceptance.
+
+Next: finish restricted production intake credential configuration after Keychain access, prove a real source run and downstream ownership/follow-up, reconcile remaining monitor incidents and resolve provider delivery callbacks with Twilio/Retell. Full Dallas/Collin and website onboarding scope remains open; no operational-launch claim.
+
 ## Latest: production intake transport and setup guidance (2026-10-16)
 
 Historical Collin promotion remains complete (78 properties, 77 completed traces, 481 contacts and 78 assigned follow-ups). Production Edge Function `daily-list-ingest` version 1 is ACTIVE (id `86013dad-a079-40f4-8ada-4dc40452dbc6`), but its HTTP response is `ingest_not_configured`: production `INGEST_DATABASE_URL` and `INGEST_TOKEN_CONFIG` are absent. Dashboard confirmed both missing. No production LOGIN ingestion role or collector credentials have been provisioned. Sources, trace spending, outreach and SMS scheduler remain disabled.

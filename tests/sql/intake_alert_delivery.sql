@@ -37,6 +37,24 @@ BEGIN
  IF r->>'claimed'<>'false' THEN RAISE EXCEPTION 'Completed delivery reclaimed'; END IF;
  PERFORM public.scan_launch_monitor();
  IF EXISTS(SELECT 1 FROM public.launch_monitor_incidents WHERE category='intake_alert' AND reference=alert AND resolved_at IS NULL) THEN RAISE EXCEPTION 'Resolved outcome still escalated'; END IF;
+ -- Retell handoff completion is separate from eventual carrier delivery.
+ UPDATE public.app_notifications SET metadata=metadata||'{"delivery_state":"processing"}'::jsonb WHERE id=alert;
+ r:=public.finish_intake_notification(lead,claim,'{"owner_email":"accepted","seller_sms":"scheduled_retell_60_seconds"}','Missing queue receipt');
+ IF r->>'delivery_state'<>'review' THEN RAISE EXCEPTION 'Missing Retell schedule was certified'; END IF;
+ INSERT INTO public.retell_form_sms_jobs(id,lead_id,submission_id,phone_number,due_at,expires_at,status)
+ VALUES(ref,lead,ref,'+12145550199',now()-interval '1 hour',now()-interval '45 minutes','review');
+ UPDATE public.app_notifications SET metadata=metadata||'{"delivery_state":"processing"}'::jsonb WHERE id=alert;
+ r:=public.finish_intake_notification(lead,claim,'{"owner_email":"accepted","seller_sms":"scheduled_retell_60_seconds"}','Durable handoff, delivery still unconfirmed');
+ IF r->>'delivery_state'<>'completed' THEN RAISE EXCEPTION 'Durable Retell handoff falsely escalated'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.launch_monitor_findings() WHERE category='form_sms' AND reference=ref)
+  OR (SELECT status FROM public.retell_form_sms_jobs WHERE id=ref)<>'review'
+  OR EXISTS(SELECT 1 FROM public.sms_events WHERE id=ref) THEN RAISE EXCEPTION 'Handoff completion altered channel outcome'; END IF;
+ UPDATE public.app_notifications SET metadata=metadata||'{"delivery_state":"processing"}'::jsonb WHERE id=alert;
+ r:=public.finish_intake_notification(lead,claim,'{"owner_email":"accepted","seller_sms":"no_consent_or_form_confirmation_disabled"}','No SMS expected');
+ IF r->>'delivery_state'<>'completed' THEN RAISE EXCEPTION 'Expected no-SMS outcome falsely escalated'; END IF;
+ UPDATE public.app_notifications SET metadata=metadata||'{"delivery_state":"processing"}'::jsonb WHERE id=alert;
+ r:=public.finish_intake_notification(lead,claim,'{"owner_email":"accepted","seller_sms":"consent_or_suppression_hold"}','Safety lookup may be uncertain');
+ IF r->>'delivery_state'<>'review' THEN RAISE EXCEPTION 'Ambiguous consent lookup lost review'; END IF;
  -- Previously unresolved legacy records may have sent: never infer that sending is safe.
  UPDATE public.app_notifications SET metadata='{"owner_email":"unresolved"}' WHERE id=alert;
  r:=public.claim_intake_notification(lead,other_claim,'{"title":"Rollback claim QA","body":"No provider transmission"}');
