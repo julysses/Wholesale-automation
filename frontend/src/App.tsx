@@ -33,6 +33,8 @@ const LeadForm = lazy(() => import('@/pages/LeadForm').then(m => ({ default: m.L
 const FacebookAdsCommandCenter = lazy(() => import('@/pages/FacebookAdsCommandCenter').then(m => ({ default: m.FacebookAdsCommandCenter })));
 const DevelopmentCommandCenter = lazy(() => import('@/pages/DevelopmentCommandCenter').then(m => ({ default: m.DevelopmentCommandCenter })));
 
+const DailyLists = lazy(() => import('@/pages/DailyLists').then(m => ({ default: m.DailyLists })));
+
 // Admin pages
 const AdminUsers = lazy(() => import('@/pages/admin/Users').then(m => ({ default: m.AdminUsers })));
 
@@ -235,6 +237,7 @@ function OperatorApp() {
         <Route element={<Layout />}>
           <Route path="/"             element={<Dashboard />} />
           <Route path="/leads"        element={<Leads />} />
+          <Route path="/daily-lists" element={<DailyLists />} />
           <Route path="/master-list"  element={<MasterListBuilder />} />
           <Route path="/pipeline"     element={<Pipeline />} />
           <Route path="/analyzer"     element={<DealAnalyzer />} />

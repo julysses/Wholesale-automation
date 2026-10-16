@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { buildProperties, contactQueueCsv } from './foreclosure_property_batch.mjs';
+const source='https://apps2.collincountytx.gov/ForeclosureNotices/DetailPage/42';
+const detail={document_id:'42',cad_property_id:'123',html_sha256:'a'.repeat(64),source_url:source,indexed_legal_description:'EXAMPLE ADDITION (Cmc), BLK A, LOT 1',auction_date:'2026-12-01'};
+const row={propid:'123',ownerid:'456',geoid:'R-123',ownername:'SYNTHETIC OWNER',situsconcat:'1 EXAMPLE LN , ANNA, TX 75409',legaldescription:'EXAMPLE ADDITION, BLK A, LOT 1'};
+const snapshot={dataset_url:'https://data.texas.gov/d/ahis-pci3',rows:[row]};
+const assessment={document_id:'42',html_sha256:detail.html_sha256,future_sale:true,appraisal_situs_matched:true};
+const index={document_id:'42',run_id:'00000000-0000-4000-8000-000000000001',batch_index:0,ordinal:0,source_fingerprint:'b'.repeat(32),resolved:false};
+const build=(ds=[detail],os=snapshot,as=[assessment],ix=[index],existing=[])=>buildProperties(ds,os,as,ix,existing,'2026-10-14');
+test('whole-property grouping preserves observations, current-status holds, exact legal and units',()=>{
+ const d2={...detail,document_id:'43',source_url:source.replace('42','43')},a2={...assessment,document_id:'43'},i2={...index,document_id:'43',ordinal:1};
+ const result=build([detail,d2],snapshot,[assessment,a2],[index,i2]);
+ assert.equal(result.properties.length,1);assert.equal(result.properties[0].notices.length,2);
+ assert.equal(result.properties[0].owner_name,'SYNTHETIC OWNER');assert.equal(result.properties[0].active_signal,false);
+ assert.equal(result.properties[0].trace_eligible,false);assert.equal(result.properties[0].all_notice_pages_reviewed,false);
+ const exported=contactQueueCsv(result.properties);
+ assert.equal(exported.split('\r\n').filter(Boolean).length,2);
+ assert.ok(exported.includes('"SYNTHETIC OWNER","","","","","","1 EXAMPLE LN"'));
+ assert.ok(contactQueueCsv([{...result.properties[0],owner_name:'SYNTHETIC "OWNER", LLC'}]).includes('"SYNTHETIC ""OWNER"", LLC"'));
+ assert.equal(build([{...detail,indexed_legal_description:'EXAMPLE ADDITION, BLK A, LOT 2'}]).properties.length,0);
+ assert.equal(build([detail],{...snapshot,rows:[{...row,legaldescription:'EXAMPLE ADDITION (REPLAT), BLK A, LOT 1'}]}).properties.length,0);
+ const unit=build([detail],{...snapshot,rows:[{...row,situsconcat:'1 EXAMPLE LN UNIT B , ANNA, TX 75409'}]});
+ assert.equal(unit.properties[0].identity.property_address,'1 EXAMPLE LN UNIT B');
+});
+test('known CRM properties and uncertain sources never get duplicated or silently cleared',()=>{
+ const existing={county:'Collin',parcel_id:'R-123',property_address:'1 EXAMPLE LN',city:'ANNA',zip:'75409'};
+ const reuse=build([detail],snapshot,[assessment],[index],[existing]);assert.equal(reuse.properties.length,0);assert.equal(reuse.reused.length,1);
+ assert.equal(build([detail],{...snapshot,rows:[row,{...row,ownerid:'789'}]}).properties.length,0);
+ assert.equal(build([detail],snapshot,[{...assessment,appraisal_situs_matched:false}]).properties.length,0);
+ assert.equal(build([detail],snapshot,[{...assessment,future_sale:false}]).properties.length,0);
+ assert.equal(build([detail],snapshot,[assessment],[{...index,resolved:true}]).properties.length,0);
+ assert.throws(()=>build([detail],snapshot,[assessment],[index,index]),/Invalid saved/);
+ assert.throws(()=>build([detail],snapshot,[{...assessment,html_sha256:'c'.repeat(64)}]),/Unbound/);
+});
