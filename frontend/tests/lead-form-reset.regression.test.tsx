@@ -5,6 +5,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ create: vi.fn() }));
 vi.mock('@/hooks/useLeads', () => ({
+  useLead: () => ({data: null}),
   useLeads: () => ({ data: { data: [], count: 0 }, isLoading: false, error: null }),
   useCreateLead: () => ({ mutateAsync: mocks.create, isPending: false }),
   useDeleteLead: () => ({ mutate: vi.fn() }),

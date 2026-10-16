@@ -50,6 +50,15 @@ const TOAST_TYPES = new Set([
   'hot_lead', 'appointment_set', 'new_user_pending', 'access_approved', 'access_denied',
 ]);
 
+function withLeadLink(notification: AppNotification): AppNotification {
+  // Older alerts saved a generic list link even when they identify a lead.
+  if (notification.action_url === '/leads' && notification.lead_id &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(notification.lead_id)) {
+    return { ...notification, action_url: `/leads?lead=${notification.lead_id.toLowerCase()}` };
+  }
+  return notification;
+}
+
 export function useNotifications(): UseNotificationsResult {
   const id = useId();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -62,7 +71,7 @@ export function useNotifications(): UseNotificationsResult {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(50);
-    setNotifications(data ?? []);
+    setNotifications((data ?? []).map(withLeadLink));
     setLoading(false);
   }, []);
 
@@ -76,7 +85,7 @@ export function useNotifications(): UseNotificationsResult {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'app_notifications' },
         (payload) => {
-          const n = payload.new as AppNotification;
+          const n = withLeadLink(payload.new as AppNotification);
           setNotifications((prev) => [n, ...prev]);
 
           // Pop a toast for high-priority types

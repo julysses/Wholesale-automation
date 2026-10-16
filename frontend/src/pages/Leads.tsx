@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity, type LeadWrite } from '@/hooks/useLeads';
+import { useLead, useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity, type LeadWrite } from '@/hooks/useLeads';
 import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
 import { DealRecoveryPanel } from '@/components/pipeline/DealRecoveryPanel';
@@ -148,6 +148,22 @@ export function Leads() {
   const [importOpen, setImportOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
+  const requestedLead = searchParams.get('lead');
+  const linkedLeadId = requestedLead && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedLead)
+    ? requestedLead.toLowerCase() : null;
+  const linkedLead = useLead(linkedLeadId);
+  // Resolve email/notification links independently of the current list page.
+  // Key the drawer to the record so navigating cannot carry an edit to another lead.
+  const displayedLead = requestedLead !== null
+    ? (!linkedLead.error && linkedLead.data?.id === linkedLeadId ? linkedLead.data : null) : detailLead;
+  const closeLead = () => {
+    setDetailLead(null);
+    if (requestedLead !== null) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('lead');
+      setSearchParams(next, { replace: true });
+    }
+  };
   const [callSelection, setCallSelection] = useState<string[]>([]);
   const [callBatchOpen, setCallBatchOpen] = useState(false);
   const appointmentQueries = useQueryClient();
@@ -208,6 +224,17 @@ export function Leads() {
   return (
     <div className="space-y-4">
       <DealRecoveryPanel pending={createDeal.pendingCreate} busy={createDeal.isPending} retry={() => createDeal.pendingCreate && void createDeal.mutateAsync(createDeal.pendingCreate.deal).catch(() => {})} />
+      {requestedLead !== null && !displayedLead && (
+        linkedLeadId && linkedLead.isPending
+          ? <p role="status">Opening the linked inquiry…</p>
+          : <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+              <p>{linkedLeadId ? 'This lead could not be opened. It may be unavailable or outside your access.' : 'This lead link is invalid.'}</p>
+              <div className="flex gap-2">
+                {linkedLeadId && <Button variant="outline" disabled={linkedLead.isFetching} onClick={() => { void linkedLead.refetch(); }}>Retry opening lead</Button>}
+                <Button variant="outline" onClick={closeLead}>Dismiss lead link</Button>
+              </div>
+            </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -480,8 +507,8 @@ export function Leads() {
       {logActivityLead && (
         <LogActivityModal lead={logActivityLead} onClose={() => setLogActivityLead(null)} />
       )}
-      {detailLead && (
-        <LeadDetailDrawer lead={detailLead} onClose={() => setDetailLead(null)} />
+      {displayedLead && (
+        <LeadDetailDrawer key={displayedLead.id} lead={displayedLead} onClose={closeLead} />
       )}
       {callBatchOpen && <RetellBatchDialog leadIds={callSelection} onClose={() => setCallBatchOpen(false)} />}
       {appointmentLead && <AppointmentBookingDialog key={appointmentLead.id} leadId={appointmentLead.id}
