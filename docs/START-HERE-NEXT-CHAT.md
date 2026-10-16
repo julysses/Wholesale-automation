@@ -1,3 +1,6 @@
+## Latest: historical Collin data now live (2026-10-16 20:09 UTC)
+See docs/onboarding-promotion-2026-10-16.md for the authoritative current checkpoint. Promotion 2e91ac73-af2d-410b-860c-b7e249212408 is complete: 78 properties, 74 new leads + 4 reused, 77 completed traces, 481 contacts, 78 assigned follow-ups. Exact rollback validation and committed replay passed. Authenticated UI confirmed saved results/contacts/follow-up. Collection, spending and outbound messaging remain disabled. Broader Dallas/tax inventory, 85 unresolved Collin notices, live scheduled ingestion, stale workflow guidance and carrier delivery remain pending. Older empty-production/data-not-transferred notes below are historical.
+
 # October 16 onboarding continuation
 
 Read `onboarding-release-progress.md` first. Production now includes Daily Lists and the 32-migration intake subsystem at deployed code 8feb89b (deployment dpl_ERRBVokFmZdqXUubwJn2umGNMQR4 READY, CI passed). Authenticated UI verified. Collector data has NOT been transferred; source collection and SMS remain off. Next: preserve and promote the existing receipt graph and completed traces, resolving four existing production lead matches. Goal remains active.

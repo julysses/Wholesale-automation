@@ -37,8 +37,18 @@
     "frontend/supabase/migrations/20261016195408_onboarding_promotion_receipts.sql"
   ],
   "production_applied": true,
-  "data_transferred": false,
+  "data_transferred": true,
   "scope": "County intake, verified identity, receipt monitoring, tracing and scoring. Existing SMS, offer and land behavior preserved.",
   "production_project": "dvzhzlipbwzzcliujzyz",
-  "applied_date": "2026-10-16"
+  "applied_date": "2026-10-16",
+  "data_transfer_scope": "Historical Collin foreclosure run only; remaining Dallas/tax inventory and live collection are pending",
+  "promotion_receipt": "2e91ac73-af2d-410b-860c-b7e249212408",
+  "promotion_counts": {
+    "properties": 78,
+    "new_leads": 74,
+    "existing_leads": 4,
+    "completed_traces": 77,
+    "contacts": 481,
+    "follow_ups": 78
+  }
 }
