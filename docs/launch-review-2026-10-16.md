@@ -1,6 +1,6 @@
 # WholesaleOS operational review and launch status
 
-Updated October 16, 2026, after the intake suppression fix and historical alert reconciliation. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
+Updated October 16, 2026, after the owner follow-up link repair and production verification. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
 
 ## What is now working
 
@@ -14,6 +14,7 @@ Updated October 16, 2026, after the intake suppression fix and historical alert 
 | Review workflow | Source filters, pagination and historical tax date/amount/warnings verified live. Exact Dallas and Collin property reviews saved through the production interface, with assigned follow-ups and preserved evidence. | 40,266 records still require evidence; historical tax balances do not establish current distress. |
 | CSV lead import | Authenticated server reconciliation preserves notes/motivation, identifies existing matches and rejects uncertain updates. | Operator acceptance for the complete daily workflow remains necessary. |
 | Website owner alerts | All three flagged owner emails have verified delivery receipts. Two stale intake holds were resolved with audited STOP/START and later-handoff evidence; seller follow-ups remain pending. | One alert still has an unexplained historical failed/blocked SMS outcome and remains under review. |
+| Owner follow-up links | Email links now open the exact CRM inquiry independently of list pagination. Older in-app alerts with a saved lead ID now route to that lead. Live owner inquiry and activity history verified. | This is navigation acceptance; the SMS failure remains unresolved. |
 | Confirmed opt-out handling | Explicit confirmed suppression completes intake without creating an SMS job. | Unknown lookup results and unmatched consent still require review; original holds are not automatically rewritten. |
 | After-hours SMS scheduling | New inquiries defer to the next 9 AM America/Chicago contact window, including DST; expiry follows that window. Existing jobs are preserved. | Scheduler is paused; this repair does not establish delivery. |
 | Monitoring | Retell failures, unconfirmed delivery, stalled/review jobs and intake handoff outcomes are monitored. | Delivery callbacks and actual handset outcomes require provider acceptance. |
@@ -42,9 +43,9 @@ Keep Twilio and Retell. Before resuming automatic acknowledgements, use the shor
 
 ## Verification and release
 
-Live runtime: 3a318f2a1ad98709551f05284c4f92fdc25f40bd, Vercel deployment dpl_HQorig1iYLqKvm8Brq6a6vGQBYdF, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38977524028 succeeded. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
+Live runtime: 0fdc9f0a49b6bac4caaac7c13f4dab1bab76295e, Vercel deployment dpl_BaYVvbSHAr2ryW8WDRnHRL71A77F, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38978904757 succeeded in all four jobs. This release changes navigation only; no schema or CRM record changes. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
 
-Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The latest hosted release passed 844 backend tests plus six subtests and 165 frontend tests, alongside pipeline and real PostgreSQL checks. The missing-situs change also passed 12 local parser tests, 14 API tests and three UI tests.
+Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The latest hosted release passed 844 backend tests plus six subtests and 172 frontend tests, alongside pipeline and real PostgreSQL checks. The missing-situs change also passed 12 local parser tests, 14 API tests and three UI tests.
 
 Production rollback assertions passed for the exact intake linkage, tax transfer and subsequent two tax identity associations before saving. The tax reviews proved repeat deduplication, correct owner/follow-up, preserved original fingerprints and existing qualification, and no tracing or SMS change. Both live saves were then verified through UI queue removal and direct database receipts. The tax context migration preserves server-only permissions and accepts only the exact official Collin CAD dataset URL for the reviewed parcel. Security advisors remain at 29 INFO and three existing WARN findings.
 
@@ -62,8 +63,8 @@ Local full validation passed 844 backend tests and 131 pipeline tests. Productio
 
 1. Resolve Twilio/Retell filtering, supported A2P routing and delivery callback linkage. Keep sending paused until verified.
 2. For both Hilltop and Jays, observe a fresh consented inquiry through receipt, deduplicated CRM lead, assigned task, owner notification, handset delivery, reply history and STOP suppression. Preserve cooldowns, original STOP history and uncertain/accepted job holds.
-3. Reconcile the remaining legacy intake and owner-alert exception against delivery evidence. Review forward handling of repeated website inquiries: three current exact phone/property groups contain six web-form leads, while submission-reference retry deduplication does not establish person/property deduplication. Preserve each receipt and consent; do not merge historical or uncertain matches automatically.
-4. Validate current county evidence and coverage, then explicitly resume one supervised unattended GPT collection cycle. Confirm original source receipts, deduplication, owner assignment and CRM history before scaling. The one-record exception did not resume scheduled collection.
+3. Reconcile the remaining legacy intake and owner-alert exception against delivery evidence. The repeated-inquiry review found two groups of general Jays buyer/financing inquiries with placeholder addresses and one owner test before/after carrier START. These are not evidence for automatic seller/property merging. Preserve distinct receipts, consent and follow-up history. The live owner test also displays a duplicate-retention recommendation; review retention classification before allowing cleanup of inquiry evidence. No deletion or merge was performed.
+4. Validate current county evidence and coverage, then authorize one bounded supervised GPT collection cycle using `next-collection-acceptance.md`. Separately verify the first unattended scheduled wake. Confirm original source receipts, deduplication, owner assignment and CRM history before scaling. The one-record exception did not resume scheduled collection.
 5. Resolve unknown DNC status and establish channel permission before exporting contacts for outreach. A tax record, foreclosure notice or returned phone number does not establish SMS permission.
 
 Recommended launch approach: use the CRM for reviewed inventory and human follow-up while these checks are completed. Release automated outreach only after the provider and real-user acceptance checks pass. No fully operational or successful automated campaign claim is made.
@@ -73,6 +74,12 @@ Recommended launch approach: use the CRM for reviewed inventory and human follow
 The official Collin CAD daily publisher metadata identifies Collin Central Appraisal District at [Texas Open Data](https://data.texas.gov/api/views/ahis-pci3). The exact parcel response was cross-checked against source account, owner, situs and legal description. Dallas identity was verified in the official DCAD account and the saved appraisal archive; property ZIP was used instead of the owner mailing ZIP. Neither appraisal record establishes current tax payoff. Partial-interest and deferral examples remain held.
 
 Private receipts and original evidence are preserved under `work/tax-property-review/`; exact IDs and next steps are in the resume checkpoint.
+
+## Owner follow-up link verification
+
+The production owner inquiry URL opened the expected 5200 TUSKEGEE TRL drawer even though the record was outside the currently displayed 50-row list. Its activity history showed the existing undelivered Retell event. Seven new regression tests cover exact-record lookup, invalid/unavailable links, read retry, filter preservation, draft isolation, stale responses and fetched/realtime notification links. Full frontend validation passed 172 tests in 41 files, production build and lint (149 existing findings, zero new). No inquiries, consent or notification rows were rewritten. Screenshot: `WholesaleOS-Lead-Followup.png` in the current chat outputs.
+
+The provider cases were refreshed after this release: Twilio still Hold; Retell still Open with telephony-engineer escalation. No technical resolution or new send.
 
 ## Resume references
 

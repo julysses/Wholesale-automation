@@ -1,3 +1,19 @@
+## Owner follow-up links repaired and verified — 2026-10-16
+
+Production runtime **0fdc9f0a49b6bac4caaac7c13f4dab1bab76295e**, deployment **dpl_BaYVvbSHAr2ryW8WDRnHRL71A77F**, is READY with wholesale-automation.vercel.app assigned and no alias error. CI **38978904757** passed all four jobs. Full local frontend: **172 tests / 41 files**, build passed, lint 149 existing findings / zero new. Backend and database code are unchanged by this release.
+
+Email /leads?lead=UUID previously opened only the general paginated list. Leads now uses the existing authenticated/RLS exact-record query, validates the ID, isolates drafts by record and shows explicit loading/unavailable states. Closing preserves other URL filters. In-app notifications with a saved lead ID and exact generic /leads destination now resolve to that lead, both from fetched history and realtime/toast events; explicit other destinations are preserved. No historical notifications or lead data rewritten. Seven new tests cover exact-record lookup outside pagination, invalid/unavailable links, read retry, preserved filters, draft isolation, stale responses and notification normalization.
+
+Authenticated production proof: /leads?lead=fe19ef32-4ad5-475d-95fc-3baf33cea513 opened the expected 5200 TUSKEGEE TRL drawer and its existing SMS Undelivered activity. Screenshot is current chat outputs/WholesaleOS-Lead-Followup.png. Do not treat this navigation fix as SMS delivery acceptance. Browser tab 1348649157 was marked deliverable.
+
+Repeated-inquiry audit clarifies the preceding checkpoint: the three normalized phone/property groups are two generic Jays buyer/financing placeholder-address groups and the owner before/after-START test. All have distinct receipts; city/ZIP are blank. No seller-property automatic matching change is justified by this sample. No merge performed. Future matching must preserve per-inquiry consent, notification, task and Retell receipt identity. Live owner inquiry also shows a duplicate-retention recommendation; inspect its policy before permitting any cleanup that could remove consent/inquiry evidence. No cleanup performed.
+
+Refreshed Twilio 29953072: still Hold, last response October 15 6:18 PM internal escalation. Retell 65825: still Open, latest October 16 5:25:58 PM telephony-engineer escalation. No new reply, support message, worker invocation or send.
+
+Prepared docs/next-collection-acceptance.md: one proposed Dallas/Collin foreclosure filing-window capture for October 14–16, private two-pass manifests, source-by-source bounded production handoff, gates reclosed, no tax refresh/spend/outreach or recurring activation. NOT EXECUTED. Earlier one-record authorization was consumed by the completed test, not ongoing permission. Obtain authorization before new collection. A supervised collection result is distinct from the later first unattended wake.
+
+No data mutation this turn. Last verified inventory remains 17,449 leads, 140 tasks, 84 associated properties, 77 trace requests; six unresolved monitor incidents. No new database census claimed. Collection, SMS, spending remain paused. Next: retention-policy review for protected inquiry records; remaining historical exception reconciliation; bounded fresh collection after permission; provider resolution and fresh consented end-to-end acceptance for both websites. Do not replay accepted, uncertain or expired jobs. Goal remains active and full launch unverified.
+
 ## Confirmed suppression and historical intake alerts reconciled — 2026-10-16, 22:46 UTC
 
 Production runtime 3a318f2a1ad98709551f05284c4f92fdc25f40bd is READY as dpl_HQorig1iYLqKvm8Brq6a6vGQBYdF, wholesale-automation.vercel.app assigned with no alias error. CI 38977524028 passed all four jobs: 844 backend tests plus six subtests, 165 frontend tests, pipeline and real PostgreSQL checks. Local full backend 844 and pipeline 131 passed; 75 targeted backend tests passed. No frontend code changed in this release.
