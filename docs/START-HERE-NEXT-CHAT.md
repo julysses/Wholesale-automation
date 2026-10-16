@@ -1,4 +1,4 @@
-## SMS intake diagnostics repaired; release validation pending — 2026-10-16
+## SMS intake diagnostics deployed and verified — 2026-10-16, 23:53 UTC
 
 Continuing the full launch goal; evidence upload approval remains pending. The remaining Jays alert 5d3173c4-7b8e-5608-9c02-3351709d938c is still review. Read-only production evidence shows submission 9b245407-6422-4d04-a487-546c90014a4a at 2026-10-15T12:19:04.036311Z (07:19 Central), notification claimed at 12:19:04.718011Z, owner email accepted, seller SMS failed_or_blocked, no SMS event and no Retell job. Before-hours blocking is consistent with these records, not proven historical cause. No incident was closed or replayed.
 
@@ -6,7 +6,11 @@ Found and fixed a diagnostic gap: early SMS guards discarded their reason, and t
 
 Targeted real-client integration: **91 tests passed**. Full backend: **852 tests plus six subtests passed**. Tests cover quiet hours, disabled sending, invalid recipient/configuration, duplicate/uncertain claims, provider timeout, callback-before-response success/failure, independent owner email, no replay and unchanged model serialization. Local logs: work/intake-sms-diagnostics/backend-tests.log. No provider was contacted by tests.
 
-Pre-release production gates verified: active SMS schedulers=0, enabled county sources=0, outreach=false, tracing cap=0. SMS fingerprint unchanged 5b888c800d9ce2ec73d6bba19a8d1e49. Live app before release is deployment dpl_BaYVvbSHAr2ryW8WDRnHRL71A77F at 0fdc9f0. GitHub validation and pinned production deployment for this repair are next; do not claim this code live until deployment/alias/runtime checks pass. No form submission or test SMS is authorized by this diagnostic release. Keep Twilio, Retell and PropStream.
+Production commit **cd782909486d05fdab52616de7cdc991c45d3eb9**, deployment **dpl_DfscJZ4XQbWvMu7KeGDGVo5uMR2U**, is READY with wholesale-automation.vercel.app assigned and aliasError=null. Exact Git SHA, target=production and project ID were verified. GitHub CI **38983413466** succeeded in all four jobs. Live /api/health returned HTTP 200 with the expected wholesaleos response. This proves deployment/availability, while mocked integration tests prove the diagnostic branches; no new live inquiry or SMS delivery was exercised.
+
+Post-release production checks: active SMS schedulers=0, enabled county sources=0, outreach=false, tracing cap=0. SMS fingerprint unchanged **5b888c800d9ce2ec73d6bba19a8d1e49**. Leads **17,449**, tasks **140**, traces **77**. The historical alert metadata exactly matches the pre-release read and remains review. No migration, CRM/history rewrite, activation, worker invocation, support message or external send. Private logs/progress: **work/intake-sms-diagnostics/**.
+
+Next: refresh provider tickets when appropriate; continue evidence review without inventing historical outcomes. Fresh notice-text upload remains blocked pending the existing specific approval (outputs/WholesaleOS-Notice-Evidence-Upload.md); do not bypass it. Full launch still needs actual inquiry-to-follow-up-to-handset delivery/reply/STOP acceptance for both websites and an authorized observed scheduled collection cycle. Keep Twilio, Retell and PropStream. Goal remains active; this continuation made concrete code and production progress.
 
 ## Trustee-reference parsing repaired and server validation verified — 2026-10-16, 23:42 UTC
 

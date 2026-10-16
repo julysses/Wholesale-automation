@@ -1,6 +1,10 @@
 # WholesaleOS operational review and launch status
 
-Updated October 16, 2026, after the owner-link and inquiry-retention repairs, plus the approved fresh county intake test. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
+Updated October 16, 2026, after the SMS intake diagnostic release and county evidence repairs. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
+
+## SMS diagnostic repair
+
+Future intake alerts retain the message attempt ID and a clear reason for pre-send blocks. Uncertain provider exceptions stay unknown instead of collapsing into a generic failure. Owner email stays independent, and the repair never replays an uncertain send. All 852 backend tests plus six subtests passed; all four CI jobs succeeded. Production deployment and app availability are verified. The older Jays alert remains open: its 07:19 Central timestamp is consistent with contact-hour blocking, but the original reason was not saved and is not proven. No historical notification or SMS record was rewritten.
 
 ## Latest parser repair
 
@@ -54,9 +58,9 @@ Keep Twilio and Retell. Before resuming automatic acknowledgements, use the shor
 
 ## Verification and release
 
-Live runtime: 0fdc9f0a49b6bac4caaac7c13f4dab1bab76295e, Vercel deployment dpl_BaYVvbSHAr2ryW8WDRnHRL71A77F, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38978904757 succeeded in all four jobs. This release changes navigation only; no schema or CRM record changes. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
+Live runtime: **cd782909486d05fdab52616de7cdc991c45d3eb9**, Vercel deployment **dpl_DfscJZ4XQbWvMu7KeGDGVo5uMR2U**, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI **38983413466** succeeded in all four jobs. Live health returned HTTP 200. SMS intake diagnostics are deployed; full message delivery remains unverified. No schema or historical CRM record changes were needed for this release.
 
-Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The latest hosted release passed 844 backend tests plus six subtests and 172 frontend tests, alongside pipeline and real PostgreSQL checks. The missing-situs change also passed 12 local parser tests, 14 API tests and three UI tests.
+Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The latest hosted release passed 852 backend tests plus six subtests and 172 frontend tests, alongside pipeline and real PostgreSQL checks. The missing-situs change also passed 12 local parser tests, 14 API tests and three UI tests.
 
 Production rollback assertions passed for the exact intake linkage, tax transfer and subsequent two tax identity associations before saving. The tax reviews proved repeat deduplication, correct owner/follow-up, preserved original fingerprints and existing qualification, and no tracing or SMS change. Both live saves were then verified through UI queue removal and direct database receipts. The tax context migration preserves server-only permissions and accepts only the exact official Collin CAD dataset URL for the reviewed parcel. Security advisors remain at 29 INFO and three existing WARN findings.
 
