@@ -1,6 +1,6 @@
 # WholesaleOS operational review and launch status
 
-Updated October 16, 2026, after the tax-review acceptance and evidence-context release. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
+Updated October 16, 2026, after the intake suppression fix and historical alert reconciliation. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
 
 ## What is now working
 
@@ -13,7 +13,8 @@ Updated October 16, 2026, after the tax-review acceptance and evidence-context r
 | Scheduled handoff | Paused heartbeat now reads the production checkpoint and corrected collector code instead of defaulting to rehearsal. | Schedule remains paused; a fresh observed run still requires approval. |
 | Review workflow | Source filters, pagination and historical tax date/amount/warnings verified live. Exact Dallas and Collin property reviews saved through the production interface, with assigned follow-ups and preserved evidence. | 40,266 records still require evidence; historical tax balances do not establish current distress. |
 | CSV lead import | Authenticated server reconciliation preserves notes/motivation, identifies existing matches and rejects uncertain updates. | Operator acceptance for the complete daily workflow remains necessary. |
-| Website owner alerts | Durable owner alert is claimed before SMS scheduling; an SMS scheduling exception no longer prevents owner notification. | Remaining historical alerts need evidence reconciliation, not mass resend. |
+| Website owner alerts | All three flagged owner emails have verified delivery receipts. Two stale intake holds were resolved with audited STOP/START and later-handoff evidence; seller follow-ups remain pending. | One alert still has an unexplained historical failed/blocked SMS outcome and remains under review. |
+| Confirmed opt-out handling | Explicit confirmed suppression completes intake without creating an SMS job. | Unknown lookup results and unmatched consent still require review; original holds are not automatically rewritten. |
 | After-hours SMS scheduling | New inquiries defer to the next 9 AM America/Chicago contact window, including DST; expiry follows that window. Existing jobs are preserved. | Scheduler is paused; this repair does not establish delivery. |
 | Monitoring | Retell failures, unconfirmed delivery, stalled/review jobs and intake handoff outcomes are monitored. | Delivery callbacks and actual handset outcomes require provider acceptance. |
 
@@ -33,7 +34,7 @@ Existing PropStream history was preserved earlier: 77 completed requests and 481
 
 ## SMS blocker
 
-Both provider cases were refreshed after the latest intake work. [Twilio ticket 29953072](https://help.twilio.com/tickets/29953072) remains Hold, with an internal escalation and latest response October 15 at 6:18 PM as displayed. [Retell ticket 65825](https://support.retellai.com/?durationMs=31536000000&tab=issues&issueNumber=65825) remains Open and now includes an October 16 reply escalating the issue to a telephony engineer; no technical resolution has been provided.
+At the last provider check on October 16, [Twilio ticket 29953072](https://help.twilio.com/tickets/29953072) remains Hold, with an internal escalation and latest response October 15 at 6:18 PM as displayed. [Retell ticket 65825](https://support.retellai.com/?durationMs=31536000000&tab=issues&issueNumber=65825) remains Open and now includes an October 16 reply escalating the issue to a telephony engineer; no technical resolution has been provided.
 
 The owner test was accepted by Retell but marked undelivered by Twilio with error 30007. The failed message lacked a Messaging Service SID, while an earlier delivered message used the registered service; that difference is an investigation lead, not a proven cause. Supported routing and delivery-callback linkage still require resolution. No test retry, support message or sending-worker invocation occurred in this continuation.
 
@@ -41,9 +42,9 @@ Keep Twilio and Retell. Before resuming automatic acknowledgements, use the shor
 
 ## Verification and release
 
-Live runtime: e70c7ab3fe5c3fb4b57c587432a250ed2fa93f06, Vercel deployment dpl_2jyrgzZXo1ELfqyhfAR26jGFZnt9, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38975929479 succeeded. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
+Live runtime: 3a318f2a1ad98709551f05284c4f92fdc25f40bd, Vercel deployment dpl_HQorig1iYLqKvm8Brq6a6vGQBYdF, READY with wholesale-automation.vercel.app assigned and no alias error. GitHub CI 38977524028 succeeded. The source-filter migration is applied; its RPC denies direct execution to anon/authenticated and permits the server service role.
 
-Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The latest hosted release passed 835 backend tests plus six subtests and 165 frontend tests, alongside pipeline and real PostgreSQL checks. The missing-situs change also passed 12 local parser tests, 14 API tests and three UI tests.
+Latest filter validation: 131 pipeline tests, 18 targeted backend tests, frontend onboarding regression, production build and lint regression gate passed (149 existing lint findings, zero new). The latest hosted release passed 844 backend tests plus six subtests and 165 frontend tests, alongside pipeline and real PostgreSQL checks. The missing-situs change also passed 12 local parser tests, 14 API tests and three UI tests.
 
 Production rollback assertions passed for the exact intake linkage, tax transfer and subsequent two tax identity associations before saving. The tax reviews proved repeat deduplication, correct owner/follow-up, preserved original fingerprints and existing qualification, and no tracing or SMS change. Both live saves were then verified through UI queue removal and direct database receipts. The tax context migration preserves server-only permissions and accepts only the exact official Collin CAD dataset URL for the reviewed parcel. Security advisors remain at 29 INFO and three existing WARN findings.
 
@@ -51,11 +52,17 @@ Production rollback assertions also verified the historical transfer. All 81 tax
 
 Authenticated browser checks verified Dallas/Collin filters, empty tax states before import, populated tax states after import, pagination reset on source change and the global count. CRM health, Daily Lists and both website intake pages return HTTP 200. Availability is not end-to-end submission or handset evidence. The affected historical Collin card was verified live as Unresolved property with an empty address input; no placeholder is linked to a CRM property.
 
+## Intake-alert reconciliation
+
+Open monitor incidents decreased from eight to six: two SMS, two form-SMS, one intake alert and one legacy intake. The two closed alerts retain original outcomes plus dated reviewer notes and evidence references. Their monitor tasks are completed; original seller follow-ups are still pending. Carrier failure incidents remain open. SMS events, scheduled jobs, DNC entries and re-subscription history were unchanged. No messages were replayed.
+
+Local full validation passed 844 backend tests and 131 pipeline tests. Production rollback checks covered classification, exact historical reconciliation, preserved channel records and retained carrier failures before the actual save. Live setup monitoring displays six incidents.
+
 ## Remaining work before full launch
 
 1. Resolve Twilio/Retell filtering, supported A2P routing and delivery callback linkage. Keep sending paused until verified.
 2. For both Hilltop and Jays, observe a fresh consented inquiry through receipt, deduplicated CRM lead, assigned task, owner notification, handset delivery, reply history and STOP suppression. Preserve cooldowns, original STOP history and uncertain/accepted job holds.
-3. Reconcile the remaining legacy intake and owner-alert exceptions against delivery evidence. Do not reopen closed historical test leads or replay ambiguous notifications.
+3. Reconcile the remaining legacy intake and owner-alert exception against delivery evidence. Review forward handling of repeated website inquiries: three current exact phone/property groups contain six web-form leads, while submission-reference retry deduplication does not establish person/property deduplication. Preserve each receipt and consent; do not merge historical or uncertain matches automatically.
 4. Validate current county evidence and coverage, then explicitly resume one supervised unattended GPT collection cycle. Confirm original source receipts, deduplication, owner assignment and CRM history before scaling. The one-record exception did not resume scheduled collection.
 5. Resolve unknown DNC status and establish channel permission before exporting contacts for outreach. A tax record, foreclosure notice or returned phone number does not establish SMS permission.
 
