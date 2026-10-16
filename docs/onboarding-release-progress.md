@@ -42,3 +42,8 @@ Next work: preserve original IDs and receipt graph across source-key mapping, co
 Also found stale operator guidance in WorkflowGuide.tsx: it tells users to rerun seven migrations, implies CSV import clears DNC, and promises automatic SMS delivery. Correct those claims in the next UI update using actual behavior; do not copy unavailable Human Offer Review instructions from the older collector branch.
 
 Goal remains active. This turn made production code/schema progress; remaining gates are data promotion, live source intake, assignment acceptance on the promoted batch, and carrier delivery support.
+
+## Promotion preparation update
+Applied migration 20261016195408_onboarding_promotion_receipts to production after all 128 pipeline tests passed. It adds private, RLS-protected promotion receipts and preserves existing assigned follow-up tasks (including completed tasks) when an imported property is associated. Live rollback QA confirms historical-task preservation, approved ownership, suppression, notifications and access restrictions. No real lead data promoted yet.
+
+The first complete historical transfer scope is the Collin foreclosure run a0c09287-a888-4e8e-97ea-ab4964e5ab69: 78 properties, 164 source records, 79 review events, 77 completed traces, 481 contacts and 77 original follow-up tasks. Private export is under ignored work/onboarding-promotion/. Source configuration is limited to id/source_key; external receipts require inspected, allowlisted fields. No credentials or active job queues are to be copied. Broader Dallas/tax ingestion remains required before launch.

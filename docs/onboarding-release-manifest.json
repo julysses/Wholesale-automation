@@ -33,7 +33,8 @@
     "frontend/supabase/migrations/20261014200149_scheduled_bulk_supervision.sql",
     "frontend/supabase/migrations/20261015022555_county_property_notifications.sql",
     "frontend/supabase/migrations/20261015023121_weekly_tax_monitoring.sql",
-    "frontend/supabase/migrations/20261016193454_county_intake_assignment.sql"
+    "frontend/supabase/migrations/20261016193454_county_intake_assignment.sql",
+    "frontend/supabase/migrations/20261016195408_onboarding_promotion_receipts.sql"
   ],
   "production_applied": true,
   "data_transferred": false,

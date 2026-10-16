@@ -2,6 +2,7 @@
 BEGIN;
 DO $$
 DECLARE l uuid:=gen_random_uuid(); p uuid:=gen_random_uuid(); owner_id uuid; result jsonb;
+ historical_lead uuid:=gen_random_uuid(); historical_task uuid:=gen_random_uuid();
 BEGIN
  SELECT pr.id INTO owner_id FROM public.profiles pr JOIN public.app_settings a ON a.value=pr.id::text
  WHERE a.key='lead_owner_user_id' AND pr.status='approved';
@@ -25,11 +26,22 @@ BEGIN
  THEN RAISE EXCEPTION 'Replay duplicated or reopened follow-up'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.leads WHERE id=l AND dnc AND ai_calling_paused AND NOT sms_sequence_active AND NOT email_sequence_active)
  THEN RAISE EXCEPTION 'Suppression changed'; END IF;
+ INSERT INTO public.leads(id,property_address,city,state,status,dnc,ai_calling_paused,sms_sequence_active,email_sequence_active)
+ VALUES(historical_lead,'SYNTHETIC HISTORICAL ONBOARDING ROLLBACK QA','Collin','TX','new',true,true,false,false);
+ INSERT INTO public.tasks(id,lead_id,title,type,status,assigned_to,completed_at)
+ VALUES(historical_task,historical_lead,'Synthetic completed follow-up','follow_up','completed',owner_id,now());
+ INSERT INTO wholesale_ingest.properties(state,county,address_std,city,lead_id)
+ VALUES('TX','Collin','SYNTHETIC HISTORICAL ONBOARDING ROLLBACK QA','Collin',historical_lead);
+ IF (SELECT count(*) FROM public.tasks WHERE lead_id=historical_lead)<>1
+ OR NOT EXISTS(SELECT 1 FROM public.tasks WHERE id=historical_task AND status='completed' AND completed_at IS NOT NULL)
+ THEN RAISE EXCEPTION 'Historical task duplicated or reopened'; END IF;
  PERFORM public.list_pipeline_snapshot(current_date,0);
  PERFORM public.propstream_handoff_snapshot(owner_id,0);
  PERFORM public.foreclosure_capture_status(owner_id);
  IF has_table_privilege('authenticated','wholesale_ingest.contacts','SELECT')
  OR has_function_privilege('authenticated','public.list_pipeline_snapshot(date,integer)','EXECUTE')
+ OR has_table_privilege('authenticated','wholesale_ingest.onboarding_promotions','SELECT')
+ OR has_table_privilege('authenticated','wholesale_ingest.onboarding_promotion_parts','SELECT')
  THEN RAISE EXCEPTION 'Private pipeline exposed to browser'; END IF;
 END $$;
 ROLLBACK;

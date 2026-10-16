@@ -38,10 +38,24 @@ test('selected production migration sequence installs together with sending and 
  await db.query("update public.tasks set status='completed' where lead_id=$1",[lead]);
  await db.query('update wholesale_ingest.properties set lead_id=$1 where lead_id=$1',[lead]);
  assert.equal((await q('select status from public.tasks where lead_id is not null'))[0].status,'completed');
+ const historicalLead='00000000-0000-4000-8000-000000000003';
+ const historicalTask='00000000-0000-4000-8000-000000000004';
+ await db.query("insert into public.leads(id,property_address,status,dnc) values($1,'SYNTHETIC HISTORICAL INTAKE','new',true)",[historicalLead]);
+ await db.query("insert into public.tasks(id,lead_id,type,status,assigned_to) values($1,$2,'follow_up','completed',$3)",[historicalTask,historicalLead,operator]);
+ await db.query("insert into wholesale_ingest.properties(state,county,address_std,lead_id) values('TX','Collin','SYNTHETIC HISTORICAL INTAKE',$1)",[historicalLead]);
+ assert.deepEqual(await q(`select id,status from public.tasks where lead_id='${historicalLead}'`),[{id:historicalTask,status:'completed'}],
+  'Associating an imported property must preserve its existing assigned follow-up');
+ assert.equal((await q(`select assigned_to from public.leads where id='${historicalLead}'`))[0].assigned_to,operator);
+ const promotion='00000000-0000-4000-8000-000000000005';
+ await db.query("insert into wholesale_ingest.onboarding_promotions(id,source_project,scope,operator_id,manifest) values($1,'synthetic','test',$2,'{}')",[promotion,operator]);
+ await db.query("insert into wholesale_ingest.onboarding_promotion_parts values($1,'synthetic','[]','[]')",[promotion]);
+ await assert.rejects(db.query("insert into wholesale_ingest.onboarding_promotion_parts values($1,'invalid','{}','[]')",[promotion]),/check constraint/);
  await db.query("insert into wholesale_ingest.contacts(lead_id,provider,traced_at,expires_at,email) values($1,'synthetic',now()-interval '2 days',now()-interval '1 day','synthetic@example.invalid')",[lead]);
  await db.exec('select wholesale_ingest.scan_at(now())');
  assert.equal((await q('select count(*)::int n from wholesale_ingest.contacts'))[0].n,1,'Monitoring must retain expired evidence for explicit review');
  await db.exec('SET ROLE authenticated');
  await assert.rejects(q('select * from wholesale_ingest.contacts'),/permission denied/);
+ await assert.rejects(q('select * from wholesale_ingest.onboarding_promotion_parts'),/permission denied/);
+ await assert.rejects(q('select * from wholesale_ingest.onboarding_promotions'),/permission denied/);
  await assert.rejects(q('select public.list_pipeline_snapshot(current_date,0)'),/permission denied/);
 });
