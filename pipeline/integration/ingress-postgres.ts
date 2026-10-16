@@ -21,12 +21,14 @@ try{
  CREATE TABLE public.leads(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),property_address text,city text,state text,zip_code text,source text,motivation_tag text,status text,owner_mailing_address text,sms_sequence_active boolean,email_sequence_active boolean);
  CREATE TABLE public.tasks(id uuid PRIMARY KEY,title text,description text,status text,priority text,type text,assigned_to uuid,due_date timestamptz);
  CREATE TABLE public.app_settings(key text,value text);`);
- for(const file of ['20261012174408_daily_list_ingestion.sql','20261012174446_list_operations.sql','20261012201949_list_review_batch_guard.sql','20261012205453_list_monitor_receipts.sql']){
+ for(const file of ['20261012174408_daily_list_ingestion.sql','20261012174446_list_operations.sql','20261012201949_list_review_batch_guard.sql','20261012205453_list_monitor_receipts.sql','20261013195311_foreclosure_daily_actions.sql','20261016210114_restricted_collector_login.sql']){
   await admin.unsafe(await Deno.readTextFile(new URL('../../frontend/supabase/migrations/'+file,import.meta.url)));
  }
- await admin.unsafe("CREATE ROLE ingest_test LOGIN PASSWORD 'local-only-fixture' IN ROLE wholesale_ingestor");
+ // Exercise the production role definition, including inherited RLS grants and
+ // the notice-history trigger. Credentials below exist only in this disposable DB.
+ await admin.unsafe("ALTER ROLE wholesale_ingest_edge LOGIN PASSWORD 'local-only-fixture'");
  await admin`update wholesale_ingest.sources set enabled=true where source_key=${fixture.source_key}`;
- const restrictedURL=new URL(adminURL);restrictedURL.username='ingest_test';restrictedURL.password='local-only-fixture';
+ const restrictedURL=new URL(adminURL);restrictedURL.username='wholesale_ingest_edge';restrictedURL.password='local-only-fixture';
  Deno.env.set('INGEST_DATABASE_URL',restrictedURL.toString());
  Deno.env.set('INGEST_TOKEN_CONFIG',JSON.stringify({test:{sha256:await sha256(token),source_keys:[fixture.source_key],expires_at:'2099-01-01T00:00:00Z'}}));
  // Separate module instances model separate Edge workers with independent pools.
@@ -38,7 +40,7 @@ try{
  const first=one.handler(request(payload)),second=two.handler(request(payload));
  let waiters: {pid:number}[]=[];
  for(let i=0;i<100;i++){
-  waiters=await admin`select pid from pg_stat_activity where usename='ingest_test' and wait_event_type='Lock' and wait_event='advisory'`;
+  waiters=await admin`select pid from pg_stat_activity where usename='wholesale_ingest_edge' and wait_event_type='Lock' and wait_event='advisory'`;
   if(waiters.length===2)break;
   await pause(50);
  }
@@ -55,6 +57,8 @@ try{
  const [evidence]=await admin`select payload->'coverage'->>'run_id' as ledger_run from wholesale_ingest.raw_payloads where run_id=${run}`;
  assert(evidence.ledger_run===run,'Coverage must be durably stored with the exact payload');
  const replay=await one.handler(request(payload));assert(replay.status===200,'Lost acknowledgement retry must replay');
+ const [notice]=await admin`select count(*)::int receipts from wholesale_ingest.foreclosure_first_seen where source_record_id=${payload.records[0].source_record_id}`;
+ assert(notice.receipts===1,'Restricted insert and retries must preserve one notice-history receipt');
  const changed=structuredClone(payload);changed.records[0].case_number='CHANGED';changed.records_sha256=await sha256(canonicalJSON(changed.records));changed.coverage.records_sha256=changed.records_sha256;
  assert((await two.handler(request(changed))).status===409,'Changed duplicate payload must conflict');
  await admin`update wholesale_ingest.raw_payloads set expires_at=now()-interval '1 second' where run_id=${run}`;
@@ -64,7 +68,9 @@ try{
  assert((await two.handler(request(disabled))).status===403,'Disabled source must reject successful-shape payload');
  const restricted=postgres(restrictedURL.toString(),{ssl:'require',max:1});
  try{
-  for(const query of ['select * from public.leads',"update wholesale_ingest.sources set enabled=true"]){
+  const [role]=await restricted`select current_user,rolsuper,rolcreaterole,rolcreatedb,rolbypassrls,rolconnlimit from pg_roles where rolname=current_user`;
+  assert(role.current_user==='wholesale_ingest_edge'&&!role.rolsuper&&!role.rolcreaterole&&!role.rolcreatedb&&!role.rolbypassrls&&role.rolconnlimit===4,'Production intake role must retain its restricted privileges');
+  for(const query of ['select * from public.leads','select * from wholesale_ingest.contacts',"update wholesale_ingest.sources set enabled=true",'delete from wholesale_ingest.records']){
    let denied=false;try{await restricted.unsafe(query);}catch(e){denied=(e as {code:string}).code==='42501';}
    assert(denied,'Restricted ingress role exceeded its grants');
   }
