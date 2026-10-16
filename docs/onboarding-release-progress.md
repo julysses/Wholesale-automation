@@ -1,3 +1,19 @@
+## Latest verified onboarding progress — 2026-10-16
+
+Four existing Collin notices were resolved through public.resolve_reviewed_list_record after individual property evidence review. Production now contains 81 associated properties (previously 78); unresolved records are 81 (previously 85). Three new leads were created and one existing lead was reused. Each of the four has an approved assigned owner and one pending follow-up task. All four newly reviewed signals remain inactive because current sale/cancellation status has not been verified. No tracing or outreach was authorized.
+
+Evidence: refreshed Collin public appraisal dataset ahis-pci3 returned one row per parcel, each dated 2026-10-16. Original county notice images were visually reviewed for the matching legal descriptions (subdivision, block, lot); county index parcel/address references and appraisal situs/owner corroborate them. Parcel 2070764 was additionally verified in the live Collin CAD detail page. Preserve the distinction between property identity and title/current-sale verification. Full private evidence and exact SQL are in work/onboarding-property-review/, including owners-20261016/snapshot.json, review-packet.json, resolve.sql, resolve-rollback.sql, verify-replay.sql and commit-result.json. Original captures/OCR remain at /Users/juliodominguez/Documents/Codex/2026-10-13/resume-wholesaleos-from-docs-start-here/work/county-sources/.
+
+Committed notice mappings:
+- 4158381 -> property 4fed3771-e259-4bbb-a331-dc5403c4aa82, lead 90fe23ec-ddc0-4278-8964-dd9726fd931d (new).
+- 4159493 -> property 982e50b9-eb9a-425a-ad1b-8e1586007366, lead 43b81dc4-9988-44d4-96bc-b24520872078 (new).
+- 4160151 -> property 6583e8e5-6f85-4791-bcc5-df8e339096b9, lead 8332b034-6803-4b56-8142-171f6325a8c7 (reused).
+- 4160506 -> property 02086707-9be1-4483-b445-2f2e61f2ae69, lead 7be03e5d-fd0c-4969-bd9a-054fab69aa5f (new).
+
+Validation: production rollback assertions passed before saving; the committed results were queried directly. Replay of all four reviews returned the existing associations without adding leads, properties, review events or tasks. SMS-event fingerprint remained 5b888c800d9ce2ec73d6bba19a8d1e49; trace requests remain 77. Zero sources enabled; SMS scheduler disabled. Authenticated Daily Lists visibly shows 81 associated properties and 81 earlier notices awaiting review, including the new property hold. Screenshot in current chat outputs/WholesaleOS-Review-Queue.png shows the reduced review backlog.
+
+No code fix or redeploy was required. An initial suspicion about the Collin CAD hostname was disproved: production resolve_reviewed_list_record already accepts esearch.collincad.org via an existing migration. Do not add a duplicate host migration. Full goal remains active; next resolve the remaining source evidence, prepare controlled real intake acceptance without silently enabling collection, reconcile Dallas/tax coverage, and complete provider delivery/reply/STOP validation before launch. Keep Twilio, Retell, PropStream, the $50 cumulative cap and paused sending/collection constraints.
+
 ## Current checkpoint: after-hours form SMS and restricted intake access (2026-10-16)
 
 This section supersedes historical checkpoints below. Production app code 4cfc67bede74c29d98246d5ef352f788cb4f29d4 is READY as dpl_7fAd7VtVKVDtc5rkkvTVToMaxoUG; wholesale-automation.vercel.app is assigned with no alias error. CI 38967115652 passed all four jobs. Live /api/health, /setup and /daily-lists return HTTP 200. Channel-table fingerprints match before/after release, and the SMS scheduler remains disabled. Handoff fix cd75522 is also included.
