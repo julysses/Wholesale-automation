@@ -125,4 +125,3 @@ BEGIN
 END $promotion$;
 COMMIT;
 SELECT id,state,result,completed_at FROM wholesale_ingest.onboarding_promotions WHERE id='2e91ac73-af2d-410b-860c-b7e249212408';
-

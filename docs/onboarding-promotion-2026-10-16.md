@@ -34,4 +34,3 @@ Security advisors have three preexisting function warnings and two additional ex
 Automatic review rejected broad source/external receipt exports. Source configuration was restricted to id/source_key; external receipt keys were inspected and allowlisted. A later staging rejection flagged apparent Dallas records; exact joins proved all 77 members belong to Collin County, including two whose city is Dallas. The safer staged insertion verifies county membership for every request and succeeded. No unresolved approval blocker remains.
 
 This goal turn made production progress. Goal remains active; no new spend or outreach.
-
