@@ -1,3 +1,7 @@
+# October 16 recovery checkpoint
+
+Read `launch-review-2026-10-16.md` first. App repairs ae12ad9 and 2dec1ff are deployed; monitoring f5f7934 applied to production. Full automated launch remains blocked by carrier filtering and rehearsal-to-production collector handoff. SMS scheduler stays paused. Twilio ticket 29953072 is Hold with internal escalation confirmed. No spend or SMS sent in this review.
+
 ## Provider support submitted — October15,2026
 
 User explicitly approved sending the prepared investigation to Twilio and Retell. Both submissions verified in authenticated portals:
