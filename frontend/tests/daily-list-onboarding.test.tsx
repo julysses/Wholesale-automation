@@ -11,6 +11,7 @@ it('exposes property verification, paginates unresolved records and opens existi
   if(url.includes('/captures'))return {counties:[]};
   if(url.includes('/foreclosures'))return {day:'2026-10-16',total:0,new_today:0,backlog:0,items:[]};
   if(url.includes('/propstream'))return {total:0,items:[],total_budget:{remaining_cents:5000,committed_cents:0}};
+  if(url.includes('source_key='))return {day:'2026-10-16',runs:[],review_count:0,total_review_count:101,reviews:[]};
   return {day:'2026-10-16',runs:[],review_count:101,reviews:[{run_id:'run',batch_index:0,ordinal:url.endsWith('100')?100:0,source_record_id:'notice',source_key:'tx-dallas-pre_foreclosure',property_address:'Synthetic property',source_fingerprint:'a'.repeat(32),source_url:'https://www.dallascounty.org/test',review_reason:'verify_identity'}]};
  }}));
  render(<MemoryRouter><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><DailyLists/></QueryClientProvider></MemoryRouter>);
@@ -19,6 +20,14 @@ it('exposes property verification, paginates unresolved records and opens existi
  expect(screen.getByRole('button',{name:'Save verified association'})).toBeDisabled();
  fireEvent.click(screen.getByRole('button',{name:'Next reviews'}));
  await waitFor(()=>expect(mocks.fetch).toHaveBeenCalledWith('/api/operations/lists?offset=100'));
+ fireEvent.change(screen.getByRole('combobox',{name:'Review source'}),{target:{value:'tx-collin-tax_delinquent'}});
+ await waitFor(()=>expect(mocks.fetch).toHaveBeenCalledWith('/api/operations/lists?offset=0&source_key=tx-collin-tax_delinquent'));
+ await screen.findByText('No unresolved property records on this page.');
+ expect(screen.getByRole('button',{name:'Previous reviews'})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Next reviews'})).toBeDisabled();
+ expect(screen.getByText(/101 source records/)).toBeInTheDocument();
+ fireEvent.change(screen.getByRole('combobox',{name:'Review source'}),{target:{value:''}});
+ await screen.findByRole('button',{name:'Save verified association'});
  fireEvent.click(screen.getByRole('button',{name:'Open PropStream controls'}));
  expect(screen.getByRole('button',{name:'Hide PropStream controls'})).toBeInTheDocument();
  expect(mocks.fetch.mock.calls.every(([url])=>!url.includes('/actions')&&!url.includes('/batches'))).toBe(true);

@@ -48,6 +48,23 @@ def test_foreclosure_actions_validates_filters_and_admin_access(client_db):
     assert client.get('/api/operations/lists/foreclosures',headers=headers).status_code==403
     db.rpc.assert_not_called()
 
+def test_review_source_filter_preserves_offset_and_admin_access(client_db):
+    client,db,rows=client_db
+    headers={'Authorization':'Bearer test'}
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data={'reviews':[], 'review_count':3, 'total_review_count':108})
+    response=client.get('/api/operations/lists?source_key=tx-dallas-tax_delinquent&offset=100',headers=headers)
+    assert response.status_code==200 and response.json()['total_review_count']==108
+    name,params=db.rpc.call_args.args
+    assert name=='list_pipeline_snapshot_filtered' and params['p_source_key']=='tx-dallas-tax_delinquent' and params['p_offset']==100
+    assert client.get('/api/operations/lists',headers=headers).status_code==200
+    assert db.rpc.call_args.args[1]['p_source_key'] is None
+    db.rpc.reset_mock()
+    for suffix in ['source_key=not-a-source','offset=-1']:
+        assert client.get('/api/operations/lists?'+suffix,headers=headers).status_code==422
+    rows.return_value=SimpleNamespace(data=[{'status':'approved','role':'user'}])
+    assert client.get('/api/operations/lists?source_key=tx-collin-tax_delinquent',headers=headers).status_code==403
+    db.rpc.assert_not_called()
+
 def test_propstream_action_validates_actor_and_matching_ack(client_db):
     client,db,rows=client_db;headers={'Authorization':'Bearer test'}
     event,request,lead=str(uuid4()),str(uuid4()),str(uuid4())

@@ -9,7 +9,7 @@ import { ReviewControl, type Review } from '@/components/lists/ReviewControl';
 import { PropstreamBulk } from '@/components/lists/PropstreamBulk';
 import { PropstreamHandoff } from '@/components/lists/PropstreamHandoff';
 
-type Snapshot = { reviews: Review[]; day: string; review_count: number; runs: { id: string; status: string; processing_status: string; records_new: number; records_stacked: number; status_reason: string }[] };
+type Snapshot = { reviews: Review[]; day: string; review_count: number; total_review_count?: number; runs: { id: string; status: string; processing_status: string; records_new: number; records_stacked: number; status_reason: string }[] };
 type TraceSnapshot = { total: number; total_budget: { remaining_cents: number; committed_cents: number }; items: { lead_id: string; county: string; address_std: string; stage: string; handoff: { follow_up_task_id: string | null } | null }[] };
 type CaptureStatus = { counties: { county: string; documents: number; complete_documents: number; captured_pages: number; expected_pages: number; extracted_pages?: number; extracted_documents?: number; quality_review_pages?: number; updated_at: string | null }[];
   bulk_batches?: { batch_id: string; day: string; evidence_current: boolean; summary: { county: string; documents: number; appraisal_situs_matched: number; property_groups: number; exception_documents: number } }[];
@@ -30,6 +30,7 @@ export function DailyLists() {
 function Pipeline({ actor }: { actor: string }) {
   const client = useQueryClient();
   const [reviewOffset, setReviewOffset] = useState(0);
+  const [reviewSource, setReviewSource] = useState('');
   const [showReview, setShowReview] = useState(false);
   const [showHandoff, setShowHandoff] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -47,8 +48,8 @@ function Pipeline({ actor }: { actor: string }) {
     } catch { setExportError('Export could not be completed. Refresh the queue and try again.'); }
     finally { setExporting(false); }
   }
-  const query = useQuery<Snapshot>({ queryKey: ['daily-lists', actor, reviewOffset], refetchInterval: 60000,
-    queryFn: async () => (await apiFetch(`/api/operations/lists?offset=${reviewOffset}`)).json() });
+  const query = useQuery<Snapshot>({ queryKey: ['daily-lists', actor, reviewOffset, reviewSource], refetchInterval: 60000,
+    queryFn: async () => (await apiFetch(`/api/operations/lists?offset=${reviewOffset}${reviewSource ? `&source_key=${encodeURIComponent(reviewSource)}` : ''}`)).json() });
   const traces = useQuery<TraceSnapshot>({ queryKey: ['propstream-handoff', actor, offset], refetchInterval: 60000,
     queryFn: async () => (await apiFetch(`/api/operations/lists/propstream?offset=${offset}`)).json() });
   const captures = useQuery<CaptureStatus>({ queryKey: ['foreclosure-captures', actor], refetchInterval: 60000,
@@ -66,7 +67,7 @@ function Pipeline({ actor }: { actor: string }) {
     {query.error && <p role="alert">Collection status unavailable. <Button onClick={() => query.refetch()}>Retry collection status</Button></p>}
     {query.data && !query.error && <section aria-label="Collection status" className="rounded-xl border bg-white p-5 space-y-3">
       <h2 className="text-xl font-semibold">Collection and verification</h2>
-      <p>{query.data.day} · {query.data.review_count.toLocaleString()} source records awaiting evidence across all list types</p>
+      <p>{query.data.day} · {(query.data.total_review_count ?? query.data.review_count).toLocaleString()} source records awaiting evidence across all list types</p>
       {!query.data.runs.length && <p>No collection receipts for this date. This does not mean there are no new county notices.</p>}
       {query.data.runs.map(run => <article key={run.id} className="border-t pt-3">
         <p className="font-medium">{run.status.replaceAll('_', ' ')} · {run.processing_status.replaceAll('_', ' ')}</p>
@@ -108,6 +109,18 @@ function Pipeline({ actor }: { actor: string }) {
       <h2 className="text-xl font-semibold">Verify properties for the CRM</h2>
       <p>Match each county notice to an official property record. Existing CRM matches are linked before a new lead is created.</p>
       <Button onClick={() => setShowReview(!showReview)}>{showReview ? 'Hide property reviews' : 'Open property reviews'}</Button>
+      {showReview && <label className="block space-x-2">Review source
+        <select aria-label="Review source" className="rounded border p-2" value={reviewSource} onChange={event => {
+          setReviewSource(event.target.value); setReviewOffset(0);
+        }}>
+          <option value="">All sources</option>
+          <option value="tx-dallas-pre_foreclosure">Dallas foreclosure notices</option>
+          <option value="tx-collin-pre_foreclosure">Collin foreclosure notices</option>
+          <option value="tx-dallas-tax_delinquent">Dallas tax snapshot</option>
+          <option value="tx-collin-tax_delinquent">Collin tax snapshot</option>
+        </select>
+      </label>}
+      {showReview && query.isPending && <p>Loading property reviews…</p>}
       {showReview && query.data && !query.error && <>
         {query.data.reviews.map(item => <ReviewControl key={`${item.run_id}:${item.batch_index}:${item.ordinal}`} item={item} refresh={async () => {
           await Promise.all(['daily-lists','foreclosure-actions','propstream-handoff','leads','tasks'].map(key => client.invalidateQueries({queryKey:[key]})));

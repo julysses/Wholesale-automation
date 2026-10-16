@@ -60,9 +60,12 @@ def operator(request):
     return str(value)
 
 @router.get('/api/operations/lists')
-async def snapshot(day: date | None = None, offset: int = Query(default=0, ge=0)):
+async def snapshot(day: date | None = None, offset: int = Query(default=0, ge=0),
+                   source_key: Literal['tx-dallas-pre_foreclosure', 'tx-collin-pre_foreclosure',
+                                       'tx-dallas-tax_delinquent', 'tx-collin-tax_delinquent'] | None = None):
     day = day or datetime.now(ZoneInfo('America/Chicago')).date()
-    return await rpc('list_pipeline_snapshot', {'p_day': day.isoformat(), 'p_offset': offset})
+    return await rpc('list_pipeline_snapshot_filtered',
+                     {'p_day': day.isoformat(), 'p_offset': offset, 'p_source_key': source_key})
 
 @router.get('/api/operations/lists/foreclosures')
 async def foreclosure_actions(county: Literal['Dallas', 'Collin'] | None = None, offset: int = Query(default=0, ge=0)):
