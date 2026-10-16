@@ -7,13 +7,18 @@ test('selected production migration sequence installs together with sending and 
  const db=new PGlite();t.after(()=>db.close());
  await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
  CREATE TABLE public.profiles(id uuid PRIMARY KEY,role text,status text);
- CREATE TABLE public.leads(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),property_address text,city text,state text,zip_code text,source text,motivation_tag text,status text,owner_mailing_address text,sms_sequence_active boolean,email_sequence_active boolean,owner_first_name text,owner_last_name text,dnc boolean DEFAULT false,assigned_to uuid);
+ CREATE TABLE public.leads(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),property_address text,city text,state text,zip_code text,source text,motivation_tag text,status text,owner_mailing_address text,sms_sequence_active boolean,email_sequence_active boolean,owner_first_name text,owner_last_name text,dnc boolean DEFAULT false,assigned_to uuid,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),contact_attempts integer DEFAULT 0,last_contact_date date,property_type text,total_score integer DEFAULT 0,form_submission_id uuid,inbound_channel text);
  CREATE TABLE public.tasks(id uuid PRIMARY KEY,title text,description text,status text,priority text,type text,assigned_to uuid,due_date timestamptz,lead_id uuid);
  CREATE TABLE public.app_settings(key text,value text);
  CREATE TABLE public.email_messages(id uuid PRIMARY KEY,recipient text,provider text,status text,created_at timestamptz DEFAULT now());
  CREATE TABLE public.email_delivery_events(event_id text PRIMARY KEY,message_id uuid,recipient text,event text,occurred_at timestamptz);
  CREATE TABLE public.app_notifications(id uuid PRIMARY KEY,recipient_id uuid,type text,title text,body text,action_url text,action_label text,metadata jsonb,read boolean,read_at timestamptz);`);
  const root=new URL('../../',import.meta.url);
+ // This selected release starts from the existing production retention schema.
+ // PGlite cannot install pg_cron, so omit only the scheduling section.
+ await db.exec(`CREATE FUNCTION public.lead_street_key(text) RETURNS text LANGUAGE sql IMMUTABLE AS 'SELECT lower($1)';`);
+ const retention=fs.readFileSync(new URL('frontend/supabase/migrations/20260929060000_lead_retention.sql',root),'utf8');
+ await db.exec(retention.slice(0,retention.indexOf('-- Daily refresh')));
  const manifest=JSON.parse(fs.readFileSync(new URL('docs/onboarding-release-manifest.json',root),'utf8'));
  for(const file of manifest.migrations) await db.exec(fs.readFileSync(new URL(file,root),'utf8'));
  const q=async(sql)=>(await db.query(sql)).rows;
@@ -52,6 +57,8 @@ test('selected production migration sequence installs together with sending and 
  assert.deepEqual(await q(`select id,status from public.tasks where lead_id='${historicalLead}'`),[{id:historicalTask,status:'completed'}],
   'Associating an imported property must preserve its existing assigned follow-up');
  assert.equal((await q(`select assigned_to from public.leads where id='${historicalLead}'`))[0].assigned_to,operator);
+ await db.query("insert into public.leads(id,source,inbound_channel,form_submission_id) values(gen_random_uuid(),'web_form','web_form',gen_random_uuid())");
+ assert.deepEqual(await q("select retention_rule,retention_deletable from public.leads where source='web_form'"),[{retention_rule:'website_inquiry',retention_deletable:false}]);
  const promotion='00000000-0000-4000-8000-000000000005';
  await db.query("insert into wholesale_ingest.onboarding_promotions(id,source_project,scope,operator_id,manifest) values($1,'synthetic','test',$2,'{}')",[promotion,operator]);
  await db.query("insert into wholesale_ingest.onboarding_promotion_parts values($1,'synthetic','[]','[]')",[promotion]);

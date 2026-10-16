@@ -2,6 +2,12 @@
 
 Updated October 16, 2026, after the owner-link and inquiry-retention repairs, plus the approved fresh county intake test. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
 
+## Latest notice-evidence progress
+
+All 34 notices from the approved bounded test now have complete local originals and OCR: 25 Dallas / 91 pages and nine Collin / 24 pages. All 115 pages extracted; 31 require text-quality review. Eight Collin records match fresh appraisal situs evidence, but all nine retain notice-level exceptions. No new qualified lead or outreach permission is claimed. The Dallas capture helper now waits for the matching scan after pagination and verifies saved hashes on resume. Full pipeline: 139 tests passed.
+
+Production evidence upload has not run: automatic approval review requires specific authorization to transmit the OCR text to the existing production receipt-validation RPC. The private originals remain local. The reviewable upload plan and exact resume paths are saved in the current chat outputs and START-HERE-NEXT-CHAT.md.
+
 ## What is now working
 
 | Process | Verified result | Remaining boundary |
