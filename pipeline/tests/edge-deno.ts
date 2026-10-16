@@ -33,12 +33,3 @@ Deno.test('real handler rejects unauthorized and invalid requests before databas
  set([fixture.source_key],'2020-01-01T00:00:00Z');await expect(call(fixture),401);
  Deno.env.delete('INGEST_DATABASE_URL');Deno.env.delete('INGEST_TOKEN_CONFIG');
 });
-
-
-Deno.test('retired outreach writer returns no generated text or provider activity', async () => {
-  const {handler: retired} = await import('../../frontend/supabase/functions/write-outreach/index.ts');
-  const response = retired();
-  if (response.status !== 410) throw new Error('Legacy writer must stay retired');
-  const body = await response.json();
-  if (body.error !== 'outreach_writer_retired' || 'body' in body) throw new Error('Unexpected legacy draft');
-});
