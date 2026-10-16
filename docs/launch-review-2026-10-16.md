@@ -1,20 +1,21 @@
 # WholesaleOS operational review and launch status
 
-Updated October 16, 2026, after the owner follow-up link repair and production verification. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
+Updated October 16, 2026, after the owner-link and inquiry-retention repairs, plus the approved fresh county intake test. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
 
 ## What is now working
 
 | Process | Verified result | Remaining boundary |
 |---|---|---|
-| Restricted county intake | Actual production Edge request accepted one approved historical Collin notice (HTTP 202); identical replay returned HTTP 200/replayed=true. One saved batch and record. | Fresh collection and unattended scheduling are not yet proven. |
+| Restricted county intake | Historical one-record acceptance/retry deduplication passed. The newly approved October 14–16 test also accepted 25 Dallas and nine Collin notices through restricted production intake, with matching saved hashes and receipts. | Fresh supervised index intake is proven for this window. Full notice/property verification and unattended scheduling remain unproven. |
 | CRM association and follow-up | The test reused the existing lead/property and pending assigned follow-up. No duplicate lead, property or task. | New candidates still need property identity and current status evidence. |
 | Historical source handoff | Dallas and Collin foreclosure evidence and canonical tax snapshots are now in production with original receipts and dates. | Historical snapshots do not prove current county coverage, active foreclosure or current debt. |
 | Missing county address | Future parsing preserves missing situs as null; historical all-zero placeholders display as Unresolved property and cannot pass API address validation. Full-archive replay preserved account IDs, parcels and balances. | Original historical evidence remains unchanged. |
 | Scheduled handoff | Paused heartbeat now reads the production checkpoint and corrected collector code instead of defaulting to rehearsal. | Schedule remains paused; a fresh observed run still requires approval. |
-| Review workflow | Source filters, pagination and historical tax date/amount/warnings verified live. Exact Dallas and Collin property reviews saved through the production interface, with assigned follow-ups and preserved evidence. | 40,266 records still require evidence; historical tax balances do not establish current distress. |
+| Review workflow | Source filters, pagination and historical tax date/amount/warnings verified live. Exact Dallas and Collin property reviews saved through the production interface, with assigned follow-ups and preserved evidence. | 40,300 records still require evidence; historical tax balances do not establish current distress. |
 | CSV lead import | Authenticated server reconciliation preserves notes/motivation, identifies existing matches and rejects uncertain updates. | Operator acceptance for the complete daily workflow remains necessary. |
 | Website owner alerts | All three flagged owner emails have verified delivery receipts. Two stale intake holds were resolved with audited STOP/START and later-handoff evidence; seller follow-ups remain pending. | One alert still has an unexplained historical failed/blocked SMS outcome and remains under review. |
 | Owner follow-up links | Email links now open the exact CRM inquiry independently of list pagination. Older in-app alerts with a saved lead ID now route to that lead. Live owner inquiry and activity history verified. | This is navigation acceptance; the SMS failure remains unresolved. |
+| Website inquiry retention | All 36 website inquiries now stay out of imported-list cleanup; 12 previously marked deletable are protected. Live owner drawer verified as Hold. | These records need individual review before archiving; no merge or deletion performed. |
 | Confirmed opt-out handling | Explicit confirmed suppression completes intake without creating an SMS job. | Unknown lookup results and unmatched consent still require review; original holds are not automatically rewritten. |
 | After-hours SMS scheduling | New inquiries defer to the next 9 AM America/Chicago contact window, including DST; expiry follows that window. Existing jobs are preserved. | Scheduler is paused; this repair does not establish delivery. |
 | Monitoring | Retell failures, unconfirmed delivery, stalled/review jobs and intake handoff outcomes are monitored. | Delivery callbacks and actual handset outcomes require provider acceptance. |
@@ -23,11 +24,11 @@ Updated October 16, 2026, after the owner follow-up link repair and production v
 
 | Source | Saved source records | Awaiting evidence |
 |---|---:|---:|
-| Dallas foreclosure | 490 | 489 |
-| Collin foreclosure, including the approved transport test | 165 | 81 |
+| Dallas foreclosure | 515 | 514 |
+| Collin foreclosure, including approved transport tests | 174 | 90 |
 | Dallas tax snapshot | 30,516 | 30,515 |
 | Collin tax snapshot | 9,182 | 9,181 |
-| Total | 40,353 | 40,266 |
+| Total | 40,387 | 40,300 |
 
 The identical second Collin tax snapshot was excluded. The tax transfer created zero leads or properties and two pending review tasks assigned to the approved owner. Subsequent reviewed tax associations created one Dallas lead and reused one Collin lead, with two properties and two assigned pending follow-ups. Production now has 17,449 leads, 140 tasks, 84 associated properties and 77 trace requests. Both tax signals remain inactive with current amount unknown. The Collin snapshot balance is $0.39; its existing lead qualification was preserved. The Dallas remaining levy is historical, not a verified current payoff. Tracing count and SMS-event fingerprint stayed unchanged throughout the intake acceptance and tax transfer. All source gates, outreach, spending and SMS scheduler remain disabled.
 
@@ -63,8 +64,8 @@ Local full validation passed 844 backend tests and 131 pipeline tests. Productio
 
 1. Resolve Twilio/Retell filtering, supported A2P routing and delivery callback linkage. Keep sending paused until verified.
 2. For both Hilltop and Jays, observe a fresh consented inquiry through receipt, deduplicated CRM lead, assigned task, owner notification, handset delivery, reply history and STOP suppression. Preserve cooldowns, original STOP history and uncertain/accepted job holds.
-3. Reconcile the remaining legacy intake and owner-alert exception against delivery evidence. The repeated-inquiry review found two groups of general Jays buyer/financing inquiries with placeholder addresses and one owner test before/after carrier START. These are not evidence for automatic seller/property merging. Preserve distinct receipts, consent and follow-up history. The live owner test also displays a duplicate-retention recommendation; review retention classification before allowing cleanup of inquiry evidence. No deletion or merge was performed.
-4. Validate current county evidence and coverage, then authorize one bounded supervised GPT collection cycle using `next-collection-acceptance.md`. Separately verify the first unattended scheduled wake. Confirm original source receipts, deduplication, owner assignment and CRM history before scaling. The one-record exception did not resume scheduled collection.
+3. Reconcile the remaining legacy intake and owner-alert exception against delivery evidence. The repeated-inquiry review found two groups of general Jays buyer/financing inquiries with placeholder addresses and one owner test before/after carrier START. These are not evidence for automatic seller/property merging. Preserve distinct receipts, consent and follow-up history. The misleading duplicate-retention recommendation is fixed: website inquiries are held outside list cleanup. No deletion or merge was performed.
+4. Complete notice extraction, property identity and current-sale review for the 34 fresh county notices. The bounded supervised collection test is now approved and complete; recurring collection is still paused. Separately authorize and verify the first unattended scheduled wake before scaling.
 5. Resolve unknown DNC status and establish channel permission before exporting contacts for outreach. A tax record, foreclosure notice or returned phone number does not establish SMS permission.
 
 Recommended launch approach: use the CRM for reviewed inventory and human follow-up while these checks are completed. Release automated outreach only after the provider and real-user acceptance checks pass. No fully operational or successful automated campaign claim is made.
@@ -80,6 +81,12 @@ Private receipts and original evidence are preserved under `work/tax-property-re
 The production owner inquiry URL opened the expected 5200 TUSKEGEE TRL drawer even though the record was outside the currently displayed 50-row list. Its activity history showed the existing undelivered Retell event. Seven new regression tests cover exact-record lookup, invalid/unavailable links, read retry, filter preservation, draft isolation, stale responses and fetched/realtime notification links. Full frontend validation passed 172 tests in 41 files, production build and lint (149 existing findings, zero new). No inquiries, consent or notification rows were rewritten. Screenshot: `WholesaleOS-Lead-Followup.png` in the current chat outputs.
 
 The provider cases were refreshed after this release: Twilio still Hold; Retell still Open with telephony-engineer escalation. No technical resolution or new send.
+
+## Fresh county intake and retention acceptance
+
+The October 14–16 filing-window test captured matching independent inventories: 25 Dallas notices and nine Collin notices. All 34 were accepted as review-only source records, are new to production and appear in the live High Priority Action Items panel. Each source gate was closed after its delivery and checked again afterward. No new CRM leads, properties, tasks or tracing requests were created; no SMS event changed. This proves fresh intake and visible review handoff, not property qualification or unattended operation. Both raw-processing jobs remain pending with zero attempts. The next property-review step is what creates an assigned CRM follow-up.
+
+The inquiry-retention safeguard passed 132 pipeline tests and exact production rollback checks before application. It protects every form-referenced/web-form record from duplicate and age-based list cleanup while preserving DNC/transaction treatment and ordinary import rules. Thirty-six records now display Hold; 12 had previously been marked deletable. No lead detail, consent receipt, message or task was removed. Security-advisor findings are unchanged. Local migration file 20261016230511 is recorded remotely as 20261016231306; CI 38979750743 passed all four jobs.
 
 ## Resume references
 

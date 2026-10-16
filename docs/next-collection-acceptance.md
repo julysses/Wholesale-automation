@@ -1,6 +1,6 @@
 # Next bounded county collection acceptance
 
-Prepared October 16, 2026. **User approved this bounded cycle on October 16; not executed yet.** The earlier one-record Collin exception is complete. Production collection gates and the existing GPT heartbeat remain paused outside this exception.
+Prepared October 16, 2026. **User approved and completed this bounded cycle on October 16.** The earlier one-record Collin exception is complete. Production collection gates and the existing GPT heartbeat remain paused outside this exception.
 
 ## Proposed scope
 
@@ -27,7 +27,13 @@ A successful run proves fresh supervised index capture and production handoff fo
 - [x] Existing heartbeat is paused; no replacement worker is required.
 - [x] Historical single-record acceptance already proved HTTP acceptance and exact replay behavior.
 - [x] User authorizes this new bounded cycle while collection is paused.
-- [ ] Shared claim state and browser access verified for this cycle.
-- [ ] Both fresh inventories saved, validated and accepted with gates reclosed.
-- [ ] Production receipts and unchanged sending/spend controls verified.
+- [x] Shared claim state and browser access verified for this cycle.
+- [x] Both fresh inventories saved, validated and accepted with gates reclosed.
+- [x] Production receipts and unchanged sending/spend controls verified.
 - [ ] Separate unattended scheduling decision made from observed results.
+
+## Result
+
+Completed 23:19 UTC October 16: Dallas run 016cb8cb-435a-4859-a7da-4abb270fa643 accepted 25 notices; Collin run ba34b741-b75e-4591-b923-63fa4c7b26df accepted nine. Each has one durable batch, matching receipt hashes and previously unseen official IDs. Daily Lists shows 34 new notices awaiting verification, plus 570 earlier notices. No CRM lead/property/task or tracing count changed. SMS fingerprint unchanged; all intake gates, spending/outreach and SMS scheduler are off. Recurring heartbeat remains paused.
+
+Raw capture and receipt evidence is preserved privately in work/bounded-collection-20261016/. Do not repeat this completed operation or reset the consumed daily claims. Full notice extraction and property/current-sale evidence remain required before CRM association.
