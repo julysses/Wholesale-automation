@@ -28,6 +28,8 @@ test('intake handoff completion requires durable scheduling and preserves uncert
   ['consent_or_suppression_hold','accepted',false,'review'],
   ['failed_or_blocked','accepted',false,'review'],
   ['unknown','accepted',false,'review'],
+  ['confirmed_suppression','accepted',false,'review'],
+  ['confirmed_suppression','unknown',false,'review'],
  ]) {
   const lead=crypto.randomUUID(), claim=crypto.randomUUID();
   await db.query(`INSERT INTO public.app_notifications VALUES(extensions.uuid_generate_v5('6ba7b811-9dad-11d1-80b4-00c04fd430c8','wholesaleos:intake-alert:'||$1),$1::uuid,'pipeline_step',$2::jsonb,'Original')`,[lead,JSON.stringify({delivery_state:'processing',delivery_claim:claim,claimed_at:'2026-10-15T12:00:00Z'})]);
@@ -39,6 +41,7 @@ test('intake handoff completion requires durable scheduling and preserves uncert
  const channelsBefore=await db.query('SELECT * FROM public.retell_form_sms_jobs ORDER BY id');
  await db.exec(fix);
  await db.exec(fs.readFileSync(new URL('20261016210016_retell_next_contact_window_handoff.sql', migrations),'utf8'));
+ await db.exec(fs.readFileSync(new URL('20261016223736_confirmed_suppression_handoff.sql', migrations),'utf8'));
  for(const {lead,claim,outcomes,expected} of fixtures){
   let row=(await db.query('SELECT metadata,body FROM public.app_notifications WHERE lead_id=$1',[lead])).rows[0];
   assert.equal(row.metadata.delivery_state,expected);
@@ -53,7 +56,8 @@ test('intake handoff completion requires durable scheduling and preserves uncert
   assert.equal(wrong.finished,false);
   const nextOutcomes=outcomes.seller_sms==='scheduled_retell_60_seconds'?{...outcomes,seller_sms:'scheduled_retell_next_contact_window'}:outcomes;
   const finished=(await db.query('SELECT public.finish_intake_notification($1,$2,$3,$4) AS result',[lead,claim,JSON.stringify(nextOutcomes),'Current handoff'])).rows[0].result;
-  assert.equal(finished.delivery_state,expected);
+  const currentExpected=outcomes.seller_sms==='confirmed_suppression' && outcomes.owner_email==='accepted'?'completed':expected;
+  assert.equal(finished.delivery_state,currentExpected);
  }
  assert.deepEqual((await db.query('SELECT * FROM public.retell_form_sms_jobs ORDER BY id')).rows,channelsBefore.rows);
  assert.deepEqual((await db.query('SELECT status FROM public.sms_events')).rows,[{status:'undelivered'}]);

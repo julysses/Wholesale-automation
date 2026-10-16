@@ -197,3 +197,36 @@ def test_owner_approved_launch_requires_explicit_flags_and_other_gates(monkeypat
     monkeypatch.setenv('RETELL_SMS_ALL_CONSENTED_FORMS','true')
     monkeypatch.setattr(sms.settings,'sms_live_enabled',False)
     assert not sms.activation_ready()
+
+
+@pytest.mark.parametrize('blocker,outcome', [
+    (sms.CONFIRMED_SUPPRESSION, 'confirmed_suppression'),
+    ('Suppression lookup blocked sending', 'consent_or_suppression_hold'),
+    ('No matching property inquiry consent receipt', 'consent_or_suppression_hold'),
+])
+def test_suppression_outcome_never_enqueues_or_sends(monkeypatch,blocker,outcome):
+    monkeypatch.setenv('RETELL_FORM_SMS_ENABLED','true')
+    monkeypatch.setattr(sms,'sms_consent_blocker',lambda *args:blocker)
+    db=MagicMock()
+    receipt={'id':'submission','created_at':'2026-10-16T17:00:00+00:00','raw_answers':{'phone':'+12145551234'}}
+    db.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value=SimpleNamespace(data=[receipt])
+    assert sms.enqueue(db,'lead')==outcome
+    db.table.return_value.upsert.assert_not_called()
+    db.table.return_value.update.assert_not_called()
+
+
+@pytest.mark.parametrize('safety,expected', [
+    ({'suppressed':True}, sms.CONFIRMED_SUPPRESSION),
+    ({'suppressed':False}, None),
+    ({'suppressed':'true'}, 'Suppression lookup blocked sending'),
+    ({'suppressed':1}, 'Suppression lookup blocked sending'),
+    ({}, 'Suppression lookup blocked sending'),
+    (None, 'Suppression lookup blocked sending'),
+])
+def test_only_explicit_boolean_suppression_is_confirmed(safety,expected):
+    from tools.sms_client import sms_consent_blocker
+    db=MagicMock()
+    receipt={'raw_answers':{'phone':'+12145551234','property_address':'123 Test St','_sms_consent':{'accepted':True,'rendered_disclosure_matches':True}}}
+    db.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value=SimpleNamespace(data=[receipt])
+    db.rpc.return_value.execute.return_value=SimpleNamespace(data=safety)
+    assert sms_consent_blocker(db,'lead','+12145551234')==expected

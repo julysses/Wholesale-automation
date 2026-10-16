@@ -6,7 +6,7 @@ import re
 from uuid import NAMESPACE_URL, uuid5
 import requests
 from tools.facebook_consent import normalize_us_phone
-from tools.sms_client import sms_consent_blocker, SMSClient
+from tools.sms_client import sms_consent_blocker, SMSClient, CONFIRMED_SUPPRESSION
 from config.settings import settings
 
 
@@ -51,7 +51,9 @@ def enqueue(sb, lead_id):
         return 'invalid_form_receipt'
     blocker = sms_consent_blocker(sb, lead_id, phone)
     if blocker:
-        return 'consent_or_suppression_hold'
+        # A verified suppression is an intentional no-send outcome. Lookup
+        # uncertainty and unmatched consent still require operator review.
+        return 'confirmed_suppression' if blocker == CONFIRMED_SUPPRESSION else 'consent_or_suppression_hold'
     try:
         due, expires, deferred = acknowledgement_window(submitted)
     except ValueError:

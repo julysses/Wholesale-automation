@@ -33,6 +33,7 @@ from tools.twilio_receipts import reconcile_twilio_receipt
 logger = logging.getLogger(__name__)
 
 TEXAS_TZ = "America/Chicago"
+CONFIRMED_SUPPRESSION = "Confirmed phone or lead suppression"
 
 
 def _texas_now() -> datetime:
@@ -73,6 +74,8 @@ def sms_consent_blocker(sb, lead_id: str, to_number: str) -> str | None:
         return "No matching property inquiry consent receipt"
     safety = sb.rpc("intake_phone_status", {"p_phone": to_number,
         "p_lead": str(lead_id), "p_property": answers.get("property_address", "")}).execute().data
+    if isinstance(safety, dict) and safety.get("suppressed") is True:
+        return CONFIRMED_SUPPRESSION
     if not isinstance(safety, dict) or safety.get("suppressed") is not False:
         return "Suppression lookup blocked sending"
     return None
