@@ -38,6 +38,7 @@ test('intake handoff completion requires durable scheduling and preserves uncert
  }
  const channelsBefore=await db.query('SELECT * FROM public.retell_form_sms_jobs ORDER BY id');
  await db.exec(fix);
+ await db.exec(fs.readFileSync(new URL('20261016210016_retell_next_contact_window_handoff.sql', migrations),'utf8'));
  for(const {lead,claim,outcomes,expected} of fixtures){
   let row=(await db.query('SELECT metadata,body FROM public.app_notifications WHERE lead_id=$1',[lead])).rows[0];
   assert.equal(row.metadata.delivery_state,expected);
@@ -50,7 +51,8 @@ test('intake handoff completion requires durable scheduling and preserves uncert
   await db.query("UPDATE public.app_notifications SET metadata=metadata||'{\"delivery_state\":\"processing\"}'::jsonb WHERE lead_id=$1",[lead]);
   const wrong=(await db.query('SELECT public.finish_intake_notification($1,$2,$3,$4) AS result',[lead,crypto.randomUUID(),JSON.stringify(outcomes),'Wrong claimant'])).rows[0].result;
   assert.equal(wrong.finished,false);
-  const finished=(await db.query('SELECT public.finish_intake_notification($1,$2,$3,$4) AS result',[lead,claim,JSON.stringify(outcomes),'Current handoff'])).rows[0].result;
+  const nextOutcomes=outcomes.seller_sms==='scheduled_retell_60_seconds'?{...outcomes,seller_sms:'scheduled_retell_next_contact_window'}:outcomes;
+  const finished=(await db.query('SELECT public.finish_intake_notification($1,$2,$3,$4) AS result',[lead,claim,JSON.stringify(nextOutcomes),'Current handoff'])).rows[0].result;
   assert.equal(finished.delivery_state,expected);
  }
  assert.deepEqual((await db.query('SELECT * FROM public.retell_form_sms_jobs ORDER BY id')).rows,channelsBefore.rows);

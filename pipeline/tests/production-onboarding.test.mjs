@@ -17,6 +17,12 @@ test('selected production migration sequence installs together with sending and 
  const manifest=JSON.parse(fs.readFileSync(new URL('docs/onboarding-release-manifest.json',root),'utf8'));
  for(const file of manifest.migrations) await db.exec(fs.readFileSync(new URL(file,root),'utf8'));
  const q=async(sql)=>(await db.query(sql)).rows;
+ const ingress=(await q("select rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolbypassrls from pg_roles where rolname='wholesale_ingest_edge'"))[0];
+ assert.deepEqual(ingress,{rolcanlogin:false,rolsuper:false,rolcreatedb:false,rolcreaterole:false,rolbypassrls:false});
+ assert.equal((await q("select pg_has_role('wholesale_ingest_edge','wholesale_ingestor','MEMBER') as allowed"))[0].allowed,true);
+ assert.equal((await q("select pg_has_role('wholesale_ingest_edge','wholesale_worker','MEMBER') as allowed"))[0].allowed,false);
+ assert.equal((await q("select has_table_privilege('wholesale_ingest_edge','public.leads','SELECT') as allowed"))[0].allowed,false);
+ assert.equal((await q("select has_table_privilege('wholesale_ingest_edge','wholesale_ingest.contacts','SELECT') as allowed"))[0].allowed,false);
  assert.equal((await q('select count(*)::int n from wholesale_ingest.sources where enabled'))[0].n,0);
  assert.equal((await q('select outreach_enabled from wholesale_ingest.settings'))[0].outreach_enabled,false);
  assert.equal((await q('select daily_trace_cap_cents from wholesale_ingest.settings'))[0].daily_trace_cap_cents,0);

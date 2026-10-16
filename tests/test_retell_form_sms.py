@@ -19,13 +19,50 @@ def test_form_queue_uses_submission_time_plus_one_minute(monkeypatch):
     monkeypatch.setenv('RETELL_FORM_SMS_ENABLED', 'true')
     monkeypatch.setattr(sms, 'sms_consent_blocker', lambda *args: None)
     db = MagicMock()
-    receipt = {'id': 'submission', 'created_at': '2026-10-15T12:00:00+00:00', 'raw_answers': {'phone': '+12145551234'}}
+    receipt = {'id': 'submission', 'created_at': '2026-10-15T17:00:00+00:00', 'raw_answers': {'phone': '+12145551234'}}
     db.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[receipt])
     db.table.return_value.upsert.return_value.execute.return_value = SimpleNamespace(data=[{'id': 'saved'}])
     assert sms.enqueue(db, 'lead') == 'scheduled_retell_60_seconds'
     row = db.table.return_value.upsert.call_args.args[0]
     assert datetime.fromisoformat(row['due_at']) - datetime.fromisoformat(receipt['created_at']) == timedelta(seconds=60)
     assert db.table.return_value.upsert.call_args.kwargs['ignore_duplicates'] is True
+
+
+@pytest.mark.parametrize('submitted,due,expires', [
+    ('2026-10-15T20:00:00-05:00','2026-10-16T14:00:00+00:00','2026-10-16T14:15:00+00:00'),
+    ('2026-10-16T06:00:00-05:00','2026-10-16T14:00:00+00:00','2026-10-16T14:15:00+00:00'),
+    ('2026-10-16T18:59:30-05:00','2026-10-17T14:00:00+00:00','2026-10-17T14:15:00+00:00'),
+    ('2026-10-31T20:00:00-05:00','2026-11-01T15:00:00+00:00','2026-11-01T15:15:00+00:00'),
+    ('2027-03-13T20:00:00-06:00','2027-03-14T14:00:00+00:00','2027-03-14T14:15:00+00:00'),
+])
+def test_after_hours_receipt_waits_for_next_central_window(monkeypatch,submitted,due,expires):
+    monkeypatch.setattr(sms.settings,'tcpa_allowed_start_hour',9)
+    monkeypatch.setattr(sms.settings,'tcpa_allowed_end_hour',19)
+    actual_due, actual_expiry, deferred = sms.acknowledgement_window(datetime.fromisoformat(submitted))
+    assert (actual_due.isoformat(),actual_expiry.isoformat(),deferred)==(due,expires,True)
+
+
+def test_next_window_queue_keeps_identity_and_never_renews_previous_job(monkeypatch):
+    monkeypatch.setenv('RETELL_FORM_SMS_ENABLED','true')
+    monkeypatch.setattr(sms,'sms_consent_blocker',lambda *args:None)
+    db=MagicMock()
+    receipt={'id':'after-hours','created_at':'2026-10-15T20:00:00-05:00','raw_answers':{'phone':'+12145551234'}}
+    db.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value=SimpleNamespace(data=[receipt])
+    db.table.return_value.upsert.return_value.execute.return_value=SimpleNamespace(data=[{'id':'saved'}])
+    assert sms.enqueue(db,'lead')=='scheduled_retell_next_contact_window'
+    first=db.table.return_value.upsert.call_args
+    assert first.args[0]['due_at']=='2026-10-16T14:00:00+00:00'
+    assert first.args[0]['expires_at']=='2026-10-16T14:15:00+00:00'
+    assert sms.enqueue(db,'lead')=='scheduled_retell_next_contact_window'
+    assert db.table.return_value.upsert.call_args==first
+    assert first.kwargs['ignore_duplicates'] is True
+    db.table.return_value.update.assert_not_called()
+
+
+def test_invalid_contact_configuration_cannot_enqueue(monkeypatch):
+    monkeypatch.setattr(sms.settings,'tcpa_allowed_start_hour',19)
+    monkeypatch.setattr(sms.settings,'tcpa_allowed_end_hour',9)
+    with pytest.raises(ValueError): sms.acknowledgement_window(datetime.now(timezone.utc))
 
 
 def test_no_consent_never_enqueues(monkeypatch):

@@ -1,5 +1,6 @@
 """Durable, finite form-to-Retell SMS handoff. All activation flags default off."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 import os
 import re
 from uuid import NAMESPACE_URL, uuid5
@@ -11,6 +12,27 @@ from config.settings import settings
 
 def enabled(name):
     return os.getenv(name, '').lower() == 'true'
+
+
+def acknowledgement_window(submitted):
+    """Keep new inbound inquiries within configured Central-time contact hours.
+
+    Use the original receipt clock, never the retry clock. This does not renew
+    old jobs or change the existing seller-initiated weekend policy.
+    """
+    start, end = settings.tcpa_allowed_start_hour, settings.tcpa_allowed_end_hour
+    if submitted.tzinfo is None or not 0 <= start < end <= 24:
+        raise ValueError('Invalid contact window')
+    local = (submitted.astimezone(timezone.utc) + timedelta(seconds=60)).astimezone(ZoneInfo('America/Chicago'))
+    deferred = not start <= local.hour < end
+    if deferred:
+        day = local.date() + timedelta(days=int(local.hour >= end))
+        due = datetime.combine(day, time(start), tzinfo=ZoneInfo('America/Chicago')).astimezone(timezone.utc)
+        expires = due + timedelta(minutes=15)
+    else:
+        due = local.astimezone(timezone.utc)
+        expires = submitted.astimezone(timezone.utc) + timedelta(minutes=15)
+    return due, expires, deferred
 
 
 def enqueue(sb, lead_id):
@@ -30,14 +52,17 @@ def enqueue(sb, lead_id):
     blocker = sms_consent_blocker(sb, lead_id, phone)
     if blocker:
         return 'consent_or_suppression_hold'
+    try:
+        due, expires, deferred = acknowledgement_window(submitted)
+    except ValueError:
+        return 'contact_window_not_configured'
     job_id = str(uuid5(NAMESPACE_URL, 'wholesaleos:retell-form-sms:' + receipt['id']))
     row = {'id': job_id, 'lead_id': lead_id, 'submission_id': receipt['id'], 'phone_number': phone,
-           'due_at': (submitted + timedelta(seconds=60)).isoformat(),
-           'expires_at': (submitted + timedelta(minutes=15)).isoformat()}
+           'due_at': due.isoformat(), 'expires_at': expires.isoformat()}
     saved = sb.table('retell_form_sms_jobs').upsert(row, on_conflict='id', ignore_duplicates=True).execute().data
     if not saved and not sb.table('retell_form_sms_jobs').select('id').eq('id', job_id).execute().data:
         raise RuntimeError('Retell form schedule was not confirmed')
-    return 'scheduled_retell_60_seconds'
+    return 'scheduled_retell_next_contact_window' if deferred else 'scheduled_retell_60_seconds'
 
 
 def configured_version():

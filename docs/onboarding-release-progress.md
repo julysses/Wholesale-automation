@@ -1,3 +1,19 @@
+## Current checkpoint: after-hours form SMS and restricted intake access (2026-10-16)
+
+This section supersedes historical checkpoints below. App deployment is currently fbfa71046af54757553a0ad5ac11e617e0e961fe (READY dpl_6oYGkHv9rCTEVhHrU6VVd7fmkjAN). Handoff fix cd75522 is pushed; CI 38965925591 passed all four jobs.
+
+New after-hours form inquiries now calculate their first eligible contact window in America/Chicago, including daylight-saving transitions. Daytime inquiries retain the one-minute delay and original expiry; deferred inquiries expire fifteen minutes after their next opening. Existing queue rows retain their identity, timing and status; no retries or renewals are performed. The matching next-window handoff migration is already applied to production, and only recognizes a schedule backed by a durable queue row. Application code release is pending at this checkpoint.
+
+Validation: 794 backend tests, 130 pipeline tests, and production rollback SQL acceptance pass. The frontend was unchanged (162 tests previously passed). Restricted wholesale_ingest_edge role was created NOLOGIN, with only wholesale_ingestor membership and a four-connection limit. Live checks confirm no administrator powers, worker membership, CRM SELECT or contacts SELECT. No password or source token has been created yet.
+
+First Mac Keychain approval succeeded: the official Supabase CLI listed production. A subsequent link command is still awaiting a second macOS Keychain approval. User must operate SecurityAgent; computer-use explicitly denies access. Pending execution session 56693 uses CLI v2.79.0, work/intake-credentials, production dvzhzlipbwzzcliujzyz. Do not launch another login, bypass the prompt, use admin DB access as Edge credentials, or reuse rehearsal credentials. Edge INGEST_DATABASE_URL and INGEST_TOKEN_CONFIG remain missing.
+
+Historical Collin promotion remains verified: 78 properties, 74 new plus four reused leads, 77 completed traces, 481 contacts and 78 assigned follow-ups. All collection sources, SMS scheduler and outreach remain disabled, with trace cap zero. Retell ticket 65825 refreshed: Open, acknowledgement only. Twilio 29953072 remains pending internal escalation from the last verified response. No provider messages or trace orders were sent.
+
+Eight monitor findings remain: two SMS, two form SMS, three intake alerts and one legacy intake. The legacy July entry identifies Verifier Bot at 999 Verifier Ln and already has a review task; preserve it as likely synthetic, not a recovered customer. The expired unprocessed October 16 form has a questionable property address but no confirmed test disposition; do not resend it. Provider-accepted and carrier-undelivered messages remain unresolved.
+
+Next: push and deploy the tested after-hours fix; complete restricted Edge/source credentials once Keychain unlocks; prove real production ingestion through ownership and follow-up; resolve carrier routing/callbacks and verify delivery/reply/STOP before activating automation. Full Dallas/Collin source coverage, 85 unresolved Collin notices and remaining PropStream reconciliation are still open. Keep the cumulative $50 cap and existing provider choices. No fully operational launch is claimed.
+
 ## Latest: Retell intake handoff alerts corrected (2026-10-16)
 
 Production UI code fbfa71046af54757553a0ad5ac11e617e0e961fe is deployed READY as dpl_6oYGkHv9rCTEVhHrU6VVd7fmkjAN on wholesale-automation.vercel.app. CI 38962289678 passed all four jobs. Authenticated setup UI verified PropStream and Twilio + Retell with live monitoring; proof is in the current chat outputs/WholesaleOS-SMS-Setup-Live.png.

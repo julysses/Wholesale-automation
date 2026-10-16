@@ -44,7 +44,7 @@ BEGIN
  INSERT INTO public.retell_form_sms_jobs(id,lead_id,submission_id,phone_number,due_at,expires_at,status)
  VALUES(ref,lead,ref,'+12145550199',now()-interval '1 hour',now()-interval '45 minutes','review');
  UPDATE public.app_notifications SET metadata=metadata||'{"delivery_state":"processing"}'::jsonb WHERE id=alert;
- r:=public.finish_intake_notification(lead,claim,'{"owner_email":"accepted","seller_sms":"scheduled_retell_60_seconds"}','Durable handoff, delivery still unconfirmed');
+ r:=public.finish_intake_notification(lead,claim,'{"owner_email":"accepted","seller_sms":"scheduled_retell_next_contact_window"}','Durable handoff, delivery still unconfirmed');
  IF r->>'delivery_state'<>'completed' THEN RAISE EXCEPTION 'Durable Retell handoff falsely escalated'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.launch_monitor_findings() WHERE category='form_sms' AND reference=ref)
   OR (SELECT status FROM public.retell_form_sms_jobs WHERE id=ref)<>'review'
