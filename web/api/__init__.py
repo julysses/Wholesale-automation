@@ -320,7 +320,7 @@ IMPORT_FIELDS = {
     "owner_first_name", "owner_last_name",
     "owner_phone_1", "owner_phone_2", "owner_phone_3", "owner_email",
     "owner_mailing_address", "property_type", "bedrooms", "bathrooms",
-    "sqft", "year_built", "asking_price", "source", "status",
+    "sqft", "year_built", "asking_price", "source", "status", "motivation_tag", "seller_notes",
 }
 
 NUMERIC_IMPORT_FIELDS = {"bedrooms", "bathrooms", "sqft", "year_built", "asking_price"}
@@ -861,7 +861,9 @@ def import_master_list(body: ImportMasterListRequest) -> dict:
             update_payload = _merge_payloads(existing, incoming)
             changes = {k: v for k, v in update_payload.items() if v != existing.get(k)}
             if changes:
-                supabase.table("leads").update(changes).eq("id", lead_id).execute()
+                confirmed = supabase.table("leads").update(changes).eq("id", lead_id).execute().data or []
+                if len(confirmed) != 1 or str(confirmed[0].get("id")) != str(lead_id):
+                    raise HTTPException(503, "Import could not confirm an updated lead. Review saved leads before retrying.")
             saved = {**existing, **update_payload, "id": lead_id}
             updated += 1
             saved_rows.append(saved)

@@ -31,13 +31,10 @@ import {
   MessageSquare, Eye, Ban, PhoneCall, Zap, Download, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
 import { parseCombinedAddress } from '@/lib/masterList';
 import { parseSpreadsheet, isSupportedFile } from '@/lib/parseFile';
-import { createLeadList } from '@/lib/leadLists';
 import { retentionBadge, RETENTION_TONE_CLASS } from '@/lib/retention';
 import { ManageListsModal } from '@/components/leads/ManageListsModal';
-import { useAutoScoreStore, type ScorableLead } from '@/stores/useAutoScoreStore';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
@@ -670,7 +667,7 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [headers, setHeaders] = useState<string[]>([]);
   const [dataRows, setDataRows] = useState<string[][]>([]);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ imported: number; errors: number; skipped: number; message?: string } | null>(null);
+  const [result, setResult] = useState<{ imported: number; updated?: number; errors: number; skipped: number; message?: string } | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [mapStatus, setMapStatus] = useState<'idle' | 'parsing' | 'mapping' | 'done'>('idle');
   const [mappedBy, setMappedBy] = useState<'claude' | 'heuristic' | null>(null);
@@ -779,40 +776,41 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
       return;
     }
     if (!hasCity) {
-      toast.error('This list has no City column mapped. Enter a Default City below (e.g. the county seat) so rows can import.');
+      toast.error('This list has no City column mapped. Enter a verified city shared by these properties, or map the City column for every property.');
       return;
     }
     setImporting(true);
-    let imported = 0, errors = 0, skipped = 0;
-    const scorable: ScorableLead[] = [];
-
+    let imported = 0, updated = 0, skipped = 0;
+    const errors = 0;
     try {
-      const listId = await createLeadList(file.name, dataRows.length);
-      const CHUNK = 100;
-      for (let i = 0; i < dataRows.length; i += CHUNK) {
-        const built = dataRows.slice(i, i + CHUNK).map(buildRecord);
-        const chunk = built.filter((r): r is Record<string, string | number> => r !== null)
-          .map(r => (listId ? { ...r, list_id: listId } : r));
-        skipped += built.length - chunk.length;
-        if (chunk.length === 0) continue;
-        const { data, error } = await supabase.from('leads').insert(chunk)
-          .select('id, property_address, city, state, owner_first_name, owner_last_name, motivation_tag');
-        if (error || !data || data.length !== chunk.length) {
-          errors += chunk.length;
-          // Stop after a failed write; repeatedly retrying the whole file can duplicate saved rows.
-          setResult({ imported, errors, skipped, message: error?.message || 'The database did not confirm all rows. Import stopped; review saved leads before retrying.' });
-          return;
-        }
-        imported += data.length;
-        scorable.push(...(data as ScorableLead[]));
+      const built = dataRows.map(buildRecord);
+      const rows = built.filter((row): row is Record<string, string | number> => row !== null);
+      skipped = built.length - rows.length;
+      if (!rows.length) throw new Error('No rows contain both a property address and a verified city.');
+      // Use the same server reconciliation as Master List Builder. A browser
+      // insert cannot distinguish a retry from a new property.
+      const response = await apiFetch('/api/ai/import-master-list', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows, engine: 'rules', score_with_claude: true,
+          list_name: file.name.replace(/\.[^.]+$/, '').slice(0, 120), filename: file.name }),
+      });
+      const saved = await response.json();
+      if (saved.status !== 'ok' || !Number.isInteger(saved.imported) || saved.imported < 0
+          || !Number.isInteger(saved.updated) || saved.updated < 0) {
+        throw new Error('The server did not confirm the import outcome.');
       }
-      setResult({ imported, errors, skipped });
+      imported = saved.imported;
+      updated = saved.updated;
+      skipped += saved.skipped || 0;
+      setResult({ imported, updated, errors, skipped });
     } catch (error) {
-      setResult({ imported, errors, skipped, message: error instanceof Error ? error.message : 'Import interrupted. Review saved leads before retrying.' });
+      setResult({ imported, updated, errors, skipped, message: error instanceof Error ? error.message : 'Import interrupted.' });
     } finally {
       setImporting(false);
-      if (imported > 0) await qc.invalidateQueries({ queryKey: ['leads'] });
-      if (scorable.length > 0) void useAutoScoreStore.getState().start(scorable);
+      // A timeout may follow a committed batch. Refresh even when the response
+      // was lost, and never automatically replay an upload.
+      await qc.invalidateQueries({ queryKey: ['leads'] });
+      await qc.invalidateQueries({ queryKey: ['lead-lists'] });
     }
   };
 
@@ -823,6 +821,7 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
           <div className="text-center py-8 space-y-3">
             <div className="text-5xl">{result.errors || result.message ? '⚠️' : '✅'}</div>
             <p className="text-xl font-bold text-gray-900">{result.imported.toLocaleString()} leads imported</p>
+            {!!result.updated && <p className="text-sm text-blue-700">{result.updated.toLocaleString()} existing leads reconciled; no duplicate created for these properties.</p>}
             {result.skipped > 0 && <p className="text-sm text-amber-700">{result.skipped.toLocaleString()} rows skipped (missing address or city)</p>}
             {result.errors > 0 && <p className="text-sm text-red-600">{result.errors.toLocaleString()} rows were not confirmed saved.</p>}
             {result.message && <p role="alert" className="text-sm text-red-600">{result.message} Import stopped. Review saved leads before retrying.</p>}

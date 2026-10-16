@@ -389,3 +389,33 @@ def test_import_with_list_name_survives_missing_lead_lists_table_and_scores_with
     assert data["imported"] == 1 and data["scored"] == 1 and data["list_id"] is None
     saved = fake_db.rows[0]
     assert saved["status"].startswith("qualified_") and saved["score_motivation"] == 3
+
+
+def test_import_rejects_unconfirmed_existing_lead_update():
+    db = FakeSupabase([{'id': 'existing', 'property_address': '123 Test St', 'city': 'Dallas', 'state': 'TX'}])
+    original = FakeLeadTable.execute
+    def execute(table):
+        if table._op == 'update':
+            return FakeResponse([])
+        return original(table)
+    with patch('tools.crm.get_supabase_client', return_value=db), patch.object(FakeLeadTable, 'execute', execute):
+        response = client.post('/api/ai/import-master-list', json={'score_with_claude': False, 'rows': [
+            {'property_address': '123 Test St', 'city': 'Dallas', 'owner_email': 'test@example.com'}]})
+    assert response.status_code == 503
+
+
+def test_repeat_import_preserves_history_and_imported_motivation():
+    db = FakeSupabase([])
+    row = {'property_address': '123 Test Street', 'city': 'Dallas', 'motivation_tag': 'probate',
+           'seller_notes': 'Imported evidence', 'owner_phone_1': '(214) 555-0123'}
+    with patch('tools.crm.get_supabase_client', return_value=db):
+        first = client.post('/api/ai/import-master-list', json={'rows': [row], 'score_with_claude': False})
+        db.rows[0].update({'dnc': True, 'status': 'dnc', 'contact_attempts': 3})
+        second = client.post('/api/ai/import-master-list', json={'rows': [row], 'score_with_claude': False})
+    assert first.json()['imported'] == 1
+    assert second.json()['imported'] == 0 and second.json()['updated'] == 1
+    assert len(db.rows) == 1
+    assert db.rows[0]['dnc'] is True and db.rows[0]['status'] == 'dnc'
+    assert db.rows[0]['contact_attempts'] == 3
+    assert db.rows[0]['motivation_tag'] == 'probate'
+    assert db.rows[0]['seller_notes'] == 'Imported evidence'
