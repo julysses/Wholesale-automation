@@ -36,7 +36,8 @@
     "frontend/supabase/migrations/20261016193454_county_intake_assignment.sql",
     "frontend/supabase/migrations/20261016195408_onboarding_promotion_receipts.sql",
     "frontend/supabase/migrations/20261016210114_restricted_collector_login.sql",
-    "frontend/supabase/migrations/20261016214853_list_review_source_filters.sql"
+    "frontend/supabase/migrations/20261016214853_list_review_source_filters.sql",
+    "frontend/supabase/migrations/20261016222239_tax_review_evidence_context.sql"
   ],
   "production_applied": true,
   "data_transferred": true,

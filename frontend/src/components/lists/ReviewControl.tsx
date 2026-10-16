@@ -2,13 +2,28 @@ import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-export type Review = { run_id: string; batch_index: number; ordinal: number; source_record_id: string | null; property_address: string | null; source_key: string; review_reason: string; source_url: string; source_fingerprint: string; city: string | null; state: string | null; zip: string | null; parcel_id: string | null; unit: string | null };
+type TaxSnapshot = { snapshot_date?: unknown; amount_cents?: unknown; amount_kind?: unknown; review_flags?: unknown; situs_missing?: unknown };
+export type Review = { run_id: string; batch_index: number; ordinal: number; source_record_id: string | null; property_address: string | null; source_key: string; review_reason: string; source_url: string; source_fingerprint: string; city: string | null; state: string | null; zip: string | null; parcel_id: string | null; unit: string | null; tax_snapshot?: TaxSnapshot | null };
+const taxWarnings: Record<string, string> = {
+  active_deferral_review: 'Tax deferral requires review',
+  bankruptcy_review: 'Bankruptcy reference requires review',
+  legal_proceeding_review: 'Legal proceeding reference requires review',
+  payment_status_review: 'Payment arrangement or status requires review',
+  duplicate_tax_row_review: 'Duplicate tax rows; aggregate amount withheld',
+  unverified_delinquency_date: 'Delinquency date needs verification',
+  verify_current_account_status: 'Current account status needs verification',
+};
 async function action(path: string, method: string, body?: unknown) {
   const response = await apiFetch(path, { method, headers: { 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   return response.json();
 }
 export function ReviewControl({ item, refresh }: { item: Review; refresh: () => Promise<unknown> }) {
   const sourceAddress = /^0+$/.test(item.property_address?.trim() ?? '') ? '' : item.property_address ?? '';
+  const snapshot = item.tax_snapshot;
+  const historicalAmount = typeof snapshot?.amount_cents === 'number' && Number.isSafeInteger(snapshot.amount_cents) && snapshot.amount_cents >= 0
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(snapshot.amount_cents / 100) : 'Not available';
+  const snapshotDate = typeof snapshot?.snapshot_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(snapshot.snapshot_date) ? snapshot.snapshot_date : 'Date unavailable';
+  const warnings = typeof snapshot?.review_flags === 'string' ? [...new Set(snapshot.review_flags.split(',').filter(Boolean).map(flag => taxWarnings[flag] ?? 'Additional source warning requires review'))] : [];
   const [evidence, setEvidence] = useState('');
   const [leadId, setLeadId] = useState('');
   const [address, setAddress] = useState(sourceAddress);
@@ -36,6 +51,13 @@ export function ReviewControl({ item, refresh }: { item: Review; refresh: () => 
   return <article className="rounded-xl border bg-white p-4 space-y-3">
     <h3 className="font-semibold">{sourceAddress || 'Unresolved property'}</h3>
     <p>{item.source_key} · {item.review_reason.replaceAll('_', ' ')}</p>
+    {snapshot && <section aria-label="Historical tax evidence" className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1 text-sm">
+      <p className="font-semibold">Historical tax snapshot · {snapshotDate}</p>
+      <p>{snapshot.amount_kind === 'remaining_levy' ? 'Recorded remaining levy' : 'Recorded balance'}: {historicalAmount}</p>
+      <p>This is not a current payoff or confirmed active delinquency. Verify current account status, ownership scope and any deferral before qualifying this property.</p>
+      {(snapshot.situs_missing === true || !sourceAddress) && <p>Property street address is missing from the source.</p>}
+      {warnings.map(warning => <p key={warning}>{warning}</p>)}
+    </section>}
     <a href={item.source_url} target="_blank" rel="noreferrer" className="underline">Official source record</a>
     <p className="text-sm">Source account or notice: {item.source_record_id}. Confirm the property location in official records; a mailing address does not establish the property location. The original county record stays unchanged.</p>
     <Input label="Verified property street address" value={address} onChange={e => setAddress(e.target.value)} />

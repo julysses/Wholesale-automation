@@ -12,7 +12,7 @@ test('source review pages retain global counts, exclude resolved rows and preser
    CREATE TABLE public.tasks(id uuid PRIMARY KEY,title text,description text,status text,priority text,type text,assigned_to uuid,due_date timestamptz);
    CREATE TABLE public.app_settings(key text,value text);`);
   const dir=new URL('../../frontend/supabase/migrations/',import.meta.url);
-  for(const suffix of ['_daily_list_ingestion.sql','_list_operations.sql','_list_reviewed_identity.sql','_list_review_source_filters.sql']){
+  for(const suffix of ['_daily_list_ingestion.sql','_list_operations.sql','_list_reviewed_identity.sql','_list_review_source_filters.sql','_tax_review_evidence_context.sql']){
    await db.exec(fs.readFileSync(new URL(fs.readdirSync(dir).find(x=>x.endsWith(suffix)),dir),'utf8'));
   }
   for(const [index,source,n] of [[1,'tx-dallas-tax_delinquent',105],[2,'tx-dallas-pre_foreclosure',3],[3,'tx-collin-tax_delinquent',2]]){
@@ -26,13 +26,18 @@ test('source review pages retain global counts, exclude resolved rows and preser
   }
   await db.exec(`UPDATE wholesale_ingest.records SET resolved_at=now() WHERE run_id='00000000-0000-4000-8000-000000000001' AND ordinal=0;
    UPDATE wholesale_ingest.records SET review_reason=NULL WHERE run_id='00000000-0000-4000-8000-000000000001' AND ordinal=1;`);
+  await db.exec(`UPDATE wholesale_ingest.records SET record=record||'{"raw":{"snapshot_date":"2026-10-12","remaining_levy_cents":null,"review_flags":"duplicate_tax_row_review","situs_missing":true}}'::jsonb WHERE run_id='00000000-0000-4000-8000-000000000001';
+   UPDATE wholesale_ingest.records SET record=record||'{"raw":{"snapshot_date":"2026-10-10","snapshot_balance_cents":39,"review_flags":"active_deferral_review"}}'::jsonb WHERE run_id='00000000-0000-4000-8000-000000000003';`);
   const page=async(source,offset=0)=>(await db.query('SELECT public.list_pipeline_snapshot_filtered(current_date,$1,$2) result',[offset,source])).rows[0].result;
   const first=await page('tx-dallas-tax_delinquent'),last=await page('tx-dallas-tax_delinquent',100);
   assert.equal(first.review_count,103);assert.equal(first.total_review_count,108);assert.equal(first.reviews.length,100);
+  assert.deepEqual(first.reviews[0].tax_snapshot,{snapshot_date:'2026-10-12',amount_cents:null,amount_kind:'remaining_levy',review_flags:'duplicate_tax_row_review',situs_missing:true});
+  assert.equal((await page('tx-collin-tax_delinquent')).reviews[0].tax_snapshot.amount_cents,39);
   assert.deepEqual(last.reviews.map(r=>r.ordinal),[102,103,104]);
   assert(first.reviews.every(r=>r.source_key==='tx-dallas-tax_delinquent'&&/^[a-f0-9]{32}$/.test(r.source_fingerprint)&&r.city==='Dallas'&&r.parcel_id));
   assert.equal(new Set([...first.reviews,...last.reviews].map(r=>r.source_record_id)).size,103);
   const foreclosure=await page('tx-dallas-pre_foreclosure');
+  assert.equal(foreclosure.reviews[0].tax_snapshot,null);
   assert.equal(foreclosure.review_count,3);assert.equal(foreclosure.total_review_count,108);
   assert.equal((await page('tx-collin-pre_foreclosure')).review_count,0);
   assert.deepEqual((await page(null,100)).reviews.map(r=>[r.source_key,r.ordinal]),[

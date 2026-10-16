@@ -12,26 +12,27 @@ test('audited situs enrichment preserves county facts, rejects stale/conflicting
    CREATE TABLE public.tasks(id uuid PRIMARY KEY,title text,description text,status text,priority text,type text,assigned_to uuid,due_date timestamptz);
    CREATE TABLE public.app_settings(key text,value text);`);
   const dir=new URL('../../frontend/supabase/migrations/',import.meta.url);
-  for(const suffix of ['_daily_list_ingestion.sql','_list_operations.sql','_list_review_batch_guard.sql','_list_reviewed_identity.sql']){
+  for(const suffix of ['_daily_list_ingestion.sql','_list_operations.sql','_list_review_batch_guard.sql','_list_reviewed_identity.sql','_list_review_source_filters.sql','_tax_review_evidence_context.sql']){
    await db.exec(fs.readFileSync(new URL(fs.readdirSync(dir).find(x=>x.endsWith(suffix)),dir),'utf8'));
   }
   const owner='00000000-0000-4000-8000-000000000001';
   await db.query("INSERT INTO public.profiles VALUES($1,'admin','approved')",[owner]);
-  const seed=async(type,n)=>{
+  const seed=async(type,n,county='Dallas')=>{
    const run=`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
    await db.query(`INSERT INTO wholesale_ingest.ingest_runs(id,source_id,scheduled_for,pulled_at,status,status_reason,manifest_hash,expected_batches)
-    SELECT $1,id,current_date,now(),'partial','synthetic review',repeat('a',64),1 FROM wholesale_ingest.sources WHERE source_key=$2`,[run,`tx-dallas-${type}`]);
+    SELECT $1,id,current_date,now(),'partial','synthetic review',repeat('a',64),1 FROM wholesale_ingest.sources WHERE source_key=$2`,[run,`tx-${county.toLowerCase()}-${type}`]);
    await db.query(`INSERT INTO wholesale_ingest.raw_payloads(run_id,batch_index,payload_hash,records_hash,payload,records_in) VALUES($1,0,repeat('b',64),repeat('c',64),'{}',1)`,[run]);
    const record={source_record_id:`synthetic-${n}`,property_address:null,city:null,state:'TX',zip:null,filed_date:'2026-10-13',mailing_address:'999 Mailing Only Road',raw:{snapshot_only:true},source_url:'https://www.dallascounty.org/synthetic',amount_owed:null};
    await db.query(`INSERT INTO wholesale_ingest.records(run_id,batch_index,ordinal,source_record_id,record,review_reason) VALUES($1,0,0,$2,$3,'verify_county_property_evidence')`,[run,record.source_record_id,JSON.stringify(record)]);
    const hash=(await db.query('SELECT md5(record::text) h FROM wholesale_ingest.records WHERE run_id=$1',[run])).rows[0].h;
-   return {run,record,review:{source_fingerprint:hash,notes:'Synthetic official situs match reviewed.',identity:{property_address:'1 Synthetic Site',city:'Dallas',state:'TX',zip:'75201',parcel_id:'synthetic-parcel',unit:null}}};
+   return {run,record,county,review:{source_fingerprint:hash,notes:'Synthetic official situs match reviewed.',identity:{property_address:'1 Synthetic Site',city:'Dallas',state:'TX',zip:'75201',parcel_id:'synthetic-parcel',unit:null}}};
   };
   const a=await seed('tax_delinquent',2),b=await seed('pre_foreclosure',3);
-  const resolve=(f,review=f.review,lead=null,actor=owner)=>db.query('SELECT public.resolve_reviewed_list_record($1,0,0,$2,$3,$4,$5,false,$6) result',[f.run,actor,'Dallas','https://www.dallascad.org/synthetic',lead,JSON.stringify(review)]);
+  const resolve=(f,review=f.review,lead=null,actor=owner,url='https://www.dallascad.org/synthetic')=>db.query('SELECT public.resolve_reviewed_list_record($1,0,0,$2,$3,$4,$5,false,$6) result',[f.run,actor,f.county,url,lead,JSON.stringify(review)]);
   await assert.rejects(()=>resolve(a,{...a.review,source_fingerprint:'0'.repeat(32)}),/Current source fingerprint/);
   await assert.rejects(()=>resolve(a,{...a.review,identity:{...a.review.identity,amount_owed:100}}),/Verified Texas situs/);
   await assert.rejects(()=>resolve(a,{...a.review,identity:{...a.review.identity,zip:null}}),/Verified Texas situs/);
+  await assert.rejects(()=>resolve(a,{...a.review,identity:{...a.review.identity,property_address:'0000000'}}),/Verified Texas situs/);
   await assert.rejects(()=>resolve(a,a.review,null,'00000000-0000-4000-8000-000000000099'),/Approved administrator/);
   await db.exec("UPDATE wholesale_ingest.raw_payloads SET expires_at=now()-interval '1 second'");
   await assert.rejects(()=>resolve(a),/Complete unexpired/);
@@ -52,6 +53,15 @@ test('audited situs enrichment preserves county facts, rejects stale/conflicting
   assert.equal(lead.sms_sequence_active,false);assert.equal(lead.email_sequence_active,false);
   const c=await seed('tax_delinquent',4);
   await assert.rejects(()=>resolve(c,{...c.review,identity:{...c.review.identity,property_address:'2 Other Site'}},first.lead_id),/does not match/);
+  const d=await seed('tax_delinquent',5,'Collin');
+  d.review.identity={...d.review.identity,property_address:'2 Synthetic Site',city:'Plano',zip:'75074',parcel_id:'1234'};
+  const valid='https://data.texas.gov/resource/ahis-pci3.json?propid=1234';
+  for(const url of [valid+'&$limit=1',valid.replace('1234','5678'),valid.replace('ahis-pci3','other-data'),valid.replace('data.texas.gov','data.texas.gov.evil.invalid'),valid.replace('https:','http:')]){
+   await assert.rejects(()=>resolve(d,d.review,null,owner,url),/Official county\/title evidence/);
+  }
+  await assert.rejects(()=>resolve(c,{...c.review,identity:{...c.review.identity,parcel_id:'1234'}},null,owner,valid),/Official county\/title evidence/);
+  assert.equal((await resolve(d,d.review,null,owner,valid)).rows[0].result.new_lead,true);
+  assert.equal((await db.query('SELECT count(*)::int n FROM wholesale_ingest.distress_signals WHERE active')).rows[0].n,0);
   await db.exec('SET ROLE authenticated');
   await assert.rejects(()=>resolve(c),/permission denied/);
  }finally{await db.close();}

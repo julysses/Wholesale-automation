@@ -12,6 +12,20 @@ vi.mock('@/components/lists/LotOperations',()=>({LotOperations:()=>null}));
 import {ReviewControl} from '@/components/lists/ReviewControl';
 const item={run_id:'synthetic',batch_index:0,ordinal:0,source_record_id:'account123',source_key:'tx-dallas-tax_delinquent',property_address:null,city:null,zip:null,unit:null,parcel_id:'parcel123',source_fingerprint:'a'.repeat(32),source_url:'https://www.dallascounty.org/synthetic',review_reason:'verify_property'};
 beforeEach(()=>{vi.resetAllMocks();mocks.fetch.mockResolvedValue({json:async()=>({day:'2026-10-13',sources:[],runs:[],reviews:[item],review_count:1,digest:null})});});
+it('shows historical tax amounts and holds without presenting them as current debt',()=>{
+ render(<ReviewControl item={{...item,state:'TX',tax_snapshot:{snapshot_date:'2026-10-10',amount_cents:39,amount_kind:'balance',review_flags:'active_deferral_review',situs_missing:true}}} refresh={async()=>undefined}/>);
+ expect(screen.getByRole('region',{name:'Historical tax evidence'})).toHaveTextContent('2026-10-10');
+ expect(screen.getByText('Recorded balance: $0.39')).toBeInTheDocument();
+ expect(screen.getByText('Tax deferral requires review')).toBeInTheDocument();
+ expect(screen.getByText(/not a current payoff or confirmed active delinquency/)).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'Save verified association'})).toBeDisabled();
+});
+it('keeps withheld or invalid historical amounts unavailable',()=>{
+ render(<ReviewControl item={{...item,state:'TX',tax_snapshot:{snapshot_date:'not-a-date',amount_cents:'1234',amount_kind:'remaining_levy',review_flags:'duplicate_tax_row_review'}}} refresh={async()=>undefined}/>);
+ expect(screen.getByText('Recorded remaining levy: Not available')).toBeInTheDocument();
+ expect(screen.getByText(/Duplicate tax rows; aggregate amount withheld/)).toBeInTheDocument();
+ expect(screen.getByRole('region',{name:'Historical tax evidence'})).toHaveTextContent('Date unavailable');
+});
 it('does not present or accept a zero-filled county address as verified situs',()=>{
  render(<ReviewControl item={{...item,property_address:'0000000',state:'TX'}} refresh={async()=>undefined}/>);
  expect(screen.getByRole('heading',{name:'Unresolved property'})).toBeInTheDocument();
