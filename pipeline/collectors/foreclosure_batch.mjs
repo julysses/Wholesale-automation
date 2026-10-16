@@ -97,6 +97,22 @@ export async function loadOwners(path) {
   return snapshot;
 }
 
+// Extract only explicitly labelled, intact references. Never repair OCR-damaged digits
+// or confuse recorded instruments, loan numbers and page numbers with trustee cases.
+export function trusteeReferences(text) {
+  const formats = [
+    { prefix: '', pattern: /\b(?:T\.?[ \t]*S\.?[ \t]*(?:NO\.?[ \t]*)?[.#:]*[ \t]*)(\d{4}-\d{3,10}-[A-Z]{2})(?![\w-])/gi },
+    { prefix: 'PLG:', pattern: /\bPLG[ \t]+File[ \t]+Number[ \t]*:[ \t]*(\d{2}-\d{6}-\d{1,3})(?![\w-])/gi },
+    { prefix: 'FIRM:', pattern: /\bFirm[ \t]+File[ \t]+Number[ \t]*:[ \t]*(\d{2}-\d{6})(?![\w-])/gi },
+    { prefix: 'TS:', pattern: /\bT\.?[ \t]*S\.?[ \t]*(?:NO\.?[ \t]*)?[.#:]+[ \t]*(\d{2}-\d{5})(?![\w-])/gi },
+  ];
+  const references = new Set();
+  for (const {prefix, pattern} of formats) {
+    for (const match of text.matchAll(pattern)) references.add(prefix + match[1].toUpperCase());
+  }
+  return [...references];
+}
+
 export function assessNotice(detail, capture, pages, ownerRows, day) {
   if (!validDay(day)) throw Error('Invalid processing day');
   const holds = [], evidence = [];
@@ -116,8 +132,8 @@ export function assessNotice(detail, capture, pages, ownerRows, day) {
   const cases = new Set();
   for (const page of pages) {
     if (address && normalize(page.text).includes(address)) { addressOnNotice = true; evidence.push({ field: 'situs', page: page.page, text_sha256: page.text_sha256 }); }
-    for (const match of page.text.matchAll(/\b(?:T\.?\s*S\.?\s*[.#:]?\s*#?\s*|TS\s*NO\.?\s*:?\s*)(\d{4}-\d{3,10}-[A-Z]{2})\b/gi)) {
-      cases.add(match[1].toUpperCase()); evidence.push({ field: 'trustee_case', value: match[1].toUpperCase(), page: page.page, text_sha256: page.text_sha256 });
+    for (const value of trusteeReferences(page.text)) {
+      cases.add(value); evidence.push({ field: 'trustee_case', value, page: page.page, text_sha256: page.text_sha256 });
     }
   }
   if (!addressOnNotice) holds.push('notice_situs_not_corroborated');
@@ -175,7 +191,7 @@ export async function runBatch({ root, manifestPath, detailsPath, ocrRoot, owner
     repeated_case_observations: propertyGroups.reduce((n, g) => n + Object.values(g.cases).reduce((count, ids) => count + ids.length - 1, 0), 0),
     future_sale_documents: assessed.filter(n => n.future_sale).length, exception_documents: assessed.filter(n => n.holds.length).length,
     evidence_review_candidates: assessed.filter(n => !n.holds.length).length, trace_eligible: 0 };
-  const report = { schema_version: '1.0', processor: 'foreclosure-batch/1.0', day, processed_at: new Date().toISOString(),
+  const report = { schema_version: '1.0', processor: 'foreclosure-batch/1.1', day, processed_at: new Date().toISOString(),
     dataset_url: datasetUrl, ownership_snapshot_sha256: hash(await readFile(ownersPath)), summary, notices: assessed, groups: propertyGroups,
     verification_granted: false, dispatch_authorized: false, outreach_authorized: false };
   await mkdir(output, { recursive: true, mode: 0o700 });

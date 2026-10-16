@@ -2,6 +2,10 @@
 
 Updated October 16, 2026, after the owner-link and inquiry-retention repairs, plus the approved fresh county intake test. Repairs are deployed and historical inventory is in production. **Full automated launch is not yet verified. Collection and SMS remain paused.**
 
+## Latest parser repair
+
+The parser and production receipt validator now support explicitly labelled PLG, Firm File Number and short TS references, while preserving older receipts and all qualification controls. Three references recovered from the saved Collin batch were checked against the original scans. Damaged OCR remains unresolved; all nine notices still require review. Full pipeline: 141 tests passed. Production rollback verified three-format acceptance and duplicate retry handling, with unchanged CRM/SMS counts and permissions. The fresh evidence upload remains unexecuted pending its specific approval.
+
 ## Latest notice-evidence progress
 
 All 34 notices from the approved bounded test now have complete local originals and OCR: 25 Dallas / 91 pages and nine Collin / 24 pages. All 115 pages extracted; 31 require text-quality review. Eight Collin records match fresh appraisal situs evidence, but all nine retain notice-level exceptions. No new qualified lead or outreach permission is claimed. The Dallas capture helper now waits for the matching scan after pagination and verifies saved hashes on resume. Full pipeline: 139 tests passed.

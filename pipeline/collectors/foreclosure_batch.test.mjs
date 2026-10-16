@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { queryUrl, validateRows, fetchOwners, loadOwners, assessNotice } from './foreclosure_batch.mjs';
+import { queryUrl, validateRows, fetchOwners, loadOwners, assessNotice, trusteeReferences } from './foreclosure_batch.mjs';
 
 const row = { propid: '123', ownerid: '456', geoid: 'R-123', ownername: 'SYNTHETIC OWNER',
   situsconcat: '1 EXAMPLE LN , ANNA, TX 75409', datadate: '2026-10-14T00:48:00.000' };
@@ -41,4 +41,33 @@ test('bulk triage preserves holds for stale data, mismatched units, co-owners, p
   assert.ok(assessNotice(detail, capture, [{ ...page, review_required: true }], [row], '2026-10-14').holds.includes('text_quality_review'));
   assert.equal(assessNotice(detail, capture, [{ ...page, text: 'Owner mailing address only' }], [row], '2026-10-14').notice_situs_supported, false);
   assert.throws(() => assessNotice(detail, capture, [page], [row], '2026-02-30'), /Invalid/);
+});
+
+
+test('labelled trustee references support intact formats without repairing damaged OCR or reading instrument numbers', () => {
+  for (const [text, expected] of [
+    ['PLG File Number: 26-012345-1 3', 'PLG:26-012345-1'],
+    ['Firm File Number: 26-012345', 'FIRM:26-012345'],
+    ['TS#: 26-12345', 'TS:26-12345'],
+    ['TS No.: 26-12345', 'TS:26-12345'],
+    ['T.S. # 2026-12345-TX', '2026-12345-TX'],
+  ]) assert.deepEqual(trusteeReferences(text), [expected]);
+  for (const text of ['PLG File Number: 260123451', 'Firm File Number: 26012345', 'TS#: 2612345',
+    'Loan Number: 26-012345', 'County Clerk File Number: 26-012345', 'PLG File Number:\n26-012345-1',
+    'PLG File Number: 26-012345-1-X', 'Firm File Number: 26-012345-1', 'TS#: 26-12345-7',
+    'TS#: 26-12345X', 'TS#: 26-123456', 'RTS 2026-12345-TX']) {
+    assert.deepEqual(trusteeReferences(text), [], text);
+  }
+});
+
+test('repeated references retain page provenance; ambiguous references and OCR quality remain held', () => {
+  const pages = [1,2].map(n=>({...page,page:n,text:page.text.replace('TS. # 2026-12345-TX.','PLG File Number: 26-012345-1')}));
+  const result=assessNotice(detail,{...capture,expected_pages:2},pages,[row],'2026-10-14');
+  assert.equal(result.trustee_case,'PLG:26-012345-1');
+  assert.deepEqual(result.evidence.filter(e=>e.field==='trustee_case').map(e=>e.page),[1,2]);
+  for(const flag of ['identity_verified','current_status_verified','trace_eligible','outreach_authorized'])assert.equal(result[flag],false);
+  const ambiguous=assessNotice(detail,capture,[{...pages[0],text:pages[0].text+'\nPLG File Number: 26-012345-2'}],[row],'2026-10-14');
+  assert.equal(ambiguous.trustee_case,null);assert.ok(ambiguous.holds.includes('trustee_case_unresolved'));
+  const quality=assessNotice(detail,capture,[{...pages[0],review_required:true}],[row],'2026-10-14');
+  assert.ok(quality.holds.includes('text_quality_review'));assert.equal(quality.trace_eligible,false);
 });
