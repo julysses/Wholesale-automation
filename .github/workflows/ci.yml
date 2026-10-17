@@ -95,3 +95,10 @@ jobs:
         env:
           PG_BIN: /usr/lib/postgresql/16/bin
         run: python3 pipeline/integration/run_local.py
+
+      - name: Install SMS contention test dependency
+        run: npm ci --ignore-scripts --prefix pipeline
+      - name: Real PostgreSQL SMS transport contention
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: python3 pipeline/integration/run_sms_transport.py
