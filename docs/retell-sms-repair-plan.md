@@ -1,3 +1,25 @@
+## Production release verified; sending remains paused — October 16, 2026, 9:04 PM Central
+
+**Runtime commit15931db847c57a1de629c9bd504230e66cc50229** is live at **https://wholesale-automation.vercel.app**, deployment **dpl_6To1b21QM423VNrtL5SBU1AMTBzB**, READY and verified on the primary alias. [Exact-commit CI38993140165 passed](https://github.com/julysses/Wholesale-automation/actions/runs/38993140165). This supersedes older notes saying the app transport is local/unapplied or runtime974a462.
+
+All three reviewed SMS migrations are now applied to production dvzhzlipbwzzcliujzyz, in order:
+- Local20261017012707 ownership → remote20261017020136.
+- Local20261017013643 outbox → remote20261017020143.
+- Local20261017015318 recovery/monitoring → remote20261017020150.
+
+All18 production function bodies match the local reviewed SQL after whitespace normalization. Invoker, empty search path, and anon/authenticated execution restrictions verified. Both new tables have RLS and no browser-role SELECT. Existing three form jobs remain native and unchanged; all12 SMS receipts remain unchanged, including after runtime probes. Job fingerprint ce3393269d0d68a2d42ccd33d70f74be; SMS fingerprint645e09a4b946be7cab46d96e48d97faa. New app jobs/sessions/turns and monitor findings were zero. Security advisor categories remain unchanged (one INFO and one existing WARN category); no new warning type. Release mapping/hashes/evidence: **docs/retell-app-release-manifest.json**.
+
+Runtime verification: health200; readiness200; unauthenticated ack/recovery401. Vault-authenticated POST probes using a nonexistent UUID returned200/disabled/dispatch_authorized:false for ack, generate, reply (net request IDs10–12). Authenticated exact recovery probes for that nonexistent UUID returned200/recovered:false (IDs13–14). No provider call, new inquiry, SMS, paid generation, tracing, county collection, environment edit or scheduler activation occurred. Refreshed Vercel UI confirmed RETELL_SMS_LIVE_ENABLED=false and RETELL_APP_ settings absent. Existing retention and monitoring cron jobs were not changed.
+
+Engineering verification before deployment: **1,041 pytest tests plus six subtests; 174 pipeline tests; real PostgreSQL concurrency acceptance passed**. Recovery races preserve carrier evidence and hold uncertainty; a late acknowledgment failure blocks further generation. See previous checkpoint for test logs and details.
+
+### Remaining work — full operational launch not yet achieved
+
+1. **Automatic execution path.** Exact endpoints are deployed, but there is no new automatic app-owned queue dispatcher or generation-to-dispatch trigger. Implement a durable, bounded, disabled-by-default dispatcher that respects individual claims, serial turns, current gates, expiry, ownership and review holds. Do not confuse manually callable endpoints with a fully automated process, or activate a recurring schedule before approval.
+2. **Bounded acceptance.** Prepare a separately approved owner-only app-transport test with current consent, actual carrier+handset delivery, real reply and STOP evidence during9AM–7PMCentral. Existing approval is for the native V2 one-message test and must not be silently reused to authorize this new route. Both website paths still require complete intake/assignment/history/dedup verification. No test SMS was sent tonight.
+3. **County onboarding.** Full-notice OCR upload still awaits specific approval after prior automatic review rejection. Saved notice/identity/current-sale verification and an approved observed collection cycle remain. Preserve PropStream and the cumulative$50 tracing cap.
+4. **Go-live.** Only after these evidence gates pass may general collection/outreach activation be considered. Goal remains active and incomplete. Do not mark delivery or automation proven from deployment health or component tests alone.
+
 ## Recovery and monitoring completed locally — October 16, 2026, evening Central
 
 Recovery endpoints reconcile one exact app acknowledgment or carrier reply while sending is paused. Known saved carrier acceptance repairs the parent; stale uncertain creation/completion/dispatch is held without requeue or resend. Receipt bodies, SIDs and delivery statuses are preserved. Fresh dispatch ages from its own SMS ledger timestamp rather than an earlier generation claim. Expired unprocessed replies stop; generated-but-unsent replies hold the conversation. The existing owner monitor now includes stalled API sessions/turns and app acknowledgments.

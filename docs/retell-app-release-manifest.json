@@ -1,22 +1,78 @@
 {
   "project_id": "dvzhzlipbwzzcliujzyz",
-  "state": "prepared_not_applied",
+  "state": "applied_deployed_verified_sending_paused",
   "sending": "paused",
   "migrations": [
     {
       "file": "frontend/supabase/migrations/20261017012707_retell_app_transport_ownership.sql",
       "name": "retell_app_transport_ownership",
-      "sha256": "31cbf12e874a2e31b1fef105860a7343bd390de0ce379c15c8765182de5a411d"
+      "sha256": "31cbf12e874a2e31b1fef105860a7343bd390de0ce379c15c8765182de5a411d",
+      "remote_version": "20261017020136"
     },
     {
       "file": "frontend/supabase/migrations/20261017013643_retell_app_twilio_outbox.sql",
       "name": "retell_app_twilio_outbox",
-      "sha256": "6d39e702b76cfefc4091cba384cf7ee99e56fde4398700d9eeb714bd6360334a"
+      "sha256": "6d39e702b76cfefc4091cba384cf7ee99e56fde4398700d9eeb714bd6360334a",
+      "remote_version": "20261017020143"
     },
     {
       "file": "frontend/supabase/migrations/20261017015318_retell_app_recovery_monitoring.sql",
       "name": "retell_app_recovery_monitoring",
-      "sha256": "5396830fc20de48372861ee0507f0133b513265db91aa75c7a21dea316db6a89"
+      "sha256": "5396830fc20de48372861ee0507f0133b513265db91aa75c7a21dea316db6a89",
+      "remote_version": "20261017020150"
     }
-  ]
+  ],
+  "release_commit": "15931db847c57a1de629c9bd504230e66cc50229",
+  "ci_run": "https://github.com/julysses/Wholesale-automation/actions/runs/38993140165",
+  "deployment_id": "dpl_6To1b21QM423VNrtL5SBU1AMTBzB",
+  "verification": {
+    "functions_matched": 18,
+    "rls_tables": 2,
+    "anon_authenticated_access": false,
+    "existing_job_count": 3,
+    "existing_job_fingerprint": "ce3393269d0d68a2d42ccd33d70f74be",
+    "existing_sms_count": 12,
+    "existing_sms_fingerprint": "645e09a4b946be7cab46d96e48d97faa",
+    "app_jobs": 0,
+    "api_sessions": 0,
+    "api_turns": 0,
+    "new_monitor_findings": 0,
+    "deployment_state": "READY",
+    "health_http": 200,
+    "readiness_http": 200,
+    "unauthenticated_ack_http": 401,
+    "unauthenticated_recovery_http": 401,
+    "paused_workers": {
+      "ack": {
+        "request_id": 10,
+        "http": 200,
+        "status": "disabled"
+      },
+      "generate": {
+        "request_id": 11,
+        "http": 200,
+        "status": "disabled"
+      },
+      "reply": {
+        "request_id": 12,
+        "http": 200,
+        "status": "disabled"
+      }
+    },
+    "empty_recovery": {
+      "ack": {
+        "request_id": 13,
+        "http": 200,
+        "recovered": false
+      },
+      "turn": {
+        "request_id": 14,
+        "http": 200,
+        "recovered": false
+      }
+    },
+    "post_probe_fingerprints_unchanged": true
+  },
+  "deployment_url": "https://wholesale-automation.vercel.app",
+  "verified_at": "2026-10-17T02:04:54Z"
 }
