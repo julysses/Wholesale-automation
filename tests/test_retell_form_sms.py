@@ -230,3 +230,63 @@ def test_only_explicit_boolean_suppression_is_confirmed(safety,expected):
     db.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value=SimpleNamespace(data=[receipt])
     db.rpc.return_value.execute.return_value=SimpleNamespace(data=safety)
     assert sms_consent_blocker(db,'lead','+12145551234')==expected
+
+
+@pytest.mark.parametrize('rows', [[], [{'id':'00000000-0000-4000-8000-000000000001'}]])
+def test_scoped_worker_only_claims_requested_job(monkeypatch, rows):
+    target='00000000-0000-4000-8000-000000000001'
+    monkeypatch.setattr(sms,'activation_ready',lambda:True)
+    monkeypatch.setattr(sms.SMSClient,'_in_allowed_hours',lambda self:True)
+    process=MagicMock();monkeypatch.setattr(sms,'process_claim',process)
+    db=MagicMock();db.rpc.return_value.execute.return_value.data=rows
+    result=sms.drain(db,target)
+    db.rpc.assert_called_once_with('claim_retell_form_sms_matching',{'p_limit':1,'p_job':target})
+    db.table.return_value.update.return_value.eq.return_value.lt.return_value.eq.assert_called_once_with('id',target)
+    assert process.call_count==len(rows)
+    assert result['processed']==len(rows)
+
+
+@pytest.mark.parametrize('rows', [None, {}, [{'id':'other'}], [None],
+    [{'id':'00000000-0000-4000-8000-000000000001'}]*2])
+def test_scoped_worker_rejects_unexpected_claims(monkeypatch,rows):
+    monkeypatch.setattr(sms,'activation_ready',lambda:True)
+    monkeypatch.setattr(sms.SMSClient,'_in_allowed_hours',lambda self:True)
+    process=MagicMock();monkeypatch.setattr(sms,'process_claim',process)
+    db=MagicMock();db.rpc.return_value.execute.return_value.data=rows
+    with pytest.raises(RuntimeError): sms.drain(db,'00000000-0000-4000-8000-000000000001')
+    process.assert_not_called()
+
+
+@pytest.mark.parametrize('job_id',['','not-a-uuid'])
+def test_scoped_worker_rejects_invalid_id_before_storage(job_id):
+    db=MagicMock()
+    with pytest.raises(ValueError):sms.drain(db,job_id)
+    db.table.assert_not_called();db.rpc.assert_not_called()
+
+
+@pytest.mark.parametrize('ready,hours',[(False,True),(True,False)])
+def test_scoped_worker_keeps_activation_and_hours_gates(monkeypatch,ready,hours):
+    monkeypatch.setattr(sms,'activation_ready',lambda:ready)
+    monkeypatch.setattr(sms.SMSClient,'_in_allowed_hours',lambda self:hours)
+    db=MagicMock();post=MagicMock();monkeypatch.setattr(sms.requests,'post',post)
+    assert sms.drain(db,'00000000-0000-4000-8000-000000000001')['processed']==0
+    db.table.assert_not_called();db.rpc.assert_not_called();post.assert_not_called()
+
+
+def test_scoped_endpoint_requires_auth_post_and_valid_job(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from web.api import nurture_api
+    monkeypatch.setenv('CRON_SECRET','worker-test')
+    db=MagicMock();monkeypatch.setattr(nurture_api,'_db',lambda:db)
+    drain=MagicMock(return_value={'processed':0,'sending_enabled':False})
+    monkeypatch.setattr(sms,'drain',drain)
+    app=FastAPI();app.include_router(nurture_api.router);client=TestClient(app)
+    job='00000000-0000-4000-8000-000000000001'
+    path='/webhooks/_worker/retell-form-sms/'+job
+    assert client.get(path).status_code==405
+    assert client.post(path).status_code==401
+    assert client.post('/webhooks/_worker/retell-form-sms/invalid',headers={'Authorization':'Bearer worker-test'}).status_code==422
+    drain.assert_not_called()
+    assert client.post(path,headers={'Authorization':'Bearer worker-test'}).status_code==200
+    drain.assert_called_once_with(db,job)

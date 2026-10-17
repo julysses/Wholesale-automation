@@ -194,3 +194,15 @@ async def drain_retell_form_sms(request: Request, check_connection: bool = False
         return await run_in_threadpool(verify_connection)
     from tools.retell_form_sms import drain as retell_drain
     return await run_in_threadpool(retell_drain, _db())
+
+
+@router.post("/webhooks/_worker/retell-form-sms/{job_id}")
+async def run_retell_form_sms_job(job_id: UUID, request: Request):
+    """Run only an explicitly selected job, with all normal sending checks."""
+    secret = os.getenv("CRON_SECRET", "")
+    if not secret:
+        raise HTTPException(503, "Worker secret not configured")
+    if not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + secret):
+        raise HTTPException(401, "Unauthorized")
+    from tools.retell_form_sms import drain as retell_drain
+    return await run_in_threadpool(retell_drain, _db(), str(job_id))

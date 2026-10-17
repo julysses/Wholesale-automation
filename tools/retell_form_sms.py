@@ -3,7 +3,7 @@ from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 import os
 import re
-from uuid import NAMESPACE_URL, uuid5
+from uuid import NAMESPACE_URL, UUID, uuid5
 import requests
 from tools.facebook_consent import normalize_us_phone
 from tools.sms_client import sms_consent_blocker, SMSClient, CONFIRMED_SUPPRESSION
@@ -85,17 +85,26 @@ def activation_ready():
             and (enabled('RETELL_SMS_ALL_CONSENTED_FORMS') or bool(settings.sms_allowed_recipients)))
 
 
-def drain(sb):
+def drain(sb, job_id=None):
+    # Validate before any database access. A scoped run never falls back to a
+    # general drain if its job is missing, blocked, expired or already attempted.
+    target = str(UUID(str(job_id))) if job_id is not None else None
     if not activation_ready():
         return {'processed': 0, 'sending_enabled': False}
     sms = SMSClient()
     if not sms._in_allowed_hours():
         return {'processed': 0, 'deferred': 'outside_contact_hours'}
     # Never replay an uncertain provider operation, including a process crash.
-    sb.table('retell_form_sms_jobs').update({'status': 'review', 'reason': 'Worker outcome unconfirmed; reconcile before retry'}).eq('status', 'processing').lt('claimed_at', (datetime.now(timezone.utc)-timedelta(minutes=5)).isoformat()).execute()
-    jobs = sb.rpc('claim_retell_form_sms', {'p_limit': 3}).execute().data
+    stale = sb.table('retell_form_sms_jobs').update({'status': 'review', 'reason': 'Worker outcome unconfirmed; reconcile before retry'}).eq('status', 'processing').lt('claimed_at', (datetime.now(timezone.utc)-timedelta(minutes=5)).isoformat())
+    if target is not None:
+        stale = stale.eq('id', target)
+    stale.execute()
+    jobs = (sb.rpc('claim_retell_form_sms_matching', {'p_limit': 1, 'p_job': target})
+            if target is not None else sb.rpc('claim_retell_form_sms', {'p_limit': 3})).execute().data
     if not isinstance(jobs, list):
         raise RuntimeError('Retell SMS claims not confirmed')
+    if target is not None and (len(jobs) > 1 or any(not isinstance(job, dict) or job.get('id') != target for job in jobs)):
+        raise RuntimeError('Retell SMS claim did not match the selected job; no send attempted')
     for job in jobs:
         process_claim(sb, job)
     return {'processed': len(jobs), 'sending_enabled': True}
