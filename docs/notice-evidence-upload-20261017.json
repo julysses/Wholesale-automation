@@ -1,0 +1,54 @@
+{
+  "dallas": {
+    "documents": 25,
+    "pages": 91,
+    "quality_review_pages": 29,
+    "capture_manifest_sha256": "eaad6c65c91371f9a1dbc5925a885b1fd515189e4995a31c4cf8095da4f36740",
+    "extraction_manifest_sha256": "07e777c0bf94e2e7b3220cf6d12e083fe444c91860aa37d218142bff6e2b1fb6"
+  },
+  "collin": {
+    "documents": 9,
+    "pages": 24,
+    "quality_review_pages": 2,
+    "capture_manifest_sha256": "5dbf23f0196314942de8a0b941770237ef63e508d6255530c73fe4f3490076e8",
+    "extraction_manifest_sha256": "f63ceb377d954683fad10fc5427976ef9f9fb5d5d11b9e5c2fe56c2ec1b77bd1"
+  },
+  "query_characters": 315506,
+  "rollback_sha256": "bf740d5839282ab26dc64500475dfe35b38eeadd1db24674842d5cab8b6f3244",
+  "state": "committed_verified",
+  "project": "dvzhzlipbwzzcliujzyz",
+  "committed_at_utc": "2026-10-17T21:38:31.489169+00:00",
+  "rollback_passed": true,
+  "retry_unchanged": true,
+  "unrelated_table_fingerprints_unchanged": true,
+  "commit_sha256": "ea398cc4563dfc73eea7aac412f8473276afb097d68251c6ef3d9dbc98c191e4",
+  "production": {
+    "Collin": {
+      "documents": 173,
+      "pages": 444,
+      "quality_review_pages": 69
+    },
+    "Dallas": {
+      "documents": 26,
+      "pages": 96,
+      "quality_review_pages": 31
+    }
+  },
+  "unchanged": {
+    "leads": 17449,
+    "tasks": 140,
+    "properties": 84,
+    "source_records": 40387,
+    "trace_requests": 77,
+    "sms_jobs": 3,
+    "sms_events": 12,
+    "sessions": 0,
+    "turns": 0
+  },
+  "sources_enabled": 0,
+  "spend_or_outreach_enabled": 0,
+  "app_scheduler_enabled": false,
+  "native_scheduler_enabled": false,
+  "full_text_retention": "Full text transmitted for hash validation; receipt metadata stored. Original images and full text remain private local files.",
+  "crm_counters_verified": true
+}

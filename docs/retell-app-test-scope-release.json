@@ -1,5 +1,5 @@
 {
-  "state": "deployed_paused_authenticated_probe_pending_approval",
+  "state": "deployed_verified_paused",
   "verified_at_utc": "2026-10-17T19:34:21.748996+00:00",
   "release_commit": "e41e4a38ec07da19320427be8a9474d8dc1ff886",
   "deployment_id": "dpl_7cfMq9vkEz85jBhexsTDfhSjPB6q",
@@ -15,13 +15,38 @@
   "readiness_http": 200,
   "unauthenticated_automatic_http": 401,
   "authenticated_probes": {
-    "executed": false,
-    "reason": "automatic approval review rejected production worker POSTs; explicit approval requested",
-    "proposed_actions": [
-      "automatic",
-      "ack/nonexistent-id",
-      "generate/nonexistent-id",
-      "reply/nonexistent-id"
+    "executed": true,
+    "user_approved": true,
+    "requests": [
+      {
+        "action": "automatic",
+        "request_id": 17,
+        "http": 200,
+        "status": "disabled",
+        "dispatch_authorized": false,
+        "processed": 0
+      },
+      {
+        "action": "ack",
+        "request_id": 18,
+        "http": 200,
+        "status": "disabled",
+        "dispatch_authorized": false
+      },
+      {
+        "action": "generate",
+        "request_id": 19,
+        "http": 200,
+        "status": "disabled",
+        "dispatch_authorized": false
+      },
+      {
+        "action": "reply",
+        "request_id": 20,
+        "http": 200,
+        "status": "disabled",
+        "dispatch_authorized": false
+      }
     ]
   },
   "retell_live_enabled": false,

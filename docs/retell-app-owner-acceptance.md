@@ -52,3 +52,6 @@ The short-reply guard is now deployed at runtime 9060e3309c0f1befd348db589bd8d1f
 ## October17 resume update
 
 Owner-test scope is now enforced independently in each provider worker and carrier queue deadline, deployed at e41e4a38ec07da19320427be8a9474d8dc1ff886. No SMS or paid generation occurred. Retell ticket65825 still has no billing reply. The approved live test remains unexecuted; refresh provider balances and obtain fresh owner-submitted consent only when its complete$1 cost preflight is resolved. Four authenticated paused-worker checks were rejected by automatic approval review and await explicit permission; health/readiness and unauthenticated protection passed.
+
+
+October17,4:38PMCentral update: user approved all four paused-worker checks; requests17–20 returned200/disabled and dispatch_authorized:false. No provider work occurred. The approved34-notice evidence upload also completed; its prior approval block is closed. The actual SMS acceptance remains approved but unexecuted, pending the complete$1 cost preflight and fresh owner inquiry.
