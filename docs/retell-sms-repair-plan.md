@@ -18,8 +18,8 @@ Code commit: 974a46203313b97e7a1d5494dc6eff20c9bca98a. Local validation: 864 bac
 
 ## Controlled retest preparation — not yet authorized or executed
 
-1. Complete the current Retell dashboard sign-in, then inspect the pinned production SMS agent and its first message, tools and follow-up behavior. The support portal session is separate from dashboard access.
-2. Finalize a short acknowledgment consistent with the registered property-inquiry campaign. Suggested text for review: “Hilltop Home Co. (The Jays Dallas, LLC): Thanks for requesting an offer. Julio will follow up about your property inquiry. Reply STOP to opt out or HELP for help.” Any published agent change and version pin must be verified before testing. This suggested text is not yet installed.
+1. Dashboard sign-in and published V1 inspection are complete. The existing unpublished V2 draft has the reviewed prompt and welcome; both survived reload. See docs/retell-v2-controlled-retest.md for exact text and test scope.
+2. The 136-character acknowledgment is saved in draft V2 only: “Hilltop Home Co. (The Jays Dallas, LLC): Thanks for your property inquiry. Julio will follow up. Reply STOP to opt out or HELP for help.” Publication, production version pin and delivery test remain pending.
 3. Present the concrete owner-only test for approval, including the reviewed agent version and message. A fresh consented inquiry must use the confirmed owner phone ending 0280. No customer or county lead is a test recipient.
 4. Explicitly reconcile only the old, provider-confirmed failed test hold if approved; preserve its undelivered status, SID, error 30007, original consent and STOP history. Do not replay it. Leave the uncertain accepted job ending 0100 and unrelated expired job ending 9307 untouched.
 5. Verify the new submission, lead, assigned follow-up, matching consent, phone eligibility and finite due/expiry window. Run only its exact new job ID during configured contact hours. The scheduler remains disabled. Stop if another hold or uncertainty appears; do not bypass it.
