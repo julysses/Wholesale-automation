@@ -90,6 +90,16 @@ def test_suppression_after_claim_blocks_without_provider(setup,monkeypatch):
     assert dispatch._submit(setup.db,setup.claim)['status']=='blocked'
     setup.provider.messages.create.assert_not_called()
 
+@pytest.mark.parametrize('body', ['x' * 199, '\U0001f600' * 100, '\ud800'])
+def test_stored_oversized_or_invalid_reply_is_held_without_provider_or_replay(setup, body):
+    setup.claim['body'] = body
+    setup.db.rows[0]['body'] = body
+    assert dispatch._submit(setup.db, setup.claim)['status'] == 'blocked'
+    assert setup.db.rows[0]['body'] == body
+    setup.constructor.assert_not_called()
+    with pytest.raises(RuntimeError, match='claim mismatch'):
+        dispatch._submit(setup.db, setup.claim)
+
 def test_expired_last_boundary_blocks_without_provider(setup,monkeypatch):
     monkeypatch.setattr(dispatch,'queue_validity',lambda *a:0)
     assert dispatch._submit(setup.db,setup.claim)['status']=='blocked'

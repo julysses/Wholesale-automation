@@ -15,6 +15,7 @@ from tools.sms_client import SMSClient, sms_consent_blocker
 from tools.facebook_consent import normalize_us_phone
 from tools.twilio_receipts import reconcile_twilio_receipt, PROGRESS, FAILURES
 from tools.operational_alerts import record_provider_alert
+from tools.sms_reply_budget import short_sms_reply
 
 APP_ACKNOWLEDGMENT = ('Hilltop Home Co. (The Jays Dallas, LLC): Thanks for your property inquiry. '
                        'Julio will follow up. Reply STOP to opt out or HELP for help.')
@@ -97,7 +98,9 @@ def _submit(sb, claim):
         or metadata.get('form_job_id') != claim['session_id']
         or metadata.get('api_turn_id') != claim.get('turn_id')):
         raise RuntimeError('App SMS durable claim mismatch; no provider call')
-    if not _eligible(sb, claim):
+    # Guard old stored output as well as freshly validated generations. Hold
+    # the durable claim without truncating, regenerating or making a request.
+    if not short_sms_reply(claim.get('body')) or not _eligible(sb, claim):
         return _park(sb, claim, 'blocked')
     from twilio.rest import Client
     from twilio.http.http_client import TwilioHttpClient

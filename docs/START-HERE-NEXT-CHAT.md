@@ -1,3 +1,11 @@
+## SMS cost control and provider preflight — October 16, 2026, evening Central
+
+Owner approved docs/retell-app-owner-acceptance.md; do not ask again within that exact scope. No sending tonight: outside 9 AM–7 PM Central. Retell read-only UI: $9.96 credit, published V2 $0.02/msg, auto-recharge off, no saved payment method. Twilio: $1.43886 available (UI timestamp October 16 21:37:04 UTC), auto-recharge disabled/unconfigured; existing payment methods untouched. Refresh balances before activation. No credit purchase, billing change, generation or SMS.
+
+New code bounds joined generated output and the final carrier submission to 198 UTF-16 units, conservatively at most three long-code SMS segments including surrogate-pair boundaries. Invalid/long output holds without truncation, regeneration or resend; old stored output is also checked. All **1,083 pytest tests plus six subtests passed** (144 targeted tests); diff check clean. New files tools/sms_reply_budget.py and tests/test_sms_reply_budget.py; generation/dispatcher and regression tests updated. Runtime still a109a59 until this patch is deployed and verified paused. No SQL change needed.
+
+The complete $1 test cost gate is not yet closed: local rejection after generation cannot bound Retell charges already incurred. Verify provider billable output bounds and service/STOP configuration before activation. See updated owner acceptance plan for observed balances and carrier cost calculation. Full operational goal remains active; approved test, both-site acceptance and county review remain incomplete.
+
 ## Intake handoff correction verified live; owner test approved — October 16, 2026, 9:31 PM Central
 
 Applied **20261017022551_retell_app_intake_handoff.sql** as production migration **20261017023006**. Corrected a confirmed live mismatch: new app-owned and existing-job queue outcomes caused false intake-review alerts. Completion now requires a persisted job for the same lead and the reported transport; missing/wrong-transport evidence and uncertain schedules, consent lookups or owner email remain review. Completion acknowledges the handoff only. Carrier review and failure evidence stay independently monitored; historical notifications were not rewritten.

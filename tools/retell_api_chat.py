@@ -10,6 +10,7 @@ from uuid import UUID
 
 import requests
 from tools.sms_controls import is_control
+from tools.sms_reply_budget import short_sms_reply
 
 
 class ChatOutcomeUncertain(RuntimeError):
@@ -51,8 +52,8 @@ def agent_texts(messages):
             raise ChatReviewRequired('Unsupported generated message content')
         seen.add(mid)
         result.append(AgentText(mid, content))
-    if len('\n'.join(m.content for m in result)) > 1600:
-        raise ChatReviewRequired('Combined generated reply is too long')
+    if not short_sms_reply('\n'.join(m.content for m in result)):
+        raise ChatReviewRequired('Combined generated reply exceeds the short SMS budget')
     return tuple(result)
 
 
