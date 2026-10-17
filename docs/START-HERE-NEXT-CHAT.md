@@ -1,3 +1,13 @@
+## Short-reply release deployed and verified paused — October 16, 2026, 9:44 PM Central
+
+Runtime **9060e3309c0f1befd348db589bd8d1ff01d07e57**, deployment **dpl_BdsRQrsspCRj1xZiA2ioxSoezYQD**, READY with primary alias wholesale-automation.vercel.app. [Exact CI](https://github.com/julysses/Wholesale-automation/actions/runs/38995764295) passed all four jobs. Local 1,083 pytest tests plus six subtests passed; no SQL change. New reply-size guard holds oversized/invalid Unicode output before carrier submission without truncation, regeneration or replay. It covers both fresh and stored replies.
+
+Health/readiness 200; unauthenticated worker 401; Vault-authenticated automatic probe request 16 returned 200/disabled/processed:0/dispatch_authorized:false. Both native/app scheduler configs false and both SMS cron jobs inactive. Three form jobs and twelve SMS events unchanged before/after, full JSONB aggregate MD5 job 218a98f90a18352af9e60921a2ec1e03 and SMS bf3e757b4c2c2dcd7becf657f7a2fb4c; sessions/turns zero. Initial deployment-scoped error/fatal log query returned zero groups. No messages, generation, provider setting changes or purchases. Evidence: docs/retell-app-reply-budget-release.json.
+
+Twilio live read-only checks: verified Low Volume Mixed campaign, sender ending 9920 in pool, app inbound/status callbacks, Advanced Opt-Out enabled, no listed country/language overrides. Retell credit $9.96 and no payment method/auto-recharge; Twilio displayed $1.43886 (dated balance) and auto-recharge disabled. Refresh before test. Existing Twilio payment methods untouched. Keep service default 36,000-second queue separate from app per-message <=300-second override.
+
+Approved owner test remains unexecuted and must occur 9 AM–7 PM Central with fresh owner-submitted consent. No repeat approval or unattended future run. Remaining preflight: bound Retell per-agent-message generation cost for one creation/completion under total $1; local rejection after generation is not a provider billing limit. Service/STOP configuration check is complete. Both-website live intake acceptance and county onboarding remain incomplete. No general activation; goal active.
+
 ## SMS cost control and provider preflight — October 16, 2026, evening Central
 
 Owner approved docs/retell-app-owner-acceptance.md; do not ask again within that exact scope. No sending tonight: outside 9 AM–7 PM Central. Retell read-only UI: $9.96 credit, published V2 $0.02/msg, auto-recharge off, no saved payment method. Twilio: $1.43886 available (UI timestamp October 16 21:37:04 UTC), auto-recharge disabled/unconfigured; existing payment methods untouched. Refresh balances before activation. No credit purchase, billing change, generation or SMS.
