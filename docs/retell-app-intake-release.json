@@ -1,0 +1,76 @@
+{
+  "state": "applied_verified_sending_paused",
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "migration": {
+    "file": "frontend/supabase/migrations/20261017022551_retell_app_intake_handoff.sql",
+    "remote_version": "20261017023006",
+    "sha256": "15ce23598768a07c8eae2d33086048d4baa4f061cb3ac29d7cf3fe49362ed799"
+  },
+  "code_commit": "cb29637c0db6c3f2f2773173829f37abb8b69df9",
+  "ci_run": "https://github.com/julysses/Wholesale-automation/actions/runs/38995043519",
+  "pipeline_tests": 188,
+  "baseline": {
+    "sms": 12,
+    "jobs": 3,
+    "leads": 17449,
+    "tasks": 140,
+    "active_cron": [
+      "launch-monitor-every-15m",
+      "refresh-lead-retention"
+    ],
+    "function_md5": "0657fcfd7c347f71b9f931fe33957533",
+    "app_scheduler": false,
+    "job_fingerprint": "218a98f90a18352af9e60921a2ec1e03",
+    "sms_fingerprint": "bf3e757b4c2c2dcd7becf657f7a2fb4c",
+    "native_scheduler": false,
+    "notification_fingerprint": "a73b0c2539dba299e86638c123747991"
+  },
+  "function_verification": {
+    "settings": [
+      "search_path=\"\""
+    ],
+    "migration": {
+      "name": "retell_app_intake_handoff",
+      "version": "20261017023006"
+    },
+    "anon_execute": false,
+    "function_md5": "88ee4ba19a68e9ad1e79120b31f54796",
+    "job_fingerprint": "218a98f90a18352af9e60921a2ec1e03",
+    "service_execute": true,
+    "sms_fingerprint": "bf3e757b4c2c2dcd7becf657f7a2fb4c",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "notification_fingerprint": "a73b0c2539dba299e86638c123747991"
+  },
+  "post_qa": {
+    "sms": 12,
+    "jobs": 3,
+    "leads": 17449,
+    "tasks": 140,
+    "app_cron": false,
+    "app_scheduler": false,
+    "job_fingerprint": "218a98f90a18352af9e60921a2ec1e03",
+    "sms_fingerprint": "bf3e757b4c2c2dcd7becf657f7a2fb4c",
+    "native_scheduler": false,
+    "notification_fingerprint": "a73b0c2539dba299e86638c123747991"
+  },
+  "rollback": {
+    "file": "tests/sql/retell_app_intake_handoff.sql",
+    "sha256": "d181dcbd4f7ca3b3b92a05b7231ffadd37e6a5b05a28067869346295682f69c3",
+    "retained_fixture_leads": 0
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "count": 32,
+      "level": "INFO"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "count": 3,
+      "level": "WARN"
+    }
+  ],
+  "runtime_unchanged": "a109a59bb1bfa89cf415176f986a0e4831e56f37",
+  "owner_test": "approved; not executed; outside contact hours"
+}

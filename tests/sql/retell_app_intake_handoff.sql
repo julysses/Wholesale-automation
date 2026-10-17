@@ -40,7 +40,7 @@ BEGIN
    IF r->>'finished'<>'false' THEN RAISE EXCEPTION 'Wrong claimant accepted'; END IF;
    r:=public.finish_intake_notification(lead,claim,jsonb_build_object('owner_email','accepted','seller_sms',outcome),'Queue handoff only; carrier unconfirmed');
    expected_transport:=CASE WHEN outcome LIKE '%app_twilio%' THEN 'app_twilio' ELSE 'retell_native' END;
-   IF r->>'delivery_state'<>CASE WHEN transport=expected_transport THEN 'completed' ELSE 'review' END
+   IF r->>'delivery_state'<>(CASE WHEN transport=expected_transport THEN 'completed' ELSE 'review' END)
     THEN RAISE EXCEPTION 'Transport classification mismatch: % / %',transport,outcome; END IF;
    r:=public.finish_intake_notification(lead,claim,jsonb_build_object('owner_email','accepted','seller_sms',outcome),'Forbidden replay');
    IF r->>'finished'<>'false' THEN RAISE EXCEPTION 'Notification replay allowed'; END IF;
