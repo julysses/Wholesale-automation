@@ -1,6 +1,6 @@
 # WholesaleOS owner-only SMS acceptance
 
-Prepared October 16, 2026. Proposed, not executed or authorized yet. Keep Twilio for delivery and Retell V2 for conversation generation. The earlier approved native one-message retest is separate; do not run both tests or reuse that approval for this expanded test.
+Prepared October 16, 2026. Approved by the owner October 16, 2026; not executed. Keep Twilio for delivery and Retell V2 for conversation generation. The earlier approved native one-message retest is separate; do not run both tests or reuse that approval for this expanded test.
 
 ## Exact proposed exception to the SMS pause
 
@@ -30,6 +30,6 @@ The second website, **https://thejaysdallas.com/sell**, still needs its own succ
 
 ## Why a new approval is necessary
 
-Your previous exception authorized one manually invoked native Retell acknowledgment with no reply automation or scheduler activation. This proposal changes the carrier submission path and adds a bounded automatic conversation and STOP check. It therefore needs a specific exception to your still-active SMS pause. Configuration, code deployment and paused probes can be completed before that approval; actual sending cannot.
+Your previous exception authorized one manually invoked native Retell acknowledgment with no reply automation or scheduler activation. This proposal changes the carrier submission path and adds a bounded automatic conversation and STOP check. The owner granted this specific exception on October 16, 2026. Configuration, code deployment and paused probes can be completed before that approval; actual sending cannot.
 
 Full county-notice OCR transfer remains separately awaiting the specific approval in WholesaleOS-Notice-Evidence-Upload.md. No tracing, county collection, full-text upload or recurring general outreach is included here.
