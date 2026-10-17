@@ -37,6 +37,11 @@ def _eligible(sb, turn, session):
     allowed = {p.strip() for p in settings.sms_allowed_recipients.split(',') if p.strip()}
     if session.get('phone_number') not in allowed or session.get('sender_number') != settings.twilio_from_number:
         return False
+    current = _row(sb, 'retell_api_sessions', session['id'])
+    inquiry = _row(sb, 'retell_form_sms_jobs', session['id'])
+    if (current.get('status') not in {'pending', 'creating', 'ready'}
+            or inquiry.get('status') != 'accepted' or inquiry.get('delivery_transport') != 'app_twilio'):
+        return False
     try:
         expires = datetime.fromisoformat(turn['expires_at'].replace('Z', '+00:00'))
         if expires.tzinfo is None or expires <= datetime.now(timezone.utc):

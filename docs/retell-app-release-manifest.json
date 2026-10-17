@@ -1,0 +1,22 @@
+{
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "state": "prepared_not_applied",
+  "sending": "paused",
+  "migrations": [
+    {
+      "file": "frontend/supabase/migrations/20261017012707_retell_app_transport_ownership.sql",
+      "name": "retell_app_transport_ownership",
+      "sha256": "31cbf12e874a2e31b1fef105860a7343bd390de0ce379c15c8765182de5a411d"
+    },
+    {
+      "file": "frontend/supabase/migrations/20261017013643_retell_app_twilio_outbox.sql",
+      "name": "retell_app_twilio_outbox",
+      "sha256": "6d39e702b76cfefc4091cba384cf7ee99e56fde4398700d9eeb714bd6360334a"
+    },
+    {
+      "file": "frontend/supabase/migrations/20261017015318_retell_app_recovery_monitoring.sql",
+      "name": "retell_app_recovery_monitoring",
+      "sha256": "5396830fc20de48372861ee0507f0133b513265db91aa75c7a21dea316db6a89"
+    }
+  ]
+}

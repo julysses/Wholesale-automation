@@ -75,7 +75,7 @@ BEGIN
   ELSIF issue AND j.status IN ('processing','accepted','review') THEN
    UPDATE public.retell_form_sms_jobs SET status=CASE WHEN e.status='blocked' AND j.status='processing' THEN 'stopped' ELSE 'review' END,
     reason='App acknowledgment outcome: '||e.status||'; do not resend automatically' WHERE id=j.id;
-   UPDATE public.retell_api_sessions SET status='review',reason='Acknowledgment delivery needs review' WHERE id=j.id AND status IN ('creating','ready');
+   UPDATE public.retell_api_sessions SET status='review',reason='Acknowledgment delivery needs review' WHERE id=j.id AND status IN ('pending','creating','ready');
   END IF;
  ELSE
   IF t.id IS NULL OR t.session_id<>j.id OR e.raw_payload->>'api_turn_id' IS DISTINCT FROM t.id::text
@@ -109,7 +109,7 @@ BEGIN
  ELSE
   UPDATE public.retell_api_turns SET status='review',reason=p_reason WHERE outbound_id=p_message AND status IN ('submitting','accepted','review');
  END IF;
- UPDATE public.retell_api_sessions SET status='review',reason=p_reason WHERE id=job_id AND status IN ('creating','ready','review');
+ UPDATE public.retell_api_sessions SET status='review',reason=p_reason WHERE id=job_id AND status IN ('pending','creating','ready','review');
  RETURN jsonb_build_object('held',true,'dispatch_authorized',false);
 END $$;
 REVOKE ALL ON FUNCTION public.review_retell_app_dispatch(uuid,text) FROM PUBLIC,anon,authenticated;

@@ -177,6 +177,7 @@ BEGIN
  SELECT id INTO earliest FROM public.retell_api_turns WHERE session_id=s.id AND status NOT IN ('accepted','stopped') ORDER BY created_at,id LIMIT 1;
  IF earliest IS DISTINCT FROM t.id THEN RETURN jsonb_build_object('claimed',false,'reason','previous_turn_unfinished'); END IF;
  IF t.expires_at<=now() OR coalesce((public.intake_phone_status(s.phone_number,s.lead_id,''))->>'suppressed','true')<>'false'
+  OR NOT EXISTS(SELECT 1 FROM public.retell_form_sms_jobs WHERE id=s.id AND delivery_transport='app_twilio' AND status='accepted')
   OR NOT EXISTS(SELECT 1 FROM public.leads WHERE id=s.lead_id AND dnc IS FALSE AND status NOT IN ('dnc','dead','closed','sold','under_contract')) THEN
   UPDATE public.retell_api_turns SET status='stopped',reason='Expired or suppressed before generation' WHERE id=t.id;
   RETURN jsonb_build_object('claimed',false,'reason','expired_or_suppressed'); END IF;
@@ -286,7 +287,7 @@ BEGIN
   OR (OLD.chat_id IS NOT NULL AND NEW.chat_id IS DISTINCT FROM OLD.chat_id)
   OR (OLD.agent_id IS NOT NULL AND ROW(NEW.agent_id,NEW.agent_version) IS DISTINCT FROM ROW(OLD.agent_id,OLD.agent_version))
   OR (NEW.status<>OLD.status AND NOT (
-   (OLD.status='pending' AND NEW.status IN ('creating','closed')) OR
+   (OLD.status='pending' AND NEW.status IN ('creating','review','closed')) OR
    (OLD.status='creating' AND NEW.status IN ('ready','review')) OR
    (OLD.status='ready' AND NEW.status IN ('review','closed')) OR
    (OLD.status='review' AND NEW.status='closed')

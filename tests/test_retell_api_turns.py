@@ -20,7 +20,8 @@ def setup(monkeypatch):
           'expires_at':(datetime.now(timezone.utc)+timedelta(minutes=10)).isoformat()}
     session={'id':SESSION,'lead_id':LEAD,'phone_number':'+12145550196','sender_number':'+14695550100','status':'pending'}
     lead={'id':LEAD,'dnc':False,'status':'new','owner_phone_1':'+12145550196'}
-    rows={'retell_api_turns':turn,'retell_api_sessions':session,'leads':lead}
+    inquiry={'id':SESSION,'delivery_transport':'app_twilio','status':'accepted'}
+    rows={'retell_api_turns':turn,'retell_api_sessions':session,'leads':lead,'retell_form_sms_jobs':inquiry}
     monkeypatch.setattr(worker,'_row',lambda db,table,id:rows[table])
     claim={'claimed':True,'turn_id':TURN,'session_id':SESSION,'lead_id':LEAD,'recipient_text':turn['recipient_text'],'create_session':True,'chat_id':None}
     results={'claim_retell_api_turn':claim,'bind_retell_api_session':{'bound':True,'replayed':False},'save_retell_api_generation':{'saved':True},'hold_retell_api_turn':{'held':True}}
@@ -28,7 +29,22 @@ def setup(monkeypatch):
     db.rpc.side_effect=lambda name,args:SimpleNamespace(execute=lambda:SimpleNamespace(data=results[name]))
     provider=Mock();provider.create.return_value='chat_test';provider.complete.return_value=(AgentText('m1','Generated response'),)
     constructor=Mock(return_value=provider);monkeypatch.setattr(worker,'RetellAPIChat',constructor)
-    return SimpleNamespace(db=db,provider=provider,constructor=constructor,claim=claim,results=results,turn=turn,session=session,lead=lead)
+    return SimpleNamespace(db=db,provider=provider,constructor=constructor,claim=claim,results=results,turn=turn,session=session,lead=lead,inquiry=inquiry)
+
+
+def test_late_ack_failure_before_generation_prevents_any_provider_call(setup):
+    setup.inquiry['status']='review'
+    assert worker.process_turn(setup.db,TURN)['status']=='not_eligible'
+    setup.provider.create.assert_not_called();setup.provider.complete.assert_not_called()
+
+
+def test_ack_failure_during_session_creation_prevents_completion(setup):
+    def create(*args):
+        setup.inquiry['status']='review';setup.session['status']='review'
+        return 'chat_test'
+    setup.provider.create.side_effect=create
+    assert worker.process_turn(setup.db,TURN)['status']=='review'
+    setup.provider.complete.assert_not_called()
 
 def test_disabled_is_inert_and_invalid_identity_rejected_before_database(monkeypatch):
     monkeypatch.setattr(worker,'ready',lambda:False);db=Mock()

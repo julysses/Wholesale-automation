@@ -242,3 +242,27 @@ async def run_app_reply(turn_id: UUID, request: Request):
     if not dispatch_ready():
         return {'status': 'disabled', 'dispatch_authorized': False}
     return await run_in_threadpool(process_reply, _db(), str(turn_id))
+
+
+def _recover_app(function, parameter, identity):
+    try:
+        result = _db().rpc(function, {parameter: identity}).execute().data
+    except Exception:
+        raise HTTPException(503, 'Recovery outcome unconfirmed; inspect saved evidence') from None
+    if (not isinstance(result, dict) or type(result.get('recovered')) is not bool
+            or result.get('dispatch_authorized') is not False):
+        raise HTTPException(503, 'Recovery outcome unconfirmed; inspect saved evidence')
+    return result
+
+
+@router.post('/webhooks/_worker/retell-app/recover/ack/{job_id}')
+async def recover_app_ack(job_id: UUID, request: Request):
+    _require_app_worker(request)
+    # Available while sending is off. SQL can only reconcile or hold this job.
+    return await run_in_threadpool(_recover_app, 'recover_retell_app_ack', 'p_job', str(job_id))
+
+
+@router.post('/webhooks/_worker/retell-app/recover/turn/{turn_id}')
+async def recover_app_turn(turn_id: UUID, request: Request):
+    _require_app_worker(request)
+    return await run_in_threadpool(_recover_app, 'recover_retell_api_turn', 'p_turn', str(turn_id))
