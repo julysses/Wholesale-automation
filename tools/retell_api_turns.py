@@ -1,6 +1,6 @@
 """One-shot generation worker for app-owned SMS replies; no delivery capability.
 
-Not mounted on a route/scheduler. Durable RPCs own session/turn claims; all
+Mounted only on an authenticated exact-turn endpoint. Durable RPCs own claims; all
 provider ambiguity stays held. Dispatch must use a separate verified outbox.
 """
 from datetime import datetime, timezone

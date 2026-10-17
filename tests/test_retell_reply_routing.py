@@ -58,3 +58,9 @@ def test_all_sending_switches_and_consent_apply(ready,monkeypatch):
 def test_carrier_control_marker_overrides_ordinary_body(ready):
     db,data,receipt,_=ready;data['OptOutType']='STOP'
     assert route.reply_redirect(db,data,receipt) is None
+
+
+def test_app_owned_chat_never_redirects_to_native_even_if_chat_id_is_present(ready):
+    db,data,receipt,query=ready
+    query.execute.return_value.data[0]['delivery_transport']='app_twilio'
+    assert route.reply_redirect(db,data,receipt) is None

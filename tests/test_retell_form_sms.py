@@ -241,7 +241,9 @@ def test_scoped_worker_only_claims_requested_job(monkeypatch, rows):
     db=MagicMock();db.rpc.return_value.execute.return_value.data=rows
     result=sms.drain(db,target)
     db.rpc.assert_called_once_with('claim_retell_form_sms_matching',{'p_limit':1,'p_job':target})
-    db.table.return_value.update.return_value.eq.return_value.lt.return_value.eq.assert_called_once_with('id',target)
+    stale = db.table.return_value.update.return_value.eq.return_value
+    stale.eq.assert_called_once_with('delivery_transport','retell_native')
+    stale.eq.return_value.lt.return_value.eq.assert_called_once_with('id',target)
     assert process.call_count==len(rows)
     assert result['processed']==len(rows)
 

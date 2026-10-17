@@ -206,3 +206,39 @@ async def run_retell_form_sms_job(job_id: UUID, request: Request):
         raise HTTPException(401, "Unauthorized")
     from tools.retell_form_sms import drain as retell_drain
     return await run_in_threadpool(retell_drain, _db(), str(job_id))
+
+
+def _require_app_worker(request):
+    secret = os.getenv('CRON_SECRET', '')
+    if not secret:
+        raise HTTPException(503, 'Worker secret not configured')
+    if not hmac.compare_digest(request.headers.get('authorization', ''), 'Bearer ' + secret):
+        raise HTTPException(401, 'Unauthorized')
+
+
+@router.post('/webhooks/_worker/retell-app/ack/{job_id}')
+async def run_app_ack(job_id: UUID, request: Request):
+    """One explicit inquiry; no batch, fallback or recurring trigger."""
+    _require_app_worker(request)
+    from tools.retell_app_dispatch import dispatch_ready, process_ack
+    if not dispatch_ready():
+        return {'status': 'disabled', 'dispatch_authorized': False}
+    return await run_in_threadpool(process_ack, _db(), str(job_id))
+
+
+@router.post('/webhooks/_worker/retell-app/generate/{turn_id}')
+async def run_app_generation(turn_id: UUID, request: Request):
+    _require_app_worker(request)
+    from tools.retell_api_turns import ready, process_turn
+    if not ready():
+        return {'status': 'disabled', 'dispatch_authorized': False}
+    return await run_in_threadpool(process_turn, _db(), str(turn_id))
+
+
+@router.post('/webhooks/_worker/retell-app/reply/{turn_id}')
+async def run_app_reply(turn_id: UUID, request: Request):
+    _require_app_worker(request)
+    from tools.retell_app_dispatch import dispatch_ready, process_reply
+    if not dispatch_ready():
+        return {'status': 'disabled', 'dispatch_authorized': False}
+    return await run_in_threadpool(process_reply, _db(), str(turn_id))

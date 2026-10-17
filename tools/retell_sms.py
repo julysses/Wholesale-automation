@@ -53,6 +53,9 @@ def record_chat_event(sb, payload):
     metadata = chat.get('metadata') or {}
     if not isinstance(metadata, dict):
         raise ValueError('Chat metadata must be an object')
+    if chat.get('chat_type') == 'api_chat' or metadata.get('transport') == 'wholesaleos_twilio':
+        from tools.retell_api_receipts import record_api_chat_event
+        return record_api_chat_event(sb, payload)
     lead_id = metadata.get('lead_id')
     phone = chat.get('from_number') if chat.get('direction') == 'inbound' else chat.get('to_number')
     if not lead_id or not phone:

@@ -29,9 +29,12 @@ def reply_redirect(sb, data, receipt):
         return None
     # Only a known outbound form chat can be continued. Never create an inbound
     # conversation for an unknown sender or guess among multiple CRM identities.
-    jobs = sb.table('retell_form_sms_jobs').select('lead_id,chat_id').eq(
+    # SELECT * remains compatible with the old schema while allowing explicit
+    # ownership checks after migration. An API chat never belongs on this path.
+    jobs = sb.table('retell_form_sms_jobs').select('*').eq(
         'phone_number', phone).eq('status', 'accepted').limit(2).execute().data or []
-    if len(jobs) != 1 or jobs[0].get('lead_id') != receipt['lead_id'] or not jobs[0].get('chat_id'):
+    if (len(jobs) != 1 or jobs[0].get('lead_id') != receipt['lead_id'] or not jobs[0].get('chat_id')
+            or jobs[0].get('delivery_transport', 'retell_native') != 'retell_native'):
         return None
     if sms_consent_blocker(sb, receipt['lead_id'], phone):
         return None

@@ -38,6 +38,16 @@ def acknowledgement_window(submitted):
 def enqueue(sb, lead_id):
     if not enabled('RETELL_FORM_SMS_ENABLED'):
         return 'disabled'
+    transport = os.getenv('RETELL_SMS_TRANSPORT', 'retell_native')
+    if transport not in {'retell_native', 'app_twilio'}:
+        return 'transport_configuration_hold'
+    if transport == 'app_twilio' and not (
+        enabled('RETELL_APP_TRANSPORT_ENABLED')
+        and (enabled('RETELL_APP_ACCEPTANCE_VERIFIED') or enabled('RETELL_APP_TEST_APPROVED'))
+        and re.fullmatch(r'\+1\d{10}', settings.twilio_from_number or '')
+    ):
+        # Selecting an unavailable transport must never fall back to native SMS.
+        return 'app_transport_configuration_hold'
     receipts = sb.table('lead_form_submissions').select('id,created_at,raw_answers').eq('lead_id', lead_id).order('created_at', desc=True).limit(1).execute().data or []
     if not receipts:
         return 'no_form_receipt'
@@ -61,9 +71,24 @@ def enqueue(sb, lead_id):
     job_id = str(uuid5(NAMESPACE_URL, 'wholesaleos:retell-form-sms:' + receipt['id']))
     row = {'id': job_id, 'lead_id': lead_id, 'submission_id': receipt['id'], 'phone_number': phone,
            'due_at': due.isoformat(), 'expires_at': expires.isoformat()}
+    if transport == 'app_twilio':
+        from tools.retell_app_dispatch import APP_ACKNOWLEDGMENT
+        row.update(delivery_transport=transport, delivery_body=APP_ACKNOWLEDGMENT,
+                   delivery_sender=settings.twilio_from_number)
     saved = sb.table('retell_form_sms_jobs').upsert(row, on_conflict='id', ignore_duplicates=True).execute().data
-    if not saved and not sb.table('retell_form_sms_jobs').select('id').eq('id', job_id).execute().data:
-        raise RuntimeError('Retell form schedule was not confirmed')
+    if not saved:
+        existing = sb.table('retell_form_sms_jobs').select('*').eq('id', job_id).execute().data
+        if (not isinstance(existing, list) or len(existing) != 1
+                or existing[0].get('id') != job_id):
+            raise RuntimeError('Retell form schedule was not confirmed')
+        # A retry after a route switch has not scheduled a new acknowledgment.
+        # Retain the original transport/deadline and report the existing job.
+        original = existing[0].get('delivery_transport', 'retell_native')
+        if original not in {'retell_native', 'app_twilio'}:
+            raise RuntimeError('Existing form transport was not confirmed')
+        return 'existing_' + original + '_job'
+    if transport == 'app_twilio':
+        return 'scheduled_app_twilio_next_contact_window' if deferred else 'scheduled_app_twilio_60_seconds'
     return 'scheduled_retell_next_contact_window' if deferred else 'scheduled_retell_60_seconds'
 
 
@@ -76,7 +101,8 @@ def configured_version():
 
 
 def activation_ready():
-    return (enabled('RETELL_FORM_SMS_ENABLED') and enabled('RETELL_SMS_LIVE_ENABLED')
+    return (os.getenv('RETELL_SMS_TRANSPORT', 'retell_native') == 'retell_native'
+            and enabled('RETELL_FORM_SMS_ENABLED') and enabled('RETELL_SMS_LIVE_ENABLED')
             and settings.sms_live_enabled
             and (enabled('RETELL_SMS_ACCEPTANCE_VERIFIED') or enabled('RETELL_SMS_LAUNCH_APPROVED'))
             and bool(os.getenv('RETELL_SMS_AGENT_ID')) and configured_version() is not None
@@ -95,7 +121,7 @@ def drain(sb, job_id=None):
     if not sms._in_allowed_hours():
         return {'processed': 0, 'deferred': 'outside_contact_hours'}
     # Never replay an uncertain provider operation, including a process crash.
-    stale = sb.table('retell_form_sms_jobs').update({'status': 'review', 'reason': 'Worker outcome unconfirmed; reconcile before retry'}).eq('status', 'processing').lt('claimed_at', (datetime.now(timezone.utc)-timedelta(minutes=5)).isoformat())
+    stale = sb.table('retell_form_sms_jobs').update({'status': 'review', 'reason': 'Worker outcome unconfirmed; reconcile before retry'}).eq('status', 'processing').eq('delivery_transport', 'retell_native').lt('claimed_at', (datetime.now(timezone.utc)-timedelta(minutes=5)).isoformat())
     if target is not None:
         stale = stale.eq('id', target)
     stale.execute()
@@ -121,6 +147,8 @@ def finish(sb, job, status, reason, chat_id=None):
 
 def process_claim(sb, job):
     # Recheck immediately before the provider request; no fallback to Twilio.
+    if job.get('delivery_transport', 'retell_native') != 'retell_native':
+        raise RuntimeError('Native worker cannot process app-owned claims')
     if not activation_ready():
         finish(sb, job, 'stopped', 'Sending disabled')
         return

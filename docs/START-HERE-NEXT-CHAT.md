@@ -1,3 +1,21 @@
+## Inquiry/reply wiring and transcript separation verified locally — October 16, 2026, 8:50 PM Central
+
+Latest user-supplied Retell support screenshots confirm native BYO sends omit MessagingServiceSid and statusCallback; Retell recommends keeping the number in the registered sender pool. This is evidence of the integration limitation, not proof that it caused carrier error 30007. Keep Retell for conversation generation and Twilio for carrier delivery. No support reply was sent.
+
+Implemented inquiry route selection with an explicit app-specific gate, immutable fixed acknowledgment/sender, no fallback on invalid configuration, and truthful existing-job reporting after a route switch. Native workers cannot activate in app mode, process app claims, or age app jobs into review. The native stale-update query now requires the pending ownership migration: apply it before deploying this code or running the native owner retest on this build.
+
+Signed Twilio inbound handling commits carrier evidence/suppression/human follow-up first, then queues the exact carrier event for an unambiguous accepted app inquiry. Duplicates can repair a lost enqueue response without another turn. Unconfirmed persistence returns 503 and cannot fall through to native Retell. Mixed/ambiguous ownership is held. STOP/HELP/resubscription controls remain in the carrier/CRM handler. No generation or SMS occurs within the webhook.
+
+Bearer-authenticated POST endpoints are implemented for one exact UUID each: /webhooks/_worker/retell-app/ack/{job_id}, /generate/{turn_id}, and /reply/{turn_id}. The last two share the same /webhooks/_worker/retell-app prefix. Gates are checked before database access; each underlying worker rechecks eligibility and wins its own durable claim. There is no batch drain, provider fallback, recurring trigger, or automatic generation-to-dispatch chain.
+
+API-chat callbacks validate exact session/lead/agent/version/metadata and archive as generation-only webhook receipts. They do not duplicate Twilio SMS history, manufacture delivery status, create duplicate tasks, or suppress leads from generated transcripts. A create callback arriving before session binding is archive-only and cannot bind or resume an operation.
+
+Validation: **1,033 full pytest tests plus six subtests passed**, 364 existing deprecation warnings. Log: **work/retell-api-transport/wiring-pytest-all.log**. Includes actual signed webhook retries, unauthorized/paused exact endpoints, transport isolation, route-switch deduplication, controls and generation-only callback history. Existing SQL is unchanged; prior 162 pipeline tests and eight-worker PostgreSQL contention results remain previous-checkpoint evidence, not newly rerun results.
+
+Both **20261017012707_retell_app_transport_ownership.sql** and **20261017013643_retell_app_twilio_outbox.sql** remain unapplied. No production database/env change, deployment, provider generation, SMS or scheduled activation occurred. Last verified runtime remains974a462 / dpl_D8ws6MBB6E7uc7ARAuikZUEdm6wH; not refreshed this turn.
+
+Next: implement stale-operation recovery/monitor findings without replay; verify exact-head CI and migration baseline; apply only reviewed pending SMS migrations; deploy with all sending gates OFF; validate paused/authenticated endpoints and receipt handling. Then prepare separately bounded app-transport acceptance for both websites, delivery, reply and STOP. The previously approved native owner retest must not be silently changed to this new transport. It still needs fresh consent and 9 AM–7 PM Central. Full-notice OCR upload remains pending separate authorization; prior automatic review rejected that transfer for missing specific approval. County collection and general SMS stay paused. Goal active and incomplete.
+
 ## App-owned Twilio dispatch and callback synchronization ready locally — October16, 2026, evening Central
 
 Previous goal turn was progress64df65e (ownership/generation ledger). This turn adds **20261017013643_retell_app_twilio_outbox.sql** and **tools/retell_app_dispatch.py**. Both this migration and **20261017012707_retell_app_transport_ownership.sql remain NOT applied to production**. No live SMS/provider generation, schema/env change or deployment occurred.

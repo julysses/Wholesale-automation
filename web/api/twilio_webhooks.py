@@ -16,6 +16,7 @@ from tools.twilio_receipts import reconcile_twilio_callback
 from tools.retell_sms import recipient_opted_out
 from tools.retell_reply_routing import reply_redirect
 from tools.retell_app_dispatch import sync_outcome as sync_app_outcome
+from tools.retell_app_routing import queue_reply as queue_app_reply
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/twilio", tags=["Twilio"])
@@ -77,12 +78,13 @@ async def _receive(request: Request, kind: str) -> Response:
     event_key = f"twilio:{data['AccountSid']}:{kind}:{data['MessageSid']}"
     if kind == "status":
         event_key += ":" + data["MessageStatus"]
+    event_id = str(uuid5(NAMESPACE_URL, event_key))
     sb = get_supabase_client()
     if sb is None:
         raise HTTPException(503, "Receipt storage unavailable")
     try:
         result = sb.rpc("record_twilio_event", {
-            "p_event": str(uuid5(NAMESPACE_URL, event_key)), "p_kind": kind, "p_payload": data,
+            "p_event": event_id, "p_kind": kind, "p_payload": data,
         }).execute().data
         if not isinstance(result, dict) or result.get("saved") is not True:
             raise RuntimeError("Receipt unconfirmed")
@@ -101,7 +103,14 @@ async def _receive(request: Request, kind: str) -> Response:
         raise HTTPException(503, "Receipt storage unavailable")
     if kind == 'inbound':
         try:
-            target = reply_redirect(sb, data, result)
+            app_owned = queue_app_reply(sb, data, result, event_id)
+        except Exception:
+            # Enqueue is idempotent by the original carrier SID. Ask Twilio to
+            # retry persistence, never fall through to another sending route.
+            logger.warning("App reply queue unconfirmed for %s", data["MessageSid"])
+            raise HTTPException(503, "Reply queue persistence unavailable")
+        try:
+            target = None if app_owned else reply_redirect(sb, data, result)
         except Exception:
             # The receipt and human task already committed. Do not replay an
             # uncertain handoff; keep the human follow-up when checks fail.

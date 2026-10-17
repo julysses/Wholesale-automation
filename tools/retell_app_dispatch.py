@@ -1,4 +1,4 @@
-"""App-owned Twilio outbox dispatch. No route or scheduler activates this module.
+"""App-owned Twilio outbox dispatch through authenticated exact-job endpoints.
 
 Only a freshly won durable initial/reply claim may call the provider, once.
 Retell generates reply text separately; it never owns this SMS transport.

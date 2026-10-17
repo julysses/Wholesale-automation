@@ -1,6 +1,6 @@
 """Retell generation-only adapter for the planned app-owned Twilio transport.
 
-Not wired to a route, worker or native SMS sender. The caller must durably claim
+Used by the exact-turn generation worker, never a native SMS sender. Callers claim
 one operation before calling, serialize each chat, and never retry uncertain
 POSTs. Generated text is not an SMS or a delivery receipt.
 """
