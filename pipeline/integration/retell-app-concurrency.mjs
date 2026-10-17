@@ -1,5 +1,6 @@
 /** Disposable localhost database only; no provider calls or production access. */
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import postgres from '../node_modules/postgres/src/index.js';
 import {fixture,job,phone} from '../tests/retell-app-transport-fixture.mjs';
 const url=process.env.SMS_TEST_ADMIN_URL;
@@ -8,6 +9,7 @@ const sql=postgres(url,{max:12,types:{json:{to:114,from:[114,3802],serialize:val
 const db={exec:async text=>{await sql.unsafe(text).simple();},query:async(text,args=[])=>({rows:[...await sql.unsafe(text,args)]})};
 try {
  const {q,rpc,ack,inbound}=await fixture(db);
+ await db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261017013643_retell_app_twilio_outbox.sql',import.meta.url),'utf8'));
  const winners=await Promise.all(Array.from({length:8},()=>q('select id from public.claim_retell_app_ack($1)',[job])));
  assert.equal(winners.filter(rows=>rows.length).length,1);
  assert.equal((await q('select count(*)::int n from public.sms_events where id=$1',[job]))[0].n,1);
@@ -26,10 +28,18 @@ try {
  const saves=await Promise.all(Array.from({length:8},()=>rpc('save_retell_api_generation',[first,JSON.stringify(messages)])));
  assert.equal(saves.filter(r=>r.replayed===false).length,1);
  assert.equal((await rpc('claim_retell_api_turn',[second,'agent_test',2])).claimed,false);
- const holds=await Promise.all(Array.from({length:8},()=>rpc('hold_retell_api_turn',[first,'generated','Synthetic explicit review'])));
+ const dispatches=await Promise.all(Array.from({length:8},()=>rpc('claim_retell_app_reply',[first])));
+ assert.equal(dispatches.filter(r=>r.claimed).length,1);
+ const message=dispatches.find(r=>r.claimed).message_id;
+ await q("update public.sms_events set status='delivered',raw_payload=raw_payload||jsonb_build_object('provider_sid',$2::text) where id=$1",[message,'SM'+message.replaceAll('-','')]);
+ const outcomes=await Promise.all(Array.from({length:8},()=>rpc('sync_retell_app_outcome',[message])));
+ assert.ok(outcomes.every(r=>r.carrier_accepted));
+ assert.equal((await rpc('claim_retell_api_turn',[second,'agent_test',2])).claimed,true);
+ await rpc('save_retell_api_generation',[second,JSON.stringify([{message_id:'m2',content:'Another synthetic reply'}])]);
+ const holds=await Promise.all(Array.from({length:8},()=>rpc('hold_retell_api_turn',[second,'generated','Synthetic explicit review'])));
  assert.equal(holds.filter(r=>r.held).length,1);
  assert.equal((await rpc('claim_retell_api_turn',[first,'agent_test',2])).claimed,false);
  assert.equal((await rpc('claim_retell_api_turn',[second,'agent_test',2])).claimed,false);
- assert.equal((await q('select count(*)::int n from public.sms_events where direction=\'outbound\''))[0].n,1);
- console.log(JSON.stringify({postgres_concurrency:'passed',workers:8,initial_claims:1,turn_claims:1,session_bindings:1,generation_receipts:1,holds:1,provider_calls:0}));
+ assert.equal((await q('select count(*)::int n from public.sms_events where direction=\'outbound\''))[0].n,2);
+ console.log(JSON.stringify({postgres_concurrency:'passed',workers:8,initial_claims:1,turn_claims:1,session_bindings:1,generation_receipts:1,holds:1,reply_dispatch_claims:1,carrier_reconciliations:8,provider_calls:0}));
 } finally {await sql.end();}

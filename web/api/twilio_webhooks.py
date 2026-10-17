@@ -15,6 +15,7 @@ from tools.operational_alerts import record_provider_alert
 from tools.twilio_receipts import reconcile_twilio_callback
 from tools.retell_sms import recipient_opted_out
 from tools.retell_reply_routing import reply_redirect
+from tools.retell_app_dispatch import sync_outcome as sync_app_outcome
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/twilio", tags=["Twilio"])
@@ -86,9 +87,14 @@ async def _receive(request: Request, kind: str) -> Response:
         if not isinstance(result, dict) or result.get("saved") is not True:
             raise RuntimeError("Receipt unconfirmed")
         reference, outcome = reconcile_twilio_callback(sb, data) if kind == 'status' else (None, None)
-        if reference and outcome in ('failed','undelivered','canceled','unknown'):
-            tracked = sb.table('sms_events').select('lead_id').eq('id',reference).limit(1).execute().data
-            if tracked:
+        if reference:
+            tracked = sb.table('sms_events').select('lead_id,raw_payload').eq('id',reference).limit(1).execute().data
+            if tracked and (tracked[0].get('raw_payload') or {}).get('transport') == 'app_twilio':
+                # Delivery reconciliation remains active while sending is paused.
+                # Never call the native Retell finish helper: carrier receipts
+                # and exact SID bindings must survive late HTTP acceptance.
+                sync_app_outcome(sb, reference)
+            if tracked and outcome in ('failed','undelivered','canceled','unknown'):
                 record_provider_alert(sb,'twilio',reference,outcome,tracked[0].get('lead_id'))
     except Exception:
         logger.exception("Twilio receipt failed for %s", data["MessageSid"])
