@@ -1,3 +1,15 @@
+## Retell API-chat transport component implemented, not activated — October 16, 2026, evening Central
+
+Previous goal turn was progress: deployed database compatibility and pushed address-suffix fix1aa79aa. This turn advances the documented carrier-receipt repair. Read current Retell API docs/official SDK: API-chat creation supports numeric agent version; completion requires real user text and returns mixed message/tool events; no documented carrier SID in Get Chat. Do not match carrier outcomes by phone/time or fabricate an initial user greeting.
+
+Implemented **tools/retell_api_chat.py** with fixed generation-only endpoints, pinned version, operation/lead metadata binding, API-chat identity/type/version verification before completion, verbatim real input, no retries/redirects, redacted uncertainty errors, and whole-turn holds for tool/media/invalid output. Shared existing control classification moved unchanged into **tools/sms_controls.py**, used by native router and new adapter. No new adapter caller exists in a route/worker; no live generation or SMS occurred.
+
+**68 new adapter tests; 89 adapter/native-routing tests; full pytest932 passed plus six subtests.** Full result **work/retell-api-transport/pytest-all.log**. No database/schema/environment change and no deployment this turn. Production remains974a462 / dpl_D8ws6MBB6E7uc7ARAuikZUEdm6wH with V2 pinned and sending OFF; this is the earlier verified runtime, not a newly redeployed app.
+
+Exact remaining implementation in **docs/retell-api-twilio-transport.md**: immutable per-inquiry route ownership, durable initial acknowledgment, carrier-SID-bound serialized inbound turns, one-shot generation claims, conversational Twilio claims, bounded queue validity, duplicate-free webhook history and full acceptance. Do not invoke SMSClient for a reply without addressing initial-outreach cooldown semantics. API-chat callbacks must not be treated as native SMS/delivery. New transport must not replace the approved native owner retest silently.
+
+Next safe engineering work: durable transport ownership/session/turn ledger, then worker wiring. Separately, approved native one-message retest still needs a fresh consented owner inquiry and active9AM–7PMCentral window. Full-notice OCR upload authorization remains pending; prior automatic review rejected that transfer for missing specific authorization. General activation remains paused. Goal active and incomplete; this is a tested component, not a completed receipt integration.
+
 ## Address suffix triage fixed and production-compatible — October 16, 2026, 8:22 PM Central
 
 Processor **foreclosure-batch/1.2** recognizes terminal street suffix pairs only when the official appraisal situs already agrees with the county index. House number, street name, city, state and ZIP remain constrained; conflicting house numbers across pages create a distinct hold. Units and nonstandard addresses retain exact matching. No OCR text, confidence, identity, current-sale status or outreach eligibility is rewritten.
