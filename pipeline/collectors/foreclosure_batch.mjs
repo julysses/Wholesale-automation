@@ -113,6 +113,27 @@ export function trusteeReferences(text) {
   return [...references];
 }
 
+// Only expand a terminal street suffix from a comma-delimited appraisal situs
+// that already agrees with the county index. Never fuzzy-match numbers or cities.
+const suffixPairs = ['DR DRIVE', 'RD ROAD', 'LN LANE', 'ST STREET', 'CT COURT',
+  'AVE AVENUE', 'BLVD BOULEVARD', 'PL PLACE', 'TRL TRAIL', 'CIR CIRCLE', 'PKWY PARKWAY'];
+export function noticeSitusMatch(text, indexedAddress, appraisalAddress) {
+  const address = normalize(indexedAddress), content = normalize(text);
+  const literal = !!address && new RegExp(`(?:^| )${address}(?= |$)`).test(content);
+  const situs = String(appraisalAddress ?? '').match(/^([^,]+),\s*([^,]+),\s*TX\s+(\d{5}(?:-\d{4})?)\s*$/i);
+  if (!situs || normalize(appraisalAddress) !== address) return { supported: literal, conflict: false };
+  const street = normalize(situs[1]).split(' '), number = street[0];
+  const suffix = suffixPairs.find(pair => pair.split(' ').includes(street.at(-1)));
+  // Unit-bearing or nonstandard addresses require exact text; do not discard units.
+  if (!suffix || street.length < 3 || !/^\d+[A-Z]?$/.test(number)
+    || /#|\b(?:UNIT|APT|APARTMENT|SUITE|STE)\b/i.test(situs[1])) return { supported: literal, conflict: false };
+  const tail = `${street.slice(1, -1).join(' ')} (?:${suffix.split(' ').join('|')}) ${normalize(situs[2])} TX ${normalize(situs[3])}`;
+  const pattern = new RegExp(`(?:^| )([0-9]+[A-Z]?) ${tail}(?= |$)(?! (?:UNIT|APT|APARTMENT|SUITE|STE)\\b)`, 'g');
+  const numbers = [...content.matchAll(pattern)].map(match => match[1]);
+  const conflict = numbers.some(found => found !== number);
+  return { supported: numbers.includes(number) && !conflict, conflict };
+}
+
 export function assessNotice(detail, capture, pages, ownerRows, day) {
   if (!validDay(day)) throw Error('Invalid processing day');
   const holds = [], evidence = [];
@@ -128,14 +149,18 @@ export function assessNotice(detail, capture, pages, ownerRows, day) {
   const futureSale = validDay(detail.auction_date ?? '') && detail.auction_date > day;
   if (!futureSale) holds.push('sale_date_not_future');
   if (pages.some(page => page.review_required)) holds.push('text_quality_review');
-  let addressOnNotice = false;
+  let addressOnNotice = false, addressConflict = false;
   const cases = new Set();
   for (const page of pages) {
-    if (address && normalize(page.text).includes(address)) { addressOnNotice = true; evidence.push({ field: 'situs', page: page.page, text_sha256: page.text_sha256 }); }
+    const situs = noticeSitusMatch(page.text, detail.indexed_property_address,
+      addressMatch ? ownerRows[0]?.situsconcat : null);
+    if (situs.supported) { addressOnNotice = true; evidence.push({ field: 'situs', page: page.page, text_sha256: page.text_sha256 }); }
+    if (situs.conflict) { addressConflict = true; evidence.push({ field: 'situs_conflict', page: page.page, text_sha256: page.text_sha256 }); }
     for (const value of trusteeReferences(page.text)) {
       cases.add(value); evidence.push({ field: 'trustee_case', value, page: page.page, text_sha256: page.text_sha256 });
     }
   }
+  if (addressConflict) { addressOnNotice = false; holds.push('notice_situs_conflict'); }
   if (!addressOnNotice) holds.push('notice_situs_not_corroborated');
   if (cases.size !== 1) holds.push('trustee_case_unresolved');
   // Whole-document content/legal/owner/current-status review remains distinct from this triage.
@@ -191,7 +216,7 @@ export async function runBatch({ root, manifestPath, detailsPath, ocrRoot, owner
     repeated_case_observations: propertyGroups.reduce((n, g) => n + Object.values(g.cases).reduce((count, ids) => count + ids.length - 1, 0), 0),
     future_sale_documents: assessed.filter(n => n.future_sale).length, exception_documents: assessed.filter(n => n.holds.length).length,
     evidence_review_candidates: assessed.filter(n => !n.holds.length).length, trace_eligible: 0 };
-  const report = { schema_version: '1.0', processor: 'foreclosure-batch/1.1', day, processed_at: new Date().toISOString(),
+  const report = { schema_version: '1.0', processor: 'foreclosure-batch/1.2', day, processed_at: new Date().toISOString(),
     dataset_url: datasetUrl, ownership_snapshot_sha256: hash(await readFile(ownersPath)), summary, notices: assessed, groups: propertyGroups,
     verification_granted: false, dispatch_authorized: false, outreach_authorized: false };
   await mkdir(output, { recursive: true, mode: 0o700 });

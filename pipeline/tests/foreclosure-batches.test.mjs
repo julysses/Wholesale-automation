@@ -45,6 +45,19 @@ test('bulk receipts bind all extracted pages, reject eligibility claims, replay 
   await assert.rejects(()=>save({...receipt,processor:'foreclosure-batch/1.1',...patch},crypto.randomUUID()),/Invalid bulk receipt/);
  }
  await assert.rejects(()=>save({...receipt,processor:'foreclosure-batch/1.1',notices:[{...receipt.notices[0],text_sha256s:['f'.repeat(64)]}]},crypto.randomUUID()),/extracted county evidence/);
+ // Processor 1.2 must preserve prior receipts and all evidence/access boundaries.
+ const beforeV12=(await db.query('SELECT id,receipt FROM wholesale_ingest.foreclosure_batches ORDER BY id')).rows;
+ await db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/20261017011633_foreclosure_address_suffix_triage.sql',import.meta.url),'utf8'));
+ for(const saved of beforeV12)await save(saved.receipt,saved.id);
+ assert.deepEqual((await db.query('SELECT id,receipt FROM wholesale_ingest.foreclosure_batches ORDER BY id')).rows,beforeV12);
+ const v12={...receipt,processor:'foreclosure-batch/1.2',notices:[{...receipt.notices[0],trustee_case:'PLG:26-012345-1',notice_situs_supported:false,holds:['notice_situs_conflict','notice_situs_not_corroborated']}]};
+ const v12id=crypto.randomUUID(),v12result=await save(v12,v12id);await save(v12,v12id);
+ assert.equal(v12result.summary.exception_documents,1);assert.equal(v12result.summary.notice_situs_supported,0);
+ assert.equal(v12result.summary.evidence_review_candidates,0);assert.equal(v12result.summary.trace_eligible,0);
+ assert.equal(v12result.verification_granted,false);assert.equal(v12result.dispatch_authorized,false);
+ for(const patch of [{processor:'foreclosure-batch/1.3'},{verification_granted:true},{dispatch_authorized:true},{outreach_authorized:true}])await assert.rejects(()=>save({...v12,...patch},crypto.randomUUID()),/Invalid bulk receipt/);
+ await assert.rejects(()=>save({...v12,notices:[{...v12.notices[0],text_sha256s:['f'.repeat(64)]}]},crypto.randomUUID()),/extracted county evidence/);
+ await assert.rejects(()=>save({...v12,report_sha256:'e'.repeat(64)},v12id),/conflict/);
  assert.deepEqual((await db.query('SELECT receipt FROM wholesale_ingest.foreclosure_batches WHERE id=$1',[batch])).rows[0].receipt,legacy);
  assert.equal((await db.query('SELECT count(*)::int n FROM public.leads')).rows[0].n,0);
  assert.deepEqual((await db.query("SELECT has_function_privilege('anon','public.save_foreclosure_batch(uuid,uuid,text,jsonb)','EXECUTE') anon, has_function_privilege('authenticated','public.save_foreclosure_batch(uuid,uuid,text,jsonb)','EXECUTE') browser, has_function_privilege('service_role','public.save_foreclosure_batch(uuid,uuid,text,jsonb)','EXECUTE') server")).rows,[{anon:false,browser:false,server:true}]);

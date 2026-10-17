@@ -40,7 +40,8 @@
     "frontend/supabase/migrations/20261016222239_tax_review_evidence_context.sql",
     "frontend/supabase/migrations/20261016223736_confirmed_suppression_handoff.sql",
     "frontend/supabase/migrations/20261016230511_protect_website_inquiry_retention.sql",
-    "frontend/supabase/migrations/20261016233842_foreclosure_case_reference_formats.sql"
+    "frontend/supabase/migrations/20261016233842_foreclosure_case_reference_formats.sql",
+    "frontend/supabase/migrations/20261017011633_foreclosure_address_suffix_triage.sql"
   ],
   "production_applied": true,
   "data_transferred": true,
@@ -70,7 +71,8 @@
   },
   "migration_history_notes": {
     "frontend/supabase/migrations/20261016230511_protect_website_inquiry_retention.sql": "Applied as remote version 20261016231306; name protect_website_inquiry_retention. Do not replay.",
-    "frontend/supabase/migrations/20261016233842_foreclosure_case_reference_formats.sql": "Applied as remote version 20261016234054; name foreclosure_case_reference_formats. Do not replay."
+    "frontend/supabase/migrations/20261016233842_foreclosure_case_reference_formats.sql": "Applied as remote version 20261016234054; name foreclosure_case_reference_formats. Do not replay.",
+    "frontend/supabase/migrations/20261017011633_foreclosure_address_suffix_triage.sql": "Applied as remote version 20261017012042; name foreclosure_address_suffix_triage. Do not replay."
   },
   "fresh_collection_acceptance": {
     "filing_window": [

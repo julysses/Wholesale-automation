@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { queryUrl, validateRows, fetchOwners, loadOwners, assessNotice, trusteeReferences } from './foreclosure_batch.mjs';
+import { queryUrl, validateRows, fetchOwners, loadOwners, assessNotice, trusteeReferences, noticeSitusMatch } from './foreclosure_batch.mjs';
 
 const row = { propid: '123', ownerid: '456', geoid: 'R-123', ownername: 'SYNTHETIC OWNER',
   situsconcat: '1 EXAMPLE LN , ANNA, TX 75409', datadate: '2026-10-14T00:48:00.000' };
@@ -70,4 +70,42 @@ test('repeated references retain page provenance; ambiguous references and OCR q
   assert.equal(ambiguous.trustee_case,null);assert.ok(ambiguous.holds.includes('trustee_case_unresolved'));
   const quality=assessNotice(detail,capture,[{...pages[0],review_required:true}],[row],'2026-10-14');
   assert.ok(quality.holds.includes('text_quality_review'));assert.equal(quality.trace_eligible,false);
+});
+
+
+test('notice situs tolerates only terminal suffix variants from corroborated appraisal evidence', () => {
+  const indexed='123 Example Dr Plano, TX 75075', appraisal='123 EXAMPLE DR , PLANO, TX 75075';
+  for (const text of ['Commonly known as 123 EXAMPLE DRIVE, PLANO TX 75075.',
+    'Property: 123 Example Dr.\nPlano, TX 75075', '123 EXAMPLE DRIVE PLANO TX 75075-1234']) {
+    assert.deepEqual(noticeSitusMatch(text,indexed,appraisal),{supported:true,conflict:false},text);
+  }
+  for (const text of ['1123 EXAMPLE DRIVE PLANO TX 75075','123 EXAMPLE DRIVE PLANO TX 750759',
+    '123 EXAMPLE DRIVE PLANO TX 75074','123 EXAMPLE DRIVE DALLAS TX 75075',
+    '123 EXAMPLE DRIVE PLANO CA 75075','123 EXAMPLE DRIVEL PLANO TX 75075',
+    '123 EXAMPLES DRIVE PLANO TX 75075','123 EXAMPLE DRIVE UNIT B PLANO TX 75075',
+    '123 EXAMPLE DRIVE PLANO TX 75075 UNIT B','123 EXAMPLE DRIVE PLANO TX',
+    '123 EXAMPLE DRIVEWAY PLANO TX 75075','123 EXAMPLE DRIVE NORTH PLANO TX 75075']) {
+    assert.equal(noticeSitusMatch(text,indexed,appraisal).supported,false,text);
+  }
+  assert.equal(noticeSitusMatch('1123 EXAMPLE DR PLANO TX 75075',indexed,null).supported,false);
+  assert.equal(noticeSitusMatch('123 EXAMPLE DR PLANO TX 750759',indexed,null).supported,false);
+  assert.equal(noticeSitusMatch('123 EXAMPLE DRIVE PLANO TX 75075',indexed,null).supported,false);
+  assert.equal(noticeSitusMatch('123 EXAMPLE DRIVE PLANO TX 75075',indexed,'123 EXAMPLE DR, DALLAS, TX 75075').supported,false);
+  assert.equal(noticeSitusMatch('123 EXAMPLE DRIVE PLANO TX 75075','123 Example Dr Unit B Plano TX 75075','123 EXAMPLE DR UNIT B, PLANO, TX 75075').supported,false);
+  // An abbreviation in the street name must remain literal.
+  assert.equal(noticeSitusMatch('123 DRIVE MARTIN DRIVE PLANO TX 75075','123 Dr Martin Dr Plano TX 75075','123 DR MARTIN DR, PLANO, TX 75075').supported,false);
+  assert.equal(noticeSitusMatch('123 DR MARTIN DRIVE PLANO TX 75075','123 Dr Martin Dr Plano TX 75075','123 DR MARTIN DR, PLANO, TX 75075').supported,true);
+});
+
+test('conflicting house numbers remain held across pages and never become verified identity', () => {
+  const d={...detail,indexed_property_address:'123 EXAMPLE DR PLANO TX 75075'};
+  const o={...row,situsconcat:'123 EXAMPLE DR, PLANO, TX 75075'};
+  const good={...page,text:'TS#: 26-12345. 123 EXAMPLE DRIVE PLANO TX 75075'};
+  const bad={...page,page:2,text:'1123 EXAMPLE DR PLANO TX 75075',review_required:true};
+  const result=assessNotice(d,{...capture,expected_pages:2},[good,bad],[o],'2026-10-14');
+  assert.equal(result.notice_situs_supported,false);
+  for (const hold of ['notice_situs_conflict','notice_situs_not_corroborated','text_quality_review']) assert.ok(result.holds.includes(hold));
+  assert.deepEqual(result.evidence.filter(e=>e.field==='situs_conflict').map(e=>e.page),[2]);
+  for(const flag of ['identity_verified','current_status_verified','trace_eligible','outreach_authorized']) assert.equal(result[flag],false);
+  assert.equal(noticeSitusMatch(good.text+' '+bad.text,d.indexed_property_address,o.situsconcat).supported,false);
 });
