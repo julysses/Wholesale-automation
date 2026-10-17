@@ -1,16 +1,16 @@
 # Retell V2 review and controlled retest
 
-Prepared October 16, 2026, after 7 PM Central. Not published, pinned or sent.
+Approved October 16, 2026. V2 is published and pinned in production; sending remains OFF. Read-only production connection checks passed. The confirmed-failed prior hold is closed with history preserved. Fresh inquiry and actual send remain pending a later active run within 9 AM–7 PM Central. No automatic future run is scheduled.
 
 Retell dashboard sign-in is complete. Reviewed published V1 of agent agent_193fc3ebd9844b50d54352f200. Its original welcome is a long offer pitch with address/name variables and 24-hour offer/10-day closing language. Functions list contains end_call only. Auto-close inactive chats is OFF. The Retell webhook points to the production WholesaleOS endpoint with a five-second timeout; chat_started, chat_ended, transcript_updated and chat_analyzed are selected. These are conversation events, not Twilio carrier-delivery receipts.
 
-The existing unpublished V2 draft now contains this exact 136-character ASCII welcome:
+The reviewed published V2 contains this exact 136-character ASCII welcome:
 
 > Hilltop Home Co. (The Jays Dallas, LLC): Thanks for your property inquiry. Julio will follow up. Reply STOP to opt out or HELP for help.
 
 The accompanying prompt prohibits invented commitments, offer/closing deadlines, fabricated CRM success, cold-list outreach, automatic sequences and replies without an actual user message. It preserves automated-assistant disclosure, human follow-up routing and opt-out instructions. Both fields were verified after reload. Welcome-only edits initially did not persist; saving the welcome together with the prompt revision succeeded. Published V1 was not changed.
 
-## Proposed bounded acceptance
+## Approved bounded acceptance
 
 1. After explicit approval of this exception to the SMS pause, publish the reviewed V2 and pin production to that exact version while sending stays off. Verify the deployment and read-only agent probe before dispatch. Do not assign a number-level native agent or activate recurring workers.
 2. Reconcile only provider-confirmed failed test job e2e9231a-27ae-566f-8e3d-30c6096e5013 as terminal without replaying it. Preserve original carrier-undelivered evidence, error 30007, SID, consent and STOP history. Never bypass suppression, cooldowns or an uncertain provider outcome. The accepted/uncertain job ending 0100 and expired job ending 9307 remain untouched.

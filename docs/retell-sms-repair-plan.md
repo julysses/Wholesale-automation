@@ -16,10 +16,10 @@ Added an authenticated POST endpoint that processes only the explicitly selected
 
 Code commit: 974a46203313b97e7a1d5494dc6eff20c9bca98a. Local validation: 864 backend tests plus six subtests, 142 pipeline tests. Check the current launch status for deployment verification.
 
-## Controlled retest preparation — not yet authorized or executed
+## Controlled retest — authorized; publication and preparation complete, send pending
 
-1. Dashboard sign-in and published V1 inspection are complete. The existing unpublished V2 draft has the reviewed prompt and welcome; both survived reload. See docs/retell-v2-controlled-retest.md for exact text and test scope.
-2. The 136-character acknowledgment is saved in draft V2 only: “Hilltop Home Co. (The Jays Dallas, LLC): Thanks for your property inquiry. Julio will follow up. Reply STOP to opt out or HELP for help.” Publication, production version pin and delivery test remain pending.
+1. Dashboard sign-in and published V1 inspection are complete. Published V2 has the reviewed prompt and welcome; both survived reload and the production connection probe passed. See docs/retell-v2-controlled-retest.md for exact text and test scope.
+2. The 136-character acknowledgment is published as V2: “Hilltop Home Co. (The Jays Dallas, LLC): Thanks for your property inquiry. Julio will follow up. Reply STOP to opt out or HELP for help.” V2 is now published and pinned; only the delivery test remains pending.
 3. Present the concrete owner-only test for approval, including the reviewed agent version and message. A fresh consented inquiry must use the confirmed owner phone ending 0280. No customer or county lead is a test recipient.
 4. Explicitly reconcile only the old, provider-confirmed failed test hold if approved; preserve its undelivered status, SID, error 30007, original consent and STOP history. Do not replay it. Leave the uncertain accepted job ending 0100 and unrelated expired job ending 9307 untouched.
 5. Verify the new submission, lead, assigned follow-up, matching consent, phone eligibility and finite due/expiry window. Run only its exact new job ID during configured contact hours. The scheduler remains disabled. Stop if another hold or uncertainty appears; do not bypass it.
