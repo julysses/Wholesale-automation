@@ -1,0 +1,49 @@
+{
+  "state": "deployed_paused_authenticated_probe_pending_approval",
+  "verified_at_utc": "2026-10-17T19:34:21.748996+00:00",
+  "release_commit": "e41e4a38ec07da19320427be8a9474d8dc1ff886",
+  "deployment_id": "dpl_7cfMq9vkEz85jBhexsTDfhSjPB6q",
+  "production_alias": "wholesale-automation.vercel.app",
+  "ci_run": "https://github.com/julysses/Wholesale-automation/actions/runs/39062641708",
+  "ci_jobs_passed": 4,
+  "pytest": 1096,
+  "pytest_subtests": 6,
+  "targeted_tests": 139,
+  "sql_migration": null,
+  "environment_changes": false,
+  "health_http": 200,
+  "readiness_http": 200,
+  "unauthenticated_automatic_http": 401,
+  "authenticated_probes": {
+    "executed": false,
+    "reason": "automatic approval review rejected production worker POSTs; explicit approval requested",
+    "proposed_actions": [
+      "automatic",
+      "ack/nonexistent-id",
+      "generate/nonexistent-id",
+      "reply/nonexistent-id"
+    ]
+  },
+  "retell_live_enabled": false,
+  "retell_app_variables": "absent, refreshed Vercel UI",
+  "baseline_and_after": {
+    "leads": 17449,
+    "tasks": 140,
+    "jobs": 3,
+    "sms_events": 12,
+    "job_hash": "218a98f90a18352af9e60921a2ec1e03",
+    "sms_hash": "bf3e757b4c2c2dcd7becf657f7a2fb4c",
+    "sessions": 0,
+    "turns": 0,
+    "app_scheduler_enabled": false,
+    "native_scheduler_enabled": false
+  },
+  "active_cron": [
+    "launch-monitor-every-15m",
+    "refresh-lead-retention"
+  ],
+  "initial_error_fatal_log_groups": 0,
+  "retell_ticket": 65825,
+  "retell_reply": "pending; latest message owner question October 16 21:53:49 Central",
+  "provider_actions": 0
+}
