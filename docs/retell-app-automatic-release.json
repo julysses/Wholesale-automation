@@ -1,11 +1,12 @@
 {
   "project_id": "dvzhzlipbwzzcliujzyz",
-  "state": "tested_not_applied_or_deployed",
+  "state": "applied_deployed_verified_sending_paused",
   "sending": "paused",
   "migration": {
     "file": "frontend/supabase/migrations/20261017020821_retell_app_automatic_queue.sql",
     "name": "retell_app_automatic_queue",
-    "sha256": "f4684de064af156761a862d10236aa2d677ab218f3b5a79b3c75a00d41addd08"
+    "sha256": "f4684de064af156761a862d10236aa2d677ab218f3b5a79b3c75a00d41addd08",
+    "remote_version": "20261017021928"
   },
   "local_verification": {
     "pytest": 1067,
@@ -31,5 +32,145 @@
       "launch-monitor-every-15m",
       "refresh-lead-retention"
     ]
+  },
+  "release_commit": "a109a59bb1bfa89cf415176f986a0e4831e56f37",
+  "deployment_id": "dpl_FgGMbiCTkrxyA42cvg4szhEkWZzP",
+  "deployment_url": "https://wholesale-automation.vercel.app",
+  "ci_run": "https://github.com/julysses/Wholesale-automation/actions/runs/38994323343",
+  "verified_at": "2026-10-17T02:22:45Z",
+  "sql_verification": {
+    "sms": 12,
+    "cron": [
+      {
+        "name": "wholesaleos-retell-app-sms",
+        "active": false,
+        "schedule": "10 seconds"
+      }
+    ],
+    "jobs": 3,
+    "turns": 0,
+    "app_jobs": 0,
+    "sessions": 0,
+    "functions": [
+      {
+        "name": "clear_retell_app_turn_selection",
+        "schema": "public",
+        "body_md5": "411a31fd7e12423802a4b1d84637b773",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": false,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "name": "pick_retell_app_work",
+        "schema": "public",
+        "body_md5": "761015c6a3aec9a09a1a8664b8e666c1",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "name": "retell_app_monitor_findings",
+        "schema": "public",
+        "body_md5": "d3df9cfdafa8592de702ad124efbb107",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "name": "tick_retell_app_sms",
+        "schema": "private",
+        "body_md5": "63b1b18206efa0d61498aa17df51107b",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": false,
+        "security_definer": false,
+        "authenticated_execute": false
+      }
+    ],
+    "migration": {
+      "name": "retell_app_automatic_queue",
+      "version": "20261017021928"
+    },
+    "scheduler": {
+      "id": "661bc82e-2f70-4e1f-8604-fd5e4575fcbf",
+      "enabled": false,
+      "end_hour": 19,
+      "singleton": true,
+      "last_state": "disabled",
+      "start_hour": 9,
+      "last_request_id": null,
+      "last_http_status": null,
+      "last_requested_at": null
+    },
+    "active_cron": [
+      "launch-monitor-every-15m",
+      "refresh-lead-retention"
+    ],
+    "disabled_tick": {
+      "status": "disabled",
+      "requested": false
+    },
+    "scheduler_rls": true,
+    "browser_select": false,
+    "native_enabled": false,
+    "service_update": false,
+    "job_fingerprint": "b22857ede704cf5eb0eabffa35c288d6",
+    "sms_fingerprint": "bf3e757b4c2c2dcd7becf657f7a2fb4c",
+    "monitor_findings": 0
+  },
+  "post_probe": {
+    "sms": 12,
+    "jobs": 3,
+    "probe": {
+      "id": 15,
+      "body": {
+        "status": "disabled",
+        "processed": 0,
+        "dispatch_authorized": false
+      },
+      "http": 200
+    },
+    "turns": 0,
+    "app_jobs": 0,
+    "sessions": 0,
+    "active_cron": [
+      "launch-monitor-every-15m",
+      "refresh-lead-retention"
+    ],
+    "job_fingerprint": "b22857ede704cf5eb0eabffa35c288d6",
+    "sms_fingerprint": "bf3e757b4c2c2dcd7becf657f7a2fb4c",
+    "scheduler_enabled": false,
+    "scheduler_requested_at": null
+  },
+  "runtime_verification": {
+    "deployment_state": "READY",
+    "primary_alias_matches": true,
+    "health_http": 200,
+    "readiness_http": 200,
+    "unauthenticated_automatic_http": 401,
+    "authenticated_automatic_http": 200,
+    "authenticated_automatic_status": "disabled",
+    "processed": 0,
+    "error_fatal_log_groups": 0,
+    "log_window": "10m scoped to new deployment",
+    "app_environment_flags": "absent in refreshed Vercel UI; no changes made"
+  },
+  "fingerprint_method": {
+    "job": "md5(coalesce(jsonb_agg(to_jsonb(j)-'delivery_transport'-'delivery_body'-'delivery_sender'-'auto_selected_at' order by id)::text,'[]'))",
+    "sms": "md5(coalesce(jsonb_agg(to_jsonb(e) order by id)::text,'[]'))"
   }
 }
