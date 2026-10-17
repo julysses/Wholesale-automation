@@ -1,0 +1,45 @@
+{
+  "state": "deployed_live_ui_verified_sending_paused",
+  "verified_at_utc": "2026-10-17T02:55:50.797670+00:00",
+  "release_commit": "aabe03cca740d44a05667b9d1e39630564bba411",
+  "deployment_id": "dpl_2LX42tBXzmy2dcvFAD2HDqv4iBt9",
+  "ci_run": "https://github.com/julysses/Wholesale-automation/actions/runs/38996403296",
+  "ci_jobs_passed": 4,
+  "frontend_tests": 175,
+  "build": "passed",
+  "lint_new_findings": 0,
+  "lint_existing_findings": 149,
+  "live_ui": {
+    "notice": "4162450",
+    "exact_source_link": true,
+    "blank_verified_address": true,
+    "confirmations_unchecked": true,
+    "save_disabled": true,
+    "submitted": false
+  },
+  "post_release_counts": {
+    "leads": 17449,
+    "tasks": 140,
+    "sms_jobs": 3,
+    "sms_events": 12,
+    "properties": 84,
+    "records": 40387,
+    "trace_requests": 77
+  },
+  "app_scheduler_enabled": false,
+  "native_scheduler_enabled": false,
+  "active_cron": [
+    "launch-monitor-every-15m",
+    "refresh-lead-retention"
+  ],
+  "health_http": 200,
+  "readiness_http": 200,
+  "unauthenticated_worker_http": 401,
+  "initial_error_fatal_log_groups": 0,
+  "provider_actions": 0,
+  "retell_billing_question": {
+    "ticket": 65825,
+    "status": "sent_verified_response_pending"
+  },
+  "live_sms_acceptance": "approved_not_executed"
+}

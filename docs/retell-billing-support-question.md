@@ -1,6 +1,8 @@
-# Retell support follow-up — draft, not sent
+# Retell support follow-up — sent
 
 Destination: existing Retell support ticket 65825.
+
+Sent October 16, 2026, evening Central after explicit user approval. Posted message and cleared composer verified; reply pending. No settings, billing or test action requested.
 
 Thank you for confirming the native BYO Twilio SMS behavior. We are preparing a tightly bounded owner test using Retell API chat for generation and our application for Twilio delivery.
 
@@ -13,4 +15,4 @@ Could you confirm:
 
 Please do not change our settings, enable SMS, run tests, add credit or activate billing. We only need clarification of the billing behavior.
 
-No phone numbers, property records, credentials or message transcripts are included in this draft.
+No phone numbers, property records, credentials or message transcripts are included in this message.
