@@ -266,3 +266,12 @@ async def recover_app_ack(job_id: UUID, request: Request):
 async def recover_app_turn(turn_id: UUID, request: Request):
     _require_app_worker(request)
     return await run_in_threadpool(_recover_app, 'recover_retell_api_turn', 'p_turn', str(turn_id))
+
+
+@router.post('/webhooks/_worker/retell-app/automatic')
+async def run_app_automatic(request: Request):
+    _require_app_worker(request)
+    from tools.retell_app_automatic import scope, step
+    if scope() is None:
+        return {'status': 'disabled', 'processed': 0, 'dispatch_authorized': False}
+    return await run_in_threadpool(step, _db())

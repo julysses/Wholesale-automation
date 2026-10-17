@@ -1,0 +1,35 @@
+{
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "state": "tested_not_applied_or_deployed",
+  "sending": "paused",
+  "migration": {
+    "file": "frontend/supabase/migrations/20261017020821_retell_app_automatic_queue.sql",
+    "name": "retell_app_automatic_queue",
+    "sha256": "f4684de064af156761a862d10236aa2d677ab218f3b5a79b3c75a00d41addd08"
+  },
+  "local_verification": {
+    "pytest": 1067,
+    "pytest_subtests": 6,
+    "pipeline": 187,
+    "postgres_workers": 8,
+    "scheduler_http_stubs": 1,
+    "initial_selections": 1,
+    "generation_selections": 1,
+    "reply_selections": 1,
+    "provider_calls": 0
+  },
+  "baseline": {
+    "jobs": 3,
+    "job_jsonb_aggregate_md5": "b22857ede704cf5eb0eabffa35c288d6",
+    "sms": 12,
+    "sms_jsonb_aggregate_md5": "bf3e757b4c2c2dcd7becf657f7a2fb4c",
+    "sessions": 0,
+    "turns": 0,
+    "app_jobs": 0,
+    "native_enabled": false,
+    "active_cron": [
+      "launch-monitor-every-15m",
+      "refresh-lead-retention"
+    ]
+  }
+}

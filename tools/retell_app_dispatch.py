@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 import re
 
 from config.settings import settings
-from tools.retell_api_turns import ready, _row
+from tools.retell_api_turns import ready, _row, recipient_allowed
 from tools.sms_client import SMSClient, sms_consent_blocker
 from tools.facebook_consent import normalize_us_phone
 from tools.twilio_receipts import reconcile_twilio_receipt, PROGRESS, FAILURES
@@ -56,8 +56,7 @@ def dispatch_ready():
 def _eligible(sb, claim):
     if not dispatch_ready() or not SMSClient()._in_allowed_hours() or not queue_validity(claim.get('expires_at')):
         return False
-    allowed = {p.strip() for p in settings.sms_allowed_recipients.split(',') if p.strip()}
-    if claim.get('phone_number') not in allowed or claim.get('sender_number') != settings.twilio_from_number:
+    if not recipient_allowed(claim.get('phone_number')) or claim.get('sender_number') != settings.twilio_from_number:
         return False
     lead = _row(sb, 'leads', claim['lead_id'])
     try:

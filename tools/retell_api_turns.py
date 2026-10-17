@@ -15,12 +15,21 @@ from tools.sms_client import SMSClient, sms_consent_blocker
 from tools.sms_controls import is_control
 
 
+def all_consented_forms():
+    return enabled('RETELL_APP_ACCEPTANCE_VERIFIED') and enabled('RETELL_APP_ALL_CONSENTED_FORMS')
+
+
+def recipient_allowed(phone):
+    allowed = {p.strip() for p in settings.sms_allowed_recipients.split(',') if p.strip()}
+    return phone in allowed or all_consented_forms()
+
+
 def ready():
     return (enabled('RETELL_APP_TRANSPORT_ENABLED') and os.getenv('RETELL_SMS_TRANSPORT') == 'app_twilio'
             and enabled('RETELL_FORM_SMS_ENABLED') and enabled('RETELL_SMS_LIVE_ENABLED')
             and settings.sms_live_enabled
             and (enabled('RETELL_APP_ACCEPTANCE_VERIFIED') or enabled('RETELL_APP_TEST_APPROVED'))
-            and bool(settings.sms_allowed_recipients) and configured_version() is not None
+            and (bool(settings.sms_allowed_recipients) or all_consented_forms()) and configured_version() is not None
             and bool(os.getenv('RETELL_SMS_AGENT_ID')) and bool(os.getenv('RETELL_SMS_API_KEY')))
 
 
@@ -34,8 +43,7 @@ def _row(sb, table, identity):
 def _eligible(sb, turn, session):
     if not ready() or not SMSClient()._in_allowed_hours():
         return False
-    allowed = {p.strip() for p in settings.sms_allowed_recipients.split(',') if p.strip()}
-    if session.get('phone_number') not in allowed or session.get('sender_number') != settings.twilio_from_number:
+    if not recipient_allowed(session.get('phone_number')) or session.get('sender_number') != settings.twilio_from_number:
         return False
     current = _row(sb, 'retell_api_sessions', session['id'])
     inquiry = _row(sb, 'retell_form_sms_jobs', session['id'])
