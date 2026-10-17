@@ -1,3 +1,11 @@
+## Scoped SMS control deployed; Retell sign-in pending — 2026-10-17, 00:11 UTC
+
+Production release **974a46203313b97e7a1d5494dc6eff20c9bca98a** is **READY** as **dpl_9DhJhTZN7pq5gq6fGAUEmARxJtWp**, with wholesale-automation.vercel.app assigned, target production and aliasError=null. Exact Git SHA verified. CI **38984887874** succeeded in all four jobs. Live health returned HTTP 200; an unauthenticated empty POST to the new exact-job endpoint returned **401 Unauthorized** before any worker/database/provider invocation. No authenticated live worker request or SMS was sent.
+
+Production counts remain **17,449 leads, 140 tasks, 77 trace requests**. Enabled county sources=0, outreach=false, daily tracing cap=0; SMS scheduler/cron remain false. Migration and rollback results below are final. Private CI summary and progress are in work/scoped-sms-test/. User-facing plan: current chat outputs/WholesaleOS-SMS-Repair-Plan.md. It separates Twilio's reported remediation from verified handset delivery and the still-unresolved native Retell delivery-callback gap.
+
+Retell dashboard redirected to its MFA screen for phone ending **0100**. User has been asked to finish the six-digit step directly in the open Chrome tab (1348648871), not share a code in chat. The tab is marked for handoff; screenshot outputs/WholesaleOS-Retell-Sign-In.png. Support portal remains separately signed in. Do not repeatedly ask for sign-in. No agent prompt/version change is made. No controlled SMS test has yet been approved or executed after the provider update. Current time is after the configured 7 PM Central boundary; do not test outside contact hours. Keep the pending full-notice upload approval separate. Goal remains active, not launch-complete.
+
 ## Provider findings and scoped SMS worker — 2026-10-17, 00:08 UTC (October 16 Central)
 
 Twilio ticket **29953072** now reports **Pending**, updated **October 16, 6:14 PM Central**. Carlos Ospina says the internal team remediated the undelivered-message issue and asks for a retest. This is a provider statement, not observed delivery. The portal initially errored; opening the authenticated Twilio Console and refreshing the ticket recovered it. No support reply or test message was sent.
