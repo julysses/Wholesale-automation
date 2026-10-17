@@ -146,3 +146,36 @@ def test_reply_wrapper_refuses_a_claim_for_another_turn(monkeypatch):
     db=Mock();db.rpc.return_value.execute.return_value.data={'claimed':True,'turn_id':SESSION,'session_id':SESSION}
     with pytest.raises(RuntimeError):dispatch.process_reply(db,LEAD)
     submit.assert_not_called()
+
+
+def test_carrier_queue_is_capped_by_owner_deadline(monkeypatch):
+    now = datetime.fromisoformat('2026-10-17T14:00:00-05:00')
+    monkeypatch.setenv('RETELL_APP_TEST_APPROVED', 'true')
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_JOB_ID', SESSION)
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_STARTED_AT', (now-timedelta(minutes=29)).isoformat())
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_EXPIRES_AT', (now+timedelta(seconds=40)).isoformat())
+    monkeypatch.setattr(dispatch.settings, 'sms_allowed_recipients', PHONE)
+    monkeypatch.setattr(dispatch.settings, 'tcpa_allowed_start_hour', 9)
+    monkeypatch.setattr(dispatch.settings, 'tcpa_allowed_end_hour', 19)
+    expiry = (now+timedelta(minutes=15)).isoformat()
+    assert dispatch.queue_validity(expiry, now) == 30
+    assert dispatch.queue_validity(expiry, now+timedelta(seconds=40)) == 0
+
+
+@pytest.mark.parametrize('case', ['wrong_job', 'expired', 'second_turn', 'wrong_phone'])
+def test_exact_submission_rechecks_owner_scope_before_carrier(setup, monkeypatch, case):
+    now = datetime.now(timezone.utc)
+    monkeypatch.setenv('RETELL_APP_TEST_APPROVED', 'true')
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_JOB_ID', LEAD if case == 'wrong_job' else SESSION)
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_STARTED_AT', (now-timedelta(minutes=1)).isoformat())
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_EXPIRES_AT', (now+timedelta(minutes=-1 if case == 'expired' else 14)).isoformat())
+    monkeypatch.setattr(dispatch.settings, 'sms_allowed_recipients', '+12145550199' if case == 'wrong_phone' else PHONE)
+    if case == 'second_turn':
+        setup.claim['turn_id'] = LEAD
+        setup.db.rows[0]['raw_payload']['api_turn_id'] = LEAD
+        original = setup.db.table
+        lookup = Mock()
+        lookup.select.return_value.eq.return_value.order.return_value.order.return_value.limit.return_value.execute.return_value.data = [{'id': SESSION}]
+        setup.db.table = lambda name: lookup if name == 'retell_api_turns' else original(name)
+    assert dispatch._submit(setup.db, setup.claim)['status'] == 'blocked'
+    setup.provider.messages.create.assert_not_called()

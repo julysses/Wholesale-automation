@@ -1,6 +1,4 @@
 """One bounded automatic queue step. Sending and automation default off."""
-from datetime import datetime, timezone, timedelta
-import os
 import re
 from uuid import UUID
 
@@ -9,6 +7,7 @@ from tools.retell_form_sms import enabled
 from tools.retell_api_turns import process_turn, all_consented_forms
 from tools.retell_app_dispatch import dispatch_ready, process_ack, process_reply
 from tools.sms_client import SMSClient
+from tools.retell_app_test_scope import test_selected, test_window
 
 
 def scope():
@@ -19,23 +18,11 @@ def scope():
         return None
     # Test mode is explicitly selected by the presence of a target; an invalid
     # or expired target must never fall back to all production inquiries.
-    target = os.getenv('RETELL_APP_AUTOMATION_TEST_JOB_ID')
-    if target is not None:
-        if not enabled('RETELL_APP_TEST_APPROVED') or not phones:
+    if test_selected():
+        window = test_window()
+        if window is None:
             return None
-        try:
-            target = str(UUID(target))
-            started = datetime.fromisoformat(os.getenv('RETELL_APP_AUTOMATION_TEST_STARTED_AT', '').replace('Z', '+00:00'))
-            expiry = datetime.fromisoformat(os.getenv('RETELL_APP_AUTOMATION_TEST_EXPIRES_AT', '').replace('Z', '+00:00'))
-            now = datetime.now(timezone.utc)
-            if (started.tzinfo is None or expiry.tzinfo is None
-                    or not started <= now < expiry or not timedelta(0) < expiry-started <= timedelta(minutes=30)):
-                return None
-        except (ValueError, TypeError):
-            return None
-        # Only the first actual carrier turn qualifies: maximum one acknowledgment,
-        # one creation/completion, and one conversational reply; no retries.
-        return {'p_job': target, 'p_first_turn_only': True, 'p_phones': phones}
+        return {'p_job': window['job'], 'p_first_turn_only': True, 'p_phones': window['phones']}
     if not enabled('RETELL_APP_ACCEPTANCE_VERIFIED'):
         return None
     if not all_consented_forms() and not phones:

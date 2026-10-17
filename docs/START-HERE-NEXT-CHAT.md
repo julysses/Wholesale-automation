@@ -1,3 +1,11 @@
+## Resumed; provider-boundary owner-test scope fix prepared — October 17, 2026, afternoon Central
+
+Retell ticket65825 checked live: Open, On Retell AI; latest entry remains our October16 9:53:49PMCentral billing question. No billing answer yet; no new support message sent. User resumed the goal. Approved owner test remains unexecuted pending confirmed total$1 cost bound and fresh owner-submitted consent. Full-notice upload authorization requested again with exact34-notice/115-page data and destination after the prior automatic review rejection; no upload performed.
+
+Confirmed a gap: the automatic selector enforced finite owner scope, but direct workers accepted test approval without a target and could continue generation or queue SMS after the30-minute test expired. New shared tools/retell_app_test_scope.py enforces the same exact inquiry, owner allowlist, first persisted turn and finite deadline in each provider worker. Creation-to-completion rechecks stop a slow operation crossing expiry; Twilio validity also respects the test end. Blank/expired test settings never fall back to verified general production. Enqueue remains available while paused so a fresh inquiry can establish its job before activation; no SMS authority is granted by enqueue.
+
+All1,096 pytest tests plus six subtests passed, including139 targeted worker/scope/wiring cases. Regression tests cover direct-call wrong inquiry/second turn/expired scope, scope expiration during provider creation or database lookup, and carrier queue truncation. No provider calls, SQL migration or environment change. Pending exact-commit CI and paused deployment. Production baseline unchanged:17,449leads/140tasks/3jobs/12SMS; app/native schedulerfalse, active cron retention+monitoronly. Prior runtime aabe03c remains live until verified replacement. Goal active/incomplete.
+
 ## Direct notice review deployed; Retell billing question sent — October 16, 2026, evening Central
 
 Runtime **aabe03cca740d44a05667b9d1e39630564bba411** is READY on production primary alias wholesale-automation.vercel.app, deployment **dpl_2LX42tBXzmy2dcvFAD2HDqv4iBt9**. Exact CI38996403296 passed all four jobs. Local175 frontend tests and production build passed; lint has no new findings (149 existing).

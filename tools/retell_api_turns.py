@@ -13,6 +13,7 @@ from tools.retell_form_sms import configured_version, enabled
 from tools.retell_api_chat import RetellAPIChat
 from tools.sms_client import SMSClient, sms_consent_blocker
 from tools.sms_controls import is_control
+from tools.retell_app_test_scope import launch_allowed, operation_allowed
 
 
 def all_consented_forms():
@@ -28,7 +29,7 @@ def ready():
     return (enabled('RETELL_APP_TRANSPORT_ENABLED') and os.getenv('RETELL_SMS_TRANSPORT') == 'app_twilio'
             and enabled('RETELL_FORM_SMS_ENABLED') and enabled('RETELL_SMS_LIVE_ENABLED')
             and settings.sms_live_enabled
-            and (enabled('RETELL_APP_ACCEPTANCE_VERIFIED') or enabled('RETELL_APP_TEST_APPROVED'))
+            and launch_allowed()
             and (bool(settings.sms_allowed_recipients) or all_consented_forms()) and configured_version() is not None
             and bool(os.getenv('RETELL_SMS_AGENT_ID')) and bool(os.getenv('RETELL_SMS_API_KEY')))
 
@@ -44,6 +45,8 @@ def _eligible(sb, turn, session):
     if not ready() or not SMSClient()._in_allowed_hours():
         return False
     if not recipient_allowed(session.get('phone_number')) or session.get('sender_number') != settings.twilio_from_number:
+        return False
+    if not operation_allowed(sb, session['id'], session.get('phone_number'), turn['id']):
         return False
     current = _row(sb, 'retell_api_sessions', session['id'])
     inquiry = _row(sb, 'retell_form_sms_jobs', session['id'])
@@ -61,7 +64,8 @@ def _eligible(sb, turn, session):
     return (same_phone and lead.get('dnc') is False
             and lead.get('status') not in {'dnc','dead','closed','sold','under_contract'}
             and not is_control({'Body': turn.get('recipient_text')})
-            and not sms_consent_blocker(sb, session['lead_id'], session['phone_number']))
+            and not sms_consent_blocker(sb, session['lead_id'], session['phone_number'])
+            and operation_allowed(sb, session['id'], session['phone_number'], turn['id']))
 
 
 def _hold(sb, turn_id, expected, reason):

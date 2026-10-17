@@ -114,8 +114,53 @@ def test_app_transport_requires_its_own_approval_and_all_existing_pause_gates(mo
     monkeypatch.delenv('RETELL_APP_ACCEPTANCE_VERIFIED',raising=False)
     monkeypatch.setattr(worker.settings,'sms_live_enabled',True)
     monkeypatch.setattr(worker.settings,'sms_allowed_recipients','+12145550196')
+    now = datetime.now(timezone.utc)
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_JOB_ID', SESSION)
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_STARTED_AT', now.isoformat())
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_EXPIRES_AT', (now+timedelta(minutes=15)).isoformat())
     assert worker.ready() is True
     if missing=='sms_live_enabled':monkeypatch.setattr(worker.settings,missing,False)
     elif missing=='sms_allowed_recipients':monkeypatch.setattr(worker.settings,missing,'')
     else:monkeypatch.delenv(missing)
     assert worker.ready() is False
+
+
+def owner_scope(monkeypatch, setup):
+    now = datetime.now(timezone.utc)
+    monkeypatch.setenv('RETELL_APP_TEST_APPROVED', 'true')
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_JOB_ID', SESSION)
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_STARTED_AT', (now-timedelta(minutes=1)).isoformat())
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_EXPIRES_AT', (now+timedelta(minutes=14)).isoformat())
+    setup.db.table.return_value.select.return_value.eq.return_value.order.return_value.order.return_value.limit.return_value.execute.return_value.data = [{'id': TURN}]
+
+
+@pytest.mark.parametrize('case', ['wrong_job', 'second_turn', 'expired', 'blank_target'])
+def test_direct_generation_cannot_bypass_owner_scope(setup, monkeypatch, case):
+    owner_scope(monkeypatch, setup)
+    if case == 'wrong_job': monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_JOB_ID', LEAD)
+    if case == 'blank_target': monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_JOB_ID', '')
+    if case == 'expired': monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_EXPIRES_AT', (datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat())
+    if case == 'second_turn':
+        setup.db.table.return_value.select.return_value.eq.return_value.order.return_value.order.return_value.limit.return_value.execute.return_value.data = [{'id': LEAD}]
+    assert worker.process_turn(setup.db, TURN)['status'] == 'not_eligible'
+    setup.db.rpc.assert_not_called()
+    setup.provider.create.assert_not_called()
+    setup.provider.complete.assert_not_called()
+
+
+def test_owner_deadline_crossed_during_create_holds_without_completion(setup, monkeypatch):
+    owner_scope(monkeypatch, setup)
+    def create(*args):
+        monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_EXPIRES_AT', (datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat())
+        return 'chat_test'
+    setup.provider.create.side_effect = create
+    assert worker.process_turn(setup.db, TURN)['status'] == 'review'
+    setup.provider.create.assert_called_once()
+    setup.provider.complete.assert_not_called()
+
+
+def test_valid_owner_first_turn_still_generates_exactly_once(setup, monkeypatch):
+    owner_scope(monkeypatch, setup)
+    assert worker.process_turn(setup.db, TURN)['status'] == 'generated'
+    setup.provider.create.assert_called_once()
+    setup.provider.complete.assert_called_once()

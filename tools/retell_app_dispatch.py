@@ -16,6 +16,7 @@ from tools.facebook_consent import normalize_us_phone
 from tools.twilio_receipts import reconcile_twilio_receipt, PROGRESS, FAILURES
 from tools.operational_alerts import record_provider_alert
 from tools.sms_reply_budget import short_sms_reply
+from tools.retell_app_test_scope import test_selected, test_window, operation_allowed
 
 APP_ACKNOWLEDGMENT = ('Hilltop Home Co. (The Jays Dallas, LLC): Thanks for your property inquiry. '
                        'Julio will follow up. Reply STOP to opt out or HELP for help.')
@@ -40,6 +41,11 @@ def queue_validity(expires_at, now=None):
         close = datetime.combine(local.date(), time(end % 24), tzinfo=local.tzinfo)
         if end == 24:
             close += timedelta(days=1)
+        if test_selected():
+            window = test_window(now)
+            if window is None:
+                return 0
+            expiry = min(expiry, window['expires'])
         seconds = int((min(expiry, close.astimezone(timezone.utc)) - now).total_seconds()) - 10
         return min(300, seconds) if seconds > 5 else 0
     except (ValueError, TypeError, AttributeError):
@@ -58,6 +64,8 @@ def _eligible(sb, claim):
     if not dispatch_ready() or not SMSClient()._in_allowed_hours() or not queue_validity(claim.get('expires_at')):
         return False
     if not recipient_allowed(claim.get('phone_number')) or claim.get('sender_number') != settings.twilio_from_number:
+        return False
+    if not operation_allowed(sb, claim.get('session_id'), claim.get('phone_number'), claim.get('turn_id')):
         return False
     lead = _row(sb, 'leads', claim['lead_id'])
     try:
@@ -107,6 +115,8 @@ def _submit(sb, claim):
     client = Client(settings.twilio_account_sid, settings.twilio_auth_token,
                     http_client=TwilioHttpClient(timeout=5, max_retries=0))
     # Recheck the remaining finite window at the exact request boundary.
+    if not operation_allowed(sb, claim['session_id'], claim['phone_number'], claim.get('turn_id')):
+        return _park(sb, claim, 'blocked')
     validity = queue_validity(claim['expires_at'])
     if not dispatch_ready() or not validity:
         return _park(sb, claim, 'blocked')
@@ -166,7 +176,8 @@ def process_reply(sb, turn_id):
         return {'status':'disabled','dispatch_authorized':False}
     turn = _row(sb,'retell_api_turns',target)
     session = _row(sb,'retell_api_sessions',turn['session_id'])
-    context = {'lead_id':session['lead_id'],'phone_number':session['phone_number'],
+    context = {'session_id':session['id'],'turn_id':target,
+               'lead_id':session['lead_id'],'phone_number':session['phone_number'],
                'sender_number':session['sender_number'],'expires_at':turn['expires_at']}
     if turn.get('status')!='generated' or not _eligible(sb,context):
         return {'status':'not_eligible','dispatch_authorized':False}
