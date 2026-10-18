@@ -79,3 +79,14 @@ Retell live balance is $9.96; auto-recharge is off and Stripe shows no payment m
 Saved production-only configuration: RETELL_SMS_TRANSPORT=app_twilio, RETELL_APP_TRANSPORT_ENABLED=true, RETELL_APP_TEST_APPROVED=true. RETELL_SMS_LIVE_ENABLED was verified false; no exact-job window or automation flag was added. Redeployed the same reviewed runtime commit e41e4a38ec07da19320427be8a9474d8dc1ff886 as dpl_E9R2yNqXgTdRVh7rGkYab9venhLV, READY and assigned to wholesale-automation.vercel.app. Health and readiness returned HTTP200. Authenticated automatic-worker probe request21 returned HTTP200, disabled, processed0, dispatch_authorized:false. No test SMS or paid generation was run. Both schedulers were last confirmed disabled.
 
 Resume with Twilio sign-in/balance verification, then request the fresh owner inquiry on the now-deployed app route. Verify app_twilio, consent and CRM task before configuring the exact job, allowed owner phone, pinned V2 and <=30-minute window. Do not activate against the earlier native job.
+
+
+## October 18, 5:22 PM Central — Twilio access restored
+
+Twilio signed-in account ending a21d reports $1.43886 available, with auto-recharge off. Existing Messaging Service MGaf5837f7a7cad183e8b38b1147728562 uses HTTP POST to /webhooks/twilio/inbound and the /webhooks/twilio/status callback on wholesale-automation.vercel.app. Vercel production agent version is confirmed 2.
+
+Found SMS_ALLOWED_RECIPIENTS still pointing to the older owner test phone ending 0100. Updated the production-only value to the approved owner phone ending 0280. This saved change requires the next deployment to become effective. No live flags, exact-job window, or schedulers were enabled. The last database check shows both schedulers false, zero app sessions and zero app turns.
+
+Requested one new owner-submitted consented inquiry after confirming the deployed app route and Twilio access. The earlier native job expired unsent; do not extend or replay it. At this checkpoint no new form or app job had arrived. Wait for the real submission before setting its exact job ID and <=30-minute time window. Run only the single approved test under the combined $5 ceiling, use existing credits and no retries/reloads.
+
+Carrier configuration rechecked: the sender ending 9920 is in the service sender pool; the connected Low Volume Mixed campaign is Verified. No carrier settings were changed.
