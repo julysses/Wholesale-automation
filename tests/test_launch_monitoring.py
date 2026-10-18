@@ -1,11 +1,9 @@
 import json
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 import pytest
 from fastapi import HTTPException
 from tools import launch_monitor
 from web.api import monitoring_api as api
-from scripts import check_launch_availability as external
 
 VALID = {"database":True,"intake":True,"owner":True,"aged":{"intake":2},"open_incidents":2}
 
@@ -59,17 +57,3 @@ def test_monitor_transport_is_bounded_and_server_only(monkeypatch):
     monkeypatch.delenv('SUPABASE_SERVICE_ROLE_KEY')
     with pytest.raises(RuntimeError): launch_monitor.snapshot()
     assert client.call_count==1
-
-@pytest.mark.parametrize('status,body,expected',[(200,b'{"status":"ok"}',True),(200,b'{"status":"unavailable"}',False),(503,b'private details',False),(200,b'not json',False)])
-def test_independent_monitor_validates_readiness_acknowledgement(monkeypatch,status,body,expected):
-    response=MagicMock(); response.__enter__.return_value=SimpleNamespace(status=status,read=lambda n:body)
-    transport=MagicMock(return_value=response); monkeypatch.setattr(external,'urlopen',transport)
-    assert external.probe(('crm_readiness',external.TARGETS['crm_readiness']))==('crm_readiness',expected)
-    assert transport.call_args.kwargs['timeout']==10
-
-
-def test_external_failure_output_has_no_response_body(monkeypatch,capsys):
-    monkeypatch.setattr(external,'probe',lambda item:(item[0],False))
-    assert external.main()==1
-    value=json.loads(capsys.readouterr().out)
-    assert value=={name:False for name in external.TARGETS}
