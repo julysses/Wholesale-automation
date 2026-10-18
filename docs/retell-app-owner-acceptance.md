@@ -2,7 +2,7 @@
 
 Prepared October 16, 2026. Approved by the owner October 16, 2026; not executed. Keep Twilio for delivery and Retell V2 for conversation generation. The earlier approved native one-message retest is separate; do not run both tests or reuse that approval for this expanded test.
 
-## Exact proposed exception to the SMS pause
+## Approved exception to the SMS pause
 
 Use the owner's previously confirmed phone ending **0280** and one fresh, explicitly consented seller inquiry submitted by the owner at **https://hilltophome.co/get-an-offer**. Do not submit consent on the owner's behalf or substitute a customer/county record. Verify the saved receipt, normalized phone, CRM lead, assigned follow-up and owner notification before enabling dispatch. Preserve existing DNC, cooldown and uncertain-delivery holds; if any blocks the inquiry, stop rather than erase it.
 
@@ -16,7 +16,7 @@ During **9 AM–7 PM Central**, temporarily enable the new app transport and aut
 
 The owner will reply with an ordinary seller-inquiry message, then **STOP** after the single response. The exact conversational response is generated under the reviewed V2 prompt; it cannot be specified before the real reply. Verify its relevance, brevity, truthful identity and lack of invented offers or commitments. Stop immediately on failure, ambiguity or unexpected content; do not send replacement messages.
 
-Maximum **$1 total of existing provider credit** for this test, including SMS segments and Retell generation. Verify current balances, billing controls and estimated worst-case cost before activating; do not execute if the bound cannot be confirmed. No reload, new purchase, paid plan, card fallback or additional customer outreach is included. No future wake-up or unattended test is scheduled by this plan.
+Maximum **$5 total of existing provider credit** for this test (owner raised the ceiling on October 18, 2026; spend as little as possible), including SMS segments and Retell generation. Verify current balances, billing controls and estimated worst-case cost before activating; do not execute if the bound cannot be confirmed. No reload, new purchase, paid plan, card fallback or additional customer outreach is included. No future wake-up or unattended test is scheduled by this plan.
 
 ## Evidence required
 
@@ -28,7 +28,7 @@ Maximum **$1 total of existing provider credit** for this test, including SMS se
 
 The second website, **https://thejaysdallas.com/sell**, still needs its own successful intake acceptance. A second acknowledgment to the same phone must not bypass the shared cooldown, existing conversation ownership or STOP. This test does not claim both websites or general collection are fully operational.
 
-## Why a new approval is necessary
+## Approval history
 
 Your previous exception authorized one manually invoked native Retell acknowledgment with no reply automation or scheduler activation. This proposal changes the carrier submission path and adds a bounded automatic conversation and STOP check. The owner granted this specific exception on October 16, 2026. Configuration, code deployment and paused probes can be completed before that approval; actual sending cannot.
 
@@ -55,3 +55,16 @@ Owner-test scope is now enforced independently in each provider worker and carri
 
 
 October17,4:38PMCentral update: user approved all four paused-worker checks; requests17–20 returned200/disabled and dispatch_authorized:false. No provider work occurred. The approved34-notice evidence upload also completed; its prior approval block is closed. The actual SMS acceptance remains approved but unexecuted, pending the complete$1 cost preflight and fresh owner inquiry.
+
+
+## October 18 owner budget update and resume checkpoint
+
+The owner explicitly authorized proceeding without a support response and raised the combined provider test ceiling to **$5**, using existing credit only. This supersedes every earlier $1 budget reference above; those entries remain historical evidence. The scope remains one owner inquiry, one acknowledgment, one actual reply and one generated response, then STOP; at most one chat creation and one completion, no retries or regeneration, no more than 30 minutes. The goal is minimal spend, not spending the allowance. No additional approval of this same test scope is required.
+
+At 4:54 PM Central, both database SMS schedulers remained disabled, with zero app chat sessions and zero app turns. No new owner inquiry was present. The existing app release remains e41e4a38ec07da19320427be8a9474d8dc1ff886. Retell dashboard authentication expired and the owner was asked to complete its identity check directly. Provider balances and any provider-enforced spending limits must be checked after sign-in; no current balance or enforced dollar ceiling has yet been verified. Request-count and local response-length limits do not by themselves constitute a provider billing cap. No paid test request has been made.
+
+The production environment currently has no RETELL_APP_* or RETELL_SMS_TRANSPORT settings. The enqueue default is retell_native. **Prepare and deploy the app_twilio intake route with sending still disabled before asking the owner to submit the fresh inquiry.** The initial request to submit was premature; the owner was told to hold off. Do not relabel an existing native job, extend its receipt deadline, or replay its notification claim.
+
+Next steps: (1) refresh Retell/Twilio billing and verify a defensible test cost bound within $5; (2) configure app intake while global sending and both schedulers remain paused; (3) verify the effective deployment, then obtain the real fresh consented form; (4) verify CRM/consent/follow-up, activate exact job/phone/first-turn scope with a <=30-minute expiry; (5) verify acknowledgment delivery, one owner reply and generated reply, STOP suppression, final balances and paused state. Do not activate broad outreach or collection.
+
+Vercel connector environment listing returned 403; the scoped CLI fallback has no credentials. The signed-in Vercel dashboard is accessible and can be used for the authorized configuration. This is not a reason to request new spending authorization.
