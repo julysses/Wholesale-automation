@@ -1,3 +1,7 @@
+## Workflow email investigation — October 18, 2026
+
+PR20's frontend CI failure was a stale test selector: the export control was renamed to `Export dialer and SMS preparation`, but the regression test still requested `Export dialer preparation`. Updated that assertion without changing application behavior or weakening its download/API assertions. All three DailyLists tests pass locally. Full CI is pending after this push. No collection, tracing, outreach or production deployment was activated. Do not merge this older collector branch into production solely on a green test; current live runtime and later onboarding/SMS work are on codex/retell-sms-production. The separate scheduled availability monitor repair is documented in the active chat outputs/WholesaleOS-Workflow-Alerts.md.
+
 ## Provider support submitted — October15,2026
 
 User explicitly approved sending the prepared investigation to Twilio and Retell. Both submissions verified in authenticated portals:

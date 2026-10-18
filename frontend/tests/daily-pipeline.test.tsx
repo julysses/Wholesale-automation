@@ -46,7 +46,7 @@ it('downloads one bulk package rather than exporting the visible page', async ()
   mocks.fetch.mockImplementation(async (url:string) => url.endsWith('/dialer-export')
     ? {ok:true,blob:async()=>new Blob(['test'])} : previous(url));
   const view=render(<QueryClientProvider client={new QueryClient()}><DailyLists /></QueryClientProvider>);
-  fireEvent.click(screen.getByRole('button',{name:'Export dialer preparation'}));
+  fireEvent.click(screen.getByRole('button',{name:'Export dialer and SMS preparation'}));
   await waitFor(()=>expect(click).toHaveBeenCalledOnce());
   expect(mocks.fetch).toHaveBeenCalledWith('/api/operations/lists/dialer-export');
   expect(create).toHaveBeenCalledOnce();
