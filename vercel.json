@@ -45,5 +45,10 @@
       "path": "/webhooks/_worker/sms-nurture",
       "schedule": "0 15 * * 1-5"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "claude/ai-wholesaling-agency-KkDF1": false
+    }
+  }
 }
