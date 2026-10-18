@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-18",
+  "monitor_commit": "ad70c7c29d618efe3aad848a386ca1779f0e7b8f",
+  "app_merge_commit": "e3837eca8e95043409cdc22392d73e04d53d5589",
+  "collector_commit": "8bec6d825071993d59bc623b346046c3f249fba2",
+  "passed_runs": [
+    39160229457,
+    39160229620,
+    39160243874,
+    39160192718
+  ],
+  "targeted_tests": 31,
+  "collector_targeted_tests": 3,
+  "vercel_runtime": "e41e4a38ec07da19320427be8a9474d8dc1ff886",
+  "vercel_deployment": "dpl_7cfMq9vkEz85jBhexsTDfhSjPB6q",
+  "railway_auto_deployments": [
+    {
+      "project": "84e1c85f-f9c9-4ceb-8538-0a0092d22d1c",
+      "deployment": "ee755dae-0891-41e0-8021-4f0c999aa77b",
+      "status": "SUCCESS"
+    },
+    {
+      "project": "fd6be8ae-5166-48b8-9baf-dccc976bde2e",
+      "deployment": "50c0cf71-5888-4042-8e85-98ab8b57300f",
+      "status": "SUCCESS"
+    },
+    {
+      "project": "8a8dc45c-5c24-4a50-877f-1cd48caf1577",
+      "deployment": "bf158634-88aa-4a64-80aa-0e7f6c8bce7d",
+      "status": "SUCCESS",
+      "unrelated_staged_changes_preserved": true
+    }
+  ],
+  "outreach_enabled": false,
+  "workers_invoked": false,
+  "retell_billing_response_received": false
+}
