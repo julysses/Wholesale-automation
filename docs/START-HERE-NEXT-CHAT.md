@@ -1,3 +1,7 @@
+## Latest checkpoint — October 18, 5:47 PM Central
+
+Hilltop submit-feedback fix 9e35770 is pushed to julysses/HilltopHome main and verified live: visible validation summary and first-invalid-field focus. Tests/typecheck/build pass. Current app SMS test receipt 518f6faa-0131-4871-9ad5-4449a1372957, lead 2a01a114-1290-4d80-b723-1d9850c9eeb4, app_twilio job 4670e6a3-3e90-5668-afa8-33d09849e6a0 arrived from the owner at Jays Dallas with consent. Job expires 22:52:34 UTC October18; do not extend/replay. No SMS/paid generation. Automatic approval review blocked global SMS_LIVE_ENABLED=true; specific user approval question pending. Saved RETELL_SMS_LIVE_ENABLED and RETELL_APP_AUTOMATION_ENABLED restored false; no activating deployment occurred, both DB schedulers remain false. See docs/retell-app-owner-acceptance.md for exact state and resume steps. User's latest budget is $5 combined existing provider credit, not historical $1.
+
 ## Workflow alert repair completed — October 18, 2026, 2:49 PM Central
 
 Investigated the latest 100 GitHub runs. Recent availability failures were Hilltop (39156821119,39077341645) and Jays (39046990761), with CRM readiness true; original script swallowed the error, so ten-second timings suggest but do not prove transport timeouts. Added three-attempt bounded transient retries, structured reason/status/timing, GitHub summary and failure/recovery annotations. Persistent outages, TLS/permanent HTTP errors and invalid readiness still fail. Node24 checkout/setup actions pinned. 31 targeted tests pass.
