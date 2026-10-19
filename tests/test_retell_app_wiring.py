@@ -269,3 +269,19 @@ def test_signed_api_webhook_is_archive_only(api_db, monkeypatch):
         headers={'x-retell-signature': _signature(body, 'sms-test')})
     assert response.status_code == 200 and response.json()['history_source'] == 'generation_only'
     assert 'sms_events' not in api_db.tables
+
+
+def test_live_api_receipt_agent_version_without_legacy_version_is_archive_only(api_db):
+    payload = api_event()
+    payload['chat']['agent_version'] = payload['chat'].pop('version')
+    before = deepcopy(api_db.tables)
+    assert record_chat_event(api_db, payload)['history_source'] == 'generation_only'
+    assert len(api_db.tables.pop('webhook_jobs')) == 1
+    assert api_db.tables == before
+
+
+@pytest.mark.parametrize('version', [3, True, '2', None])
+def test_api_receipt_conflicting_live_version_cannot_hide_behind_legacy(api_db, version):
+    payload = api_event(); payload['chat']['agent_version'] = version
+    with pytest.raises(ValueError): record_chat_event(api_db, payload)
+    assert 'webhook_jobs' not in api_db.tables

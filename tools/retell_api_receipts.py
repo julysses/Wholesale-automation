@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from uuid import UUID, NAMESPACE_URL, uuid5
+from tools.retell_api_chat import matches_agent_version
 
 
 def record_api_chat_event(sb, payload):
@@ -25,7 +26,7 @@ def record_api_chat_event(sb, payload):
     if (session.get('id') != session_id or session.get('lead_id') != lead_id
             or metadata != {'operation_id': session_id, 'lead_id': lead_id, 'transport': 'wholesaleos_twilio'}
             or chat.get('agent_id') != session.get('agent_id')
-            or type(chat.get('version')) is not int or chat['version'] != session.get('agent_version')
+            or not matches_agent_version(chat, session.get('agent_version'))
             or (session.get('chat_id') is not None and chat['chat_id'] != session['chat_id'])
             or (session.get('chat_id') is None and session.get('status') not in {'creating', 'review'})):
         raise ValueError('App API chat does not match its claimed session')

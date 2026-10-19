@@ -4,7 +4,7 @@ from uuid import UUID
 
 import requests
 
-from tools.retell_api_chat import _identifier
+from tools.retell_api_chat import _identifier, matches_agent_version
 from tools.retell_api_turns import _row
 
 
@@ -43,4 +43,12 @@ def inspect_session(sb, session_id, chat_id):
         checks[field + '_integer'] = type(data.get(field)) is int
         checks[field + '_matches'] = (type(data.get(field)) is int
                                      and data[field] == session.get('agent_version'))
-    return {'status': 'inspected', 'checks': checks, 'dispatch_authorized': False}
+    checks['pinned_version_valid'] = matches_agent_version(data, session.get('agent_version'))
+    history = {}
+    for field in ('transcript', 'message_with_tool_calls', 'transcript_with_tool_calls', 'messages'):
+        if field in data:
+            value = data[field]
+            history[field] = {'type': type(value).__name__,
+                              'empty': value == '' or value == []}
+    return {'status': 'inspected', 'checks': checks, 'history_shape': history,
+            'dispatch_authorized': False}

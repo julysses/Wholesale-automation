@@ -1,0 +1,20 @@
+{
+  "diagnostic_deployment": "dpl_Bb2LJ1Fken5SDTarvHwFPocBzXBq",
+  "diagnostic_commit": "16403970bdf3fb87086e22006373d798762a12e8",
+  "diagnostic_ci": 39328098517,
+  "request_id": 28,
+  "http_status": 200,
+  "provider_get": {
+    "chat_id_match": true,
+    "chat_type_api_chat": true,
+    "agent_id_match": true,
+    "metadata_match": true,
+    "ongoing": true,
+    "version_present": false,
+    "agent_version_integer": true,
+    "agent_version_matches_pin": true
+  },
+  "regression_before_fix": "6 failed, 111 passed",
+  "scope": "Read-only provider lookup; no POST, SMS, generation, state transition or configuration activation",
+  "remaining": "Deploy shared strict alias validation; verify live; reconcile held attempt without replay; owner reply and STOP acceptance"
+}

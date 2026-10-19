@@ -115,3 +115,26 @@ def test_failed_session_lookup_cannot_generate(monkeypatch,verified_api_chat,sta
     post=Mock();monkeypatch.setattr('tools.retell_api_chat.requests.post',post)
     with pytest.raises(ChatOutcomeUncertain):client().complete('chat_test','Real reply',OP,LEAD)
     post.assert_not_called()
+
+
+def test_live_agent_version_schema_creates_and_completes_without_legacy_field(monkeypatch, verified_api_chat):
+    live = session(); live['agent_version'] = live.pop('version')
+    post = Mock(side_effect=[response(live), response(reply())])
+    monkeypatch.setattr('tools.retell_api_chat.requests.post', post)
+    verified_api_chat.return_value = response(live, 200)
+    chat_id = client().create(OP, LEAD)
+    assert client().complete(chat_id, 'Please call ASAP', OP, LEAD)[0].message_id == 'msg_1'
+    assert post.call_count == 2
+
+
+@pytest.mark.parametrize('patch', [
+    {'agent_version': 3}, {'agent_version': True}, {'agent_version': '2'},
+    {'agent_version': 2, 'version': 3}, {'agent_version': 2, 'version': True},
+    {'agent_version': None},
+])
+def test_live_version_invalid_or_conflicting_alias_stays_held(monkeypatch, patch):
+    live = session(); live.pop('version'); live.update(patch)
+    post = Mock(return_value=response(live))
+    monkeypatch.setattr('tools.retell_api_chat.requests.post', post)
+    with pytest.raises(ChatOutcomeUncertain): client().create(OP, LEAD)
+    assert post.call_count == 1

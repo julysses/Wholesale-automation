@@ -31,6 +31,18 @@ def _identifier(value):
     return isinstance(value, str) and re.fullmatch(r'[A-Za-z0-9_-]{1,128}', value) is not None
 
 
+def matches_agent_version(data, expected):
+    """Accept the live agent_version or documented version alias, never conflicts.
+
+    Retell's live API-chat GET and signed webhooks use agent_version. Some
+    published examples use version. Every supplied field must be an exact int
+    matching the pinned release; a valid alias cannot mask an invalid one.
+    """
+    fields = [field for field in ('agent_version', 'version') if field in data]
+    return (type(expected) is int and bool(fields)
+            and all(type(data[field]) is int and data[field] == expected for field in fields))
+
+
 def agent_texts(messages):
     """Extract only agent text; reject tools, unknown roles and unsupported media.
 
@@ -90,7 +102,7 @@ class RetellAPIChat:
         if (not isinstance(data, dict) or not _identifier(data.get('chat_id'))
             or (chat_id is not None and data.get('chat_id') != chat_id)
             or data.get('chat_type') != 'api_chat' or data.get('agent_id') != self._agent
-            or type(data.get('version')) is not int or data['version'] != self._version
+            or not matches_agent_version(data, self._version)
             or data.get('chat_status') != 'ongoing' or data.get('metadata') != metadata):
             raise ChatOutcomeUncertain('Retell session receipt does not match the claimed operation')
 
