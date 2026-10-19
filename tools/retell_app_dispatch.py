@@ -18,7 +18,7 @@ from tools.operational_alerts import record_provider_alert
 from tools.sms_reply_budget import short_sms_reply
 from tools.retell_app_test_scope import test_selected, test_window, operation_allowed
 
-APP_ACKNOWLEDGMENT = ('Hilltop Home Co. (The Jays Dallas, LLC): We received your inquiry about selling '
+APP_ACKNOWLEDGMENT = ('Hilltop Home Co. (The Jays Dallas, LLC): We received your inquiry to sell '
                        'your house. Do you have time for a quick call? Reply STOP to opt out or HELP for help.')
 
 

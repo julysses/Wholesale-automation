@@ -10,7 +10,7 @@ Use the existing published agent **agent_193fc3ebd9844b50d54352f200**, version *
 
 The initial SMS is exactly:
 
-> Hilltop Home Co. (The Jays Dallas, LLC): We received your inquiry about selling your house. Do you have time for a quick call? Reply STOP to opt out or HELP for help.
+> Hilltop Home Co. (The Jays Dallas, LLC): We received your inquiry to sell your house. Do you have time for a quick call? Reply STOP to opt out or HELP for help.
 
 Updated at the owner's request October19. The completed test used the earlier acknowledgment; historical messages are not rewritten or resent. Contact window remains9AM–7PMCentral, before the requested8PM cutoff. Wording asks availability; it does not initiate or promise a call.
 
@@ -127,3 +127,5 @@ Actual inbound “Please call ASAP”, SMcc22896127e52cd9203952d6d85d042c, persi
 Both DB SMS schedulers and app/native cron are off. All three production sending flags restored false and same runtime redeployed as dpl_BzrRs8d9rtUE1VSMbe3BYN4fjmbz, READY on primary alias. Authenticated automatic probe24 returned200/disabled/processed0/dispatch_authorized:false. Owner was asked to send STOP; confirmation and CRM suppression verification pending. No additional provider requests authorized as retries.
 
 Owner requested selling-inquiry/quick-call wording; updated APP_ACKNOWLEDGMENT, preserving brand and STOP/HELP. Existing9AM–7PMCentral SMS and weekday-call checks retained. Local targeted tests:126 passed (dispatch, intake wiring, calls). Updated wording is awaiting deployment at this checkpoint. Full operational launch remains incomplete.
+
+October19 wording refinement: use “inquiry to sell” so the full acknowledgment is exactly160 GSM characters, one SMS segment. This preserves the owner's requested meaning and minimizes carrier cost. No message is sent by this change.
