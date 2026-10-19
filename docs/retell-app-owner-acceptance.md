@@ -102,3 +102,12 @@ Hilltop's incomplete form showed inline errors above the submit button without m
 
 
 5:47 PM Central pause checkpoint: the switch approval is still pending. Restored saved RETELL_SMS_LIVE_ENABLED=false and RETELL_APP_AUTOMATION_ENABLED=false. No deployment was made with test activation; the effective runtime remains the previously verified paused dpl_E9R2yNqXgTdRVh7rGkYab9venhLV. SMS_LIVE_ENABLED was not changed. Exact test job/window values remain saved but cannot activate sending with the two flags false. Latest DB verification: both schedulers false, exact job scheduled/unclaimed, zero matching SMS events. Resume only after the specific switch approval; recheck the immutable job deadline before activation and never extend it.
+
+
+## October 19, 1:53 PM Central — production switch explicitly approved
+
+The owner replied “approved” to the pending temporary SMS_LIVE_ENABLED switch request. This resolves the October18 automatic-review approval blocker; do not ask for the same switch permission again. All original owner-only scope, two outbound messages, one generation, $5 combined existing-credit ceiling and return-to-paused limits remain. Yesterday's app job is expired and was never claimed. Do not renew or replay it.
+
+Live recheck: production remains READY dpl_E9R2yNqXgTdRVh7rGkYab9venhLV / e41e4a38ec07da19320427be8a9474d8dc1ff886. Both database schedulers false; app sessions0 and turns0. Retell balance $9.96, Twilio $1.43886, both auto-recharge off. Retell ticket65825 still has no response after the October16 billing question. Published agent version pin2 and sole allowed recipient ending0280 were verified.
+
+Saved (not deployed) SMS_LIVE_ENABLED=true, RETELL_SMS_LIVE_ENABLED=true and RETELL_APP_AUTOMATION_ENABLED=true after the new explicit approval. Exact-job/window fields still point to the expired October18 test and must not be deployed as a valid test. Asked the owner for one fresh consented inquiry at https://thejaysdallas.com/sell. At18:53UTC no fresh owner job exists. Keep both schedulers paused. When it arrives: verify receipt/consent/task/phone, replace exact job and <=30-minute window, redeploy the same reviewed runtime, confirm READY, then run the approved automatic test before the new immutable15-minute acknowledgment expiry. No SMS, provider generation or new test charge so far.
