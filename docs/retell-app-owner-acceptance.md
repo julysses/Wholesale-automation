@@ -1,6 +1,6 @@
 # WholesaleOS owner-only SMS acceptance
 
-Prepared October 16, 2026. Approved by the owner October 16, 2026; not executed. Keep Twilio for delivery and Retell V2 for conversation generation. The earlier approved native one-message retest is separate; do not run both tests or reuse that approval for this expanded test.
+Prepared October 16, 2026. Approved by the owner October 16, 2026; bounded test executed October 19 with acknowledgment delivered and reply generation held for review. Keep Twilio for delivery and Retell V2 for conversation generation. The earlier approved native one-message retest is separate; do not run both tests or reuse that approval for this expanded test.
 
 ## Approved exception to the SMS pause
 
@@ -10,7 +10,9 @@ Use the existing published agent **agent_193fc3ebd9844b50d54352f200**, version *
 
 The initial SMS is exactly:
 
-> Hilltop Home Co. (The Jays Dallas, LLC): Thanks for your property inquiry. Julio will follow up. Reply STOP to opt out or HELP for help.
+> Hilltop Home Co. (The Jays Dallas, LLC): We received your inquiry about selling your house. Do you have time for a quick call? Reply STOP to opt out or HELP for help.
+
+Updated at the owner's request October19. The completed test used the earlier acknowledgment; historical messages are not rewritten or resent. Contact window remains9AM–7PMCentral, before the requested8PM cutoff. Wording asks availability; it does not initiate or promise a call.
 
 During **9 AM–7 PM Central**, temporarily enable the new app transport and automatic scheduler for **one exact inquiry/job, only phone ending 0280, only the first actual reply, and at most 30 minutes**. Native scheduling, general sending and all-consented-form mode stay off. The maximum is **two application SMS messages**: the fixed acknowledgment and one short Retell-generated response (at most 198 UTF-16 units, conservatively no more than three long-code SMS segments) to the owner's actual inquiry reply. Retell may perform one API-chat creation and one completion; no automatic retry or regeneration. Twilio may additionally issue its standard STOP confirmation. Existing carrier delays can extend handset arrival beyond the dispatch window.
 
@@ -114,3 +116,14 @@ Saved (not deployed) SMS_LIVE_ENABLED=true, RETELL_SMS_LIVE_ENABLED=true and RET
 
 
 October19,1:56PMCentral waiting checkpoint: no fresh owner inquiry has arrived. Restored all three saved flags to false (SMS_LIVE_ENABLED, RETELL_SMS_LIVE_ENABLED, RETELL_APP_AUTOMATION_ENABLED) while waiting. No activation deployment or provider call occurred; both DB schedulers remain disabled. Explicit approval persists: do not ask again. On owner submission, verify the new consented receipt first, then set all three flags true with the new exact job and <=30-minute window, deploy reviewed runtime, and execute the existing approved test.
+
+
+## October 19, 2:36 PM Central — acknowledgment passed; generation held; paused
+
+Fresh Jays submission b69e7162-472d-44ee-9ee4-eeff119a0515 created lead77c52937-9f58-4559-895e-95c2582e0e78 and app job7696b045-b19c-5fe6-8d32-1ed50e4650b3 with SMS consent. Exact owner-only test window19:22–19:52UTC, phone0280, version2. Runtime e41e4a3 activated as dpl_FiFcSkPkEwQTCkXa97Q9CyX6bknL. Automatic acknowledgment request22 submitted once; TwilioSMe78fe4da5534dd200c7d7f501713772b delivered with signed callback and correct Messaging Service. Owner confirmed receipt. One GSM segment, displayed Twilio base price$0.0083 (not full combined fees). Assigned follow-up task and owner notification completed; email provider accepted.
+
+Actual inbound “Please call ASAP”, SMcc22896127e52cd9203952d6d85d042c, persisted as turn8b007254-c6d2-59ac-a567-a3473e8583f9. Request23 tried creation once at19:27UTC, then held session/turn in review; chat_id and outbound_id remain null. Retell dashboard independently shows ongoing chat_198280c62b00e25c586f1e16ceb, version2, matching operation/lead/transport metadata, no transcript, cost$0.000. No completion or second SMS evidenced. Retell balance still$9.96, auto-recharge off. Do not recreate, retry, requeue or treat this as automated reply acceptance. Read-only reconciliation remains open.
+
+Both DB SMS schedulers and app/native cron are off. All three production sending flags restored false and same runtime redeployed as dpl_BzrRs8d9rtUE1VSMbe3BYN4fjmbz, READY on primary alias. Authenticated automatic probe24 returned200/disabled/processed0/dispatch_authorized:false. Owner was asked to send STOP; confirmation and CRM suppression verification pending. No additional provider requests authorized as retries.
+
+Owner requested selling-inquiry/quick-call wording; updated APP_ACKNOWLEDGMENT, preserving brand and STOP/HELP. Existing9AM–7PMCentral SMS and weekday-call checks retained. Local targeted tests:126 passed (dispatch, intake wiring, calls). Updated wording is awaiting deployment at this checkpoint. Full operational launch remains incomplete.

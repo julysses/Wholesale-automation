@@ -18,8 +18,8 @@ from tools.operational_alerts import record_provider_alert
 from tools.sms_reply_budget import short_sms_reply
 from tools.retell_app_test_scope import test_selected, test_window, operation_allowed
 
-APP_ACKNOWLEDGMENT = ('Hilltop Home Co. (The Jays Dallas, LLC): Thanks for your property inquiry. '
-                       'Julio will follow up. Reply STOP to opt out or HELP for help.')
+APP_ACKNOWLEDGMENT = ('Hilltop Home Co. (The Jays Dallas, LLC): We received your inquiry about selling '
+                       'your house. Do you have time for a quick call? Reply STOP to opt out or HELP for help.')
 
 
 def queue_validity(expires_at, now=None):
