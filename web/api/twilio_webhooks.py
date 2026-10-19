@@ -8,11 +8,13 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from starlette.datastructures import FormData
+from starlette.concurrency import run_in_threadpool
 
 from config.settings import settings
 from tools.crm import get_supabase_client
 from tools.operational_alerts import record_provider_alert
 from tools.twilio_receipts import reconcile_twilio_callback
+from tools.seller_reply_email import notify_reply
 from tools.retell_sms import recipient_opted_out
 from tools.retell_reply_routing import reply_redirect
 from tools.retell_app_dispatch import sync_outcome as sync_app_outcome
@@ -102,6 +104,15 @@ async def _receive(request: Request, kind: str) -> Response:
         logger.exception("Twilio receipt failed for %s", data["MessageSid"])
         raise HTTPException(503, "Receipt storage unavailable")
     if kind == 'inbound':
+        try:
+            email = await run_in_threadpool(notify_reply, sb, event_id)
+            if email.get('status') == 'not_found':
+                raise RuntimeError('Saved carrier receipt missing')
+        except Exception:
+            # Carrier retries reuse the saved event and atomic email claim. Never
+            # silently acknowledge a receipt whose owner alert could not persist.
+            logger.exception('Owner reply email unconfirmed for %s', event_id)
+            raise HTTPException(503, 'Owner reply notification unavailable') from None
         try:
             app_owned = queue_app_reply(sb, data, result, event_id)
         except Exception:

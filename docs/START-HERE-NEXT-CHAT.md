@@ -1,3 +1,11 @@
+## Seller-reply email alerts prepared — October 19, 2026
+
+Owner confirmed the missing notification was “Please call ASAP” and explicitly selected EMAIL alerts when CRM is closed. Added tools/seller_reply_email.py to send the configured owner an internal plain-text email for each stored inbound Twilio event, with sender, message and exact lead link. The existing atomic claim_email_message/EmailClient ledger deduplicates concurrent carrier retries and never replays accepted/attempting/unknown sends. Email reference uses UUIDv5 namespace wholesaleos:seller-reply-email:{eventUUID}, linked into the original app notification metadata. Recipient comes only from NOTIFICATION_EMAIL; no request can supply recipient/body. STOP gets an opt-out warning; no suppression clearing or seller send.
+
+Authenticated inbound callback calls email after receipt/task/suppression commit, before optional AI routing. Uncommitted notification/email evidence causes retryable503; durable email claims make retries safe. A secret-protected POST /webhooks/_worker/seller-reply-email/{event_id} recovers only one saved owner email, with no Retell or seller texting. Existing email enabled/allowlist/suppression checks remain. No schema migration, scheduler installation or sending-flag change.
+
+Validation: full1153 pytest tests plus6 subtests passed. Awaiting exact-commit CI/deployment and one live owner email for stored event8b007254-c6d2-59ac-a567-a3473e8583f9. This user-authorized verification must not replay the carrier webhook, Retell turn or seller SMS. Verify email ledger and signed SendGrid delivery evidence; provider acceptance alone is not inbox confirmation. General seller sending remains paused; Retell reply hold and STOP acceptance remain open.
+
 ## Incoming SMS notification repair deployed — October 19, 2026, 2:58 PM Central
 
 Production7410eb0ccb08d413471243c5acd8658b1dad0575, deployment dpl_HzWHD6QzYucTiXAXSUfzEU44edMr READY on wholesale-automation.vercel.app. All four CI39314687123 jobs passed.179 frontend tests, build, no new lint findings (147 existing),3 isolated SQL receipt/task/STOP tests pass. Runtime readiness200; initial error/fatal log scan no groups. Authenticated automatic probe26 returned200 disabled/processed0/dispatch_authorized:false. Both DB schedulers and cron5/6 remainoff; no outbound message or paid generation in this repair.

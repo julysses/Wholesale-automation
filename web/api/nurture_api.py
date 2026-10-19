@@ -275,3 +275,11 @@ async def run_app_automatic(request: Request):
     if scope() is None:
         return {'status': 'disabled', 'processed': 0, 'dispatch_authorized': False}
     return await run_in_threadpool(step, _db())
+
+
+@router.post('/webhooks/_worker/seller-reply-email/{event_id}')
+async def run_seller_reply_email(event_id: UUID, request: Request):
+    """Recover one owner alert from its saved receipt; cannot replay seller outreach."""
+    _require_app_worker(request)
+    from tools.seller_reply_email import notify_reply
+    return await run_in_threadpool(notify_reply, _db(), str(event_id))
