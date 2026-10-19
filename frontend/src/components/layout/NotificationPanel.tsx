@@ -88,7 +88,7 @@ function NotifCard({
 // ── Main panel + bell button ──────────────────────────────────────────────────
 export function NotificationPanel() {
   const [open, setOpen] = useState(false);
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+  const { notifications, unreadCount, loading, error, refresh, markRead, markAllRead } = useNotifications();
   const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -113,7 +113,7 @@ export function NotificationPanel() {
     <div ref={panelRef} className="relative">
       {/* Bell button */}
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { if (!open) void refresh(); setOpen(!open); }}
         className="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
         aria-label="Notifications"
       >
@@ -155,11 +155,14 @@ export function NotificationPanel() {
           </div>
 
           {/* Notification list */}
+          {error && <div role="alert" className="px-4 py-3 text-sm text-red-700">
+            {error} <button onClick={() => void refresh()} className="underline">Retry notifications</button>
+          </div>}
           <div className="overflow-y-auto max-h-[480px]">
             {notifications.length === 0 ? (
               <div className="py-12 text-center text-gray-400">
                 <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No notifications yet</p>
+                <p className="text-sm">{loading ? 'Loading notifications…' : error ? 'Notifications unavailable' : 'No notifications yet'}</p>
               </div>
             ) : (
               <div className="p-3 space-y-2">

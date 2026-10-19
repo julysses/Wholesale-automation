@@ -1,3 +1,11 @@
+## Incoming SMS notification repair prepared — October 19, 2026, 2:54 PM Central
+
+Owner reported no notification after replying. Twilio and DB show only one inbound today: “Please call ASAP” at19:26:50UTC, event8b007254-c6d2-59ac-a567-a3473e8583f9, lead77c52937-9f58-4559-895e-95c2582e0e78. Receipt and unread admin notification existed. Existing production Leads tab had stale lazy chunk failure; Reload recovered it and the bell visibly showed the reply. Follow-up task had no owner/due date, excluding it from today's work. Asked whether a different second reply was sent; answer pending. No STOP acceptance yet.
+
+Prepared notification refresh on bell/focus/reconnect/visible30-second polling, SMS toasts with ID dedupe, safe error/retry display, stale-response protection, and read-state write checks. New migration20261019195020_sms_reply_notification_handoff preserves receipt/STOP/dedupe and assigns new reply tasks to approved lead owner or configured intake owner, due immediately. Notification reaches owner plus existing admin audience. Backfill is limited to carrier-backed active reply tasks; preflight finds exactly1 eligible task. No provider calls, outbound permissions, scheduler or RLS expansion.
+
+Validation:179 frontend tests, production build, lint baseline (no new findings),3 PGlite receipt/task/STOP tests pass. Awaiting push/CI, single migration application and paused runtime deployment. Retell creation review hold remains unresolved; no retry or new paid generation. Existing test expense approximately$0.02360, Retell balance unchanged$9.96. Full launch incomplete.
+
 ## Current checkpoint — October 19, 2:41 PM Central
 
 Requested acknowledgment wording is deployed at commit b6a9027e383dc250ea077d6bf3e721a4c8c01e9f, Vercel dpl_6EhZcvB2cicqnwC3V6Yqt1CmqP8v, READY on wholesale-automation.vercel.app with no alias error. Exact CI39312399281 passed all four jobs; targeted dispatch/intake/call tests126 passed. Final text is160 GSM characters/one segment: “Hilltop Home Co. (The Jays Dallas, LLC): We received your inquiry to sell your house. Do you have time for a quick call? Reply STOP to opt out or HELP for help.” Existing9AM–7PMCentral contact-window guards remain; no calling activation. Historical messages/jobs were not edited or resent.

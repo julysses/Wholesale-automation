@@ -4,7 +4,7 @@ const mock=vi.hoisted(()=>({rows:[] as Record<string,unknown>[], emit:null as nu
 vi.mock('sonner',()=>({toast:{success:mock.toast,error:mock.toast}}));
 vi.mock('@/lib/supabase',()=>({supabase:{
  from:()=>({select:()=>({order:()=>({limit:async()=>({data:mock.rows})})})}),
- channel:()=>({on:(_kind:unknown,_filter:unknown,callback:typeof mock.emit)=>{mock.emit=callback;return {subscribe:()=>({})};}}),
+ channel:()=>{const channel={on:(_kind:unknown,filter:{event:string},callback:typeof mock.emit)=>{if(filter.event==='INSERT')mock.emit=callback;return channel;},subscribe:()=>channel};return channel;},
  removeChannel:vi.fn(),
 }}));
 import { useNotifications } from '@/hooks/useNotifications';
