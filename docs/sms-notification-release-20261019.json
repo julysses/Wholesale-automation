@@ -1,0 +1,23 @@
+{
+  "commit": "7410eb0ccb08d413471243c5acd8658b1dad0575",
+  "deployment": "dpl_HzWHD6QzYucTiXAXSUfzEU44edMr",
+  "state": "READY",
+  "ci": 39314687123,
+  "migration_local_version": "20261019195020",
+  "migration_deployed_version": "20261019195321",
+  "migration_name": "sms_reply_notification_handoff",
+  "frontend_tests": 179,
+  "sql_tests": 3,
+  "paused_probe": {
+    "id": 26,
+    "status_code": 200,
+    "status": "disabled",
+    "processed": 0,
+    "dispatch_authorized": false
+  },
+  "reply_task_assigned": true,
+  "reply_task_due_today": true,
+  "additional_sms_sent": 0,
+  "retell_reply_acceptance": "unresolved",
+  "stop_acceptance": "pending"
+}
