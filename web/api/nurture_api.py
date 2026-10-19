@@ -283,3 +283,14 @@ async def run_seller_reply_email(event_id: UUID, request: Request):
     _require_app_worker(request)
     from tools.seller_reply_email import notify_reply
     return await run_in_threadpool(notify_reply, _db(), str(event_id))
+
+
+@router.get('/webhooks/_worker/retell-app/inspect/{session_id}/{chat_id}')
+async def inspect_app_session(session_id: UUID, chat_id: str, request: Request):
+    """Read-only schema/identity checks, available while sending is paused."""
+    _require_app_worker(request)
+    from tools.retell_api_inspect import inspect_session
+    from tools.retell_api_chat import _identifier
+    if not _identifier(chat_id):
+        raise HTTPException(422, 'Invalid chat identifier')
+    return await run_in_threadpool(inspect_session, _db(), str(session_id), chat_id)

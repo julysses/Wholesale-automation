@@ -1,3 +1,7 @@
+## Retell reply investigation resumed — October 19, 2026, 4:35 PM Central
+
+User authorized continuing repair and bounded tests within cumulative $5. No new paid operation or sending activation. Production held chat198280c62b00e25c586f1e16ceb still shows matching metadata/version2, ongoing, no messages, cost0. Earlier signed native receipts use agent_version; current API adapter requires version. This is a hypothesis, not yet proven against the current API chat. Added secret-protected GET /webhooks/_worker/retell-app/inspect/{session_id}/{chat_id}: reads an existing DB session and provider chat, reports only boolean identity/version checks, never creates/completes/binds/sends. Eleven focused tests passed; full tests pending. Deploy paused, read the exact held chat, reproduce confirmed mismatch before fixing. Do not replay historical expired inquiry/turn. Remaining: automatic reply, owner STOP, both-site acceptance, onboarding gates. Previous combined cost approximately $0.02360; refresh balances before new paid test.
+
 ## Seller-reply email alerts LIVE and delivery verified — October 19, 2026, 3:10 PM Central
 
 User explicitly selected EMAIL alerts for incoming seller messages when the CRM is closed. Production code175b3d049929c6749ecc343bb86a23078471c99f deployed as dpl_8hG98656jsT5brbuavz9STn9vZNV, READY on primary wholesale-automation.vercel.app. All four CI39316381390 jobs passed. Local1153 pytest tests plus6 subtests passed. Production readiness200; initial error/fatal log scan empty. No schema, scheduler or environment changes.
