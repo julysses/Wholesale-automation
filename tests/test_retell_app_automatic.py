@@ -135,3 +135,22 @@ def test_automatic_route_is_post_authenticated_and_disabled_before_storage(produ
     assert client.post(path).status_code==401
     assert client.post(path,headers=auth).json()['status']=='disabled'
     get_db.assert_not_called()
+
+
+@pytest.mark.parametrize('action,reference,expected', [('generate', TURN, True), ('reply', TURN, True),
+    ('ack', JOB, False), ('generate', JOB, False), ('reply', JOB, False)])
+def test_exact_reply_retest_cannot_repeat_ack_or_select_any_other_input(production, monkeypatch, action, reference, expected):
+    db, workers = production; configure_test(monkeypatch)
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_TURN_ID', TURN)
+    db.rpc.return_value.execute.return_value.data.update(action=action, reference=reference)
+    result = auto.step(db)
+    db.rpc.assert_called_once_with('pick_retell_app_work', {'p_job': JOB, 'p_first_turn_only': False, 'p_phones': [PHONE]})
+    assert result['processed'] == (1 if expected else 0)
+    assert sum(worker.call_count for worker in workers.values()) == (1 if expected else 0)
+
+
+def test_invalid_exact_reply_target_cannot_fall_back_to_first_turn(production, monkeypatch):
+    db, workers = production; configure_test(monkeypatch)
+    monkeypatch.setenv('RETELL_APP_AUTOMATION_TEST_TURN_ID', 'invalid')
+    assert auto.step(db)['status'] == 'disabled'
+    db.rpc.assert_not_called()

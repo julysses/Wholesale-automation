@@ -22,7 +22,7 @@ def scope():
         window = test_window()
         if window is None:
             return None
-        return {'p_job': window['job'], 'p_first_turn_only': True, 'p_phones': window['phones']}
+        return {'p_job': window['job'], 'p_first_turn_only': 'turn' not in window, 'p_phones': window['phones']}
     if not enabled('RETELL_APP_ACCEPTANCE_VERIFIED'):
         return None
     if not all_consented_forms() and not phones:
@@ -52,6 +52,12 @@ def step(sb):
     # mode/expiry after selection and use the existing exact worker/SQL claims.
     if scope() != selected_scope:
         return {'status': 'disabled', 'processed': 0, 'dispatch_authorized': False}
+    if test_selected():
+        window = test_window()
+        if window is None:
+            return {'status': 'disabled', 'processed': 0, 'dispatch_authorized': False}
+        if 'turn' in window and (action == 'ack' or reference != window['turn']):
+            return {'status': 'outside_test_turn', 'processed': 0, 'dispatch_authorized': False}
     worker = {'ack': process_ack, 'generate': process_turn, 'reply': process_reply}[action]
     outcome = worker(sb, reference)
     return {'status': 'processed', 'processed': 1, 'action': action,

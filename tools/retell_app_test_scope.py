@@ -26,7 +26,13 @@ def test_window(now=None):
                 or start.tzinfo is None or end.tzinfo is None or now.tzinfo is None
                 or not start <= now < end or not timedelta(0) < end-start <= timedelta(minutes=30)):
             return None
-        return {'job': job, 'expires': end, 'phones': phones}
+        window = {'job': job, 'expires': end, 'phones': phones}
+        if 'RETELL_APP_AUTOMATION_TEST_TURN_ID' in os.environ:
+            # A separately selected fresh reply can test a reconciled existing
+            # conversation. It cannot authorize an acknowledgment or old input.
+            window['turn'] = str(UUID(os.environ['RETELL_APP_AUTOMATION_TEST_TURN_ID']))
+            window['started'] = start
+        return window
     except (ValueError, TypeError):
         return None
 
@@ -44,7 +50,22 @@ def operation_allowed(sb, job_id, phone, turn_id=None):
     window = test_window()
     if window is None or job_id != window['job'] or phone not in window['phones']:
         return False
-    if turn_id is not None:
+    if 'turn' in window:
+        if turn_id != window['turn']:
+            return False
+        rows = (sb.table('retell_api_turns').select('id,session_id,created_at')
+                .eq('id', turn_id).limit(1).execute().data)
+        if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
+            return False
+        row = rows[0]
+        try:
+            created = datetime.fromisoformat(row['created_at'].replace('Z', '+00:00'))
+            if (row.get('id') != turn_id or row.get('session_id') != job_id
+                    or created.tzinfo is None or not window['started'] <= created < window['expires']):
+                return False
+        except (KeyError, ValueError, TypeError):
+            return False
+    elif turn_id is not None:
         rows = (sb.table('retell_api_turns').select('id').eq('session_id', job_id)
                 .order('created_at').order('id').limit(1).execute().data)
         if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict) or rows[0].get('id') != turn_id:

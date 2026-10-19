@@ -50,5 +50,6 @@ def inspect_session(sb, session_id, chat_id):
             value = data[field]
             history[field] = {'type': type(value).__name__,
                               'empty': value == '' or value == []}
-    return {'status': 'inspected', 'checks': checks, 'history_shape': history,
+    return {'status': 'inspected', 'session_id': target, 'chat_id': chat_id,
+            'checks': checks, 'history_shape': history,
             'dispatch_authorized': False}
