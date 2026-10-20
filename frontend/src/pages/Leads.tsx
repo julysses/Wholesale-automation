@@ -209,12 +209,11 @@ export function Leads() {
   };
 
   const handleMoveToPipeline = async (lead: Lead) => {
-    if (!confirm(`Create a pipeline deal for ${lead.property_address}?`)) return;
+    if (!confirm(`Create a pipeline record for ${lead.property_address}? Enter the contract price manually in Pipeline; this action does not approve or send an offer.`)) return;
     await createDeal.mutateAsync({
       lead_id: lead.id,
       deal_name: lead.property_address,
       stage: 'offer_made',
-      contract_price: lead.offer_price ?? undefined,
       arv: lead.estimated_arv ?? undefined,
       repair_estimate: lead.estimated_repairs ?? undefined,
       seller_name: `${lead.owner_first_name ?? ''} ${lead.owner_last_name ?? ''}`.trim() || undefined,
@@ -433,7 +432,7 @@ export function Leads() {
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="relative">
-                      <button
+                      <button aria-label={`Actions for ${lead.property_address}`}
                         onClick={() => setOpenMenuId(openMenuId === lead.id ? null : lead.id)}
                         className="p-1 rounded hover:bg-gray-100 text-gray-400"
                       >
@@ -1011,6 +1010,10 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
   const handleSave = async () => {
     setSaveError(null);
     try {
+      const followUp = edits.next_follow_up_date;
+      if (followUp && (!/^\d{4}-\d{2}-\d{2}$/.test(followUp) || !Number.isFinite(Date.parse(followUp + 'T00:00:00Z')) || new Date(followUp + 'T00:00:00Z').toISOString().slice(0, 10) !== followUp)) {
+        throw new Error('Enter a real follow-up date as YYYY-MM-DD.');
+      }
       if (Object.keys(edits).length) {
         await updateLead.mutateAsync({ id: lead.id, updates: edits });
       }
@@ -1096,7 +1099,7 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
             options={MOTIVATION_OPTIONS.filter(o => o.value)} placeholder="Select motivation" />
           <Input label="Asking Price" type="number" value={form.asking_price ?? ''} onChange={(e) => set('asking_price', e.target.value === '' ? null : Number(e.target.value))} />
           <Input label="Est. Equity %" type="number" value={form.estimated_equity_pct ?? ''} onChange={(e) => set('estimated_equity_pct', e.target.value === '' ? null : Number(e.target.value))} />
-          <Input label="Next Follow-up" type="date" value={form.next_follow_up_date || ''} onChange={(e) => set('next_follow_up_date', e.target.value || null)} />
+          <Input label="Next Follow-up" type="text" placeholder="YYYY-MM-DD" maxLength={10} value={form.next_follow_up_date || ''} onChange={(e) => set('next_follow_up_date', e.target.value || null)} />
         </div>
 
         <Textarea label="Seller Notes" value={form.seller_notes || ''} onChange={(e) => set('seller_notes', e.target.value)} rows={3} />

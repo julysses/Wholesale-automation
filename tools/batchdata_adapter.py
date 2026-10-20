@@ -1,8 +1,8 @@
 """
 BatchData / BatchSkipTracing adapter.
 
-Handles property-level skip tracing: given an owner name + property address,
-returns enriched phone numbers and emails with confidence scores.
+Provides property valuations and comparable sales. Legacy skip-tracing entry
+points return an explicit blocked result; paid tracing belongs to list_tracing.
 
 Usage:
     adapter = BatchDataAdapter()
@@ -151,69 +151,18 @@ class BatchDataAdapter:
 
     # ── Core skip trace ───────────────────────────────────────────────────────
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=16))
     def skip_trace_property(self, payload: SkipTracePayload, lead_id: str = "") -> SkipTraceResult:
+        """Compatibility result for the retired unmetered tracing endpoint.
+
+        Paid tracing must use tools.list_tracing.trace_lead with a durable request,
+        budget reservation and correlated provider billing receipt. An API key or
+        AUTO_SKIP_TRACE alone is not authorization to bypass that workflow.
+        Valuation/comparable-sales methods remain separate from this retirement.
         """
-        Call BatchData property skip trace endpoint.
-        Returns enriched phones + emails ranked by confidence.
-        Falls back gracefully if API is unavailable.
-        """
-        result = SkipTraceResult(lead_id=lead_id)
-
-        if not self._api_key:
-            result.error = "dry_run: no API key"
-            return result
-
-        request_body = {
-            "requests": [
-                {
-                    "propertyAddress": {
-                        "address": payload.property_address,
-                        "city": payload.city,
-                        "state": payload.state,
-                        "zip": payload.zip_code,
-                    },
-                    "ownerName": payload.owner_name,
-                }
-            ]
-        }
-
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                resp = client.post(
-                    f"{self.BASE_URL}/property/skip-trace",
-                    headers=self._headers(),
-                    json=request_body,
-                )
-                resp.raise_for_status()
-                data = resp.json()
-
-            result.raw = data
-            result.success = True
-
-            # Extract results from BatchData response structure
-            records = (
-                data.get("results", {})
-                    .get("persons", [{}])[0]
-                    .get("phones", [])
-            ) if data.get("results") else []
-
-            result.phones = self._map_phones(data)
-            result.emails = self._map_emails(data)
-
-            logger.info(
-                f"[BatchData] lead={lead_id} "
-                f"phones={len(result.phones)} emails={len(result.emails)}"
-            )
-
-        except httpx.HTTPStatusError as exc:
-            result.error = f"HTTP {exc.response.status_code}: {exc.response.text[:200]}"
-            logger.error(f"[BatchData] skip trace failed: {result.error}")
-        except Exception as exc:
-            result.error = str(exc)
-            logger.error(f"[BatchData] skip trace error: {exc}")
-
-        return result
+        return SkipTraceResult(
+            lead_id=lead_id,
+            error="blocked: legacy unmetered tracing retired; use the budgeted list tracing workflow",
+        )
 
     # ── Property Details & Valuation ──────────────────────────────────────────
 
@@ -482,8 +431,8 @@ class BatchDataAdapter:
         Skip trace multiple leads.
         payloads: list of (lead_id, SkipTracePayload)
 
-        In practice BatchData supports batch requests; this implementation sends
-        them individually to keep error handling per-record clean.
+        Compatibility wrapper: returns a blocked result for every input.
+        It does not submit provider requests or grant outreach permissions.
         """
         results = []
         for lead_id, payload in payloads:

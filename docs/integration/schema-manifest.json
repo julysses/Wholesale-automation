@@ -1,0 +1,462 @@
+{
+  "date": "2026-10-20",
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "read_only": true,
+  "migrations": [
+    {
+      "version": "20260706164602",
+      "name": "priority_rank_recompute"
+    },
+    {
+      "version": "20260824014738",
+      "name": "hilltop_home_co_form"
+    },
+    {
+      "version": "20260908201056",
+      "name": "approval_access_repair"
+    },
+    {
+      "version": "20260908213000",
+      "name": "development_command_center"
+    },
+    {
+      "version": "20260929014526",
+      "name": "launch_consent_and_function_paths"
+    },
+    {
+      "version": "20260929014852",
+      "name": "protect_public_intake"
+    },
+    {
+      "version": "20260929015342",
+      "name": "durable_form_finalization"
+    },
+    {
+      "version": "20260929015419",
+      "name": "grant_server_settings_read"
+    },
+    {
+      "version": "20260929020229",
+      "name": "normalized_contact_suppression"
+    },
+    {
+      "version": "20260929151736",
+      "name": "lead_lists_and_buyer_import_tracking"
+    },
+    {
+      "version": "20260929154956",
+      "name": "lead_street_key"
+    },
+    {
+      "version": "20260929155030",
+      "name": "score_leads_rules"
+    },
+    {
+      "version": "20260929165030",
+      "name": "lead_cleanup_rules"
+    },
+    {
+      "version": "20260929170212",
+      "name": "lead_retention"
+    },
+    {
+      "version": "20260929171623",
+      "name": "lead_lists_grants"
+    },
+    {
+      "version": "20261006202705",
+      "name": "twilio_message_receipts"
+    },
+    {
+      "version": "20261007163014",
+      "name": "sendgrid_delivery_receipts"
+    },
+    {
+      "version": "20261007165402",
+      "name": "lock_launch_function_paths"
+    },
+    {
+      "version": "20261007204336",
+      "name": "jays_website_intake"
+    },
+    {
+      "version": "20261008182415",
+      "name": "retell_call_requests"
+    },
+    {
+      "version": "20261008184051",
+      "name": "enable_notification_realtime"
+    },
+    {
+      "version": "20261008201605",
+      "name": "durable_sms_nurture"
+    },
+    {
+      "version": "20261008204521",
+      "name": "retell_call_batches"
+    },
+    {
+      "version": "20261008205409",
+      "name": "protect_sms_receipts"
+    },
+    {
+      "version": "20261008205411",
+      "name": "protect_consent_evidence"
+    },
+    {
+      "version": "20261008214850",
+      "name": "durable_appointment_workflow"
+    },
+    {
+      "version": "20261008221715",
+      "name": "launch_monitoring"
+    },
+    {
+      "version": "20261008221717",
+      "name": "reopen_monitor_incidents"
+    },
+    {
+      "version": "20261008221719",
+      "name": "monitor_delivery_evidence"
+    },
+    {
+      "version": "20261008223443",
+      "name": "durable_manual_analysis"
+    },
+    {
+      "version": "20261008223445",
+      "name": "repair_analysis_lead_sync"
+    },
+    {
+      "version": "20261008231637",
+      "name": "durable_deal_handoff"
+    },
+    {
+      "version": "20261008231639",
+      "name": "deal_stage_conflict_guards"
+    },
+    {
+      "version": "20261008233903",
+      "name": "exclude_internal_qa_from_business_reporting"
+    },
+    {
+      "version": "20261008233905",
+      "name": "classify_confirmed_launch_test_receipts"
+    },
+    {
+      "version": "20261008234537",
+      "name": "align_legacy_funnel_with_business_reporting"
+    },
+    {
+      "version": "20261008235905",
+      "name": "durable_public_intake_reference"
+    },
+    {
+      "version": "20261010020730",
+      "name": "atomic_intake_alert_delivery"
+    },
+    {
+      "version": "20261015192942",
+      "name": "retell_form_sms_production"
+    },
+    {
+      "version": "20261015203220",
+      "name": "reviewed_sms_resubscription"
+    },
+    {
+      "version": "20261015203533",
+      "name": "preserve_unclassified_dnc"
+    },
+    {
+      "version": "20261016191354",
+      "name": "monitor_retell_sms_outcomes"
+    },
+    {
+      "version": "20261016193644",
+      "name": "daily_list_ingestion"
+    },
+    {
+      "version": "20261016193656",
+      "name": "list_operations"
+    },
+    {
+      "version": "20261016193658",
+      "name": "list_review_batch_guard"
+    },
+    {
+      "version": "20261016193702",
+      "name": "list_monitor_receipts"
+    },
+    {
+      "version": "20261016193704",
+      "name": "list_digest_delivery"
+    },
+    {
+      "version": "20261016193711",
+      "name": "list_trace_budget"
+    },
+    {
+      "version": "20261016193713",
+      "name": "list_trace_contacts"
+    },
+    {
+      "version": "20261016193715",
+      "name": "list_trace_operations"
+    },
+    {
+      "version": "20261016193717",
+      "name": "list_scoring_receipts"
+    },
+    {
+      "version": "20261016193719",
+      "name": "list_scoring_jobs"
+    },
+    {
+      "version": "20261016193722",
+      "name": "list_scoring_monitor"
+    },
+    {
+      "version": "20261016193724",
+      "name": "list_scoring_admin"
+    },
+    {
+      "version": "20261016193726",
+      "name": "list_scoring_worker"
+    },
+    {
+      "version": "20261016193728",
+      "name": "list_scoring_inspection"
+    },
+    {
+      "version": "20261016193730",
+      "name": "dallas_foreclosure_public_search"
+    },
+    {
+      "version": "20261016193738",
+      "name": "list_trace_total_cap"
+    },
+    {
+      "version": "20261016193740",
+      "name": "list_reviewed_identity"
+    },
+    {
+      "version": "20261016193742",
+      "name": "foreclosure_daily_actions"
+    },
+    {
+      "version": "20261016193745",
+      "name": "propstream_operator_handoff"
+    },
+    {
+      "version": "20261016193747",
+      "name": "collin_appraisal_evidence_host"
+    },
+    {
+      "version": "20261016193749",
+      "name": "foreclosure_status_review"
+    },
+    {
+      "version": "20261016193751",
+      "name": "propstream_bulk_actions"
+    },
+    {
+      "version": "20261016193753",
+      "name": "foreclosure_capture_receipts"
+    },
+    {
+      "version": "20261016193755",
+      "name": "foreclosure_extraction_receipts"
+    },
+    {
+      "version": "20261016193757",
+      "name": "foreclosure_trustee_status_evidence"
+    },
+    {
+      "version": "20261016193759",
+      "name": "foreclosure_batch_receipts"
+    },
+    {
+      "version": "20261016193802",
+      "name": "foreclosure_appraisal_index_receipts"
+    },
+    {
+      "version": "20261016193804",
+      "name": "propstream_external_submission_recovery"
+    },
+    {
+      "version": "20261016193806",
+      "name": "scheduled_bulk_supervision"
+    },
+    {
+      "version": "20261016193808",
+      "name": "county_property_notifications"
+    },
+    {
+      "version": "20261016194506",
+      "name": "county_intake_assignment"
+    },
+    {
+      "version": "20261016194531",
+      "name": "weekly_tax_monitoring"
+    },
+    {
+      "version": "20261016200155",
+      "name": "onboarding_promotion_receipts"
+    },
+    {
+      "version": "20261016205558",
+      "name": "reconcile_retell_intake_handoffs"
+    },
+    {
+      "version": "20261016210249",
+      "name": "retell_next_contact_window_handoff"
+    },
+    {
+      "version": "20261016210251",
+      "name": "restricted_collector_login"
+    },
+    {
+      "version": "20261016215112",
+      "name": "list_review_source_filters"
+    },
+    {
+      "version": "20261016222707",
+      "name": "tax_review_evidence_context"
+    },
+    {
+      "version": "20261016224417",
+      "name": "confirmed_suppression_handoff"
+    },
+    {
+      "version": "20261016231306",
+      "name": "protect_website_inquiry_retention"
+    },
+    {
+      "version": "20261016234054",
+      "name": "foreclosure_case_reference_formats"
+    },
+    {
+      "version": "20261017000513",
+      "name": "scope_retell_sms_claims"
+    },
+    {
+      "version": "20261017012042",
+      "name": "foreclosure_address_suffix_triage"
+    },
+    {
+      "version": "20261017020136",
+      "name": "retell_app_transport_ownership"
+    },
+    {
+      "version": "20261017020143",
+      "name": "retell_app_twilio_outbox"
+    },
+    {
+      "version": "20261017020150",
+      "name": "retell_app_recovery_monitoring"
+    },
+    {
+      "version": "20261017021928",
+      "name": "retell_app_automatic_queue"
+    },
+    {
+      "version": "20261017023006",
+      "name": "retell_app_intake_handoff"
+    },
+    {
+      "version": "20261019195321",
+      "name": "sms_reply_notification_handoff"
+    }
+  ],
+  "function_metadata": [
+    {
+      "schema_name": "public",
+      "proname": "claim_retell_call",
+      "arguments": "p_id uuid, p_lead uuid, p_phone text, p_operator uuid",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "f2634cd8529b112d33592f32c5fccf9c"
+    },
+    {
+      "schema_name": "public",
+      "proname": "claim_retell_form_sms",
+      "arguments": "p_limit integer",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "92f7b862239cd08a689152e2aec46753"
+    },
+    {
+      "schema_name": "public",
+      "proname": "claim_retell_form_sms_matching",
+      "arguments": "p_limit integer, p_job uuid",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "0701da1139c5c40108e59a1b8d9a9966"
+    },
+    {
+      "schema_name": "public",
+      "proname": "claim_retell_form_sms_transport",
+      "arguments": "p_limit integer, p_job uuid, p_transport text",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "6d35ed30d672f3e3cf1cd6674e203e73"
+    },
+    {
+      "schema_name": "public",
+      "proname": "claim_twilio_sms",
+      "arguments": "p_id uuid, p_lead uuid, p_phone text, p_body text",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "aa47f9f646d577b95ec6078b23a62fd3"
+    },
+    {
+      "schema_name": "public",
+      "proname": "intake_phone_status",
+      "arguments": "p_phone text, p_lead uuid, p_property text",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "f660e2631b9ee2258d4282efd409dc50"
+    },
+    {
+      "schema_name": "public",
+      "proname": "protect_retell_form_transport",
+      "arguments": "",
+      "acl": "{postgres=X/postgres}",
+      "definition_md5": "8dae3b9d09abc088bf28f63b559e6827"
+    },
+    {
+      "schema_name": "public",
+      "proname": "record_twilio_event",
+      "arguments": "p_event uuid, p_kind text, p_payload jsonb",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "32bc7d5793c3c6fed5525372b7a192e4"
+    },
+    {
+      "schema_name": "public",
+      "proname": "scan_list_pipeline",
+      "arguments": "",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "0092a9fcd2e7574354269c086b3107b8"
+    },
+    {
+      "schema_name": "wholesale_ingest",
+      "proname": "queue_property_alert",
+      "arguments": "",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "abf66dc8e634ab54b4c9e59f4b39edca"
+    },
+    {
+      "schema_name": "wholesale_ingest",
+      "proname": "scan_at",
+      "arguments": "p_now timestamp with time zone",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "a30a49c442aa96160a55786d150b9b4e"
+    }
+  ],
+  "monitor_definitions": [
+    {
+      "nspname": "public",
+      "proname": "scan_list_pipeline",
+      "definition": "CREATE OR REPLACE FUNCTION public.scan_list_pipeline()\n RETURNS jsonb\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nDECLARE v_summary jsonb; ranked jsonb;\nBEGIN\n v_summary:=wholesale_ingest.scan_at(now());\n IF v_summary->>'busy'='true' THEN RETURN v_summary; END IF;\n SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY t.score DESC,t.created_at DESC,t.lead_id),'[]') INTO ranked FROM (\n  SELECT latest.lead_id,latest.score,latest.reasons,latest.flags,latest.route,latest.created_at\n  FROM (SELECT DISTINCT ON (lead_id) * FROM wholesale_ingest.lead_evaluations ORDER BY lead_id,created_at DESC,id DESC) latest\n  WHERE latest.input_snapshot IS NOT NULL AND latest.prompt_version='daily-list-score-v1'\n  AND latest.input_hash=public.list_scoring_input(latest.lead_id)->>'input_hash'\n  ORDER BY latest.score DESC,latest.created_at DESC,latest.lead_id LIMIT 10\n ) t;\n v_summary:=jsonb_set(v_summary,'{top_ten}',ranked);\n v_summary:=v_summary||jsonb_build_object('scoring_monitor',wholesale_ingest.scan_scoring_at(now()));\n UPDATE wholesale_ingest.daily_digests SET summary=v_summary WHERE day=(v_summary->>'day')::date;\n RETURN v_summary;\nEND $function$\n"
+    },
+    {
+      "nspname": "wholesale_ingest",
+      "proname": "scan_at",
+      "definition": "CREATE OR REPLACE FUNCTION wholesale_ingest.scan_at(p_now timestamp with time zone)\n RETURNS jsonb\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nDECLARE today date:=(p_now AT TIME ZONE 'America/Chicago')::date;\n owner_id uuid; e record; latest wholesale_ingest.ingest_runs; reason text;\n count_batches int; incident wholesale_ingest.monitor_incidents; summary jsonb;\nBEGIN\n IF p_now IS NULL THEN RAISE EXCEPTION 'Scan time required'; END IF;\n IF NOT pg_try_advisory_xact_lock(hashtextextended('wholesaleos:list-monitor',0)) THEN RETURN jsonb_build_object('busy',true); END IF;\n SELECT p.id INTO owner_id FROM public.app_settings a JOIN public.profiles p ON p.id::text=a.value\n WHERE a.key='lead_owner_user_id' AND p.status='approved' LIMIT 1;\n -- Recover up to seven missed daily schedules, only after procedure approval.\n INSERT INTO wholesale_ingest.expected_runs(source_id,day,due_at)\n SELECT s.id,d::date,(d::date+s.deadline_local) AT TIME ZONE s.timezone\n FROM wholesale_ingest.sources s CROSS JOIN generate_series(today-7,today,interval '1 day') d\n WHERE s.enabled AND s.procedure_approved_at IS NOT NULL\n AND d::date >= (s.procedure_approved_at AT TIME ZONE s.timezone)::date\n AND wholesale_ingest.collection_due_day(s.collection_cadence,s.cadence_effective_on,d::date)=d::date\n ON CONFLICT DO NOTHING;\n\n -- Raw expiry never changes an unresolved run into a successful empty run.\n UPDATE wholesale_ingest.ingest_runs i SET\n processing_status=CASE WHEN i.status<>'success' OR EXISTS(SELECT 1 FROM wholesale_ingest.records r WHERE r.run_id=i.id AND r.resolved_at IS NULL) THEN 'review' ELSE 'completed' END,\n completed_at=CASE WHEN i.status='success' AND NOT EXISTS(SELECT 1 FROM wholesale_ingest.records r WHERE r.run_id=i.id AND r.resolved_at IS NULL) THEN coalesce(i.completed_at,p_now) ELSE NULL END\n WHERE i.processing_status<>'completed'\n AND (SELECT count(*) FROM wholesale_ingest.raw_payloads b WHERE b.run_id=i.id)=i.expected_batches\n AND NOT EXISTS(SELECT 1 FROM wholesale_ingest.raw_payloads b WHERE b.run_id=i.id AND (b.batch_index>=i.expected_batches OR b.purged_at IS NOT NULL));\n UPDATE wholesale_ingest.jobs j SET state=CASE WHEN i.processing_status='completed' THEN 'done' ELSE 'review' END\n FROM wholesale_ingest.ingest_runs i WHERE i.id=j.run_id AND i.processing_status IN ('review','completed') AND j.state='pending';\n\n FOR e IN SELECT x.*,s.source_key,s.collection_cadence,s.cadence_effective_on FROM wholesale_ingest.expected_runs x\n JOIN wholesale_ingest.sources s ON s.id=x.source_id WHERE s.enabled AND x.day<=today\n AND wholesale_ingest.collection_due_day(s.collection_cadence,s.cadence_effective_on,x.day)=x.day\n LOOP\n  SELECT * INTO latest FROM wholesale_ingest.ingest_runs i\n   WHERE i.source_id=e.source_id AND wholesale_ingest.collection_due_day(e.collection_cadence,e.cadence_effective_on,i.scheduled_for)=e.day\n   ORDER BY i.received_at DESC,i.id DESC LIMIT 1;\n  SELECT count(*) INTO count_batches FROM wholesale_ingest.raw_payloads WHERE run_id=latest.id;\n  reason:=NULL;\n  IF latest.id IS NULL THEN\n   IF e.due_at<=p_now THEN reason:='missing'; END IF;\n  ELSIF latest.status<>'success' THEN reason:=latest.status;\n  ELSIF count_batches<>latest.expected_batches THEN\n   IF e.due_at<=p_now THEN reason:='incomplete'; END IF;\n  ELSIF latest.processing_status='review' THEN reason:='property_review';\n  END IF;\n  IF reason IS NOT NULL THEN\n   INSERT INTO wholesale_ingest.monitor_incidents(source_id,day,kind,run_id,first_seen_at,last_seen_at)\n   VALUES(e.source_id,e.day,reason,latest.id,p_now,p_now)\n   ON CONFLICT(source_id,day) DO UPDATE SET kind=excluded.kind,run_id=excluded.run_id,last_seen_at=p_now,resolved_at=NULL\n   RETURNING * INTO incident;\n   IF owner_id IS NOT NULL AND incident.task_id IS NULL THEN\n    incident.task_id:=gen_random_uuid();\n    INSERT INTO public.tasks(id,title,description,status,priority,type,assigned_to,due_date)\n    VALUES(incident.task_id,'Daily list needs review',e.source_key||' ('||e.day||'): '||reason||'. Check collection and delivery; never infer zero records from incomplete coverage.','pending','high','follow_up',owner_id,p_now);\n    UPDATE wholesale_ingest.monitor_incidents SET task_id=incident.task_id WHERE source_id=e.source_id AND day=e.day;\n    UPDATE wholesale_ingest.expected_runs SET alert_task_id=incident.task_id WHERE source_id=e.source_id AND day=e.day;\n   ELSIF incident.task_id IS NOT NULL THEN\n    UPDATE public.tasks SET description=e.source_key||' ('||e.day||'): '||reason||'. Review the current receipt; no seller outreach was sent.',status='pending'\n    WHERE id=incident.task_id;\n   END IF;\n  ELSIF latest.id IS NOT NULL AND count_batches=latest.expected_batches AND latest.processing_status='completed' THEN\n   UPDATE wholesale_ingest.monitor_incidents SET resolved_at=coalesce(resolved_at,p_now),last_seen_at=p_now WHERE source_id=e.source_id AND day=e.day;\n   -- Keep the assigned task for operator acknowledgement; do not silently close it.\n  END IF;\n END LOOP;\n\n SELECT jsonb_build_object('day',today,'owner_configured',owner_id IS NOT NULL,\n 'sources',(SELECT coalesce(jsonb_agg(jsonb_build_object('source_key',s.source_key,'enabled',s.enabled,'due_at',x.due_at,'status',coalesce(i.status,'not_received'),'processing_status',i.processing_status,'run_id',i.id,'status_reason',i.status_reason,'expected_batches',i.expected_batches,'received_batches',(SELECT count(*) FROM wholesale_ingest.raw_payloads b WHERE b.run_id=i.id),'records_in',(SELECT coalesce(sum(b.records_in),0) FROM wholesale_ingest.raw_payloads b WHERE b.run_id=i.id)) ORDER BY s.source_key),'[]')\n FROM wholesale_ingest.sources s LEFT JOIN wholesale_ingest.expected_runs x ON x.source_id=s.id AND x.day=wholesale_ingest.collection_due_day(s.collection_cadence,s.cadence_effective_on,today)\n LEFT JOIN LATERAL (SELECT r.* FROM wholesale_ingest.ingest_runs r WHERE r.source_id=s.id AND wholesale_ingest.collection_due_day(s.collection_cadence,s.cadence_effective_on,r.scheduled_for)=wholesale_ingest.collection_due_day(s.collection_cadence,s.cadence_effective_on,today) ORDER BY r.received_at DESC,r.id DESC LIMIT 1) i ON true),\n 'new_leads',(SELECT coalesce(sum(records_new),0) FROM wholesale_ingest.ingest_runs WHERE scheduled_for=today),\n 'stacked_records',(SELECT coalesce(sum(records_stacked),0) FROM wholesale_ingest.ingest_runs WHERE scheduled_for=today),\n 'open_incidents',(SELECT coalesce(jsonb_agg(to_jsonb(m) ORDER BY day,source_id),'[]') FROM wholesale_ingest.monitor_incidents m WHERE resolved_at IS NULL),\n 'top_ten',(SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY t.score DESC,t.created_at DESC,t.lead_id),'[]') FROM (SELECT latest_score.* FROM (SELECT DISTINCT ON (l.lead_id) l.lead_id,l.score,l.reasons,l.flags,l.route,l.created_at FROM wholesale_ingest.lead_evaluations l ORDER BY l.lead_id,l.created_at DESC,l.id DESC) latest_score WHERE score IS NOT NULL ORDER BY score DESC,created_at DESC,lead_id LIMIT 10) t)) INTO summary;\n -- Rank only stored evaluations; no model invocation or outreach from monitoring.\n INSERT INTO wholesale_ingest.daily_digests(day,generated_at,status,summary) VALUES(today,p_now,'generated',summary)\n ON CONFLICT(day) DO UPDATE SET generated_at=p_now,summary=excluded.summary;\n\n -- Retention is an explicit maintenance action. Monitoring never deletes intake evidence or contacts.\n RETURN summary;\nEND; $function$\n"
+    }
+  ]
+}

@@ -53,7 +53,7 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
   },
   {
     number: 5,
-    title: 'Launch AI Calling Campaign',
+    title: 'Review Approved Calling',
     description: 'Review calling eligibility and provider acceptance before starting a batch.',
     path: '/leads',
     cta: 'Go to Leads',
@@ -75,14 +75,14 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
   {
     number: 8,
     title: 'Run the AI Deal Analyzer',
-    description: 'Get ARV, MAO, repair tier, and offer range for each HOT lead.',
+    description: 'Review property evidence and repairs, then enter your own offer price.',
     path: '/acquisitions',
     cta: 'Open Deal Analysis',
   },
   {
     number: 9,
     title: 'Use Negotiation Intelligence',
-    description: 'Get your opening script, offer structure, and objection handlers.',
+    description: 'Review the negotiation brief and approve the exact human-entered terms.',
     path: '/acquisitions',
     cta: 'Open Negotiation',
   },

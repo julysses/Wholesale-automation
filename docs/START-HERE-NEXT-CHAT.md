@@ -1,3 +1,11 @@
+## Selective integration draft — October 20, 2026
+
+Owner authorized proceeding with the integration recommendation. Work is isolated on `codex/wholesale-integration-review`, based on production `19c117a`; do not merge the collection branch. See `docs/integration/PROGRESS.md` for exact scope, static checks, proposed migrations, and remaining regression requirements.
+
+Production deployments, database changes, collection schedules, SMS operations and provider activity remain paused. Local isolated test permission is pending; no tests have run. The integration branch is excluded from Vercel deployment and checkpoint commits use `[skip ci]`. No existing production migration was changed; the held-session repair below remains unapplied and is excluded from the new feature migration allowlist.
+
+The code is a review draft, not a certified integration or release. Resume local verification only after test authorization; any later deployment or operational activation remains a separate decision.
+
 ## PAUSED at owner request — October 19, 2026, 4:44 PM Central
 
 User said “pause.” No further repair, migration retry, reconciliation, new test, activation or provider POST is authorized until resumed. No new SMS or paid generation this turn; previously observed cumulative test spending remains approximately $0.02360 of the $5 cap (Retell9.96 / Twilio1.41526). Both SMS schedulers are verifiedfalse; sending flags were never changed this turn. SMS event count17; held session remainsreview. Original turn has not been replayed, stopped or rebound.

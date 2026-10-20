@@ -1,3 +1,6 @@
+import {verifyOfferConcurrency} from './offer-concurrency.ts';
+import {verifyLotConcurrency} from './lot-concurrency.ts';
+import {verifyValuationConcurrency} from './valuation-concurrency.ts';
 // Real PostgreSQL/TLS integration; refuse all remote hosts and non-test databases.
 import postgres from 'npm:postgres@3.4.5';
 import {verifyTraceConcurrency} from './trace-concurrency.ts';
@@ -75,8 +78,11 @@ try{
    assert(denied,'Restricted ingress role exceeded its grants');
   }
  }finally{await restricted.end();}
+ await verifyOfferConcurrency(adminURL);
  await verifyTraceConcurrency(adminURL);
  await verifyScoringConcurrency(adminURL);
+ await verifyLotConcurrency(adminURL);
+ await verifyValuationConcurrency(adminURL);
  console.log('PASS actual ingress success, overlapping duplicate requests, lost-ACK replay, conflict, expiry, disabled source and restricted-role checks');
 }finally{
  if(locked)await locker`select pg_advisory_unlock(hashtextextended(${run},0))`;

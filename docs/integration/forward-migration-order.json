@@ -1,0 +1,13 @@
+[
+  "20261020163157_integration_human_offer_review.sql",
+  "20261020163209_integration_offer_review_history.sql",
+  "20261020163211_integration_offer_content_binding.sql",
+  "20261020163212_integration_list_lot_handoff.sql",
+  "20261020163214_integration_list_lot_receiving_evidence.sql",
+  "20261020163215_integration_list_lot_worker.sql",
+  "20261020163217_integration_list_lot_reconciliation.sql",
+  "20261020163218_integration_list_lot_missing_property.sql",
+  "20261020163219_integration_land_valuation_receipts.sql",
+  "20261020163221_integration_preserve_valuation_radius.sql",
+  "20261020163223_integration_retell_claim_identity.sql"
+]

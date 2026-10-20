@@ -7,6 +7,7 @@ import type { Lead } from '@/types';
 const state = vi.hoisted(() => ({
   record: {} as Record<string, unknown>,
   update: vi.fn(),
+  create: vi.fn(),
   error: null as { message: string } | null,
 }));
 
@@ -39,7 +40,7 @@ vi.mock('@/hooks/useLeads', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/hooks/useLeads')>(),
   useLeads: () => ({ data: { data: [state.record as unknown as Lead], count: 1 }, isLoading: false, error: null }),
 }));
-vi.mock('@/hooks/useDeals', () => ({ useCreateDeal: () => ({ mutateAsync: vi.fn() }) }));
+vi.mock('@/hooks/useDeals', () => ({ useCreateDeal: () => ({ mutateAsync: state.create }) }));
 vi.mock('@/hooks/useAIAgent', () => ({ useLeadQualifier: () => ({ qualify: vi.fn() }) }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 import { Leads } from '@/pages/Leads';
@@ -58,10 +59,10 @@ beforeEach(() => {
   };
 });
 
-function renderDrawer() {
+function renderDrawer(open = true) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(<QueryClientProvider client={client}><MemoryRouter><Leads /></MemoryRouter></QueryClientProvider>);
-  fireEvent.click(screen.getByText('QA drawer address'));
+  if (open) fireEvent.click(screen.getByText('QA drawer address'));
 }
 
 async function save() {
@@ -131,4 +132,32 @@ it('saves a manually edited score without submitting the generated total', async
   await save();
   expect(state.update).toHaveBeenCalledWith('leads', { score_motivation: 3 });
   expect(state.record.score_motivation).toBe(3);
+});
+
+
+it('does not convert a legacy lead offer price into contract terms', async () => {
+  state.record.offer_price = 98765;
+  state.create.mockResolvedValue({});
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  renderDrawer(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Actions for QA drawer address' }));
+  fireEvent.click(screen.getByRole('button', { name: /Move to Pipeline/i }));
+  await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
+  expect(state.create.mock.calls[0][0]).not.toHaveProperty('contract_price');
+  expect(state.create.mock.calls[0][0].lead_id).toBe('qa-lead');
+  vi.restoreAllMocks();
+});
+
+
+it('saves a typed follow-up day exactly and rejects impossible calendar dates', async () => {
+  renderDrawer();
+  const date = screen.getByLabelText('Next Follow-up');
+  expect(date).toHaveAttribute('type', 'text');
+  fireEvent.change(date, { target: { value: '2026-02-29' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('real follow-up date');
+  expect(state.update).not.toHaveBeenCalled();
+  fireEvent.change(date, { target: { value: '2026-10-13' } });
+  await save();
+  expect(state.update).toHaveBeenCalledWith('leads', { next_follow_up_date: '2026-10-13' });
 });

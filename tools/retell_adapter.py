@@ -74,6 +74,7 @@ RETELL_DISPOSITION_MAP: dict[str, CallDisposition] = {
     "not_interested":         CallDisposition.NOT_INTERESTED,
     "callback_requested":     CallDisposition.CALLBACK,
     "interested":             CallDisposition.WARM,
+    "warm_lead":              CallDisposition.WARM,
     "hot_lead":               CallDisposition.HOT,
     "appointment_set":        CallDisposition.APPOINTMENT_SET,
     # Retell system statuses
@@ -89,6 +90,7 @@ AIR_DISPOSITION_MAP: dict[str, CallDisposition] = {
     "not_interested":         CallDisposition.NOT_INTERESTED,
     "call_back":              CallDisposition.CALLBACK,
     "interested":             CallDisposition.WARM,
+    "warm_lead":              CallDisposition.WARM,
     "hot":                    CallDisposition.HOT,
     "appointment":            CallDisposition.APPOINTMENT_SET,
     "error":                  CallDisposition.UNKNOWN,
@@ -251,9 +253,18 @@ class RetellAdapter:
             resp.raise_for_status()
             data = resp.json()
 
-        call_id = data.get("call_id", "")
-        if not isinstance(call_id, str) or not call_id.strip():
+        call_id = data.get("call_id", "") if isinstance(data, dict) else ""
+        if not isinstance(call_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,255}", call_id):
             raise RuntimeError("Retell response has no call ID; reconcile before retrying")
+        # A provider may already have dialed. Any inconsistent acknowledgement is
+        # uncertain, never a reason to submit another create-phone-call request.
+        if (data.get("agent_id") != payload["override_agent_id"]
+                or type(data.get("agent_version")) is not int
+                or data["agent_version"] != payload["override_agent_version"]
+                or data.get("to_number") != payload["to_number"]
+                or data.get("from_number") != payload["from_number"]
+                or data.get("call_status") not in {"registered", "not_connected", "ongoing", "ended", "error"}):
+            raise RuntimeError("Retell call acknowledgement does not match requested agent, version or phone; reconcile before retrying")
         logger.info(f"[retell] Created call {call_id} for lead {req.lead_id}")
 
         return CallRecord(
@@ -733,6 +744,14 @@ def extract_lead_signals(
 
 # ── Blueprint call payload builder ────────────────────────────────────────────
 
+def configured_retell_version() -> int:
+    """Require an explicit version; mutable aliases cannot preserve a reviewed script."""
+    value = settings.retell_agent_version
+    if not isinstance(value, str) or not re.fullmatch(r"0|[1-9][0-9]{0,8}", value):
+        raise RuntimeError("A reviewed numeric RETELL_AGENT_VERSION is required")
+    return int(value)
+
+
 def build_retell_call_payload(
     req: CallRequest,
     agent_id: str,
@@ -751,7 +770,7 @@ def build_retell_call_payload(
 
     return {
         "override_agent_id": agent_id,
-        "override_agent_version": "latest_published",
+        "override_agent_version": configured_retell_version(),
         "idempotency_key": req.request_id,
         "honor_internal_dnc": True,
         "from_number": from_number,

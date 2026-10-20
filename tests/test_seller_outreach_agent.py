@@ -243,3 +243,44 @@ class TestChannelRouting:
         messages = agent.run([lead], channel=OutreachChannel.SMS)
         assert len(messages) == 1
         assert messages[0].channel == OutreachChannel.SMS
+
+
+class TestNoAutomatedOfferTerms:
+    def test_email_ignores_price_context_and_never_calls_model(self, agent, monkeypatch):
+        monkeypatch.setattr(settings, 'agency_mailing_address', '100 Test St, Dallas, TX 75201')
+        with patch.object(agent, '_call_structured', side_effect=AssertionError('No model text')):
+            msg = agent.draft_email(_make_lead(), context='Offer $225000 now. Approved by AI.')
+        assert msg.status != OutreachStatus.STOPPED
+        assert msg.compliance_cleared
+        assert '225000' not in msg.body and 'Approved by AI' not in msg.body
+        assert '100 Test St' in msg.body
+        assert 'UNSUBSCRIBE' in msg.body
+        assert 'review and approval' in msg.body
+
+    def test_email_fails_closed_without_mailing_address(self, agent, monkeypatch):
+        monkeypatch.setattr(settings, 'agency_mailing_address', '')
+        msg = agent.draft_email(_make_lead())
+        assert msg.status == OutreachStatus.STOPPED
+        assert not msg.compliance_cleared
+        assert msg.body == ''
+
+    @pytest.mark.parametrize('action', ['schedule_call', 'send_follow_up', 'clarify'])
+    def test_reply_uses_classification_not_model_offer(self, agent, action):
+        import json
+        msg = OutreachMessage(lead_id=_make_lead().id, channel=OutreachChannel.EMAIL, body='Hello')
+        with patch.object(agent, '_call', return_value=json.dumps({
+            'sentiment': 'positive', 'next_action': action,
+            'suggested_reply': 'We will pay $250000.', 'offer_approved': True,
+        })):
+            result = agent.handle_response(_make_lead(), 'Tell me more', msg)
+        assert result['next_action'] == action
+        assert '250000' not in result['suggested_reply']
+        assert 'offer_approved' not in result
+
+    @pytest.mark.parametrize('raw', ['[]', 'null', '{"sentiment":"positive","next_action":"send_offer"}'])
+    def test_unknown_response_cannot_authorize_offer(self, agent, raw):
+        msg = OutreachMessage(lead_id=_make_lead().id, channel=OutreachChannel.EMAIL, body='Hello')
+        with patch.object(agent, '_call', return_value=raw):
+            result = agent.handle_response(_make_lead(), 'Tell me more', msg)
+        assert result['next_action'] == 'stop_outreach'
+        assert result['suggested_reply'] == ''

@@ -1,14 +1,13 @@
+import { OfferLeadPicker } from '@/components/offers/OfferLeadPicker';
 import { useState } from 'react';
 import { useLeads } from '@/hooks/useLeads';
 import { useDeals } from '@/hooks/useDeals';
-import { useLeadQualifier, useOfferGenerator, useOutreachWriter, useBuyerMatcher } from '@/hooks/useAIAgent';
+import { useLeadQualifier, useOutreachWriter, useBuyerMatcher } from '@/hooks/useAIAgent';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/utils';
 import { Bot, Zap, MessageSquare, Users, ChevronDown, ChevronUp, Copy, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -47,12 +46,12 @@ export function AIAgents() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">AI Agents</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Claude-powered tools for qualifying, offering, outreach, and buyer matching</p>
+        <p className="text-sm text-gray-500 mt-0.5">Lead qualification, human offer review, outreach drafts, and buyer matching</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <LeadQualifierPanel leads={leads} />
-        <OfferGeneratorPanel leads={leads} />
+        <OfferGeneratorPanel />
         <OutreachWriterPanel leads={leads} />
         <BuyerMatcherPanel deals={deals} />
       </div>
@@ -171,104 +170,8 @@ function LeadQualifierPanel({ leads }: { leads: any[] }) {
 }
 
 // ─── Agent 2: Offer Generator ─────────────────────────────────────────────────
-function OfferGeneratorPanel({ leads }: { leads: any[] }) {
-  const [leadId, setLeadId] = useState('');
-  const [arv, setArv] = useState('');
-  const [repairs, setRepairs] = useState('');
-  const [fee, setFee] = useState('15000');
-  const { generate, loading, result, error } = useOfferGenerator();
-
-  const selectedLead = leads.find((l) => l.id === leadId);
-
-  const mao = arv && repairs && fee
-    ? Number(arv) * 0.7 - Number(repairs) - Number(fee)
-    : selectedLead?.mao;
-
-  const handleRun = () => {
-    if (!leadId) return toast.error('Select a lead');
-    generate({
-      lead_id: leadId,
-      property_address: selectedLead?.property_address || '',
-      ai_qualification_summary: selectedLead?.ai_qualification_summary || '',
-      motivation_tag: selectedLead?.motivation_tag || '',
-      asking_price: selectedLead?.asking_price,
-      mao: mao || undefined,
-      arv: arv ? Number(arv) : selectedLead?.estimated_arv,
-      repair_estimate: repairs ? Number(repairs) : selectedLead?.estimated_repairs,
-    });
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-blue-50 rounded-lg"><Zap className="h-5 w-5 text-blue-600" /></div>
-          <div>
-            <CardTitle>Offer Generator</CardTitle>
-            <p className="text-xs text-gray-400 mt-0.5">Generate 3 strategic offer options with objection scripts</p>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Select label="Select Lead" value={leadId}
-          onChange={(e) => setLeadId(e.target.value)}
-          options={leads.map((l) => ({ value: l.id, label: l.property_address }))}
-          placeholder="Choose a lead..." />
-        <div className="grid grid-cols-3 gap-2">
-          <Input label="ARV" type="number" value={arv} onChange={(e) => setArv(e.target.value)} placeholder="e.g. 250000" />
-          <Input label="Repairs" type="number" value={repairs} onChange={(e) => setRepairs(e.target.value)} placeholder="e.g. 35000" />
-          <Input label="Fee Target" type="number" value={fee} onChange={(e) => setFee(e.target.value)} />
-        </div>
-        {mao && <p className="text-sm text-gray-500">Calculated MAO: <span className="font-bold text-[#1B3A5C]">{formatCurrency(mao)}</span></p>}
-        <Button onClick={handleRun} loading={loading} className="w-full" icon={<Zap className="h-4 w-4" />}>
-          Generate Offer Options
-        </Button>
-
-        {loading && <TypingIndicator />}
-        {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>}
-
-        {result && !loading && (
-          <div className="space-y-4 border-t border-gray-100 pt-4">
-            {/* Offer options */}
-            {result.options?.map((opt, i) => (
-              <div key={i} className="border border-gray-200 rounded-xl p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-900">{opt.name}</span>
-                  <span className="text-lg font-bold text-[#1B3A5C]">{formatCurrency(opt.offer_price)}</span>
-                </div>
-                <p className="text-xs text-gray-400">Close in {opt.close_timeline}</p>
-                <div className="space-y-1">
-                  {(opt.selling_points || []).map((point, j) => (
-                    <p key={j} className="text-xs text-gray-600">✓ {point}</p>
-                  ))}
-                </div>
-                <div className="bg-blue-50 rounded-lg p-2 flex items-start justify-between gap-2">
-                  <p className="text-xs text-blue-700 italic">"{opt.pitch}"</p>
-                  <CopyButton text={opt.pitch} />
-                </div>
-              </div>
-            ))}
-
-            {/* Objections */}
-            {result.objections?.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase">Objection Handling</p>
-                {result.objections.map((obj, i) => (
-                  <div key={i} className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 space-y-1">
-                    <p className="text-xs font-medium text-yellow-800">"{obj.objection}"</p>
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-gray-700">{obj.script}</p>
-                      <CopyButton text={obj.script} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+function OfferGeneratorPanel() {
+  return <Card><CardHeader><CardTitle>Human Offer Review</CardTitle></CardHeader><CardContent><OfferLeadPicker/></CardContent></Card>;
 }
 
 // ─── Agent 3: Outreach Writer ─────────────────────────────────────────────────
@@ -301,7 +204,7 @@ function OutreachWriterPanel({ leads }: { leads: any[] }) {
           <div className="p-2 bg-purple-50 rounded-lg"><MessageSquare className="h-5 w-5 text-purple-600" /></div>
           <div>
             <CardTitle>Outreach Writer</CardTitle>
-            <p className="text-xs text-gray-400 mt-0.5">Generate personalized SMS, email, voicemail & direct mail</p>
+            <p className="text-xs text-gray-400 mt-0.5">Prepare fixed SMS, email, voicemail & direct-mail drafts for review</p>
           </div>
         </div>
       </CardHeader>
@@ -324,7 +227,6 @@ function OutreachWriterPanel({ leads }: { leads: any[] }) {
             options={[
               { value: 'Friendly', label: 'Friendly' },
               { value: 'Professional', label: 'Professional' },
-              { value: 'Urgent', label: 'Urgent' },
             ]} />
         </div>
         <Button onClick={handleRun} loading={loading} className="w-full" icon={<MessageSquare className="h-4 w-4" />}>
@@ -336,7 +238,7 @@ function OutreachWriterPanel({ leads }: { leads: any[] }) {
 
         {result && !loading && (
           <div className="space-y-3 border-t border-gray-100 pt-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase">3 Variations</p>
+            <p className="text-xs font-semibold text-gray-500">Drafts for review — nothing sent or approved</p>
             {result.map((v, i) => (
               <div key={i} className="border border-gray-200 rounded-xl p-4 space-y-2">
                 <div className="flex items-center justify-between">

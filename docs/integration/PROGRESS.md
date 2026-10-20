@@ -15,10 +15,10 @@ The empty-session reconciliation migration remains outside this work and unappli
 - [x] Created integration branch; original production checkout untouched.
 - [x] Added exact integration-branch Vercel deployment exclusion.
 - [x] Removed tracked machine-specific `pipeline/node_modules` symlink from this checkout.
-- [ ] Reconcile schema manifest; no live schema inspected yet.
-- [ ] Port human-offer/draft safeguards with matching API/UI contracts.
-- [ ] Port lot/valuation bundles without historical migration replay.
-- [ ] Port versioned-call identity with matching API/schema/ACL transition.
+- [x] Read-only production migration/catalog snapshot captured in `schema-manifest.json`; full upgrade acceptance remains pending.
+- [x] Prepared human-offer/draft safeguards with matching API/UI contracts.
+- [x] Prepared lot/valuation bundles with eleven newly generated forward migration files across all features; no historical migration was imported or applied.
+- [x] Prepared versioned-call identity with matching API/schema/ACL transition.
 - [ ] Validate production intake/consent/suppression/receipt invariants locally after authorization.
 - [ ] Prepare draft PR and paused release plan.
 
@@ -26,6 +26,27 @@ The empty-session reconciliation migration remains outside this work and unappli
 
 Only the new integration ref may be pushed. Never push the production/default/collection refs. The new ref is explicitly disabled in `vercel.json`. Existing availability monitoring runs on the default branch; do not dispatch it. Existing Railway checkpoint records default-branch deployments; read-only Railway configuration checks on October 20 confirmed all three linked services still source `claude/ai-wholesaling-agency-KkDF1`, not this integration branch. Existing staged changes were left untouched. No deploy CLI or provider worker is part of this work.
 
+## Prepared implementation
+
+- Source ports: `ported-source-files.json` lists 97 collection-only code/fixture/test files. Shared API/UI files were reconciled separately.
+- Production `web/api/__init__.py` keeps import reconciliation and adds only the offer/outreach contract changes.
+- Production `Leads.tsx` retains server CSV imports and inquiry deep links; contract-price autofill is removed, and explicit follow-up-date validation is restored.
+- Production Daily Lists keeps inline property verification, tax warnings and PropStream controls; lot controls load only when opened.
+- Production `ingress-postgres.ts` keeps the restricted collector role and notice-history assertions; collection offer/lot/valuation contention suites are added.
+- `forward-migration-map.json` records source-to-new filenames. `forward-migration-order.json` is the explicit proposed execution order; all eleven files remain unapplied.
+- The four old collection SMS-install migrations were excluded. The empty-session repair was neither altered nor applied.
+- `RELEASE-BOUNDARY.md` documents the schema/runtime transition and why a blanket migration push is prohibited.
+
+## Verification actually performed
+
+- Parsed 34 changed/new Python files as syntax trees; no application imports, test execution, provider calls or database writes.
+- `git diff --check` found no whitespace errors.
+- Byte comparison confirmed 19 protected production intake/SMS/receipt/notification modules and all 103 preexisting migration files remain unchanged.
+- Read-only production metadata confirmed missing feature objects and the non-deleting monitoring function; no data or control-state changes.
+- These are static checks only. Build, typecheck, local SQL execution, backend/frontend tests and end-to-end acceptance remain unrun.
+
 ## Next checkpoint
 
-Review and port the human-offer bundle first. Preserve production imports, linked inquiry navigation, notifications, SMS transport and all receipt handlers. Record exact changed files and checks for each bundle here. New SQL must remain an unapplied proposal until actual production schema/history is reconciled.
+The initial plan/deployment-isolation checkpoint is `bc8052e`, pushed to the integration branch. Commit/push the prepared feature proposal with `[skip ci]` while test permission is pending, then create a draft PR against `codex/retell-sms-production`. Do not merge or deploy it.
+
+After explicit local-test authorization, install dependencies in this isolated checkout and run the relevant suites with production secrets absent and providers blocked/mocked. Resolve failures, add missing cross-feature regression coverage, and satisfy the assessment's R1–R12 before requesting release approval. The full production-shaped schema-upgrade rehearsal is still outstanding.
