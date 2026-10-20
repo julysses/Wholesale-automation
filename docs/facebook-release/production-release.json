@@ -1,0 +1,872 @@
+{
+  "release_commit": "a89815126d9a98ced016167d8e383641d133135f",
+  "pr": 22,
+  "migration_source": "20261020184154_facebook_inquiry_sms_receipts.sql",
+  "migration_applied": [
+    {
+      "name": "facebook_inquiry_sms_receipts",
+      "version": "20261020192531"
+    }
+  ],
+  "previous_runtime": "7b406f5c44a39fd8eec67bb7801c1d32c0526ea5",
+  "before": {
+    "pause": {
+      "app": false,
+      "cron": [
+        {
+          "name": "refresh-lead-retention",
+          "active": true
+        },
+        {
+          "name": "launch-monitor-every-15m",
+          "active": true
+        },
+        {
+          "name": "wholesaleos-retell-form-sms",
+          "active": false
+        },
+        {
+          "name": "wholesaleos-retell-app-sms",
+          "active": false
+        }
+      ],
+      "native": false
+    },
+    "job_count": 6,
+    "migrations": [
+      {
+        "name": "priority_rank_recompute",
+        "version": "20260706164602"
+      },
+      {
+        "name": "hilltop_home_co_form",
+        "version": "20260824014738"
+      },
+      {
+        "name": "approval_access_repair",
+        "version": "20260908201056"
+      },
+      {
+        "name": "development_command_center",
+        "version": "20260908213000"
+      },
+      {
+        "name": "launch_consent_and_function_paths",
+        "version": "20260929014526"
+      },
+      {
+        "name": "protect_public_intake",
+        "version": "20260929014852"
+      },
+      {
+        "name": "durable_form_finalization",
+        "version": "20260929015342"
+      },
+      {
+        "name": "grant_server_settings_read",
+        "version": "20260929015419"
+      },
+      {
+        "name": "normalized_contact_suppression",
+        "version": "20260929020229"
+      },
+      {
+        "name": "lead_lists_and_buyer_import_tracking",
+        "version": "20260929151736"
+      },
+      {
+        "name": "lead_street_key",
+        "version": "20260929154956"
+      },
+      {
+        "name": "score_leads_rules",
+        "version": "20260929155030"
+      },
+      {
+        "name": "lead_cleanup_rules",
+        "version": "20260929165030"
+      },
+      {
+        "name": "lead_retention",
+        "version": "20260929170212"
+      },
+      {
+        "name": "lead_lists_grants",
+        "version": "20260929171623"
+      },
+      {
+        "name": "twilio_message_receipts",
+        "version": "20261006202705"
+      },
+      {
+        "name": "sendgrid_delivery_receipts",
+        "version": "20261007163014"
+      },
+      {
+        "name": "lock_launch_function_paths",
+        "version": "20261007165402"
+      },
+      {
+        "name": "jays_website_intake",
+        "version": "20261007204336"
+      },
+      {
+        "name": "retell_call_requests",
+        "version": "20261008182415"
+      },
+      {
+        "name": "enable_notification_realtime",
+        "version": "20261008184051"
+      },
+      {
+        "name": "durable_sms_nurture",
+        "version": "20261008201605"
+      },
+      {
+        "name": "retell_call_batches",
+        "version": "20261008204521"
+      },
+      {
+        "name": "protect_sms_receipts",
+        "version": "20261008205409"
+      },
+      {
+        "name": "protect_consent_evidence",
+        "version": "20261008205411"
+      },
+      {
+        "name": "durable_appointment_workflow",
+        "version": "20261008214850"
+      },
+      {
+        "name": "launch_monitoring",
+        "version": "20261008221715"
+      },
+      {
+        "name": "reopen_monitor_incidents",
+        "version": "20261008221717"
+      },
+      {
+        "name": "monitor_delivery_evidence",
+        "version": "20261008221719"
+      },
+      {
+        "name": "durable_manual_analysis",
+        "version": "20261008223443"
+      },
+      {
+        "name": "repair_analysis_lead_sync",
+        "version": "20261008223445"
+      },
+      {
+        "name": "durable_deal_handoff",
+        "version": "20261008231637"
+      },
+      {
+        "name": "deal_stage_conflict_guards",
+        "version": "20261008231639"
+      },
+      {
+        "name": "exclude_internal_qa_from_business_reporting",
+        "version": "20261008233903"
+      },
+      {
+        "name": "classify_confirmed_launch_test_receipts",
+        "version": "20261008233905"
+      },
+      {
+        "name": "align_legacy_funnel_with_business_reporting",
+        "version": "20261008234537"
+      },
+      {
+        "name": "durable_public_intake_reference",
+        "version": "20261008235905"
+      },
+      {
+        "name": "atomic_intake_alert_delivery",
+        "version": "20261010020730"
+      },
+      {
+        "name": "retell_form_sms_production",
+        "version": "20261015192942"
+      },
+      {
+        "name": "reviewed_sms_resubscription",
+        "version": "20261015203220"
+      },
+      {
+        "name": "preserve_unclassified_dnc",
+        "version": "20261015203533"
+      },
+      {
+        "name": "monitor_retell_sms_outcomes",
+        "version": "20261016191354"
+      },
+      {
+        "name": "daily_list_ingestion",
+        "version": "20261016193644"
+      },
+      {
+        "name": "list_operations",
+        "version": "20261016193656"
+      },
+      {
+        "name": "list_review_batch_guard",
+        "version": "20261016193658"
+      },
+      {
+        "name": "list_monitor_receipts",
+        "version": "20261016193702"
+      },
+      {
+        "name": "list_digest_delivery",
+        "version": "20261016193704"
+      },
+      {
+        "name": "list_trace_budget",
+        "version": "20261016193711"
+      },
+      {
+        "name": "list_trace_contacts",
+        "version": "20261016193713"
+      },
+      {
+        "name": "list_trace_operations",
+        "version": "20261016193715"
+      },
+      {
+        "name": "list_scoring_receipts",
+        "version": "20261016193717"
+      },
+      {
+        "name": "list_scoring_jobs",
+        "version": "20261016193719"
+      },
+      {
+        "name": "list_scoring_monitor",
+        "version": "20261016193722"
+      },
+      {
+        "name": "list_scoring_admin",
+        "version": "20261016193724"
+      },
+      {
+        "name": "list_scoring_worker",
+        "version": "20261016193726"
+      },
+      {
+        "name": "list_scoring_inspection",
+        "version": "20261016193728"
+      },
+      {
+        "name": "dallas_foreclosure_public_search",
+        "version": "20261016193730"
+      },
+      {
+        "name": "list_trace_total_cap",
+        "version": "20261016193738"
+      },
+      {
+        "name": "list_reviewed_identity",
+        "version": "20261016193740"
+      },
+      {
+        "name": "foreclosure_daily_actions",
+        "version": "20261016193742"
+      },
+      {
+        "name": "propstream_operator_handoff",
+        "version": "20261016193745"
+      },
+      {
+        "name": "collin_appraisal_evidence_host",
+        "version": "20261016193747"
+      },
+      {
+        "name": "foreclosure_status_review",
+        "version": "20261016193749"
+      },
+      {
+        "name": "propstream_bulk_actions",
+        "version": "20261016193751"
+      },
+      {
+        "name": "foreclosure_capture_receipts",
+        "version": "20261016193753"
+      },
+      {
+        "name": "foreclosure_extraction_receipts",
+        "version": "20261016193755"
+      },
+      {
+        "name": "foreclosure_trustee_status_evidence",
+        "version": "20261016193757"
+      },
+      {
+        "name": "foreclosure_batch_receipts",
+        "version": "20261016193759"
+      },
+      {
+        "name": "foreclosure_appraisal_index_receipts",
+        "version": "20261016193802"
+      },
+      {
+        "name": "propstream_external_submission_recovery",
+        "version": "20261016193804"
+      },
+      {
+        "name": "scheduled_bulk_supervision",
+        "version": "20261016193806"
+      },
+      {
+        "name": "county_property_notifications",
+        "version": "20261016193808"
+      },
+      {
+        "name": "county_intake_assignment",
+        "version": "20261016194506"
+      },
+      {
+        "name": "weekly_tax_monitoring",
+        "version": "20261016194531"
+      },
+      {
+        "name": "onboarding_promotion_receipts",
+        "version": "20261016200155"
+      },
+      {
+        "name": "reconcile_retell_intake_handoffs",
+        "version": "20261016205558"
+      },
+      {
+        "name": "retell_next_contact_window_handoff",
+        "version": "20261016210249"
+      },
+      {
+        "name": "restricted_collector_login",
+        "version": "20261016210251"
+      },
+      {
+        "name": "list_review_source_filters",
+        "version": "20261016215112"
+      },
+      {
+        "name": "tax_review_evidence_context",
+        "version": "20261016222707"
+      },
+      {
+        "name": "confirmed_suppression_handoff",
+        "version": "20261016224417"
+      },
+      {
+        "name": "protect_website_inquiry_retention",
+        "version": "20261016231306"
+      },
+      {
+        "name": "foreclosure_case_reference_formats",
+        "version": "20261016234054"
+      },
+      {
+        "name": "scope_retell_sms_claims",
+        "version": "20261017000513"
+      },
+      {
+        "name": "foreclosure_address_suffix_triage",
+        "version": "20261017012042"
+      },
+      {
+        "name": "retell_app_transport_ownership",
+        "version": "20261017020136"
+      },
+      {
+        "name": "retell_app_twilio_outbox",
+        "version": "20261017020143"
+      },
+      {
+        "name": "retell_app_recovery_monitoring",
+        "version": "20261017020150"
+      },
+      {
+        "name": "retell_app_automatic_queue",
+        "version": "20261017021928"
+      },
+      {
+        "name": "retell_app_intake_handoff",
+        "version": "20261017023006"
+      },
+      {
+        "name": "sms_reply_notification_handoff",
+        "version": "20261019195321"
+      }
+    ],
+    "sms_digest": "3abaa86f3c2efad517a2a79f2cbe329f",
+    "jobs_digest": "687a5fb90bb9d665c8b9354d44502fbc",
+    "function_md5": "8dae3b9d09abc088bf28f63b559e6827",
+    "native_table": null,
+    "turns_digest": "0cfd8bfc03794434220c1ad891d3aba1",
+    "sessions_digest": "d02cd5eb369068b35c1ddadff9453e4e",
+    "active_intake_owner": true,
+    "empty_session_repair": 0
+  },
+  "after": {
+    "rls": true,
+    "pause": {
+      "app": false,
+      "native": false,
+      "sms_cron": false
+    },
+    "migration": [
+      {
+        "name": "facebook_inquiry_sms_receipts",
+        "version": "20261020192531"
+      }
+    ],
+    "sms_digest": "3abaa86f3c2efad517a2a79f2cbe329f",
+    "constraints": [
+      {
+        "name": "retell_facebook_inquiry_identity",
+        "validated": true
+      },
+      {
+        "name": "retell_inquiry_exact_source",
+        "validated": true
+      }
+    ],
+    "jobs_digest": "687a5fb90bb9d665c8b9354d44502fbc",
+    "native_rows": 0,
+    "browser_read": false,
+    "turns_digest": "0cfd8bfc03794434220c1ad891d3aba1",
+    "history_count": 92,
+    "server_insert": true,
+    "server_update": false,
+    "sessions_digest": "d02cd5eb369068b35c1ddadff9453e4e",
+    "empty_session_repair": 0
+  },
+  "status": "released_with_messaging_paused",
+  "after_release": {
+    "pause": {
+      "app": false,
+      "native": false,
+      "sms_cron": false
+    },
+    "migrations": [
+      {
+        "name": "priority_rank_recompute",
+        "version": "20260706164602"
+      },
+      {
+        "name": "hilltop_home_co_form",
+        "version": "20260824014738"
+      },
+      {
+        "name": "approval_access_repair",
+        "version": "20260908201056"
+      },
+      {
+        "name": "development_command_center",
+        "version": "20260908213000"
+      },
+      {
+        "name": "launch_consent_and_function_paths",
+        "version": "20260929014526"
+      },
+      {
+        "name": "protect_public_intake",
+        "version": "20260929014852"
+      },
+      {
+        "name": "durable_form_finalization",
+        "version": "20260929015342"
+      },
+      {
+        "name": "grant_server_settings_read",
+        "version": "20260929015419"
+      },
+      {
+        "name": "normalized_contact_suppression",
+        "version": "20260929020229"
+      },
+      {
+        "name": "lead_lists_and_buyer_import_tracking",
+        "version": "20260929151736"
+      },
+      {
+        "name": "lead_street_key",
+        "version": "20260929154956"
+      },
+      {
+        "name": "score_leads_rules",
+        "version": "20260929155030"
+      },
+      {
+        "name": "lead_cleanup_rules",
+        "version": "20260929165030"
+      },
+      {
+        "name": "lead_retention",
+        "version": "20260929170212"
+      },
+      {
+        "name": "lead_lists_grants",
+        "version": "20260929171623"
+      },
+      {
+        "name": "twilio_message_receipts",
+        "version": "20261006202705"
+      },
+      {
+        "name": "sendgrid_delivery_receipts",
+        "version": "20261007163014"
+      },
+      {
+        "name": "lock_launch_function_paths",
+        "version": "20261007165402"
+      },
+      {
+        "name": "jays_website_intake",
+        "version": "20261007204336"
+      },
+      {
+        "name": "retell_call_requests",
+        "version": "20261008182415"
+      },
+      {
+        "name": "enable_notification_realtime",
+        "version": "20261008184051"
+      },
+      {
+        "name": "durable_sms_nurture",
+        "version": "20261008201605"
+      },
+      {
+        "name": "retell_call_batches",
+        "version": "20261008204521"
+      },
+      {
+        "name": "protect_sms_receipts",
+        "version": "20261008205409"
+      },
+      {
+        "name": "protect_consent_evidence",
+        "version": "20261008205411"
+      },
+      {
+        "name": "durable_appointment_workflow",
+        "version": "20261008214850"
+      },
+      {
+        "name": "launch_monitoring",
+        "version": "20261008221715"
+      },
+      {
+        "name": "reopen_monitor_incidents",
+        "version": "20261008221717"
+      },
+      {
+        "name": "monitor_delivery_evidence",
+        "version": "20261008221719"
+      },
+      {
+        "name": "durable_manual_analysis",
+        "version": "20261008223443"
+      },
+      {
+        "name": "repair_analysis_lead_sync",
+        "version": "20261008223445"
+      },
+      {
+        "name": "durable_deal_handoff",
+        "version": "20261008231637"
+      },
+      {
+        "name": "deal_stage_conflict_guards",
+        "version": "20261008231639"
+      },
+      {
+        "name": "exclude_internal_qa_from_business_reporting",
+        "version": "20261008233903"
+      },
+      {
+        "name": "classify_confirmed_launch_test_receipts",
+        "version": "20261008233905"
+      },
+      {
+        "name": "align_legacy_funnel_with_business_reporting",
+        "version": "20261008234537"
+      },
+      {
+        "name": "durable_public_intake_reference",
+        "version": "20261008235905"
+      },
+      {
+        "name": "atomic_intake_alert_delivery",
+        "version": "20261010020730"
+      },
+      {
+        "name": "retell_form_sms_production",
+        "version": "20261015192942"
+      },
+      {
+        "name": "reviewed_sms_resubscription",
+        "version": "20261015203220"
+      },
+      {
+        "name": "preserve_unclassified_dnc",
+        "version": "20261015203533"
+      },
+      {
+        "name": "monitor_retell_sms_outcomes",
+        "version": "20261016191354"
+      },
+      {
+        "name": "daily_list_ingestion",
+        "version": "20261016193644"
+      },
+      {
+        "name": "list_operations",
+        "version": "20261016193656"
+      },
+      {
+        "name": "list_review_batch_guard",
+        "version": "20261016193658"
+      },
+      {
+        "name": "list_monitor_receipts",
+        "version": "20261016193702"
+      },
+      {
+        "name": "list_digest_delivery",
+        "version": "20261016193704"
+      },
+      {
+        "name": "list_trace_budget",
+        "version": "20261016193711"
+      },
+      {
+        "name": "list_trace_contacts",
+        "version": "20261016193713"
+      },
+      {
+        "name": "list_trace_operations",
+        "version": "20261016193715"
+      },
+      {
+        "name": "list_scoring_receipts",
+        "version": "20261016193717"
+      },
+      {
+        "name": "list_scoring_jobs",
+        "version": "20261016193719"
+      },
+      {
+        "name": "list_scoring_monitor",
+        "version": "20261016193722"
+      },
+      {
+        "name": "list_scoring_admin",
+        "version": "20261016193724"
+      },
+      {
+        "name": "list_scoring_worker",
+        "version": "20261016193726"
+      },
+      {
+        "name": "list_scoring_inspection",
+        "version": "20261016193728"
+      },
+      {
+        "name": "dallas_foreclosure_public_search",
+        "version": "20261016193730"
+      },
+      {
+        "name": "list_trace_total_cap",
+        "version": "20261016193738"
+      },
+      {
+        "name": "list_reviewed_identity",
+        "version": "20261016193740"
+      },
+      {
+        "name": "foreclosure_daily_actions",
+        "version": "20261016193742"
+      },
+      {
+        "name": "propstream_operator_handoff",
+        "version": "20261016193745"
+      },
+      {
+        "name": "collin_appraisal_evidence_host",
+        "version": "20261016193747"
+      },
+      {
+        "name": "foreclosure_status_review",
+        "version": "20261016193749"
+      },
+      {
+        "name": "propstream_bulk_actions",
+        "version": "20261016193751"
+      },
+      {
+        "name": "foreclosure_capture_receipts",
+        "version": "20261016193753"
+      },
+      {
+        "name": "foreclosure_extraction_receipts",
+        "version": "20261016193755"
+      },
+      {
+        "name": "foreclosure_trustee_status_evidence",
+        "version": "20261016193757"
+      },
+      {
+        "name": "foreclosure_batch_receipts",
+        "version": "20261016193759"
+      },
+      {
+        "name": "foreclosure_appraisal_index_receipts",
+        "version": "20261016193802"
+      },
+      {
+        "name": "propstream_external_submission_recovery",
+        "version": "20261016193804"
+      },
+      {
+        "name": "scheduled_bulk_supervision",
+        "version": "20261016193806"
+      },
+      {
+        "name": "county_property_notifications",
+        "version": "20261016193808"
+      },
+      {
+        "name": "county_intake_assignment",
+        "version": "20261016194506"
+      },
+      {
+        "name": "weekly_tax_monitoring",
+        "version": "20261016194531"
+      },
+      {
+        "name": "onboarding_promotion_receipts",
+        "version": "20261016200155"
+      },
+      {
+        "name": "reconcile_retell_intake_handoffs",
+        "version": "20261016205558"
+      },
+      {
+        "name": "retell_next_contact_window_handoff",
+        "version": "20261016210249"
+      },
+      {
+        "name": "restricted_collector_login",
+        "version": "20261016210251"
+      },
+      {
+        "name": "list_review_source_filters",
+        "version": "20261016215112"
+      },
+      {
+        "name": "tax_review_evidence_context",
+        "version": "20261016222707"
+      },
+      {
+        "name": "confirmed_suppression_handoff",
+        "version": "20261016224417"
+      },
+      {
+        "name": "protect_website_inquiry_retention",
+        "version": "20261016231306"
+      },
+      {
+        "name": "foreclosure_case_reference_formats",
+        "version": "20261016234054"
+      },
+      {
+        "name": "scope_retell_sms_claims",
+        "version": "20261017000513"
+      },
+      {
+        "name": "foreclosure_address_suffix_triage",
+        "version": "20261017012042"
+      },
+      {
+        "name": "retell_app_transport_ownership",
+        "version": "20261017020136"
+      },
+      {
+        "name": "retell_app_twilio_outbox",
+        "version": "20261017020143"
+      },
+      {
+        "name": "retell_app_recovery_monitoring",
+        "version": "20261017020150"
+      },
+      {
+        "name": "retell_app_automatic_queue",
+        "version": "20261017021928"
+      },
+      {
+        "name": "retell_app_intake_handoff",
+        "version": "20261017023006"
+      },
+      {
+        "name": "sms_reply_notification_handoff",
+        "version": "20261019195321"
+      },
+      {
+        "name": "facebook_inquiry_sms_receipts",
+        "version": "20261020192531"
+      }
+    ],
+    "sms_digest": "3abaa86f3c2efad517a2a79f2cbe329f",
+    "jobs_digest": "687a5fb90bb9d665c8b9354d44502fbc",
+    "turns_digest": "0cfd8bfc03794434220c1ad891d3aba1",
+    "native_receipts": 0,
+    "sessions_digest": "d02cd5eb369068b35c1ddadff9453e4e",
+    "empty_session_repair": 0
+  },
+  "deployment": {
+    "id": "dpl_Dwjn7sjLUB5C9X2JsoezbSKjJ6go",
+    "name": "wholesale-automation",
+    "url": "wholesale-automation-1sxacbvo0-julysses-projects.vercel.app",
+    "type": "LAMBDAS",
+    "state": "READY",
+    "createdAt": 1792524369254,
+    "creator": {
+      "uid": "U5kKXNAf7Ohqv80PNPwAT1oD",
+      "username": "julysses"
+    },
+    "project": {
+      "id": "prj_ZRURRXQ1GbBiIUBtmGFiYZdVMNgd",
+      "name": "wholesale-automation",
+      "framework": "fastapi"
+    },
+    "meta": {
+      "githubCommitRef": "a89815126d9a98ced016167d8e383641d133135f",
+      "githubCommitSha": "a89815126d9a98ced016167d8e383641d133135f",
+      "githubCommitMessage": "Release Facebook-only intake candidate (#22) [skip ci]\n\nFacebook-only intake release candidate with production-shaped migration rehearsal",
+      "githubRepo": "Wholesale-automation",
+      "githubOrg": "julysses"
+    },
+    "alias": [
+      "wholesale-automation-julysses-projects.vercel.app",
+      "wholesale-automation-git-a89815126d9a9-9a75f9-julysses-projects.vercel.app"
+    ],
+    "target": "production",
+    "regions": [
+      "iad1"
+    ],
+    "buildingAt": 1792524449500,
+    "ready": 1792524536441,
+    "readyState": "READY",
+    "aliasError": null
+  },
+  "messaging_flags": {
+    "SMS_LIVE_ENABLED": false,
+    "EMAIL_LIVE_ENABLED": false,
+    "RETELL_SMS_LIVE_ENABLED": false
+  },
+  "verification_scope": "Public configuration and rejection probes; full mocked journeys were proven locally. No valid production inquiry or provider activity was initiated.",
+  "runtime_error_scan": "No error/fatal groups returned for released deployment during the 15-minute scoped check."
+}
