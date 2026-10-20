@@ -1,3 +1,11 @@
+## Facebook-only candidate — October 20, 2026
+
+Latest authorization permits local repairs and tests with mocked providers and disposable databases. Production changes, live messages, provider activity, and all schedules remain paused pending owner review. This does **not** authorize the older empty-session recovery steps below.
+
+Continue from [the Facebook release checkpoint](facebook-release/PROGRESS.md) on `codex/facebook-release-candidate`, based on production `19c117ad7a8ab10656bf116a2a6835508f7f1f01`. The only release migration is `20261020184154_facebook_inquiry_sms_receipts.sql`. The county integration and the unapplied empty-session migration are excluded. Fresh production catalog definitions, local evidence and exact release gates are under `docs/facebook-release/`.
+
+---
+
 ## PAUSED at owner request — October 19, 2026, 4:44 PM Central
 
 User said “pause.” No further repair, migration retry, reconciliation, new test, activation or provider POST is authorized until resumed. No new SMS or paid generation this turn; previously observed cumulative test spending remains approximately $0.02360 of the $5 cap (Retell9.96 / Twilio1.41526). Both SMS schedulers are verifiedfalse; sending flags were never changed this turn. SMS event count17; held session remainsreview. Original turn has not been replayed, stopped or rebound.
