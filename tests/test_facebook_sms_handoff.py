@@ -202,3 +202,37 @@ async def test_ambiguous_sms_attempt_alerts_operator_and_never_replays(intake):
     alerts = [row for row in db.tables['app_notifications'].values() if row.get('metadata', {}).get('integration_failure')]
     assert len(alerts) == 1
     assert alerts[0]['metadata']['provider'] == 'twilio'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("transport", ["retell_native", "app_twilio"])
+async def test_native_facebook_is_held_without_website_receipt_on_retell_stack(intake, monkeypatch, transport):
+    """Known launch blocker: passing direct-Twilio tests does not prove Retell handoff.
+
+    Native Facebook consent is saved on the notification, whereas the current
+    Retell queue requires a website submission foreign key. Preserve the hold,
+    owner task and at-most-once notification until that schema is reconciled.
+    """
+    db, sdk, email = intake
+    monkeypatch.setenv("RETELL_FORM_SMS_ENABLED", "true")
+    monkeypatch.setenv("RETELL_SMS_TRANSPORT", transport)
+    monkeypatch.setenv("RETELL_APP_TRANSPORT_ENABLED", "true")
+    monkeypatch.setenv("RETELL_APP_TEST_APPROVED", "true")
+    # This memory fixture has no website submissions, so ordering is a no-op.
+    monkeypatch.setattr(MemoryTable, "order", lambda self, *_a, **_kw: self, raising=False)
+    adapter = MagicMock()
+    adapter.fetch_lead_form_data.return_value = data()
+    entry = SimpleNamespace(leadgen_id="native-retell-blocker", campaign_id="")
+    await webhooks._process_facebook_lead(entry, adapter)
+    await webhooks._process_facebook_lead(entry, adapter)
+    assert len(db.tables["leads"]) == 1
+    assert len(db.tables["tasks"]) == 1
+    assert not db.tables.get("retell_form_sms_jobs")
+    assert not db.tables.get("sms_events")
+    sdk.messages.create.assert_not_called()
+    email.send.assert_called_once()
+    notice = next(row for row in db.tables["app_notifications"].values()
+                  if row.get("type") == "pipeline_step")
+    assert notice["metadata"]["seller_sms"] == "no_form_receipt"
+    assert notice["metadata"]["delivery_state"] == "review"
+    assert notice["metadata"]["consent_receipt"]["sms"]["accepted"] is True

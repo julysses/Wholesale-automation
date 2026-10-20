@@ -36,4 +36,4 @@ Offer, lot and valuation receipts are durable evidence. Do not drop them, erase 
 
 ## Outstanding evidence
 
-No integration tests have run yet. Static syntax and diff inspection are not substitutes for R1–R12 in the assessment. Local test authorization is pending. No production promotion or activation is requested by this draft.
+Local backend, UI, SQL and SMS contention tests have now run. See `FACEBOOK-LAUNCH-READINESS.md` for exact results and the native Facebook Retell handoff blocker. R1–R12 are not fully satisfied: continuous journey and production-shaped full upgrade acceptance remain outstanding. No production promotion or activation is requested by this draft.

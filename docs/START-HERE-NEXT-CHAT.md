@@ -1,10 +1,14 @@
+## October 20 local Facebook acceptance result
+
+Both ad destinations are required. Local suites ran with mocked providers/disposable databases; see `docs/integration/FACEBOOK-LAUNCH-READINESS.md`. Native Facebook + Retell currently holds with `no_form_receipt`: CRM/task/alert persist but acknowledgment/conversation does not start. New regression cases reproduce this. No production changes or provider calls. Release and schedules remain paused.
+
 ## Selective integration draft — October 20, 2026
 
 Owner authorized proceeding with the integration recommendation. Work is isolated on `codex/wholesale-integration-review`, based on production `19c117a`; do not merge the collection branch. See `docs/integration/PROGRESS.md` for exact scope, static checks, proposed migrations, and remaining regression requirements.
 
-Production deployments, database changes, collection schedules, SMS operations and provider activity remain paused. Local isolated test permission is pending; no tests have run. The integration branch is excluded from Vercel deployment and checkpoint commits use `[skip ci]`. No existing production migration was changed; the held-session repair below remains unapplied and is excluded from the new feature migration allowlist.
+Production deployments, database changes, collection schedules, SMS operations and provider activity remain paused. Local testing with mocked providers and disposable databases is authorized for both Facebook Instant Forms and website forms. Results are tracked in docs/integration/PROGRESS.md. The integration branch is excluded from Vercel deployment and checkpoint commits use `[skip ci]`. No existing production migration was changed; the held-session repair below remains unapplied and is excluded from the new feature migration allowlist.
 
-The code is a review draft, not a certified integration or release. Resume local verification only after test authorization; any later deployment or operational activation remains a separate decision.
+The code is a review draft, not a certified integration or release. Local verification is resumed; any later deployment or operational activation remains a separate decision.
 
 ## PAUSED at owner request — October 19, 2026, 4:44 PM Central
 

@@ -29,7 +29,7 @@ it('shows holds without manual forms or claiming automation is active', async ()
   expect(mocks.fetch.mock.calls.every(([, options]) => !options || !options.method || options.method === 'GET')).toBe(true);
   mocks.actor = 'owner-b';
   view.rerender(<QueryClientProvider client={client}><DailyLists /></QueryClientProvider>);
-  await waitFor(() => expect(client.getQueryData(['daily-lists', 'owner-b'])).toBeTruthy());
+  await waitFor(() => expect(client.getQueryData(['daily-lists', 'owner-b', 0, ''])).toBeTruthy());
 });
 it('reports failures instead of displaying an empty successful queue', async () => {
   mocks.fetch.mockRejectedValue(new Error('unavailable'));
