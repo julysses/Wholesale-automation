@@ -92,11 +92,20 @@ def sms_consent_blocker(sb, lead_id: str, to_number: str) -> str | None:
             "id", str(lead_id)).limit(1).execute().data
         lead = leads[0] if leads else {}
         if lead.get("source") == "facebook_lead_ad" and lead.get("dnc") is False:
+            native = sb.table("facebook_lead_submissions").select("raw_answers").eq(
+                "lead_id", str(lead_id)).limit(2).execute().data or []
             notice_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{lead_id}"))
             notices = sb.table("app_notifications").select("metadata").eq("id", notice_id).limit(1).execute().data
             metadata = notices[0].get("metadata", {}) if notices else {}
-            authorized = (metadata.get("source") == "facebook_lead_ad"
-                          and matching_native_consent(metadata.get("consent_receipt"), to_number, lead, "sms"))
+            if native:
+                # New native inquiries use immutable evidence, never editable alert metadata.
+                authorized = len(native) == 1 and matching_native_consent(
+                    native[0].get("raw_answers", {}).get("_facebook_consent"), to_number, lead, "sms")
+            else:
+                # Preserve historical direct-Twilio consent; this cannot enqueue
+                # a new Retell job without an immutable native submission.
+                authorized = (metadata.get("source") == "facebook_lead_ad"
+                              and matching_native_consent(metadata.get("consent_receipt"), to_number, lead, "sms"))
             answers = {"property_address": lead.get("property_address", "")}
     if not authorized:
         return "No matching property inquiry consent receipt"

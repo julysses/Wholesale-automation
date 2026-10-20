@@ -48,7 +48,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "claude/ai-wholesaling-agency-KkDF1": false
+      "claude/ai-wholesaling-agency-KkDF1": false,
+      "codex/facebook-release-candidate": false
     }
   }
 }

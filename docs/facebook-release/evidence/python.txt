@@ -1,0 +1,18 @@
+    self.updated_at = datetime.utcnow()
+
+tests/test_schemas.py::TestBuyerQualification::test_degrade_for_lowball
+  /Users/juliodominguez/Documents/Codex/2026-10-20/a-review-of-the-wholesaleos-github/facebook-release/schemas/buyer.py:80: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.updated_at = datetime.utcnow()
+
+tests/test_schemas.py::TestBuyerQualification::test_upgrade_for_close
+tests/test_schemas.py::TestBuyerQualification::test_score_caps_at_100
+  /Users/juliodominguez/Documents/Codex/2026-10-20/a-review-of-the-wholesaleos-github/facebook-release/schemas/buyer.py:90: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.last_active = datetime.utcnow()
+
+tests/test_schemas.py::TestBuyerQualification::test_upgrade_for_close
+tests/test_schemas.py::TestBuyerQualification::test_score_caps_at_100
+  /Users/juliodominguez/Documents/Codex/2026-10-20/a-review-of-the-wholesaleos-github/facebook-release/schemas/buyer.py:91: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.updated_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================ 1131 passed, 10 skipped, 367 warnings in 5.47s ================
