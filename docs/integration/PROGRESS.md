@@ -20,7 +20,7 @@ The empty-session reconciliation migration remains outside this work and unappli
 - [x] Prepared lot/valuation bundles with eleven newly generated forward migration files across all features; no historical migration was imported or applied.
 - [x] Prepared versioned-call identity with matching API/schema/ACL transition.
 - [ ] Validate production intake/consent/suppression/receipt invariants locally after authorization.
-- [ ] Prepare draft PR and paused release plan.
+- [x] Opened draft PR #21 against production and documented the paused release boundary.
 
 ## Deployment and test containment
 
@@ -47,6 +47,6 @@ Only the new integration ref may be pushed. Never push the production/default/co
 
 ## Next checkpoint
 
-The initial plan/deployment-isolation checkpoint is `bc8052e`, pushed to the integration branch. Commit/push the prepared feature proposal with `[skip ci]` while test permission is pending, then create a draft PR against `codex/retell-sms-production`. Do not merge or deploy it.
+The initial plan/deployment-isolation checkpoint is `bc8052e`. Prepared feature commit `f675e26c1690223c0d2d8dc909b97282e9e2ab70` is pushed. Draft PR [#21](https://github.com/julysses/Wholesale-automation/pull/21) targets `codex/retell-sms-production`; it is not ready to merge or deploy. GitHub read-back confirmed the expected head/base, zero Actions runs for the integration branch, and no GitHub deployment records for it at the checkpoint. Those API observations do not substitute for a full live release audit. Subsequent checkpoint commits continue to use `[skip ci]` while test permission is pending.
 
 After explicit local-test authorization, install dependencies in this isolated checkout and run the relevant suites with production secrets absent and providers blocked/mocked. Resolve failures, add missing cross-feature regression coverage, and satisfy the assessment's R1–R12 before requesting release approval. The full production-shaped schema-upgrade rehearsal is still outstanding.
