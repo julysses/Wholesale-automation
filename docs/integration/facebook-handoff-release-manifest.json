@@ -1,0 +1,26 @@
+{
+  "status": "local_validation_only_not_authorized_for_production",
+  "production_baseline": "19c117ad7a8ab10656bf116a2a6835508f7f1f01",
+  "repair_patch_base": "327179b3f9560aa6ae837c3044aa8198c49048c7",
+  "scope_note": "Runtime paths identify this repair's deltas, not permission to copy whole files or deploy the full integration branch. Shared webhooks.py already contains separate collection changes.",
+  "migrations": [
+    "20261020184154_facebook_inquiry_sms_receipts.sql"
+  ],
+  "prerequisites": [
+    "Existing production lead, website submission, intake claim and follow-up schema",
+    "retell_form_sms_jobs with app_twilio transport ownership and immutable transport trigger",
+    "Current production consent, suppression, SMS receipt and reply notification functions"
+  ],
+  "runtime_files": [
+    "tools/facebook_inquiry.py",
+    "tools/retell_form_sms.py",
+    "tools/sms_client.py",
+    "web/api/webhooks.py"
+  ],
+  "excluded": [
+    "Historical empty-session reconciliation",
+    "County, offer, lot and valuation feature migrations",
+    "Backfill or replay of historical inquiry notifications",
+    "Provider activity, production rollout and schedule activation"
+  ]
+}

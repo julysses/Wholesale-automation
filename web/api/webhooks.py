@@ -1920,6 +1920,7 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
     Background task: fetch FB lead field_data → create lead → run qualification.
     """
     from tools.facebook_ads_adapter import normalize_facebook_fields
+    from tools.facebook_inquiry import save_submission
     from web.api.lead_forms_api import (
         _compute_scores_from_answers,
         _send_hot_lead_notification,
@@ -1989,6 +1990,7 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         "internal_notes", lead_payload["internal_notes"],
     ).limit(1).execute().data
     if existing:
+        fields = save_submission(supabase, existing[0]["id"], fields)
         _ensure_facebook_followup(supabase, existing[0]["id"])
         _send_lead_pipeline_sms(
             lead_id=existing[0]["id"], answers=fields, phone=fields.get("phone", ""),
@@ -2001,6 +2003,7 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
     if not resp.data:
         existing = supabase.table("leads").select("id").eq("id", lead_payload["id"]).limit(1).execute().data
         if existing:
+            fields = save_submission(supabase, existing[0]["id"], fields)
             _ensure_facebook_followup(supabase, existing[0]["id"])
             _send_lead_pipeline_sms(
                 lead_id=existing[0]["id"], answers=fields, phone=fields.get("phone", ""),
@@ -2009,6 +2012,7 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
             return
         raise RuntimeError("Facebook lead persistence was not confirmed")
     lead_id = resp.data[0]["id"]
+    fields = save_submission(supabase, lead_id, fields)
     _ensure_facebook_followup(supabase, lead_id)
 
     # Update campaign lead count

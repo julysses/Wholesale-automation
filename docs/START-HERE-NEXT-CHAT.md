@@ -1,6 +1,8 @@
-## October 20 local Facebook acceptance result
+## October 20 native Facebook handoff fixed locally
 
-Both ad destinations are required. Local suites ran with mocked providers/disposable databases; see `docs/integration/FACEBOOK-LAUNCH-READINESS.md`. Native Facebook + Retell currently holds with `no_form_receipt`: CRM/task/alert persist but acknowledgment/conversation does not start. New regression cases reproduce this. No production changes or provider calls. Release and schedules remain paused.
+Owner authorized repair and local testing. See `docs/integration/FACEBOOK-HANDOFF-FIX.md` for the exact changes and evidence. Native consent-bearing receipts now link to one Retell queue job without creating website submissions. Ten connected API/PostgreSQL journeys passed across Hilltop, Jays seller and native Facebook paths, including acknowledgment, reply, delivery receipts, STOP, no consent and recovery. Eight-worker native contention passed; 1,261 backend, 231 pipeline and 240 frontend tests passed.
+
+Production, live provider activity, messages and schedules remain paused. New migration `20261020184154_facebook_inquiry_sms_receipts.sql` was applied ONLY to disposable local databases. See the separate `facebook-handoff-release-manifest.json`; never directory-push migrations. No held message was replayed. Full production-shaped upgrade, actual browser/Meta/carrier configuration and controlled live acceptance remain unverified.
 
 ## Selective integration draft — October 20, 2026
 

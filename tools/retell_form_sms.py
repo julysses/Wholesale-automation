@@ -49,15 +49,19 @@ def enqueue(sb, lead_id):
         # Selecting an unavailable transport must never fall back to native SMS.
         return 'app_transport_configuration_hold'
     receipts = sb.table('lead_form_submissions').select('id,created_at,raw_answers').eq('lead_id', lead_id).order('created_at', desc=True).limit(1).execute().data or []
+    native = False
     if not receipts:
-        return 'no_form_receipt'
+        receipts = sb.table('facebook_lead_submissions').select('*').eq('lead_id', lead_id).limit(2).execute().data or []
+        if len(receipts) != 1:
+            return 'no_form_receipt'
+        native = True
     receipt = receipts[0]
     try:
-        phone = normalize_us_phone(receipt['raw_answers'].get('phone'))
-        submitted = datetime.fromisoformat(receipt['created_at'].replace('Z', '+00:00'))
-        if submitted.tzinfo is None:
+        phone = normalize_us_phone(receipt['phone_number'] if native else receipt['raw_answers'].get('phone'))
+        submitted = datetime.fromisoformat((receipt['submitted_at'] if native else receipt['created_at']).replace('Z', '+00:00'))
+        if submitted.tzinfo is None or submitted > datetime.now(timezone.utc):
             return 'invalid_submission_time'
-    except (ValueError, TypeError, KeyError):
+    except (ValueError, TypeError, KeyError, AttributeError):
         return 'invalid_form_receipt'
     blocker = sms_consent_blocker(sb, lead_id, phone)
     if blocker:
@@ -68,8 +72,10 @@ def enqueue(sb, lead_id):
         due, expires, deferred = acknowledgement_window(submitted)
     except ValueError:
         return 'contact_window_not_configured'
-    job_id = str(uuid5(NAMESPACE_URL, 'wholesaleos:retell-form-sms:' + receipt['id']))
-    row = {'id': job_id, 'lead_id': lead_id, 'submission_id': receipt['id'], 'phone_number': phone,
+    namespace = 'wholesaleos:retell-facebook-sms:' if native else 'wholesaleos:retell-form-sms:'
+    job_id = str(uuid5(NAMESPACE_URL, namespace + receipt['id']))
+    receipt_key = 'facebook_submission_id' if native else 'submission_id'
+    row = {'id': job_id, 'lead_id': lead_id, receipt_key: receipt['id'], 'phone_number': phone,
            'due_at': due.isoformat(), 'expires_at': expires.isoformat()}
     if transport == 'app_twilio':
         from tools.retell_app_dispatch import APP_ACKNOWLEDGMENT
@@ -186,7 +192,9 @@ def process_claim(sb, job):
                'override_agent_id': os.environ['RETELL_SMS_AGENT_ID'],
                'override_agent_version': configured_version(),
                'honor_internal_dnc': True,
-               'metadata': {'lead_id': job['lead_id'], 'submission_id': job['submission_id'], 'sms_job_id': job['id']},
+               'metadata': {'lead_id': job['lead_id'], 'sms_job_id': job['id'],
+                            **({'facebook_submission_id': job['facebook_submission_id']} if job.get('facebook_submission_id')
+                               else {'submission_id': job['submission_id']})},
                'retell_llm_dynamic_variables': {'first_name': first_name, 'street_address': street,
                                                'sender_name': os.environ['RETELL_SMS_SENDER_NAME']}}
     try:

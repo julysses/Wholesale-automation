@@ -30,10 +30,11 @@ with tempfile.TemporaryDirectory(prefix="wholesale-offline-home-") as home:
         "DATABASE_URL": "sqlite:///:memory:",
     }
     command = sys.argv[1:]
-    if command == ["--postgres-sms"]:
+    if command in (["--postgres-sms"], ["--lead-journeys"]):
         # The existing runner creates its own cluster, URL and database, then
         # destroys it in finally. Node may connect only to that generated URL.
         env["PYTHONPATH"] = str(root)
         env["WHOLESALE_LOCAL_POSTGRES"] = "1"
-        command = [sys.executable, str(root / "pipeline/integration/run_sms_transport.py")]
+        runner = "run_lead_journeys.py" if command == ["--lead-journeys"] else "run_sms_transport.py"
+        command = [sys.executable, str(root / "pipeline/integration" / runner)]
     raise SystemExit(subprocess.run(command, cwd=root, env=env).returncode)

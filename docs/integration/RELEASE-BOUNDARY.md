@@ -2,6 +2,10 @@
 
 This branch must not be deployed or merged until its isolated regression requirements pass and the owner approves the release. Code preparation is not SMS, provider or collection activation.
 
+## Separate Facebook handoff repair
+
+The native blocker is now repaired locally. `FACEBOOK-HANDOFF-FIX.md` records passing connected journeys; `facebook-handoff-release-manifest.json` contains one additional native-receipt migration, applied only to disposable databases. It is separate from the eleven county feature migrations below. Production-shaped upgrade review and separately authorized release/live acceptance are still required.
+
 ## Schema proposal
 
 `forward-migration-map.json` records the eleven newly generated migration files; `forward-migration-order.json` gives their explicit allowlist and order. The four historical collection SMS-install migrations are excluded. All production historical migration files, including the unapplied empty-session repair, remain byte-identical to the production baseline.
@@ -36,4 +40,4 @@ Offer, lot and valuation receipts are durable evidence. Do not drop them, erase 
 
 ## Outstanding evidence
 
-Local backend, UI, SQL and SMS contention tests have now run. See `FACEBOOK-LAUNCH-READINESS.md` for exact results and the native Facebook Retell handoff blocker. R1–R12 are not fully satisfied: continuous journey and production-shaped full upgrade acceptance remain outstanding. No production promotion or activation is requested by this draft.
+Local backend, UI, SQL and SMS contention tests have now run. See `FACEBOOK-LAUNCH-READINESS.md` for exact results and the original native Facebook Retell handoff blocker (now fixed locally; see `FACEBOOK-HANDOFF-FIX.md`). R1–R12 are not fully satisfied: continuous journey and production-shaped full upgrade acceptance remain outstanding. No production promotion or activation is requested by this draft.

@@ -1,10 +1,20 @@
 # Selective WholesaleOS integration
 
+## Current checkpoint: native Facebook handoff repaired locally
+
+Owner explicitly authorized the handoff fix and connected local journeys. See `FACEBOOK-HANDOFF-FIX.md` and `facebook-handoff-release-manifest.json`. Ten connected API/PostgreSQL cases, an eight-worker native race, 1,261 backend tests, 231 pipeline tests and 240 frontend tests passed. The native `no_form_receipt` blocker is fixed locally; no production release or live acceptance is claimed.
+
+- [x] Persist immutable native receipts and queue them without fake website submissions.
+- [x] Verify both websites and native Facebook through acknowledgment, reply, receipts and STOP using mocked providers.
+- [x] Verify missing-owner/lost-response recovery, no consent, and no replay.
+- [ ] Review proposed native migration/runtime and sanitized production-shaped upgrade.
+- [ ] Separately authorize any production release and bounded live acceptance.
+
 ## Authorization and operating boundary
 
 October 20, 2026: owner said “Proceed with your recommendation” after the branch integration assessment. Local implementation is resumed on `codex/wholesale-integration-review`, based on production `19c117ad7a8ab10656bf116a2a6835508f7f1f01`. Collection source is `8bec6d825071993d59bc623b346046c3f249fba2`.
 
-Production deployments, database migrations, SMS repair/dispatch, provider activity, collection and schedules remain paused. The owner explicitly authorized local testing with mocked providers and disposable databases on October 20, prioritizing BOTH Facebook Instant Forms and website forms. Remote CI is not part of that authorization; continue `[skip ci]` checkpoint commits. Production and provider operations remain paused.
+Production deployments, production database migrations, live SMS dispatch, provider activity, collection and schedules remain paused. Local handoff repair is authorized. The owner explicitly authorized local testing with mocked providers and disposable databases on October 20, prioritizing BOTH Facebook Instant Forms and website forms. Remote CI is not part of that authorization; continue `[skip ci]` checkpoint commits. Production and provider operations remain paused.
 
 The empty-session reconciliation migration remains outside this work and unapplied according to the production checkpoint. No held message may be replayed.
 
@@ -41,7 +51,7 @@ Only the new integration ref may be pushed. Never push the production/default/co
 
 - Parsed 34 changed/new Python files as syntax trees; no application imports, test execution, provider calls or database writes.
 - `git diff --check` found no whitespace errors.
-- Byte comparison confirmed 19 protected production intake/SMS/receipt/notification modules and all 103 preexisting migration files remain unchanged.
+- At the initial preparation checkpoint, byte comparison confirmed 19 protected modules and all 103 historical migrations unchanged. The authorized Facebook repair now intentionally changes `tools/retell_form_sms.py` and `tools/sms_client.py`; the other 17 protected modules and all historical migrations remain unchanged.
 - Read-only production metadata confirmed missing feature objects and the non-deleting monitoring function; no data or control-state changes.
 - Those initial checks were static. October 20 local execution is recorded in `FACEBOOK-LAUNCH-READINESS.md`; full end-to-end and production-shaped upgrade acceptance remain outstanding.
 
@@ -57,7 +67,7 @@ Local-test authorization is now granted. Install dependencies in this isolated c
 - [x] Added clean-environment, no-network Python/Node runner.
 - [x] Executed backend, UI, disposable PGlite and real PostgreSQL SMS contention suites. Corrected obsolete UI test cache-key expectation.
 - [x] Recorded results and remaining gates in `FACEBOOK-LAUNCH-READINESS.md`.
-- [ ] Repair native Facebook receipt/Retell queue relationship after review of the diagnosed blocker; add continuous journey acceptance for both destinations.
+- [x] Repaired native Facebook receipt/Retell queue relationship after owner authorization; connected API/database journey acceptance passes for both destinations.
 - [ ] Complete production-shaped eleven-migration upgrade and remaining feature concurrency rehearsals.
 
 Latest local evidence: 1,256 backend tests passed; native Facebook rerun 25 passed including two added hold reproductions; 230 pipeline tests passed; initial UI 239/240 with stale assertion corrected and its three-test file passing. Build passed, no new lint findings (144 existing). Eight-worker disposable PostgreSQL contention passed with zero provider calls. No production changes, messages or schedules. This is not a launch certification.

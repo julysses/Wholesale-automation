@@ -67,7 +67,8 @@ class DB(MemoryDB):
                 if claimed:
                     outcomes = _payload['p_outcomes']
                     complete = (outcomes['owner_email'] == 'accepted' and outcomes['seller_sms'] in
-                                ('accepted', 'no_consent_or_phone', 'suppressed_or_duplicate'))
+                                ('accepted', 'no_consent_or_phone', 'suppressed_or_duplicate',
+                                 'scheduled_retell_60_seconds', 'scheduled_app_twilio_60_seconds'))
                     row['metadata'].update(outcomes, delivery_state='completed' if complete else 'review')
                     row['body'] = _payload['p_body']
                 return SimpleNamespace(data={'finished': claimed, 'notification_id': notice_id})
@@ -206,13 +207,8 @@ async def test_ambiguous_sms_attempt_alerts_operator_and_never_replays(intake):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("transport", ["retell_native", "app_twilio"])
-async def test_native_facebook_is_held_without_website_receipt_on_retell_stack(intake, monkeypatch, transport):
-    """Known launch blocker: passing direct-Twilio tests does not prove Retell handoff.
-
-    Native Facebook consent is saved on the notification, whereas the current
-    Retell queue requires a website submission foreign key. Preserve the hold,
-    owner task and at-most-once notification until that schema is reconciled.
-    """
+async def test_native_facebook_queues_immutable_receipt_on_retell_stack(intake, monkeypatch, transport):
+    """Native receipt queues once, without fabricating website consent or sending."""
     db, sdk, email = intake
     monkeypatch.setenv("RETELL_FORM_SMS_ENABLED", "true")
     monkeypatch.setenv("RETELL_SMS_TRANSPORT", transport)
@@ -227,12 +223,67 @@ async def test_native_facebook_is_held_without_website_receipt_on_retell_stack(i
     await webhooks._process_facebook_lead(entry, adapter)
     assert len(db.tables["leads"]) == 1
     assert len(db.tables["tasks"]) == 1
-    assert not db.tables.get("retell_form_sms_jobs")
+    assert len(db.tables["retell_form_sms_jobs"]) == 1
+    assert not db.tables.get("lead_form_submissions")
+    receipt = next(iter(db.tables["facebook_lead_submissions"].values()))
+    job = next(iter(db.tables["retell_form_sms_jobs"].values()))
+    assert job["facebook_submission_id"] == receipt["id"]
+    assert job.get("submission_id") is None
+    assert job["due_at"] == "2026-10-07T20:01:00+00:00"
+    assert job["expires_at"] == "2026-10-07T20:15:00+00:00"
     assert not db.tables.get("sms_events")
     sdk.messages.create.assert_not_called()
     email.send.assert_called_once()
     notice = next(row for row in db.tables["app_notifications"].values()
                   if row.get("type") == "pipeline_step")
-    assert notice["metadata"]["seller_sms"] == "no_form_receipt"
-    assert notice["metadata"]["delivery_state"] == "review"
+    assert notice["metadata"]["seller_sms"] == ("scheduled_app_twilio_60_seconds" if transport == "app_twilio" else "scheduled_retell_60_seconds")
+    assert notice["metadata"]["delivery_state"] == "completed"
     assert notice["metadata"]["consent_receipt"]["sms"]["accepted"] is True
+
+
+@pytest.mark.asyncio
+async def test_native_receipt_conflict_never_rewrites_consent_or_replays(intake):
+    db, sdk, email = intake
+    adapter = MagicMock()
+    adapter.fetch_lead_form_data.return_value = data()
+    entry = SimpleNamespace(leadgen_id="immutable-native", campaign_id="")
+    await webhooks._process_facebook_lead(entry, adapter)
+    from copy import deepcopy
+    before = deepcopy(db.tables["facebook_lead_submissions"])
+    adapter.fetch_lead_form_data.return_value = data("0")
+    with pytest.raises(RuntimeError, match="conflicts with saved evidence"):
+        await webhooks._process_facebook_lead(entry, adapter)
+    assert db.tables["facebook_lead_submissions"] == before
+    assert sdk.messages.create.call_count == 1
+    assert email.send.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_existing_held_intake_does_not_gain_retell_job_after_bridge(intake, monkeypatch):
+    db, sdk, email = intake
+    adapter = MagicMock()
+    adapter.fetch_lead_form_data.return_value = data()
+    entry = SimpleNamespace(leadgen_id="historical-hold", campaign_id="")
+    sdk.messages.create.side_effect = TimeoutError("unknown")
+    await webhooks._process_facebook_lead(entry, adapter)
+    monkeypatch.setenv("RETELL_FORM_SMS_ENABLED", "true")
+    monkeypatch.setenv("RETELL_SMS_TRANSPORT", "app_twilio")
+    monkeypatch.setenv("RETELL_APP_TRANSPORT_ENABLED", "true")
+    monkeypatch.setenv("RETELL_APP_TEST_APPROVED", "true")
+    await webhooks._process_facebook_lead(entry, adapter)
+    assert not db.tables.get("retell_form_sms_jobs")
+    assert sdk.messages.create.call_count == 1 and email.send.call_count == 1
+    notice = next(row for row in db.tables["app_notifications"].values() if row.get("type") == "pipeline_step")
+    assert notice["metadata"]["delivery_state"] == "review"
+
+
+@pytest.mark.asyncio
+async def test_native_receipt_is_authoritative_when_alert_consent_is_edited(intake):
+    db, _, _ = intake
+    adapter = MagicMock()
+    adapter.fetch_lead_form_data.return_value = data("0")
+    await webhooks._process_facebook_lead(SimpleNamespace(leadgen_id="declined-native", campaign_id=""), adapter)
+    notice = next(row for row in db.tables["app_notifications"].values() if row.get("type") == "pipeline_step")
+    notice["metadata"]["consent_receipt"] = facebook_consent_record(data("1"), "declined-native")
+    lead = next(iter(db.tables["leads"].values()))
+    assert sms_client.sms_consent_blocker(db, lead["id"], PHONE) == "No matching property inquiry consent receipt"

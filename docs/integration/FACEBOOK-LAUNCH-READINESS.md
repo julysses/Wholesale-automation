@@ -1,4 +1,6 @@
-# Facebook launch acceptance — October 20, 2026
+# Initial Facebook launch investigation — October 20, 2026
+
+**Superseded locally:** the owner subsequently authorized repair. See [FACEBOOK-HANDOFF-FIX.md](FACEBOOK-HANDOFF-FIX.md) for the implemented native receipt bridge and passing connected local journeys. The diagnosis below records the pre-fix state; production remains unchanged.
 
 **Decision: not ready to certify paid-ad launch for both destinations.** The owner selected both website forms and Facebook Instant Forms. Local testing is authorized; production changes, real messages, provider activity and schedules remain paused.
 
