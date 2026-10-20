@@ -32,7 +32,8 @@ Goal: reach a production-ready application as quickly as verified evidence permi
 - [x] Frontend suite: 179 passed in 42 files, bounded to two workers.
 - [x] TypeScript and Vite production build passed; existing bundle-size warning remains.
 - [x] Final application-service-role journey run: all ten passed; evidence packaged in `validation.json` and `evidence/`.
-- [ ] Push candidate and open draft PR for owner review.
+- [x] Pushed candidate and opened [draft PR #22](https://github.com/julysses/Wholesale-automation/pull/22) targeting `codex/retell-sms-production`.
+- [x] Verified no GitHub Actions runs or GitHub deployments for this candidate branch. Read-only Railway configuration confirms all three existing services track the old default branch, not this candidate.
 
 ## Production-shaped rehearsal limits
 
@@ -66,3 +67,9 @@ From this candidate directory, with Python requirements and the pinned Node lock
 ```
 
 The last command creates a new loopback-only `wholesale_sms_test` cluster, restores the catalog, rehearses only the Facebook migration, runs the connected tests and stops/removes the cluster in `finally`. It accepts no production connection string. The external-network guard and clean environment prevent inherited provider credentials from being used. Local environment dependencies were reused only after comparing candidate and integration lockfiles; no dependency update is part of this candidate.
+
+## Saved handoff
+
+Implementation and test-evidence commit: `bd3f0c2d5951e99cba584c30fdc171d309312e93`. This documentation follow-up records the verified PR and publication state; runtime code and validated migration are unchanged.
+
+Next action requires owner review of PR #22 and explicit production-release authorization. Local candidate preparation is complete. Overall production readiness remains open until the deployment and controlled live acceptance gates above pass. Do not infer authorization from this checkpoint or from the overall goal.
