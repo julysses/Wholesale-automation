@@ -8,9 +8,11 @@ The candidate includes production commit `a89815126d9a98ced016167d8e383641d13313
 
 Buyer lists now confirm complete reads before replacing records/totals, paginate rendering, retain cached records on failed refresh and show uncategorized land buyers. Purchase history is bound to the selected buyer and validated before display. Complete active-buyer matching, classifier history and existing active/land preference editing are also covered. Buyer CSV now saves its full data/log/immutable receipt in one service-only transaction, with stable retry, no insert fallback and no automatic background work. Imported contacts do not grant consent; existing controls survive. Conflicting identity/history requires review. Explicit classification/rescore durability, manual-create uncertainty and outreach-log completeness remain open.
 
+Python release inputs are now fully hash-pinned: 84 root and 61 API packages retain their previously tested versions; 29 audit-tool packages are isolated from the app. Vercel's Python 3.12 selector is explicit and CI/Docker are aligned. Fresh root/API/tool installs pass dependency checks, the fresh root suite passes, and the API-only app loads with real health/auth rejection and Twilio checks. PyPI audits find no known vulnerabilities in these three sets. Existing local pip 25.0.1 findings are recorded separately; CI/Docker/fresh environments use 26.2.2. Production's actual platform interpreter/installer and artifact are not established by these checks.
+
 Validation to date:
 
-- Backend: 1,345 passed, 10 skipped; frontend: 295 tests across 59 files passed. Typecheck/build and lint gate pass, with 142 existing findings. Pipeline: 231 tests passed.
+- Clean, hash-verified Python root environment: 1,345 passed, 10 skipped; frontend: 295 tests across 59 files passed. Typecheck/build and lint gate pass, with 142 existing findings. Pipeline: 231 tests passed.
 - The October 22 production metadata capture matches the restored baseline plus the released Facebook delta, including 17 view security/grant sets. Fourteen-migration apply, full/injected failure rollback and historical preservation pass.
 - Ten connected API/PostgreSQL intake journeys pass across Hilltop, Jays and native Facebook with Auth/providers stubbed (final timing recorded in the upgrade result).
 - Main CSV real-SQL checks cover 24 normalization cases, configured ownership/due tasks, 501-row task creation, lookup beyond 1,000 existing records, immutable retry, history/DNC/completed-task preservation and eight overlapping uploads creating one property/task.
@@ -21,7 +23,7 @@ Validation to date:
 - Real PostgreSQL buyer checks read 1,003 buyers and 1,003 purchase records with a forced 200-row cap, find the best match beyond row 1,000 and exclude it after deactivation. Component tests cover late/wrong history, failed refresh, literal search and nullable preferences.
 - Existing offer, trace-budget, scoring, lot, valuation and pinned-call/SMS contention checks pass. Nine land-list cases cover row caps, 1,003 synthetic records, complete totals, bounded rendering, filters and failed-refresh recovery.
 
-**Keep this PR draft. It is not approved to merge, deploy or activate.** Real-provider latency/maximum database volume, buyer UI coverage, signed-in operator acceptance, dependency/security review and exact release/recovery review remain open. Controlled live tests still require confirmed recipient/inbox details, Meta routing and effective sending-flag verification. Broad sending schedules remain paused; these checkpoints performed no production migration, deployment or provider message.
+**Keep this PR draft. It is not approved to merge, deploy or activate.** Real-provider latency/maximum database volume, buyer UI coverage, signed-in operator acceptance, broader Auth/security and deployed platform/build verification, and exact release/recovery review remain open. Controlled live tests still require confirmed recipient/inbox details, Meta routing and effective sending-flag verification. Broad sending schedules remain paused; these checkpoints performed no production migration, deployment or provider message.
 
 Synthetic/local checks do not establish production Auth/JWT behavior, carrier/handset delivery, production-volume locks or a real-browser operator walkthrough. Commits skip remote CI and candidate branches are excluded from Vercel deployment.
 
@@ -29,6 +31,7 @@ The new buyer import proposal takes bounded table write locks to protect identit
 
 Review:
 
+- [Python dependency security and evidence limits](docs/integration/PYTHON-DEPENDENCY-SECURITY.md)
 - [Friday acceptance status](docs/integration/FRIDAY-ACCEPTANCE-STATUS.md)
 - [Release boundary and rollback constraints](docs/integration/RELEASE-BOUNDARY.md)
 - [Current upgrade rehearsal](docs/integration/FRIDAY-UPGRADE-REHEARSAL.md)

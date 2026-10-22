@@ -1,5 +1,25 @@
 # Selective WholesaleOS integration
 
+## Latest October 22 checkpoint — locked Python dependencies and audit
+
+- [x] Hash-pin all 84 root and 61 API dependencies at the already-tested versions;
+  preserve source declarations and isolate 29 hash-pinned CI audit-tool packages.
+- [x] Audit all three complete sets: zero known vulnerabilities, no skipped/ignored
+  packages. The old local pip inventory finding is separated from app packages.
+- [x] Make supported Python 3.12 explicit for Vercel; align CI/Docker/legacy runtime
+  metadata and CI/Docker pip 26.2.2. No production runtime was changed.
+- [x] Clean root/API/tool installs and pip check; fresh root 1,345/10 skipped;
+  API-only real cold start, health, buyer access rejection and Twilio version pass.
+- [x] Hash-verified Linux x86 wheel download for all 84 root packages; YAML and lock
+  checks pass. Add CI checks for locked dependency audits and API-only cold start.
+- [ ] Linux/Docker/Vercel artifact execution, production interpreter/installer,
+  JWT/tenancy/security review and all remaining operator/live/release gates.
+
+See `PYTHON-DEPENDENCY-SECURITY.md` and its current audit JSON. Fourteen unapplied
+migration proposals, candidate deployment exclusions and broad schedule pause
+remain unchanged. Existing frontend 295/pipeline 231 evidence was not re-run for
+unchanged sources; no production writes, provider calls or remote CI execution.
+
 ## Latest October 22 checkpoint — atomic buyer CSV recovery
 
 - [x] Replace background partial buyer persistence and insert fallbacks with one

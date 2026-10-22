@@ -17,15 +17,54 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+          python -m pip install --upgrade pip==26.2.2
+          pip install --require-hashes -r requirements.txt
+          pip check
       - name: Run tests
         run: python -m pytest -q
+
+  python-dependencies:
+    name: Python locked dependencies and known vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Check hashed locks and shared API versions
+        run: python scripts/release/check_python_locks.py
+      - name: Install isolated, hash-pinned audit tools
+        run: |
+          python -m venv /tmp/wholesale-audit
+          /tmp/wholesale-audit/bin/python -m pip install --require-hashes -r requirements-security.txt
+          /tmp/wholesale-audit/bin/python -m pip check
+      - name: Audit root, production API and audit-tool locks
+        run: |
+          /tmp/wholesale-audit/bin/pip-audit --strict --no-deps --disable-pip -r requirements.txt
+          /tmp/wholesale-audit/bin/pip-audit --strict --no-deps --disable-pip -r api/requirements.txt
+          /tmp/wholesale-audit/bin/pip-audit --strict --no-deps --disable-pip -r requirements-security.txt
+
+  api-dependencies:
+    name: Production API dependency boundary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install only the hash-pinned API requirements
+        run: |
+          python -m pip install --upgrade pip==26.2.2
+          python -m pip install --require-hashes -r api/requirements.txt
+          python -m pip check
+      - name: Verify actual API cold start without provider access
+        run: python scripts/run_offline_tests.py python scripts/release/python_api_smoke.py
 
   frontend:
     name: Frontend (typecheck, build, lint)

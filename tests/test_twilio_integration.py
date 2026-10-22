@@ -131,7 +131,8 @@ def test_suppressed_recipient_blocked(sending):
 
 def test_vercel_bundle_includes_twilio():
     from pathlib import Path
-    assert 'twilio==9.11.2' in Path('api/requirements.txt').read_text().splitlines()
+    from scripts.release.check_python_locks import read_lock
+    assert read_lock(Path('api/requirements.txt'))['twilio'] == '9.11.2'
 
 @pytest.mark.parametrize('allowlist,recipient,expected', [
     (PHONE,PHONE,True),

@@ -1,3 +1,35 @@
+## Latest checkpoint — October 22 Python dependency security
+
+Continue in the exact `integration/` checkout on `codex/wholesale-integration-review`.
+The commit containing this checkpoint follows `684c5a4`. Verify HEAD/remote before
+editing. PR #21 remains draft; production baseline is `a898151`; app stays `7df5e30`.
+
+Start at `docs/integration/PYTHON-DEPENDENCY-SECURITY.md`, the audit JSON and current
+Friday matrix. Root 84/API 61 packages are fully pinned with hashes at unchanged
+already-tested versions, plus an isolated 29-package audit-tool lock. All three
+PyPI scans have zero known findings/zero skips/zero ignored IDs. Old shared local
+pip 25.0.1 findings are recorded separately and the old environment is untouched;
+CI/Docker/fresh environments now use reviewed pip 26.2.2. `.python-version` makes
+Vercel Python 3.12 explicit; CI/Docker and legacy metadata align to 3.12.
+
+Clean root/API/tool installs and dependency checks pass. Clean backend: 1,345/10
+skipped; API-only real cold start/health/unauthenticated buyer GET/import rejection
+and Twilio version pass offline. Linux x86 hashes/wheel availability verified for
+all 84 root packages; Linux execution, Docker image build, Vercel artifact and actual
+production interpreter/installer remain unproven. New CI jobs are prepared but not
+remotely executed (skip-CI and candidate deployment blocks retained). Frontend 295,
+pipeline 231 and fourteen-migration/ten-journey evidence are prior unchanged-source
+checks, not fresh runs this slice. No production schema/data/runtime/flags/providers/
+schedules changed. Audit is dependency scope, not a full security certification.
+
+Next: review production-volume buyer import locks and APN event-history limitation;
+finish signed-in full API/browser/reload workflows, manual buyer-create ambiguity,
+durable explicit classification/rescore, complete outreach history, JWT/tenancy and
+exact deployment/rollback artifact review. Live test recipient last four/inbox and
+runtime flag verification remain pending. One shared phone is authorized for fresh
+per-source tests; do not infer identity, clear suppression or replay held sessions.
+Broad schedules stay paused. Friday October 23 remains the full active goal.
+
 ## Latest checkpoint — October 22 atomic buyer CSV
 
 Continue in this exact `integration/` checkout on `codex/wholesale-integration-review`.

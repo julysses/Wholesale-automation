@@ -30,7 +30,11 @@ The original requirements remain in `WholesaleOS-Integration-Assessment.md` R1â€
 
 Frontend dependencies: Vite 6.4.5, Vitest 4.1.12, follow-redirects 1.16.1;
 clean installation audits report zero vulnerabilities. Pipeline installation audit
-also reports zero. Python dependency security review is not established by npm audit.
+also reports zero. Separate Python candidate audits now report zero known findings
+for 84 root, 61 API and 29 isolated audit-tool packages, with complete hash-pinned
+locks and fresh installs. The clean root suite passes; API-only cold start/access
+checks pass. This is not a full app security audit or a deployed-artifact check.
+See `PYTHON-DEPENDENCY-SECURITY.md` and its JSON evidence.
 
 Sources: `production-upgrade-result.json`, `feature-concurrency-result.json`,
 `FRIDAY-UPGRADE-REHEARSAL.md`, local ignored logs, release checkpoint in the sibling
