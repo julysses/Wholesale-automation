@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 import json
+from time import monotonic
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -93,10 +94,39 @@ def verify(db):
             assert submit(malformed,str(uuid4())).status_code==422
             assert submit(ref=str(uuid4()),options={'min_price':'nan'}).status_code==422
 
-            bulk=HEADER+''.join(f'Synthetic Bulk LLC,{n} Bulk St,Dallas,TX,BULK{n},2026-10-01,100000,,\n' for n in range(1003))
+            bulk=HEADER+''.join(f'Synthetic Bulk LLC,{n} Bulk St,Dallas,TX,BULK{n},2026-10-01,100000,,\n' for n in range(5000))
+            bulk_started=monotonic()
             bulk_result=submit(bulk,str(uuid4()));assert bulk_result.status_code==200,bulk_result.text
-            assert bulk_result.json()['transactions_created']==1003
-            assert db.query('SELECT count(*) n FROM buyer_transactions WHERE buyer_id=%s',[bulk_result.json()['buyer_ids'][0]])[0]['n']==1003
+            bulk_seconds=round(monotonic()-bulk_started,3)
+            assert bulk_result.json()['transactions_created']==5000
+            assert db.query('SELECT count(*) n FROM buyer_transactions WHERE buyer_id=%s',[bulk_result.json()['buyer_ids'][0]])[0]['n']==5000
+            many=HEADER+''.join(f'Synthetic Volume {n} LLC,{n} Volume St,Dallas,TX,VOLUME{n},2026-10-01,100000,,\n' for n in range(5000))
+            many_started=monotonic();many_ref=str(uuid4())
+            many_result=submit(many,many_ref);assert many_result.status_code==200,many_result.text
+            many_seconds=round(monotonic()-many_started,3)
+            assert many_result.json()['buyers_created']==many_result.json()['transactions_created']==5000
+            assert db.query('SELECT count(*) n FROM buyers WHERE import_log_id=%s',[many_ref])[0]['n']==5000
+            assert submit(many,many_ref).json()=={**many_result.json(),'replayed':True}
+
+            # Another writer holds the table: refuse within the configured lock
+            # timeout, save nothing, and allow the exact same request after release.
+            holder=Database();lock_ref=str(uuid4())
+            lock_content=HEADER+'Synthetic Lock LLC,1 Lock St,Dallas,TX,LOCK1,2026-10-01,100000,,\n'
+            try:
+                holder.query('BEGIN')
+                holder.query('LOCK TABLE public.buyers IN SHARE ROW EXCLUSIVE MODE')
+                lock_started=monotonic();lock_result=submit(lock_content,lock_ref)
+                lock_seconds=round(monotonic()-lock_started,3)
+                assert lock_result.status_code==503,lock_result.text
+                assert lock_seconds<8,lock_seconds
+                assert not db.query('SELECT id FROM buyers WHERE import_log_id=%s',[lock_ref])
+                assert not db.query('SELECT id FROM private.buyer_csv_imports WHERE id=%s',[lock_ref])
+            finally:
+                holder.query('ROLLBACK');holder.connection.close()
+            lock_retry=submit(lock_content,lock_ref)
+            assert lock_retry.status_code==200,lock_retry.text
+            assert lock_retry.json()['buyers_created']==lock_retry.json()['transactions_created']==1
+
             oversized_rows=HEADER+''.join(f'Synthetic Too Large LLC,{n} Large St,Dallas,TX,LARGE{n},2026-10-01,100000,,\n' for n in range(5001))
             assert submit(oversized_rows,str(uuid4())).status_code==413
             assert not db.query('SELECT id FROM buyers WHERE entity_name=%s',['Synthetic Too Large LLC'])
@@ -133,7 +163,7 @@ def verify(db):
             for connection in sessions:connection.connection.close()
         print(json.dumps({'buyer_import':'passed','atomic_rollback':'passed','lost_commit_ack':'recovered_without_duplicate',
             'source_contact_consent':'false','blank_consented_contact':'not_rebound','same_name_contactless_buyer':'review','duplicate_source_purchase':'not_score_inflated','existing_buyer_controls':'preserved','same_reference':'immutable',
-            'foreign_operator':'refused','all_file_purchase_rows':1003,'oversized_rows':'rejected_before_write','concurrent_sessions':4,'created_buyers':1,'created_purchases':2,'provider_calls':0}),flush=True)
+            'foreign_operator':'refused','all_file_purchase_rows':5000,'max_single_buyer_seconds':bulk_seconds,'max_distinct_buyers':5000,'max_distinct_buyers_seconds':many_seconds,'lock_refusal_seconds':lock_seconds,'lock_refusal_no_partial_write':True,'lock_retry':'complete','oversized_rows':'rejected_before_write','concurrent_sessions':4,'created_buyers':1,'created_purchases':2,'provider_calls':0}),flush=True)
     finally:service.connection.close()
 
 

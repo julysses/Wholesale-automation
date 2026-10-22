@@ -1,0 +1,16 @@
+{
+  "scope": "disposable native PostgreSQL17.11; saved production catalog plus all21 proposed migrations; synthetic data; API Auth stubbed",
+  "max_rows": 5000,
+  "single_buyer_purchases": 5000,
+  "single_buyer_seconds": 2.919,
+  "distinct_buyers": 5000,
+  "distinct_buyers_seconds": 7.606,
+  "same_reference_replay": "exact historical result",
+  "competing_table_writer_refusal_seconds": 3.008,
+  "lock_failure_partial_records": 0,
+  "same_reference_retry_after_release": "complete",
+  "oversized_5001_rows": "rejected before writes",
+  "real_provider_calls": 0,
+  "production_changes": 0,
+  "limits": "local machine timing is not production MICRO capacity or live HTTP performance; APN conflicts still require review; import cleanup recovery remains separate"
+}

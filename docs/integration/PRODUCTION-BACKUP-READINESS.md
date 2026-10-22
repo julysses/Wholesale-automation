@@ -51,3 +51,29 @@ connection setup remain necessary before execution.
 
 Exact observation: production-backup-observation-2026-10-22.json. No customer rows,
 Auth hashes, files, keys or production data were copied; only metadata/counts read.
+
+
+## CLI capability follow-up
+
+Read-only project listing through the installed official CLI v2.79.0 succeeds.
+This confirms existing control-plane authentication, not a database backup.
+Review of that exact version's `internal/utils/flags/db_url.go` shows the linked
+DB path calls `initLoginRole` when no database password is supplied. The request
+uses `ReadOnly: false` and receives a role/password. It is not just a read-only
+metadata connection. No link, dump, temporary login creation or password reset
+was run during this check. Source was downloaded for inspection only.
+
+The supported dump also runs PostgreSQL inside Docker. The current machine has
+native PostgreSQL17 but no established Docker runtime. The documented complete
+workflow separates roles, schema and data, with migration history handled
+separately; a default schema dump alone is insufficient.
+
+Next: establish an existing-password connection and a reviewed isolated restore
+runtime, or obtain explicit authorization for the exact temporary-login method.
+Do not print dry-run commands or connection strings: they can include credentials.
+No current export or restore is certified by this investigation.
+
+Sources:
+- [Installed-version credential behavior](https://github.com/supabase/cli/blob/v2.79.0/internal/utils/flags/db_url.go)
+- [Installed-version dump execution](https://github.com/supabase/cli/blob/v2.79.0/internal/db/dump/dump.go)
+- [Official backup and restore guide](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore)
