@@ -3,6 +3,16 @@
 October 22, 2026. Candidate only; no deployment or production settings changed.
 Commit containing this checkpoint follows `684c5a4` on the existing draft PR #21.
 
+## Latest Vercel follow-up
+
+The later Linux release job passed; see LINUX-RELEASE-CHECK.md. Actual production
+metadata now proves Python3.12 and a 300-second function timeout at a898151.
+Its observed uv0.10.11 build installer has three known advisory IDs. The candidate
+now adds API-local version selection and a native uv lock matching all61 API
+versions/hashes, a pinned Python builder, and a separately hash-pinned uv0.13.5
+build installer with no known findings. New native bundle CI still needs observed
+execution. See VERCEL-RELEASE-ARTIFACT.md; older counts below are historical.
+
 ## Changes
 
 The root and production API requirements previously used open-ended lower bounds.

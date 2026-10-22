@@ -10,6 +10,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  vercel-release:
+    name: Vercel Linux build and bundled API cold start
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install patched hash-pinned build installer and isolated audit tools
+        run: |
+          python -m pip install --require-hashes -r requirements-vercel-build.txt
+          python -m venv "$RUNNER_TEMP/vercel-audit"
+          "$RUNNER_TEMP/vercel-audit/bin/python" -m pip install --require-hashes -r requirements-security.txt
+          npm install --prefix "$RUNNER_TEMP/vercel-cli" --ignore-scripts --no-audit --no-fund vercel@64.5.0
+      - name: Build with empty credentials and no production environment retrieval
+        run: |
+          python scripts/release/check_python_locks.py
+          python scripts/release/prepare_vercel_build.py
+          mkdir -p "$RUNNER_TEMP/vercel-home"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/vercel-home" CI=true VERCEL_TELEMETRY_DISABLED=1 PYTHON_DOTENV_DISABLED=1 "$RUNNER_TEMP/vercel-cli/node_modules/.bin/vercel" build --prod
+      - name: Cold-start exact mapped function without provider networking
+        run: python scripts/run_offline_tests.py python scripts/release/vercel_artifact_smoke.py
+      - name: Audit the build installer and complete platform-added runtime dependencies
+        run: |
+          "$RUNNER_TEMP/vercel-audit/bin/pip-audit" --strict --no-deps --disable-pip -r requirements-vercel-build.txt
+          "$RUNNER_TEMP/vercel-audit/bin/pip-audit" --strict --no-deps --disable-pip -r logs/vercel-bundle-requirements.txt
+
   docker-release:
     name: Linux Docker release (isolated runtime)
     runs-on: ubuntu-24.04

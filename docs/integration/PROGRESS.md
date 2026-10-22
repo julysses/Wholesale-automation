@@ -1,3 +1,15 @@
+## October 22 — Vercel production observation and native build repair
+
+Production metadata now proves Python3.12 / timeout300s / memory2048MB / iad1 at
+released a898151; runtime flags still need dashboard email verification. Native
+builder discovery ignored the root Python selector for api/requirements.txt.
+Candidate API selector + explicit native pyproject/uv lock retain all61 versions
+and known artifact hashes; builder25.1.3 is pinned. Eight drift checks pass.
+Observed build uv0.10.11 has three advisory IDs; the candidate build check uses
+hash-pinned audited uv0.13.5. New Linux Vercel bundle CI is pending execution, not
+accepted from local cross-compilation. No deploy, environment pull, production
+mutation, message, purchase or activation occurred. See VERCEL-RELEASE-ARTIFACT.md.
+
 ## October 22 — Linux release build and direct navigation
 
 A real packaging defect was reproduced and fixed: direct buyer/privacy/terms
