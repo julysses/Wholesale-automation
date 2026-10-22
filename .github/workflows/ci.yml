@@ -10,6 +10,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  manual-buyer-database:
+    name: Manual buyer receipts on real PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install disposable database runtime and hash-pinned test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 openssl
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip==26.2.2
+          .venv/bin/python -m pip install --require-hashes -r requirements.txt
+      - name: Verify nineteen-proposal rollback, private receipts and concurrent manual saves
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: .venv/bin/python scripts/run_offline_tests.py --buyer-manual
+
   vercel-release:
     name: Vercel Linux build and bundled API cold start
     runs-on: ubuntu-24.04

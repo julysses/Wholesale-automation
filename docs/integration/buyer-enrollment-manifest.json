@@ -12,7 +12,7 @@
     ".env.example": "09e1144c35c5979e28feb5d24875d03ea387ce02722fa157d577accc7c107f94",
     "config/settings.py": "b10bc456b5dd65e078e7aec26f87484f30f4469d5851a92c24f52819b39b09f6",
     "web/auth.py": "abfd0a34bd0b737f72ceddbd01523d975c01fbbdac496867840583e101204739",
-    "web/app.py": "9cf2e8f2b09379c6f23c940eea8dd49ba1fbc9bfd34c1774a3529746705d764a",
+    "web/app.py": "2c640690b8f71d14d276e1b005a5e348fb965e17022acea15059fb199f549847",
     "web/api/buyer_enrollment.py": "591a1db0ef8abcf98b375b16a4c4abbe647490ee51c7a24a99b35cd118022750",
     "frontend/src/App.tsx": "500da5a39b09e31470daa1dc21c2bf57bcca519beb791015e4447c455219d5f3",
     "frontend/src/pages/BuyerEnrollment.tsx": "bb626b486703aa5657bf4b8b1b2e6b7116aab537d5cc58aa217143846e08d6b7",
@@ -21,10 +21,11 @@
     "frontend/tests/buyer-enrollment.test.tsx": "1c187689f3f360abc9f1dfce1b4c4c383c7b3580f1f92d19b823e62204d884c7",
     "frontend/supabase/migrations/20261022210254_integration_buyer_enrollment.sql": "1dbcdd426ab38b348932fa6c5d8966d20653dee32bc618d33b085329c9d7b181",
     "pipeline/integration/verify_buyer_enrollment.py": "e03cdbd5c58ec8fb08109828450e9128294a2c25dd9ea67e1067f616adcd452d",
-    "pipeline/integration/rehearse_full_upgrade.py": "331fea4539fac8bf6417b67543a705bf448258e1b9b4204874c7c99bee351f34",
-    "pipeline/integration/run_production_upgrade.py": "fd581aede4bb127cc5912653cfcc7e0e366f6caf1f01f1830a07a6cf8d78e8e4",
-    "scripts/run_offline_tests.py": "95e061470364c1a0e1938cd1a702f69bdd13fc9d01f42c4bff58058928b24ea1",
+    "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
+    "pipeline/integration/run_production_upgrade.py": "6aa15bab277ec1a1ca7bf1146008c5f06c25cd1f1987c7b6e677aee08250760a",
+    "scripts/run_offline_tests.py": "face07aa6e0e548e71bbbd4982e3b2d5df9912f30a39db9e933317cc9737b35c",
     "web/spa.py": "393d66986efd1856cb60279523914c7cd5499388c1f0569731ea20e749b7b349"
   },
-  "release_routing_update": "Direct React navigation repaired after enrollment checkpoint; prior test counts are historical, see LINUX-RELEASE-CHECK.md for current validation."
+  "release_routing_update": "Direct React navigation repaired after enrollment checkpoint; prior test counts are historical, see LINUX-RELEASE-CHECK.md for current validation.",
+  "manual_buyer_update": "Hashes refreshed for manual buyer recovery; original counts/remote runs are historical. Current candidate needs the new nine-job CI run."
 }

@@ -17,8 +17,9 @@
     "tests/test_buyer_sms_consent_errors.py": "9cff2943b148cdc775aa035cd05f4b30da8b48379097ee5aa0f69c29878769b9",
     "frontend/supabase/migrations/20261022201934_integration_buyer_sms_consent.sql": "0f75b6ab165011121948e5aac0ec1f649578de91933e366a2b81843cf88a0d73",
     "pipeline/integration/verify_buyer_sms_consent.py": "669c997c12d2060c98d55f19e907d8d45693cd9af61b4bd454550d5b49d3310f",
-    "pipeline/integration/rehearse_full_upgrade.py": "331fea4539fac8bf6417b67543a705bf448258e1b9b4204874c7c99bee351f34",
-    "pipeline/integration/run_production_upgrade.py": "fd581aede4bb127cc5912653cfcc7e0e366f6caf1f01f1830a07a6cf8d78e8e4"
+    "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
+    "pipeline/integration/run_production_upgrade.py": "6aa15bab277ec1a1ca7bf1146008c5f06c25cd1f1987c7b6e677aee08250760a"
   },
-  "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped."
+  "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped.",
+  "manual_buyer_update": "Hashes refreshed for manual buyer recovery; original counts/remote runs are historical. Current candidate needs the new nine-job CI run."
 }

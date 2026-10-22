@@ -1,3 +1,16 @@
+## October 22 — manual buyer creation and consent defaults
+
+New manual buyer creates now have stable references, private immutable receipts,
+atomic creation and durable cancellation. New SMS/email consent defaults are false;
+existing records remain unchanged. Browser drafts restore original details and
+hold unknown saves; retries/cancel cannot duplicate or resurrect deleted buyers.
+Backend1379/10skip, frontend342/63, build/lint/API-only pass. Nineteen-proposal
+restore/rollback/ACL and real manual SQL/API races pass; ten intake journeys123.04s.
+New nine-job Linux CI is pending observation. See MANUAL-BUYER-RECOVERY.md.
+Manual edit/delete ambiguity, explicit classification/rescore, APN/volume/source,
+operator/JWT/tenancy and buyer publication/carrier/live delivery gates remain open.
+All nineteen proposals remain unapplied; no production/provider activation.
+
 ## October 22 — Vercel production observation and native build repair
 
 Production metadata now proves Python3.12 / timeout300s / memory2048MB / iad1 at

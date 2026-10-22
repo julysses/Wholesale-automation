@@ -9,5 +9,7 @@ client = TestClient(app)
 assert client.get('/api/health').status_code == 200
 assert client.get('/api/buyers/leaderboard').status_code == 401
 assert client.post('/api/buyers/import').status_code == 401
+assert client.post('/api/buyers/manual', json={'request_id':'00000000-0000-4000-8000-000000000001',
+    'buyer':{'first_name':'Synthetic','last_name':'Smoke'}}).status_code == 401
 assert version('twilio') == '9.11.2'
 print('API-only cold-start, health, protected buyer routes and Twilio SDK: passed; no provider calls')

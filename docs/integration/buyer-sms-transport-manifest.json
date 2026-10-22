@@ -16,7 +16,7 @@
     "web/api/buyers_api.py": "ab5bf8eeeee3c981b3fa0a71166e7971db118c6ddd72552c4a122b34e2a71906",
     "web/api/buyer_twilio_webhooks.py": "843e21ef78a73a4f51a1f1c0f73e4d997393eb89a3fb25bf8ba3136ff860c931",
     "web/api/twilio_webhooks.py": "b16663a999f3da57d903ea822b7da0c230fafc7b64c9b32e061d872c615e8437",
-    "web/app.py": "9cf2e8f2b09379c6f23c940eea8dd49ba1fbc9bfd34c1774a3529746705d764a",
+    "web/app.py": "2c640690b8f71d14d276e1b005a5e348fb965e17022acea15059fb199f549847",
     "tools/buyer_sms.py": "acbbd5a12810a84e79da2d533464cec8df3d8f6e261d3d47341c4ba09420128d",
     "frontend/src/components/buyers/BuyerSmsConsent.tsx": "4a9ca5ddda692570d8ac41e7252a028d55f7bb01440abdada697cffa1435f9e8",
     "frontend/src/components/buyers/OutreachLauncher.tsx": "8f77c46dce352f2bab32f479fdbb016c890a2bd00295e6e7861a4d0f20f2f590",
@@ -26,11 +26,12 @@
     "tests/test_buyer_sms_safety.py": "b557246619e3b2d59cc5e38520fba6cc7ae2dbd721ff4fde273146cf50bb5fa5",
     "frontend/supabase/migrations/20261022203734_integration_buyer_sms_transport.sql": "9580e9224d298d2a5b14e740997f23d588b982ac8dd15a0925bd3549cfd89324",
     "pipeline/integration/verify_buyer_sms.py": "5b487add403cfd98ed70a0be2a4205d419800d5647389850a91719dea5295069",
-    "pipeline/integration/rehearse_full_upgrade.py": "331fea4539fac8bf6417b67543a705bf448258e1b9b4204874c7c99bee351f34",
-    "pipeline/integration/run_production_upgrade.py": "fd581aede4bb127cc5912653cfcc7e0e366f6caf1f01f1830a07a6cf8d78e8e4",
-    "scripts/run_offline_tests.py": "95e061470364c1a0e1938cd1a702f69bdd13fc9d01f42c4bff58058928b24ea1",
+    "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
+    "pipeline/integration/run_production_upgrade.py": "6aa15bab277ec1a1ca7bf1146008c5f06c25cd1f1987c7b6e677aee08250760a",
+    "scripts/run_offline_tests.py": "face07aa6e0e548e71bbbd4982e3b2d5df9912f30a39db9e933317cc9737b35c",
     "web/spa.py": "393d66986efd1856cb60279523914c7cd5499388c1f0569731ea20e749b7b349"
   },
   "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped.",
-  "release_routing_update": "Direct React navigation repaired after enrollment checkpoint; prior test counts are historical, see LINUX-RELEASE-CHECK.md for current validation."
+  "release_routing_update": "Direct React navigation repaired after enrollment checkpoint; prior test counts are historical, see LINUX-RELEASE-CHECK.md for current validation.",
+  "manual_buyer_update": "Hashes refreshed for manual buyer recovery; original counts/remote runs are historical. Current candidate needs the new nine-job CI run."
 }

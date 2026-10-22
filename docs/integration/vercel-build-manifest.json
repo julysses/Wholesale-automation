@@ -13,7 +13,7 @@
     "GHSA-pjjw-68hj-v9mw",
     "GHSA-4gg8-gxpx-9rph"
   ],
-  "remote_native_build": "verified success; run39861484224 (705), candidate1b6288e, identical PR merge tree",
+  "remote_native_build": "Prior runtime1b6288e passed run705; manual buyer runtime awaits new CI observation",
   "production_mutations": 0,
   "files": {
     "api/.python-version": "7b55f8e67b5623c4bef3fa691288da9437d79d3aba156de48d481db32ac7d16d",
@@ -24,9 +24,10 @@
     "vercel.json": "3766095ee775a9d0f01b564b35f7344d75fbbee52f5ee9ade2de1c29f5a1c3ee",
     "scripts/release/check_python_locks.py": "77878e021ad2a7b3f99df67d179ffd62491f475a617a0e404977fcf2b4acc16d",
     "scripts/release/prepare_vercel_build.py": "ec139f03aec8e9adb8cbcaff0a2eeb443fe63d7e444842104da457bd5a7125bf",
-    "scripts/release/vercel_artifact_smoke.py": "130ba7220d742f69a2cf272e7326d8cf85c89e93a428dbfb817c4fe4b65598f1",
-    ".github/workflows/ci.yml": "ecec22c3e5e8018f12f0add8a26cb267d5525fb3d3870c0886bd21713b91a0e8",
+    "scripts/release/vercel_artifact_smoke.py": "3da9bff0320c4b60599b661fc7b4ac0b744cfa31e1c69808dfee21d9e0e02169",
+    ".github/workflows/ci.yml": "ab18601ea8795d3304432d9c6dd5892421ad2a5f7bdc7e333bda2dcc1e860c06",
     "tests/test_release_python_locks.py": "87e320d7a4ff35189197bdc2f0b706322099fecb7c63d44a902cd86fcdfda65a"
   },
-  "evidence": "vercel-artifact-evidence.json"
+  "evidence": "vercel-artifact-evidence.json",
+  "manual_buyer_update": "Hashes refreshed for manual buyer recovery; original counts/remote runs are historical. Current candidate needs the new nine-job CI run."
 }

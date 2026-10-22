@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase';
 import type { Buyer, LandBuyerType } from '@/types';
 import { toast } from 'sonner';
 import { queryAllConfirmed } from '@/lib/queryAll';
+import { useEffect, useState } from 'react';
+import { createManualBuyer, pendingManualBuyer, recoverManualBuyer, type PendingBuyer, type ManualBuyerReceipt } from '@/lib/manualBuyer';
 
 interface BuyersFilter {
   search?: string;
@@ -39,22 +41,37 @@ export function useBuyers(filters: BuyersFilter = {}) {
 
 export function useCreateBuyer() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (buyer: BuyerWrite) => {
-      const { data, error } = await supabase
-        .from('buyers')
-        .insert(buyer)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Buyer;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['buyers'] });
-      toast.success('Buyer added');
+  const [pending, setPending] = useState<PendingBuyer | null>(null);
+  const [ready, setReady] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [recoveryError, setRecoveryError] = useState('');
+  useEffect(() => {
+    let active = true;
+    void pendingManualBuyer().then(value => { if (active) { setPending(value); setReady(true); } })
+      .catch(() => { if (active) setRecoveryError('Saved buyer recovery is unavailable. Sign in again or review the existing request before another save.'); });
+    return () => { active = false; };
+  }, []);
+  const accepted = (receipt: ManualBuyerReceipt | null) => {
+    if (!receipt || receipt.state === 'pending') return toast.info('No saved result is confirmed yet. Retry the original save or stop the request.');
+    void qc.invalidateQueries({ queryKey: ['buyers'] });
+    if (receipt.state === 'canceled') toast.success('Pending buyer request stopped');
+    else toast.success(receipt.current_exists ? 'Buyer save confirmed. SMS and email consent remain separate.' : 'Creation recorded; this buyer has since been deleted. It was not recreated.');
+  };
+  const mutation = useMutation({
+    mutationFn: (buyer: BuyerWrite) => createManualBuyer(buyer, setPending),
+    onSuccess: receipt => {
+      accepted(receipt);
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const recover = async (cancel: boolean) => {
+    setChecking(true);
+    try { const receipt = await recoverManualBuyer(cancel, setPending); accepted(receipt); return receipt; }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Buyer receipt is unconfirmed'); throw error; }
+    finally { setChecking(false); }
+  };
+  return { ...mutation, pending, ready, checking, recoveryError,
+    checkPending: () => recover(false), cancelPending: () => recover(true) };
 }
 
 export function useUpdateBuyer() {

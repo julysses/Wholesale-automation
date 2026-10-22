@@ -2,14 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { Buyer } from '@/types';
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), refetch: vi.fn(), error: null as Error | null }));
+const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), refetch: vi.fn(), check: vi.fn(), cancel: vi.fn(),
+  pending: null as import('@/lib/manualBuyer').PendingBuyer | null, error: null as Error | null }));
 const buyers = [
   { id: 'buyer-1', first_name: 'Ana', last_name: 'Lopez', tier: 'A', target_zips: ['75201'], notes: 'Existing notes', strategy: ['fix_flip'] },
   { id: 'buyer-2', first_name: 'Ben', last_name: 'Jones', tier: 'B', target_zips: ['77001'], notes: 'Second buyer' },
 ] as Buyer[];
 vi.mock('@/hooks/useBuyers', () => ({
   useBuyers: () => ({ data: buyers, isLoading: false, error: mocks.error, refetch: mocks.refetch }),
-  useCreateBuyer: () => ({ mutateAsync: mocks.create, isPending: false }),
+  useCreateBuyer: () => ({ mutateAsync: mocks.create, isPending: false, ready: true, pending: mocks.pending,
+    checking: false, recoveryError: '', checkPending: mocks.check, cancelPending: mocks.cancel }),
   useUpdateBuyer: () => ({ mutateAsync: mocks.update, isPending: false }),
   useDeleteBuyer: () => ({ mutate: vi.fn() }),
 }));
@@ -18,6 +20,7 @@ vi.mock('@/hooks/useAIAgent', () => ({ useBuyerMatcher: () => ({ match: vi.fn() 
 import { Buyers } from '@/pages/Buyers';
 
 beforeEach(() => {
+  mocks.pending = null;
   vi.clearAllMocks();
   mocks.error = null;
   mocks.create.mockResolvedValue({});
@@ -78,4 +81,35 @@ it('renders database failures with retry instead of an empty buyer state', () =>
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   expect(mocks.refetch).toHaveBeenCalled();
   expect(screen.queryByText('No buyers found')).not.toBeInTheDocument();
+});
+
+it('restores and locks original buyer details before retrying an unconfirmed save', async () => {
+  mocks.pending = { actor: 'operator', request_id: '00000000-0000-4000-8000-000000000001',
+    buyer: { first_name: 'Retained', last_name: 'Draft', min_price: 0, max_price: 100000, notes: 'Original notes' } } as import('@/lib/manualBuyer').PendingBuyer;
+  render(<Buyers />);
+  fireEvent.click(screen.getByRole('button', { name: 'Add Buyer', exact: true }));
+  expect(screen.getByLabelText('First Name *')).toHaveValue('Retained');
+  expect(screen.getByLabelText('First Name *')).toBeDisabled();
+  expect(screen.getByLabelText('Min Price')).toHaveValue(0);
+  expect(screen.getByLabelText('Notes')).toHaveValue('Original notes');
+  expect(screen.getByRole('region', { name: 'Recover buyer save' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry original save' }));
+  await waitFor(() => expect(mocks.create).toHaveBeenCalledWith(mocks.pending!.buyer));
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+it('keeps an empty receipt read and failed stop from enabling another buyer create', async () => {
+  mocks.pending = { actor: 'operator', request_id: '00000000-0000-4000-8000-000000000002',
+    buyer: { first_name: 'Retained', last_name: 'Draft' } } as import('@/lib/manualBuyer').PendingBuyer;
+  mocks.check.mockResolvedValueOnce({ state: 'pending', saved: false });
+  mocks.cancel.mockRejectedValueOnce(new Error('unconfirmed'));
+  render(<Buyers />);
+  fireEvent.click(screen.getByRole('button', { name: 'Add Buyer', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Check saved result' }));
+  await waitFor(() => expect(mocks.check).toHaveBeenCalledTimes(1));
+  expect(screen.getByLabelText('First Name *')).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Stop pending request' }));
+  await waitFor(() => expect(mocks.cancel).toHaveBeenCalledTimes(1));
+  expect(screen.getByLabelText('First Name *')).toBeDisabled();
+  expect(mocks.create).not.toHaveBeenCalled();
 });

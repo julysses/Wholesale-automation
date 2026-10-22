@@ -177,12 +177,8 @@ export function Buyers() {
 }
 
 // ─── Buyer Form Modal ─────────────────────────────────────────────────────────
-function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () => void; buyer?: Buyer | null }) {
-  const createBuyer = useCreateBuyer();
-  const updateBuyer = useUpdateBuyer();
-  const isEdit = !!buyer;
-
-  const [form, setForm] = useState({
+function buyerFormValues(buyer?: BuyerWrite | null) {
+  return {
     first_name: buyer?.first_name || '',
     last_name: buyer?.last_name || '',
     company: buyer?.company || '',
@@ -203,7 +199,16 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
     buys_land: buyer ? (buyer.buys_land ?? null) as boolean | null : false,
     buys_infill: buyer ? (buyer.buys_infill ?? null) as boolean | null : false,
     land_buyer_type: (buyer?.land_buyer_type ?? '') as LandBuyerType | '',
-  });
+  };
+}
+
+function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () => void; buyer?: Buyer | null }) {
+  const createBuyer = useCreateBuyer();
+  const updateBuyer = useUpdateBuyer();
+  const isEdit = !!buyer;
+  const [editableForm, setForm] = useState(() => buyerFormValues(buyer));
+  const form = !isEdit && createBuyer.pending ? buyerFormValues(createBuyer.pending.buyer) : editableForm;
+  const createBlocked = !isEdit && (!!createBuyer.pending || !!createBuyer.recoveryError || createBuyer.ready === false);
 
   const toggleArr = (key: 'strategy' | 'property_types', val: string) => {
     setForm((f) => ({
@@ -242,6 +247,21 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Buyer' : 'Add Buyer'} size="xl">
       <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        {!isEdit && <p className="text-sm text-gray-600">Adding a buyer does not grant SMS or email consent. Review each channel separately before outreach.</p>}
+        {!isEdit && createBuyer.ready === false && !createBuyer.recoveryError && <p role="status">Checking for a previous buyer save…</p>}
+        {!isEdit && createBuyer.recoveryError && <p role="alert">{createBuyer.recoveryError}</p>}
+        {!isEdit && createBuyer.pending && <section aria-label="Recover buyer save" className="rounded border p-3 space-y-2">
+          <p role="status">A previous buyer save is unconfirmed. The original details are locked until its result is recovered or the request is stopped.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" disabled={createBuyer.isPending || createBuyer.checking}
+              onClick={() => void createBuyer.checkPending().then(receipt => { if (receipt?.state !== 'pending') onClose(); }).catch(() => {})}>Check saved result</Button>
+            <Button type="button" disabled={createBuyer.isPending || createBuyer.checking}
+              onClick={() => void createBuyer.mutateAsync(createBuyer.pending!.buyer).then(onClose).catch(() => {})}>Retry original save</Button>
+            <Button type="button" variant="outline" disabled={createBuyer.isPending || createBuyer.checking}
+              onClick={() => void createBuyer.cancelPending().then(onClose).catch(() => {})}>Stop pending request</Button>
+          </div>
+        </section>}
+        <fieldset disabled={createBlocked || createBuyer.isPending || updateBuyer.isPending} className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <Input label="First Name *" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
           <Input label="Last Name *" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
@@ -319,10 +339,11 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
         </fieldset>
 
         <Textarea id="buyer-notes" label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
+        </fieldset>
 
         <div className="flex justify-end gap-3">
           <Button variant="outline" type="button" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={createBuyer.isPending || updateBuyer.isPending}>
+          <Button type="submit" disabled={createBlocked} loading={createBuyer.isPending || updateBuyer.isPending}>
             {isEdit ? 'Save Changes' : 'Add Buyer'}
           </Button>
         </div>
