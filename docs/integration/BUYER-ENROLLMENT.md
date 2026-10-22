@@ -51,14 +51,18 @@ No automatic confirmation text, enrollment email or campaign activation is added
 The proposed owner-facing wording is saved in the local task file
 `BUYER-SMS-PROGRAM-REVIEW.md` (outside the repository). It contains the complete
 checkbox, privacy and terms text, public support details and exact proposed version.
-It is not a claim that those URLs are live or that policies have been approved.
+The owner approved the exact wording on October 22, 2026 with the response
+"Approve exact wording". The preserved text is in BUYER-SMS-APPROVED-WORDING.md
+and its machine-readable program is buyer-sms-approved-program.json. Version:
+`7d063db412e8c02a7de1d048b8604bcc775b987be84e9e7fdcda304bcc2738be`.
+This approval covers wording only, not fees, registration or sending. URLs are
+still candidates; no production policy configuration was changed.
 The public business pages were read on October 22 and still restrict consent to
 homeowner inquiries, explicitly excluding unrelated marketing. The buyer program
 must remain separate; cross-link its published form from the official website and
 verify the hosted form domain with the carrier before registration.
 
-Review needed: factual brand/support/data-handling confirmation and exact wording,
-public publication and source proof, priced carrier registration approval, actual
+Remaining review: public publication and source proof, priced carrier registration approval, actual
 approved route, fresh controlled handset delivery/reply/STOP, signed-in operator
 acceptance, deployed artifact/JWT/tenancy and exact release/rollback. Buyer SMS
 remains required and not accepted for launch. Existing broader source/PropStream,

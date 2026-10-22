@@ -12,9 +12,11 @@
 - [x] Backend 1370/10 skipped; frontend 327/62 files; build/typecheck and lint gate
   pass (142 existing findings). Eighteen-proposal restore/rollback/ACL and real
   enrollment/API tests pass. Final intake timing is in the upgrade result.
-- [ ] Exact proposed buyer policy wording/identity/privacy handling awaits owner
-  response in the local BUYER-SMS-PROGRAM-REVIEW.md. Current public policies exclude
-  unrelated marketing; no buyer consumer page has been published or enabled.
+- [x] Owner approved exact buyer policy wording/identity/privacy handling on
+  October 22: "Approve exact wording". Exact copy and version are retained in
+  BUYER-SMS-APPROVED-WORDING.md and buyer-sms-approved-program.json.
+- [ ] Publish the approved buyer policies and verify carrier domain/source proof.
+  No buyer consumer page has been published or enabled; fees/sending are separate.
 - [ ] Carrier registration/pricing approval, approved sender, handset delivery/
   reply/STOP, operator/JWT/tenancy, artifact/release/rollback and other Friday gates.
 
