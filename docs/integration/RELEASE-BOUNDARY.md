@@ -40,4 +40,4 @@ Offer, lot and valuation receipts are durable evidence. Do not drop them, erase 
 
 ## Outstanding evidence
 
-Local backend, UI, SQL and SMS contention tests have now run. See `FACEBOOK-LAUNCH-READINESS.md` for exact results and the original native Facebook Retell handoff blocker (now fixed locally; see `FACEBOOK-HANDOFF-FIX.md`). R1–R12 are not fully satisfied: continuous journey and production-shaped full upgrade acceptance remain outstanding. No production promotion or activation is requested by this draft.
+Local backend, UI, SQL and SMS contention tests have now run. See `FACEBOOK-LAUNCH-READINESS.md` for exact results and the original native Facebook Retell handoff blocker (now fixed locally; see `FACEBOOK-HANDOFF-FIX.md`). The populated saved-catalog upgrade, injected rollback, ten connected intake journeys and separate feature concurrency checks now pass; see `FRIDAY-UPGRADE-REHEARSAL.md`. R1–R12 are not fully satisfied: fresh production catalog drift, remaining cross-feature and pinned-call overlap, live delivery and operator acceptance remain outstanding. No production promotion or activation is requested by this draft.

@@ -72,6 +72,16 @@ Local-test authorization is now granted. Install dependencies in this isolated c
 - [x] Executed backend, UI, disposable PGlite and real PostgreSQL SMS contention suites. Corrected obsolete UI test cache-key expectation.
 - [x] Recorded results and remaining gates in `FACEBOOK-LAUNCH-READINESS.md`.
 - [x] Repaired native Facebook receipt/Retell queue relationship after owner authorization; connected API/database journey acceptance passes for both destinations.
-- [ ] Complete production-shaped eleven-migration upgrade and remaining feature concurrency rehearsals.
+- [x] Complete populated saved-catalog eleven-migration upgrade, injected failure rollback and ten post-upgrade intake journeys.
+- [x] Execute separate real PostgreSQL offer/lot/valuation/trace/scoring/ingress concurrency.
+- [ ] Complete remaining R1–R12 acceptance, pinned-call overlap, fresh catalog drift, live delivery and operator walkthrough.
 
 Latest local evidence: 1,256 backend tests passed; native Facebook rerun 25 passed including two added hold reproductions; 230 pipeline tests passed; initial UI 239/240 with stale assertion corrected and its three-test file passing. Build passed, no new lint findings (144 existing). Eight-worker disposable PostgreSQL contention passed with zero provider calls. No production changes, messages or schedules. This is not a launch certification.
+
+## October 22 current verification
+
+Current backend: 1,269 passed, 10 skipped. Current frontend: 240 passed across 51
+files. Pipeline: 231 passed. Build and lint gate pass (144 existing findings).
+Full populated upgrade and ten journeys pass; nine real PostgreSQL concurrency
+groups pass. Frontend dependency audit is clear after compatible patches.
+Continue from `FRIDAY-UPGRADE-REHEARSAL.md` and `FRIDAY-ACCEPTANCE-STATUS.md`.

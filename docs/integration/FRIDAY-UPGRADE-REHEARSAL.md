@@ -33,7 +33,7 @@ Machine-readable evidence: `production-upgrade-result.json`. Raw log: `logs/frid
 
 ## Limits and next work
 
-This uses the saved October 20 catalog plus the separately released Facebook migration, not a fresh complete production export. It uses synthetic history and stubbed Auth/network/cron facilities. Populated compatibility fixtures now cover land, valuation and four historical call statuses; feature-specific native offer/lot/valuation/call-identity concurrency and R1–R12 acceptance remain open. An injected SQL failure after migration six now proves rollback of partial DDL, functions and retained rows. Production-volume lock behavior remains unproven.
+This uses the saved October 20 catalog plus the separately released Facebook migration, not a fresh complete production export. It uses synthetic history and stubbed Auth/network/cron facilities. Populated compatibility fixtures now cover land, valuation and four historical call statuses; Real PostgreSQL offer/lot/valuation, trace-budget, scoring and restricted-ingress concurrency now pass using separate minimal fixtures. Full pinned-call overlap and requirement-by-requirement R1–R12 acceptance remain open. An injected SQL failure after migration six now proves rollback of partial DDL, functions and retained rows. Production-volume lock behavior remains unproven.
 
 Next: run feature concurrency under isolated ingress, compare relevant catalog drift, and review the exact schema/runtime release boundary. Do not deploy this branch, apply these migrations, activate collection or messaging, or replay held work on the basis of this evidence. Full Friday launch remains dependent on live controlled delivery and operator acceptance as well as the chosen integrated feature set.
 
@@ -57,3 +57,33 @@ These changes are candidate code only, not deployed production fixes.
 Additional fixtures preserve one land lead, a valuation with radius 1.25, and four call requests (submitting, accepted, unknown, completed), using distinct synthetic contacts. Initial fixture setup errors (duplicate unresolved phone and missing required city) were corrected without modifying production constraints.
 
 Final populated rehearsal: all ten post-upgrade intake journeys passed in 122.04 seconds; zero provider calls.
+
+## October 22 dependency verification
+
+Installed locked frontend dependencies with lifecycle scripts disabled. The initial
+audit reported four findings (two high, two moderate). Compatible updates changed
+Vite 6.4.3 to 6.4.5 and follow-redirects 1.16.0 to 1.16.1; the pinned Vitest and
+its matched packages changed 4.1.11 to 4.1.12. Installation audits report zero
+vulnerabilities afterward. No force upgrade or major-version change was used.
+
+Both branches use identical package manifests and lockfiles. After the updates:
+release frontend 179/179 tests, integration frontend 240/240 tests; both typecheck
+and production build pass. Lint gates pass with existing debt unchanged (release
+147, integration 144). Existing bundle-size warnings remain. These are candidate
+changes; production deployment was not changed.
+
+## October 22 feature concurrency
+
+The clean-environment `pipeline/integration/run_local.py` run passed all nine
+reported acceptance groups with Deno 2.9.6 and a disposable TLS PostgreSQL cluster.
+It verified separate database sessions actually waiting on the same locks before
+release. Coverage includes ingress duplicate/lost-ack/conflict/expiry/source and
+restricted-role checks; competing offer approvals and property changes; trace
+spending caps and uncertain outcomes; scoring claim/receipt recovery; lot worker,
+reconciliation and destination handoff; valuation revision and historical replay.
+No provider or model was invoked. Evidence: `feature-concurrency-result.json`;
+raw local log: `logs/friday-feature-concurrency.log`.
+
+This run uses minimal feature fixtures. It complements the populated saved-catalog
+upgrade test; it does not prove live provider delivery, operator acceptance or
+all new-feature interactions on the complete upgraded schema.
