@@ -87,3 +87,11 @@ groups pass. Frontend dependency audit is clear after compatible patches.
 Continue from `FRIDAY-UPGRADE-REHEARSAL.md` and `FRIDAY-ACCEPTANCE-STATUS.md`.
 
 October 22 follow-on: real eight-worker app-transport checks pass, as do full-upgraded-schema pinned-call/call-vs-SMS overlap and identity immutability. Fresh production function/ACL fingerprints match the expected released Facebook-only delta. Full table/policy/constraint drift and live/operator acceptance remain open.
+
+October 22 current-schema follow-on: fresh table/constraint/policy/index/trigger/view
+and grant comparison passes with only the expected released Facebook delta. View
+security/grants are now preserved in the restore and verified. Upgrade plus ten
+intake journeys pass again (122.08 seconds). Separate real-role authorization checks
+pass against current fingerprint-matching admin functions. Sending flag values still
+need Vercel email verification; database scheduling remains paused. Continue with
+import component coverage and operator acceptance while recipient identity is pending.

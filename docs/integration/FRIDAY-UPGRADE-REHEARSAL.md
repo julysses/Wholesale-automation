@@ -116,3 +116,44 @@ and `production-function-drift-2026-10-22.json`. This does not refresh table,
 constraint, policy or trigger drift; full catalog comparison remains required.
 
 Latest combined upgrade, pinned-call and intake run: ten journeys passed in 123.64 seconds. Raw log: `logs/friday-production-upgrade-pinned-calls.log`.
+
+## October 22 full production shape refresh
+
+`production_schema_shapes.sql` captures metadata only in a read-only transaction.
+The saved-catalog/current comparison uses the same search path and non-pretty view
+format, avoiding schema-qualification and parentheses artifacts. Actual deltas are
+exactly the released Facebook table, job relationship/nullability, eleven constraints
+and immutable trigger. Existing policies, standalone indexes, views and schema/default
+grants are unchanged. Current application-schema sequences and enums are both zero.
+
+`verify_production_schema_drift.py` compares the fresh snapshot with the disposable
+catalog restored through the released Facebook migration. It matches 101 tables,
+395 constraints, 113 standalone indexes, 28 triggers, 127 policies, 17 views, three
+schema ACL sets and zero default ACL sets. Column order is retained. Only the local
+fixture's owner roles are merged into postgres; production role names remain exact,
+and privilege/grant-option rights are retained. An initial public-schema mismatch
+was the disposable PostgreSQL pg_database_owner role, not production drift.
+
+The original restore omitted view security/grants. It now restores the freshly
+verified 17 `security_invoker=true` views and their ACLs, and the comparison checks
+those settings too. With that correction, all eleven feature migrations, failure
+rollback, pinned-call/SMS overlap and ten post-upgrade journeys pass (122.08 seconds).
+No production business rows were copied.
+
+`--schema-security` repeats restore, Facebook contention, current-shape comparison
+and `verify_authorization.py`, then stops the disposable cluster. The authorization
+check passes all five denied profile classes, forged user metadata, anonymous and
+missing identity checks, while approved-admin changes succeed. Run:
+
+```sh
+.venv/bin/python scripts/run_offline_tests.py --schema-security
+.venv/bin/python scripts/run_offline_tests.py --production-upgrade
+```
+
+Evidence: `production-schema-shapes-2026-10-22.json`,
+`production-schema-drift-2026-10-22.json`, `production-upgrade-result.json`,
+`authorization-verification-2026-10-22.json`,
+`production-security-advisors-2026-10-22.json` and
+`production-pause-observation-2026-10-22.json`. Raw local logs:
+`logs/friday-production-upgrade-current-drift.log` and `logs/friday-schema-security.log`.
+The advisory warnings remain recorded and were reviewed rather than suppressed.

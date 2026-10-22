@@ -10,12 +10,12 @@ The original requirements remain in `WholesaleOS-Integration-Assessment.md` R1â€
 | R3 Suppression | STOP/no-replay journeys pass; existing suppression suites pass | Verify exact shared recipient history; controlled live STOP/reply acceptance |
 | R4 Dispatch ownership | Eight-worker Facebook receipt/job claim check passes; transport suites available | Eight-worker app transport and full-upgrade call/SMS overlap now pass; live exact job scope remains to verify |
 | R5 Provider receipts | Connected mocked receipt and duplicate/out-of-order suites pass | Actual bound carrier delivery/callback and owner handset evidence |
-| R6 Pause and expiry | Upgraded synthetic scheduler pauses retained; disabled/expiry suites pass | Fresh effective production environment flag evidence before bounded live scope |
+| R6 Pause and expiry | Upgraded synthetic scheduler pauses retained; disabled/expiry suites pass | Database schedulers and outbound cron freshly confirmed paused; effective runtime flags require Vercel email verification before bounded live scope |
 | R7 Tasks and alerts | Connected reply tasks, notification and mocked email journeys pass | Owner confirms real email, task and CRM history during live tests |
-| R8 Retention and import | Pipeline and frontend regression suites pass | Map both CSV components and county merge cases to exact requirements; operator import review |
+| R8 Retention and import | Pipeline and frontend regression suites pass | Leads and master-list routes use reconciliation; standalone LeadImportModal still inserts directly and lacks a consumer. Cover every import component and operator import review |
 | R9 County/trace/scoring | Restricted ingress, trace caps and scoring concurrency pass; pipeline 231 tests | Current source completeness/PropStream end-to-end acceptance within existing spend cap |
 | R10 Feature bundles | Real concurrent offer/property, lot and valuation checks pass on minimal fixtures | Full upgraded-schema call/SMS overlap now passes; remaining feature interactions and operator workflow acceptance |
-| R11 Schema and access | Saved catalog with synthetic historical rows, eleven migrations, partial/full rollback, ACL assertions pass | Fresh function/ACL comparison matches expected Facebook release changes; table/constraint/policy/trigger drift, release manifest and recovery review remain; production-volume locks unproven |
+| R11 Schema and access | Saved catalog with synthetic historical rows, eleven migrations, partial/full rollback, ACL assertions pass | Fresh shape comparison now matches the released baseline across tables, constraints, indexes, triggers, policies, views, view security and grants. Function delta matches the Facebook release. Exact release manifest/recovery review and production-volume locks remain open |
 | R12 Frontend and release | 240 tests, build/typecheck and lint gate pass; candidate deployment disabled | Signed-in complete operator walkthrough, matching deployed API/schema, reviewed release artifact |
 
 Frontend dependencies: Vite 6.4.5, Vitest 4.1.12, follow-redirects 1.16.1;
@@ -32,3 +32,31 @@ and owner inbox confirmation are pending. The same-number preference does not
 permit clearing DNC or replaying held sessions. Broad schedules stay paused pending
 owner review. No production data, schema, messaging flags or deployments changed
 in this checkpoint.
+
+## October 22 schema and authorization review
+
+Fresh production schema comparison passes against the locally restored catalog
+plus the released Facebook migration. The restore now includes production view
+security and grants, which were missing from the original saved catalog fixture.
+The full upgrade, pinned-call/SMS overlap and ten intake journeys still pass.
+
+Supabase's security advisor reports 33 INFO items for RLS tables with no policies,
+plus three WARN items for authenticated SECURITY DEFINER entry points. The three
+functions are `admin_set_user_role`, `admin_set_user_status` and `is_approved`.
+Reviewed current fingerprint-matching bodies use approved-admin/profile checks.
+Actual local PostgreSQL role checks reject approved ordinary users, pending users,
+pending/denied/suspended admins, absent identity, anonymous RPC access and forged
+user metadata. Approved-admin mutations and notification audit succeed. These
+checks exercise database authorization with the local Auth UID stub; they do not
+replace production Auth/JWT verification or a full tenancy review.
+
+The RLS-without-policy items include deliberately service-owned scheduler/receipt
+facilities; no policy was added to make the advisor quiet. Advisor findings are
+preserved for review, not marked resolved. Guidance:
+[authenticated definer functions](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)
+and [RLS without policy](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+
+Vercel environment reads remain incomplete: connector permission 403, CLI refresh
+failed DNS, and revealing a Config value in the existing dashboard required email
+verification. No code was requested and no flag, schedule, deployment or production
+row was changed. The pre-existing dashboard redeploy toast was not acted on.

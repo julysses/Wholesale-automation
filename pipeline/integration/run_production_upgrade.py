@@ -1,5 +1,6 @@
 """Rehearse the allowlisted integration upgrade and protected intake journeys locally."""
 import os
+import sys
 from pathlib import Path
 import shutil
 import socket
@@ -7,6 +8,8 @@ import subprocess
 import tempfile
 
 root=Path(__file__).resolve().parents[2]
+if sys.argv[1:] not in ([], ['--schema-security']):
+    raise SystemExit('Unknown local rehearsal mode')
 pg=Path(os.environ.get('PG_BIN','/opt/homebrew/opt/postgresql@17/bin'))
 node=shutil.which('node')
 if not node or not all((pg/x).is_file() for x in ('initdb','pg_ctl','createdb')):
@@ -28,6 +31,10 @@ with tempfile.TemporaryDirectory(prefix='wholesale-sms-') as folder:
         env['SMS_TEST_ADMIN_URL']=f'postgresql://test_admin:local-only-test-admin@127.0.0.1:{port}/wholesale_sms_test'
         run([root/'.venv/bin/python','pipeline/integration/production_schema.py'],cwd=root,env=env,timeout=90)
         run([root/'.venv/bin/python','pipeline/integration/rehearse_facebook_migration.py'],cwd=root,env=env,timeout=90)
+        run([root/'.venv/bin/python','pipeline/integration/verify_production_schema_drift.py'],cwd=root,env=env,timeout=90)
+        run([root/'.venv/bin/python','pipeline/integration/verify_authorization.py'],cwd=root,env=env,timeout=90)
+        if sys.argv[1:] == ['--schema-security']:
+            raise SystemExit(0)
         run([root/'.venv/bin/python','pipeline/integration/rehearse_full_upgrade.py'],cwd=root,env=env,timeout=90)
         run([root/'.venv/bin/python','pipeline/integration/verify_versioned_call_concurrency.py'],cwd=root,env=env,timeout=90)
         env['PYTHONPATH']=str(root/'scripts/offline-tests')+os.pathsep+str(root)
