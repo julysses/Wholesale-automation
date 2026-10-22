@@ -3,15 +3,15 @@
 Status: draft only; not submitted, purchased, registered or enabled. This preserves
 the existing homeowner campaign. The user REQUIRES buyer SMS at launch.
 
-## Live account evidence
+## Registration readiness finding
 
 Read directly from the signed-in Twilio console on October 22, 2026:
 
-- Registered brand: The Jays Dallas, LLC, BN328f9c7a21cf55837144ccd9f8ba5839.
+- Registered brand: The Jays Dallas, LLC, [provider reference retained in local launch plan].
 - The All-status campaign inventory contains one campaign:
-  CM81b71bfdf3483a566e6ecf0161c840b9, external ID CZF7AI8, Verified, Low Volume Mixed.
-- Connected service: MGaf5837f7a7cad183e8b38b1147728562.
-- Registered connected number: +14698049920, PNb952c10eb0350422ccd08b1d8c5ce738.
+  [provider reference retained in local launch plan], external ID [retained locally], Verified, Low Volume Mixed.
+- Connected service: [provider reference retained in local launch plan].
+- Registered connected number: [registered sender retained locally], [provider reference retained in local launch plan].
 - Campaign description and opt-in flow limit texts to homeowners' own property
   inquiries, offers, appointments and closing updates, with no unrelated marketing.
   Opt-in is the optional unchecked Hilltop offer-form checkbox; this is NOT buyer
@@ -27,8 +27,8 @@ Read directly from the signed-in Twilio console on October 22, 2026:
 - The unsubmitted registration modal was closed; the one-campaign inventory was
   verified unchanged. No sender, service, campaign, opt-out or routing was edited.
 
-Campaign detail source:
-https://console.twilio.com/us1/develop/sms/regulatory-compliance/brands/BN328f9c7a21cf55837144ccd9f8ba5839/connected-campaigns/CM81b71bfdf3483a566e6ecf0161c840b9
+Authenticated account references are retained in the local launch plan.
+Public documentation: https://www.twilio.com/docs/messaging/compliance/a2p-10dlc/quickstart
 
 ## Timing and fees
 
