@@ -86,68 +86,44 @@
     {
       "name": "20261022220540_integration_buyer_manual_receipts.sql",
       "sha256": "f28d4aaba8b108283cf48a7264f498c3f3a24a671f778ddf42310f4faa41cacc"
+    },
+    {
+      "name": "20261022224302_integration_buyer_analysis_receipts.sql",
+      "sha256": "b2d18e2d3b1dc6384332d5b5f5f016920c34fd4990decd1033d169ecc2a3a4f3"
     }
   ],
   "retained_tables": 101,
-  "retained_rows_sha256": "2e4268e88b27279f208d6c366c49a55ab46f8242424d74d97636dc162345bc35",
+  "retained_rows_sha256": "5fdc478a2b6e4d0244e90436fb6ab0926da4d95a7e5df4c361a3c726048fac91",
   "changed_existing_functions": [
     "scan_list_pipeline()",
     "claim_retell_call(uuid,uuid,text,uuid)"
   ],
-  "new_functions": 61,
+  "new_functions": 69,
   "browser_permission_checks": [
     {
       "role": "anon",
-      "function": "monitor_list_lots()",
+      "function": "reconcile_list_lot(uuid,uuid,uuid,integer,text,text,text)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "monitor_list_lots()",
+      "function": "reconcile_list_lot(uuid,uuid,uuid,integer,text,text,text)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
     },
     {
       "role": "anon",
-      "function": "reconcile_buyer_outreach_campaign(uuid,uuid)",
+      "function": "record_offer_review(uuid,uuid,uuid,integer,text,uuid,jsonb)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "reconcile_buyer_outreach_campaign(uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "private.protect_csv_scoring_batch()",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": true
-    },
-    {
-      "role": "authenticated",
-      "function": "private.protect_csv_scoring_batch()",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": true
-    },
-    {
-      "role": "anon",
-      "function": "manual_buyer_receipt(uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "manual_buyer_receipt(uuid,uuid)",
+      "function": "record_offer_review(uuid,uuid,uuid,integer,text,uuid,jsonb)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
@@ -168,31 +144,31 @@
     },
     {
       "role": "anon",
-      "function": "csv_import_scoring_status(uuid,uuid)",
+      "function": "claim_buyer_outreach(uuid,uuid,uuid,uuid,text,jsonb,text)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "csv_import_scoring_status(uuid,uuid)",
+      "function": "claim_buyer_outreach(uuid,uuid,uuid,uuid,text,jsonb,text)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
     },
     {
       "role": "anon",
-      "function": "private.protect_csv_lead_import()",
+      "function": "buyer_enrollment_submissions(uuid,uuid,integer)",
       "executable": false,
-      "schema_access": false,
-      "is_trigger": true
+      "schema_access": true,
+      "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "private.protect_csv_lead_import()",
+      "function": "buyer_enrollment_submissions(uuid,uuid,integer)",
       "executable": false,
       "schema_access": true,
-      "is_trigger": true
+      "is_trigger": false
     },
     {
       "role": "anon",
@@ -210,84 +186,56 @@
     },
     {
       "role": "anon",
-      "function": "read_land_valuation(uuid,uuid)",
+      "function": "wholesale_ingest.handoff_lot(uuid,uuid,uuid,uuid,text)",
       "executable": false,
-      "schema_access": true,
+      "schema_access": false,
       "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "read_land_valuation(uuid,uuid)",
+      "function": "wholesale_ingest.handoff_lot(uuid,uuid,uuid,uuid,text)",
       "executable": false,
-      "schema_access": true,
+      "schema_access": false,
       "is_trigger": false
     },
     {
       "role": "anon",
-      "function": "wholesale_ingest.version_land_valuation()",
-      "executable": true,
+      "function": "private.suppress_buyer_sms()",
+      "executable": false,
       "schema_access": false,
       "is_trigger": true
     },
     {
       "role": "authenticated",
-      "function": "wholesale_ingest.version_land_valuation()",
-      "executable": true,
-      "schema_access": false,
+      "function": "private.suppress_buyer_sms()",
+      "executable": false,
+      "schema_access": true,
       "is_trigger": true
     },
     {
       "role": "anon",
-      "function": "list_lot_handoffs(uuid,integer)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "list_lot_handoffs(uuid,integer)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "acknowledge_list_lot(uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "acknowledge_list_lot(uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "private.csv_scoring_summary(uuid)",
+      "function": "wholesale_ingest.land_valuation_snapshot(uuid)",
       "executable": false,
       "schema_access": false,
       "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "private.csv_scoring_summary(uuid)",
+      "function": "wholesale_ingest.land_valuation_snapshot(uuid)",
       "executable": false,
-      "schema_access": true,
+      "schema_access": false,
       "is_trigger": false
     },
     {
       "role": "anon",
-      "function": "import_manual_land_leads(uuid,uuid,jsonb)",
+      "function": "import_buyer_csv(uuid,uuid,text,jsonb,jsonb)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "import_manual_land_leads(uuid,uuid,jsonb)",
+      "function": "import_buyer_csv(uuid,uuid,text,jsonb,jsonb)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
@@ -308,20 +256,6 @@
     },
     {
       "role": "anon",
-      "function": "submit_buyer_enrollment(uuid,text,text,boolean,text,jsonb,boolean)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "submit_buyer_enrollment(uuid,text,text,boolean,text,jsonb,boolean)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
       "function": "wholesale_ingest.immutable_lot_reconciliation()",
       "executable": true,
       "schema_access": false,
@@ -336,128 +270,16 @@
     },
     {
       "role": "anon",
-      "function": "offer_review_history(uuid,uuid,integer)",
+      "function": "offer_review.property_snapshot(uuid)",
       "executable": false,
-      "schema_access": true,
+      "schema_access": false,
       "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "offer_review_history(uuid,uuid,integer)",
+      "function": "offer_review.property_snapshot(uuid)",
       "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "claim_buyer_sms(uuid,uuid,uuid,uuid,jsonb,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "claim_buyer_sms(uuid,uuid,uuid,uuid,jsonb,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "import_csv_leads(uuid,uuid,jsonb,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "import_csv_leads(uuid,uuid,jsonb,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "cancel_manual_buyer(uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "cancel_manual_buyer(uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "claim_csv_import_scoring(uuid,uuid,uuid,boolean)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "claim_csv_import_scoring(uuid,uuid,uuid,boolean)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "claim_buyer_outreach(uuid,uuid,uuid,uuid,text,jsonb,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "claim_buyer_outreach(uuid,uuid,uuid,uuid,text,jsonb,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "save_land_valuation(uuid,uuid,uuid,text,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "save_land_valuation(uuid,uuid,uuid,text,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "record_buyer_sms_outcome(uuid,text,text,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "record_buyer_sms_outcome(uuid,text,text,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "route_list_lots(integer)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "route_list_lots(integer)",
-      "executable": false,
-      "schema_access": true,
+      "schema_access": false,
       "is_trigger": false
     },
     {
@@ -476,118 +298,6 @@
     },
     {
       "role": "anon",
-      "function": "private.protect_buyer_sms_message()",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": true
-    },
-    {
-      "role": "authenticated",
-      "function": "private.protect_buyer_sms_message()",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": true
-    },
-    {
-      "role": "anon",
-      "function": "wholesale_ingest.scan_lots_at(timestamp with time zone)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "wholesale_ingest.scan_lots_at(timestamp with time zone)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "wholesale_ingest.land_valuation_snapshot(uuid)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "wholesale_ingest.land_valuation_snapshot(uuid)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "buyer_enrollment_submissions(uuid,uuid,integer)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "buyer_enrollment_submissions(uuid,uuid,integer)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "record_offer_review_v2(uuid,uuid,uuid,integer,text,uuid,jsonb,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "record_offer_review_v2(uuid,uuid,uuid,integer,text,uuid,jsonb,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "wholesale_ingest.immutable_land_valuation_event()",
-      "executable": true,
-      "schema_access": false,
-      "is_trigger": true
-    },
-    {
-      "role": "authenticated",
-      "function": "wholesale_ingest.immutable_land_valuation_event()",
-      "executable": true,
-      "schema_access": false,
-      "is_trigger": true
-    },
-    {
-      "role": "anon",
-      "function": "private.buyer_phone(text)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "private.buyer_phone(text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "finish_buyer_outreach(uuid,uuid,text,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "finish_buyer_outreach(uuid,uuid,text,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
       "function": "offer_review_snapshot(uuid,uuid)",
       "executable": false,
       "schema_access": true,
@@ -596,300 +306,6 @@
     {
       "role": "authenticated",
       "function": "offer_review_snapshot(uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "import_buyer_csv(uuid,uuid,text,jsonb,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "import_buyer_csv(uuid,uuid,text,jsonb,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "review_list_lot(uuid,uuid,uuid,text,boolean,text,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "review_list_lot(uuid,uuid,uuid,text,boolean,text,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "buyer_enrollment_receipt(uuid,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "buyer_enrollment_receipt(uuid,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "handoff_list_lot(uuid,uuid,uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "handoff_list_lot(uuid,uuid,uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "buyer_sms_route_status(jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "buyer_sms_route_status(jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "review_buyer_enrollment(uuid,uuid,uuid,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "review_buyer_enrollment(uuid,uuid,uuid,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "private.suppress_buyer_sms()",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": true
-    },
-    {
-      "role": "authenticated",
-      "function": "private.suppress_buyer_sms()",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": true
-    },
-    {
-      "role": "anon",
-      "function": "record_offer_review(uuid,uuid,uuid,integer,text,uuid,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "record_offer_review(uuid,uuid,uuid,integer,text,uuid,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "wholesale_ingest.guard_lot_handoff()",
-      "executable": true,
-      "schema_access": false,
-      "is_trigger": true
-    },
-    {
-      "role": "authenticated",
-      "function": "wholesale_ingest.guard_lot_handoff()",
-      "executable": true,
-      "schema_access": false,
-      "is_trigger": true
-    },
-    {
-      "role": "anon",
-      "function": "create_manual_buyer(uuid,uuid,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "create_manual_buyer(uuid,uuid,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "offer_review.property_snapshot(uuid)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "offer_review.property_snapshot(uuid)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "claim_retell_call_versioned(uuid,uuid,text,uuid,text,integer,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "claim_retell_call_versioned(uuid,uuid,text,uuid,text,integer,text)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "review_buyer_sms_consent(uuid,uuid,uuid,text,jsonb,boolean)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "review_buyer_sms_consent(uuid,uuid,uuid,text,jsonb,boolean)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "authorize_buyer_sms_submission(uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "authorize_buyer_sms_submission(uuid,uuid)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "finish_csv_import_scoring(uuid,uuid,uuid,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "finish_csv_import_scoring(uuid,uuid,uuid,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "private.protect_buyer_outreach_attempt()",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": true
-    },
-    {
-      "role": "authenticated",
-      "function": "private.protect_buyer_outreach_attempt()",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": true
-    },
-    {
-      "role": "anon",
-      "function": "wholesale_ingest.handoff_lot(uuid,uuid,uuid,uuid,text)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "wholesale_ingest.handoff_lot(uuid,uuid,uuid,uuid,text)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "list_lot_candidates(uuid,integer)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "list_lot_candidates(uuid,integer)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "private.csv_lead_key(text,text,text)",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "private.csv_lead_key(text,text,text)",
-      "executable": true,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "anon",
-      "function": "private.protect_manual_land_import()",
-      "executable": false,
-      "schema_access": false,
-      "is_trigger": true
-    },
-    {
-      "role": "authenticated",
-      "function": "private.protect_manual_land_import()",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": true
-    },
-    {
-      "role": "anon",
-      "function": "record_buyer_sms_event(uuid,text,uuid,jsonb)",
-      "executable": false,
-      "schema_access": true,
-      "is_trigger": false
-    },
-    {
-      "role": "authenticated",
-      "function": "record_buyer_sms_event(uuid,text,uuid,jsonb)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
@@ -910,14 +326,700 @@
     },
     {
       "role": "anon",
-      "function": "reconcile_list_lot(uuid,uuid,uuid,integer,text,text,text)",
+      "function": "reconcile_buyer_outreach_campaign(uuid,uuid)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "reconcile_list_lot(uuid,uuid,uuid,integer,text,text,text)",
+      "function": "reconcile_buyer_outreach_campaign(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "claim_buyer_sms(uuid,uuid,uuid,uuid,jsonb,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "claim_buyer_sms(uuid,uuid,uuid,uuid,jsonb,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "apply_buyer_analysis(uuid,uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "apply_buyer_analysis(uuid,uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "buyer_analysis_status(uuid,uuid,integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "buyer_analysis_status(uuid,uuid,integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "handoff_list_lot(uuid,uuid,uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "handoff_list_lot(uuid,uuid,uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "record_offer_review_v2(uuid,uuid,uuid,integer,text,uuid,jsonb,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "record_offer_review_v2(uuid,uuid,uuid,integer,text,uuid,jsonb,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "authorize_buyer_classification(uuid,uuid,uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "authorize_buyer_classification(uuid,uuid,uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "private.protect_buyer_outreach_attempt()",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "authenticated",
+      "function": "private.protect_buyer_outreach_attempt()",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": true
+    },
+    {
+      "role": "anon",
+      "function": "record_buyer_sms_event(uuid,text,uuid,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "record_buyer_sms_event(uuid,text,uuid,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "list_lot_candidates(uuid,integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "list_lot_candidates(uuid,integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "store_buyer_analysis_result(uuid,uuid,uuid,uuid,text,jsonb,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "store_buyer_analysis_result(uuid,uuid,uuid,uuid,text,jsonb,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "offer_review_history(uuid,uuid,integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "offer_review_history(uuid,uuid,integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "manual_buyer_receipt(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "manual_buyer_receipt(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "monitor_list_lots()",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "monitor_list_lots()",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "review_buyer_enrollment(uuid,uuid,uuid,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "review_buyer_enrollment(uuid,uuid,uuid,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "private.protect_csv_lead_import()",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "authenticated",
+      "function": "private.protect_csv_lead_import()",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": true
+    },
+    {
+      "role": "anon",
+      "function": "review_list_lot(uuid,uuid,uuid,text,boolean,text,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "review_list_lot(uuid,uuid,uuid,text,boolean,text,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "finish_buyer_outreach(uuid,uuid,text,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "finish_buyer_outreach(uuid,uuid,text,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "cancel_buyer_analysis(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "cancel_buyer_analysis(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "save_land_valuation(uuid,uuid,uuid,text,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "save_land_valuation(uuid,uuid,uuid,text,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "authorize_buyer_sms_submission(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "authorize_buyer_sms_submission(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "private.csv_lead_key(text,text,text)",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "private.csv_lead_key(text,text,text)",
+      "executable": true,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "wholesale_ingest.version_land_valuation()",
+      "executable": true,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "authenticated",
+      "function": "wholesale_ingest.version_land_valuation()",
+      "executable": true,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "anon",
+      "function": "private.protect_manual_land_import()",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "authenticated",
+      "function": "private.protect_manual_land_import()",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": true
+    },
+    {
+      "role": "anon",
+      "function": "private.csv_scoring_summary(uuid)",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "private.csv_scoring_summary(uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "claim_buyer_analysis(uuid,uuid,uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "claim_buyer_analysis(uuid,uuid,uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "claim_retell_call_versioned(uuid,uuid,text,uuid,text,integer,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "claim_retell_call_versioned(uuid,uuid,text,uuid,text,integer,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "claim_csv_import_scoring(uuid,uuid,uuid,boolean)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "claim_csv_import_scoring(uuid,uuid,uuid,boolean)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "wholesale_ingest.guard_lot_handoff()",
+      "executable": true,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "authenticated",
+      "function": "wholesale_ingest.guard_lot_handoff()",
+      "executable": true,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "anon",
+      "function": "cancel_manual_buyer(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "cancel_manual_buyer(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "record_buyer_sms_outcome(uuid,text,text,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "record_buyer_sms_outcome(uuid,text,text,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "review_buyer_sms_consent(uuid,uuid,uuid,text,jsonb,boolean)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "review_buyer_sms_consent(uuid,uuid,uuid,text,jsonb,boolean)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "list_lot_handoffs(uuid,integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "list_lot_handoffs(uuid,integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "private.buyer_phone(text)",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "private.buyer_phone(text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "buyer_sms_route_status(jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "buyer_sms_route_status(jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "read_land_valuation(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "read_land_valuation(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "import_csv_leads(uuid,uuid,jsonb,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "import_csv_leads(uuid,uuid,jsonb,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "private.protect_csv_scoring_batch()",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "authenticated",
+      "function": "private.protect_csv_scoring_batch()",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": true
+    },
+    {
+      "role": "anon",
+      "function": "finish_csv_import_scoring(uuid,uuid,uuid,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "finish_csv_import_scoring(uuid,uuid,uuid,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "wholesale_ingest.scan_lots_at(timestamp with time zone)",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "wholesale_ingest.scan_lots_at(timestamp with time zone)",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "create_manual_buyer(uuid,uuid,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "create_manual_buyer(uuid,uuid,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "private.buyer_analysis_snapshot(uuid)",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "private.buyer_analysis_snapshot(uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "import_manual_land_leads(uuid,uuid,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "import_manual_land_leads(uuid,uuid,jsonb)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "acknowledge_list_lot(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "acknowledge_list_lot(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "submit_buyer_enrollment(uuid,text,text,boolean,text,jsonb,boolean)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "submit_buyer_enrollment(uuid,text,text,boolean,text,jsonb,boolean)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "csv_import_scoring_status(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "csv_import_scoring_status(uuid,uuid)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "route_list_lots(integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "route_list_lots(integer)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "wholesale_ingest.lot_handoff_state(uuid)",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "wholesale_ingest.lot_handoff_state(uuid)",
+      "executable": false,
+      "schema_access": false,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "wholesale_ingest.immutable_land_valuation_event()",
+      "executable": true,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "authenticated",
+      "function": "wholesale_ingest.immutable_land_valuation_event()",
+      "executable": true,
+      "schema_access": false,
+      "is_trigger": true
+    },
+    {
+      "role": "anon",
+      "function": "start_buyer_analysis(uuid,uuid,text,uuid,boolean)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "authenticated",
+      "function": "start_buyer_analysis(uuid,uuid,text,uuid,boolean)",
       "executable": false,
       "schema_access": true,
       "is_trigger": false
@@ -938,17 +1040,31 @@
     },
     {
       "role": "anon",
-      "function": "wholesale_ingest.lot_handoff_state(uuid)",
+      "function": "buyer_enrollment_receipt(uuid,text)",
       "executable": false,
-      "schema_access": false,
+      "schema_access": true,
       "is_trigger": false
     },
     {
       "role": "authenticated",
-      "function": "wholesale_ingest.lot_handoff_state(uuid)",
+      "function": "buyer_enrollment_receipt(uuid,text)",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": false
+    },
+    {
+      "role": "anon",
+      "function": "private.protect_buyer_sms_message()",
       "executable": false,
       "schema_access": false,
-      "is_trigger": false
+      "is_trigger": true
+    },
+    {
+      "role": "authenticated",
+      "function": "private.protect_buyer_sms_message()",
+      "executable": false,
+      "schema_access": true,
+      "is_trigger": true
     }
   ],
   "provider_calls": 0

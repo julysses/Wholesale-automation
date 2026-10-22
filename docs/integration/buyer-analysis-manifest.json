@@ -8,16 +8,16 @@
   "frontend_files": 64,
   "lint_existing": 142,
   "analysis_sql": "passed including commit rollback",
-  "full_upgrade": "running; no terminal claim",
-  "remote_ci": "not yet observed for this candidate",
+  "full_upgrade": "passed; 20 proposals, rollback, retained rows, 10 intake journeys",
+  "remote_ci": "all nine jobs passed run39869071876 (713); identical Git tree verified",
   "real_provider_calls": 0,
   "production_mutations": 0,
   "files": {
     ".github/workflows/ci.yml": "2a5ac64bb61afc3ce8408de50a7ebe1bc8e20d5bd7a9cea4bb81a216354ba14e",
     "agents/buyer_intelligence_agent.py": "0d1e086517427989eb2aad6933d9f559ab3d6db1323d4d9a8dc0ddbb141568c4",
-    "docs/integration/BUYER-ANALYSIS-RECOVERY.md": "2bb27b0e7c469316558cd0d8d79f16958b64cd4ffc28eb3283e1ad99e10520fb",
+    "docs/integration/BUYER-ANALYSIS-RECOVERY.md": "5fe8a66349331f9543607aa65a4d9239987cab3dfe50be4475e4291409155544",
     "docs/integration/BUYER-CLASSIFICATION-REMAINING.md": "9e97b13fb8192da300380b969f73b0a6fe0ba8974d79e7aa3ad921404d187010",
-    "docs/integration/PR21-BODY.md": "7c38305761a4a6538180c0b3c7477061656b1f1c4494d64ab2b9ba03f4aa4828",
+    "docs/integration/PR21-BODY.md": "1e36024f07c4d6e6a4ac49b357fca07c618080750d7bfa72303b35a11f00a67e",
     "docs/integration/forward-migration-order.json": "a825f206302dfda0af64e998dc12a7faf872997849f30fb946de0ae9b6516c38",
     "frontend/src/components/buyers/BuyerAnalysisPanel.tsx": "b65b4a3f229d60c5db6534b44138337d746fb558b0ac12b09d35a9689b05d633",
     "frontend/src/components/buyers/BuyerProfileDrawer.tsx": "c09bdc3ee156bc60531d4dcf73bb20500ffcf8e63866798542940e530df1e655",
@@ -35,5 +35,9 @@
     "web/api/buyer_analysis.py": "b998e84f911cb216845b78c1d562888e24bbe82344be737debcdda1be8b50395",
     "web/api/buyers_api.py": "67ca8fc1d3699841df0c1922818c82e0cba12b6b997ae9bdf718545fc9ce2833",
     "web/app.py": "d3c4319060d1f035d4c2dbd92f93c9c2a6a3465d9de1f143395212c700769579"
-  }
+  },
+  "intake_seconds": 122.59,
+  "current_runtime": "44894b8a75e26ba844a546c6f305e398924b3204",
+  "remote_evidence": "docs/integration/buyer-analysis-ci-evidence.json",
+  "hash_scope": "current source; runtime files unchanged from tested44894b8, subsequent docs-only checkpoint"
 }

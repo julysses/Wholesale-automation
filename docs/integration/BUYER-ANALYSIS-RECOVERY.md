@@ -1,6 +1,6 @@
 # Explicit buyer analysis candidate — October 22, 2026
 
-Status: candidate implementation; real-provider and production acceptance remain open.
+Status: local/full rehearsal and all nine Linux CI checks passed at44894b8; real-provider and production acceptance remain open.
 This replaces log-only BackgroundTasks and queued-success UI for explicit buyer
 rescoring/classification. The old write routes reject requests with recovery guidance.
 CSV/manual intake does not automatically classify or score through this path.
@@ -47,8 +47,9 @@ eight independent contenders/one provider stub attempt, immutable receipts, owne
 and revocation, invalid/unknown results, cross-request paid holds, lost claim/auth/
 stage/application responses, deletion, changed profile/history, exact version replay,
 frozen membership and 20-item continuation, six screen recovery cases, no-work-on-mount
-and protected API-only cold start. The full catalog restore/rollback/journeys and CI
-are reported separately after they finish. No production migration or provider call
+and protected API-only cold start. Full catalog restore/rollback and ten intake journeys pass locally (122.59 seconds).
+All nine CI jobs passed in run39869071876 (713), with identical head/PR-merge trees.
+See buyer-analysis-ci-evidence.json for exact source and job evidence. No production migration or provider call
 is authorized or performed by this implementation.
 
 Remaining launch gates include actual provider availability/paid acceptance under

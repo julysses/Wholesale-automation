@@ -1,0 +1,84 @@
+{
+  "runtime": "44894b8a75e26ba844a546c6f305e398924b3204",
+  "pr_merge": "0fd73683ea48c389602bb5400829e1ee91a09200",
+  "verified_tree": "65af0a6024288ef19f860784855dfcc5b0c1a2b9",
+  "run_id": 39869071876,
+  "run_number": 713,
+  "url": "https://github.com/julysses/Wholesale-automation/actions/runs/39869071876",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "id": 120138613899,
+      "name": "Production API dependency boundary",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120138614083,
+      "name": "Manual buyer receipts on real PostgreSQL 17",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120138614145,
+      "name": "Linux Docker release (isolated runtime)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120138614151,
+      "name": "Backend (pytest)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120138614216,
+      "name": "Python locked dependencies and known vulnerabilities",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120138614235,
+      "name": "Real PostgreSQL ingestion, tracing and scoring contention",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120138614243,
+      "name": "Frontend (typecheck, build, lint)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120138614246,
+      "name": "Pipeline contracts and isolated SQL",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120138614289,
+      "name": "Vercel Linux build and bundled API cold start",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "ci_backend": {
+    "passed": 1425,
+    "skipped": 10,
+    "subtests": 6
+  },
+  "frontend": {
+    "passed": 348,
+    "files": 64
+  },
+  "native_vercel": {
+    "python": "3.12.15",
+    "architecture": "x86_64",
+    "mapped_files": 6549,
+    "cold_start": "passed",
+    "bundle_audit": "no known findings"
+  },
+  "postgres": "17.11; all twenty proposals, rollback, manual saves and analysis passed",
+  "real_provider_calls": 0,
+  "production_mutations": 0
+}
