@@ -23,7 +23,7 @@
     },
     {
       "path": "frontend/src/pages/LandLeads.tsx",
-      "sha256": "7aeda3b26764c19491cb6914d1c41b9bc4c1000259a9e77f685b03c160787632"
+      "sha256": "38502585aef22e43f40d8676148f45e3aecf1ec455b0fe39d4f2bd007faf49be"
     },
     {
       "path": "frontend/src/components/leads/LeadImportModal.tsx",
@@ -40,8 +40,13 @@
     {
       "path": "pipeline/integration/verify_land_import.py",
       "sha256": "86296b012e4066517df6102e09f2a270bae867dde84696170e512b478d609139"
+    },
+    {
+      "path": "frontend/tests/land-list-completeness.test.tsx",
+      "sha256": "1feeb5bc8a1585074bdf01a36ba6063dc6dc22fca889ce60bf5ed8e26f5a7033"
     }
   ],
   "porting_note": "If released separately, append only the land import router registration to the production web/app.py; do not overwrite other routing from this integration file.",
-  "rollback": "Preserve receipt table and history. Keep manual imports unused if rolling back to the old runtime; it has the five-row bug. Do not drop receipts or replay historical migrations."
+  "rollback": "Preserve receipt table and history. Keep manual imports unused if rolling back to the old runtime; it has the five-row bug. Do not drop receipts or replay historical migrations.",
+  "runtime_followup": "Complete checked land-list pagination, shared funnel/list cache, search, bounded rendering and visible failed refreshes; no additional schema change."
 }

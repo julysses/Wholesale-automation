@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api';
+import { queryAll } from '@/lib/queryAll';
 import { LotInbox } from '@/components/land/LotInbox';
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -84,16 +85,41 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
-function useLandLeads(statusFilter?: LandStatus) {
+function useLandLeads() {
   return useQuery({
-    queryKey: ['land_leads', statusFilter],
+    // Separate the complete snapshot from any cached, capped result from older UI.
+    queryKey: ['land_leads', 'all-pages'],
     queryFn: async () => {
-      let q = supabase.from('land_leads').select('*').order('created_at', { ascending: false });
-      if (statusFilter) q = q.eq('status', statusFilter);
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data ?? []) as LandLead[];
+      let expectedCount: number | undefined;
+      const identities = new Set<string>();
+      const rows = await queryAll<LandLead>(async (from, to) => {
+        const result = await supabase.from('land_leads').select('*', { count: 'exact' })
+          .order('created_at', { ascending: false }).order('id', { ascending: true }).range(from, to);
+        if (result.error) throw new Error(result.error.message);
+        if (!Number.isInteger(result.count) || result.count === null || result.count < 0) {
+          throw new Error('Land record count could not be confirmed. Refresh again.');
+        }
+        if (expectedCount !== undefined && expectedCount !== result.count) {
+          throw new Error('Land records changed while loading. Refresh again.');
+        }
+        expectedCount = result.count;
+        for (const row of result.data ?? []) {
+          if (typeof row.id !== 'string' || !row.id || identities.has(row.id)) {
+            throw new Error('Land records changed while loading. Refresh again.');
+          }
+          identities.add(row.id);
+        }
+        if (identities.size > expectedCount) {
+          throw new Error('Land records changed while loading. Refresh again.');
+        }
+        return result;
+      });
+      if (rows.length !== expectedCount || identities.size !== rows.length) {
+        throw new Error('Land records changed while loading or could not be read completely. Refresh again.');
+      }
+      return rows;
     },
+    refetchInterval: 30000,
   });
 }
 
@@ -384,17 +410,19 @@ export function LandLeads() {
   const [showImport, setShowImport] = useState(false);
   const [statusFilter, setStatusFilter] = useState<LandStatus | ''>('');
 
-  const { data: leads = [], isLoading } = useLandLeads(statusFilter || undefined);
-
-  // Funnel counts
-  const { data: allLeads = [] } = useQuery({
-    queryKey: ['land_leads_all'],
-    queryFn: async () => {
-      const { data } = await supabase.from('land_leads').select('status, vetting_passed, infill_lot');
-      return data ?? [];
-    },
-    refetchInterval: 30000,
-  });
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const { data: allLeads, error, isPending, isFetching, refetch } = useLandLeads();
+  const hasData = allLeads !== undefined;
+  const searchTerm = search.trim().toLowerCase();
+  const leads = (allLeads ?? []).filter(lead => (!statusFilter || lead.status === statusFilter)
+    && (!searchTerm || [lead.property_address, lead.city, lead.owner_name, lead.apn].join(' ').toLowerCase().includes(searchTerm)));
+  const eligible = tab === 'vetting' ? leads.filter(lead => !lead.vetting_passed && lead.status !== 'dead')
+    : tab === 'comps' ? leads.filter(lead => lead.vetting_passed === true && lead.status !== 'dead') : leads;
+  const pageSize = 25;
+  const lastPage = Math.max(0, Math.ceil(eligible.length / pageSize) - 1);
+  const visiblePage = Math.min(page, lastPage);
+  const visibleLeads = eligible.slice(visiblePage * pageSize, (visiblePage + 1) * pageSize);
 
   async function openLinkedLand(id:string,leadId:string){
     const {data,error}=await supabase.from('land_leads').select('*').eq('id',id).eq('lead_id',leadId).single();
@@ -402,14 +430,14 @@ export function LandLeads() {
     if(!data||data.id!==id||data.lead_id!==leadId)throw new Error('Linked land record could not be confirmed.');
     setSelectedLead(data as LandLead);
   }
-  const counts = {
+  const counts = allLeads ? {
     total:     allLeads.length,
     vetting:   allLeads.filter(l => l.status === 'vetting' || l.status === 'new').length,
     vetted:    allLeads.filter(l => l.vetting_passed === true).length,
     comped:    allLeads.filter(l => l.status === 'comped').length,
     contract:  allLeads.filter(l => l.status === 'under_contract').length,
     infill:    allLeads.filter(l => l.infill_lot === true).length,
-  };
+  } : null;
 
   return (
     <div className="p-6 space-y-6">
@@ -421,7 +449,10 @@ export function LandLeads() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-[#1B3A5C]">Vacant Land</h1>
-            <p className="text-xs text-gray-500 mt-0.5">{counts.total} leads · {counts.infill} infill lots · {counts.contract} under contract</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {counts ? <><span>{counts.total.toLocaleString('en-US')} leads · {counts.infill.toLocaleString('en-US')} infill lots · {counts.contract.toLocaleString('en-US')} under contract</span>
+                {(error || isFetching) && <span> · Last confirmed refresh</span>}</> : error ? 'Land totals unavailable' : 'Loading land totals…'}
+            </p>
           </div>
         </div>
         <button onClick={() => setShowImport(true)}
@@ -434,11 +465,11 @@ export function LandLeads() {
       {/* Funnel strip */}
       <div className="grid grid-cols-5 gap-3">
         {[
-          { label: 'Needs Vetting', value: counts.vetting,  color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
-          { label: 'Passed Vetting', value: counts.vetted,  color: 'bg-blue-50 border-blue-200 text-blue-700' },
-          { label: 'Comped',         value: counts.comped,  color: 'bg-purple-50 border-purple-200 text-purple-700' },
-          { label: 'Under Contract', value: counts.contract,color: 'bg-green-50 border-green-200 text-green-700' },
-          { label: 'Infill Lots',    value: counts.infill,  color: 'bg-orange-50 border-orange-200 text-orange-700' },
+          { label: 'Needs Vetting', value: counts?.vetting ?? '—',  color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+          { label: 'Passed Vetting', value: counts?.vetted ?? '—',  color: 'bg-blue-50 border-blue-200 text-blue-700' },
+          { label: 'Comped',         value: counts?.comped ?? '—',  color: 'bg-purple-50 border-purple-200 text-purple-700' },
+          { label: 'Under Contract', value: counts?.contract ?? '—',color: 'bg-green-50 border-green-200 text-green-700' },
+          { label: 'Infill Lots',    value: counts?.infill ?? '—',  color: 'bg-orange-50 border-orange-200 text-orange-700' },
         ].map(({ label, value, color }) => (
           <div key={label} className={`rounded-xl border p-3 text-center ${color}`}>
             <p className="text-2xl font-black">{value}</p>
@@ -452,7 +483,7 @@ export function LandLeads() {
         {TABS.map(t => {
           const Icon = t.icon;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            <button key={t.id} onClick={() => { setTab(t.id); setPage(0); }}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 tab === t.id ? 'bg-white text-[#1B3A5C] shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}>
@@ -462,34 +493,38 @@ export function LandLeads() {
         })}
       </div>
 
-      {/* Tab content */}
-      {tab === 'leads' && (
-        <div className="space-y-4">
-          {/* Filter bar */}
-          <div className="flex items-center gap-3">
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as LandStatus | '')}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">All statuses</option>
-              <option value="new">New</option>
-              <option value="vetting">Vetting</option>
-              <option value="vetted">Vetted</option>
-              <option value="comped">Comped</option>
-              <option value="offer_made">Offer Made</option>
-              <option value="under_contract">Under Contract</option>
-              <option value="dead">Dead</option>
-            </select>
-            <span className="text-sm text-gray-500">{leads.length} leads</span>
-          </div>
+      {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <p>Land records could not be loaded. {hasData ? 'Showing previously loaded records. ' : ''}{error.message}</p>
+        <button onClick={() => { void refetch(); }} disabled={isFetching} className="mt-2 font-semibold underline disabled:opacity-50">Retry loading land records</button>
+      </div>}
+      {!hasData && isPending && <p role="status">Loading land records…</p>}
+      {hasData && isFetching && <p role="status" className="text-sm text-gray-500">Refreshing land records…</p>}
+      {hasData && tab !== 'buyers' && <div className="flex flex-wrap items-center gap-3">
+        <input type="search" aria-label="Search land records" placeholder="Address, city, owner or parcel"
+          value={search} onChange={event => { setSearch(event.target.value); setPage(0); }}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+        <select aria-label="Land status" value={statusFilter}
+          onChange={event => { setStatusFilter(event.target.value as LandStatus | ''); setPage(0); }}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          <option value="">All statuses</option><option value="new">New</option><option value="vetting">Vetting</option>
+          <option value="vetted">Vetted</option><option value="comped">Comped</option><option value="offer_made">Offer Made</option>
+          <option value="under_contract">Under Contract</option><option value="dead">Dead</option>
+        </select>
+        <span className="text-sm text-gray-500">{eligible.length.toLocaleString('en-US')} matching records</span>
+      </div>}
+      {hasData && tab !== 'buyers' && eligible.length > pageSize && <nav aria-label="Land record pages" className="flex items-center gap-4 text-sm">
+        <button aria-label="Previous land page" disabled={visiblePage === 0} onClick={() => setPage(visiblePage - 1)} className="font-semibold disabled:opacity-40">Previous</button>
+        <span>{(visiblePage * pageSize + 1).toLocaleString('en-US')}–{Math.min((visiblePage + 1) * pageSize, eligible.length).toLocaleString('en-US')} of {eligible.length.toLocaleString('en-US')}</span>
+        <button aria-label="Next land page" disabled={visiblePage === lastPage} onClick={() => setPage(visiblePage + 1)} className="font-semibold disabled:opacity-40">Next</button>
+      </nav>}
 
-          {isLoading ? (
-            <div className="flex justify-center py-12 text-gray-400">
-              <div className="h-5 w-5 border-2 border-gray-300 border-t-[#1B3A5C] rounded-full animate-spin mr-2" />
-              Loading…
-            </div>
-          ) : leads.length === 0 ? (
+      {/* Tab content */}
+      {hasData && tab === 'leads' && (
+        <div className="space-y-4">
+          {leads.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
               <TreePine className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-medium">No land leads yet</p>
+              <p className="text-sm font-medium">{searchTerm || statusFilter ? 'No matching land leads' : error ? 'No records in the last confirmed refresh' : 'No land leads yet'}</p>
               <p className="text-xs mt-1">Import a CSV or add manually</p>
               <button onClick={() => setShowImport(true)}
                 className="mt-4 px-4 py-2 bg-[#1B3A5C] text-white text-sm font-bold rounded-lg">
@@ -498,7 +533,7 @@ export function LandLeads() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {leads.map(lead => (
+              {visibleLeads.map(lead => (
                 <LandLeadCard key={lead.id} lead={lead} onSelect={setSelectedLead} />
               ))}
             </div>
@@ -506,16 +541,16 @@ export function LandLeads() {
         </div>
       )}
 
-      {tab === 'vetting' && (
+      {hasData && tab === 'vetting' && (
         <div>
-          {leads.filter(l => !l.vetting_passed && l.status !== 'dead').length === 0 ? (
+          {eligible.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
               <CheckCircle className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm">No leads awaiting vetting</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {leads.filter(l => !l.vetting_passed && l.status !== 'dead').map(lead => (
+              {visibleLeads.map(lead => (
                 <div key={lead.id} className="bg-white rounded-xl border border-yellow-200 p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div>
@@ -532,9 +567,9 @@ export function LandLeads() {
         </div>
       )}
 
-      {tab === 'comps' && (
+      {hasData && tab === 'comps' && (
         <div>
-          {leads.filter(l => l.vetting_passed === true && l.status !== 'dead').length === 0 ? (
+          {eligible.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
               <DollarSign className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm">No vetted leads ready for comping</p>
@@ -542,7 +577,7 @@ export function LandLeads() {
             </div>
           ) : (
             <div className="space-y-6">
-              {leads.filter(l => l.vetting_passed === true).map(lead => (
+              {visibleLeads.map(lead => (
                 <div key={lead.id} className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
                     <CheckCircle className="h-4 w-4 text-green-500" />

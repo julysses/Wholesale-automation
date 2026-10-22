@@ -110,3 +110,17 @@ import component coverage and operator acceptance while recipient identity is pe
 - Continue with main lead CSV ownership/concurrency, buyer/Master List coverage and
   large-land-list pagination/error handling. Detailed source/evidence and release
   limits: `MANUAL-LAND-IMPORT.md`. Live acceptance inputs and flag verification remain open.
+
+## October 22 complete land visibility
+
+- One complete, count-checked query now drives cards, funnel and filters; 25-card
+  rendering, page navigation and search expose records beyond the API cap.
+- Failed/changed/repeating reads cannot become partial totals or false empty states;
+  failed refresh keeps last confirmed data with visible retry. Import receipt refresh
+  updates the same cache. Dead records no longer enter comping.
+- Nine regressions pass, including 1,003 simulated records; all 254 frontend tests
+  across 53 files pass, with build/typecheck and lint gate (143 existing findings).
+- Read-only production land aggregate is zero records. No production writes,
+  schema, provider or scheduling changes. API/backend unchanged this step.
+- Next: main CSV assignment/due task/concurrency; buyer/Master List UI coverage;
+  operator/live acceptance. Details: `LAND-LIST-COMPLETENESS.md`.

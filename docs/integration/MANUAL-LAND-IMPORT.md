@@ -76,7 +76,7 @@ This migration changes no historical file, contact setting or scheduler.
 R8 is not fully complete. Buyer import and Master List UI coverage remain open.
 The main lead CSV reconciliation API still needs proof of concurrent deduplication,
 approved ownership and immediate follow-up; source inspection shows no owner/task
-creation there. Land list and funnel reads still use one capped database response,
-so large-import visibility/pagination and error presentation need correction.
+creation there. Land list/funnel pagination and error presentation are now corrected and verified;
+see `LAND-LIST-COMPLETENESS.md`.
 Manual import serialization does not replace the independent county handoff's
 identity protocol; cross-feature receiving/reconciliation acceptance remains open.
