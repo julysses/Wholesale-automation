@@ -3,6 +3,17 @@
 Updated October 21, 2026, America/Chicago. Target: Friday October 23.
 Status: preparation in progress; live acceptance and full operational readiness not certified.
 
+## Second pass — website and operator evidence
+
+- Public Hilltop and Jays seller pages render with SMS consent unchecked. Local website handler review shows the intended CRM form destinations and exact durable receipt confirmation. Local website source is evidence of implementation, not proof of deployed commit equivalence.
+- Contact-free live probes passed: both pages 200, Hilltop empty-answer forward rejected with upstream 422, Jays malformed intake rejected locally with 400. See `evidence/2026-10-21-website-boundaries.json`; run `python3 scripts/release/verify_website_boundaries.py` to reproduce. Valid website submissions and delivery remain unproven.
+- Vercel project cron metadata has disabledAt later than enabledAt, tied to the expected production deployment; automatic custom-domain assignment is false. Deployment API did not expose runtime boolean environment values, so effective sending flags still require authorized runtime/configuration evidence.
+- Reporting exclusion reasons explicitly identify all three unassigned Hilltop records as controlled launch fixtures. The unmatched July receipt has null form_id; the signed-in Tasks page already shows a legacy inquiry review task. No data repair or contact was performed.
+- Existing Chrome session is signed in as an administrator. Tasks and incident notices render, with 118 tasks/117 overdue shown in the current Pending filter. This is observation, not proof that follow-up work is complete. Setup Wizard shows 40%; Test & Verify describes connectivity-only checks, which were not invoked because they include an AI provider check. Operator acceptance and account-role isolation remain open.
+- Broader integration now has a separate disposable production-shaped eleven-migration rehearsal and ten post-upgrade journey passes. Continue from `../integration/docs/integration/FRIDAY-UPGRADE-REHEARSAL.md` relative to the workspace, not from the release branch. Feature concurrency, populated historical feature fixtures, injected failure and live acceptance remain open.
+
+No valid inquiries, live messages, production data changes or schedule activation occurred in this pass. The same-number recipient confirmation question remains pending; no repeat request was sent.
+
 ## Exact source and release
 
 Active checkout: `/Users/juliodominguez/Documents/Codex/2026-10-21/let-s-prep-the-wholesale-os/app`.
