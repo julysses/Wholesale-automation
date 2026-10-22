@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -35,6 +36,7 @@ ACCOUNT = "AC" + "a" * 32
 @pytest.fixture
 def journey(monkeypatch):
     db = Database()
+    db.query('SET ROLE service_role')
     monkeypatch.setattr(crm, "get_supabase_client", lambda: db)
     monkeypatch.setattr(lead_forms_api, "_get_supabase", lambda: db)
     monkeypatch.setattr(twilio_webhooks, "get_supabase_client", lambda: db)
@@ -105,8 +107,8 @@ def submit(j, monkeypatch, source, phone, consent=True, expected_status=200):
             {"field_name": "phone", "label": "Phone", "type": "tel", "required": True},
             {"field_name": "sms_opt_in", "label": "Local SMS consent; reply STOP", "type": "checkbox", "required": False},
         ]
-        j.db.query("""INSERT INTO public.lead_form_configs(id,slug,questions)
-            VALUES(%s,%s,%s) ON CONFLICT(slug) DO NOTHING""", [str(uuid4()), source, questions])
+        j.db.query("""INSERT INTO public.lead_form_configs(id,slug,questions,name)
+            VALUES(%s,%s,%s,'Local test form') ON CONFLICT(slug) DO NOTHING""", [str(uuid4()), source, questions])
         answers = {"first_name": "Local", "last_name": "Seller", "phone": phone,
                    "property_address": "123 Test St, Dallas, TX 75001", "sms_opt_in": consent,
                    "sms_consent_text": "Local SMS consent; reply STOP", "inquiry_type": "sell"}
@@ -158,6 +160,12 @@ def test_submission_ack_reply_receipts_stop_and_no_replay(journey, monkeypatch, 
     assert retell_app_dispatch.process_ack(j.db, job["id"])["status"] == "disabled"
     j.sms.messages.create.assert_not_called()
     monkeypatch.setattr(settings, "sms_live_enabled", True)  # Local mock only.
+    # Honor the real database default and original 60-second acknowledgment delay.
+    due = datetime.fromisoformat(job["due_at"])
+    deadline = time.monotonic() + 65
+    while datetime.now(timezone.utc) < due:
+        assert time.monotonic() < deadline
+        time.sleep(0.5)
     outcome = retell_app_dispatch.process_ack(j.db, job["id"])
     assert outcome["carrier_accepted"] is True, outcome
     retell_app_dispatch.process_ack(j.db, job["id"])
@@ -194,9 +202,13 @@ def test_submission_ack_reply_receipts_stop_and_no_replay(journey, monkeypatch, 
     retell_api_turns.process_turn(j.db, turn)
     assert j.sms.messages.create.call_count == 2 and len(j.retell) == 2
     assert j.db.query("SELECT count(*) n FROM public.retell_api_turns WHERE session_id=%s", [job["id"]])[0]["n"] == 1
-    assert not j.db.query("SELECT * FROM net.test_requests")
-    assert j.db.query("SELECT enabled FROM private.retell_app_scheduler")[0]["enabled"] is False
-    assert j.db.query("SELECT enabled FROM private.retell_sms_scheduler")[0]["enabled"] is False
+    audit = Database()
+    try:
+        assert not audit.query("SELECT * FROM net.test_requests")
+        assert audit.query("SELECT enabled FROM private.retell_app_scheduler")[0]["enabled"] is False
+        assert audit.query("SELECT enabled FROM private.retell_sms_scheduler")[0]["enabled"] is False
+    finally:
+        audit.connection.close()
 
 
 @pytest.mark.parametrize("source", ["hilltop-home-co", "the-jays-dallas", "facebook"])

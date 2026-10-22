@@ -24,7 +24,7 @@ class Database:
 
     def query(self, statement, params=()):
         with self.connection.cursor(cursor_factory=RealDictCursor) as c:
-            c.execute(statement, [Json(v) if isinstance(v, (dict, list)) else v for v in params])
+            c.execute(statement, [Json(v) if isinstance(v, (dict, list)) else v for v in params] if params else None)
             rows = c.fetchall() if c.description else []
             # PostgREST uses JSON strings for timestamps/UUIDs.
             return json.loads(json.dumps(rows, default=str))

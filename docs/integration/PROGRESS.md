@@ -1,5 +1,9 @@
 # Selective WholesaleOS integration
 
+## October 21 Friday launch continuation
+
+See `FRIDAY-UPGRADE-REHEARSAL.md`: saved production-shaped catalog restoration, the released Facebook migration, the eleven integration migrations, rollback/preservation/permissions and all ten post-upgrade intake journeys now pass locally. This supersedes the missing full-catalog composition evidence below, but not feature concurrency, fresh catalog drift, live acceptance or release authorization. Active checkout is in the October 21 launch workspace's `integration/` directory.
+
 ## Current checkpoint: native Facebook handoff repaired locally
 
 Owner explicitly authorized the handoff fix and connected local journeys. See `FACEBOOK-HANDOFF-FIX.md` and `facebook-handoff-release-manifest.json`. Ten connected API/PostgreSQL cases, an eight-worker native race, 1,261 backend tests, 231 pipeline tests and 240 frontend tests passed. The native `no_form_receipt` blocker is fixed locally; no production release or live acceptance is claimed.
