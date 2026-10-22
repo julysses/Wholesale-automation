@@ -207,7 +207,7 @@ export function MasterListBuilder() {
       queryClient.invalidateQueries({ queryKey: ['workflow_progress'] });
       toast.success(
         `${saved.toLocaleString()} leads saved (${result.imported.toLocaleString()} new, `
-        + `${result.updated.toLocaleString()} existing); ${result.scored.toLocaleString()} scored`
+        + `${result.updated.toLocaleString()} existing); ${result.scored === null ? 'scoring unconfirmed' : `${result.scored.toLocaleString()} scored`}`
       );
       if (result.warning) toast.warning(result.warning);
       setTimeout(() => navigate('/leads'), 800);

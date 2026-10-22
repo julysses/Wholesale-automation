@@ -12,7 +12,7 @@ hash supersedes the earlier foundation-only checkpoint. It now provides:
 
 - `public.import_csv_leads(uuid,uuid,jsonb,jsonb)`: atomic lead/list save, approved
   configured intake owner, linked due tasks, free rules scoring and immutable receipt.
-- `public.claim_csv_import_scoring(uuid,uuid,uuid)`: one-way optional AI claim,
+- `public.claim_csv_import_scoring(uuid,uuid,uuid,boolean)`: one-way optional AI claim,
   committed before any model request, with current snapshots and untouched-work checks.
 - `public.finish_csv_import_scoring(uuid,uuid,uuid,jsonb)`: exact claimed IDs and
   scores, snapshot comparison, preserved human work and durable completion/review.
@@ -56,17 +56,13 @@ The existing rules scorer may refresh computed priority/retention metadata; it
 never authorizes outreach. Master List now uses this transaction and no longer
 starts a separate global background scoring run after save.
 
-Optional AI intent reserves eligible records across later import references. A
-claim locks its operation and lead/task records, captures snapshots and changes to
-`submitting` before returning dispatch authority. Only the first caller receives
-that authority. Even replaying the same claim UUID does not grant another dispatch.
-The SDK uses `max_retries=0` for this CSV path; each batch must return the exact
-claimed IDs, complete output and valid 1–3 integer scores. The SQL finish also
-validates tiers/fields and checks snapshots. Changed records/completed tasks are
-held, not overwritten. Invalid/partial/foreign results hold the entire attempt.
-A timeout records review when possible; an uncertain claim/result stays held or
-submitting and is never automatically dispatched again. Terminal exact-result
-replay returns the saved result; conflicting results are refused.
+Optional AI now uses durable batches of at most 25 IDs, with immutable terminal
+batch evidence. Original upload replay cannot advance later paid batches; separate
+explicit continuation can. A read-only progress endpoint and `/leads?csv_import=`
+panel support refresh, single-batch continuation, score-all and pause. Every known
+batch is saved independently; unknown/invalid attempts halt, human changes remain
+held, and no submitted batch is dispatched again. See `CSV-BATCH-RECOVERY.md` for
+exact state semantics, SDK timeout/retry controls and runtime evidence.
 
 Saved-data outcome and scoring outcome are separate. Scoring review/uncertainty
 returns confirmed save counts with a warning. Leads and the standalone modal offer
@@ -78,7 +74,7 @@ reserve the same record for another CSV AI attempt.
 
 ## Verification
 
-Backend: **1,325 passed, 10 skipped**. Frontend: **262 tests across 54 files passed**
+Backend: **1,334 passed, 10 skipped**. Frontend: **274 tests across 56 files passed**
 with four workers. Typecheck/production build pass. Lint gate adds no findings;
 143 existing findings remain. Existing build chunk-size warning remains. Pipeline
 source is unchanged from its prior 231-test checkpoint.
@@ -103,7 +99,7 @@ migrations, full/injected failure rollback and retained history, then exercises:
 - Eight sessions observed contending for one scoring row: one dispatch winner;
   eight parallel exact finishes return the same persisted result.
 - Existing manual land import and pinned-call/SMS overlap; ten intake journeys
-  pass in **125.82 seconds**. No provider calls or production rows copied.
+  pass in the final run recorded in `production-upgrade-result.json`. No provider calls or production rows copied.
 
 HTTP receipt tests replace old fake-table batching/page assertions; persistence
 and historical preservation now run on real SQL. The old “missing list schema
@@ -113,7 +109,8 @@ all rows, exact explicit retry, wrong-reference refusal, warning vs save outcome
 Master List remount recovery and no background score start. SDK parser tests prove
 no automatic retries and reject incomplete/mismatched results.
 
-Evidence: `csv-lead-transaction-result.json`, `csv-connected-scoring-result.json`,
+Evidence and current batch semantics: `CSV-BATCH-RECOVERY.md`,
+`csv-lead-transaction-result.json`, `csv-connected-scoring-result.json`,
 `csv-lead-transaction-manifest.json`, `production-upgrade-result.json`. Raw logs are
 ignored `logs/friday-csv-*`. These checks do not prove production Auth/JWT behavior,
 real-browser operator acceptance, live carrier/inbox delivery or production-volume
@@ -121,10 +118,10 @@ lock/execution time.
 
 ## Remaining launch work
 
-1. Review import history/ownership and scoring-review recovery in the signed-in
-   operator walkthrough. Verify real runtime duration for large optional AI uploads;
-   current synchronous multi-batch behavior and production-scale partial-batch
-   recovery are unproven. Do not certify that path from small synthetic examples.
+1. Review import history/ownership and the new scoring recovery panel in the
+   signed-in operator walkthrough. Bounded multi-batch interruption/recovery now
+   passes; real provider latency, maximum database volume and deployed function
+   duration remain unproven. Do not turn synthetic recovery into a scale claim.
 2. Finish buyer workflow UI coverage, remaining R1–R12 business acceptance and
    dependency/security review. Complete land visibility proof remains separate.
 3. Review the exact schema/runtime release artifact, index lock exposure, recovery

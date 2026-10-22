@@ -10,7 +10,7 @@ type CsvPayload = {
 };
 export type CsvImportResult = {
   status: 'ok'; request_id: string; replayed: boolean;
-  imported: number; updated: number; skipped: number; scored: number;
+  imported: number; updated: number; skipped: number; scored: number | null;
   consolidated_rows: number; owner_review: number;
   scoring_state: 'disabled' | 'completed' | 'pending' | 'submitting' | 'review' | 'unconfirmed';
   warning?: string | null;
@@ -26,16 +26,21 @@ export function useCsvImport(reference?: string | null) {
       prepared.current = { key, id, body: JSON.stringify({ ...payload, request_id: id }) };
     }
     const attempt = prepared.current;
+    if (new TextEncoder().encode(attempt.body).byteLength > 4_500_000) {
+      throw new Error('This upload exceeds the 4.5 MB request limit. Split it into smaller files; no rows were submitted.');
+    }
     const response = await apiFetch('/api/ai/import-master-list', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: attempt.body,
     });
     const saved = await response.json();
     if (!response.ok) throw new Error(saved.detail || 'Import outcome unconfirmed. Retry the original import.');
-    const counts = ['imported', 'updated', 'skipped', 'scored', 'consolidated_rows', 'owner_review'] as const;
+    const counts = ['imported', 'updated', 'skipped', 'consolidated_rows', 'owner_review'] as const;
     if (saved.status !== 'ok' || saved.request_id !== attempt.id || typeof saved.replayed !== 'boolean'
       || counts.some(k => !Number.isInteger(saved[k]) || saved[k] < 0)
       || saved.imported + saved.updated !== saved.consolidated_rows
-      || saved.consolidated_rows > payload.rows.length || saved.scored > saved.consolidated_rows
+      || saved.consolidated_rows > payload.rows.length
+      || (saved.scored === null ? saved.scoring_state !== 'unconfirmed'
+        : !Number.isInteger(saved.scored) || saved.scored < 0 || saved.scored > saved.consolidated_rows)
       || saved.owner_review > saved.updated
       || !['disabled', 'completed', 'pending', 'submitting', 'review', 'unconfirmed'].includes(saved.scoring_state)
       || (saved.warning != null && typeof saved.warning !== 'string')) {

@@ -1,3 +1,46 @@
+# Latest handoff — October 22 bounded CSV AI batches
+
+Branch `codex/wholesale-integration-review`; previous pushed checkpoint `8f14e1a`.
+Production baseline remains `a89815126d9a98ced016167d8e383641d133135f`. The thirteenth
+still-unapplied migration is expanded, not a new fourteenth migration. No production
+settings/schema/runtime, provider or schedule mutations. PR #21 stays draft.
+
+Start at `docs/integration/CSV-BATCH-RECOVERY.md`, the current CSV manifest/results,
+`csv-runtime-observation-2026-10-22.json` and `FRIDAY-ACCEPTANCE-STATUS.md`.
+Optional AI now has immutable private batch evidence <=25 IDs, aggregate progress,
+45-second SDK network timeout and no automatic SDK retries. Original data replay
+uses an initial-only claim and cannot advance later paid batches. Separate GET/POST
+progress/continuation and `/leads?csv_import=` support read-only refresh, a single
+batch, all remaining batches and pause after the current submitted batch. Unknown
+outcomes preserve last confirmed totals/null counts and require review/refresh;
+no model retry or advance follows uncertainty. Default free atomic rules remain.
+
+Proof: real SQL/API completes 60 rows as 25/25/10, retains the first 25 after an
+unknown second batch, recovers 50 known scores after a lost second finish response,
+then processes only the final 10; old exact finish replay stays immutable. Original
+upload replay starts no new paid batch. Foreign approved-actor GET/POST are denied.
+Eight actual contending batch claims produce one winner; terminal finish replay
+and the last remaining record pass. Full thirteen-migration apply/rollback/history/
+access, existing data/land tests, pinned-call/SMS overlap and ten intake journeys
+pass (124.46 seconds). Backend 1,334/10 skip; frontend 274/56 files; typecheck/build/
+lint gate pass (143 existing findings). Synthetic Auth/models only; zero providers.
+
+The browser rejects oversized serialized uploads before sending and preserves all
+10,000 short rows in a transport-only test. This does not prove 10,000-row SQL/model
+performance or bypass Vercel payload limits. Actual Vercel reads report Fluid=true
+and current READY baseline; no explicit per-function duration was established.
+The client-loop score-all action is user initiated, durable between requests,
+pausable, and stops on uncertainty; no background worker/schedule was introduced.
+
+Next priority: buyer workflow QA, signed-in operator acceptance, Python dependency/
+security review, exact release/recovery/index lock exposure and live Meta/website/
+provider acceptance. Verify real model latency and production-volume behavior as
+required; do not substitute synthetic recovery for those gates. Shared-number
+preference is confirmed but last four digits and notification inbox remain pending.
+Sending flags still need verified access; never bypass email verification. Keep
+broad schedules paused, held sessions/DNC untouched and PropStream spending capped.
+Friday October 23 remains the full active objective. Earlier handoffs are historical.
+
 # Latest handoff — October 22 connected CSV intake
 
 Integration branch `codex/wholesale-integration-review`; previous pushed checkpoint

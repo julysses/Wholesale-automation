@@ -14,6 +14,9 @@ from web.api import csv_import
 from web.app import app
 
 OWNER='00000000-0000-4000-8000-000000000777'
+def counts(scored,held=0,remaining=0,in_flight=0):
+    return {'scored':scored,'held':held,'remaining':remaining,'in_flight':in_flight}
+
 OPTIONS={'score_on_import':True,'engine':'ai','list_name':'Synthetic connected CSV','filename':'synthetic.csv'}
 
 
@@ -23,7 +26,7 @@ def verify(db):
     auth_client=SimpleNamespace(auth=SimpleNamespace(get_user=lambda token:SimpleNamespace(user=SimpleNamespace(id=OWNER))),table=db.table)
 
     def save(address, count=1):
-        rows=[{'property_address':f'{address} {n} St','city':'Dallas','state':'TX'} for n in range(count)]
+        rows=[{'property_address':f'{address} {n} St','city':'Dallas','state':'TX','status':'new'} for n in range(count)]
         receipt=service.rpc('import_csv_leads',{'p_id':str(uuid4()),'p_operator':OWNER,'p_rows':rows,'p_options':OPTIONS}).execute().data['receipt']
         return receipt
 
@@ -43,7 +46,7 @@ def verify(db):
         assert not claim(receipt)['claimed']  # even an identical claim token never grants another dispatch
         assert not claim(receipt,claimed['claim_id'])['claimed']
         payload=scores(claimed); finished=finish(receipt,claimed,payload)
-        assert finished['state']=='completed' and finished['result']=={'scored':1,'held':0}
+        assert finished['state']=='completed' and finished['result']==counts(1)
         assert finish(receipt,claimed,payload)==finished
         assert claim(receipt)['result']['scored']==1 and not claim(receipt)['claimed']
         try:
@@ -72,7 +75,7 @@ def verify(db):
             elif variant=='tier': bad[key]['status']='under_contract'
             else: bad[key]['assigned_to']=OWNER
             result=finish(invalid,reservation,bad)
-            assert result['state']=='review' and result['result']=={'scored':0,'held':1},(variant,result)
+            assert result['state']=='review' and result['result']==counts(0,1),(variant,result)
             assert db.query('SELECT score_motivation FROM leads WHERE id=%s',[key])[0]['score_motivation'] is None
 
         # Changes after claim must be retained; unchanged members may still be scored once.
@@ -80,12 +83,12 @@ def verify(db):
         changed=stale_claim['snapshots'][0]['id']
         db.query("UPDATE leads SET dnc=true,status='under_contract',contact_attempts=7,seller_notes='human verified' WHERE id=%s",[changed])
         result=finish(stale,stale_claim,stale_scores)
-        assert result['state']=='review' and result['result']=={'scored':1,'held':1}
+        assert result['state']=='review' and result['result']==counts(1,1)
         retained=db.query('SELECT dnc,status,contact_attempts,seller_notes,score_motivation FROM leads WHERE id=%s',[changed])[0]
         assert retained=={'dnc':True,'status':'under_contract','contact_attempts':7,'seller_notes':'human verified','score_motivation':None}
         completed=save('csv-completed-task'); completed_claim=claim(completed)
         db.query("UPDATE tasks SET status='completed',completed_at=now() WHERE lead_id=%s",[completed_claim['snapshots'][0]['id']])
-        assert finish(completed,completed_claim,scores(completed_claim))['result']=={'scored':0,'held':1}
+        assert finish(completed,completed_claim,scores(completed_claim))['result']==counts(0,1)
 
         # Real verified-actor API → import/claim/result SQL; the model boundary alone is mocked.
         model=Mock(side_effect=lambda leads,**kwargs:{lead['lead_id']:{**{k:3 for k in ['score_motivation','score_timeline','score_equity','score_condition','score_flexibility']},
@@ -144,13 +147,112 @@ def verify(db):
                     first=api.post('/api/ai/import-master-list',headers={'Authorization':'Bearer synthetic'},json=payload)
                     second=api.post('/api/ai/import-master-list',headers={'Authorization':'Bearer synthetic'},json=payload)
                 assert first.status_code==(503 if phase=='import_csv_leads' else 200),first.text
+                if phase!='import_csv_leads': assert first.json()['scored'] is None,first.text
                 assert second.status_code==200 and second.json()['replayed'],second.text
                 expected_attempts=0 if phase=='claim_csv_import_scoring' else 1
                 assert model.call_count-before==expected_attempts,(phase,model.call_count-before)
                 assert second.json()['scoring_state']==('submitting' if phase=='claim_csv_import_scoring' else 'completed'),second.text
 
+        # Large imports checkpoint every paid batch. GET is read-only and POST
+        # is an explicit continuation; a process restart needs no in-memory state.
+        with patch.object(auth,'get_supabase_client',lambda:auth_client),patch.object(csv_import,'get_supabase_client',lambda:service),patch('web.api._score_imported_leads_with_claude',model):
+            model.side_effect=normal_model
+            large=save('csv-large-complete',60)
+            url='/api/ai/imports/'+large['id']+'/scoring'
+            headers={'Authorization':'Bearer synthetic'}
+            before=model.call_count
+            initial=api.get(url,headers=headers)
+            assert initial.status_code==200 and initial.json()['scoring_remaining']==60,initial.text
+            assert model.call_count==before
+            first=api.post(url,headers=headers)
+            assert first.status_code==200 and first.json()['scored']==25 and first.json()['scoring_remaining']==35,first.text
+            # Reconciliation of the original data request must not advance a new
+            # paid batch after its first known completion. Only continuation may.
+            replay_body={'request_id':large['id'],'engine':'ai','rows':large['payload'],
+                'list_name':OPTIONS['list_name'],'filename':OPTIONS['filename']}
+            replay=api.post('/api/ai/import-master-list',headers=headers,json=replay_body)
+            assert replay.status_code==200 and replay.json()['replayed'] and replay.json()['scored']==25,replay.text
+            assert model.call_count==before+1
+            restarted=TestClient(app).get(url,headers=headers)
+            assert restarted.json()['scored']==25 and restarted.json()['scoring_remaining']==35
+            second=api.post(url,headers=headers); third=api.post(url,headers=headers)
+            assert second.json()['scored']==50 and second.json()['scoring_remaining']==10,second.text
+            assert third.json()['scored']==60 and third.json()['scoring_state']=='completed',third.text
+            attempts=model.call_args_list[before:]
+            assert [len(a.args[0]) for a in attempts]==[25,25,10]
+            ids=[r['lead_id'] for a in attempts for r in a.args[0]]
+            assert len(ids)==len(set(ids))==60
+            assert api.post(url,headers=headers).json()['scored']==60 and model.call_count==before+3
+            batch=db.query("SELECT id,claim_id,scores,response FROM private.csv_import_scoring_batches WHERE import_id=%s ORDER BY batch_index",[large['id']])[0]
+            historical=service.rpc('finish_csv_import_scoring',{'p_id':large['id'],'p_operator':OWNER,'p_claim':batch['claim_id'],'p_scores':batch['scores']}).execute().data
+            assert historical==batch['response'] and historical['result']==counts(25,remaining=35)
+            assert api.get(url,headers=headers).json()['scored']==60
+            for statement in ['UPDATE private.csv_import_scoring_batches SET result=result WHERE id=%s','DELETE FROM private.csv_import_scoring_batches WHERE id=%s']:
+                try:db.query(statement,[batch['id']])
+                except Exception as exc:assert getattr(exc,'pgcode',None)=='P0001'
+                else:raise AssertionError('Completed batch evidence changed')
+
+            # Known completed work survives an unknown second paid batch.
+            partial=save('csv-large-unknown',60); url='/api/ai/imports/'+partial['id']+'/scoring'
+            assert api.post(url,headers=headers).json()['scored']==25
+            first_batch=db.query("SELECT to_jsonb(b) evidence FROM private.csv_import_scoring_batches b WHERE import_id=%s AND batch_index=0",[partial['id']])
+            before=model.call_count; model.side_effect=TimeoutError('Unknown second batch')
+            unknown=api.post(url,headers=headers)
+            assert unknown.status_code==200 and unknown.json()['scoring_state']=='review',unknown.text
+            assert unknown.json()['scored']==25 and unknown.json()['scoring_held']==25 and unknown.json()['scoring_remaining']==10
+            assert api.post(url,headers=headers).json()['scoring_state']=='review'
+            assert model.call_count==before+1
+            assert db.query("SELECT to_jsonb(b) evidence FROM private.csv_import_scoring_batches b WHERE import_id=%s AND batch_index=0",[partial['id']])==first_batch
+
+            # A known result with a lost acknowledgment still checkpoints only its
+            # own batch. Refresh sees 50; the next explicit click handles the final 10.
+            model.side_effect=normal_model
+            lost_large=save('csv-large-lost-finish',60); url='/api/ai/imports/'+lost_large['id']+'/scoring'
+            before=model.call_count
+            assert api.post(url,headers=headers).json()['scored']==25
+            lose={'done':False}
+            def batch_rpc(name,params):
+                operation=service.rpc(name,params)
+                def execute():
+                    result=operation.execute()
+                    if name=='finish_csv_import_scoring' and not lose['done']:
+                        lose['done']=True;raise TimeoutError('Lost second batch result acknowledgment')
+                    return result
+                return SimpleNamespace(execute=execute)
+            with patch.object(csv_import,'get_supabase_client',lambda:SimpleNamespace(rpc=batch_rpc)):
+                uncertain=api.post(url,headers=headers)
+            assert uncertain.json()['scoring_state']=='unconfirmed',uncertain.text
+            refreshed=api.get(url,headers=headers)
+            assert refreshed.json()['scored']==50 and refreshed.json()['scoring_remaining']==10
+            assert api.post(url,headers=headers).json()['scored']==60
+            attempts=model.call_args_list[before:]
+            ids=[r['lead_id'] for a in attempts for r in a.args[0]]
+            assert [len(a.args[0]) for a in attempts]==[25,25,10] and len(set(ids))==60
+
+            # Worked records before claim are held without paid dispatch. Other
+            # known-unsubmitted batches remain available for explicit continuation.
+            preworked=save('csv-large-preworked',26); url='/api/ai/imports/'+preworked['id']+'/scoring'
+            for item in preworked['result']['rows'][:25]:db.query('UPDATE leads SET dnc=true WHERE id=%s',[item['lead_id']])
+            before=model.call_count
+            held=api.post(url,headers=headers)
+            assert held.status_code==200 and held.json()['scored']==0 and held.json()['scoring_held']==25 and held.json()['scoring_remaining']==1,held.text
+            assert model.call_count==before
+            end=api.post(url,headers=headers)
+            assert end.json()['scored']==1 and end.json()['scoring_state']=='review' and model.call_count==before+1,end.text
+
+        # Another approved actor cannot inspect or continue this private import.
+        foreign_actor=str(uuid4())
+        db.query('INSERT INTO auth.users VALUES(%s)',[foreign_actor])
+        db.query("INSERT INTO profiles(id,email,role,status) VALUES(%s,'foreign-csv@example.test','user','approved')",[foreign_actor])
+        foreign_auth=SimpleNamespace(auth=SimpleNamespace(get_user=lambda token:SimpleNamespace(user=SimpleNamespace(id=foreign_actor))),table=db.table)
+        before=model.call_count
+        with patch.object(auth,'get_supabase_client',lambda:foreign_auth),patch.object(csv_import,'get_supabase_client',lambda:service),patch('web.api._score_imported_leads_with_claude',model):
+            assert api.get('/api/ai/imports/'+large['id']+'/scoring',headers={'Authorization':'Bearer synthetic'}).status_code==404
+            assert api.post('/api/ai/imports/'+large['id']+'/scoring',headers={'Authorization':'Bearer synthetic'}).status_code==404
+            assert model.call_count==before
+
         # Eight actual sessions contend for the same claim row: one gets dispatch authority.
-        race=save('csv-claim-race'); clients=[Database() for _ in range(8)]; pool=ThreadPoolExecutor(max_workers=8)
+        race=save('csv-claim-race',26); clients=[Database() for _ in range(8)]; pool=ThreadPoolExecutor(max_workers=8)
         tag='csv_claim_'+uuid4().hex; locked=False
         try:
             for i,c in enumerate(clients):
@@ -169,7 +271,9 @@ def verify(db):
             winner=winners[0]; values=scores(winner)
             finishes=[pool.submit(finish,race,winner,values,c) for c in clients]
             outcomes=[f.result(timeout=15) for f in finishes]
-            assert all(x==outcomes[0] for x in outcomes) and outcomes[0]['result']=={'scored':1,'held':0}
+            assert all(x==outcomes[0] for x in outcomes) and outcomes[0]['result']==counts(25,remaining=1)
+            final_claim=claim(race); assert len(final_claim['snapshots'])==1
+            assert finish(race,final_claim,scores(final_claim))['result']==counts(26)
         finally:
             if locked:db.query('ROLLBACK')
             pool.shutdown(wait=True)
@@ -178,7 +282,8 @@ def verify(db):
             'unknown_outcome':'review_no_retry','new_reference_does_not_repeat_ai':True,'invalid_result_variants':len(variants),
             'stale_snapshot':'held','completed_task':'held','connected_api':'real SQL; Auth/model stubbed',
             'same_reference_model_attempts':1,'timeout_model_attempts':1,'legacy_stable_reference':True,
-            'lost_sql_acknowledgment_phases':3,'lost_claim_model_attempts':0,'concurrent_claim_sessions':8,'dispatch_winners':1,'concurrent_finish_replays':8,'provider_calls':0}),flush=True)
+            'data_request_replay_advances_batches':False,'multi_batch_rows':60,'multi_batch_sizes':[25,25,10],'partial_unknown_retained_scored':25,'multi_batch_lost_finish':'resumed_without_repeat',
+            'foreign_actor_progress_and_continue':'refused','preworked_batch_model_attempts':0,'terminal_batch_evidence':'immutable','read_only_progress':'no model calls','lost_sql_acknowledgment_phases':3,'lost_claim_model_attempts':0,'concurrent_claim_sessions':8,'dispatch_winners':1,'concurrent_finish_replays':8,'provider_calls':0}),flush=True)
     finally:
         service.connection.close()
 

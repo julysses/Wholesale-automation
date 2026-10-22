@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api';
 import { useCsvImport } from '@/hooks/useCsvImport';
+import { CsvScoringProgress } from '@/components/leads/CsvScoringProgress';
 import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -223,6 +224,7 @@ export function Leads() {
 
   return (
     <div className="space-y-4">
+      {searchParams.has('csv_import') && <CsvScoringProgress key={searchParams.get('csv_import')} importId={searchParams.get('csv_import') || ''} />}
       <DealRecoveryPanel pending={createDeal.pendingCreate} busy={createDeal.isPending} retry={() => createDeal.pendingCreate && void createDeal.mutateAsync(createDeal.pendingCreate.deal).catch(() => {})} />
       {requestedLead !== null && !displayedLead && (
         linkedLeadId && linkedLead.isPending

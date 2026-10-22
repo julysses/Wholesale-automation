@@ -1,5 +1,26 @@
 # Selective WholesaleOS integration
 
+## Latest October 22 checkpoint — durable AI batch recovery
+
+- [x] Read current Vercel runtime metadata: Python/FastAPI, Fluid enabled; no settings
+  changed and effective per-function duration remains unverified.
+- [x] Replace the one-request/all-model-calls checkpoint with private batches <=25,
+  immutable terminal evidence and one submitted batch per import.
+- [x] Original upload replay cannot advance later paid batches; read-only progress
+  and explicit continuation preserve exact replay semantics.
+- [x] Add operator recovery panel with single/all remaining scoring, pause after
+  current batch, last-confirmed totals and no automatic retry after uncertainty.
+- [x] Verify 60-row completion, partial unknown/lost-result recovery, immutable
+  evidence, foreign-actor denial and actual eight-session batch contention.
+- [x] Refuse oversized bodies before submission; preserve all 10,000 short rows
+  in the complete transport test. No silent truncation or partial auto-split.
+- [ ] Complete real-provider/maximum-volume latency, buyer UI, signed-in operator
+  acceptance, Python security review, exact release/recovery and live delivery gates.
+
+See `CSV-BATCH-RECOVERY.md`. No production mutation or provider calls; PR remains
+draft and Friday's full launch objective remains active.
+
+
 ## Latest October 22 checkpoint — connected CSV intake
 
 - [x] Connect verified Auth/API to atomic data receipts with no unsafe fallback.

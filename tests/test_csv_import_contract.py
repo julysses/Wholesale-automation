@@ -139,5 +139,56 @@ def test_paid_csv_parser_is_complete_correlated_and_single_attempt(monkeypatch,f
         with pytest.raises(ValueError):api._score_imported_leads_with_claude([{'lead_id':lead}],single_attempt=True)
     else:
         assert api._score_imported_leads_with_claude([{'lead_id':lead}],single_attempt=True)[lead]['score_motivation']==3
-    sdk.with_options.assert_called_once_with(max_retries=0)
+    sdk.with_options.assert_called_once_with(max_retries=0,timeout=45.0)
     sdk.messages.create.assert_called_once()
+
+
+def test_csv_paid_dispatch_refuses_multiple_batches_before_sdk(monkeypatch):
+    client=Mock();monkeypatch.setattr(api,'_get_client',client)
+    with pytest.raises(ValueError,match='single bounded batch'):
+        api._score_imported_leads_with_claude([{'lead_id':str(uuid4())} for _ in range(26)],single_attempt=True)
+    client.assert_not_called()
+
+
+@pytest.mark.parametrize('method',['get','post'])
+def test_progress_reads_do_not_dispatch_when_batch_is_already_submitted(setup,monkeypatch,method):
+    reference=str(uuid4());rpc=Mock(return_value=SimpleNamespace(execute=lambda:SimpleNamespace(data={
+        'import_id':reference,'operator_id':OWNER,'eligible':60,'state':'submitting',
+        'result':{'scored':25,'held':0,'remaining':10,'in_flight':25}})))
+    setup.db.rpc=rpc
+    model=Mock();monkeypatch.setattr(api,'_score_imported_leads_with_claude',model)
+    response=getattr(setup.client,method)('/api/ai/imports/'+reference+'/scoring')
+    assert response.status_code==200 and response.json()['scored']==25,response.text
+    rpc.assert_called_once_with('csv_import_scoring_status',{'p_id':reference,'p_operator':OWNER})
+    model.assert_not_called()
+
+
+@pytest.mark.parametrize('fault',['reference','actor','sum','boolean','completed_remaining'])
+def test_progress_refuses_uncorrelated_or_incomplete_counts(setup,monkeypatch,fault):
+    reference=str(uuid4());value={'import_id':reference,'operator_id':OWNER,'eligible':60,'state':'pending',
+        'result':{'scored':25,'held':0,'remaining':35,'in_flight':0}}
+    if fault=='reference':value['import_id']=str(uuid4())
+    elif fault=='actor':value['operator_id']=str(uuid4())
+    elif fault=='sum':value['result']['remaining']=34
+    elif fault=='boolean':value['result']['scored']=True
+    else:value['state']='completed'
+    setup.db.rpc=Mock(return_value=SimpleNamespace(execute=lambda:SimpleNamespace(data=value)))
+    model=Mock();monkeypatch.setattr(api,'_score_imported_leads_with_claude',model)
+    assert setup.client.post('/api/ai/imports/'+reference+'/scoring').status_code==503
+    model.assert_not_called();assert setup.db.rpc.call_count==1
+
+
+def test_unknown_continuation_claim_does_not_dispatch_model(setup,monkeypatch):
+    reference=str(uuid4())
+    def rpc(name,params):
+        if name=='csv_import_scoring_status':return SimpleNamespace(execute=lambda:SimpleNamespace(data={
+            'import_id':reference,'operator_id':OWNER,'eligible':60,'state':'pending',
+            'result':{'scored':25,'held':0,'remaining':35,'in_flight':0}}))
+        assert name=='claim_csv_import_scoring'
+        def lost():raise TimeoutError('Claim response lost')
+        return SimpleNamespace(execute=lost)
+    setup.db.rpc=Mock(side_effect=rpc);model=Mock();monkeypatch.setattr(api,'_score_imported_leads_with_claude',model)
+    response=setup.client.post('/api/ai/imports/'+reference+'/scoring')
+    assert response.status_code==200 and response.json()['scoring_state']=='unconfirmed'
+    assert response.json()['scored'] is None and response.json()['scoring_remaining'] is None
+    model.assert_not_called();assert setup.db.rpc.call_count==2

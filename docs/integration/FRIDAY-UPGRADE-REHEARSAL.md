@@ -1,3 +1,10 @@
+## Latest — durable 25-lead AI batches and operator recovery
+
+The thirteenth unapplied proposal now adds private batch evidence, current progress
+and explicit continuation. Real-SQL multi-batch and original-request replay checks
+pass. See `CSV-BATCH-RECOVERY.md` and final result JSON for exact scope/timing.
+Earlier checkpoint descriptions below are historical. No production changes.
+
 ## Current candidate — connected CSV intake, thirteen migrations
 
 Main CSV API/UI now use the atomic transaction and one-way optional AI claims/results.

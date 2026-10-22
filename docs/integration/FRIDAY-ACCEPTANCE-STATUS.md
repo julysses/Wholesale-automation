@@ -6,7 +6,7 @@ Manual land repair plus the main CSV transaction foundation add two forward
 migrations to the original eleven, making thirteen in the explicit allowlist.
 The main CSV API/UI and one-way optional AI claims/results are now connected; see
 `CSV-LEAD-TRANSACTION.md` for proof and the remaining large-upload/operator checks. See `MANUAL-LAND-IMPORT.md` for scope, proof and remaining
-import gaps. Backend 1,325 / frontend 262 tests pass; pipeline source retains its prior 231-test evidence. No production
+import gaps. Backend 1,334 / frontend 274 tests pass; pipeline source retains its prior 231-test evidence. No production
 schema, runtime, schedules or providers were changed.
 
 Target: October 23, 2026. This is a requirement review checkpoint, not go-live certification.
@@ -21,11 +21,11 @@ The original requirements remain in `WholesaleOS-Integration-Assessment.md` R1â€
 | R5 Provider receipts | Connected mocked receipt and duplicate/out-of-order suites pass | Actual bound carrier delivery/callback and owner handset evidence |
 | R6 Pause and expiry | Upgraded synthetic scheduler pauses retained; disabled/expiry suites pass | Database schedulers and outbound cron freshly confirmed paused; effective runtime flags require Vercel email verification before bounded live scope |
 | R7 Tasks and alerts | Connected reply tasks, notification and mocked email journeys pass | Owner confirms real email, task and CRM history during live tests |
-| R8 Retention and import | Pipeline and frontend regression suites pass | Land and standalone lead import regressions fixed; real SQL retries/concurrency/preservation pass. Main CSV API/UI, ownership, exact retry, concurrency and one-way AI claims/results pass locally. Large AI execution/partial-batch recovery, buyer UI and signed-in operator review remain open. Complete land pagination/error recovery now pass |
+| R8 Retention and import | Pipeline and frontend regression suites pass | Land and standalone lead import regressions fixed; real SQL retries/concurrency/preservation pass. Main CSV API/UI, ownership, exact retry, concurrency and one-way AI claims/results pass locally. Bounded multi-batch AI recovery now passes with immutable checkpoints and an operator panel. Real provider/maximum-volume latency, buyer UI and signed-in operator review remain open. Complete land pagination/error recovery now pass |
 | R9 County/trace/scoring | Restricted ingress, trace caps and scoring concurrency pass; pipeline 231 tests | Current source completeness/PropStream end-to-end acceptance within existing spend cap |
 | R10 Feature bundles | Real concurrent offer/property, lot and valuation checks pass on minimal fixtures | Full upgraded-schema call/SMS overlap now passes; remaining feature interactions and operator workflow acceptance |
 | R11 Schema and access | Saved catalog with synthetic historical rows, thirteen proposed migrations, partial/full rollback, ACL assertions pass | Fresh shape comparison now matches the released baseline across tables, constraints, indexes, triggers, policies, views, view security and grants. Function delta matches the Facebook release. Exact release manifest/recovery review and production-volume locks remain open |
-| R12 Frontend and release | 262 tests, build/typecheck and lint gate pass; candidate deployment disabled | Signed-in complete operator walkthrough, matching deployed API/schema, reviewed release artifact |
+| R12 Frontend and release | 274 tests, build/typecheck and lint gate pass; candidate deployment disabled | Signed-in complete operator walkthrough, matching deployed API/schema, reviewed release artifact |
 
 Frontend dependencies: Vite 6.4.5, Vitest 4.1.12, follow-redirects 1.16.1;
 clean installation audits report zero vulnerabilities. Pipeline installation audit

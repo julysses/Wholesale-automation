@@ -80,3 +80,16 @@ it('passes negative numeric source text unchanged for server validation', async 
   const call=mocks.api.mock.calls.find(([path])=>path==='/api/ai/import-master-list')!;
   expect(JSON.parse(call[1].body).rows[0].asking_price).toBe('-$200');
 });
+
+it('preserves confirmed save counts when the scoring count is unknown', async () => {
+  mocks.api.mockImplementation(async (path: string, init: RequestInit) => {
+    if (path.includes('map')) throw new Error('Offline');
+    const body=JSON.parse(init.body as string);
+    return new Response(JSON.stringify({status:'ok',request_id:body.request_id,replayed:false,imported:1,updated:0,
+      skipped:0,scored:null,consolidated_rows:1,owner_review:0,scoring_state:'unconfirmed',warning:'Leads saved. Scoring outcome is unconfirmed.'}));
+  });
+  await upload();
+  expect(await screen.findByText('1 leads imported')).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('Scoring outcome is unconfirmed');
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});

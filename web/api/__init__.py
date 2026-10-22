@@ -488,9 +488,11 @@ def new_rows_preview(
 def _score_imported_leads_with_claude(leads: list[dict[str, Any]], *, single_attempt: bool = False) -> dict[str, dict[str, Any]]:
     if not leads:
         return {}
+    if single_attempt and len(leads)>MAX_BATCH_LEADS:
+        raise ValueError("CSV dispatch requires a single bounded batch")
     client = _get_client()
     if single_attempt:
-        client = client.with_options(max_retries=0)
+        client = client.with_options(max_retries=0, timeout=45.0)
     scored: dict[str, dict[str, Any]] = {}
     keys = ["score_motivation", "score_timeline", "score_equity", "score_condition", "score_flexibility"]
     system = (
@@ -820,6 +822,18 @@ def import_master_list(body: ImportMasterListRequest, request: Request) -> dict:
     """Save an owned, atomic CSV import and reconcile one durable scoring intent."""
     from .csv_import import execute_import
     return execute_import(body, request, _score_imported_leads_with_claude)
+
+
+@router.get("/imports/{import_id}/scoring")
+def csv_scoring_progress(import_id: UUID, request: Request) -> dict:
+    from .csv_import import import_progress
+    return import_progress(import_id, request)
+
+
+@router.post("/imports/{import_id}/scoring")
+def continue_csv_scoring(import_id: UUID, request: Request) -> dict:
+    from .csv_import import import_progress
+    return import_progress(import_id, request, _score_imported_leads_with_claude)
 
 
 # ── 2. Offer Generator ─────────────────────────────────────────────────────────
