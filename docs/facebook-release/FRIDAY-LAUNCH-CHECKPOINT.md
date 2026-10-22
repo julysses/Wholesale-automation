@@ -69,3 +69,20 @@ User chooses the same previously used phone number. Asked for its last four digi
 6. Publish readiness evidence and remaining blockers against Friday's target. Do not equate passing local tests or deployment READY with complete go-live readiness.
 
 No production records, messaging flags, providers, schedules or migrations were changed in this session. No messages were sent. This checkpoint and tooling fix may be pushed to the existing release-candidate branch, whose Vercel deployment is explicitly disabled; use `[skip ci]`.
+
+## October 21 receipt concurrency fix
+
+The populated upgrade run exposed a PostgreSQL 23505 race on the secondary
+`facebook_lead_submissions_lead_id_key` during eight concurrent identical deliveries.
+The real-SQL adapter used INSERT ON CONFLICT(id) DO NOTHING; it did not suppress
+secondary uniqueness failures. Receipt persistence now catches only 23505, reads
+by the deterministic receipt ID, and retains all immutable identity and consent
+comparisons. Missing or conflicting receipts still fail; other database errors
+propagate. No consent, DNC or held-session protection was relaxed.
+
+Eight deterministic regression cases cover PostgREST and psycopg error attributes,
+identical evidence, conflicting evidence, absent receipt and unrelated errors.
+Six failed before the fix; all eight pass after it. The 36 focused native intake
+checks pass. Full release backend: 1,139 passed, 10 skipped; full integration
+backend: 1,269 passed, 10 skipped. Local PostgreSQL eight-worker contention passes.
+These changes are candidate code only, not deployed production fixes.
