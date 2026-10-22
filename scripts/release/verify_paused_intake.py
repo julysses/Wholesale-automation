@@ -16,7 +16,7 @@ if not args.deployment.startswith(('wholesale-automation-', 'https://wholesale-a
     raise SystemExit('Only the reviewed WholesaleOS deployment may be probed')
 checks=[]
 def probe(path,expected,body=None):
-    cmd=['vercel','curl',path,'--deployment',args.deployment,'--scope','team_XZeRcNxzGjDXsr7Z2AqwhfAe','--','--silent','--show-error','--max-time','45','--write-out','\n%{http_code}']
+    cmd=['vercel','curl',path,'--deployment',args.deployment,'--scope','team_XZeRcNxzGjDXsr7Z2AqwhfAe','--yes','--','--silent','--show-error','--max-time','45','--write-out','\n%{http_code}']
     if body is not None:cmd+=['--request','POST','--header','Content-Type: application/json','--data',json.dumps(body)]
     result=subprocess.run(cmd,capture_output=True,text=True,timeout=75)
     if result.returncode:raise RuntimeError('Deployment probe failed: '+path+'; CLI exit '+str(result.returncode))
