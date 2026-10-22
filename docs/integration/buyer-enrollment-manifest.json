@@ -23,7 +23,7 @@
     "pipeline/integration/verify_buyer_enrollment.py": "e03cdbd5c58ec8fb08109828450e9128294a2c25dd9ea67e1067f616adcd452d",
     "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
     "pipeline/integration/run_production_upgrade.py": "6aa15bab277ec1a1ca7bf1146008c5f06c25cd1f1987c7b6e677aee08250760a",
-    "scripts/run_offline_tests.py": "face07aa6e0e548e71bbbd4982e3b2d5df9912f30a39db9e933317cc9737b35c",
+    "scripts/run_offline_tests.py": "421c34c4837e78162fe772f91990795a0880ab6d9e163f7163d58cdad723db6c",
     "web/spa.py": "393d66986efd1856cb60279523914c7cd5499388c1f0569731ea20e749b7b349"
   },
   "release_routing_update": "Direct React navigation repaired after enrollment checkpoint; prior test counts are historical, see LINUX-RELEASE-CHECK.md for current validation.",

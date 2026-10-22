@@ -26,7 +26,7 @@
     "pipeline/integration/verify_buyer_manual.py": "088065ca897433c97a66aa0a5998d43262eb4bd29b9735902c7856fac29aa935",
     "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
     "pipeline/integration/run_production_upgrade.py": "6aa15bab277ec1a1ca7bf1146008c5f06c25cd1f1987c7b6e677aee08250760a",
-    "scripts/run_offline_tests.py": "face07aa6e0e548e71bbbd4982e3b2d5df9912f30a39db9e933317cc9737b35c",
+    "scripts/run_offline_tests.py": "421c34c4837e78162fe772f91990795a0880ab6d9e163f7163d58cdad723db6c",
     "scripts/release/python_api_smoke.py": "71d9705924bfbcc7b417ada58b0d8f3dae6d116e16e1fc148acee890ff61d2cc",
     "scripts/release/vercel_artifact_smoke.py": "3da9bff0320c4b60599b661fc7b4ac0b744cfa31e1c69808dfee21d9e0e02169",
     ".github/workflows/ci.yml": "ab18601ea8795d3304432d9c6dd5892421ad2a5f7bdc7e333bda2dcc1e860c06",

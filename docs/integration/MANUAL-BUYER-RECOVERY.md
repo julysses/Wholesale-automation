@@ -51,3 +51,10 @@ and extended native Vercel bundle smoke; its result is pending observation.
 Current sources: manual-buyer-manifest.json. Exact SQL result:
 manual-buyer-sql-result.json. All nineteen proposals remain unapplied. No production
 schema, data, settings, deployment, provider calls, purchase or activation changed.
+
+CI follow-up: run707's app/Vercel/Docker/frontend/API jobs passed, but the new
+Linux PG job stopped before DB tests because the offline wrapper omitted PG_BIN
+and the runner selected its macOS default path. The wrapper now passes only this
+non-secret path for its owned loopback DB modes. Explicit-PG_BIN local execution
+passes. No provider credentials or external database URL are inherited. A new
+commit/run must prove the Linux database job before this gate is accepted.

@@ -28,7 +28,7 @@
     "pipeline/integration/verify_buyer_sms.py": "5b487add403cfd98ed70a0be2a4205d419800d5647389850a91719dea5295069",
     "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
     "pipeline/integration/run_production_upgrade.py": "6aa15bab277ec1a1ca7bf1146008c5f06c25cd1f1987c7b6e677aee08250760a",
-    "scripts/run_offline_tests.py": "face07aa6e0e548e71bbbd4982e3b2d5df9912f30a39db9e933317cc9737b35c",
+    "scripts/run_offline_tests.py": "421c34c4837e78162fe772f91990795a0880ab6d9e163f7163d58cdad723db6c",
     "web/spa.py": "393d66986efd1856cb60279523914c7cd5499388c1f0569731ea20e749b7b349"
   },
   "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped.",
