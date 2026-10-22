@@ -5,12 +5,12 @@
   "provider_calls": 0,
   "files": {
     "frontend/supabase/migrations/20261022190018_integration_buyer_csv_transaction.sql": "c06ec2da5cce8316740319ea968dd1201f89074fe840e8dd7f87c0e95921836d",
-    "web/api/buyers_api.py": "8accafe158d25785380c54b781c3d5fbe13342088664953d7a6f325ae192ec42",
+    "web/api/buyers_api.py": "8cca4fd612fd017645fd855af08484fa44fdfcd43a4ac43bc109af560ade3f19",
     "tools/buyer_csv_parser.py": "23bbf47d2d280cbc428d6cac5a2673b2ff10e83e843fbfff8b818b85e6779d9f",
     "frontend/src/components/buyers/BuyerImportModal.tsx": "2b233222463e6fb7e5daf109dd8d575d2c164e2d9a561c6688abf7009cea65b1",
     "pipeline/integration/verify_buyer_import.py": "fd3a32c692781d7e2ebccfa61cc134d434d416df5314e129e73df2df6926a574",
     "frontend/tests/buyer-import-recovery.test.tsx": "f6273c8c1564503bb0c51c86dda49404b145fbc23832f8d7dd56521d9e1f6356",
     "tests/test_buyer_import_safety.py": "3dbfc48b261e8d86b9f6a37e0e7b36fdb68eb14c351879d89391e1216a6641ca"
   },
-  "current_candidate_note": "Refreshed source hashes after durable outreach checkpoint; historical checkpoint counts remain scoped to their original work."
+  "current_candidate_note": "Source hashes refreshed for buyer SMS consent checkpoint; original checkpoint counts remain historical and scoped."
 }

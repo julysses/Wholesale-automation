@@ -1,0 +1,111 @@
+# Buyer deal-alert campaign — registration preparation, October 22
+
+Status: draft only; not submitted, purchased, registered or enabled. This preserves
+the existing homeowner campaign. The user REQUIRES buyer SMS at launch.
+
+## Live account evidence
+
+Read directly from the signed-in Twilio console on October 22, 2026:
+
+- Registered brand: The Jays Dallas, LLC, BN328f9c7a21cf55837144ccd9f8ba5839.
+- The All-status campaign inventory contains one campaign:
+  CM81b71bfdf3483a566e6ecf0161c840b9, external ID CZF7AI8, Verified, Low Volume Mixed.
+- Connected service: MGaf5837f7a7cad183e8b38b1147728562.
+- Registered connected number: +14698049920, PNb952c10eb0350422ccd08b1d8c5ce738.
+- Campaign description and opt-in flow limit texts to homeowners' own property
+  inquiries, offers, appointments and closing updates, with no unrelated marketing.
+  Opt-in is the optional unchecked Hilltop offer-form checkbox; this is NOT buyer
+  deal-alert consent. Advanced Opt-Out is applied. Standard STOP variants are
+  registered; HELP/INFO are registered. START never clears CRM suppression.
+- Existing service inbound URL: wholesale-automation.vercel.app/webhooks/twilio/inbound.
+- Current policy references shown in the campaign:
+  https://thejaysdallas.com/privacy-policy and https://thejaysdallas.com/terms.
+  These references alone do not establish that the pages cover buyer marketing.
+- New-registration form offers Marketing at $10/month, and Low Volume Mixed at
+  $1.50/month. Dedicated buyer deal promotions fit the Marketing description;
+  do not choose an unrelated use case solely for price. No choice was submitted.
+- The unsubmitted registration modal was closed; the one-campaign inventory was
+  verified unchanged. No sender, service, campaign, opt-out or routing was edited.
+
+Campaign detail source:
+https://console.twilio.com/us1/develop/sms/regulatory-compliance/brands/BN328f9c7a21cf55837144ccd9f8ba5839/connected-campaigns/CM81b71bfdf3483a566e6ecf0161c840b9
+
+## Timing and fees
+
+The [current Twilio quickstart](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc/quickstart)
+says reviews take 10–15 days. The [help FAQ](https://help.twilio.com/hc/en-us/articles/11587910480155-A2P-10DLC-Campaign-Vetting-FAQ)
+shows a different estimate (up to five business days), so these pages do not
+establish an exact completion date. Neither supports a promise of next-day approval.
+The FAQ states a $15 verification fee. The registration form shows the Marketing
+recurring fee of $10/month. Number, usage, carrier fees and taxes remain to price.
+A new recurring purchase requires the user's concrete approval before submission;
+no payment or campaign creation has been authorized/executed at this checkpoint.
+
+## Proposed registration copy — verify the real flow before submission
+
+Brand: The Jays Dallas, LLC, doing business as Hilltop Home Co.
+Program: Hilltop Home Co. Buyer Deal Alerts.
+Use case: Marketing, subject to provider validation.
+Service: a separate service for buyer deal alerts; preserve the existing homeowner
+service/number and inbound behavior. A suitable sending number and full cost remain
+unselected. Do not move the registered homeowner number to the new campaign.
+
+Proposed campaign description:
+
+The Jays Dallas, LLC, doing business as Hilltop Home Co., sends recurring automated
+marketing texts about wholesale property opportunities to real estate buyers who
+have separately provided written consent to the Buyer Deal Alerts program.
+Messages describe available properties, asking prices, showing opportunities and
+availability updates. No purchased-list enrollment, homeowner-inquiry enrollment,
+lending, debt relief or AI-call consent is included. Recipients may opt out at any
+time with STOP or obtain support with HELP.
+
+Proposed sample 1:
+
+Hilltop Home Co. (The Jays Dallas, LLC): You requested Buyer Deal Alerts. Dallas
+3-bed/2-bath opportunity, asking $185,000. Reply for details. Msg frequency varies;
+msg & data rates may apply. Reply STOP to opt out or HELP for help.
+
+Proposed sample 2:
+
+Hilltop Home Co. Buyer Deal Alerts: A property matching your Dallas buy box is
+available. Reply DETAILS to request information or call (214) 701-0100. Reply STOP
+to opt out or HELP for help.
+
+Proposed sample 3:
+
+Hilltop Home Co. Buyer Deal Alerts: The property you requested is no longer
+available. We'll send other opportunities only while you're enrolled. Reply STOP
+to opt out or HELP for help.
+
+Do not list keyword enrollment; replying START must not enroll someone without
+new reviewed buyer-specific consent or automatically clear CRM DNC.
+
+Proposed written disclosure for a future buyer form/document:
+
+I agree to receive recurring automated marketing texts from Hilltop Home Co., a
+DBA of The Jays Dallas, LLC, about wholesale property opportunities and Buyer Deal
+Alerts at the mobile number I provide. Message frequency varies. Message and data
+rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition
+of purchase. Privacy Policy and Buyer SMS Terms are available beside this choice.
+
+The checkbox must begin unchecked and remain optional. The reviewed source must
+retain the exact text, choice, phone, timestamp and affirmative action. Existing
+contact information and homeowner-inquiry consent never enroll a buyer.
+
+## Not ready to submit — required missing facts
+
+1. A published buyer-specific enrollment/evidence page or actual retained signed
+   buyer-consent artifact with a publicly reviewable blank copy. Do not assert a
+   buyer form exists or invent a live URL. The candidate review screen is for
+   administrators; it is not the consumer opt-in form and never proves phone ownership.
+2. Published policy/terms coverage for buyer marketing, program name/frequency,
+   HELP/STOP, support and mobile consent privacy; verify actual pages before using.
+3. Accepted sender/service/number plan, priced total and explicit purchase approval.
+4. Dedicated transport and signature-bound callbacks/replies/suppression completed,
+   then truthful message-flow text matching the actual consumer enrollment method.
+5. Provider approval/registered number, controlled handset delivery/reply/STOP,
+   operator acceptance and reviewed production release/rollback.
+
+Do not submit this draft as a statement that the missing workflow is live. Keep
+buyer SMS REQUIRED / NOT ACCEPTED; broad sending and schedules remain paused.

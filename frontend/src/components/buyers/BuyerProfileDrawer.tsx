@@ -14,6 +14,7 @@ import { apiFetch } from '@/lib/api';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BuyerScoreRing } from './BuyerScoreRing';
+import { BuyerSmsConsent } from './BuyerSmsConsent';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, formatDate, phoneFormat } from '@/lib/utils';
 import {
@@ -57,6 +58,7 @@ const TAG_COLORS: Record<string, string> = {
 
 export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerProfileDrawerProps) {
   const [classifying, setClassifying] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const buyerId = buyer?.id ? String(buyer.id) : null;
   const history = useQuery({
@@ -179,6 +181,9 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
                 <Row label="Last Purchase" value={formatDate(buyer.last_purchase_date)} />
               )}
             </Section>
+
+            <Button size="sm" variant="outline" onClick={() => setConsentOpen(!consentOpen)}>{consentOpen ? 'Hide buyer SMS consent' : 'Buyer SMS consent'}</Button>
+            {consentOpen && <BuyerSmsConsent key={buyerId} buyerId={String(buyer.id)} />}
 
             {/* Buy box */}
             <Section icon={<DollarSign className="h-3.5 w-3.5" />} title="Buy Box">

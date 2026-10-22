@@ -1,3 +1,31 @@
+## October 22 checkpoint — buyer SMS consent and verified campaign limitation
+
+Fresh signed-in Twilio evidence confirms only one campaign, Verified for homeowner
+property inquiries; its description and opt-in flow exclude unrelated marketing.
+Buyer deal alerts need separate approval. User sign-in is complete. No campaign,
+service, number, opt-out configuration or production settings were changed.
+Twilio's current quickstart estimates 10–15 days for review; next-day approval and
+Friday buyer-SMS launch cannot be promised. Buyer SMS remains REQUIRED / NOT ACCEPTED.
+
+- [x] Candidate administrator-only immutable written-consent review, saved original
+  disclosure/action/source/hash/date and exact current phone; no automatic sends.
+- [x] Buyer profile review/read screen, failed-read state, stable retry, local file
+  fingerprinting and role/suppression visibility. Files stay on the device.
+- [x] Real API/SQL confirms current roles, legacy boolean insufficiency, lost committed
+  response recovery, changed phone/refusal/late replay, DNC, deletion retention,
+  browser denial and an actual still-blocked buyer SMS request after consent review.
+- [x] Backend 1,348/10 skipped; frontend 315/61 files; build/typecheck, lint gate
+  (142 existing findings), API-only cold start, sixteen-proposal upgrade/rollback
+  and ten local journeys pass (124.27 seconds). No real provider calls.
+- [ ] Dedicated buyer SMS transport, signed receipts/replies/STOP, consumer enrollment,
+  policy/terms coverage, priced sender/campaign approval, handset delivery and full
+  signed-in release/artifact/rollback acceptance. Broad schedules stay paused.
+
+See BUYER-SMS-CONSENT.md, BUYER-CAMPAIGN-REGISTRATION-DRAFT.md and
+BUYER-SMS-LAUNCH-GATE.md in docs/integration. The registration draft is not ready
+for submission: real enrollment/evidence, policy coverage, transport and concrete
+purchase approval remain missing. PR #21 stays draft; sixteen proposals unapplied.
+
 ## October 22 checkpoint — durable buyer outreach; buyer SMS required
 
 User requires buyer SMS for Friday October 23. Email-only launch does not meet the

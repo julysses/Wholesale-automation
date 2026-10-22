@@ -13,5 +13,6 @@
   "20261022160020_integration_manual_land_import.sql",
   "20261022170346_integration_csv_lead_intake.sql",
   "20261022190018_integration_buyer_csv_transaction.sql",
-  "20261022194256_integration_buyer_outreach_claims.sql"
+  "20261022194256_integration_buyer_outreach_claims.sql",
+  "20261022201934_integration_buyer_sms_consent.sql"
 ]

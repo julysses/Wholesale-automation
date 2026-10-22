@@ -41,6 +41,7 @@ with tempfile.TemporaryDirectory(prefix='wholesale-sms-') as folder:
         run([root/'.venv/bin/python','pipeline/integration/verify_csv_scoring.py'],cwd=root,env=env,timeout=90)
         run([root/'.venv/bin/python','pipeline/integration/verify_buyer_import.py'],cwd=root,env=env,timeout=90)
         run([root/'.venv/bin/python','pipeline/integration/verify_buyer_outreach.py'],cwd=root,env=env,timeout=90)
+        run([root/'.venv/bin/python','pipeline/integration/verify_buyer_sms_consent.py'],cwd=root,env=env,timeout=90)
         run([root/'.venv/bin/python','pipeline/integration/verify_buyer_reads.py'],cwd=root,env=env,timeout=90)
         run([root/'.venv/bin/python','pipeline/integration/verify_versioned_call_concurrency.py'],cwd=root,env=env,timeout=90)
         env['PYTHONPATH']=str(root/'scripts/offline-tests')+os.pathsep+str(root)

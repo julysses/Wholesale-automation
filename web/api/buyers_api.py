@@ -40,6 +40,7 @@ from tools.buyer_intelligence_engine import (
     match_buyers_to_deal,
 )
 from tools.buyer_csv_parser import parse_buyer_csv
+from web.api.buyer_sms_consent import ConsentReview
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/buyers", tags=["Buyer Intelligence"])
@@ -525,3 +526,23 @@ async def _run_classify(buyer_id: str) -> None:
 
     except Exception as exc:
         logger.error(f"[buyers_api/classify] Failed for {buyer_id}: {exc}")
+
+
+@router.get("/{buyer_id}/sms-consent")
+async def buyer_sms_consent_status(buyer_id: UUID, request: Request):
+    from web.api.buyer_sms_consent import status
+    operator=getattr(request.state,'user_id',None)
+    if not operator:raise HTTPException(401,'Sign in to review buyer consent')
+    db=_get_supabase()
+    if db is None:raise HTTPException(503,'Consent storage unavailable')
+    return await run_in_threadpool(status,db,buyer_id,operator)
+
+
+@router.post("/{buyer_id}/sms-consent")
+async def review_buyer_sms_consent(buyer_id: UUID, req: ConsentReview, request: Request):
+    from web.api.buyer_sms_consent import review
+    operator=getattr(request.state,'user_id',None)
+    if not operator:raise HTTPException(401,'Sign in to review buyer consent')
+    db=_get_supabase()
+    if db is None:raise HTTPException(503,'Consent storage unavailable')
+    return await run_in_threadpool(review,db,buyer_id,operator,req)

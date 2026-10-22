@@ -1,0 +1,23 @@
+{
+  "scope": "candidate-only reviewed buyer SMS consent; carrier campaign and sending remain unaccepted",
+  "parent_checkpoint": "499ffbf0b48220bceeaa6ea6dcbbae4d360f629d",
+  "forward_migrations": 16,
+  "backend_passed": 1348,
+  "backend_skipped": 10,
+  "frontend_passed": 315,
+  "frontend_files": 61,
+  "real_provider_calls": 0,
+  "production_mutations": 0,
+  "files": {
+    "web/api/buyer_sms_consent.py": "d8097b85ceab8489b676860dff30812d2e4379606dd44c4cb1405a19415f117d",
+    "web/api/buyers_api.py": "8cca4fd612fd017645fd855af08484fa44fdfcd43a4ac43bc109af560ade3f19",
+    "frontend/src/components/buyers/BuyerSmsConsent.tsx": "67c9fe7ac2c0a00ef0d3489ef857b4779f625165ca32184642f28f34d9487390",
+    "frontend/src/components/buyers/BuyerProfileDrawer.tsx": "c9e198eba6544e72109304e1d5b0a0c6b104d066ca09a1276805e03e84f89c53",
+    "frontend/tests/buyer-sms-consent.test.tsx": "1eae9abf498f197ae8f139afe68ec4bc451dae2bb79bbde635bc771eaa5aebed",
+    "tests/test_buyer_sms_consent_errors.py": "9cff2943b148cdc775aa035cd05f4b30da8b48379097ee5aa0f69c29878769b9",
+    "frontend/supabase/migrations/20261022201934_integration_buyer_sms_consent.sql": "0f75b6ab165011121948e5aac0ec1f649578de91933e366a2b81843cf88a0d73",
+    "pipeline/integration/verify_buyer_sms_consent.py": "669c997c12d2060c98d55f19e907d8d45693cd9af61b4bd454550d5b49d3310f",
+    "pipeline/integration/rehearse_full_upgrade.py": "49c907d79d613edbb39f0d6bc8ef82ed39fd83c471172d9f4896416d3f360570",
+    "pipeline/integration/run_production_upgrade.py": "3c8aa6cb42d85d16268b27932fbae2e1a79104cdf5cba5d12318cb13f22fbb0a"
+  }
+}

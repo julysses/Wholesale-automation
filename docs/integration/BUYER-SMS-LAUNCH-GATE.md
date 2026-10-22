@@ -8,9 +8,10 @@ Current implementation: tools/sms_client.py only authorizes consented property
 inquiries and persists lead-bound sms_events. Buyer rows and an sms_opt_in boolean
 are not that inquiry receipt. The candidate buyer dispatch deliberately records a
 skipped buyer_sms_route_unavailable result and the interface disables sending.
-Actual live carrier campaign scope has not been freshly verified. Local Twilio
-account/token/service/from settings were absent in the current process; existing
-Twilio console is signed out (confirmed after the timeout). No credentials were exposed or settings changed.
+Fresh signed-in Twilio review confirms the only Verified campaign explicitly
+excludes unrelated marketing and covers homeowner inquiries only. Buyer campaign
+approval is missing. The user completed sign-in; no settings were changed. See
+BUYER-CAMPAIGN-REGISTRATION-DRAFT.md for exact account evidence, costs and timing.
 
 Next implementation sequence:
 
@@ -40,3 +41,9 @@ Next implementation sequence:
 
 Pending owner details already requested: confirm controlled phone last four and
 owner notification inbox. No new repeat request or inferred recipient is needed.
+
+October 22 follow-up: candidate written-consent review ledger/API/profile panel is
+implemented; see BUYER-SMS-CONSENT.md. Sixteen migration proposals remain unapplied.
+Required dedicated buyer transport, consumer enrollment, published policy/terms,
+carrier approval and handset acceptance remain unfinished. Friday is not a proven
+feasible buyer-SMS launch date; published carrier review guidance is 10–15 days.
