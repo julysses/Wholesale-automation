@@ -65,3 +65,18 @@ installs PostgreSQL17 from the [official PGDG repository](https://www.postgresql
 and uses /usr/lib/postgresql/17/bin. The rehearsal rejects older versions before
 restoring; no privileges were stripped and no SQL assertions were relaxed. Local
 PG17 remains the same verified target. The next Linux result remains pending.
+
+## Verified Linux result
+
+[Run711](https://github.com/julysses/Wholesale-automation/actions/runs/39866097570)
+passed all nine jobs for runtime2a3d28c. Its PR merge37e1281 has the identical tree
+610269896e68765196d63dd63d7fc05eae0cdc30 (GitHub commit API checked both).
+PostgreSQL17.11 restored the full saved catalog including MAINTAIN grants and
+passed all19 apply/rollback/ACL and manual race/recovery checks. The original
+failed environment attempts above remain recorded; no assertion was weakened.
+Current native Vercel bundle cold-start passed with6539 mapped files, Python3.12.15,
+all61 API versions and platform SDK, patched installer/bundle audits0 findings.
+CI backend1416/10skip/6subtests; frontend342/63; API-only, Docker, pipeline/edge and
+ingestion/SMS PG jobs passed. See manual-buyer-ci-evidence.json for exact identities.
+Later documentation does not change this tested runtime. This validates manual
+creation only; it does not certify the full launch or arbitrary edit/delete recovery.

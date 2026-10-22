@@ -13,7 +13,7 @@
   "intake_seconds": 123.04,
   "provider_calls": 0,
   "production_mutations": 0,
-  "remote_ci": "pending new execution",
+  "remote_ci": "All nine jobs passed in run39866097570 (711)",
   "files": {
     "frontend/supabase/migrations/20261022220540_integration_buyer_manual_receipts.sql": "f28d4aaba8b108283cf48a7264f498c3f3a24a671f778ddf42310f4faa41cacc",
     "web/api/buyer_manual.py": "8c38c304becc40ed7e1f62e06f255f11152b737f866b88da40dcdc4af109f385",
@@ -31,5 +31,7 @@
     "scripts/release/vercel_artifact_smoke.py": "3da9bff0320c4b60599b661fc7b4ac0b744cfa31e1c69808dfee21d9e0e02169",
     ".github/workflows/ci.yml": "4dcb84d3d02b866ef31f24a0e7aeba420f9ec904cc140026e34e4c93b7ada8f7",
     "docs/integration/forward-migration-order.json": "7e1fb6bb133d960baafc1e024cadddc96e0d50ff3170f63bf0fa6fab5e2fcb8a"
-  }
+  },
+  "current_runtime": "2a3d28c4e2f6c5e367b6e863c4afdce131412064",
+  "current_ci_evidence": "manual-buyer-ci-evidence.json"
 }

@@ -6,7 +6,9 @@ existing records remain unchanged. Browser drafts restore original details and
 hold unknown saves; retries/cancel cannot duplicate or resurrect deleted buyers.
 Backend1379/10skip, frontend342/63, build/lint/API-only pass. Nineteen-proposal
 restore/rollback/ACL and real manual SQL/API races pass; ten intake journeys123.04s.
-New nine-job Linux CI is pending observation. See MANUAL-BUYER-RECOVERY.md.
+All nine Linux jobs passed in run39866097570 (711) at2a3d28c; PG17.11 restored
+the exact catalog and passed all19/manual checks. CI backend1416/10skip/6subtests;
+frontend342/63; native Vercel/Docker/API/pipeline/PG pass. See manual-buyer-ci-evidence.json. See MANUAL-BUYER-RECOVERY.md.
 Manual edit/delete ambiguity, explicit classification/rescore, APN/volume/source,
 operator/JWT/tenancy and buyer publication/carrier/live delivery gates remain open.
 All nineteen proposals remain unapplied; no production/provider activation.
