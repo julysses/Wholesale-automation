@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   manual-buyer-database:
-    name: Manual buyer receipts on real PostgreSQL
+    name: Manual buyer receipts on real PostgreSQL 17
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -29,13 +29,18 @@ jobs:
       - name: Install disposable database runtime and hash-pinned test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-16 openssl
+          sudo apt-get install -y curl ca-certificates openssl
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-17
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip==26.2.2
           .venv/bin/python -m pip install --require-hashes -r requirements.txt
       - name: Verify nineteen-proposal rollback, private receipts and concurrent manual saves
         env:
-          PG_BIN: /usr/lib/postgresql/16/bin
+          PG_BIN: /usr/lib/postgresql/17/bin
         run: .venv/bin/python scripts/run_offline_tests.py --buyer-manual
 
   vercel-release:

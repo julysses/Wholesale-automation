@@ -58,3 +58,10 @@ and the runner selected its macOS default path. The wrapper now passes only this
 non-secret path for its owned loopback DB modes. Explicit-PG_BIN local execution
 passes. No provider credentials or external database URL are inherited. A new
 commit/run must prove the Linux database job before this gate is accepted.
+
+Run709 reached restore and exposed the second environment mismatch: PostgreSQL16
+cannot restore the saved catalog's MAINTAIN permission. The dedicated job now
+installs PostgreSQL17 from the [official PGDG repository](https://www.postgresql.org/download/linux/ubuntu/)
+and uses /usr/lib/postgresql/17/bin. The rehearsal rejects older versions before
+restoring; no privileges were stripped and no SQL assertions were relaxed. Local
+PG17 remains the same verified target. The next Linux result remains pending.

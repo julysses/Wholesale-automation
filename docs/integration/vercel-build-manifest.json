@@ -25,7 +25,7 @@
     "scripts/release/check_python_locks.py": "77878e021ad2a7b3f99df67d179ffd62491f475a617a0e404977fcf2b4acc16d",
     "scripts/release/prepare_vercel_build.py": "ec139f03aec8e9adb8cbcaff0a2eeb443fe63d7e444842104da457bd5a7125bf",
     "scripts/release/vercel_artifact_smoke.py": "3da9bff0320c4b60599b661fc7b4ac0b744cfa31e1c69808dfee21d9e0e02169",
-    ".github/workflows/ci.yml": "ab18601ea8795d3304432d9c6dd5892421ad2a5f7bdc7e333bda2dcc1e860c06",
+    ".github/workflows/ci.yml": "4dcb84d3d02b866ef31f24a0e7aeba420f9ec904cc140026e34e4c93b7ada8f7",
     "tests/test_release_python_locks.py": "87e320d7a4ff35189197bdc2f0b706322099fecb7c63d44a902cd86fcdfda65a"
   },
   "evidence": "vercel-artifact-evidence.json",

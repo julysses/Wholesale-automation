@@ -25,11 +25,11 @@
     "frontend/tests/buyers-workflows.test.tsx": "94205cb5bc6e2a3b417e27fe9643273619adbb614f8e4c930d68189e638a2eca",
     "pipeline/integration/verify_buyer_manual.py": "088065ca897433c97a66aa0a5998d43262eb4bd29b9735902c7856fac29aa935",
     "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
-    "pipeline/integration/run_production_upgrade.py": "6aa15bab277ec1a1ca7bf1146008c5f06c25cd1f1987c7b6e677aee08250760a",
+    "pipeline/integration/run_production_upgrade.py": "0482b4511a242edd2d820456a4dfe8dd4da53bd32624907fd39d4cfb237650eb",
     "scripts/run_offline_tests.py": "421c34c4837e78162fe772f91990795a0880ab6d9e163f7163d58cdad723db6c",
     "scripts/release/python_api_smoke.py": "71d9705924bfbcc7b417ada58b0d8f3dae6d116e16e1fc148acee890ff61d2cc",
     "scripts/release/vercel_artifact_smoke.py": "3da9bff0320c4b60599b661fc7b4ac0b744cfa31e1c69808dfee21d9e0e02169",
-    ".github/workflows/ci.yml": "ab18601ea8795d3304432d9c6dd5892421ad2a5f7bdc7e333bda2dcc1e860c06",
+    ".github/workflows/ci.yml": "4dcb84d3d02b866ef31f24a0e7aeba420f9ec904cc140026e34e4c93b7ada8f7",
     "docs/integration/forward-migration-order.json": "7e1fb6bb133d960baafc1e024cadddc96e0d50ff3170f63bf0fa6fab5e2fcb8a"
   }
 }

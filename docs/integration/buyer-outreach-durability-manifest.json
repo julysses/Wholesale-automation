@@ -17,7 +17,7 @@
     "frontend/src/lib/outreachBatches.ts": "d6038951f891b73cfa46675bb60a092139926e3c0e6ae4175b0d52d5857dd8a4",
     "pipeline/integration/verify_buyer_outreach.py": "009dda19f3ed42eff99e1775abaf259a41498c2573e085d875465c0b84c298e2",
     "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
-    "pipeline/integration/run_production_upgrade.py": "6aa15bab277ec1a1ca7bf1146008c5f06c25cd1f1987c7b6e677aee08250760a",
+    "pipeline/integration/run_production_upgrade.py": "0482b4511a242edd2d820456a4dfe8dd4da53bd32624907fd39d4cfb237650eb",
     "tests/test_backend_launch_contracts.py": "61a960a406b2eb36a2ab44e0f876d4b72ccab690de8a57869ebf4bed9dcfd2dc",
     "frontend/tests/outreach-batches.test.tsx": "29e002d200e5410575c0a8a8a91c37b1a569a2d7aa281a3714f3e85a10b9e6bf",
     "frontend/tests/buyer-outreach-history.test.tsx": "5d01562e1a40fa08c4b25f0aa9a610545c6b205e4b57cc11f01e500a8aebca14",

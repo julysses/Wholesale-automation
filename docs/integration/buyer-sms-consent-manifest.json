@@ -18,7 +18,7 @@
     "frontend/supabase/migrations/20261022201934_integration_buyer_sms_consent.sql": "0f75b6ab165011121948e5aac0ec1f649578de91933e366a2b81843cf88a0d73",
     "pipeline/integration/verify_buyer_sms_consent.py": "669c997c12d2060c98d55f19e907d8d45693cd9af61b4bd454550d5b49d3310f",
     "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
-    "pipeline/integration/run_production_upgrade.py": "6aa15bab277ec1a1ca7bf1146008c5f06c25cd1f1987c7b6e677aee08250760a"
+    "pipeline/integration/run_production_upgrade.py": "0482b4511a242edd2d820456a4dfe8dd4da53bd32624907fd39d4cfb237650eb"
   },
   "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped.",
   "manual_buyer_update": "Hashes refreshed for manual buyer recovery; original counts/remote runs are historical. Current candidate needs the new nine-job CI run."
