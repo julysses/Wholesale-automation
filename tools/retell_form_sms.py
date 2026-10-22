@@ -81,7 +81,12 @@ def enqueue(sb, lead_id):
         from tools.retell_app_dispatch import APP_ACKNOWLEDGMENT
         row.update(delivery_transport=transport, delivery_body=APP_ACKNOWLEDGMENT,
                    delivery_sender=settings.twilio_from_number)
-    saved = sb.table('retell_form_sms_jobs').upsert(row, on_conflict='id', ignore_duplicates=True).execute().data
+    try:
+        saved = sb.table('retell_form_sms_jobs').upsert(row, on_conflict='id', ignore_duplicates=True).execute().data
+    except Exception as exc:
+        if not native or getattr(exc, 'code', getattr(exc, 'pgcode', None)) != '23505':
+            raise
+        saved = None  # Recover a competing native insert through the exact job id below.
     if not saved:
         existing = sb.table('retell_form_sms_jobs').select('*').eq('id', job_id).execute().data
         if (not isinstance(existing, list) or len(existing) != 1

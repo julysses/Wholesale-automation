@@ -2,8 +2,10 @@ This draft adds county review, human offer approval, lot handoff, land valuation
 
 The Facebook intake schema is already released in production. Do not reapply it. The new feature allowlist now contains **12 forward migrations**, including `20261022160020_integration_manual_land_import.sql`. Historical SMS installation and held-session recovery migrations remain excluded. Never apply the migration directory wholesale.
 
+The candidate includes production commit `a89815126d9a98ced016167d8e383641d133135f`, including its native queue recovery and competing-insert tests. Both candidate deployment blocks are retained.
+
 Validation to date:
-- Backend: 1,288 passed, 10 skipped.
+- Backend: 1,290 passed, 10 skipped.
 - Frontend: 254 passed across 53 files with four workers; typecheck/build and lint gate pass, with 143 existing findings.
 - Pipeline/disposable SQL: 231 passed.
 - Fresh production metadata matches the restored baseline plus the released Facebook delta, including 17 view security/grant sets. Twelve-migration apply, injected failure rollback and historical preservation pass.

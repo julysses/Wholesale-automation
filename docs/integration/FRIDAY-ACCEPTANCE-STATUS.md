@@ -4,7 +4,7 @@
 
 Manual CSV repair adds one forward migration to the original eleven, making twelve
 in the explicit allowlist. See `MANUAL-LAND-IMPORT.md` for scope, proof and remaining
-import gaps. Backend 1,288 / frontend 254 / pipeline 231 tests pass. No production
+import gaps. Backend 1,290 / frontend 254 / pipeline 231 tests pass. No production
 schema, runtime, schedules or providers were changed.
 
 Target: October 23, 2026. This is a requirement review checkpoint, not go-live certification.
@@ -72,3 +72,10 @@ October 22 land visibility follow-up: complete cards/funnel pagination, search,
 25-card rendering, partial-read refusal, last-confirmed refresh recovery and import
 cache consistency pass nine new regressions. All 254 frontend tests (53 files),
 build and lint gate pass. See `LAND-LIST-COMPLETENESS.md`.
+
+October 22 production reconciliation: current production a898151 was merged into
+the paused candidate after seven conflict resolutions. Its native queue recovery
+and two extra concurrency cases are retained. Backend now 1,290 pass/10 skip;
+the twelve-migration upgrade and ten journeys pass again (122.64 seconds).
+See `PRODUCTION-BASELINE-MERGE.md`. GitHub mergeability must be read back after push;
+that does not close the remaining business/live acceptance gates.

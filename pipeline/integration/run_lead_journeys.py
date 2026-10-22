@@ -26,8 +26,9 @@ with tempfile.TemporaryDirectory(prefix='wholesale-sms-') as folder:
         env={**os.environ,'PGPASSWORD':'local-only-test-admin'}
         run([pg/'createdb','-h','127.0.0.1','-p',port,'-U','test_admin','wholesale_sms_test'],env=env)
         env['SMS_TEST_ADMIN_URL']=f'postgresql://test_admin:local-only-test-admin@127.0.0.1:{port}/wholesale_sms_test'
-        run([node,'pipeline/integration/lead-journey-schema.mjs'],cwd=root,env=env,timeout=60)
+        run([root/'.venv/bin/python','pipeline/integration/production_schema.py'],cwd=root,env=env,timeout=90)
+        run([root/'.venv/bin/python','pipeline/integration/rehearse_facebook_migration.py'],cwd=root,env=env,timeout=90)
         env['PYTHONPATH']=str(root/'scripts/offline-tests')+os.pathsep+str(root)
-        run([root/'.venv/bin/python','-m','pytest','tests/test_local_lead_journeys.py','-v'],cwd=root,env=env,timeout=180)
+        run([root/'.venv/bin/python','-m','pytest','tests/test_local_lead_journeys.py','-v'],cwd=root,env=env,timeout=300)
     finally:
         if started:run([pg/'pg_ctl','-D',data,'-m','immediate','-w','stop'],stdout=subprocess.DEVNULL)

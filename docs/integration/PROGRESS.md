@@ -124,3 +124,12 @@ import component coverage and operator acceptance while recipient identity is pe
   schema, provider or scheduling changes. API/backend unchanged this step.
 - Next: main CSV assignment/due task/concurrency; buyer/Master List UI coverage;
   operator/live acceptance. Details: `LAND-LIST-COMPLETENESS.md`.
+
+## October 22 current production merge
+
+Merged production a898151 into the isolated candidate; preserved production queue
+recovery/tests, stronger view-aware restore, all upgrade modes, historical handoff
+and both candidate deployment blocks. Backend 1,290/10 skipped and full twelve-file
+upgrade/rollback, manual import and call/SMS concurrency plus ten journeys pass.
+No production changes. See `PRODUCTION-BASELINE-MERGE.md` and continue the R8/live
+work before any release approval.

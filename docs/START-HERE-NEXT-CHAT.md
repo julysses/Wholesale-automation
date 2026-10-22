@@ -1,3 +1,49 @@
+# WholesaleOS current launch checkpoint
+
+Target: Friday October 23, 2026. Production is the baseline and remains paused.
+
+## Current source
+
+This checkout is `codex/wholesale-integration-review`; draft PR #21 targets
+`codex/retell-sms-production`. Integration now includes current production commit
+`a89815126d9a98ced016167d8e383641d133135f` (released Facebook intake, PR #22).
+The release-candidate sibling remains a separate paused review path; do not replace
+shared production files blindly or infer live delivery from a READY deployment.
+Both candidate branches are explicitly excluded from Vercel Git deployment.
+
+Start with `docs/integration/FRIDAY-ACCEPTANCE-STATUS.md`, `PROGRESS.md` and
+`RELEASE-BOUNDARY.md`. The explicit feature allowlist currently has twelve forward
+migrations. The already released Facebook migration and the historical empty-session
+recovery are not part of that allowlist. Never push the migration directory wholesale.
+
+The current candidate repairs manual land CSV import loss/retry behavior and complete
+land-list visibility. Local API, SQL and component checks are synthetic and do not
+prove production carrier or operator acceptance. Production's additional Facebook
+concurrency tests and queue-conflict recovery are retained alongside the expanded
+upgrade, role, schema-shape and retry checks.
+
+## Next required work
+
+Main-lead CSV imports still need approved ownership, due follow-up and concurrent
+reconciliation proof. Buyer/Master List UI coverage, operator acceptance, exact
+release/recovery review and controlled live delivery remain open. Use the manifest
+and detailed evidence in `docs/integration/`; no launch certification has been issued.
+
+Live testing is already authorized, but shared recipient last-four/owner inbox
+confirmation, Meta routing and effective Vercel sending-flag verification are still
+pending. The dashboard requires email step-up to reveal those values. Keep broad
+schedules paused until owner review. Do not replay held sessions, reset suppression,
+change providers or exceed the existing PropStream spend cap.
+
+Codex handles Git pull/commit/push. Preserve untracked artifacts and record exact
+commits, evidence and next work before a handoff.
+
+## Historical handoff before the production merge
+
+The following checkpoint is retained as history. Use the current entry point above
+for active authorization, scope and remaining work. The production-side handoff is
+also preserved in Git at `a89815126d9a98ced016167d8e383641d133135f`.
+
 ## October 20 native Facebook handoff fixed locally
 
 Owner authorized repair and local testing. See `docs/integration/FACEBOOK-HANDOFF-FIX.md` for the exact changes and evidence. Native consent-bearing receipts now link to one Retell queue job without creating website submissions. Ten connected API/PostgreSQL journeys passed across Hilltop, Jays seller and native Facebook paths, including acknowledgment, reply, delivery receipts, STOP, no consent and recovery. Eight-worker native contention passed; 1,261 backend, 231 pipeline and 240 frontend tests passed.

@@ -1,6 +1,7 @@
 {
   "date": "2026-10-22",
-  "scope": "twelve allowlisted feature migrations on restored current-shaped catalog; synthetic rows; no production writes or provider calls",
+  "scope": "current production merge plus twelve allowlisted feature migrations; synthetic rows; no production writes or providers",
+  "production_baseline": "a89815126d9a98ced016167d8e383641d133135f",
   "results": [
     {
       "catalog_restore": "passed",
@@ -14,7 +15,7 @@
     {
       "migration_rehearsal": "passed",
       "rollback_before_commit": "passed",
-      "retained_table_data_sha256": "d424b468f9eff5c79a0170fede2e3739c8adeb54a4320623794ace7b684fe308",
+      "retained_table_data_sha256": "beb6bae2fe6a7298acc4104f3131ec7ec87326890bb2bfd2e0aeb37d949657b7",
       "unchanged_tables": 100,
       "existing_jobs": 10,
       "held_sessions_and_turns": 5,
@@ -153,7 +154,7 @@
         }
       ],
       "retained_tables": 101,
-      "retained_rows_sha256": "a64137ef2d1e5ab4bde5b3cea49017c1edb8b6126b9bcb5aca301d5eced9a746",
+      "retained_rows_sha256": "8a3bfe6a386ac43503e462c73d7160933a9c3ecd3bdf16c739de0519eeb21ce6",
       "changed_existing_functions": [
         "scan_list_pipeline()",
         "claim_retell_call(uuid,uuid,text,uuid)"
@@ -162,56 +163,84 @@
       "browser_permission_checks": [
         {
           "role": "anon",
-          "function": "read_land_valuation(uuid,uuid)",
+          "function": "save_land_valuation(uuid,uuid,uuid,text,jsonb)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
         },
         {
           "role": "authenticated",
-          "function": "read_land_valuation(uuid,uuid)",
+          "function": "save_land_valuation(uuid,uuid,uuid,text,jsonb)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
         },
         {
           "role": "anon",
-          "function": "wholesale_ingest.guard_lot_handoff()",
+          "function": "reconcile_list_lot(uuid,uuid,uuid,integer,text,text,text)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "authenticated",
+          "function": "reconcile_list_lot(uuid,uuid,uuid,integer,text,text,text)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "anon",
+          "function": "wholesale_ingest.handoff_lot(uuid,uuid,uuid,uuid,text)",
+          "executable": false,
+          "schema_access": false,
+          "is_trigger": false
+        },
+        {
+          "role": "authenticated",
+          "function": "wholesale_ingest.handoff_lot(uuid,uuid,uuid,uuid,text)",
+          "executable": false,
+          "schema_access": false,
+          "is_trigger": false
+        },
+        {
+          "role": "anon",
+          "function": "wholesale_ingest.immutable_land_valuation_event()",
           "executable": true,
           "schema_access": false,
           "is_trigger": true
         },
         {
           "role": "authenticated",
-          "function": "wholesale_ingest.guard_lot_handoff()",
+          "function": "wholesale_ingest.immutable_land_valuation_event()",
           "executable": true,
           "schema_access": false,
           "is_trigger": true
         },
         {
           "role": "anon",
-          "function": "monitor_list_lots()",
+          "function": "record_offer_review_v2(uuid,uuid,uuid,integer,text,uuid,jsonb,uuid)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
         },
         {
           "role": "authenticated",
-          "function": "monitor_list_lots()",
+          "function": "record_offer_review_v2(uuid,uuid,uuid,integer,text,uuid,jsonb,uuid)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
         },
         {
           "role": "anon",
-          "function": "offer_review_snapshot(uuid,uuid)",
+          "function": "offer_review_history(uuid,uuid,integer)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
         },
         {
           "role": "authenticated",
-          "function": "offer_review_snapshot(uuid,uuid)",
+          "function": "offer_review_history(uuid,uuid,integer)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
@@ -232,6 +261,20 @@
         },
         {
           "role": "anon",
+          "function": "list_lot_candidates(uuid,integer)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "authenticated",
+          "function": "list_lot_candidates(uuid,integer)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "anon",
           "function": "wholesale_ingest.immutable_lot_reconciliation()",
           "executable": true,
           "schema_access": false,
@@ -243,76 +286,6 @@
           "executable": true,
           "schema_access": false,
           "is_trigger": true
-        },
-        {
-          "role": "anon",
-          "function": "acknowledge_list_lot(uuid,uuid)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "authenticated",
-          "function": "acknowledge_list_lot(uuid,uuid)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "anon",
-          "function": "private.protect_manual_land_import()",
-          "executable": false,
-          "schema_access": false,
-          "is_trigger": true
-        },
-        {
-          "role": "authenticated",
-          "function": "private.protect_manual_land_import()",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": true
-        },
-        {
-          "role": "anon",
-          "function": "wholesale_ingest.scan_lots_at(timestamp with time zone)",
-          "executable": false,
-          "schema_access": false,
-          "is_trigger": false
-        },
-        {
-          "role": "authenticated",
-          "function": "wholesale_ingest.scan_lots_at(timestamp with time zone)",
-          "executable": false,
-          "schema_access": false,
-          "is_trigger": false
-        },
-        {
-          "role": "anon",
-          "function": "record_offer_review(uuid,uuid,uuid,integer,text,uuid,jsonb)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "authenticated",
-          "function": "record_offer_review(uuid,uuid,uuid,integer,text,uuid,jsonb)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "anon",
-          "function": "wholesale_ingest.land_valuation_snapshot(uuid)",
-          "executable": false,
-          "schema_access": false,
-          "is_trigger": false
-        },
-        {
-          "role": "authenticated",
-          "function": "wholesale_ingest.land_valuation_snapshot(uuid)",
-          "executable": false,
-          "schema_access": false,
-          "is_trigger": false
         },
         {
           "role": "anon",
@@ -330,44 +303,100 @@
         },
         {
           "role": "anon",
-          "function": "wholesale_ingest.lot_handoff_state(uuid)",
+          "function": "protect_retell_claim_identity()",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": true
+        },
+        {
+          "role": "authenticated",
+          "function": "protect_retell_claim_identity()",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": true
+        },
+        {
+          "role": "anon",
+          "function": "read_land_valuation(uuid,uuid)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "authenticated",
+          "function": "read_land_valuation(uuid,uuid)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "anon",
+          "function": "acknowledge_list_lot(uuid,uuid)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "authenticated",
+          "function": "acknowledge_list_lot(uuid,uuid)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "anon",
+          "function": "wholesale_ingest.scan_lots_at(timestamp with time zone)",
           "executable": false,
           "schema_access": false,
           "is_trigger": false
         },
         {
           "role": "authenticated",
-          "function": "wholesale_ingest.lot_handoff_state(uuid)",
+          "function": "wholesale_ingest.scan_lots_at(timestamp with time zone)",
           "executable": false,
           "schema_access": false,
           "is_trigger": false
         },
         {
           "role": "anon",
-          "function": "reconcile_list_lot(uuid,uuid,uuid,integer,text,text,text)",
+          "function": "review_list_lot(uuid,uuid,uuid,text,boolean,text,text)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
         },
         {
           "role": "authenticated",
-          "function": "reconcile_list_lot(uuid,uuid,uuid,integer,text,text,text)",
+          "function": "review_list_lot(uuid,uuid,uuid,text,boolean,text,text)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
         },
         {
           "role": "anon",
-          "function": "claim_retell_call_versioned(uuid,uuid,text,uuid,text,integer,text)",
+          "function": "wholesale_ingest.guard_lot_handoff()",
+          "executable": true,
+          "schema_access": false,
+          "is_trigger": true
+        },
+        {
+          "role": "authenticated",
+          "function": "wholesale_ingest.guard_lot_handoff()",
+          "executable": true,
+          "schema_access": false,
+          "is_trigger": true
+        },
+        {
+          "role": "anon",
+          "function": "offer_review.property_snapshot(uuid)",
           "executable": false,
-          "schema_access": true,
+          "schema_access": false,
           "is_trigger": false
         },
         {
           "role": "authenticated",
-          "function": "claim_retell_call_versioned(uuid,uuid,text,uuid,text,integer,text)",
+          "function": "offer_review.property_snapshot(uuid)",
           "executable": false,
-          "schema_access": true,
+          "schema_access": false,
           "is_trigger": false
         },
         {
@@ -400,14 +429,42 @@
         },
         {
           "role": "anon",
-          "function": "save_land_valuation(uuid,uuid,uuid,text,jsonb)",
+          "function": "claim_retell_call_versioned(uuid,uuid,text,uuid,text,integer,text)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
         },
         {
           "role": "authenticated",
-          "function": "save_land_valuation(uuid,uuid,uuid,text,jsonb)",
+          "function": "claim_retell_call_versioned(uuid,uuid,text,uuid,text,integer,text)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "anon",
+          "function": "route_list_lots(integer)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "authenticated",
+          "function": "route_list_lots(integer)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "anon",
+          "function": "monitor_list_lots()",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "authenticated",
+          "function": "monitor_list_lots()",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
@@ -428,126 +485,70 @@
         },
         {
           "role": "anon",
-          "function": "review_list_lot(uuid,uuid,uuid,text,boolean,text,text)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "authenticated",
-          "function": "review_list_lot(uuid,uuid,uuid,text,boolean,text,text)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "anon",
-          "function": "wholesale_ingest.handoff_lot(uuid,uuid,uuid,uuid,text)",
+          "function": "wholesale_ingest.land_valuation_snapshot(uuid)",
           "executable": false,
           "schema_access": false,
           "is_trigger": false
         },
         {
           "role": "authenticated",
-          "function": "wholesale_ingest.handoff_lot(uuid,uuid,uuid,uuid,text)",
+          "function": "wholesale_ingest.land_valuation_snapshot(uuid)",
           "executable": false,
           "schema_access": false,
           "is_trigger": false
         },
         {
           "role": "anon",
-          "function": "offer_review_history(uuid,uuid,integer)",
+          "function": "private.protect_manual_land_import()",
           "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "authenticated",
-          "function": "offer_review_history(uuid,uuid,integer)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "anon",
-          "function": "offer_review.property_snapshot(uuid)",
-          "executable": false,
-          "schema_access": false,
-          "is_trigger": false
-        },
-        {
-          "role": "authenticated",
-          "function": "offer_review.property_snapshot(uuid)",
-          "executable": false,
-          "schema_access": false,
-          "is_trigger": false
-        },
-        {
-          "role": "anon",
-          "function": "list_lot_candidates(uuid,integer)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "authenticated",
-          "function": "list_lot_candidates(uuid,integer)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "anon",
-          "function": "record_offer_review_v2(uuid,uuid,uuid,integer,text,uuid,jsonb,uuid)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "authenticated",
-          "function": "record_offer_review_v2(uuid,uuid,uuid,integer,text,uuid,jsonb,uuid)",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": false
-        },
-        {
-          "role": "anon",
-          "function": "wholesale_ingest.immutable_land_valuation_event()",
-          "executable": true,
           "schema_access": false,
           "is_trigger": true
         },
         {
           "role": "authenticated",
-          "function": "wholesale_ingest.immutable_land_valuation_event()",
-          "executable": true,
-          "schema_access": false,
-          "is_trigger": true
-        },
-        {
-          "role": "anon",
-          "function": "protect_retell_claim_identity()",
-          "executable": false,
-          "schema_access": true,
-          "is_trigger": true
-        },
-        {
-          "role": "authenticated",
-          "function": "protect_retell_claim_identity()",
+          "function": "private.protect_manual_land_import()",
           "executable": false,
           "schema_access": true,
           "is_trigger": true
         },
         {
           "role": "anon",
-          "function": "route_list_lots(integer)",
+          "function": "record_offer_review(uuid,uuid,uuid,integer,text,uuid,jsonb)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
         },
         {
           "role": "authenticated",
-          "function": "route_list_lots(integer)",
+          "function": "record_offer_review(uuid,uuid,uuid,integer,text,uuid,jsonb)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "anon",
+          "function": "wholesale_ingest.lot_handoff_state(uuid)",
+          "executable": false,
+          "schema_access": false,
+          "is_trigger": false
+        },
+        {
+          "role": "authenticated",
+          "function": "wholesale_ingest.lot_handoff_state(uuid)",
+          "executable": false,
+          "schema_access": false,
+          "is_trigger": false
+        },
+        {
+          "role": "anon",
+          "function": "offer_review_snapshot(uuid,uuid)",
+          "executable": false,
+          "schema_access": true,
+          "is_trigger": false
+        },
+        {
+          "role": "authenticated",
+          "function": "offer_review_snapshot(uuid,uuid)",
           "executable": false,
           "schema_access": true,
           "is_trigger": false
@@ -596,6 +597,6 @@
   ],
   "post_upgrade_journeys": {
     "passed": 10,
-    "seconds": 123.14
+    "seconds": 122.64
   }
 }

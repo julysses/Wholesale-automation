@@ -1,0 +1,61 @@
+{
+  "status": "local_candidate_ready_for_review",
+  "production_changed": false,
+  "provider_calls": 0,
+  "base_commit": "19c117ad7a8ab10656bf116a2a6835508f7f1f01",
+  "tests": {
+    "python_passed": 1131,
+    "generic_disposable_skips": 10,
+    "pipeline_passed": 196,
+    "frontend_passed": 179,
+    "frontend_files": 42,
+    "connected_admin_passed": 10,
+    "connected_service_role_passed": 10,
+    "build": "passed"
+  },
+  "evidence": {
+    "python": {
+      "raw_log_sha256": "5e2123f2b5d41ffb9f96d64c5b88750d83b4b4f04e42890640328b188335d40e",
+      "excerpt": "docs/facebook-release/evidence/python.txt",
+      "excerpt_sha256": "447f0b9047b8e823f2a17b90735bde28b6e6c73a4eee63a39a4f7b04a231c363"
+    },
+    "pipeline": {
+      "raw_log_sha256": "b2f3f6d3abdaeedebb70ec43944ab876a5afb5dc994b69e5a043047a3b587792",
+      "excerpt": "docs/facebook-release/evidence/pipeline.txt",
+      "excerpt_sha256": "f40b650a142402af73cccb64e345f978f7a13b3307b4801883a2f7629361b52a"
+    },
+    "frontend": {
+      "raw_log_sha256": "920f3066d65b0f84d16f630309eb1c3c19d6df3b9459a05f6ff785d3ae88eabc",
+      "excerpt": "docs/facebook-release/evidence/frontend.txt",
+      "excerpt_sha256": "d51c3f697bf1b182f98f6903b566ed9b83f21d7bcc0cbe662834221b76059f24"
+    },
+    "build": {
+      "raw_log_sha256": "e2a53b9dc861a4b8166fce26781e032d306ef96db3cfae2ceae3f47e9f50626d",
+      "excerpt": "docs/facebook-release/evidence/build.txt",
+      "excerpt_sha256": "5f28694209451a53e1d90c7b33175fa8e6148bdccdd19d75c10477abdedf70c9"
+    },
+    "production-shaped-admin": {
+      "raw_log_sha256": "82760a3f4ffc94d357611ed4442265f0d1eb428f7cbbb4dad3467eb3d40745dd",
+      "excerpt": "docs/facebook-release/evidence/production-shaped-admin.txt",
+      "excerpt_sha256": "82760a3f4ffc94d357611ed4442265f0d1eb428f7cbbb4dad3467eb3d40745dd"
+    },
+    "production-shaped-service-role": {
+      "raw_log_sha256": "29179d336b849b909bff905079e7bc2c9cd1fea0f48289084349dff5bcf430e6",
+      "excerpt": "docs/facebook-release/evidence/production-shaped-service-role.txt",
+      "excerpt_sha256": "29179d336b849b909bff905079e7bc2c9cd1fea0f48289084349dff5bcf430e6"
+    }
+  },
+  "unchanged_historical_migrations": 103,
+  "runtime_files": {
+    "tools/facebook_inquiry.py": "2f5052e48c21305f370ee70329d280eae450b3e1fa0adfd27de9c653678756a4",
+    "tools/retell_form_sms.py": "80baebcc6b1f58b6b7712ef516069180adcf93383df41069c8f70fa2003ed8ae",
+    "tools/sms_client.py": "efb7ebd7b30869dd279fe2aea6268ecc794f062d64a0a054be8daee4c31aaaf3",
+    "web/api/webhooks.py": "b8fc61ce1373b9f5c42fad4c0e41968dfae90d133822632fb297ce5536fdcc67"
+  },
+  "release_migrations": [
+    "20261020184154_facebook_inquiry_sms_receipts.sql"
+  ],
+  "production-catalog.json_sha256": "79b47af8d553a9d660781538fa9fce8b2fa986138997a06d1923f705c354cdfc",
+  "production-metadata.json_sha256": "8986a85438011434a566cff7fbd28cc30ba700b145d76f378b3bcf803da1b858",
+  "migration_sha256": "7819ccb9676b67c8e3a6581b9aea8c479a19b4be6cfc49b4ffdebf9b2731837c"
+}
