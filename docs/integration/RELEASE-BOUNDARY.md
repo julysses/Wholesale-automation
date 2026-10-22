@@ -25,6 +25,12 @@ that channel's opt-in; a runtime rollback must never restore an older contact ch
 Owner approval on October 22 covers the exact buyer policy wording only; it does
 not approve this release, fees, registration or activation.
 
+The October22 backup availability check finds a completed physical backup from
+12:13:03 UTC, but no fresh restore test. Native clones can start copied DB jobs;
+use a reviewed isolated recovery path. Current PITR is not enabled and Storage
+counts arezero. See PRODUCTION-BACKUP-READINESS.md. No restore or paid add-on was
+executed. Refresh this evidence at the actual maintenance boundary.
+
 Before any production application, record the actual deployed source/artifact and
 refresh the production catalog/history/ACL and paused configuration. Capture and
 verify a restorable backup at the approved maintenance boundary. The disposable

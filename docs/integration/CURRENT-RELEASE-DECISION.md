@@ -1,3 +1,11 @@
+Current backup follow-up at23:42 UTC: eight completed daily physical backups are
+listed, latestOctober22 12:13:03 UTC; the olderOctober8 restore is markedcompleted.
+Today's restore is unverified, PITR is not enabled and Storage counts are0/0. Native
+clones can auto-start copied jobs, so isolation must be reviewed first. The provider's
+API Gateway incident is Monitoring and includesus-west-2; public app health returned
+200 with its constant process-only response. See PRODUCTION-BACKUP-READINESS.md and
+production-backup-observation-2026-10-22.json. No restore/purchase/config change.
+
 Current candidate runtimebd30ba0 passed all9 jobs in run39872079323 (715), with
 identical head/PR-merge Git trees; see buyer-mutation-ci-evidence.json. All21
 proposals remain unapplied. Single-buyer form edits/deletes now have retained
