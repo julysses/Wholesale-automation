@@ -1,0 +1,19 @@
+{
+  "captured_at": "2026-10-22T15:40:26.533798+00:00",
+  "baseline_functions": 120,
+  "current_functions": 121,
+  "missing": [],
+  "added": [
+    [
+      "public",
+      "protect_facebook_submission()"
+    ]
+  ],
+  "definition_changes": [
+    [
+      "public",
+      "protect_retell_form_transport()"
+    ]
+  ],
+  "acl_changes": []
+}

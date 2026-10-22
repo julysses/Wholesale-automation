@@ -1,0 +1,17 @@
+{
+  "postgres_concurrency": "passed",
+  "workers": 8,
+  "scheduler_http_stubs": 1,
+  "initial_selections": 1,
+  "generation_selections": 1,
+  "reply_selections": 1,
+  "initial_claims": 1,
+  "turn_claims": 1,
+  "session_bindings": 1,
+  "generation_receipts": 1,
+  "recovery_holds": 1,
+  "reply_dispatch_claims": 1,
+  "carrier_reconciliations": 8,
+  "concurrent_carrier_recoveries": 8,
+  "provider_calls": 0
+}

@@ -8,14 +8,14 @@ The original requirements remain in `WholesaleOS-Integration-Assessment.md` R1â€
 | R1 Intake durability | Ten connected API/SQL journeys on upgraded saved catalog; both website boundaries checked | Fresh live source receipt, owner inbox and handset confirmation |
 | R2 Consent integrity | Backend, frontend and pipeline suites pass; no-consent journeys refuse sending | Live Meta disclosure/form mapping and current website revisions |
 | R3 Suppression | STOP/no-replay journeys pass; existing suppression suites pass | Verify exact shared recipient history; controlled live STOP/reply acceptance |
-| R4 Dispatch ownership | Eight-worker Facebook receipt/job claim check passes; transport suites available | Re-run full app/native/call contention on current candidate and verify pinned identity overlap |
+| R4 Dispatch ownership | Eight-worker Facebook receipt/job claim check passes; transport suites available | Eight-worker app transport and full-upgrade call/SMS overlap now pass; live exact job scope remains to verify |
 | R5 Provider receipts | Connected mocked receipt and duplicate/out-of-order suites pass | Actual bound carrier delivery/callback and owner handset evidence |
 | R6 Pause and expiry | Upgraded synthetic scheduler pauses retained; disabled/expiry suites pass | Fresh effective production environment flag evidence before bounded live scope |
 | R7 Tasks and alerts | Connected reply tasks, notification and mocked email journeys pass | Owner confirms real email, task and CRM history during live tests |
 | R8 Retention and import | Pipeline and frontend regression suites pass | Map both CSV components and county merge cases to exact requirements; operator import review |
 | R9 County/trace/scoring | Restricted ingress, trace caps and scoring concurrency pass; pipeline 231 tests | Current source completeness/PropStream end-to-end acceptance within existing spend cap |
-| R10 Feature bundles | Real concurrent offer/property, lot and valuation checks pass on minimal fixtures | Full upgraded-schema interactions, pinned-call overlap and operator workflow acceptance |
-| R11 Schema and access | Saved catalog with synthetic historical rows, eleven migrations, partial/full rollback, ACL assertions pass | Fresh catalog drift comparison; exact release manifest and recovery review; production-volume locks unproven |
+| R10 Feature bundles | Real concurrent offer/property, lot and valuation checks pass on minimal fixtures | Full upgraded-schema call/SMS overlap now passes; remaining feature interactions and operator workflow acceptance |
+| R11 Schema and access | Saved catalog with synthetic historical rows, eleven migrations, partial/full rollback, ACL assertions pass | Fresh function/ACL comparison matches expected Facebook release changes; table/constraint/policy/trigger drift, release manifest and recovery review remain; production-volume locks unproven |
 | R12 Frontend and release | 240 tests, build/typecheck and lint gate pass; candidate deployment disabled | Signed-in complete operator walkthrough, matching deployed API/schema, reviewed release artifact |
 
 Frontend dependencies: Vite 6.4.5, Vitest 4.1.12, follow-redirects 1.16.1;

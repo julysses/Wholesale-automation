@@ -85,3 +85,5 @@ files. Pipeline: 231 passed. Build and lint gate pass (144 existing findings).
 Full populated upgrade and ten journeys pass; nine real PostgreSQL concurrency
 groups pass. Frontend dependency audit is clear after compatible patches.
 Continue from `FRIDAY-UPGRADE-REHEARSAL.md` and `FRIDAY-ACCEPTANCE-STATUS.md`.
+
+October 22 follow-on: real eight-worker app-transport checks pass, as do full-upgraded-schema pinned-call/call-vs-SMS overlap and identity immutability. Fresh production function/ACL fingerprints match the expected released Facebook-only delta. Full table/policy/constraint drift and live/operator acceptance remain open.

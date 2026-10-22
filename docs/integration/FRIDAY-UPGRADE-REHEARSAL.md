@@ -33,7 +33,7 @@ Machine-readable evidence: `production-upgrade-result.json`. Raw log: `logs/frid
 
 ## Limits and next work
 
-This uses the saved October 20 catalog plus the separately released Facebook migration, not a fresh complete production export. It uses synthetic history and stubbed Auth/network/cron facilities. Populated compatibility fixtures now cover land, valuation and four historical call statuses; Real PostgreSQL offer/lot/valuation, trace-budget, scoring and restricted-ingress concurrency now pass using separate minimal fixtures. Full pinned-call overlap and requirement-by-requirement R1–R12 acceptance remain open. An injected SQL failure after migration six now proves rollback of partial DDL, functions and retained rows. Production-volume lock behavior remains unproven.
+This uses the saved October 20 catalog plus the separately released Facebook migration, not a fresh complete production export. It uses synthetic history and stubbed Auth/network/cron facilities. Populated compatibility fixtures now cover land, valuation and four historical call statuses; Real PostgreSQL offer/lot/valuation, trace-budget, scoring and restricted-ingress concurrency now pass using separate minimal fixtures. Full pinned-call/SMS overlap now passes; requirement-by-requirement R1–R12 acceptance remains open. An injected SQL failure after migration six now proves rollback of partial DDL, functions and retained rows. Production-volume lock behavior remains unproven.
 
 Next: run feature concurrency under isolated ingress, compare relevant catalog drift, and review the exact schema/runtime release boundary. Do not deploy this branch, apply these migrations, activate collection or messaging, or replay held work on the basis of this evidence. Full Friday launch remains dependent on live controlled delivery and operator acceptance as well as the chosen integrated feature set.
 
@@ -87,3 +87,32 @@ raw local log: `logs/friday-feature-concurrency.log`.
 This run uses minimal feature fixtures. It complements the populated saved-catalog
 upgrade test; it does not prove live provider delivery, operator acceptance or
 all new-feature interactions on the complete upgraded schema.
+
+## October 22 pinned call, SMS contention and production drift
+
+The separate `--postgres-sms` run passed eight-worker scheduler, work selection,
+acknowledgment, generation, session binding, reply dispatch, recovery and carrier
+reconciliation checks; each dispatch stage produced one claim. No providers were
+called. Evidence: `transport-concurrency-result-2026-10-22.json`.
+
+The full upgraded saved-catalog runner now invokes
+`verify_versioned_call_concurrency.py`. It confirms eight actual independent
+sessions wait on the same recipient advisory lock before competing. Both eight
+versioned-call attempts and a mixed eight-attempt call/Twilio SMS race produce
+exactly one claim and one persisted outbound record. The winning call retains
+its agent, version and sender. Four attempted identity changes raise the immutable
+identity exception and leave the saved row unchanged; reuse of the same reference
+cannot claim again. These are local SQL claims with zero provider calls.
+
+Fresh read-only production fingerprints captured October 22 at 10:40 Central
+cover function definitions and ACLs in public/private/wholesale_ingest/offer_review.
+Compared with the saved catalog: 120 existing functions, none missing, one expected
+changed definition (`protect_retell_form_transport`), one expected new function
+(`protect_facebook_submission`), and zero existing ACL changes. These are the
+released Facebook migration's changes. Migration history still ends at
+20261020192531. Checked offer-review, versioned-call and empty-session-recovery
+entry points remain absent. Sources: `production-function-fingerprints-2026-10-22.json`
+and `production-function-drift-2026-10-22.json`. This does not refresh table,
+constraint, policy or trigger drift; full catalog comparison remains required.
+
+Latest combined upgrade, pinned-call and intake run: ten journeys passed in 123.64 seconds. Raw log: `logs/friday-production-upgrade-pinned-calls.log`.
