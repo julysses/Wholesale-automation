@@ -1,3 +1,27 @@
+## October 22 checkpoint — buyer enrollment and exact policy review
+
+- [x] Separate public consumer form/privacy/terms routes outside operator login;
+  default-off enrollment, reviewed policies and exact approved-version gating.
+- [x] Administrator-only one-time private links, hashed capability, current-phone
+  binding, seven-day expiry and immutable choices/receipts. No invitations sent.
+- [x] Positive choices await administrator review with due task/notification;
+  refusals immediately keep buyer SMS off and block later review of older positives.
+  Review copies actual retained evidence and completes its task; DNC stays intact.
+- [x] Public receipt recovery without replay, disabled-program recovery, private
+  retained history and failed-save/correction UI. No SMS, email or phone verification.
+- [x] Backend 1370/10 skipped; frontend 327/62 files; build/typecheck and lint gate
+  pass (142 existing findings). Eighteen-proposal restore/rollback/ACL and real
+  enrollment/API tests pass. Final intake timing is in the upgrade result.
+- [ ] Exact proposed buyer policy wording/identity/privacy handling awaits owner
+  response in the local BUYER-SMS-PROGRAM-REVIEW.md. Current public policies exclude
+  unrelated marketing; no buyer consumer page has been published or enabled.
+- [ ] Carrier registration/pricing approval, approved sender, handset delivery/
+  reply/STOP, operator/JWT/tenancy, artifact/release/rollback and other Friday gates.
+
+Read docs/integration/BUYER-ENROLLMENT.md. All eighteen migration proposals remain
+unapplied; PR #21 stays draft and sending/schedules remain unactivated by this work.
+No actual provider calls, purchases, live data changes or deployment.
+
 ## October 22 checkpoint — dedicated buyer SMS implemented, live acceptance open
 
 - [x] Separate buyer route/configuration and private approval record; no homeowner

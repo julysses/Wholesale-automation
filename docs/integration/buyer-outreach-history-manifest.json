@@ -10,5 +10,5 @@
     "frontend/src/pages/BuyerIntelligence.tsx": "ad99532dffad5bdc46104f27cc916ce036f46436caacfaad984ac5a2fec13730",
     "frontend/tests/buyer-outreach-history.test.tsx": "5d01562e1a40fa08c4b25f0aa9a610545c6b205e4b57cc11f01e500a8aebca14"
   },
-  "current_candidate_note": "Source hashes refreshed for dedicated buyer SMS; earlier counts remain historical and scoped."
+  "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped."
 }

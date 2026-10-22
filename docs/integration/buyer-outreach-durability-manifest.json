@@ -16,12 +16,12 @@
     "frontend/src/components/buyers/OutreachLauncher.tsx": "8f77c46dce352f2bab32f479fdbb016c890a2bd00295e6e7861a4d0f20f2f590",
     "frontend/src/lib/outreachBatches.ts": "d6038951f891b73cfa46675bb60a092139926e3c0e6ae4175b0d52d5857dd8a4",
     "pipeline/integration/verify_buyer_outreach.py": "009dda19f3ed42eff99e1775abaf259a41498c2573e085d875465c0b84c298e2",
-    "pipeline/integration/rehearse_full_upgrade.py": "61ee0c9204c59aba2f4d087939096bbbb3d6a9da5e75f71edf7f94905eec3078",
-    "pipeline/integration/run_production_upgrade.py": "616d87f9137c53a932b8759be96f544a9c551c0053fde86987c2993e553ff6a9",
+    "pipeline/integration/rehearse_full_upgrade.py": "331fea4539fac8bf6417b67543a705bf448258e1b9b4204874c7c99bee351f34",
+    "pipeline/integration/run_production_upgrade.py": "fd581aede4bb127cc5912653cfcc7e0e366f6caf1f01f1830a07a6cf8d78e8e4",
     "tests/test_backend_launch_contracts.py": "61a960a406b2eb36a2ab44e0f876d4b72ccab690de8a57869ebf4bed9dcfd2dc",
     "frontend/tests/outreach-batches.test.tsx": "29e002d200e5410575c0a8a8a91c37b1a569a2d7aa281a3714f3e85a10b9e6bf",
     "frontend/tests/buyer-outreach-history.test.tsx": "5d01562e1a40fa08c4b25f0aa9a610545c6b205e4b57cc11f01e500a8aebca14",
     "frontend/tests/acquisitions-sms-results.test.tsx": "972dc141719d41034007614dd1a5dc18a1b19de3784f59a7340c5068ca51004c"
   },
-  "current_candidate_note": "Source hashes refreshed for dedicated buyer SMS; earlier counts remain historical and scoped."
+  "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped."
 }

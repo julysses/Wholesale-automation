@@ -15,6 +15,9 @@ def require_operator(request: Request) -> None:
     route_path = getattr(route, "path", "")
     if (request.method == "GET" and path in {"/api/health", "/api/readiness", "/api/config"}) or (
         (request.method, route_path) in {
+            ("GET", "/api/buyer-enrollment/config"),
+            ("POST", "/api/buyer-enrollment/receipt"),
+            ("POST", "/api/buyer-enrollment/submit"),
             ("GET", "/api/forms/{form_id}"),
             ("POST", "/api/forms/{form_id}/submit"),
         }

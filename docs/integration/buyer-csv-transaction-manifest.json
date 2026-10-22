@@ -12,5 +12,5 @@
     "frontend/tests/buyer-import-recovery.test.tsx": "f6273c8c1564503bb0c51c86dda49404b145fbc23832f8d7dd56521d9e1f6356",
     "tests/test_buyer_import_safety.py": "3dbfc48b261e8d86b9f6a37e0e7b36fdb68eb14c351879d89391e1216a6641ca"
   },
-  "current_candidate_note": "Source hashes refreshed for dedicated buyer SMS; earlier counts remain historical and scoped."
+  "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped."
 }

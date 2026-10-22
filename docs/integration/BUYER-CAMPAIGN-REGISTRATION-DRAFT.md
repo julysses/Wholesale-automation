@@ -110,3 +110,10 @@ contact information and homeowner-inquiry consent never enroll a buyer.
 
 Do not submit this draft as a statement that the missing workflow is live. Keep
 buyer SMS REQUIRED / NOT ACCEPTED; broad sending and schedules remain paused.
+
+Current candidate update: invitation-based consumer enrollment and separate buyer
+policy pages are now implemented, but remain unpublished/disabled and their exact
+wording awaits owner review. Registration must describe this actual invitation,
+optional choice and administrator review flow once it is live; do not claim that
+consumer enrollment is already available or submit an invented public proof URL.
+See BUYER-ENROLLMENT.md. No registration or purchase was performed.

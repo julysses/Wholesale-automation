@@ -76,6 +76,12 @@ class Settings:
     buyer_sms_from_number: str = os.getenv("BUYER_SMS_FROM_NUMBER", "")
     buyer_sms_brand: str = os.getenv("BUYER_SMS_BRAND", "")
 
+    buyer_enrollment_enabled: bool = os.getenv("BUYER_ENROLLMENT_ENABLED", "false").lower() == "true"
+    buyer_enrollment_policies_reviewed: bool = os.getenv("BUYER_ENROLLMENT_POLICIES_REVIEWED", "false").lower() == "true"
+    buyer_enrollment_public_origin: str = os.getenv("BUYER_ENROLLMENT_PUBLIC_ORIGIN", "")
+    buyer_enrollment_approved_version: str = os.getenv("BUYER_ENROLLMENT_APPROVED_VERSION", "")
+    buyer_enrollment_support: str = os.getenv("BUYER_ENROLLMENT_SUPPORT", "")
+
     # Email provider (SendGrid, Mailgun, Instantly)
     email_provider: str = os.getenv("EMAIL_PROVIDER", "sendgrid")
     sendgrid_api_key: str = os.getenv("SENDGRID_API_KEY", "")

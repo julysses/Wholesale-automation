@@ -15,5 +15,6 @@
   "20261022190018_integration_buyer_csv_transaction.sql",
   "20261022194256_integration_buyer_outreach_claims.sql",
   "20261022201934_integration_buyer_sms_consent.sql",
-  "20261022203734_integration_buyer_sms_transport.sql"
+  "20261022203734_integration_buyer_sms_transport.sql",
+  "20261022210254_integration_buyer_enrollment.sql"
 ]

@@ -47,6 +47,7 @@ from tools.crm import CRMStore                    # noqa: E402
 from web.api import router as ai_router           # noqa: E402
 from web.api.twilio_webhooks import router as twilio_router
 from web.api.buyer_twilio_webhooks import router as buyer_twilio_router
+from web.api.buyer_enrollment import router as buyer_enrollment_router
 from web.api.sendgrid_webhooks import router as sendgrid_router
 from web.api.email_api import router as email_router
 from web.api.calls_api import router as calls_router
@@ -113,6 +114,7 @@ else:
 app.include_router(ai_router)          # POST /api/ai/*
 app.include_router(twilio_router)
 app.include_router(buyer_twilio_router)
+app.include_router(buyer_enrollment_router)
 app.include_router(sendgrid_router)
 app.include_router(email_router)
 app.include_router(calls_router)

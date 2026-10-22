@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { BuyerEnrollmentAdmin } from './BuyerEnrollmentAdmin';
 import { Button } from '@/components/ui/button';
 
 type ConsentStatus = { buyer_id: string; phone: string | null; can_review: boolean; consent_ready: boolean;
@@ -77,6 +78,7 @@ export function BuyerSmsConsent({ buyerId }: { buyerId: string }) {
         <p className="whitespace-pre-wrap">Buyer action: {data.evidence?.affirmative_action}</p>
         <p>Evidence reference: {data.evidence?.source_url}</p><p>Evidence SHA-256: {data.evidence?.sha256}</p>
       </details>}
+      {data.can_review && <BuyerEnrollmentAdmin key={buyerId} buyerId={buyerId} onReviewed={() => { void status.refetch(); }} />}
       {!editing && (data.can_review ? <Button size="sm" variant="outline" onClick={begin}>Review written buyer consent</Button> : <p className="text-xs">An approved administrator must review written evidence.</p>)}
     </>}
     {editing && <form onSubmit={save} className="space-y-2 text-xs">

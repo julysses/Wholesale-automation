@@ -9,16 +9,16 @@
   "real_provider_calls": 0,
   "production_mutations": 0,
   "files": {
-    ".env.example": "e31a096b0f186951569af38d54156275edbdafcb48ab6d980e573c5bfd00800d",
-    "config/settings.py": "f3d9059f1b2aca40abf9736c7a9614965193eb7c6f8a532b9460de0830c03c14",
+    ".env.example": "09e1144c35c5979e28feb5d24875d03ea387ce02722fa157d577accc7c107f94",
+    "config/settings.py": "b10bc456b5dd65e078e7aec26f87484f30f4469d5851a92c24f52819b39b09f6",
     "web/api/buyer_outreach.py": "09363375958deaf60092e12541c82fbe4336928ffa9e24f0758cf7d376bdd2f3",
     "web/api/buyer_sms_consent.py": "d30b1f12683ef806fe2f4c900fc362d9b655de47382aba40f6c1793e8edacb16",
     "web/api/buyers_api.py": "ab5bf8eeeee3c981b3fa0a71166e7971db118c6ddd72552c4a122b34e2a71906",
     "web/api/buyer_twilio_webhooks.py": "843e21ef78a73a4f51a1f1c0f73e4d997393eb89a3fb25bf8ba3136ff860c931",
     "web/api/twilio_webhooks.py": "b16663a999f3da57d903ea822b7da0c230fafc7b64c9b32e061d872c615e8437",
-    "web/app.py": "a5d9b2ddc5aaefc42303b9f76c39edabf4e8afc24eed872f7dfb5b5588787fbd",
+    "web/app.py": "51f184dd4292f16a322e089cf7566b59c95ef7eb063ccd40606406dce17fc875",
     "tools/buyer_sms.py": "acbbd5a12810a84e79da2d533464cec8df3d8f6e261d3d47341c4ba09420128d",
-    "frontend/src/components/buyers/BuyerSmsConsent.tsx": "106a375ac616572a6a9e12bcaa6b27b29b87f1310845c04cc90751870a04f4c5",
+    "frontend/src/components/buyers/BuyerSmsConsent.tsx": "4a9ca5ddda692570d8ac41e7252a028d55f7bb01440abdada697cffa1435f9e8",
     "frontend/src/components/buyers/OutreachLauncher.tsx": "8f77c46dce352f2bab32f479fdbb016c890a2bd00295e6e7861a4d0f20f2f590",
     "frontend/tests/buyer-sms-consent.test.tsx": "fb6c242d5c52b89c9999ec2680a5983080c13ff34b41bfe1fa3fa08b6b359a9e",
     "frontend/tests/outreach-batches.test.tsx": "29e002d200e5410575c0a8a8a91c37b1a569a2d7aa281a3714f3e85a10b9e6bf",
@@ -26,8 +26,9 @@
     "tests/test_buyer_sms_safety.py": "b557246619e3b2d59cc5e38520fba6cc7ae2dbd721ff4fde273146cf50bb5fa5",
     "frontend/supabase/migrations/20261022203734_integration_buyer_sms_transport.sql": "9580e9224d298d2a5b14e740997f23d588b982ac8dd15a0925bd3549cfd89324",
     "pipeline/integration/verify_buyer_sms.py": "5b487add403cfd98ed70a0be2a4205d419800d5647389850a91719dea5295069",
-    "pipeline/integration/rehearse_full_upgrade.py": "61ee0c9204c59aba2f4d087939096bbbb3d6a9da5e75f71edf7f94905eec3078",
-    "pipeline/integration/run_production_upgrade.py": "616d87f9137c53a932b8759be96f544a9c551c0053fde86987c2993e553ff6a9",
-    "scripts/run_offline_tests.py": "3e5b80c0b66f1022f7c81696086f6a5eda8f83cf1f771369d100975360e24e49"
-  }
+    "pipeline/integration/rehearse_full_upgrade.py": "331fea4539fac8bf6417b67543a705bf448258e1b9b4204874c7c99bee351f34",
+    "pipeline/integration/run_production_upgrade.py": "fd581aede4bb127cc5912653cfcc7e0e366f6caf1f01f1830a07a6cf8d78e8e4",
+    "scripts/run_offline_tests.py": "95e061470364c1a0e1938cd1a702f69bdd13fc9d01f42c4bff58058928b24ea1"
+  },
+  "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped."
 }
