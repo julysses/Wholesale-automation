@@ -1,3 +1,9 @@
+October22 late refresh: the one-campaign inventory and homeowner-only description
+were rechecked unchanged. SMS-only972 search returned no results;817 returned DFW
+local numbers listed at$1.15/month. No Buy/Register action, reservation, purchase or
+configuration change occurred. Candidate reference retained in local launch plan;
+availability and final costs are not guaranteed. See CURRENT-RELEASE-DECISION.md.
+
 # Buyer deal-alert campaign — registration preparation, October 22
 
 Status: draft only; not submitted, purchased, registered or enabled. This preserves

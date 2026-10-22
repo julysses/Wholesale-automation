@@ -2,9 +2,9 @@
 
 This branch must not be deployed or merged until its isolated regression requirements pass and the owner approves the release. Code preparation is not SMS, provider or collection activation.
 
-## Current candidate — nineteen proposals, still unapplied
+## Current candidate — twenty proposals, still unapplied
 
-The authoritative ordered allowlist is `forward-migration-order.json` (19 files).
+The authoritative ordered allowlist is `forward-migration-order.json` (20 files).
 Later checkpoints add durable buyer outreach claims, reviewed buyer SMS consent,
 dedicated buyer transport and invitation-bound enrollment. The sections below
 record earlier checkpoints and must not be used as the current migration count.
@@ -12,6 +12,11 @@ The nineteenth proposal adds private manual buyer creation/cancellation receipts
 and changes only future SMS/email consent defaults to false. No existing row is
 opted in/out by that DDL. Preserve these receipts on rollback; a stopped request
 must not be reopened by replay or a return to the old direct browser create.
+The twentieth proposal adds private retained analysis requests, claims, one-way paid
+authorizations, results, commits and stop tombstones. They are durable evidence.
+Rollback must preserve paid unknown holds and saved results; do not restore the
+old BackgroundTasks/classification fallback or remove receipts to retry a charge.
+
 Owner approval on October 22 covers the exact buyer policy wording only; it does
 not approve this release, fees, registration or activation.
 
@@ -19,7 +24,7 @@ Before any production application, record the actual deployed source/artifact an
 refresh the production catalog/history/ACL and paused configuration. Capture and
 verify a restorable backup at the approved maintenance boundary. The disposable
 saved-catalog rehearsal proves candidate behavior against that snapshot, not a
-current production backup or a live restore. Verify the exact nineteen-file set
+current production backup or a live restore. Verify the exact twenty-file set
 and hashes against the reviewed commit; apply only that set in order. Keep calling,
 email, SMS, enrollment, collection workers and broad schedules paused throughout.
 
@@ -76,7 +81,7 @@ The metadata is a point-in-time planning snapshot, not full schema acceptance. R
 ## Eventual ordering
 
 1. Refresh deployed schema, history and ACL fingerprints.
-2. Verify baseline compatibility using a disposable production-shaped database and the current explicit nineteen-file allowlist.
+2. Verify baseline compatibility using a disposable production-shaped database and the current explicit twenty-file allowlist.
 3. Independently review historical timestamp equivalence. Do not repair migration history by guesswork.
 4. After separate release authorization, apply only the reviewed new feature schema in allowlist order, with workers and calling off.
 5. Deploy the matching tested runtime in paused mode. The versioned-call migration revokes the old RPC, so calling must remain off across the schema/runtime transition.
@@ -97,7 +102,7 @@ restore opted-out buyers, or reset DNC as a rollback. Preserve refusal ordering
 and old callbacks; changing transport identity requires a separate reviewed plan.
 A runtime rollback is acceptable only if its functions/grants remain compatible
 with the applied schema. Otherwise keep the relevant capability unavailable and
-ship a reviewed forward repair; do not reverse all eighteen migrations or restore
+ship a reviewed forward repair; do not reverse the twenty migrations or restore
 a pre-upgrade backup over new live receipts as a routine recovery action.
 
 ## Outstanding evidence

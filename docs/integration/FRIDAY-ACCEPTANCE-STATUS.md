@@ -1,3 +1,16 @@
+## Current status — October 22 final production refresh
+
+Read [CURRENT-RELEASE-DECISION.md](CURRENT-RELEASE-DECISION.md) first. Runtime44894b8
+passes all9 Linux jobs (run713), including retained explicit buyer analysis; all20
+forward proposals remain unapplied. Fresh live catalog and all121 function/ACL
+fingerprints match the rehearsal baseline; production remainsa898151. Buyer book
+is empty. Database ingestion outreach=false/trace budget=0, but effective Vercel
+sending flags remain unverified. Two existing DB monitor/retention cron jobs are
+active; do not interpret prior pause statements as proof every schedule is disabled.
+Owner wording approval is recorded. Carrier/cost/publication/fresh delivery gates,
+manual edits/deletes, source/volume/APN/operator/backup/release review remain open.
+All following dated checkpoints are historical where superseded.
+
 ## October 22 — manual buyer creation and consent defaults
 
 New manual buyer creates now have stable references, private immutable receipts,
