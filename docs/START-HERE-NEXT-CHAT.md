@@ -1,3 +1,31 @@
+## Latest checkpoint — October 22 saved buyer outreach history
+
+Continue in this exact `integration/` checkout on `codex/wholesale-integration-review`.
+This commit follows `35d8387`; verify local/remote HEAD before editing. PR #21 remains
+draft, production baseline `a898151`, app checkout `7df5e30`, candidate deployments
+excluded. No production mutation or provider call in this checkpoint.
+
+Read `docs/integration/BUYER-OUTREACH-HISTORY.md` and the current Friday matrix.
+The old silent 100-row history cap is replaced with count/identity-confirmed complete
+reads, 25-row rendering, literal search/channel filters, escaped full messages,
+destinations and raw status/provider/reply evidence. Unavailable history cannot
+become a verified empty set; failed refresh retains confirmed records with retry.
+Reading/refreshing starts no send. Confirmed buyer import refresh is immediate.
+Frontend 303/60 files, typecheck/build and lint gate pass (142 existing findings).
+Backend/pipeline/dependencies/fourteen migrations unchanged; prior evidence retained.
+
+Priority next: actual durable buyer attempts/logs/receipt/reply/retention. Existing
+buyer provider calls happen before logs, skipped attempts are not saved, buyer
+inserts omit provider IDs and repository search found no buyer-log callback update
+path. Do not mistake complete saved rows for complete actual-send evidence or replay
+unknown attempts. Also finish explicit classification/rescore durability, manual
+buyer-create lost acknowledgments, APN event-history/volume locks and signed-in
+whole workflows. Production JWT/tenancy, artifact/interpreter/installer/rollback,
+source consent/routing and controlled live owner inbox/handset delivery/reply/STOP
+remain open. Shared phone authorized; last four and owner inbox unconfirmed. Keep
+broad schedules paused, suppression intact and held sessions unreplayed. Friday
+October 23 remains the full active launch goal, with readiness unproven.
+
 ## Latest checkpoint — October 22 Python dependency security
 
 Continue in the exact `integration/` checkout on `codex/wholesale-integration-review`.

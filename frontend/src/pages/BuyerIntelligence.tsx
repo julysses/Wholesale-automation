@@ -9,9 +9,10 @@ import { apiFetch } from '@/lib/api';
  *   Outreach Log  — SMS/email sent history with response tracking
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BuyerOutreachHistory } from '@/components/buyers/BuyerOutreachHistory';
 import { queryAllConfirmed } from '@/lib/queryAll';
 import { BuyerScoreRing, BuyerScoreBadge } from '@/components/buyers/BuyerScoreRing';
 import { BuyerImportModal } from '@/components/buyers/BuyerImportModal';
@@ -60,18 +61,6 @@ interface IBIEBuyer {
   transaction_count?: number;
   outreach_ignore_count?: number;
   ai_classified_at?: string;
-}
-
-interface OutreachRow {
-  id: string;
-  created_at: string;
-  channel: string;
-  status: string;
-  body: string;
-  to_address: string;
-  buyer_id: string;
-  replied_at?: string;
-  buyers?: { first_name: string; last_name: string };
 }
 
 interface SegmentSummary {
@@ -132,7 +121,7 @@ type TabId = typeof TABS[number]['id'];
 export function BuyerIntelligence() {
   const [tab, setTab] = useState<TabId>('leaderboard');
   const [page, setPage] = useState(1);
-  const [outreachLog, setOutreachLog] = useState<OutreachRow[]>([]);
+  const queryClient = useQueryClient();
   const [rescoring, setRescoring] = useState(false);
 
   // Filters
@@ -159,17 +148,6 @@ export function BuyerIntelligence() {
   const buyers = buyersQuery.data ?? [];
   const loading = buyersQuery.isPending && !buyersQuery.data;
   const loadBuyers = () => { void buyersQuery.refetch(); };
-
-  const loadOutreachLog = async () => {
-    const { data } = await supabase
-      .from('buyer_outreach_log')
-      .select('*, buyers(first_name, last_name)')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    setOutreachLog((data as OutreachRow[]) || []);
-  };
-
-  useEffect(() => { if (tab === 'outreach') loadOutreachLog(); }, [tab]);
 
   const handleRescore = async () => {
     setRescoring(true);
@@ -482,7 +460,8 @@ export function BuyerIntelligence() {
                 onSent={() => {
                   setMatchSelectedIds([]);
                   setTab('outreach');
-                  loadOutreachLog();
+                  void queryClient.invalidateQueries({ queryKey: ['buyer_outreach_log'] });
+                  setTab('outreach');
                 }}
               />
             )}
@@ -490,61 +469,13 @@ export function BuyerIntelligence() {
         </div>
       )}
 
-      {/* ── Tab: Outreach Log ─────────────────────────────────────────── */}
-      {tab === 'outreach' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  {['Buyer','Channel','Status','Message','Sent','Reply'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {outreachLog.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-400">No outreach sent yet</td></tr>
-                ) : outreachLog.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {row.buyers?.first_name} {row.buyers?.last_name}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={cn('text-xs px-2 py-0.5 rounded font-medium uppercase',
-                        row.channel === 'sms' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-                      )}>
-                        {row.channel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={cn('text-xs px-2 py-0.5 rounded',
-                        row.status === 'sent' || row.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                        row.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                      )}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 max-w-64 truncate text-xs">{row.body}</td>
-                    <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{formatDate(row.created_at)}</td>
-                    <td className="px-4 py-3">
-                      {row.replied_at
-                        ? <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Replied</span>
-                        : <span className="text-xs text-gray-300">—</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {tab === 'outreach' && <BuyerOutreachHistory />}
 
       {/* Import modal */}
       <BuyerImportModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onImported={() => { setTimeout(loadBuyers, 3000); }}
+        onImported={loadBuyers}
       />
 
       {/* Buyer profile drawer */}

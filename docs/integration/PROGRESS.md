@@ -1,5 +1,24 @@
 # Selective WholesaleOS integration
 
+## Latest October 22 checkpoint — saved buyer outreach visibility
+
+- [x] Replace the silent 100-row history read with complete count/identity-checked
+  pages, bounded rendering, search/channel filters and full escaped message review.
+- [x] Separate unavailable reads from verified-empty saved history; preserve previous
+  confirmed data with explicit retry after refresh failure. Show raw recorded status,
+  destination, direction, provider/receipt absence and recorded reply evidence.
+- [x] Verify 1,003 simulated saved records, row caps, partial/missing/changing/repeated
+  reads, failed-refresh recovery, inert HTML and actual-tab lazy reads without sends.
+- [x] Frontend 303/60 files, build/typecheck and lint gate pass (142 existing findings).
+  Backend, pipeline, dependencies, migrations and production remain unchanged.
+- [ ] Durable actual attempt/log/receipt/reply/retention coverage: current buyer send
+  paths omit skipped attempts and provider IDs; no buyer-log callback update path
+  was found. Reading all saved rows does not resolve this acceptance gap.
+
+See `BUYER-OUTREACH-HISTORY.md`; remaining signed-in, volume/APN, manual CRUD,
+classification/rescore, Auth, artifact/rollback and live release gates remain open.
+PR #21 stays draft; broad schedules remain paused and fourteen proposals unapplied.
+
 ## Latest October 22 checkpoint — locked Python dependencies and audit
 
 - [x] Hash-pin all 84 root and 61 API dependencies at the already-tested versions;

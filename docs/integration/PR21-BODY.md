@@ -6,13 +6,13 @@ The Facebook intake schema is already released in production. Do not reapply it.
 
 The candidate includes production commit `a89815126d9a98ced016167d8e383641d133135f`, including native queue recovery and competing-insert tests. Both candidate deployment blocks are retained.
 
-Buyer lists now confirm complete reads before replacing records/totals, paginate rendering, retain cached records on failed refresh and show uncategorized land buyers. Purchase history is bound to the selected buyer and validated before display. Complete active-buyer matching, classifier history and existing active/land preference editing are also covered. Buyer CSV now saves its full data/log/immutable receipt in one service-only transaction, with stable retry, no insert fallback and no automatic background work. Imported contacts do not grant consent; existing controls survive. Conflicting identity/history requires review. Explicit classification/rescore durability, manual-create uncertainty and outreach-log completeness remain open.
+Buyer lists now confirm complete reads before replacing records/totals, paginate rendering, retain cached records on failed refresh and show uncategorized land buyers. Purchase history is bound to the selected buyer and validated before display. Complete active-buyer matching, classifier history and existing active/land preference editing are also covered. Buyer CSV now saves its full data/log/immutable receipt in one service-only transaction, with stable retry, no insert fallback and no automatic background work. Imported contacts do not grant consent; existing controls survive. Conflicting identity/history requires review. The saved outreach tab now reads complete count-checked records, provides search/paging/receipt/message review and retains confirmed data on read failure; verified empty logs do not claim no outreach occurred. Explicit classification/rescore durability, manual-create uncertainty and actual attempt/receipt/reply/retention coverage remain open.
 
 Python release inputs are now fully hash-pinned: 84 root and 61 API packages retain their previously tested versions; 29 audit-tool packages are isolated from the app. Vercel's Python 3.12 selector is explicit and CI/Docker are aligned. Fresh root/API/tool installs pass dependency checks, the fresh root suite passes, and the API-only app loads with real health/auth rejection and Twilio checks. PyPI audits find no known vulnerabilities in these three sets. Existing local pip 25.0.1 findings are recorded separately; CI/Docker/fresh environments use 26.2.2. Production's actual platform interpreter/installer and artifact are not established by these checks.
 
 Validation to date:
 
-- Clean, hash-verified Python root environment: 1,345 passed, 10 skipped; frontend: 295 tests across 59 files passed. Typecheck/build and lint gate pass, with 142 existing findings. Pipeline: 231 tests passed.
+- Clean, hash-verified Python root environment: 1,345 passed, 10 skipped; frontend: 303 tests across 60 files passed. Typecheck/build and lint gate pass, with 142 existing findings. Pipeline: 231 tests passed.
 - The October 22 production metadata capture matches the restored baseline plus the released Facebook delta, including 17 view security/grant sets. Fourteen-migration apply, full/injected failure rollback and historical preservation pass.
 - Ten connected API/PostgreSQL intake journeys pass across Hilltop, Jays and native Facebook with Auth/providers stubbed (final timing recorded in the upgrade result).
 - Main CSV real-SQL checks cover 24 normalization cases, configured ownership/due tasks, 501-row task creation, lookup beyond 1,000 existing records, immutable retry, history/DNC/completed-task preservation and eight overlapping uploads creating one property/task.
@@ -29,8 +29,11 @@ Synthetic/local checks do not establish production Auth/JWT behavior, carrier/ha
 
 The new buyer import proposal takes bounded table write locks to protect identity decisions and preserves the existing APN-per-buyer unique index. Production-volume locks and distinct events on one parcel require review before rollout; current tests do not certify these gates.
 
+The saved-history repair does not establish that all sends were logged: buyer sends still precede log persistence, current buyer inserts omit provider IDs, and no buyer-log callback update path was found. These remain release acceptance gaps. This UI checkpoint performs no send, retry or production mutation.
+
 Review:
 
+- [Buyer saved outreach visibility and evidence limits](docs/integration/BUYER-OUTREACH-HISTORY.md)
 - [Python dependency security and evidence limits](docs/integration/PYTHON-DEPENDENCY-SECURITY.md)
 - [Friday acceptance status](docs/integration/FRIDAY-ACCEPTANCE-STATUS.md)
 - [Release boundary and rollback constraints](docs/integration/RELEASE-BOUNDARY.md)

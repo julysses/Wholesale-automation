@@ -7,7 +7,7 @@ manual land repair, main CSV intake and a new atomic buyer CSV transaction. Buye
 imports now confirm complete data/log/receipt commits, support stable retry and
 preserve buyer controls/consent. See `BUYER-CSV-TRANSACTION.md`,
 `BUYER-READ-COMPLETENESS.md`, `CSV-LEAD-TRANSACTION.md` and `MANUAL-LAND-IMPORT.md`.
-Backend 1,345 / frontend 295 / pipeline 231 pass, with build/typecheck and lint gate.
+Backend 1,345 / frontend 303 / pipeline 231 pass, with build/typecheck and lint gate.
 No production schema, runtime, schedules or providers changed.
 
 Target: October 23, 2026. This is a requirement review checkpoint, not go-live certification.
@@ -22,11 +22,11 @@ The original requirements remain in `WholesaleOS-Integration-Assessment.md` R1â€
 | R5 Provider receipts | Connected mocked receipt and duplicate/out-of-order suites pass | Actual bound carrier delivery/callback and owner handset evidence |
 | R6 Pause and expiry | Upgraded synthetic scheduler pauses retained; disabled/expiry suites pass | Database schedulers and outbound cron freshly confirmed paused; effective runtime flags require Vercel email verification before bounded live scope |
 | R7 Tasks and alerts | Connected reply tasks, notification and mocked email journeys pass | Owner confirms real email, task and CRM history during live tests |
-| R8 Retention and import | Pipeline and frontend regression suites pass | Land and standalone lead import regressions fixed; real SQL retries/concurrency/preservation pass. Main CSV API/UI, ownership, exact retry, concurrency and one-way AI claims/results pass locally. Bounded multi-batch AI recovery now passes with immutable checkpoints and an operator panel. Buyer list/history completeness and nullable preference edits now pass, including 1,003-row real-SQL reads. Atomic buyer CSV commits, consent preservation, lost-response recovery and competing imports now pass locally. Durable explicit classification/rescoring, manual-create ambiguity, outreach-log completeness, APN event-history review, production-volume locks and signed-in operator review remain open. Complete land pagination/error recovery now pass |
+| R8 Retention and import | Pipeline and frontend regression suites pass | Land and standalone lead import regressions fixed; real SQL retries/concurrency/preservation pass. Main CSV API/UI, ownership, exact retry, concurrency and one-way AI claims/results pass locally. Bounded multi-batch AI recovery now passes with immutable checkpoints and an operator panel. Buyer list/history completeness and nullable preference edits now pass, including 1,003-row real-SQL reads. Atomic buyer CSV commits, consent preservation, lost-response recovery and competing imports now pass locally. Durable explicit classification/rescoring, manual-create ambiguity, actual buyer attempt/receipt/reply/retention coverage, APN event-history review, production-volume locks and signed-in operator review remain open. Complete land pagination/error recovery now pass. Saved buyer outreach visibility/error recovery now passes with 1,003 simulated rows; see `BUYER-OUTREACH-HISTORY.md` for missing backend evidence |
 | R9 County/trace/scoring | Restricted ingress, trace caps and scoring concurrency pass; pipeline 231 tests | Current source completeness/PropStream end-to-end acceptance within existing spend cap |
 | R10 Feature bundles | Real concurrent offer/property, lot and valuation checks pass on minimal fixtures | Full upgraded-schema call/SMS overlap now passes; remaining feature interactions and operator workflow acceptance |
 | R11 Schema and access | Saved catalog with synthetic historical rows, fourteen proposed migrations, partial/full rollback, ACL assertions pass | Fresh shape comparison now matches the released baseline across tables, constraints, indexes, triggers, policies, views, view security and grants. Function delta matches the Facebook release. Exact release manifest/recovery review and production-volume locks remain open |
-| R12 Frontend and release | 295 tests, build/typecheck and lint gate pass; candidate deployment disabled | Signed-in complete operator walkthrough, matching deployed API/schema, reviewed release artifact |
+| R12 Frontend and release | 303 tests, build/typecheck and lint gate pass; candidate deployment disabled | Signed-in complete operator walkthrough, matching deployed API/schema, reviewed release artifact |
 
 Frontend dependencies: Vite 6.4.5, Vitest 4.1.12, follow-redirects 1.16.1;
 clean installation audits report zero vulnerabilities. Pipeline installation audit
