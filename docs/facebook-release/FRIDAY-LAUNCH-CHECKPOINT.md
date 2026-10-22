@@ -86,3 +86,17 @@ Six failed before the fix; all eight pass after it. The 36 focused native intake
 checks pass. Full release backend: 1,139 passed, 10 skipped; full integration
 backend: 1,269 passed, 10 skipped. Local PostgreSQL eight-worker contention passes.
 These changes are candidate code only, not deployed production fixes.
+
+## October 22 dependency verification
+
+Installed locked frontend dependencies with lifecycle scripts disabled. The initial
+audit reported four findings (two high, two moderate). Compatible updates changed
+Vite 6.4.3 to 6.4.5 and follow-redirects 1.16.0 to 1.16.1; the pinned Vitest and
+its matched packages changed 4.1.11 to 4.1.12. Installation audits report zero
+vulnerabilities afterward. No force upgrade or major-version change was used.
+
+Both branches use identical package manifests and lockfiles. After the updates:
+release frontend 179/179 tests, integration frontend 240/240 tests; both typecheck
+and production build pass. Lint gates pass with existing debt unchanged (release
+147, integration 144). Existing bundle-size warnings remain. These are candidate
+changes; production deployment was not changed.
