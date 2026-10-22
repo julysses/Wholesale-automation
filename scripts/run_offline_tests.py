@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix="wholesale-offline-home-") as home:
         "DATABASE_URL": "sqlite:///:memory:",
     }
     command = sys.argv[1:]
-    if command in (["--postgres-sms"], ["--lead-journeys"], ["--production-upgrade"], ["--schema-security"], ["--buyer-sms"], ["--buyer-enrollment"], ["--buyer-manual"]):
+    if command in (["--postgres-sms"], ["--lead-journeys"], ["--production-upgrade"], ["--schema-security"], ["--buyer-sms"], ["--buyer-enrollment"], ["--buyer-manual"], ["--buyer-analysis"]):
         # The existing runner creates its own cluster, URL and database, then
         # destroys it in finally. Node may connect only to that generated URL.
         env["PYTHONPATH"] = str(root)
@@ -38,7 +38,7 @@ with tempfile.TemporaryDirectory(prefix="wholesale-offline-home-") as home:
         if "PG_BIN" in os.environ:
             env["PG_BIN"] = os.environ["PG_BIN"]
         runner = {"--lead-journeys": "run_lead_journeys.py", "--postgres-sms": "run_sms_transport.py",
-                  "--production-upgrade": "run_production_upgrade.py", "--schema-security": "run_production_upgrade.py", "--buyer-sms": "run_production_upgrade.py", "--buyer-enrollment": "run_production_upgrade.py", "--buyer-manual": "run_production_upgrade.py"}[command[0]]
-        mode = command if command in (["--schema-security"], ["--buyer-sms"], ["--buyer-enrollment"], ["--buyer-manual"]) else []
+                  "--production-upgrade": "run_production_upgrade.py", "--schema-security": "run_production_upgrade.py", "--buyer-sms": "run_production_upgrade.py", "--buyer-enrollment": "run_production_upgrade.py", "--buyer-manual": "run_production_upgrade.py", "--buyer-analysis": "run_production_upgrade.py"}[command[0]]
+        mode = command if command in (["--schema-security"], ["--buyer-sms"], ["--buyer-enrollment"], ["--buyer-manual"], ["--buyer-analysis"]) else []
         command = [sys.executable, str(root / "pipeline/integration" / runner), *mode]
     raise SystemExit(subprocess.run(command, cwd=root, env=env).returncode)

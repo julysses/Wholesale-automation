@@ -23,10 +23,9 @@ import html
 import logging
 import os
 import re
-from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile, Request
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Request
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
@@ -42,6 +41,7 @@ from tools.buyer_intelligence_engine import (
 from tools.buyer_csv_parser import parse_buyer_csv
 from web.api.buyer_sms_consent import ConsentReview
 
+IN_CHUNK = 200
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/buyers", tags=["Buyer Intelligence"])
 
@@ -203,86 +203,12 @@ async def import_buyers_csv(
 
 
 @router.post("/score")
-async def score_buyers(req: ScoreRequest, background_tasks: BackgroundTasks) -> dict:
-    """
-    Re-score one buyer or all buyers (buyer_id=None).
-    Returns immediately; scoring happens in background.
-    """
-    background_tasks.add_task(_run_scoring, req.buyer_id)
-    return {
-        "status": "scoring_queued",
-        "buyer_id": req.buyer_id or "all",
-        "message": "Scores will be updated in the background",
-    }
+async def score_buyers(req: ScoreRequest) -> dict:
+    raise HTTPException(409, 'Prepare a retained buyer analysis request before rescoring')
 
 
-SCORE_PAGE = 1000
-IN_CHUNK = 200
-
-
-async def _run_scoring(buyer_id: Optional[str], buyer_ids: Optional[list[str]] = None) -> None:
-    """Background: load buyers + transactions → compute + persist scores.
-
-    Pages through buyers (PostgREST caps a response at ~1000 rows) and chunks the
-    transaction ``in`` filter so large books don't silently truncate or overflow
-    the request URL.
-    """
-    sb = _get_supabase()
-    if not sb:
-        return
-
-    try:
-        buyers: list[dict[str, Any]] = []
-        if buyer_id:
-            buyer_resp = sb.table("buyers").select("*").eq("id", buyer_id).single().execute()
-            buyers = [buyer_resp.data] if buyer_resp.data else []
-        elif buyer_ids:
-            for i in range(0, len(buyer_ids), IN_CHUNK):
-                resp = sb.table("buyers").select("*").in_("id", buyer_ids[i:i + IN_CHUNK]).execute()
-                buyers.extend(resp.data or [])
-        else:
-            offset = 0
-            while True:
-                page = (
-                    sb.table("buyers").select("*").eq("active", True)
-                    .order("id").range(offset, offset + SCORE_PAGE - 1).execute().data or []
-                )
-                if not page:
-                    break
-                buyers.extend(page)
-                offset += len(page)
-
-        if not buyers:
-            return
-
-        all_ids = [b["id"] for b in buyers]
-        tx_map: dict[str, list] = {bid: [] for bid in all_ids}
-        for i in range(0, len(all_ids), IN_CHUNK):
-            offset = 0
-            while True:
-                page = (
-                    sb.table("buyer_transactions").select("*")
-                    .in_("buyer_id", all_ids[i:i + IN_CHUNK])
-                    .order("id").range(offset, offset + SCORE_PAGE - 1).execute().data or []
-                )
-                if not page:
-                    break
-                for tx in page:
-                    if tx.get("buyer_id") in tx_map:
-                        tx_map[tx["buyer_id"]].append(tx)
-                offset += len(page)
-
-        from tools.buyer_intelligence_engine import batch_score_buyers
-        updates = batch_score_buyers(buyers, tx_map)
-
-        for update in updates:
-            bid = update.pop("id")
-            sb.table("buyers").update(update).eq("id", bid).execute()
-
-        logger.info(f"[buyers_api/score] Scored {len(updates)} buyers")
-
-    except Exception as exc:
-        logger.error(f"[buyers_api/score] Scoring failed: {exc}")
+async def _run_scoring(*args, **kwargs) -> None:
+    raise RuntimeError('Use explicit retained buyer analysis; background scoring is disabled')
 
 
 @router.get("/imports")
@@ -486,46 +412,12 @@ def get_buyer_transactions(buyer_id: str) -> dict:
 
 
 @router.post("/{buyer_id}/classify")
-async def classify_buyer(buyer_id: str, background_tasks: BackgroundTasks) -> dict:
-    """Run AI classification for a single buyer."""
-    background_tasks.add_task(_run_classify, buyer_id)
-    return {
-        "status": "classification_queued",
-        "buyer_id": buyer_id,
-    }
+async def classify_buyer(buyer_id: str) -> dict:
+    raise HTTPException(409, 'Prepare a retained request and review paid classification first')
 
 
-async def _run_classify(buyer_id: str) -> None:
-    sb = _get_supabase()
-    if not sb:
-        return
-    try:
-        buyer_resp = sb.table("buyers").select("*").eq("id", buyer_id).single().execute()
-        buyer = buyer_resp.data
-        if not buyer:
-            return
-
-        txs = _read_all_confirmed(lambda: sb.table("buyer_transactions").select("*",count="exact")
-            .eq("buyer_id",buyer_id).order("purchase_date",desc=True).order("id"),"Buyer classification history")
-
-        from agents.buyer_intelligence_agent import BuyerIntelligenceAgent
-        agent = BuyerIntelligenceAgent()
-        result = agent.classify_buyer(buyer, txs)
-
-        from tools.buyer_intelligence_engine import compute_tags
-        tags = compute_tags({**buyer, "buyer_type_ibie": result.buyer_type_ibie})
-        all_tags = list(set(tags + result.suggested_tags))
-
-        sb.table("buyers").update({
-            "buyer_type_ibie":  result.buyer_type_ibie,
-            "ai_classified_at": datetime.now(timezone.utc).isoformat(),
-            "tags":             all_tags,
-        }).eq("id", buyer_id).execute()
-
-        logger.info(f"[buyers_api/classify] {buyer_id} → {result.buyer_type_ibie} ({result.confidence:.2f})")
-
-    except Exception as exc:
-        logger.error(f"[buyers_api/classify] Failed for {buyer_id}: {exc}")
+async def _run_classify(*args, **kwargs) -> None:
+    raise RuntimeError('Use explicit retained buyer analysis; background classification is disabled')
 
 
 @router.get("/{buyer_id}/sms-consent")

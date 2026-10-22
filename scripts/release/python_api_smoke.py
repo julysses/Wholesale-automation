@@ -12,4 +12,5 @@ assert client.post('/api/buyers/import').status_code == 401
 assert client.post('/api/buyers/manual', json={'request_id':'00000000-0000-4000-8000-000000000001',
     'buyer':{'first_name':'Synthetic','last_name':'Smoke'}}).status_code == 401
 assert version('twilio') == '9.11.2'
+assert client.get('/api/buyers/analysis/config').status_code==401
 print('API-only cold-start, health, protected buyer routes and Twilio SDK: passed; no provider calls')

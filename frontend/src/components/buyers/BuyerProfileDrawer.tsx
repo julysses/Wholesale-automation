@@ -21,7 +21,7 @@ import {
   X, Phone, Mail, MapPin, DollarSign, Building2, Tag, Brain,
   TrendingUp, Home, Calendar, Banknote, Clock, CheckCircle2
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { BuyerAnalysisPanel } from './BuyerAnalysisPanel';
 
 interface BuyerTransaction {
   id: string;
@@ -57,7 +57,6 @@ const TAG_COLORS: Record<string, string> = {
 };
 
 export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerProfileDrawerProps) {
-  const [classifying, setClassifying] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const buyerId = buyer?.id ? String(buyer.id) : null;
@@ -85,20 +84,6 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
   const transactions = history.data;
   const currentPage = Math.min(historyPage, Math.max(1, Math.ceil((transactions?.length ?? 0) / 25)));
   const visibleTransactions = transactions?.slice((currentPage - 1) * 25, currentPage * 25) ?? [];
-
-  const handleClassify = async () => {
-    if (!buyer?.id) return;
-    setClassifying(true);
-    try {
-      await apiFetch(`/api/buyers/${buyer.id}/classify`, { method: 'POST' });
-      toast.success('Classification queued — refresh in a moment');
-      onUpdated?.();
-    } catch {
-      toast.error('Classification failed');
-    } finally {
-      setClassifying(false);
-    }
-  };
 
   if (!buyer || !open) return null;
 
@@ -214,9 +199,7 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
                     : 'Not yet classified'}
                 </p>
               </div>
-              <Button size="sm" variant="outline" onClick={handleClassify} loading={classifying}>
-                Classify
-              </Button>
+              <BuyerAnalysisPanel key={buyer.id} kind="classify" buyerId={String(buyer.id)} onUpdated={onUpdated} />
             </div>
 
             {/* Transaction history */}

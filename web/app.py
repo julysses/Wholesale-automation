@@ -58,6 +58,7 @@ from web.api.webhooks import router as webhook_router  # noqa: E402
 from web.api.lead_forms_api import router as lead_forms_router  # noqa: E402
 from web.api.buyers_api import router as buyers_router  # noqa: E402
 from web.api.buyer_manual import router as buyer_manual_router
+from web.api.buyer_analysis import router as buyer_analysis_router
 from web.api.fb_ads_api import router as fb_ads_router  # noqa: E402
 from web.api.marketing_api import router as marketing_router  # noqa: E402
 from web.api.leads_api import router as leads_router          # noqa: E402
@@ -133,6 +134,7 @@ app.include_router(nurture_router)
 app.include_router(webhook_router)     # POST /webhooks/* — dialer + SMS inbound events
 app.include_router(lead_forms_router)  # GET/POST /api/forms/*, /api/lead-gen/*, /api/ai/lead-gen/*
 app.include_router(buyers_router)      # POST/GET /api/buyers/*
+app.include_router(buyer_analysis_router)
 app.include_router(buyer_manual_router)
 app.include_router(fb_ads_router)      # POST /api/ai/fb-ads/*
 app.include_router(marketing_router)   # POST /api/marketing/*

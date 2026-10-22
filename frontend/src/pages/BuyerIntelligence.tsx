@@ -1,4 +1,3 @@
-import { apiFetch } from '@/lib/api';
 /**
  * BuyerIntelligence — Investor Buyer Intelligence Engine (IBIE) Dashboard.
  *
@@ -22,11 +21,12 @@ import { BuyerProfileDrawer } from '@/components/buyers/BuyerProfileDrawer';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, formatDate, phoneFormat } from '@/lib/utils';
 import {
-  Users, Upload, Zap, MessageSquare, RefreshCw, Filter,
+  Users, Upload, Zap, MessageSquare, Filter,
   Search, ChevronDown, TrendingUp, Building2, DollarSign,
   Star, Award, Flame
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BuyerAnalysisPanel } from '@/components/buyers/BuyerAnalysisPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -122,7 +122,6 @@ export function BuyerIntelligence() {
   const [tab, setTab] = useState<TabId>('leaderboard');
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
-  const [rescoring, setRescoring] = useState(false);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -148,18 +147,6 @@ export function BuyerIntelligence() {
   const buyers = buyersQuery.data ?? [];
   const loading = buyersQuery.isPending && !buyersQuery.data;
   const loadBuyers = () => { void buyersQuery.refetch(); };
-
-  const handleRescore = async () => {
-    setRescoring(true);
-    try {
-      await apiFetch('/api/buyers/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-      toast.success('Re-scoring queued — refresh in 30 seconds');
-    } catch {
-      toast.error('Re-score failed');
-    } finally {
-      setRescoring(false);
-    }
-  };
 
   // Client-side search filter
   const filtered = buyers.filter((b) => {
@@ -194,10 +181,7 @@ export function BuyerIntelligence() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleRescore} loading={rescoring}>
-            <RefreshCw className="h-4 w-4 mr-1.5" />
-            Re-Score All
-          </Button>
+          <BuyerAnalysisPanel kind="score" onUpdated={loadBuyers} />
           <Button size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-1.5" />
             Import CSV

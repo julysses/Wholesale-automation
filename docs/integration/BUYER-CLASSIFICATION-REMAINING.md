@@ -1,3 +1,7 @@
+# Historical investigation — superseded by candidate implementation
+
+See [BUYER-ANALYSIS-RECOVERY.md](BUYER-ANALYSIS-RECOVERY.md) for the new retained protocol and its verification limits. The following describes the pre-repair investigation, not current candidate behavior. Live acceptance is still open.
+
 # Remaining explicit buyer analysis — October 22 investigation
 
 Manual buyer creation is covered separately; this gate is still open.

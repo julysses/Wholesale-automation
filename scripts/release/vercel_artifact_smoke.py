@@ -18,7 +18,7 @@ assert config['architecture'] == 'x86_64'
 assert config['handler'] == 'vc__handler__python.vc_handler'
 mapping = config['filePathMap']
 for required in ('api/index.py', 'web/app.py', 'web/spa.py',
-                 'web/api/buyer_enrollment.py', 'web/api/buyer_twilio_webhooks.py', 'web/api/buyer_manual.py'):
+                 'web/api/buyer_enrollment.py', 'web/api/buyer_twilio_webhooks.py', 'web/api/buyer_manual.py', 'web/api/buyer_analysis.py'):
     assert required in mapping, required
 routes = json.loads((output / 'config.json').read_text())['routes']
 assert any(r.get('dest') == '/api/index.py' for r in routes)
@@ -56,6 +56,7 @@ assert c.get('/api/health').status_code==200
 assert c.get('/api/buyers/leaderboard').status_code==401
 assert c.get('/api/buyers/enrollment-program').status_code==401
 assert c.post('/api/buyers/import').status_code==401
+assert c.get('/api/buyers/analysis/config').status_code==401
 assert c.post('/api/buyers/manual',json={'request_id':'00000000-0000-4000-8000-000000000001','buyer':{'first_name':'Synthetic','last_name':'Bundle'}}).status_code==401
 assert c.get('/api/buyer-enrollment/config').json()=={'available':False,'program':None}
 assert version('twilio')=='9.11.2'
