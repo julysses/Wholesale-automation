@@ -70,7 +70,7 @@ export function BuyerSmsConsent({ buyerId }: { buyerId: string }) {
     {status.isError && <div role="alert">Saved consent is unavailable. <Button size="sm" onClick={() => status.refetch()}>Retry buyer consent</Button></div>}
     {data && <>
       <p className="text-xs">{data.suppressed ? 'Phone is suppressed. This screen cannot clear it.' : data.consent_ready ? 'Written consent review is saved for the current number.' : 'Current number has no accepted written consent review.'}</p>
-      <p className="text-xs text-amber-800">SMS sending remains unavailable until the buyer campaign and delivery workflow pass acceptance.</p>
+      <p className="text-xs text-amber-800">{data.sending_available ? 'Consent and sender checks are ready. Sending hours and daily limits still apply.' : 'SMS sending remains unavailable until the buyer campaign and delivery workflow pass acceptance.'}</p>
       {data.receipt_id && <details className="text-xs"><summary>Saved consent review</summary>
         <p>Reference: {data.receipt_id}</p><p>Phone: {data.phone}</p><p>Recorded: {data.recorded_at}</p>
         <p className="whitespace-pre-wrap">Disclosure: {data.evidence?.disclosure}</p>

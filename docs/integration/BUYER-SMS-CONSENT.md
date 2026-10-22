@@ -1,3 +1,8 @@
+Current update: the dedicated transport now enforces this reviewed consent and
+current suppression at reservation and final authorization. Readiness reflects
+the current route/consent checks. See BUYER-SMS-TRANSPORT.md. No real route is
+approved/enabled; consumer enrollment and carrier/handset acceptance remain open.
+
 # Reviewed buyer SMS consent — candidate October 22
 
 The sixteenth unapplied proposal adds a private immutable record of an

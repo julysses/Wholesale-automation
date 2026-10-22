@@ -1,4 +1,4 @@
-"""One-way buyer email dispatch; existing inquiry-only SMS route stays unavailable."""
+"""Durable buyer email and separate, explicitly approved buyer SMS dispatch."""
 from uuid import NAMESPACE_URL, UUID, uuid5
 import html
 import re
@@ -20,10 +20,13 @@ def _receipt(value, reference):
 
 def dispatch(db, operator, req, channel):
     from tools.email_client import EmailClient
+    from tools import buyer_sms
+    from tools.facebook_consent import normalize_us_phone
     if not operator:
         raise HTTPException(401,'Sign in to send outreach')
     if not req.request_id or not req.buyer_ids or len(req.buyer_ids)>25:
         raise HTTPException(422,'Use a stable request ID and between 1 and 25 buyer IDs')
+    if channel=='sms' and len(req.custom_message)>1600:raise HTTPException(422,'Buyer SMS must fit within 1600 characters')
     ids=list(dict.fromkeys(req.buyer_ids))
     try:
         for identity in ids:
@@ -45,8 +48,12 @@ def dispatch(db, operator, req, channel):
             if channel=='sms':
                 body=req.custom_message or build_deal_sms(buyer_name=name,zip_code=req.zip_code,price=req.price,
                     property_type=req.property_type,beds=req.beds,baths=req.baths)
+                if not req.custom_message and settings.buyer_sms_brand:
+                    body=settings.buyer_sms_brand+': '+body+'\n'+buyer_sms.FOOTER
                 subject=''; plain=body
-                hold='buyer_sms_route_unavailable'
+                try:destination=normalize_us_phone(destination)
+                except ValueError:pass
+                hold=buyer_sms.preflight(destination,body)
             else:
                 subject,body=build_deal_email(buyer_name=name,property_address=req.property_address,zip_code=req.zip_code,price=req.price,arv=req.arv,
                     assignment_fee=req.assignment_fee,property_type=req.property_type,beds=req.beds,baths=req.baths,condition=req.condition,
@@ -63,18 +70,24 @@ def dispatch(db, operator, req, channel):
             outcomes.extend({'buyer_id':identity,'status':'unattempted','reason':'buyer_read_unavailable'} for identity in ids[index:])
             break
         payload={'destination':destination,'subject':subject,'body':body,'plain':plain,'deal_id':req.deal_id or None}
+        if channel=='sms':payload['route']=buyer_sms.route()
         try:
-            receipt=_receipt(db.rpc('claim_buyer_outreach',{'p_id':reference,'p_request':str(req.request_id),
-                'p_operator':operator,'p_buyer':buyer_id,'p_channel':channel,'p_payload':payload,'p_hold':hold}).execute().data,reference)
+            params={'p_id':reference,'p_request':str(req.request_id),'p_operator':operator,'p_buyer':buyer_id,'p_payload':payload,'p_hold':hold}
+            if channel=='email':params['p_channel']=channel
+            receipt=_receipt(db.rpc('claim_buyer_sms' if channel=='sms' else 'claim_buyer_outreach',params).execute().data,reference)
         except Exception:
             counts['unknown_count']+=1;counts['unattempted_count']+=len(ids)-index-1
             outcomes.append({'buyer_id':buyer_id,'message_id':reference,'status':'unknown','reason':'claim_response_unconfirmed'})
             outcomes.extend({'buyer_id':identity,'status':'unattempted'} for identity in ids[index+1:])
             break
         if receipt['claimed']:
-            # SQL never grants a buyer SMS dispatch. Fail closed if the protocol changes.
-            if channel!='email' or receipt['status']!='submitting':
+            if receipt['status']!='submitting':
                 receipt={'id':reference,'claimed':False,'status':'unknown','reason':'unexpected_dispatch_claim'}
+            elif channel=='sms':
+                try:receipt=_receipt(buyer_sms.send(db,operator,reference,destination,body,payload['route']),reference)
+                except Exception:
+                    counts['log_failed_count']+=1
+                    receipt={'id':reference,'claimed':False,'status':'unknown','reason':'sms_result_unconfirmed'}
             else:
                 submitted=False
                 try:

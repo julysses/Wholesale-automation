@@ -1,3 +1,12 @@
+## Current October 22 implementation update
+
+Dedicated buyer SMS transport, signed callbacks, human reply tasks, STOP/START
+suppression and the operator readiness/full-copy preview are implemented and pass
+local real-SQL/API checks with a stubbed provider. See BUYER-SMS-TRANSPORT.md.
+Seventeen migration proposals remain unapplied. There is no approved/active real
+buyer route, consumer enrollment or handset acceptance; SMS remains REQUIRED / NOT
+ACCEPTED. The historical implementation notes below describe earlier checkpoints.
+
 # Required buyer SMS launch gate — Friday October 23, 2026
 
 User decision: "Require buyer SMS at launch". Status: REQUIRED / NOT ACCEPTED.

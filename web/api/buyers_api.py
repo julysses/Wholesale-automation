@@ -546,3 +546,12 @@ async def review_buyer_sms_consent(buyer_id: UUID, req: ConsentReview, request: 
     db=_get_supabase()
     if db is None:raise HTTPException(503,'Consent storage unavailable')
     return await run_in_threadpool(review,db,buyer_id,operator,req)
+
+
+@router.get("/outreach/sms/readiness")
+async def buyer_sms_readiness(request: Request):
+    from tools.buyer_sms import readiness
+    if not getattr(request.state,'user_id',None):raise HTTPException(401,'Sign in to check buyer SMS')
+    db=_get_supabase()
+    if db is None:raise HTTPException(503,'Buyer SMS storage unavailable')
+    return await run_in_threadpool(readiness,db)

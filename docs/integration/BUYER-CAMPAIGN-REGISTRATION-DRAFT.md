@@ -102,8 +102,9 @@ contact information and homeowner-inquiry consent never enroll a buyer.
 2. Published policy/terms coverage for buyer marketing, program name/frequency,
    HELP/STOP, support and mobile consent privacy; verify actual pages before using.
 3. Accepted sender/service/number plan, priced total and explicit purchase approval.
-4. Dedicated transport and signature-bound callbacks/replies/suppression completed,
-   then truthful message-flow text matching the actual consumer enrollment method.
+4. Dedicated transport and signed callbacks/replies/suppression now pass local
+   synthetic acceptance (BUYER-SMS-TRANSPORT.md). Still verify actual sender
+   configuration, consumer enrollment and truthful registration message-flow text.
 5. Provider approval/registered number, controlled handset delivery/reply/STOP,
    operator acceptance and reviewed production release/rollback.
 

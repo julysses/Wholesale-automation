@@ -25,11 +25,12 @@ router = APIRouter(prefix="/webhooks/twilio", tags=["Twilio"])
 STATUSES = {"accepted", "scheduled", "queued", "sending", "sent", "delivered", "undelivered", "failed", "canceled", "read"}
 
 
-async def _verified(request: Request, kind: str) -> dict:
+async def _verified(request: Request, kind: str, *, sender: str | None = None, path_prefix: str = "/webhooks/twilio") -> dict:
     from twilio.request_validator import RequestValidator
+    sender = settings.twilio_from_number if sender is None else sender
     token = settings.twilio_auth_token
     base = settings.twilio_webhook_base_url.rstrip("/")
-    if not token or not settings.twilio_account_sid or not base.startswith("https://"):
+    if not token or not settings.twilio_account_sid or not sender or not base.startswith("https://"):
         raise HTTPException(503, "Twilio webhook is not configured")
     if request.headers.get("content-type", "").split(";")[0].lower() != "application/x-www-form-urlencoded":
         raise HTTPException(415, "Expected form data")
@@ -42,7 +43,7 @@ async def _verified(request: Request, kind: str) -> dict:
         raise HTTPException(400, "Invalid form data")
     form = FormData(pairs)
     # Match exactly the configured public URL; do not trust forwarded/Host headers.
-    url = f"{base}/webhooks/twilio/{kind}"
+    url = f"{base}{path_prefix}/{kind}"
     if request.url.query:
         url += "?" + request.url.query
     signature = request.headers.get("x-twilio-signature", "")
@@ -55,9 +56,9 @@ async def _verified(request: Request, kind: str) -> dict:
         raise HTTPException(403, "Unexpected Twilio account")
     if not re.fullmatch(r"SM[0-9a-fA-F]{32}", data.get("MessageSid", "")):
         raise HTTPException(400, "Invalid message SID")
-    if kind == "inbound" and data.get("To") != settings.twilio_from_number:
+    if kind == "inbound" and data.get("To") != sender:
         raise HTTPException(403, "Unexpected destination")
-    if kind == "status" and data.get("From") != settings.twilio_from_number:
+    if kind == "status" and data.get("From") != sender:
         raise HTTPException(403, "Unexpected sending number")
     if kind == "status" and data.get("MessageStatus") not in STATUSES:
         raise HTTPException(400, "Invalid message status")

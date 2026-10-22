@@ -69,6 +69,13 @@ class Settings:
     messagebird_api_key: str = os.getenv("MESSAGEBIRD_API_KEY", "")
     messagebird_originator: str = os.getenv("MESSAGEBIRD_ORIGINATOR", "Texas Wholesale")
 
+    # Dedicated buyer route: no fallback to the homeowner inquiry sender.
+    buyer_sms_live_enabled: bool = os.getenv("BUYER_SMS_LIVE_ENABLED", "false").lower() == "true"
+    buyer_sms_campaign_sid: str = os.getenv("BUYER_SMS_CAMPAIGN_SID", "")
+    buyer_sms_service_sid: str = os.getenv("BUYER_SMS_SERVICE_SID", "")
+    buyer_sms_from_number: str = os.getenv("BUYER_SMS_FROM_NUMBER", "")
+    buyer_sms_brand: str = os.getenv("BUYER_SMS_BRAND", "")
+
     # Email provider (SendGrid, Mailgun, Instantly)
     email_provider: str = os.getenv("EMAIL_PROVIDER", "sendgrid")
     sendgrid_api_key: str = os.getenv("SENDGRID_API_KEY", "")

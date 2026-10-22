@@ -9,15 +9,16 @@
   "real_provider_calls": 0,
   "production_mutations": 0,
   "files": {
-    "web/api/buyer_sms_consent.py": "d8097b85ceab8489b676860dff30812d2e4379606dd44c4cb1405a19415f117d",
-    "web/api/buyers_api.py": "8cca4fd612fd017645fd855af08484fa44fdfcd43a4ac43bc109af560ade3f19",
-    "frontend/src/components/buyers/BuyerSmsConsent.tsx": "67c9fe7ac2c0a00ef0d3489ef857b4779f625165ca32184642f28f34d9487390",
+    "web/api/buyer_sms_consent.py": "d30b1f12683ef806fe2f4c900fc362d9b655de47382aba40f6c1793e8edacb16",
+    "web/api/buyers_api.py": "ab5bf8eeeee3c981b3fa0a71166e7971db118c6ddd72552c4a122b34e2a71906",
+    "frontend/src/components/buyers/BuyerSmsConsent.tsx": "106a375ac616572a6a9e12bcaa6b27b29b87f1310845c04cc90751870a04f4c5",
     "frontend/src/components/buyers/BuyerProfileDrawer.tsx": "c9e198eba6544e72109304e1d5b0a0c6b104d066ca09a1276805e03e84f89c53",
-    "frontend/tests/buyer-sms-consent.test.tsx": "1eae9abf498f197ae8f139afe68ec4bc451dae2bb79bbde635bc771eaa5aebed",
+    "frontend/tests/buyer-sms-consent.test.tsx": "fb6c242d5c52b89c9999ec2680a5983080c13ff34b41bfe1fa3fa08b6b359a9e",
     "tests/test_buyer_sms_consent_errors.py": "9cff2943b148cdc775aa035cd05f4b30da8b48379097ee5aa0f69c29878769b9",
     "frontend/supabase/migrations/20261022201934_integration_buyer_sms_consent.sql": "0f75b6ab165011121948e5aac0ec1f649578de91933e366a2b81843cf88a0d73",
     "pipeline/integration/verify_buyer_sms_consent.py": "669c997c12d2060c98d55f19e907d8d45693cd9af61b4bd454550d5b49d3310f",
-    "pipeline/integration/rehearse_full_upgrade.py": "49c907d79d613edbb39f0d6bc8ef82ed39fd83c471172d9f4896416d3f360570",
-    "pipeline/integration/run_production_upgrade.py": "3c8aa6cb42d85d16268b27932fbae2e1a79104cdf5cba5d12318cb13f22fbb0a"
-  }
+    "pipeline/integration/rehearse_full_upgrade.py": "61ee0c9204c59aba2f4d087939096bbbb3d6a9da5e75f71edf7f94905eec3078",
+    "pipeline/integration/run_production_upgrade.py": "616d87f9137c53a932b8759be96f544a9c551c0053fde86987c2993e553ff6a9"
+  },
+  "current_candidate_note": "Source hashes refreshed for dedicated buyer SMS; earlier counts remain historical and scoped."
 }

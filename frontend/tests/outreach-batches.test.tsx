@@ -101,3 +101,29 @@ it('exposes the inquiry-only SMS restriction before any buyer request can be sub
   expect(screen.getByRole('status')).toHaveTextContent('Buyer SMS is unavailable');
   expect(mocks.api).not.toHaveBeenCalled();
 });
+
+it('checks the dedicated route, previews the full sender/STOP copy, and submits only that reviewed SMS', async () => {
+  mocks.api.mockResolvedValueOnce({ ok: true, json: async () => ({ available: true, brand: 'Synthetic Buyer Program',
+    footer: 'Reply STOP to opt out or HELP for help.', max_length: 1600, daily_recipient_limit: 1 }) }).mockResolvedValueOnce(reply(1));
+  render(<OutreachLauncher buyerIds={['a']} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Check buyer SMS readiness' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Send SMS to 1 Buyers' })).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('SMS Message'), { target: { value: 'Reviewed buyer deal.' } });
+  expect(screen.getByLabelText('Complete buyer SMS preview')).toHaveTextContent('Synthetic Buyer Program: Reviewed buyer deal.');
+  expect(screen.getByLabelText('Complete buyer SMS preview')).toHaveTextContent('Reply STOP to opt out or HELP for help.');
+  fireEvent.click(screen.getByRole('button', { name: 'Send SMS to 1 Buyers' }));
+  await screen.findByText('SMS results');
+  expect(mocks.api.mock.calls[1][0]).toBe('/api/buyers/outreach/sms');
+  expect(JSON.parse(mocks.api.mock.calls[1][1].body)).toMatchObject({ custom_message: 'Synthetic Buyer Program: Reviewed buyer deal.\nReply STOP to opt out or HELP for help.', request_id: expect.any(String), buyer_ids: ['a'] });
+});
+
+it.each(['unavailable', 'malformed', 'failed'])('keeps buyer SMS disabled after %s readiness', async kind => {
+  if (kind === 'failed') mocks.api.mockRejectedValueOnce(new Error('Offline'));
+  else mocks.api.mockResolvedValueOnce({ ok: true, json: async () => kind === 'malformed' ? { available: true } :
+    { available: false, brand: '', footer: 'Reply STOP to opt out or HELP for help.', max_length: 1600, daily_recipient_limit: 1 } });
+  render(<OutreachLauncher buyerIds={['a']} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Check buyer SMS readiness' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Check buyer SMS readiness' })).toBeEnabled());
+  expect(screen.getByRole('button', { name: 'Send SMS to 1 Buyers' })).toBeDisabled();
+  expect(mocks.api).toHaveBeenCalledTimes(1);
+});

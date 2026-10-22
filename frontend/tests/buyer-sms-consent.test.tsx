@@ -74,3 +74,10 @@ it('fingerprints an evidence copy locally without uploading or sending it', asyn
   expect(digest).toHaveBeenCalledTimes(1);
   expect(mocks.api).toHaveBeenCalledTimes(1);
 });
+
+it('shows current consent and sender readiness without sending a message', async () => {
+  mocks.api.mockResolvedValue(response(status({ consent_ready: true, sending_available: true }))); mount();
+  expect(await screen.findByText('Consent and sender checks are ready. Sending hours and daily limits still apply.')).toBeInTheDocument();
+  expect(screen.queryByText(/SMS sending remains unavailable/)).not.toBeInTheDocument();
+  expect(mocks.api).toHaveBeenCalledTimes(1);
+});

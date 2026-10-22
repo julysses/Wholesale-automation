@@ -1,3 +1,31 @@
+## October 22 checkpoint — dedicated buyer SMS implemented, live acceptance open
+
+- [x] Separate buyer route/configuration and private approval record; no homeowner
+  sender fallback. No approved route or live configuration is seeded/enabled.
+- [x] Immutable reservation/log before one-way final authorization, current written
+  consent/DNC recheck, five-second non-retrying SDK, uncertainty holds, one attempt
+  per number/day and shared-destination deduplication. Known result recovery never
+  calls create again. Consent review and authorization share phone/row lock order.
+- [x] Signed buyer callbacks bind saved route/recipient/reference/SID, preserve
+  delivery/terminal conflicts and continue while sending is paused. Human replies
+  retain history and assigned due tasks, including duplicate/owner/deletion recovery.
+  Native or buyer STOP suppresses buyer eligibility; START never clears DNC.
+- [x] Explicit UI readiness and full branded/STOP preview; consent inspection does
+  not send. Failed/malformed readiness keeps sending disabled.
+- [x] Backend 1,370/10 skipped; frontend 320/61 files; build/typecheck, API-only cold
+  start and lint gate pass (142 existing findings). Seventeen-proposal apply,
+  rollback/retention/ACL and ten local intake journeys pass (124.43 seconds).
+  Final async callback path additionally passes a fresh buyer-only SQL rehearsal.
+- [ ] Buyer SMS remains REQUIRED / NOT ACCEPTED: consumer enrollment and policy/
+  terms coverage, priced registration approval, carrier-approved sender, actual
+  handset receipt/reply/STOP, signed-in/JWT/tenancy and deployed artifact/rollback.
+
+Read BUYER-SMS-TRANSPORT.md and its source manifest in docs/integration.
+All seventeen migration proposals are unapplied; PR #21 remains draft. No real
+provider messages, production mutations, paid registrations or sending activation.
+The latest carrier review evidence does not establish a Friday buyer-SMS launch.
+Other source/PropStream, volume/APN and manual CRUD/classification gates remain.
+
 ## October 22 checkpoint — buyer SMS consent and verified campaign limitation
 
 Fresh signed-in Twilio evidence confirms only one campaign, Verified for homeowner

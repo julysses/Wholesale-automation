@@ -54,6 +54,10 @@ def status(db,buyer,operator):
         if (not isinstance(result,dict) or result.get('buyer_id')!=str(buyer)
             or any(type(result.get(k)) is not bool for k in ['can_review','consent_ready','suppressed','sending_available'])):
             raise ValueError('Unconfirmed consent status')
+        from tools.buyer_sms import readiness
+        policy=readiness(db)
+        result['sending_available']=policy['available'] and result['consent_ready']
+        result['sending_reason']=policy['reason'] or ('' if result['consent_ready'] else 'buyer_consent_not_ready')
         return result
     except Exception as exc:
         if (getattr(exc,'pgcode',None) or getattr(exc,'code',None))=='P0002':raise HTTPException(404,'Buyer not found') from None

@@ -87,12 +87,12 @@ class Database:
         def execute():
             attempts=getattr(self,'attempts',{});self.attempts=attempts
             key=params['p_id']
-            if name=='claim_buyer_outreach':
+            if name in {'claim_buyer_outreach','claim_buyer_sms'}:
                 if key in attempts:return SimpleNamespace(data={**attempts[key],'claimed':False})
                 buyer=next((b for b in self.tables.get('buyers',[]) if b['id']==params['p_buyer']),{})
                 why=params['p_hold']
-                if buyer.get('active') is not True or buyer.get(params['p_channel']+'_opt_in') is not True:why='buyer_unavailable'
-                if params['p_channel']=='sms':why='buyer_sms_route_unavailable'
+                if buyer.get('active') is not True or buyer.get(params.get('p_channel','sms')+'_opt_in') is not True:why='buyer_unavailable'
+                if params.get('p_channel','sms')=='sms':why='buyer_sms_route_unavailable'
                 value={'id':key,'claimed':not why,'status':'skipped' if why else 'submitting','reason':why}
                 attempts[key]=value
             elif name=='finish_buyer_outreach':
