@@ -30,3 +30,8 @@ Verification: full local production-upgrade runner exited0, including all21
 allowlisted migration rehearsals, buyer workflows, and all10 intake journeys
 (123.09 seconds for the intake suite). Auth and providers are synthetic.
 The application runtime and proposed migration SQL are unchanged.
+
+Cloud coverage: `scripts/run_offline_tests.py --buyer-import` is the dedicated
+entry point added to the existing PostgreSQL17 buyer job. Prior run717 began
+before this wiring change and does not prove the new assertions ran in Linux.
+Its outcome must remain separate from the next run with this workflow change.

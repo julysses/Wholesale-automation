@@ -1,3 +1,15 @@
+Latest follow-up: maximum buyer CSV imports and bounded lock refusal/retry pass
+locally, with both5000-row extremes and all10 intake journeys. See
+BUYER-IMPORT-VOLUME.md. The dedicated Linux job must include `--buyer-import`;
+run717 predates that workflow wiring and cannot certify those new assertions.
+The application runtime/migration SQL remain unchanged frombd30ba0.
+Existing CLI control-plane authentication works, but passwordless linked dumping
+creates a write-capable temporary login; this was inspected, not executed.
+See PRODUCTION-BACKUP-READINESS.md. No current export/restore is certified.
+The exact Twilio inquiry is submitted to its automated Help Center; human ticket
+routing awaits additional approval. Generated answers are not carrier approval
+or a complete quote. See TWILIO-SUPPORT-INQUIRY-STATUS.md.
+
 Current backup follow-up at23:42 UTC: eight completed daily physical backups are
 listed, latestOctober22 12:13:03 UTC; the olderOctober8 restore is markedcompleted.
 Today's restore is unverified, PITR is not enabled and Storage counts are0/0. Native

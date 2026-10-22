@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 
 root=Path(__file__).resolve().parents[2]
-if sys.argv[1:] not in ([], ['--schema-security'], ['--buyer-sms'], ['--buyer-enrollment'], ['--buyer-manual'], ['--buyer-analysis'], ['--buyer-mutations']):
+if sys.argv[1:] not in ([], ['--schema-security'], ['--buyer-sms'], ['--buyer-enrollment'], ['--buyer-manual'], ['--buyer-analysis'], ['--buyer-mutations'], ['--buyer-import']):
     raise SystemExit('Unknown local rehearsal mode')
 pg=Path(os.environ.get('PG_BIN','/opt/homebrew/opt/postgresql@17/bin'))
 node=shutil.which('node')
@@ -42,6 +42,9 @@ with tempfile.TemporaryDirectory(prefix='wholesale-sms-') as folder:
         if sys.argv[1:] == ['--schema-security']:
             raise SystemExit(0)
         run([root/'.venv/bin/python','pipeline/integration/rehearse_full_upgrade.py'],cwd=root,env=env,timeout=90)
+        if sys.argv[1:] == ['--buyer-import']:
+            run([root/'.venv/bin/python','pipeline/integration/verify_buyer_import.py'],cwd=root,env=env,timeout=90)
+            raise SystemExit(0)
         if sys.argv[1:] == ['--buyer-mutations']:
             run([root/'.venv/bin/python','pipeline/integration/verify_buyer_mutations.py'],cwd=root,env=env,timeout=90)
             raise SystemExit(0)
