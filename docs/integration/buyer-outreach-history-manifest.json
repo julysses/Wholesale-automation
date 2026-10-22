@@ -6,8 +6,9 @@
   "backend_changed": false,
   "provider_calls": 0,
   "files": {
-    "frontend/src/components/buyers/BuyerOutreachHistory.tsx": "d9f775498e268c4faf169eb087e491e52deb3ebd955f9c637cada36c9f5df358",
+    "frontend/src/components/buyers/BuyerOutreachHistory.tsx": "84dc1fdf3f793ff24475db29f6afc8328aaa48bf05a9d7088b36df2a01e08422",
     "frontend/src/pages/BuyerIntelligence.tsx": "ad99532dffad5bdc46104f27cc916ce036f46436caacfaad984ac5a2fec13730",
-    "frontend/tests/buyer-outreach-history.test.tsx": "d96ba98cd2b526d9e21822a45be362f06b05acbf8421296bafa23c8ee6476185"
-  }
+    "frontend/tests/buyer-outreach-history.test.tsx": "5d01562e1a40fa08c4b25f0aa9a610545c6b205e4b57cc11f01e500a8aebca14"
+  },
+  "current_candidate_note": "Refreshed source hashes after durable outreach checkpoint; historical checkpoint counts remain scoped to their original work."
 }

@@ -8,6 +8,7 @@ vi.mock('sonner', () => ({ toast: mocks }));
 import { OutreachLauncher } from '@/components/buyers/OutreachLauncher';
 
 const reply = (sent: number, extra: Record<string, number> = {}) => ({
+  ok: true,
   json: async () => ({ sent_count: sent, failed_count: 0, skipped_count: 0, dry_run_count: 0, log_failed_count: 0, ...extra }),
 });
 
@@ -54,10 +55,11 @@ it('shows interrupted buyer sends without a resend button or automatic navigatio
   mocks.api.mockResolvedValueOnce(reply(5)).mockRejectedValueOnce(new Error('Network interrupted'));
   const onSent = vi.fn();
   render(<OutreachLauncher buyerIds={['a', 'b', 'c', 'd', 'e', 'f']} onSent={onSent} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Send SMS to 6 Buyers' }));
+  fireEvent.click(screen.getByRole('button', { name: 'EMAIL', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Send EMAIL to 6 Buyers' }));
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('5 accepted by provider'));
   expect(screen.getByRole('alert')).toHaveTextContent('1 recipients have unknown results');
-  expect(screen.queryByRole('button', { name: /Send Another|Send SMS to/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Send Another|Send EMAIL to/ })).not.toBeInTheDocument();
   expect(onSent).not.toHaveBeenCalled();
   expect(mocks.success).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Review outreach activity' }));
@@ -75,4 +77,27 @@ it('sends the edited email and exposes logging failures as warnings', async () =
   expect(JSON.parse(mocks.api.mock.calls[0][1].body)).toMatchObject({ custom_subject: 'Operator subject', custom_message: 'Operator body' });
   expect(mocks.warning).toHaveBeenCalled();
   expect(mocks.success).not.toHaveBeenCalled();
+});
+
+it('keeps one buyer outreach reference across all bounded batches', async () => {
+  mocks.api.mockResolvedValueOnce(reply(5)).mockResolvedValueOnce(reply(1));
+  const result=await sendOutreachBatches('/api/buyers/outreach/email','buyer_ids',['a','b','c','d','e','f']);
+  const first=JSON.parse(mocks.api.mock.calls[0][1].body),second=JSON.parse(mocks.api.mock.calls[1][1].body);
+  expect(first.request_id).toBeTruthy();expect(second.request_id).toBe(first.request_id);
+  expect(result.requestId).toBe(first.request_id);
+});
+
+it('distinguishes unknown recipients from server-confirmed unattempted recipients and stops advancing', async () => {
+  mocks.api.mockResolvedValueOnce(reply(1,{unknown_count:1,unattempted_count:3}));
+  const result=await sendOutreachBatches('/api/buyers/outreach/email','buyer_ids',['a','b','c','d','e','f']);
+  expect(result).toMatchObject({sent:1,unresolved:1,unattempted:4,interrupted:true});
+  expect(mocks.api).toHaveBeenCalledOnce();
+  expect(outreachResultText(result)).toContain('Outreach reference:');
+});
+
+it('exposes the inquiry-only SMS restriction before any buyer request can be submitted', () => {
+  render(<OutreachLauncher buyerIds={['a']} />);
+  expect(screen.getByRole('button',{name:'Send SMS to 1 Buyers'})).toBeDisabled();
+  expect(screen.getByRole('status')).toHaveTextContent('Buyer SMS is unavailable');
+  expect(mocks.api).not.toHaveBeenCalled();
 });

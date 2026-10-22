@@ -82,9 +82,10 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
   const [summary, setSummary] = useState<OutreachSummary | null>(null);
 
   const handleSend = async () => {
+    if (channel === 'sms') return toast.error('Buyer SMS is unavailable on the current inquiry-only sender route.');
     if (buyerIds.length === 0) return toast.error('No buyers selected');
     if (status !== 'idle') return;
-    if (!(channel === 'sms' ? smsBody.trim() : emailBody.trim()) || (channel === 'email' && !emailSubject.trim())) return toast.error('Enter a message and, for email, a subject.');
+    if (!emailBody.trim() || !emailSubject.trim()) return toast.error('Enter a message and, for email, a subject.');
     setStatus('sending');
       const endpoint = `/api/buyers/outreach/${channel}`;
       const payload = {
@@ -99,8 +100,8 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
         beds:            deal.beds || 0,
         baths:           deal.baths || 0,
         condition:       deal.condition || '',
-        custom_message:  channel === 'sms' ? smsBody : emailBody,
-        custom_subject: channel === 'email' ? emailSubject : undefined,
+        custom_message:  emailBody,
+        custom_subject: emailSubject,
       };
 
       const result = await sendOutreachBatches(endpoint, 'buyer_ids', buyerIds, payload);
@@ -114,7 +115,7 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
   if (status === 'done' && summary) {
     return (
       <div className="flex flex-col items-center gap-3 py-6">
-        {summary.interrupted || summary.failed || summary.logFailed || summary.dryRun
+        {summary.interrupted || summary.failed || summary.logFailed || summary.dryRun || summary.skipped
           ? <AlertTriangle className="h-12 w-12 text-amber-600" />
           : <CheckCircle2 className="h-12 w-12 text-green-500" />}
         <p className="font-semibold text-gray-700">
@@ -200,7 +201,8 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
         </div>
       )}
 
-      <Button onClick={handleSend} loading={status === 'sending'} className="w-full">
+      {channel === 'sms' && <p role="status" className="text-sm text-amber-700">Buyer SMS is unavailable on the current inquiry-only sender route. Use approved email outreach.</p>}
+      <Button onClick={handleSend} disabled={channel === 'sms'} loading={status === 'sending'} className="w-full">
         <Send className="h-4 w-4 mr-2" />
         Send {channel.toUpperCase()} to {buyerIds.length} Buyers
       </Button>

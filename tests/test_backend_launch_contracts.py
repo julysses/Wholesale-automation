@@ -81,6 +81,27 @@ class Database:
         self.pages, self.inserts, self.updates = [], [], []
         self.fail_inserts = set()
     def table(self, name): return Table(self, name)
+    def rpc(self, name, params):
+        # Unit boundary only. Actual latches/ACLs/native receipts are exercised by
+        # verify_buyer_outreach.py on the restored PostgreSQL catalog.
+        def execute():
+            attempts=getattr(self,'attempts',{});self.attempts=attempts
+            key=params['p_id']
+            if name=='claim_buyer_outreach':
+                if key in attempts:return SimpleNamespace(data={**attempts[key],'claimed':False})
+                buyer=next((b for b in self.tables.get('buyers',[]) if b['id']==params['p_buyer']),{})
+                why=params['p_hold']
+                if buyer.get('active') is not True or buyer.get(params['p_channel']+'_opt_in') is not True:why='buyer_unavailable'
+                if params['p_channel']=='sms':why='buyer_sms_route_unavailable'
+                value={'id':key,'claimed':not why,'status':'skipped' if why else 'submitting','reason':why}
+                attempts[key]=value
+            elif name=='finish_buyer_outreach':
+                value={**attempts[key],'claimed':False,'status':params['p_status']}
+                attempts[key]=value
+            else:raise AssertionError('Unexpected RPC')
+            return SimpleNamespace(data=value)
+        return SimpleNamespace(execute=execute)
+
 
 
 class FakeSMS:
@@ -104,28 +125,24 @@ def sms(monkeypatch):
     return FakeSMS
 
 
+def operator_request():
+    return SimpleNamespace(state=SimpleNamespace(user_id='00000000-0000-4000-8000-000000000777'))
+
+
 def buyer_row(**kwargs):
     return {"id": str(uuid4()), "first_name": "Test", "last_name": "Buyer", "phone": "+12145550100", "sms_opt_in": True, "active": True, **kwargs}
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("sent,dry_run,expected", [(True, False, "sent_count"), (False, False, "failed_count"), (True, True, "dry_run_count")])
-async def test_buyer_sms_uses_real_client_contract_and_reports_delivery(monkeypatch, sms, sent, dry_run, expected):
-    buyer = buyer_row()
-    db = Database({"buyers": [buyer]})
-    monkeypatch.setattr(buyers_api, "_get_supabase", lambda: db)
-    sms.result, sms.dry_run = sent, dry_run
-    background = BackgroundTasks()
-    result = await buyers_api.send_sms_blast(buyers_api.OutreachRequest(buyer_ids=[buyer["id"], buyer["id"]]), background)
-    assert result[expected] == 1
-    assert result["recipient_count"] == 1
-    assert len(sms.sends) == 1
-    assert not background.tasks
-    message, phone = sms.sends[0]
-    assert str(message.lead_id) == buyer["id"]
-    assert phone == buyer["phone"]
-    assert "Reply STOP to opt out." in message.body
-    assert bool(db.updates) is (sent and not dry_run)
+@pytest.mark.parametrize("sent,dry_run", [(True, False), (False, False), (True, True)])
+async def test_buyer_sms_keeps_inquiry_only_sender_unavailable(monkeypatch, sms, sent, dry_run):
+    buyer=buyer_row();db=Database({'buyers':[buyer]})
+    monkeypatch.setattr(buyers_api,'_get_supabase',lambda:db)
+    sms.result,sms.dry_run=sent,dry_run
+    result=await buyers_api.send_sms_blast(buyers_api.OutreachRequest(request_id=uuid4(),buyer_ids=[buyer['id'],buyer['id']]),operator_request())
+    assert result['skipped_count']==1 and result['recipient_count']==1
+    assert result['outcomes'][0]['reason']=='buyer_sms_route_unavailable'
+    assert not sms.sends
 
 
 @pytest.mark.asyncio
@@ -133,7 +150,7 @@ async def test_buyer_sms_skips_opt_out_inactive_and_shared_suppression(monkeypat
     buyers = [buyer_row(sms_opt_in=False), buyer_row(active=False), buyer_row()]
     db = Database({"buyers": buyers, "dnc_registry": [{"id": "suppressed", "phone_number": "2145550100"}]})
     monkeypatch.setattr(buyers_api, "_get_supabase", lambda: db)
-    result = await buyers_api.send_sms_blast(buyers_api.OutreachRequest(buyer_ids=[b["id"] for b in buyers]), BackgroundTasks())
+    result = await buyers_api.send_sms_blast(buyers_api.OutreachRequest(request_id=uuid4(),buyer_ids=[b["id"] for b in buyers]), operator_request())
     assert result["skipped_count"] == 3
     assert not sms.sends
 
@@ -142,7 +159,7 @@ async def test_buyer_sms_skips_opt_out_inactive_and_shared_suppression(monkeypat
 async def test_buyer_sms_requires_database_before_reporting_success(monkeypatch, sms):
     monkeypatch.setattr(buyers_api, "_get_supabase", lambda: None)
     with pytest.raises(HTTPException) as exc:
-        await buyers_api.send_sms_blast(buyers_api.OutreachRequest(buyer_ids=[str(uuid4())]), BackgroundTasks())
+        await buyers_api.send_sms_blast(buyers_api.OutreachRequest(request_id=uuid4(),buyer_ids=[str(uuid4())]), operator_request())
     assert exc.value.status_code == 503
     assert not sms.sends
 
@@ -210,31 +227,37 @@ async def test_form_persists_supported_qualification_without_missing_agent_metho
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("sent,configured,expected", [(True, True, "sent_count"), (False, True, "failed_count"), (True, False, "dry_run_count")])
+@pytest.mark.parametrize("sent,configured,expected", [(True, True, "sent_count"), (False, True, "unknown_count"), (True, False, "skipped_count")])
 async def test_buyer_email_preserves_reviewed_copy_and_delivery_results(monkeypatch, sent, configured, expected):
     buyer = buyer_row(email="buyer@example.test", email_opt_in=True)
     db = Database({"buyers": [buyer]})
     monkeypatch.setattr(buyers_api, "_get_supabase", lambda: db)
     deliveries = []
+    monkeypatch.setattr('web.api.buyer_outreach.settings.email_live_enabled',True)
+    monkeypatch.setattr('web.api.buyer_outreach.settings.email_allowed_recipients','')
     class FakeEmail:
         _provider = "mailgun"
         _configured = configured
-        def send(self, to_email, subject, body, html_body=None):
+        message_id=None
+        def send(self, to_email, subject, body, html_body=None, message_id=None):
+            self.message_id=message_id
             deliveries.append((to_email, subject, body, html_body))
             return sent
     monkeypatch.setattr("tools.email_client.EmailClient", FakeEmail)
     background = BackgroundTasks()
-    result = await buyers_api.send_email_blast(buyers_api.OutreachRequest(
+    result = await buyers_api.send_email_blast(buyers_api.OutreachRequest(request_id=uuid4(),
         buyer_ids=[buyer["id"]], custom_subject="Edited property subject",
         custom_message="Reviewed <details>\nSecond line",
-    ), background)
+    ), operator_request())
     assert result[expected] == 1
+    if not configured:
+        assert not deliveries
+        return
     assert len(deliveries) == 1
     assert deliveries[0][:3] == (buyer["email"], "Edited property subject", "Reviewed <details>\nSecond line")
     assert "&lt;details&gt;" in deliveries[0][3]
     assert "<br>" in deliveries[0][3]
     assert not background.tasks
-    assert bool(db.updates) is (sent and configured)
 
 
 @pytest.mark.asyncio
@@ -245,5 +268,5 @@ async def test_buyer_email_skips_opted_out_and_inactive(monkeypatch):
     class FakeEmail:
         def send(self, *args, **kwargs): raise AssertionError("Must not send")
     monkeypatch.setattr("tools.email_client.EmailClient", FakeEmail)
-    result = await buyers_api.send_email_blast(buyers_api.OutreachRequest(buyer_ids=[b["id"] for b in buyers]), BackgroundTasks())
+    result = await buyers_api.send_email_blast(buyers_api.OutreachRequest(request_id=uuid4(),buyer_ids=[b["id"] for b in buyers]), operator_request())
     assert result["skipped_count"] == 2

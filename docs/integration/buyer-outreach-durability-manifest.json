@@ -1,0 +1,26 @@
+{
+  "scope": "candidate-only durable buyer email; buyer SMS REQUIRED and unfulfilled",
+  "parent_checkpoint": "5de7067802f5ef1f30521c648e18cfda1a6feb99",
+  "forward_migrations": 15,
+  "backend_passed": 1345,
+  "backend_skipped": 10,
+  "frontend_passed": 308,
+  "frontend_files": 60,
+  "real_provider_calls": 0,
+  "production_mutations": 0,
+  "files": {
+    "web/api/buyer_outreach.py": "794d4f3f63adc3bad161318fdd745d4f5a4d241f204541d9f1d96bc0ced0a0bb",
+    "web/api/buyers_api.py": "8accafe158d25785380c54b781c3d5fbe13342088664953d7a6f325ae192ec42",
+    "frontend/supabase/migrations/20261022194256_integration_buyer_outreach_claims.sql": "e390f99f921d8faf7296f3c260c281d36122920292ff74c1b87d7164a8c54747",
+    "frontend/src/components/buyers/BuyerOutreachHistory.tsx": "84dc1fdf3f793ff24475db29f6afc8328aaa48bf05a9d7088b36df2a01e08422",
+    "frontend/src/components/buyers/OutreachLauncher.tsx": "2be7de4a7c76d5d570392f76571a1422bde5ffd44cd9f588fd168fdb2108eef8",
+    "frontend/src/lib/outreachBatches.ts": "d6038951f891b73cfa46675bb60a092139926e3c0e6ae4175b0d52d5857dd8a4",
+    "pipeline/integration/verify_buyer_outreach.py": "009dda19f3ed42eff99e1775abaf259a41498c2573e085d875465c0b84c298e2",
+    "pipeline/integration/rehearse_full_upgrade.py": "0cce3d1bef82a94db3f34c908bbc054b1625a1d516bfd865821bd0d2fd0938b5",
+    "pipeline/integration/run_production_upgrade.py": "0f674a084b7b6ed314da718a181c6c004ce84711de7879480fb72785e50c5b8b",
+    "tests/test_backend_launch_contracts.py": "332d86a97d95dc51baaf59df977ed0cabb57905686c69ee5c057f46fadffd577",
+    "frontend/tests/outreach-batches.test.tsx": "a07b0574175aa0a88176a0998e89954e4271cee0417cfd6235a7086bb9666832",
+    "frontend/tests/buyer-outreach-history.test.tsx": "5d01562e1a40fa08c4b25f0aa9a610545c6b205e4b57cc11f01e500a8aebca14",
+    "frontend/tests/acquisitions-sms-results.test.tsx": "972dc141719d41034007614dd1a5dc18a1b19de3784f59a7340c5068ca51004c"
+  }
+}

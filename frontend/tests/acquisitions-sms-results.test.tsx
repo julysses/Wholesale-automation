@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 
 it('retains partial WARM send results and locks the bulk button after an interrupted batch', async () => {
-  mocks.api.mockResolvedValueOnce({ json: async () => ({ sent_count: 5, failed_count: 0, skipped_count: 0, dry_run_count: 0, log_failed_count: 1 }) });
+  mocks.api.mockResolvedValueOnce({ ok: true, json: async () => ({ sent_count: 5, failed_count: 0, skipped_count: 0, dry_run_count: 0, log_failed_count: 1 }) });
   mocks.api.mockRejectedValueOnce(new Error('Network interrupted'));
   render(<Acquisitions />);
   fireEvent.click(screen.getByRole('button', { name: /WARM Leads/ }));

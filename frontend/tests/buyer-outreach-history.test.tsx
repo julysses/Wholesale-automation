@@ -109,3 +109,29 @@ it('reads history only when its actual page tab is opened and performs no send',
   await screen.findByText('1,003 saved activity records');
   expect(state.api).not.toHaveBeenCalled();
 });
+
+it('retains the recorded buyer identity after deletion and reconciles a saved request without a send', async () => {
+  const reference='00000000-0000-4000-8000-000000000123';
+  state.rows=[{...state.rows[0],buyer_id:null,buyers:null,buyer_snapshot:{id:'retained-buyer',first_name:'Historical',last_name:'Buyer'},
+    status:'unknown',request_id:reference,outcome_reason:'result_response_unconfirmed'}];
+  state.api.mockImplementation(async()=>{
+    state.rows=[{...state.rows[0],status:'accepted'}];
+    return {ok:true,json:async()=>({request_id:reference,checked:1,provider_calls:0})};
+  });
+  mount();await screen.findByText('Historical Buyer');
+  expect(screen.getByText('retained-buyer')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Reconcile saved request'}));
+  expect(await screen.findByRole('status')).toHaveTextContent('No messages were sent');
+  await screen.findByText('accepted');
+  expect(state.api).toHaveBeenCalledExactlyOnceWith(`/api/buyers/outreach/${reference}/reconcile`,{method:'POST'});
+});
+
+it('refuses an uncorrelated reconciliation result and preserves the prior saved history', async () => {
+  state.rows=[{...state.rows[0],status:'unknown',request_id:'00000000-0000-4000-8000-000000000123'}];
+  state.api.mockResolvedValueOnce({ok:true,json:async()=>({request_id:'wrong',checked:1,provider_calls:0})});
+  mount();await screen.findByText('Recipient 0 QA');
+  fireEvent.click(screen.getByRole('button',{name:'Reconcile saved request'}));
+  await screen.findByRole('alert');
+  expect(screen.getByText('unknown')).toBeInTheDocument();
+  expect(state.api).toHaveBeenCalledOnce();
+});

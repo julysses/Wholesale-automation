@@ -64,6 +64,7 @@ class MatchRequest(BaseModel):
 
 
 class OutreachRequest(BaseModel):
+    request_id: UUID
     buyer_ids: list[str]
     deal_id: Optional[str] = None
     property_address: str = ""
@@ -432,174 +433,40 @@ def match_deal_to_buyers(req: MatchRequest) -> dict:
 
 
 @router.post("/outreach/sms")
-async def send_sms_blast(req: OutreachRequest, background_tasks: BackgroundTasks) -> dict:
-    """Complete a bounded batch and report actual provider results."""
-    if not req.buyer_ids or len(req.buyer_ids) > 25:
-        raise HTTPException(422, "Send between 1 and 25 buyer IDs per batch.")
-    return await run_in_threadpool(_send_sms_blast, req)
-
-
-def _send_sms_blast(req: OutreachRequest) -> dict:
-    sb = _get_supabase()
-    if sb is None:
-        raise HTTPException(503, "Database not configured")
-    from tools.sms_client import SMSClient
-    from schemas.outreach import OutreachChannel, OutreachMessage
-    from web.api.marketing_api import _contact_suppressed
-    sms = SMSClient()
-    counts = {"sent_count": 0, "failed_count": 0, "skipped_count": 0, "dry_run_count": 0, "log_failed_count": 0}
-    buyer_ids = list(dict.fromkeys(req.buyer_ids))
-
-    for buyer_id in buyer_ids:
-        delivery_recorded = False
-        try:
-            if sb:
-                buyer_resp = sb.table("buyers").select("first_name,last_name,phone,sms_opt_in,active").eq("id", buyer_id).single().execute()
-                buyer = buyer_resp.data or {}
-            else:
-                buyer = {}
-
-            phone = buyer.get("phone", "")
-            if (not phone or buyer.get("sms_opt_in") is not True or buyer.get("active") is False
-                    or _contact_suppressed(sb, phone)):
-                counts["skipped_count"] += 1
-                continue
-
-            name = f"{buyer.get('first_name','')} {buyer.get('last_name','')}".strip()
-            body = req.custom_message or build_deal_sms(
-                buyer_name=name,
-                zip_code=req.zip_code,
-                price=req.price,
-                property_type=req.property_type,
-                beds=req.beds,
-                baths=req.baths,
-            )
-
-            if not re.search(r"reply\s+stop\b", body, re.IGNORECASE):
-                body += " Reply STOP to opt out."
-            message = OutreachMessage(
-                lead_id=buyer_id, channel=OutreachChannel.SMS,
-                body=body, compliance_cleared=True,
-            )
-            result = sms.send(message, phone)
-            status = "dry_run" if result and message.a2p_provider.endswith(":dry-run") else "sent" if result else "failed"
-            counts[f"{status}_count"] += 1
-            delivery_recorded = True
-
-            if sb:
-                sb.table("buyer_outreach_log").insert({
-                    "buyer_id":     buyer_id,
-                    "deal_id":      req.deal_id,
-                    "channel":      "sms",
-                    "status":       status,
-                    "body":         body,
-                    "to_address":   phone,
-                    "provider":     message.a2p_provider or sms._provider,
-                }).execute()
-
-                # Update ignore count if this is a re-blast (not first contact)
-                if status == "sent":
-                    sb.table("buyers").update({
-                        "last_contact_date": datetime.now(timezone.utc).date().isoformat()
-                    }).eq("id", buyer_id).execute()
-
-        except Exception as exc:
-            counts["log_failed_count" if delivery_recorded else "failed_count"] += 1
-            logger.error(f"[buyers_api/sms] Send to {buyer_id} failed: {exc}")
-
-    return {
-        "status": "partial" if counts["failed_count"] or counts["log_failed_count"] else "complete",
-        "recipient_count": len(buyer_ids),
-        **counts,
-    }
+async def send_sms_blast(req: OutreachRequest, request: Request) -> dict:
+    return await _buyer_dispatch(req,request,'sms')
 
 
 @router.post("/outreach/email")
-async def send_email_blast(req: OutreachRequest, background_tasks: BackgroundTasks) -> dict:
-    """Send a bounded batch and preserve the operator's edited subject/body."""
-    if not req.buyer_ids or len(req.buyer_ids) > 25:
-        raise HTTPException(422, "Send between 1 and 25 buyer IDs per batch.")
-    return await run_in_threadpool(_send_email_blast, req)
+async def send_email_blast(req: OutreachRequest, request: Request) -> dict:
+    return await _buyer_dispatch(req,request,'email')
 
 
-def _send_email_blast(req: OutreachRequest) -> dict:
-    sb = _get_supabase()
-    if sb is None:
-        raise HTTPException(503, "Database not configured")
-    from config.settings import settings
-    from tools.email_client import EmailClient
-    email = EmailClient()
-    counts = {"sent_count": 0, "failed_count": 0, "skipped_count": 0, "dry_run_count": 0, "log_failed_count": 0}
-    buyer_ids = list(dict.fromkeys(req.buyer_ids))
+async def _buyer_dispatch(req: OutreachRequest,request: Request,channel: str):
+    from .buyer_outreach import dispatch
+    sb=_get_supabase()
+    if sb is None:raise HTTPException(503,'Database not configured')
+    return await run_in_threadpool(dispatch,sb,getattr(request.state,'user_id',None),req,channel)
 
-    for buyer_id in buyer_ids:
-        delivery_recorded = False
-        try:
-            if sb:
-                buyer_resp = sb.table("buyers").select("first_name,last_name,email,email_opt_in,active").eq("id", buyer_id).single().execute()
-                buyer = buyer_resp.data or {}
-            else:
-                buyer = {}
 
-            email_addr = buyer.get("email", "")
-            if not email_addr or buyer.get("email_opt_in") is not True or buyer.get("active") is False:
-                counts["skipped_count"] += 1
-                continue
-            if sb.table("dnc_registry").select("id").eq("email", email_addr.strip().lower()).limit(1).execute().data:
-                counts["skipped_count"] += 1
-                continue
-
-            name = f"{buyer.get('first_name','')} {buyer.get('last_name','')}".strip()
-            subject, html_body = build_deal_email(
-                buyer_name=name,
-                property_address=req.property_address,
-                zip_code=req.zip_code,
-                price=req.price,
-                arv=req.arv,
-                assignment_fee=req.assignment_fee,
-                property_type=req.property_type,
-                beds=req.beds,
-                baths=req.baths,
-                condition=req.condition,
-                sender_name=settings.agency_contact_name or "Alex",
-                agency_name=settings.agency_name or "Texas Wholesale Solutions",
-            )
-
-            subject = req.custom_subject or subject
-            if req.custom_message:
-                plain_body = req.custom_message
-                html_body = "<p>" + html.escape(plain_body).replace("\n", "<br>\n") + "</p>"
-            else:
-                plain_body = html.unescape(re.sub(r"<[^>]+>", "", html_body))
-            sent = email.send(to_email=email_addr, subject=subject, body=plain_body, html_body=html_body)
-            status = "dry_run" if sent and not email._configured else "sent" if sent else "failed"
-            counts[f"{status}_count"] += 1
-            delivery_recorded = True
-
-            if sb:
-                sb.table("buyer_outreach_log").insert({
-                    "buyer_id":   buyer_id,
-                    "deal_id":    req.deal_id,
-                    "channel":    "email",
-                    "status":     status,
-                    "subject":    subject,
-                    "body":       html_body,
-                    "to_address": email_addr,
-                    "provider":   email._provider,
-                }).execute()
-                if status == "sent":
-                    sb.table("buyers").update({
-                        "last_contact_date": datetime.now(timezone.utc).date().isoformat()
-                    }).eq("id", buyer_id).execute()
-
-        except Exception as exc:
-            counts["log_failed_count" if delivery_recorded else "failed_count"] += 1
-            logger.error(f"[buyers_api/email] Send to {buyer_id} failed: {exc}")
-
-    return {
-        "status": "partial" if counts["failed_count"] or counts["log_failed_count"] else "complete",
-        "recipient_count": len(buyer_ids), **counts,
-    }
+@router.post("/outreach/{reference}/reconcile")
+async def reconcile_buyer_outreach(reference: UUID,request: Request):
+    sb=_get_supabase()
+    if sb is None:raise HTTPException(503,'Database not configured')
+    operator=getattr(request.state,'user_id',None)
+    if not operator:raise HTTPException(401,'Sign in to reconcile outreach')
+    try:
+        value=await run_in_threadpool(lambda:sb.rpc('reconcile_buyer_outreach_campaign',{
+            'p_request':str(reference),'p_operator':operator}).execute().data)
+        if (not isinstance(value,dict) or value.get('request_id')!=str(reference)
+            or type(value.get('checked')) is not int or value['checked']<1
+            or type(value.get('provider_calls')) is not int or value['provider_calls']!=0):
+            raise ValueError('Reconciliation response unconfirmed')
+        return value
+    except Exception as exc:
+        if (getattr(exc,'code',None) or getattr(exc,'pgcode',None))=='42501':
+            raise HTTPException(404,'Outreach reference unavailable for this account')
+        raise HTTPException(503,'Reconciliation outcome unconfirmed; refresh saved history before retrying')
 
 
 @router.get("/{buyer_id}/transactions")

@@ -1,3 +1,30 @@
+## October 22 checkpoint — durable buyer outreach; buyer SMS required
+
+User requires buyer SMS for Friday October 23. Email-only launch does not meet the
+brief. Buyer SMS remains blocked in this candidate while a separate buyer-consent,
+suppression, durable claim and signed receipt/reply route is prepared. Do not reuse
+property-inquiry consent or fabricate leads. Current provider campaign scope is
+unverified; local Twilio settings are absent and the existing console is signed out (confirmed after the timeout).
+Broad schedules remain paused. No production changes or real provider calls.
+
+- [x] Save immutable per-request/per-buyer attempt and public history before email
+  dispatch; stable retries, destination holds and ambiguous-result stops prevent
+  automatic repeat sends. Explicit reconciliation reads saved receipts only.
+- [x] Preserve history after buyer deletion; deny browser writes to saved history.
+- [x] Bind signed SendGrid delivery events to app message ID and recipient. Keep API
+  submission and event IDs separate. Opens/clicks do not imply delivery; conflicting
+  terminal evidence holds for review. Buyer email replies remain unimplemented.
+- [x] Real SQL tests cover eight competing sessions, lost claim/finish responses,
+  rollback before dispatch, signed/wrong-recipient callbacks, retention and ACLs.
+- [x] Backend 1,345 passed / 10 skipped; frontend 308 across 60 files; build/typecheck,
+  API-only cold start and lint gate pass (142 existing findings). Full fifteen-
+  migration rehearsal and ten connected local journeys pass with stubbed providers.
+- [ ] Required buyer SMS implementation, verified sender/campaign scope, immutable
+  buyer-specific consent and actual handset delivery/reply/STOP acceptance.
+
+See `BUYER-OUTREACH-DURABILITY.md` and `BUYER-SMS-LAUNCH-GATE.md` in
+`docs/integration/`. PR #21 remains draft; all fifteen migration proposals unapplied.
+
 ## Latest checkpoint — October 22 saved buyer outreach history
 
 Continue in this exact `integration/` checkout on `codex/wholesale-integration-review`.

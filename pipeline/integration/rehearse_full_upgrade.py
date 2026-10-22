@@ -37,14 +37,17 @@ def seed_legacy_features(db):
         call_lead = str(uuid4())
         db.query("INSERT INTO leads(id,property_address,city,dnc,status) VALUES(%s,'Synthetic retained call','Dallas',true,'dnc')", [call_lead])
         db.query("INSERT INTO retell_call_requests(id,lead_id,requested_by,phone_number,status,provider_call_id) VALUES(%s,%s,%s,%s,%s,%s)", [str(uuid4()), call_lead, owner, f'+1214555060{index}', status, 'synthetic_'+status if status in ['accepted','completed'] else None])
-    return {'land_leads':1,'land_comps':1,'call_requests':4,'valuation_radius_mi':1.25}
+    retained_buyer,retained_history=str(uuid4()),str(uuid4())
+    db.query("INSERT INTO buyers(id,first_name,last_name,active,email_opt_in,sms_opt_in) VALUES(%s,'Synthetic retained','Buyer',false,false,false)",[retained_buyer])
+    db.query("INSERT INTO buyer_outreach_log(id,buyer_id,channel,status,body,to_address,provider_msg_id) VALUES(%s,%s,'email','sent','Synthetic historical outreach; retain exactly','retained-history@example.test','synthetic-historical-reference')",[retained_history,retained_buyer])
+    return {'buyer_outreach_history':1,'land_leads':1,'land_comps':1,'call_requests':4,'valuation_radius_mi':1.25}
 
 
 def rehearse(db):
     names = json.loads((ROOT/'docs/integration/forward-migration-order.json').read_text())
-    assert len(names) == len(set(names)) == 14
+    assert len(names) == len(set(names)) == 15
     paths = [ROOT/'frontend/supabase/migrations'/name for name in names]
-    assert all((p.name.startswith('20261020') or p.name in {'20261022160020_integration_manual_land_import.sql','20261022170346_integration_csv_lead_intake.sql','20261022190018_integration_buyer_csv_transaction.sql'}) and '_integration_' in p.name and p.parent == paths[0].parent for p in paths)
+    assert all((p.name.startswith('20261020') or p.name in {'20261022160020_integration_manual_land_import.sql','20261022170346_integration_csv_lead_intake.sql','20261022190018_integration_buyer_csv_transaction.sql','20261022194256_integration_buyer_outreach_claims.sql'}) and '_integration_' in p.name and p.parent == paths[0].parent for p in paths)
     legacy_features = seed_legacy_features(db)
     tables = {}
     for row in db.query("SELECT table_schema,table_name,column_name FROM information_schema.columns WHERE table_schema IN ('public','private','wholesale_ingest') AND table_name IN (SELECT tablename FROM pg_tables WHERE schemaname IN ('public','private','wholesale_ingest')) ORDER BY ordinal_position"):
