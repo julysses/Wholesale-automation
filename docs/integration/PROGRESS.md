@@ -1,6 +1,28 @@
 # Selective WholesaleOS integration
 
-## October 22 main CSV database foundation
+## Latest October 22 checkpoint — connected CSV intake
+
+- [x] Connect verified Auth/API to atomic data receipts with no unsafe fallback.
+- [x] Add one-way optional AI claim/finish, strict IDs/scores, SDK retry disable,
+  exact replay and stale-work preservation.
+- [x] Verify actual commit-then-lost-ack recovery at data, claim and result boundaries;
+  eight contending claims yield one dispatch authority; unknown attempts never repeat.
+- [x] Connect Leads, standalone modal and Master List with correlated results and
+  stable request IDs; Master List preserves identity across SPA remounts and uses
+  atomic free rules scoring instead of starting a global background run.
+- [x] Correct numeric cleaning so negative/malformed values cannot become positive.
+- [x] Backend 1,325 pass/10 skip; frontend 262/54 files; build/typecheck/lint gate pass.
+- [x] Thirteen-migration upgrade/rollback/history and ten intake journeys pass;
+  real Auth/model boundaries remain stubbed and provider calls remain zero.
+- [ ] Review large optional AI upload execution time and partial-batch recovery.
+- [ ] Finish buyer UI, signed-in operator review, security and exact release/recovery.
+- [ ] Complete fresh live destination/Meta/provider acceptance, then owner review.
+
+No production changes; PR #21 stays draft and broad sending schedules stay paused.
+See `CSV-LEAD-TRANSACTION.md`, manifest/results and `FRIDAY-ACCEPTANCE-STATUS.md`.
+
+
+## Earlier October 22 main CSV database foundation
 
 The original application importer still needs replacement. The thirteenth proposed
 migration now provides an atomic data transaction, immutable same-reference replay,

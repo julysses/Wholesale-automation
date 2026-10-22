@@ -1,6 +1,6 @@
 {
   "csv_lead_transaction": "passed",
-  "application_route": "not_yet_connected",
+  "application_route": "verified_by_verify_csv_scoring",
   "normalization_cases": 24,
   "owned_due_tasks": 6,
   "bulk_owned_tasks": 501,

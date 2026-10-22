@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api';
+import { useCsvImport } from '@/hooks/useCsvImport';
 /**
  * MasterListBuilder
  *
@@ -25,7 +26,6 @@ import {
   FileText, Loader2, CheckCircle2, AlertTriangle, Database,
 } from 'lucide-react';
 import { useMasterListStore, type SourceFile } from '@/stores/useMasterListStore';
-import { useAutoScoreStore } from '@/stores/useAutoScoreStore';
 import {
   CANONICAL_FIELDS, FIELD_LABELS, type CanonicalField, type MergedRow,
   mergeRowInto, toCSV, downloadCSV, heuristicMapColumns, parseCombinedAddress,
@@ -63,8 +63,9 @@ export function MasterListBuilder() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // Persisted across navigation so switching screens doesn't wipe the work
-  const { files, merged, setFiles, setMerged, setImported, clearAll } = useMasterListStore();
+  const { files, merged, importRequestId, importListName, setFiles, setMerged, setImported, clearAll } = useMasterListStore();
   const [merging, setMerging] = useState(false);
+  const importCsv = useCsvImport(importRequestId);
   const [importing, setImporting] = useState(false);
 
   const addFiles = useCallback(async (fileList: FileList | File[]) => {
@@ -196,29 +197,8 @@ export function MasterListBuilder() {
           stack_count: r.stack_count,
         }));
 
-      const res = await apiFetch('/api/ai/import-master-list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rows,
-          score_with_claude: false,
-          list_name: `Master list ${new Date().toISOString().slice(0, 10)}`,
-          filename: 'master-list',
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || 'Import failed');
-      }
-
-      const result = await res.json() as {
-        imported: number;
-        updated: number;
-        skipped: number;
-        scored: number;
-        consolidated_rows: number;
-      };
+      const result = await importCsv({ rows, engine: 'rules', score_with_claude: true,
+        list_name: importListName || 'Master list', filename: 'master-list' });
       const saved = result.imported + result.updated;
 
       setImported(true);
@@ -227,15 +207,17 @@ export function MasterListBuilder() {
       queryClient.invalidateQueries({ queryKey: ['workflow_progress'] });
       toast.success(
         `${saved.toLocaleString()} leads saved (${result.imported.toLocaleString()} new, `
-        + `${result.updated.toLocaleString()} updated); scoring started`
+        + `${result.updated.toLocaleString()} existing); ${result.scored.toLocaleString()} scored`
       );
-      useAutoScoreStore.getState().start();
+      if (result.warning) toast.warning(result.warning);
       setTimeout(() => navigate('/leads'), 800);
       if (result.skipped > 0) toast.warning(`${result.skipped.toLocaleString()} rows skipped`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Import failed');
     } finally {
       setImporting(false);
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ['leads'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-lists'] })]);
     }
   };
 

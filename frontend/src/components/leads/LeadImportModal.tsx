@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
-import { apiFetch } from '@/lib/api';
+import { useCsvImport } from '@/hooks/useCsvImport';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
@@ -48,23 +48,27 @@ const FIELD_MAP: Record<string, string> = {
 };
 
 export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
+  const importCsv = useCsvImport();
+  const fileGeneration = useRef(0);
   const [file, setFile] = useState<File | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ imported: number; updated: number; skipped: number; errors: number; message?: string } | null>(null);
+  const [result, setResult] = useState<{ imported: number; updated: number; skipped: number; errors: number; message?: string; warning?: string | null } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const qc = useQueryClient();
 
   const handleFile = (f: File) => {
-    setFile(f);
+    const generation = ++fileGeneration.current;
+    setFile(f); setCsvData([]); setCsvHeaders([]); setColumnMapping({});
     setResult(null);
     Papa.parse(f, {
       header: true,
       skipEmptyLines: true,
       preview: 5,
       complete: (results) => {
+        if (generation !== fileGeneration.current) return;
         const headers = results.meta.fields || [];
         setCsvHeaders(headers);
         setCsvData(results.data as Record<string, string>[]);
@@ -112,18 +116,10 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
       }).filter(row => row.property_address && row.city);
       skipped = rows.length - records.length;
       if (!records.length) throw new Error('No rows contain both a property address and a verified city.');
-      const response = await apiFetch('/api/ai/import-master-list', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: records, engine: 'rules', score_with_claude: true,
-          list_name: file.name.replace(/\.[^.]+$/, '').slice(0, 120), filename: file.name }),
-      });
-      const saved = await response.json();
-      if (saved.status !== 'ok' || !Number.isInteger(saved.imported) || saved.imported < 0
-          || !Number.isInteger(saved.updated) || saved.updated < 0) {
-        throw new Error('The server did not confirm the import outcome.');
-      }
+      const saved = await importCsv({ rows: records, engine: 'rules', score_with_claude: true,
+        list_name: file.name.replace(/\.[^.]+$/, '').slice(0, 120), filename: file.name });
       imported = saved.imported; updated = saved.updated; skipped += saved.skipped || 0;
-      setResult({ imported, updated, skipped, errors: 0 });
+      setResult({ imported, updated, skipped, errors: 0, warning: saved.warning });
       toast.success(`Imported ${imported} leads; ${updated} existing leads reconciled`);
     } catch (error) {
       setResult({ imported, updated, skipped, errors: 0,
@@ -138,7 +134,7 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
   const dbFields = [...new Set(Object.values(FIELD_MAP))].sort();
 
   return (
-    <Modal open={open} onClose={onClose} title="Import Leads from CSV" size="xl">
+    <Modal open={open} onClose={() => { if (!importing) { fileGeneration.current += 1; onClose(); } }} title="Import Leads from CSV" size="xl">
       <div className="p-6 space-y-6">
         {/* Drop zone */}
         {!file && (
@@ -174,7 +170,7 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
             <div className="flex items-center gap-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
               <CheckCircle className="h-4 w-4 text-blue-600 shrink-0" />
               <span><strong>{file.name}</strong> loaded — {csvData.length} preview rows</span>
-              <button onClick={() => setFile(null)} className="ml-auto text-xs text-gray-400 hover:text-gray-600">
+              <button disabled={importing} onClick={() => { fileGeneration.current += 1; setFile(null); }} className="ml-auto text-xs text-gray-400 hover:text-gray-600">
                 Change
               </button>
             </div>
@@ -190,6 +186,7 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
                     </span>
                     <span className="text-gray-400">→</span>
                     <select
+                      disabled={importing}
                       value={columnMapping[header] || ''}
                       onChange={(e) => setColumnMapping((m) => ({ ...m, [header]: e.target.value }))}
                       className="flex-1 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-[#1B3A5C]"
@@ -232,7 +229,7 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
             )}
 
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button variant="outline" onClick={onClose} disabled={importing}>Cancel</Button>
               <Button onClick={handleImport} loading={importing}>
                 {importing ? 'Importing...' : 'Import Leads'}
               </Button>
@@ -259,7 +256,9 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
                 <p className="text-xs text-red-600 mt-1">Errors</p>
               </div>
             </div>
-            <Button variant="outline" onClick={onClose} className="w-full">Close</Button>
+            {result.warning && <p role="status">{result.warning}</p>}
+            {result.message && <Button onClick={handleImport} loading={importing}>Retry original import</Button>}
+            <Button variant="outline" onClick={onClose} disabled={importing} className="w-full">Close</Button>
           </div>
         )}
       </div>

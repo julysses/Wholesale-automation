@@ -1,4 +1,15 @@
-## Current candidate — thirteen migrations
+## Current candidate — connected CSV intake, thirteen migrations
+
+Main CSV API/UI now use the atomic transaction and one-way optional AI claims/results.
+The existing thirteenth proposed migration is expanded, not applied in production.
+Full apply/rollback/history/access, CSV data and connected API/scoring, land import,
+pinned call/SMS overlap and ten intake journeys pass (125.82 seconds). Backend
+1,325/10 skipped; frontend 262/54 files; build/typecheck/lint gate pass with 143
+existing findings. Lost SQL acknowledgment is exercised after data, claim and result
+commits; no repeated model dispatch. See `CSV-LEAD-TRANSACTION.md`. Large AI execution
+and partial-batch recovery, signed-in operator acceptance and live launch gates remain.
+
+## Earlier October 22 checkpoint — thirteen-migration foundation only
 
 The main CSV database transaction foundation adds
 `20261022170346_integration_csv_lead_intake.sql` to the explicit allowlist.

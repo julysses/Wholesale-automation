@@ -49,7 +49,7 @@ it('land import retries only on an explicit click with the same receipt referenc
   expect(await screen.findByText(/6 leads imported/)).toBeInTheDocument();
 });
 it('standalone lead modal routes all rows through reconciliation and reports existing records',async()=>{
-  mocks.api.mockResolvedValue(new Response(JSON.stringify({status:'ok',imported:0,updated:6,skipped:0})));
+  mocks.api.mockImplementation((_path:string,init:RequestInit)=>{const body=JSON.parse(init.body as string); return Promise.resolve(new Response(JSON.stringify({status:'ok',request_id:body.request_id,replayed:false,imported:0,updated:6,skipped:0,scored:0,consolidated_rows:6,owner_review:0,scoring_state:'completed'})));});
   show(<LeadImportModal open onClose={()=>{}}/>);
   fireEvent.click(await screen.findByRole('button',{name:'Import Leads',exact:true}));
   await waitFor(()=>expect(mocks.api).toHaveBeenCalledTimes(1));
@@ -74,4 +74,19 @@ it('land import ignores an older file reader finishing after the newly selected 
   fireEvent.click(await screen.findByRole('button',{name:/^Import \d/}));
   await waitFor(()=>expect(mocks.api).toHaveBeenCalledTimes(1));
   expect(JSON.parse(mocks.api.mock.calls[0][1].body).rows[0].property_address).toBe('Current File St');
+});
+
+it('standalone modal explicitly retries the original request body after an uncertain response',async()=>{
+  mocks.api.mockImplementationOnce(()=>Promise.reject(new Error('Response lost'))).mockImplementation((_path:string,init:RequestInit)=>{
+    const body=JSON.parse(init.body as string);return Promise.resolve(new Response(JSON.stringify({status:'ok',request_id:body.request_id,replayed:true,
+      imported:6,updated:0,skipped:0,scored:6,consolidated_rows:6,owner_review:0,scoring_state:'completed'})));
+  });
+  show(<LeadImportModal open onClose={()=>{}}/>);
+  fireEvent.click(await screen.findByRole('button',{name:'Import Leads',exact:true}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Response lost');
+  expect(mocks.api).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button',{name:'Retry original import'}));
+  await waitFor(()=>expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  expect(mocks.api).toHaveBeenCalledTimes(2);
+  expect(mocks.api.mock.calls[0][1].body).toEqual(mocks.api.mock.calls[1][1].body);
 });

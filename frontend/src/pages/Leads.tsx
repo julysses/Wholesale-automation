@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api';
-import { useState, useEffect } from 'react';
+import { useCsvImport } from '@/hooks/useCsvImport';
+import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useLead, useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity, type LeadWrite } from '@/hooks/useLeads';
@@ -618,7 +619,6 @@ const MAP_FIELDS = [
   'owner_mailing_address', 'source', 'motivation_tag',
   'property_type', 'bedrooms', 'bathrooms', 'sqft', 'year_built', 'asking_price',
 ];
-const NUMERIC_FIELDS = new Set(['bedrooms', 'bathrooms', 'sqft', 'year_built', 'asking_price']);
 
 // Offline fallback mapper — covers PropStream, county tax/foreclosure rolls,
 // and XLeads column conventions (situs/parcel/site address, muni city, etc.)
@@ -688,12 +688,14 @@ async function claudeMap(headers: string[], samples: string[][]): Promise<MapPla
 
 function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
+  const importCsv = useCsvImport();
+  const fileGeneration = useRef(0);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [dataRows, setDataRows] = useState<string[][]>([]);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ imported: number; updated?: number; errors: number; skipped: number; message?: string } | null>(null);
+  const [result, setResult] = useState<{ imported: number; updated?: number; errors: number; skipped: number; message?: string; warning?: string | null } | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [mapStatus, setMapStatus] = useState<'idle' | 'parsing' | 'mapping' | 'done'>('idle');
   const [mappedBy, setMappedBy] = useState<'claude' | 'heuristic' | null>(null);
@@ -703,6 +705,7 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [claudeNotes, setClaudeNotes] = useState('');
 
   const reset = () => {
+    fileGeneration.current += 1;
     setFile(null); setResult(null); setHeaders([]); setPreview([]); setDataRows([]);
     setMapping({}); setMapStatus('idle'); setMappedBy(null); setDefaultCity('');
     setDefaultState('TX'); setAddressCombined(false); setClaudeNotes('');
@@ -713,7 +716,9 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
       toast.error('Please drop a .csv or Excel (.xlsx/.xls) file');
       return;
     }
-    setFile(f);
+    const generation = ++fileGeneration.current;
+    setFile(f); setDataRows([]); setPreview([]); setMapping({}); setDefaultCity(''); setDefaultState('TX');
+    setResult(null);
     setMappedBy(null);
     setAddressCombined(false);
     setClaudeNotes('');
@@ -723,10 +728,12 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
     try {
       rows = await parseSpreadsheet(f); // handles CSV + Excel uniformly
     } catch {
+      if (generation !== fileGeneration.current) return;
       toast.error(`Couldn't read ${f.name} — is it a valid CSV or Excel file?`);
       setMapStatus('idle');
       return;
     }
+    if (generation !== fileGeneration.current) return;
     if (rows.length < 2) {
       toast.error('That file has no data rows');
       setMapStatus('idle');
@@ -744,6 +751,7 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
     // (column mapping + combined-address detection + inferred city/state).
     // Fall back to local heuristics if Claude is unreachable.
     const plan = await claudeMap(hdr, body.slice(0, 3));
+    if (generation !== fileGeneration.current) return;
     if (plan && plan.mapping['property_address'] !== undefined) {
       setMapping(plan.mapping);
       setMappedBy('claude');
@@ -768,9 +776,6 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
         const parts = val.split(/\s+/);
         if (!rec.owner_first_name) rec.owner_first_name = parts[0];
         if (rec.owner_last_name === undefined && parts.length > 1) rec.owner_last_name = parts.slice(1).join(' ');
-      } else if (NUMERIC_FIELDS.has(field)) {
-        const num = Number(val.replace(/[^0-9.]/g, ''));
-        if (!Number.isNaN(num)) rec[field] = num;
       } else {
         rec[field] = val;
       }
@@ -815,20 +820,12 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
       if (!rows.length) throw new Error('No rows contain both a property address and a verified city.');
       // Use the same server reconciliation as Master List Builder. A browser
       // insert cannot distinguish a retry from a new property.
-      const response = await apiFetch('/api/ai/import-master-list', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows, engine: 'rules', score_with_claude: true,
-          list_name: file.name.replace(/\.[^.]+$/, '').slice(0, 120), filename: file.name }),
-      });
-      const saved = await response.json();
-      if (saved.status !== 'ok' || !Number.isInteger(saved.imported) || saved.imported < 0
-          || !Number.isInteger(saved.updated) || saved.updated < 0) {
-        throw new Error('The server did not confirm the import outcome.');
-      }
+      const saved = await importCsv({ rows, engine: 'rules', score_with_claude: true,
+        list_name: file.name.replace(/\.[^.]+$/, '').slice(0, 120), filename: file.name });
       imported = saved.imported;
       updated = saved.updated;
       skipped += saved.skipped || 0;
-      setResult({ imported, updated, errors, skipped });
+      setResult({ imported, updated, errors, skipped, warning: saved.warning });
     } catch (error) {
       setResult({ imported, updated, errors, skipped, message: error instanceof Error ? error.message : 'Import interrupted.' });
     } finally {
@@ -841,7 +838,7 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
   };
 
   return (
-    <Modal open={open} onClose={() => { onClose(); reset(); }} title="Import Leads from CSV" size="xl">
+    <Modal open={open} onClose={() => { if (!importing) { onClose(); reset(); } }} title="Import Leads from CSV" size="xl">
       <div className="p-6 space-y-5">
         {result ? (
           <div className="text-center py-8 space-y-3">
@@ -851,7 +848,9 @@ function ImportCSVModal({ open, onClose }: { open: boolean; onClose: () => void 
             {result.skipped > 0 && <p className="text-sm text-amber-700">{result.skipped.toLocaleString()} rows skipped (missing address or city)</p>}
             {result.errors > 0 && <p className="text-sm text-red-600">{result.errors.toLocaleString()} rows were not confirmed saved.</p>}
             {result.message && <p role="alert" className="text-sm text-red-600">{result.message} Import stopped. Review saved leads before retrying.</p>}
-            <Button onClick={() => { onClose(); reset(); }}>Done</Button>
+            {result.warning && <p role="status" className="text-sm text-amber-700">{result.warning}</p>}
+            {result.message && <Button onClick={handleImport} loading={importing}>Retry original import</Button>}
+            <Button onClick={() => { onClose(); reset(); }} disabled={importing}>Done</Button>
           </div>
         ) : (
           <>

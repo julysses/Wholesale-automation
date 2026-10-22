@@ -1,10 +1,10 @@
 {
   "date": "2026-10-22",
-  "status": "local_database_foundation_only_not_deployed",
+  "status": "local_candidate_only_not_deployed",
   "migration": "20261022170346_integration_csv_lead_intake.sql",
   "migration_count": 13,
-  "application_route_connected": false,
-  "ai_dispatch_implemented": false,
+  "application_route_connected": true,
+  "ai_dispatch_implemented": true,
   "outreach_authorized": false,
   "rpc": "public.import_csv_leads(uuid,uuid,jsonb,jsonb)",
   "tables": [
@@ -14,12 +14,51 @@
   "files": [
     {
       "path": "frontend/supabase/migrations/20261022170346_integration_csv_lead_intake.sql",
-      "sha256": "a6bb373f25752d03951cfaf85972c56023b84f5705167e9cbc122acdadb0696e"
+      "sha256": "202957283b3e7f29f67a96de9607e584edcb040c60d75df405c9cbcde80eeffe"
     },
     {
       "path": "pipeline/integration/verify_csv_import.py",
-      "sha256": "ebfb8fb339e15b76c26b86029caa164d5a9848dc87afe838bb34190175a7c1a2"
+      "sha256": "38a5ee53d88047ebd9f91fc9835dadac8ddba8ac4a94fe55b2bc9dd12867cdd7"
+    },
+    {
+      "path": "pipeline/integration/verify_csv_scoring.py",
+      "sha256": "7eb4b185c7647a81b749cb0ab58d9daa2d52cf19a6f4b0dbb1f1048f91f36112"
+    },
+    {
+      "path": "web/api/__init__.py",
+      "sha256": "90cfb88914e3c2a9f3bba2dff94204cc31d1f1543b6501ad2670947e80308279"
+    },
+    {
+      "path": "web/api/csv_import.py",
+      "sha256": "e8a7ce0329354792cfeb5010e2305b22df051b8a85abf8a1c73a0d7fbde977a8"
+    },
+    {
+      "path": "frontend/src/hooks/useCsvImport.ts",
+      "sha256": "b291d4ad7eb5bce513a46b9112bd7752579420cf23356341dbec1730f996898b"
+    },
+    {
+      "path": "frontend/src/pages/Leads.tsx",
+      "sha256": "7a440fa16c93bf1c5c4f0fd0f4897ac796a51d1f01d5f258e614c868ac8bc8e4"
+    },
+    {
+      "path": "frontend/src/pages/MasterListBuilder.tsx",
+      "sha256": "e3738b1c97dabcefbe3c9565a52fcdce8490c754e10cd61c177b4830c8f04935"
+    },
+    {
+      "path": "frontend/src/components/leads/LeadImportModal.tsx",
+      "sha256": "39aeb953c6161b25acbd6d2402d4ae8a645d487173f01f8a6c37f4b7d0f74c26"
+    },
+    {
+      "path": "frontend/src/stores/useMasterListStore.ts",
+      "sha256": "fcd760e3bf6eb55c67e3245435ea40218045ec6a5b1a2bee1c68329f11d1e324"
     }
   ],
-  "rollback": "Preserve immutable import receipts, created tasks and original assignments. Runtime rollback must retain schema and paused transport; do not drop receipt evidence. Final release/recovery review remains open."
+  "rollback": "Preserve immutable import receipts, created tasks and original assignments. Runtime rollback must retain schema and paused transport; do not drop receipt evidence. Final release/recovery review remains open.",
+  "api": "POST /api/ai/import-master-list",
+  "rpcs": [
+    "public.import_csv_leads(uuid,uuid,jsonb,jsonb)",
+    "public.claim_csv_import_scoring(uuid,uuid,uuid)",
+    "public.finish_csv_import_scoring(uuid,uuid,uuid,jsonb)"
+  ],
+  "large_ai_runtime_and_partial_batch_recovery_verified": false
 }

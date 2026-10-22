@@ -1,7 +1,7 @@
 """Real PostgreSQL proof for the main CSV transaction; synthetic rows only.
 
-The application still uses its old route until durable AI claims and correlated
-API responses are wired. This verifies the database foundation, not go-live.
+This isolates the data transaction. The companion verify_csv_scoring.py exercises
+the connected API and model claims; neither script certifies production go-live.
 """
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -216,7 +216,7 @@ def verify(db):
             pool.shutdown(wait=True)
             for c in clients:
                 c.connection.close()
-        print(json.dumps({'csv_lead_transaction':'passed','application_route':'not_yet_connected',
+        print(json.dumps({'csv_lead_transaction':'passed','application_route':'verified_by_verify_csv_scoring',
             'normalization_cases':len(cases),'owned_due_tasks':6,'bulk_owned_tasks':501,
             'existing_lookup_beyond_1000':True,'worked_fields_and_completed_task_preserved':True,
             'same_reference_replay':'passed','ambiguous_identity':'refused','invalid_batch_rollback':'passed',

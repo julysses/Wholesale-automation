@@ -39,16 +39,20 @@ REVOKE ALL ON FUNCTION private.protect_csv_lead_import() FROM PUBLIC,anon,authen
 CREATE TRIGGER csv_lead_import_immutable BEFORE UPDATE OR DELETE ON private.csv_lead_imports
  FOR EACH ROW EXECUTE FUNCTION private.protect_csv_lead_import();
 
--- Durable pending intent, separate from confirmed data. Provider claim/finish is
--- required before wiring optional AI scoring into the API. No provider work here.
+-- Durable intent and one-way provider claims, separate from confirmed data.
+-- PostgreSQL never calls a provider. Unknown attempts stay held for review.
 CREATE TABLE private.csv_import_scoring (
  import_id uuid PRIMARY KEY REFERENCES private.csv_lead_imports(id),
  state text NOT NULL DEFAULT 'pending' CHECK(state IN ('pending','submitting','completed','review')),
  lead_ids uuid[] NOT NULL,
  claim_id uuid,
+ snapshots jsonb NOT NULL DEFAULT '[]' CHECK(jsonb_typeof(snapshots)='array'),
+ scores jsonb,
+ result jsonb,
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX csv_scoring_lead_reservations ON private.csv_import_scoring USING gin(lead_ids);
 ALTER TABLE private.csv_import_scoring ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.csv_import_scoring FROM PUBLIC,anon,authenticated;
 GRANT SELECT,INSERT,UPDATE ON private.csv_import_scoring TO service_role;
@@ -174,7 +178,7 @@ BEGIN
    AND l.score_motivation IS NULL AND l.score_timeline IS NULL AND l.score_equity IS NULL
    AND l.score_condition IS NULL AND l.score_flexibility IS NULL AND nullif(l.ai_qualification_summary,'') IS NULL
    AND NOT EXISTS(SELECT 1 FROM public.tasks t WHERE t.lead_id=l.id AND (t.status='completed' OR t.completed_at IS NOT NULL))
-   AND NOT EXISTS(SELECT 1 FROM private.csv_import_scoring s WHERE l.id=ANY(s.lead_ids)))
+   AND NOT EXISTS(SELECT 1 FROM private.csv_import_scoring s WHERE s.lead_ids @> ARRAY[l.id]))
   THEN score_ids:=array_append(score_ids,lead); END IF;
   mappings:=mappings||jsonb_build_array(jsonb_build_object('lead_id',lead,'task_id',task,'created',matches=0));
  END LOOP;
@@ -186,7 +190,7 @@ BEGIN
  END IF;
  INSERT INTO private.csv_lead_imports(id,operator_id,payload,options,result)
  VALUES(p_id,p_operator,p_rows,p_options,jsonb_build_object('imported',imported,'existing',existing,
-  'owner_review',owner_review,'intake_owner_id',owner_id,'rows',mappings,'list_id',list_id,'scored',scored,'scoring_state',scoring_state)) RETURNING * INTO saved;
+  'owner_review',owner_review,'intake_owner_id',owner_id,'rows',mappings,'list_id',list_id,'scored',scored,'scoring_eligible',cardinality(score_ids),'scoring_state',scoring_state)) RETURNING * INTO saved;
  IF scoring_state='pending' THEN
   INSERT INTO private.csv_import_scoring(import_id,lead_ids) VALUES(p_id,score_ids);
  END IF;
@@ -194,3 +198,127 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.import_csv_leads(uuid,uuid,jsonb,jsonb) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.import_csv_leads(uuid,uuid,jsonb,jsonb) TO service_role;
+
+CREATE FUNCTION public.claim_csv_import_scoring(p_id uuid,p_operator uuid,p_claim uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
+DECLARE operation private.csv_import_scoring; receipt private.csv_lead_imports;
+ candidate public.leads; v_snapshots jsonb:='[]'; total integer;
+BEGIN
+ IF p_claim IS NULL OR NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=p_operator AND status='approved')
+ THEN RAISE EXCEPTION 'Approved operator and claim reference required' USING ERRCODE='22023'; END IF;
+ SELECT * INTO receipt FROM private.csv_lead_imports WHERE id=p_id;
+ IF NOT FOUND OR receipt.operator_id<>p_operator OR receipt.options->>'engine'<>'ai'
+  OR receipt.options->>'score_on_import'<>'true'
+ THEN RAISE EXCEPTION 'Scoring intent does not match operator/import' USING ERRCODE='22023'; END IF;
+ SELECT * INTO operation FROM private.csv_import_scoring WHERE import_id=p_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Scoring intent missing' USING ERRCODE='22023'; END IF;
+ IF operation.state<>'pending' THEN
+  RETURN jsonb_build_object('import_id',p_id,'operator_id',p_operator,'claimed',false,
+   'claim_id',operation.claim_id,'state',operation.state,'result',operation.result);
+ END IF;
+ FOR candidate IN SELECT * FROM public.leads WHERE id=ANY(operation.lead_ids) ORDER BY id FOR UPDATE LOOP
+  -- Coordinate with edits to existing tasks while checking completed work.
+  PERFORM 1 FROM public.tasks WHERE lead_id=candidate.id FOR SHARE;
+  IF NOT coalesce(candidate.dnc,false) AND coalesce(candidate.contact_attempts,0)=0
+   AND coalesce(candidate.status,'new') IN ('new','scoring_error')
+   AND candidate.score_motivation IS NULL AND candidate.score_timeline IS NULL
+   AND candidate.score_equity IS NULL AND candidate.score_condition IS NULL AND candidate.score_flexibility IS NULL
+   AND nullif(candidate.ai_qualification_summary,'') IS NULL
+   AND NOT EXISTS(SELECT 1 FROM public.tasks WHERE lead_id=candidate.id AND (status='completed' OR completed_at IS NOT NULL))
+  THEN
+   v_snapshots:=v_snapshots||jsonb_build_array(to_jsonb(candidate)-ARRAY[
+    'updated_at','priority_rank','retention_rule','retention_action','retention_due_at','retention_deletable','retention_reason']);
+  END IF;
+ END LOOP;
+ total:=cardinality(operation.lead_ids);
+ UPDATE private.csv_import_scoring SET claim_id=p_claim,snapshots=v_snapshots,
+  state=CASE WHEN jsonb_array_length(v_snapshots)>0 THEN 'submitting' WHEN total>0 THEN 'review' ELSE 'completed' END,
+  result=jsonb_build_object('scored',0,'held',total),updated_at=now() WHERE import_id=p_id RETURNING * INTO operation;
+ RETURN jsonb_build_object('import_id',p_id,'operator_id',p_operator,'claimed',operation.state='submitting',
+  'claim_id',p_claim,'state',operation.state,'snapshots',operation.snapshots,'result',operation.result);
+END $$;
+REVOKE ALL ON FUNCTION public.claim_csv_import_scoring(uuid,uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_csv_import_scoring(uuid,uuid,uuid) TO service_role;
+
+CREATE FUNCTION public.finish_csv_import_scoring(p_id uuid,p_operator uuid,p_claim uuid,p_scores jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
+DECLARE operation private.csv_import_scoring; receipt private.csv_lead_imports;
+ snapshot jsonb; current_row public.leads; assessment jsonb; field text;
+ valid boolean:=true; expected_ids text[]; received_ids text[]; total integer; tier text;
+ scored integer:=0; applied uuid[]:='{}';
+BEGIN
+ IF p_claim IS NULL OR NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=p_operator AND status='approved')
+ THEN RAISE EXCEPTION 'Approved operator and claim reference required' USING ERRCODE='22023'; END IF;
+ SELECT * INTO receipt FROM private.csv_lead_imports WHERE id=p_id;
+ IF NOT FOUND OR receipt.operator_id<>p_operator
+ THEN RAISE EXCEPTION 'Scoring result does not match operator/import' USING ERRCODE='22023'; END IF;
+ SELECT * INTO operation FROM private.csv_import_scoring WHERE import_id=p_id FOR UPDATE;
+ IF NOT FOUND OR operation.claim_id IS DISTINCT FROM p_claim
+ THEN RAISE EXCEPTION 'Scoring claim does not match' USING ERRCODE='22023'; END IF;
+ IF operation.state IN ('completed','review') THEN
+  IF operation.scores IS DISTINCT FROM p_scores
+  THEN RAISE EXCEPTION 'Scoring result conflicts with saved evidence' USING ERRCODE='22023'; END IF;
+  RETURN jsonb_build_object('import_id',p_id,'operator_id',p_operator,'claim_id',p_claim,
+   'state',operation.state,'result',operation.result);
+ END IF;
+ IF operation.state<>'submitting' THEN RAISE EXCEPTION 'Scoring claim is not submitting' USING ERRCODE='22023'; END IF;
+ IF jsonb_typeof(p_scores) IS DISTINCT FROM 'object' THEN
+  valid:=false;
+ ELSE
+  SELECT array_agg(value->>'id' ORDER BY value->>'id') INTO expected_ids FROM jsonb_array_elements(operation.snapshots);
+  SELECT array_agg(key ORDER BY key) INTO received_ids FROM jsonb_object_keys(p_scores) key;
+  valid:=received_ids IS NOT DISTINCT FROM expected_ids;
+  IF valid THEN
+   FOR assessment IN SELECT value FROM jsonb_each(p_scores) LOOP
+    IF jsonb_typeof(assessment) IS DISTINCT FROM 'object' OR assessment-ARRAY[
+     'score_motivation','score_timeline','score_equity','score_condition','score_flexibility',
+     'ai_qualification_summary','status','precision_tier']<>'{}'::jsonb
+    THEN valid:=false; EXIT; END IF;
+    FOREACH field IN ARRAY ARRAY['score_motivation','score_timeline','score_equity','score_condition','score_flexibility'] LOOP
+     IF jsonb_typeof(assessment->field) IS DISTINCT FROM 'number' OR coalesce(assessment->>field,'') !~ '^[123]$'
+     THEN valid:=false; EXIT; END IF;
+    END LOOP;
+    IF NOT valid THEN EXIT; END IF;
+    total:=(assessment->>'score_motivation')::integer+(assessment->>'score_timeline')::integer+
+     (assessment->>'score_equity')::integer+(assessment->>'score_condition')::integer+(assessment->>'score_flexibility')::integer;
+    tier:=CASE WHEN total>=13 THEN 'hot' WHEN total>=8 THEN 'warm' ELSE 'cold' END;
+    IF jsonb_typeof(assessment->'ai_qualification_summary') IS DISTINCT FROM 'string'
+     OR coalesce(btrim(assessment->>'ai_qualification_summary'),'')=''
+     OR length(assessment->>'ai_qualification_summary')>500
+     OR (assessment->>'status') IS DISTINCT FROM 'qualified_'||tier
+     OR (assessment->'precision_tier') IS DISTINCT FROM to_jsonb(CASE tier WHEN 'hot' THEN 1 WHEN 'warm' THEN 2 ELSE 3 END)
+    THEN valid:=false; EXIT; END IF;
+   END LOOP;
+  END IF;
+ END IF;
+ IF valid THEN
+  FOR snapshot IN SELECT value FROM jsonb_array_elements(operation.snapshots) ORDER BY value->>'id' LOOP
+   SELECT * INTO current_row FROM public.leads WHERE id=(snapshot->>'id')::uuid FOR UPDATE;
+   IF NOT FOUND THEN CONTINUE; END IF;
+   PERFORM 1 FROM public.tasks WHERE lead_id=current_row.id FOR SHARE;
+   IF (to_jsonb(current_row)-ARRAY['updated_at','priority_rank','retention_rule','retention_action',
+     'retention_due_at','retention_deletable','retention_reason']) IS DISTINCT FROM snapshot
+    OR EXISTS(SELECT 1 FROM public.tasks WHERE lead_id=current_row.id AND (status='completed' OR completed_at IS NOT NULL))
+   THEN CONTINUE; END IF;
+   assessment:=p_scores->(snapshot->>'id');
+   UPDATE public.leads SET score_motivation=(assessment->>'score_motivation')::integer,
+    score_timeline=(assessment->>'score_timeline')::integer,score_equity=(assessment->>'score_equity')::integer,
+    score_condition=(assessment->>'score_condition')::integer,score_flexibility=(assessment->>'score_flexibility')::integer,
+    ai_qualification_summary=assessment->>'ai_qualification_summary',status=assessment->>'status',
+    precision_tier=(assessment->>'precision_tier')::integer WHERE id=current_row.id;
+   scored:=scored+1; applied:=array_append(applied,current_row.id);
+  END LOOP;
+  IF scored>0 THEN
+   PERFORM public.recompute_priority_ranks();
+   PERFORM public.refresh_lead_retention(applied);
+  END IF;
+ END IF;
+ UPDATE private.csv_import_scoring SET scores=p_scores,
+  state=CASE WHEN valid AND scored=cardinality(lead_ids) THEN 'completed' ELSE 'review' END,
+  result=jsonb_build_object('scored',scored,'held',cardinality(lead_ids)-scored),updated_at=now()
+  WHERE import_id=p_id RETURNING * INTO operation;
+ RETURN jsonb_build_object('import_id',p_id,'operator_id',p_operator,'claim_id',p_claim,
+  'state',operation.state,'result',operation.result);
+END $$;
+REVOKE ALL ON FUNCTION public.finish_csv_import_scoring(uuid,uuid,uuid,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.finish_csv_import_scoring(uuid,uuid,uuid,jsonb) TO service_role;

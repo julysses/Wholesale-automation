@@ -1,3 +1,37 @@
+# Latest handoff — October 22 connected CSV intake
+
+Integration branch `codex/wholesale-integration-review`; previous pushed checkpoint
+`b148869`; production baseline `a89815126d9a98ced016167d8e383641d133135f` retained.
+The candidate now connects main CSV API/UI to the thirteenth proposed migration's
+atomic import and one-way optional AI claim/result RPCs. No production migration,
+deployment, provider or schedule changes. PR #21 remains draft.
+
+Start at `docs/integration/CSV-LEAD-TRANSACTION.md`, its manifest/result JSON and
+`FRIDAY-ACCEPTANCE-STATUS.md`. Backend 1,325 pass/10 skip; frontend 262/54 files;
+build/typecheck/lint gate pass (143 existing findings). Full thirteen-migration
+apply/rollback/history/access, connected CSV/API/scoring, land import, pinned-call/
+SMS overlap and ten intake journeys pass (125.82 seconds), synthetic data only.
+Three real SQL commit-then-lost-response phases prove no repeated paid dispatch.
+
+Main CSV uses configured approved owner and due tasks, immutable exact data replay,
+strict numerical/engine validation, verified Auth and correlated results. Optional
+AI claims persist before dispatch, disable SDK retries, validate exact IDs/scores,
+hold changed work/completed tasks and never take over unknown attempts. Browser
+callers use stable explicit references; Master List keeps its ID/list name in its
+existing SPA store and uses atomic free rules instead of a global background score.
+
+Next: review real runtime limits/large optional AI multi-batch execution and partial
+completion recovery; small synthetic model cases do not prove production-scale AI.
+Complete buyer UI and signed-in operator workflow acceptance, Python dependency/
+security review, exact release/recovery and live Meta/provider gates. R8–R12 remain
+open where their evidence is incomplete. Preserve all prior requirements.
+
+Shared test number preference confirmed; last four digits and notification inbox
+still pending. Effective sending flags require verified access; no email step-up
+was bypassed. Keep broad schedules paused, held sessions untouched and no suppression
+reset. Friday October 23 remains the full launch objective. Untracked old ' 2'
+exports remain preserved/excluded. Earlier handoffs below are historical.
+
 # Latest handoff — October 22 main CSV transaction foundation
 
 Active integration branch: `codex/wholesale-integration-review`, production parent

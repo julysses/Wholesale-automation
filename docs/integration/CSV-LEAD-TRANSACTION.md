@@ -1,99 +1,137 @@
-# Main CSV transaction foundation — October 22
+# Connected main CSV intake — October 22
 
-Status: database foundation prepared and verified locally. The application route
-is **not yet connected**. R8 and Friday go-live acceptance remain open. No
-production migration, runtime, flag, provider or schedule was changed.
+Status: candidate API/UI and database transaction connected and verified locally.
+No production migration, runtime, flag, provider or schedule was changed. R8,
+operator acceptance and Friday go-live certification remain open.
 
-## Proposed behavior
+## Behavior
 
-`20261022170346_integration_csv_lead_intake.sql` is the thirteenth file in the
-explicit forward allowlist. It adds server-only
-`public.import_csv_leads(uuid,uuid,jsonb,jsonb)` and private immutable receipts.
-The CSV endpoint must supply verified operator identity, a stable request UUID,
-normalized/consolidated rows and exact options. A reference can only replay its
-original actor, payload and options; a conflicting request fails closed.
+`20261022170346_integration_csv_lead_intake.sql` remains the thirteenth file in the
+explicit forward allowlist. It has not been applied in production. Its current
+hash supersedes the earlier foundation-only checkpoint. It now provides:
 
-One SQL transaction holds a manual-import advisory lock across lookup, lead/list
-creation, owner assignment, due follow-up tasks and receipt persistence. It
-serializes manual uploads with different references. Each new lead uses the
-configured approved `lead_owner_user_id`, not an arbitrary importing operator.
-Missing or unapproved configuration refuses new work. Historical exact receipts
-remain readable without reassigning work when that configuration changes.
+- `public.import_csv_leads(uuid,uuid,jsonb,jsonb)`: atomic lead/list save, approved
+  configured intake owner, linked due tasks, free rules scoring and immutable receipt.
+- `public.claim_csv_import_scoring(uuid,uuid,uuid)`: one-way optional AI claim,
+  committed before any model request, with current snapshots and untouched-work checks.
+- `public.finish_csv_import_scoring(uuid,uuid,uuid,jsonb)`: exact claimed IDs and
+  scores, snapshot comparison, preserved human work and durable completion/review.
 
-New leads have `ai_calling_paused=true` and both SMS/email sequences false. A CSV
-supplies property/owner evidence and grants no outreach permission. Existing leads
-retain assignment, DNC, contact attempts, worked status, scores, list membership
-and completed tasks. Whitelisted blank fields may be filled; source provenance is
-unioned and an additional import note may be appended. Missing source/note input
-leaves historical values untouched, including long source text and empty strings.
-Existing missing/unapproved ownership is reported for review, not silently changed.
+All business RPCs and private receipt/operation tables are server-only. The only
+new authenticated callable is the immutable SECURITY INVOKER private address
+normalizer needed to maintain the functional index. It reads no business data.
+Actual authenticated inserts still work; browser import/receipt access is denied.
 
-Address matching preserves the Python import contract: full street-suffix tokens,
-city and state; cardinal directions and unit distinctions survive. Multiple
-existing matches refuse the entire import. The nonunique index avoids deleting or
-silently arbitrating historical duplicates. Its immutable SECURITY INVOKER private
-normalizer reads no tables. Authenticated writers receive EXECUTE only on that
-pure expression so ordinary existing writes can maintain the index. Import RPC,
-receipts and scoring intent remain inaccessible to browser roles.
+`POST /api/ai/import-master-list` obtains operator identity from verified Auth,
+normalizes/consolidates all rows and validates the correlated SQL receipt before
+reporting success or dispatching a model. It never falls back to non-atomic table
+writes if schema is absent. Legacy callers without a UUID get deterministic
+identity from actor, normalized rows and options. Modern callers retain an explicit
+UUID for each prepared upload. Actor/payload/options conflicts are refused.
 
-Optional free rules scoring is in the same transaction and only targets untouched,
-unscored, unsuppressed records without completed tasks or another CSV AI intent.
-It retains the existing SQL scorer, including computed priority/retention metadata
-updates. It does not authorize sending. Optional AI intent is saved separately in
-`private.csv_import_scoring`; **this checkpoint does not dispatch AI**.
+Numeric validation preserves minus signs and rejects negatives, booleans,
+malformed values, unsupported precision/range and invalid state codes before any
+RPC. The Leads mapper sends numeric source text unchanged for this validation.
+An invalid later SQL row rolls back the entire data transaction.
+
+A manual-import advisory lock serializes different references through indexed
+lookup, lead creation, due tasks and receipt persistence. Matching keeps the
+existing Python street-suffix/city/state contract, preserving directions, units
+and different cities. Ambiguous historical matches refuse the whole import;
+legacy duplicates are not deleted. This proves manual-upload serialization, not
+uniqueness across every unrelated direct lead writer.
+
+New leads use configured approved `lead_owner_user_id`, not an arbitrary importing
+operator. Missing/unapproved configuration refuses new work. They have calling
+paused and SMS/email sequences false; CSV grants no contact permission. Existing
+assignment, DNC, contact attempts, worked status, scores, list membership and
+completed tasks survive. Only blank whitelisted fields may be filled; provenance
+may be unioned and an import note appended. Absent source/note input does not
+truncate long history, clear empty strings or update an unchanged record.
+Existing ownership gaps are reported for review rather than reassigned silently.
+
+Default free scoring occurs in the same transaction and only targets untouched,
+unscored, unsuppressed records without completed tasks or an existing CSV AI intent.
+The existing rules scorer may refresh computed priority/retention metadata; it
+never authorizes outreach. Master List now uses this transaction and no longer
+starts a separate global background scoring run after save.
+
+Optional AI intent reserves eligible records across later import references. A
+claim locks its operation and lead/task records, captures snapshots and changes to
+`submitting` before returning dispatch authority. Only the first caller receives
+that authority. Even replaying the same claim UUID does not grant another dispatch.
+The SDK uses `max_retries=0` for this CSV path; each batch must return the exact
+claimed IDs, complete output and valid 1–3 integer scores. The SQL finish also
+validates tiers/fields and checks snapshots. Changed records/completed tasks are
+held, not overwritten. Invalid/partial/foreign results hold the entire attempt.
+A timeout records review when possible; an uncertain claim/result stays held or
+submitting and is never automatically dispatched again. Terminal exact-result
+replay returns the saved result; conflicting results are refused.
+
+Saved-data outcome and scoring outcome are separate. Scoring review/uncertainty
+returns confirmed save counts with a warning. Leads and the standalone modal offer
+explicit same-body retry after an uncertain data response. All three callers
+validate request identity/counts/state. Master List retains its UUID and list name
+in its existing SPA store across route remounts; a full page reload still loses
+that store. New references still deduplicate properties and cannot automatically
+reserve the same record for another CSV AI attempt.
 
 ## Verification
 
-`pipeline/integration/verify_csv_import.py` runs against the saved/current-shaped
-catalog after the released Facebook delta and all thirteen candidate migrations.
-It executes real SQL with service/browser roles and synthetic identities. Coverage:
+Backend: **1,325 passed, 10 skipped**. Frontend: **262 tests across 54 files passed**
+with four workers. Typecheck/production build pass. Lint gate adds no findings;
+143 existing findings remain. Existing build chunk-size warning remains. Pipeline
+source is unchanged from its prior 231-test checkpoint.
 
-- 24 address cases match the application helper, including directions, units,
-  street suffixes, whitespace and different cities.
-- Six new leads have the configured owner, linked due tasks and paused transport;
-  a separate importing operator proves assignment follows configured intake owner.
-- Exact replay preserves one list/task set; actor, payload and options conflicts
-  are refused. Receipts cannot be updated or deleted.
-- Worked DNC fields and a completed task survive merging; a no-change import leaves
-  the entire row unchanged. Long historical provenance survives absent input.
-- A real free-rules score succeeds for a new eligible lead, leaving worked fields
-  unchanged. AI intent is durable; overlapping import references do not reserve
-  the same record for a second automatic score.
-- Invalid later rows, ambiguous historical matches, forbidden fields and invalid
-  numeric/options input roll back earlier leads, tasks, lists and receipts.
-- Missing/unapproved owner and pending operator fail closed.
-- Existing matches beyond 1,000 rows are found in SQL; 501 new rows create 501 tasks.
-- Authenticated writes still maintain the index, while import RPC/private receipt
-  access are denied.
-- Eight sessions are observed waiting simultaneously on the same advisory lock;
-  distinct-reference uploads create one property and one task, with seven existing
-  results. This does not claim uniqueness across unrelated direct lead writers.
+The final disposable PostgreSQL run restores the saved/current-shaped catalog and
+released Facebook delta, compares shape/access, verifies all thirteen candidate
+migrations, full/injected failure rollback and retained history, then exercises:
 
-The full rehearsal also compares baseline shapes and authorization, verifies
-thirteen-migration apply/full rollback/injected failure rollback and retained
-history, then runs land import, pinned-call/SMS contention and ten intake journeys.
-All ten journeys passed in 124.92 seconds.
-Result: `csv-lead-transaction-result.json` and `production-upgrade-result.json`.
-Raw log: ignored `logs/friday-csv-transaction-upgrade-final.log`.
+- 24 normalization cases; configured owner with a different importing operator;
+  linked due tasks; exact receipt replay and actor/payload/options refusal.
+- Worked/DNC fields, completed tasks, long provenance and unchanged rows preserved;
+  invalid whole-batch rollback; ambiguous identity and owner setup refusal.
+- Existing lookup beyond 1,000 records and 501-row/501-task creation.
+- Eight observed concurrent manual uploads: one property/task plus seven existing.
+- Connected FastAPI → real SQL with only Auth/model boundaries stubbed: existing
+  source/phone reconciliation, a new owned task, qualification and exact retry.
+- Provider timeout: one model attempt, saved data confirmed, review and no replay.
+- Commit-then-lost-ack at data save, claim and result: exact data reconciliation,
+  zero model attempts after lost claim response, one attempt after lost result.
+- Invalid/missing/foreign IDs, boolean/out-of-range scores, forged tier/fields,
+  changed human work and completed tasks held without unsafe scoring writes.
+- Eight sessions observed contending for one scoring row: one dispatch winner;
+  eight parallel exact finishes return the same persisted result.
+- Existing manual land import and pinned-call/SMS overlap; ten intake journeys
+  pass in **125.82 seconds**. No provider calls or production rows copied.
 
-## Required next implementation
+HTTP receipt tests replace old fake-table batching/page assertions; persistence
+and historical preservation now run on real SQL. The old “missing list schema
+still imports” expectation was deliberately replaced with fail-closed missing-RPC
+coverage; safe schema-before-runtime ordering is required. Component tests cover
+all rows, exact explicit retry, wrong-reference refusal, warning vs save outcome,
+Master List remount recovery and no background score start. SDK parser tests prove
+no automatic retries and reject incomplete/mismatched results.
 
-1. Add durable AI claim/finish operations before connecting the optional AI import
-   path. Claim before any paid request; never dispatch again after an uncertain
-   attempt. Validate exact result IDs and scores, compare current records with
-   claim snapshots, and hold changed/invalid results for review. Preserve the
-   existing optional AI feature rather than silently replacing it with free rules.
-2. Replace the old non-atomic `/api/ai/import-master-list` path with this RPC,
-   verified Auth actor, correlated receipt validation and explicit unavailable
-   behavior if schema is absent. Validate engine values; correct numeric cleaning
-   that currently removes minus signs. Keep data-save and scoring outcomes separate.
-3. Give Leads, Master List and the standalone modal stable per-upload request IDs,
-   explicit same-reference retries and visible pending/review scoring outcomes.
-4. Adapt API/UI tests and execute the connected application/SQL path. Keep source,
-   DNC, existing workflow and large-file coverage; replace implementation-specific
-   batching assertions with actual business outcomes.
-5. Review the final exact migration/runtime artifact and rollback boundary; keep
-   PR #21 draft until all release requirements and owner acceptance are satisfied.
+Evidence: `csv-lead-transaction-result.json`, `csv-connected-scoring-result.json`,
+`csv-lead-transaction-manifest.json`, `production-upgrade-result.json`. Raw logs are
+ignored `logs/friday-csv-*`. These checks do not prove production Auth/JWT behavior,
+real-browser operator acceptance, live carrier/inbox delivery or production-volume
+lock/execution time.
 
-Current code still uses the old importer. This document and passing foundation
-checks must not be presented as completion of main CSV intake or launch readiness.
+## Remaining launch work
+
+1. Review import history/ownership and scoring-review recovery in the signed-in
+   operator walkthrough. Verify real runtime duration for large optional AI uploads;
+   current synchronous multi-batch behavior and production-scale partial-batch
+   recovery are unproven. Do not certify that path from small synthetic examples.
+2. Finish buyer workflow UI coverage, remaining R1–R12 business acceptance and
+   dependency/security review. Complete land visibility proof remains separate.
+3. Review the exact schema/runtime release artifact, index lock exposure, recovery
+   boundary and deployed ordering. Preserve all immutable receipts/tasks; do not
+   drop evidence as runtime rollback. Do not apply the migration directory wholesale.
+4. Verify actual Meta/website consent/routing, effective sending flags and scoped
+   provider/owner delivery, reply and STOP acceptance with the confirmed fresh
+   destination. Keep broad schedules paused pending owner review.
+
+PR #21 remains draft. Local green checks do not authorize deployment or activation.

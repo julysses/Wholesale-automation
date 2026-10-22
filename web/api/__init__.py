@@ -14,11 +14,13 @@ from __future__ import annotations
 import json
 import logging
 import re
+from decimal import Decimal, InvalidOperation
+from uuid import UUID
 from typing import Any, Literal
 
 import anthropic
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field, field_validator
 
 from config.settings import settings
 
@@ -348,13 +350,24 @@ class ImportLeadRow(BaseModel):
     source: str | None = None
     stack_count: int | None = None
     sources: list[str] | None = None
-    model_config = {"extra": "allow"}
+    status: str | None = None
+    motivation_tag: str | None = None
+    seller_notes: str | None = None
+    model_config = {"extra": "allow", "allow_inf_nan": False}
+
+    @field_validator("bedrooms", "bathrooms", "sqft", "year_built", "asking_price", mode="before")
+    @classmethod
+    def no_boolean_numbers(cls, value):
+        if isinstance(value, bool):
+            raise ValueError("Numeric import fields cannot be booleans")
+        return value
 
 
 class ImportMasterListRequest(BaseModel):
-    rows: list[ImportLeadRow]
+    request_id: UUID | None = None
+    rows: list[ImportLeadRow] = Field(min_length=1, max_length=10000)
     score_with_claude: bool = True   # legacy name: "score on import" (engine picks how)
-    engine: str = "rules"            # rules (instant, free) | ai (Claude, slow, paid)
+    engine: Literal["rules", "ai"] = "rules"  # free rules or optional paid AI
     list_name: str | None = None     # groups this upload so it can be deleted as a unit
     filename: str | None = None
 
@@ -375,7 +388,10 @@ def _clean_import_value(field: str, value: Any) -> Any:
         if not value:
             return None
     if field == "state":
-        return str(value).strip().upper()[:2] or "TX"
+        state = str(value).strip().upper()
+        if not re.fullmatch(r"[A-Z]{2}", state):
+            raise ValueError("State must be a two-letter code")
+        return state
     if field == "zip_code":
         z = re.sub(r"\D", "", str(value))
         return z[:5] or None
@@ -383,13 +399,23 @@ def _clean_import_value(field: str, value: Any) -> Any:
         phone = re.sub(r"[^\d+]", "", str(value))
         return phone or None
     if field in NUMERIC_IMPORT_FIELDS:
-        cleaned = re.sub(r"[^0-9.]", "", str(value))
-        if not cleaned:
-            return None
-        num = float(cleaned)
+        raw = str(value).strip()
+        if isinstance(value, bool) or not re.fullmatch(r"\$?\s*(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)", raw):
+            raise ValueError(f"Invalid nonnegative number for {field}")
+        try:
+            num = Decimal(raw.replace("$", "").replace(",", "").strip())
+        except InvalidOperation:
+            raise ValueError(f"Invalid number for {field}")
+        if not num.is_finite() or num < 0:
+            raise ValueError(f"Invalid number for {field}")
         if field in {"bedrooms", "sqft", "year_built"}:
+            if num != num.to_integral_value() or num > 2147483647:
+                raise ValueError(f"Invalid integer for {field}")
             return int(num)
-        return num
+        maximum, precision = (Decimal('99.9'), Decimal('0.1')) if field == 'bathrooms' else (Decimal('9999999999.99'), Decimal('0.01'))
+        if num > maximum or num != num.quantize(precision):
+            raise ValueError(f"Number exceeds supported precision or range for {field}")
+        return float(num)
     return value
 
 
@@ -459,10 +485,12 @@ def new_rows_preview(
     return [row for key, row in incoming_by_key.items() if key not in existing_by_key]
 
 
-def _score_imported_leads_with_claude(leads: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def _score_imported_leads_with_claude(leads: list[dict[str, Any]], *, single_attempt: bool = False) -> dict[str, dict[str, Any]]:
     if not leads:
         return {}
     client = _get_client()
+    if single_attempt:
+        client = client.with_options(max_retries=0)
     scored: dict[str, dict[str, Any]] = {}
     keys = ["score_motivation", "score_timeline", "score_equity", "score_condition", "score_flexibility"]
     system = (
@@ -496,6 +524,8 @@ Return ONLY a JSON array with exactly one object per input lead."""
             system=system,
             messages=[{"role": "user", "content": user}],
         )
+        if single_attempt and getattr(msg, "stop_reason", None) != "end_turn":
+            raise ValueError("Scoring response was not complete")
         raw = msg.content[0].text.strip()
         if raw.startswith("```"):
             parts = raw.split("```")
@@ -503,10 +533,18 @@ Return ONLY a JSON array with exactly one object per input lead."""
         results = json.loads(raw)
         if not isinstance(results, list):
             raise ValueError("Claude did not return a JSON array")
+        expected = {str(lead["lead_id"]) for lead in batch}
+        if single_attempt:
+            ids = [str(result.get("lead_id")) for result in results if isinstance(result, dict)]
+            if len(ids) != len(batch) or len(set(ids)) != len(ids) or set(ids) != expected:
+                raise ValueError("Scoring IDs do not match the claimed batch")
         for result in results:
             if not isinstance(result, dict) or "lead_id" not in result:
                 continue
             lead_id = str(result["lead_id"])
+            if single_attempt and (any(type(result.get(k)) is not int or result[k] not in (1, 2, 3) for k in keys)
+                    or not isinstance(result.get("qualification_summary"), str) or not result["qualification_summary"].strip()):
+                raise ValueError("Invalid scoring result")
             clean_scores = {k: max(1, min(3, int(result.get(k, 1)))) for k in keys}
             total = sum(clean_scores.values())
             tier = "HOT" if total >= 13 else "WARM" if total >= 8 else "COLD"
@@ -778,155 +816,10 @@ def score_unscored_leads(body: ScoreUnscoredLeadsRequest = ScoreUnscoredLeadsReq
 
 
 @router.post("/import-master-list")
-def import_master_list(body: ImportMasterListRequest) -> dict:
-    """Consolidate an uploaded master list into Supabase, then have Claude rank
-    the saved leads. The browser sends already mapped rows; the backend owns the
-    final de-duplication/upsert and scoring write so imports do not create raw
-    duplicate CRM records."""
-    if not body.rows:
-        raise HTTPException(400, detail="No rows provided")
-
-    from tools.crm import get_supabase_client
-
-    supabase = get_supabase_client()
-    if supabase is None:
-        raise HTTPException(503, detail="Supabase service role is not configured")
-
-    incoming_by_key: dict[str, dict[str, Any]] = {}
-    skipped = 0
-    for row in body.rows:
-        payload = _payload_from_import_row(row)
-        if not payload.get("property_address") or not payload.get("city"):
-            skipped += 1
-            continue
-        key = _lead_import_key(payload)
-        if not key:
-            skipped += 1
-            continue
-        incoming_by_key[key] = _merge_payloads(incoming_by_key.get(key, {}), payload)
-
-    if not incoming_by_key:
-        raise HTTPException(400, detail="No importable rows with property_address and city")
-
-    existing_columns = (
-        "id,property_address,city,state,zip_code,owner_first_name,owner_last_name,"
-        "owner_phone_1,owner_phone_2,owner_phone_3,owner_email,owner_mailing_address,"
-        "property_type,bedrooms,bathrooms,sqft,year_built,asking_price,source,status,internal_notes,"
-        "estimated_arv,loan_balance,estimated_equity_pct,motivation_tag,seller_notes,contact_attempts,dnc"
-    )
-    existing_rows = []
-    offset = 0
-    # PostgREST caps a response even when no limit is requested. Keep reading
-    # until an empty page; advancing by the actual page length also supports
-    # installations whose configured cap is smaller than our requested page.
-    while True:
-        page = (
-            supabase.table("leads").select(existing_columns)
-            .order("id").range(offset, offset + 999).execute().data or []
-        )
-        if not page:
-            break
-        existing_rows.extend(page)
-        offset += len(page)
-    existing_by_key = {_lead_import_key(row): row for row in existing_rows if row.get("property_address")}
-
-    imported = 0
-    updated = 0
-    saved_for_scoring: list[dict[str, Any]] = []
-
-    list_id: str | None = None
-    list_name = (body.list_name or "").strip()
-    if list_name:
-        try:
-            list_row = supabase.table("lead_lists").insert({
-                "name": list_name[:120],
-                "filename": (body.filename or "")[:200] or None,
-                "row_count": len(incoming_by_key),
-            }).execute().data or []
-        except Exception:
-            # List tracking is organizational; never block an import on it
-            # (e.g. migration not applied yet).
-            logger.exception("Could not create lead_lists row; importing without list tracking")
-            list_row = []
-        list_id = str(list_row[0]["id"]) if list_row else None
-        for incoming in new_rows_preview(incoming_by_key, existing_by_key) if list_id else []:
-            incoming["list_id"] = list_id
-
-    saved_rows: list[dict[str, Any]] = []
-    new_rows: list[dict[str, Any]] = []
-    for key, incoming in incoming_by_key.items():
-        existing = existing_by_key.get(key)
-        if existing:
-            lead_id = existing["id"]
-            update_payload = _merge_payloads(existing, incoming)
-            changes = {k: v for k, v in update_payload.items() if v != existing.get(k)}
-            if changes:
-                confirmed = supabase.table("leads").update(changes).eq("id", lead_id).execute().data or []
-                if len(confirmed) != 1 or str(confirmed[0].get("id")) != str(lead_id):
-                    raise HTTPException(503, "Import could not confirm an updated lead. Review saved leads before retrying.")
-            saved = {**existing, **update_payload, "id": lead_id}
-            updated += 1
-            saved_rows.append(saved)
-        else:
-            new_rows.append(incoming)
-
-    # A large upload should not require one network round trip per new lead.
-    # Use default_to_null=False so omitted fields retain database defaults.
-    for start in range(0, len(new_rows), 250):
-        batch = new_rows[start:start + 250]
-        data = supabase.table("leads").insert(batch, default_to_null=False).execute().data or []
-        if len(data) != len(batch):
-            raise HTTPException(503, "Import could not confirm all saved rows. Retry the upload to reconcile it.")
-        saved_rows.extend(data)
-        imported += len(data)
-
-    for saved in saved_rows:
-        lead_id = saved["id"]
-        saved_for_scoring.append({
-            "lead_id": str(lead_id),
-            "property_address": saved.get("property_address", ""),
-            "city": saved.get("city"),
-            "state": saved.get("state"),
-            "owner_first_name": saved.get("owner_first_name"),
-            "owner_last_name": saved.get("owner_last_name"),
-            "source": saved.get("source"),
-        })
-
-    scored_count = 0
-    if body.score_with_claude and body.engine == "rules" and saved_rows:
-        via_sql = _score_via_sql(
-            supabase,
-            ScoreUnscoredLeadsRequest(rescore_existing=True, include_errors=True),
-            ids=[str(r["id"]) for r in saved_rows],
-        )
-        if via_sql is not None:
-            scored_count = via_sql["scored"]
-        else:
-            scored_count, _failed = _score_leads_with_rules(supabase, saved_rows)
-            try:
-                supabase.rpc("recompute_priority_ranks").execute()
-            except Exception:
-                logger.exception("Failed to recompute priority ranks after import")
-    elif body.score_with_claude and saved_for_scoring:
-        scored = _score_imported_leads_with_claude(saved_for_scoring)
-        for lead_id, score_payload in scored.items():
-            supabase.table("leads").update(score_payload).eq("id", lead_id).execute()
-        scored_count = len(scored)
-        try:
-            supabase.rpc("recompute_priority_ranks").execute()
-        except Exception:
-            logger.exception("Failed to recompute priority ranks after import")
-
-    return {
-        "status": "ok",
-        "input_rows": len(body.rows),
-        "consolidated_rows": len(incoming_by_key),
-        "imported": imported,
-        "updated": updated,
-        "skipped": skipped,
-        "scored": scored_count,
-        "list_id": list_id,
-    }
+def import_master_list(body: ImportMasterListRequest, request: Request) -> dict:
+    """Save an owned, atomic CSV import and reconcile one durable scoring intent."""
+    from .csv_import import execute_import
+    return execute_import(body, request, _score_imported_leads_with_claude)
 
 
 # ── 2. Offer Generator ─────────────────────────────────────────────────────────

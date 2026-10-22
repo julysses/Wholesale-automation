@@ -6,7 +6,6 @@ from uuid import uuid4
 import pytest
 from fastapi import BackgroundTasks, HTTPException
 
-from web import api
 from web.api import buyers_api, lead_forms_api, marketing_api
 
 
@@ -206,44 +205,8 @@ async def test_form_persists_supported_qualification_without_missing_agent_metho
     assert "neutral defaults pending verification" in row["ai_qualification_summary"]
     assert "agent failed" not in caplog.text
 
-
-def test_import_finds_existing_row_beyond_postgrest_cap(monkeypatch):
-    rows = [{"id": f"lead-{i:04d}", "property_address": f"{i} Main Street", "city": "Dallas", "state": "TX"} for i in range(1002)]
-    db = Database({"leads": rows}, cap=500)
-    monkeypatch.setattr("tools.crm.get_supabase_client", lambda: db)
-    result = api.import_master_list(api.ImportMasterListRequest(rows=[api.ImportLeadRow(property_address="1001 Main St", city="dallas", zip_code="75201")], score_with_claude=False))
-    assert result["updated"] == 1
-    assert result["imported"] == 0
-    assert len(db.tables["leads"]) == 1002
-    assert [start for start, end in db.pages] == [0, 500, 1000, 1002]
-
-
-def test_import_keeps_same_street_in_different_cities_separate(monkeypatch):
-    db = Database()
-    monkeypatch.setattr("tools.crm.get_supabase_client", lambda: db)
-    result = api.import_master_list(api.ImportMasterListRequest(rows=[
-        api.ImportLeadRow(property_address="123 Main St", city="Dallas"),
-        api.ImportLeadRow(property_address="123 Main Street", city="Houston"),
-    ], score_with_claude=False))
-    assert result["imported"] == 2
-    assert {row["city"] for row in db.tables["leads"]} == {"Dallas", "Houston"}
-
-
-def test_import_new_rows_use_bounded_bulk_inserts(monkeypatch):
-    db = Database()
-    monkeypatch.setattr("tools.crm.get_supabase_client", lambda: db)
-    result = api.import_master_list(api.ImportMasterListRequest(rows=[api.ImportLeadRow(property_address=f"{i} Main St", city="Dallas") for i in range(501)], score_with_claude=False))
-    assert result["imported"] == 501
-    assert [len(rows) for table, rows in db.inserts] == [250, 250, 1]
-
-
-def test_reimport_unchanged_records_does_not_write_each_row(monkeypatch):
-    db = Database({"leads": [{"id": "existing", "property_address": "123 Main St", "city": "Dallas", "state": "TX", "status": "qualified_warm"}]})
-    monkeypatch.setattr("tools.crm.get_supabase_client", lambda: db)
-    result = api.import_master_list(api.ImportMasterListRequest(rows=[api.ImportLeadRow(property_address="123 Main St", city="Dallas")], score_with_claude=False))
-    assert result["updated"] == 1
-    assert db.updates == []
-    assert db.tables["leads"][0]["status"] == "qualified_warm"
+# CSV lookup, bulk task creation and unchanged-row preservation now execute
+# real PostgreSQL in pipeline/integration/verify_csv_import.py.
 
 
 @pytest.mark.asyncio
