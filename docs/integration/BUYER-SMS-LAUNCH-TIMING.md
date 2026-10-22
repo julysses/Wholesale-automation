@@ -25,3 +25,11 @@ review results before broad sending. Any accelerated option needs a verified sco
 quote and delivery path; it cannot be inferred from software tests or the existing
 homeowner approval. Do not label an email-only or disabled-SMS release as satisfying
 the owner's required launch.
+
+October22 Fast Track follow-up: official terms require an executed order form
+and set new-package availability by signature date. Days16–31 map to the first
+day of the second following month, suggesting December1 for October22. That is
+an inference; actual entitlement, price, applicability and any exception need
+Twilio confirmation. No package was selected or purchased. The account-specific
+inquiry awaits authorization to send.
+Source: https://www.twilio.com/en-us/legal/a2p-onboarding-fast-track-package

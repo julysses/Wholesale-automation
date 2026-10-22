@@ -1,6 +1,6 @@
 # Buyer edit/delete recovery candidate — October 22, 2026
 
-Scope: single-buyer editing and deletion from the Buyers screen. Candidate only;
+Scope: single-buyer editing and deletion from the Buyers screen. Local/full rehearsal and all9 Linux CI checks passed atbd30ba0; candidate only;
 no production buyer was changed or deleted. This is not a rewrite of import cleanup
 or every legacy land-preference editor. Signed-in operator acceptance remains open.
 
@@ -55,7 +55,9 @@ it now allocates unused synthetic contacts instead of weakening the identity che
 The local adapter also uses PostgreSQL JSON snapshots so timestamp representation
 matches PostgREST. Browser tests cover persisted drafts, unchanged retries, unavailable
 storage, bad receipts, concurrent submissions, named confirmation, pending reads and
-failed stops. Exact full/CI outcomes are recorded in the corresponding evidence.
+failed stops. Final local full rehearsal passes10 journeys123.02s. All9 CI jobs pass in
+run39872079323 (715) atbd30ba0 with identical head/PR-merge tree. See
+buyer-mutation-ci-evidence.json for exact source/jobs and limits.
 
 The twenty-first proposal is20261022231552_integration_buyer_mutation_receipts.sql,
 created with Supabase CLI. It remains UNAPPLIED with the other twenty proposals.

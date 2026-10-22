@@ -5,8 +5,8 @@ record checks. Stale/missing changes never report updated/deleted success; lost
 responses recover without overwriting later edits, repeating deletion or restoring
 removed records. Normalized contact changes revoke the corresponding consent.
 A named irreversible-delete confirmation remains required in the UI. All21 forward
-proposals remain UNAPPLIED. Local tests pass; current full/remote evidence is tracked
-separately. Read BUYER-MUTATION-RECOVERY.md. Import cleanup/legacy preference paths,
+proposals remain UNAPPLIED. Local full21-proposal rehearsal and10 journeys pass123.02s; all9 CI jobs pass
+in run715 atbd30ba0 with identical head/merge trees. See buyer-mutation-ci-evidence.json. Read BUYER-MUTATION-RECOVERY.md. Import cleanup/legacy preference paths,
 operator/live/backup/source/cost/carrier acceptance remain separate reviews.
 
 ## Current status — October 22 final production refresh

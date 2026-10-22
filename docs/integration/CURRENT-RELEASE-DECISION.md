@@ -1,8 +1,9 @@
-Current addition: retained single-buyer edit/delete candidate, twenty-first proposal.
-Local SQL/API recovery, UI tests and regression checks pass; the current full intake
-rehearsal/remote CI are recorded separately when terminal. Runtime source commit is
-recorded in the mutation manifest/evidence after push. The production refresh below
-is still an earlier read-only observation, not proof of a candidate deployment.
+Current candidate runtimebd30ba0 passed all9 jobs in run39872079323 (715), with
+identical head/PR-merge Git trees; see buyer-mutation-ci-evidence.json. All21
+proposals remain unapplied. Single-buyer form edits/deletes now have retained
+recovery and contact-bound consent safeguards. Final local full rehearsal passes
+10 synthetic intake journeys123.02s. This is software candidate verification;
+production/operator/provider/backup/carrier acceptance remains open.
 
 # Current release decision — October 22, 2026
 
@@ -63,7 +64,7 @@ approved spending limit. No Buy or Register action was taken.
 - Verify effective production flags and current signed-in operator/JWT boundaries;
   resolve the existing Vercel email-verification handoff without reading OTPs.
 - Single-buyer form edit/delete recovery is implemented and verified locally; current
-  remote CI and signed-in acceptance remain to be confirmed. Import cleanup/other
+  remote CI passes; signed-in acceptance remains to be confirmed. Import cleanup/other
   legacy editor recovery review remains separate. Inspection confirms
   import cleanup loops through1000-row batches, so it is not a total1000-row cap.
   Partial deletion/lost acknowledgment remains unproven; existing tests are narrower.

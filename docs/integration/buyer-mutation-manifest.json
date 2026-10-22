@@ -7,16 +7,16 @@
   "frontend_passed": 358,
   "frontend_files": 66,
   "lint_existing": 142,
-  "sql_feature_checks": "passed; current final full intake observation pending",
-  "remote_ci": "not yet observed for this runtime",
+  "sql_feature_checks": "passed; full 21-proposal rehearsal plus 10 intake journeys passed",
+  "remote_ci": "all nine jobs passed run39872079323 (715); identical tested head/PR-merge Git tree verified",
   "real_provider_calls": 0,
   "production_mutations": 0,
   "files": {
     ".github/workflows/ci.yml": "e0ce845897e8fda57b7a413ef42dee46eb3beae96eac6b05200c1c6f07bb38c3",
-    "docs/integration/BUYER-MUTATION-RECOVERY.md": "f6da0a512920ec2029bf8f94deaaad3398a414975f24a6e63f636ed9c5bcc46c",
-    "docs/integration/CURRENT-RELEASE-DECISION.md": "7472a63604cfacaa8c9177b540d85ff881a8f0e62ed15a1c9f71d56ee68f370c",
-    "docs/integration/FRIDAY-ACCEPTANCE-STATUS.md": "ac42e57b04b9e6f45ddc33252e78857d0a3270fcf43b8286cb57cc7bca8e7bf3",
-    "docs/integration/PR21-BODY.md": "a7f9bb0946bc3a37829a997bed77dbcbc1d7c4bf486f0812a380a6f77c0b46cc",
+    "docs/integration/BUYER-MUTATION-RECOVERY.md": "07280bdbfda7071102f0ff5d4a783a5d76095fd98de6b0c21bea7943444b48fd",
+    "docs/integration/CURRENT-RELEASE-DECISION.md": "19a2f679277458a2c247b1d3723a8492dbcbaa0c997fa808b1208efaba932013",
+    "docs/integration/FRIDAY-ACCEPTANCE-STATUS.md": "fa1c8b6e99344ce71299c875e923a717d599f33d43832ddc79bdcf513e48a6a1",
+    "docs/integration/PR21-BODY.md": "e026394f9c04298430e4d7a5f5ef7d4d2d9ede3ea4746bdc68a90f4d74405332",
     "docs/integration/RELEASE-BOUNDARY.md": "e24a59cd69e393704c851efd0a984962622cfb3809d0f638a9cd94697e00d4bd",
     "docs/integration/forward-migration-order.json": "d22aec785e5751dbab95d5ba6e53844308698ddea47615c795ad2f0fd213e93e",
     "frontend/src/components/buyers/BuyerChangeRecovery.tsx": "cf3103da5ad4dfb67414f160c8b072b896726802dc35aa1587c18b7ffe21af2f",
@@ -40,5 +40,9 @@
     "tests/test_buyer_mutation_receipts.py": "d997d32d8d722480a5782b0cc5e791c7a834bd58c77db35375c67e6df2956e71",
     "web/api/buyer_mutations.py": "213846b4db8bcb3d955345fcad6c0122929a70d1c10b76ad9626fc67e287be30",
     "web/app.py": "7aaeec8f2a7af85a91660658ffe71027d86f3dae15754829ee646b0d76cc3462"
-  }
+  },
+  "current_runtime": "bd30ba09b3286154542d1fc60534829954442bf0",
+  "intake_seconds": 123.02,
+  "remote_evidence": "docs/integration/buyer-mutation-ci-evidence.json",
+  "hash_scope": "runtime files attested by bd30ba0; documentation hashes refreshed only in the final docs checkpoint"
 }
