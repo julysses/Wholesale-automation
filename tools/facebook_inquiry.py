@@ -18,9 +18,17 @@ def save_submission(sb, lead_id, answers):
         "form_id": consent["form_id"], "submitted_at": consent["submitted_at"],
         "phone_number": phone, "raw_answers": answers,
     }
-    saved = sb.table("facebook_lead_submissions").upsert(
-        row, on_conflict="id", ignore_duplicates=True,
-    ).execute().data
+    try:
+        saved = sb.table("facebook_lead_submissions").upsert(
+            row, on_conflict="id", ignore_duplicates=True,
+        ).execute().data
+    except Exception as exc:
+        # Concurrent inserts can collide on a secondary UNIQUE index even when
+        # ON CONFLICT(id) ignores the primary key. Recover only the exact receipt
+        # below, with the same immutable evidence checks as an ordinary retry.
+        if (getattr(exc, "code", None) or getattr(exc, "pgcode", None)) != "23505":
+            raise
+        saved = None
     if not saved:
         saved = sb.table("facebook_lead_submissions").select("*").eq("id", receipt_id).limit(1).execute().data
     if not isinstance(saved, list) or len(saved) != 1:

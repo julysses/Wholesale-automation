@@ -27,12 +27,33 @@ The clean-environment runner creates a disposable localhost PostgreSQL database 
 - Existing function changes are limited to `scan_list_pipeline()` composition and the intended old call-claim EXECUTE revocation. The old call function body remains unchanged; service_role can execute the new versioned claim and cannot execute the old one.
 - New functions were checked for effective browser invocation: EXECUTE plus schema USAGE, excluding trigger-only entry points. A first overly broad assertion flagged a trigger helper; distinguishing trigger-only functions and private schema access resolved the harness mismatch without changing grants or weakening application security.
 - Both SMS scheduler flags and all synthetic cron rows remain disabled; no network extension requests were recorded; empty-session recovery remains absent.
-- All ten post-upgrade journeys passed (122.25 seconds): Hilltop, Jays and native Facebook acknowledgment/reply/receipts/STOP/no-replay, missing consent, missing-owner recovery and lost native receipt-response retry.
+- All ten post-upgrade journeys passed (122.04 seconds): Hilltop, Jays and native Facebook acknowledgment/reply/receipts/STOP/no-replay, missing consent, missing-owner recovery and lost native receipt-response retry.
 
-Machine-readable evidence: `production-upgrade-result.json`. Raw log: `logs/friday-production-upgrade.log` (local ignored file). Migration hashes are recorded in the result.
+Machine-readable evidence: `production-upgrade-result.json`. Raw log: `logs/friday-production-upgrade-populated.log` (local ignored file). Migration hashes are recorded in the result.
 
 ## Limits and next work
 
-This uses the saved October 20 catalog plus the separately released Facebook migration, not a fresh complete production export. It uses synthetic history and stubbed Auth/network/cron facilities. Land/valuation and versioned-call historical tables need populated compatibility fixtures; feature-specific native offer/lot/valuation/call-identity concurrency and R1–R12 acceptance remain open. A successful rollback of the whole sequence does not yet prove injected mid-sequence failure handling or production-volume lock behavior.
+This uses the saved October 20 catalog plus the separately released Facebook migration, not a fresh complete production export. It uses synthetic history and stubbed Auth/network/cron facilities. Populated compatibility fixtures now cover land, valuation and four historical call statuses; feature-specific native offer/lot/valuation/call-identity concurrency and R1–R12 acceptance remain open. An injected SQL failure after migration six now proves rollback of partial DDL, functions and retained rows. Production-volume lock behavior remains unproven.
 
-Next: strengthen those fixtures and failure-path checks, run feature concurrency under isolated ingress, compare relevant catalog drift, and review the exact schema/runtime release boundary. Do not deploy this branch, apply these migrations, activate collection or messaging, or replay held work on the basis of this evidence. Full Friday launch remains dependent on live controlled delivery and operator acceptance as well as the chosen integrated feature set.
+Next: run feature concurrency under isolated ingress, compare relevant catalog drift, and review the exact schema/runtime release boundary. Do not deploy this branch, apply these migrations, activate collection or messaging, or replay held work on the basis of this evidence. Full Friday launch remains dependent on live controlled delivery and operator acceptance as well as the chosen integrated feature set.
+
+## October 21 receipt concurrency fix
+
+The populated upgrade run exposed a PostgreSQL 23505 race on the secondary
+`facebook_lead_submissions_lead_id_key` during eight concurrent identical deliveries.
+The real-SQL adapter used INSERT ON CONFLICT(id) DO NOTHING; it did not suppress
+secondary uniqueness failures. Receipt persistence now catches only 23505, reads
+by the deterministic receipt ID, and retains all immutable identity and consent
+comparisons. Missing or conflicting receipts still fail; other database errors
+propagate. No consent, DNC or held-session protection was relaxed.
+
+Eight deterministic regression cases cover PostgREST and psycopg error attributes,
+identical evidence, conflicting evidence, absent receipt and unrelated errors.
+Six failed before the fix; all eight pass after it. The 36 focused native intake
+checks pass. Full release backend: 1,139 passed, 10 skipped; full integration
+backend: 1,269 passed, 10 skipped. Local PostgreSQL eight-worker contention passes.
+These changes are candidate code only, not deployed production fixes.
+
+Additional fixtures preserve one land lead, a valuation with radius 1.25, and four call requests (submitting, accepted, unknown, completed), using distinct synthetic contacts. Initial fixture setup errors (duplicate unresolved phone and missing required city) were corrected without modifying production constraints.
+
+Final populated rehearsal: all ten post-upgrade intake journeys passed in 122.04 seconds; zero provider calls.
