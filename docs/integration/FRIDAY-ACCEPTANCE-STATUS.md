@@ -1,3 +1,20 @@
+## Current release verification — October 22
+
+Linux Docker runtime check and all seven jobs passed at93e27a4; runtime files remain
+covered by that evidence until later changes. Current native Vercel API build candidate
+1b6288e adds explicit API selector/native lock with all61 versions/hashes unchanged,
+pinned builder25.1.3 and patched hash-pinned uv0.13.5. Local backend1379/10skip and
+8 drift gates pass. Native Linux Vercel bundle CI run39861484224 passed all8 jobs. The exact mapped
+6529-file function cold-start passed; all61 API versions and platform SDK match,
+installer/bundle audits have0 known findings. CI backend1416/10skip/6subtests,
+frontend327/62, API-only/Docker/pipeline/PG checks pass. See vercel-artifact-evidence.json. Production a898151 metadata now proves Python3.12,
+timeout300s, memory2048MB, iad1. Effective sending flags still require dashboard
+email verification. See VERCEL-RELEASE-ARTIFACT.md and its metadata/manifest.
+Owner wording approval is complete. Public policy publication, paid registration,
+carrier approval, handset reply/STOP and operator/source acceptance remain open.
+All eighteen schema proposals remain unapplied; no production activation or deploy.
+Earlier checkpoint counts/statements below are historical, superseded where noted.
+
 ## October 22 checkpoint — buyer enrollment and exact policy review
 
 - [x] Separate public consumer form/privacy/terms routes outside operator login;
@@ -12,9 +29,10 @@
 - [x] Backend 1370/10 skipped; frontend 327/62 files; build/typecheck and lint gate
   pass (142 existing findings). Eighteen-proposal restore/rollback/ACL and real
   enrollment/API tests pass. Final intake timing is in the upgrade result.
-- [ ] Exact proposed buyer policy wording/identity/privacy handling awaits owner
-  response in the local BUYER-SMS-PROGRAM-REVIEW.md. Current public policies exclude
-  unrelated marketing; no buyer consumer page has been published or enabled.
+- [x] Owner approved exact buyer policy wording/identity/privacy handling on October22.
+  Exact copy/version retained in BUYER-SMS-APPROVED-WORDING.md and its program JSON.
+- [ ] Publish the approved buyer policies and verify carrier domain/source proof.
+  No buyer page has been published or enabled; fees and live sending are separate.
 - [ ] Carrier registration/pricing approval, approved sender, handset delivery/
   reply/STOP, operator/JWT/tenancy, artifact/release/rollback and other Friday gates.
 

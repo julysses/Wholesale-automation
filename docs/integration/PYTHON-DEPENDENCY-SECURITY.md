@@ -10,8 +10,8 @@ metadata now proves Python3.12 and a 300-second function timeout at a898151.
 Its observed uv0.10.11 build installer has three known advisory IDs. The candidate
 now adds API-local version selection and a native uv lock matching all61 API
 versions/hashes, a pinned Python builder, and a separately hash-pinned uv0.13.5
-build installer with no known findings. New native bundle CI still needs observed
-execution. See VERCEL-RELEASE-ARTIFACT.md; older counts below are historical.
+build installer with no known findings. Native bundle CI now passed in run39861484224: all8 jobs, mapped function
+cold start and complete platform-added dependency audit. See vercel-artifact-evidence.json. See VERCEL-RELEASE-ARTIFACT.md; older counts below are historical.
 
 ## Changes
 

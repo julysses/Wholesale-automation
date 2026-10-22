@@ -41,10 +41,21 @@ The disposable macOS build emitted a Python 3.12/x86_64 function after a discove
 managed Python 3.12 interpreter became available. A prior local attempt selected
 3.11 while uv synced 3.12 dependencies; that output was rejected, not accepted.
 The artifact gate checks the emitted runtime rather than trusting build success.
-Local cross-compilation cannot prove Linux extension imports. A new Linux CI job
-will materialize the exact Vercel function file map, cold-start that isolated bundle,
-check auth/default-off enrollment, compare all API versions and audit platform-added
-dependencies. Its result must be observed before accepting that evidence.
+Local cross-compilation cannot prove Linux extension imports. The Linux CI job now passed in [run705](https://github.com/julysses/Wholesale-automation/actions/runs/39861484224).
+It materialized all **6,529** mapped function files and cold-started that isolated
+bundle with Python3.12.15. Auth/default-off enrollment, all61 API versions, pinned
+platform runtime0.23.3 and complete bundled dependency audit passed. The build
+log confirms API-local Python3.12, uv0.13.5 and installation from uv.lock. The emitted
+function is python3.12/x86_64. The static entry digest matches the earlier Docker
+release build. Both patched installer and complete bundle audit report no known
+findings. All eight jobs succeeded: CI backend1416/10skip/6subtests, frontend327/62,
+lint/build/audit, API-only dependency test, Docker, pipeline/edge and isolated PG.
+
+Candidate1b6288ec950748b8cf08c067f6f63b7fa466dfdf was checked out as PR merge
+d432c5ff246e45b2d886e534fdbab6152145d3ca. The GitHub commit API verifies both have
+tree b865d8ade365a9e31ca1a715ffac9cad97312755. Exact job/result/limit evidence is
+vercel-artifact-evidence.json. No deployment exists for that candidate SHA; this
+remains a disposable build check rather than a staged/retained production artifact.
 
 ## Installer security and proposed release method
 

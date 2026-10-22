@@ -6,8 +6,9 @@ builder discovery ignored the root Python selector for api/requirements.txt.
 Candidate API selector + explicit native pyproject/uv lock retain all61 versions
 and known artifact hashes; builder25.1.3 is pinned. Eight drift checks pass.
 Observed build uv0.10.11 has three advisory IDs; the candidate build check uses
-hash-pinned audited uv0.13.5. New Linux Vercel bundle CI is pending execution, not
-accepted from local cross-compilation. No deploy, environment pull, production
+hash-pinned audited uv0.13.5. Linux Vercel bundle CI run39861484224 passed all8 jobs; mapped6529-file coldstart,
+all61 API versions, platform SDK and full bundle/installer audits pass. CI backend
+1416/10skip/6subtests; frontend327/62; exact evidence in vercel-artifact-evidence.json. No deploy, environment pull, production
 mutation, message, purchase or activation occurred. See VERCEL-RELEASE-ARTIFACT.md.
 
 ## October 22 — Linux release build and direct navigation
