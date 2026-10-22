@@ -1,3 +1,14 @@
+## Current addition — single-buyer edit/delete recovery candidate
+
+The Buyers screen now uses retained operator-bound changes and complete original
+record checks. Stale/missing changes never report updated/deleted success; lost
+responses recover without overwriting later edits, repeating deletion or restoring
+removed records. Normalized contact changes revoke the corresponding consent.
+A named irreversible-delete confirmation remains required in the UI. All21 forward
+proposals remain UNAPPLIED. Local tests pass; current full/remote evidence is tracked
+separately. Read BUYER-MUTATION-RECOVERY.md. Import cleanup/legacy preference paths,
+operator/live/backup/source/cost/carrier acceptance remain separate reviews.
+
 ## Current status — October 22 final production refresh
 
 Read [CURRENT-RELEASE-DECISION.md](CURRENT-RELEASE-DECISION.md) first. Runtime44894b8

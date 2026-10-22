@@ -1,8 +1,9 @@
+vi.mock('@/components/buyers/BuyerChangeRecovery', () => ({ BuyerChangeRecovery: () => null }));
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { Buyer } from '@/types';
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), refetch: vi.fn(), check: vi.fn(), cancel: vi.fn(),
+const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), remove: vi.fn(), refetch: vi.fn(), check: vi.fn(), cancel: vi.fn(),
   pending: null as import('@/lib/manualBuyer').PendingBuyer | null, error: null as Error | null }));
 const buyers = [
   { id: 'buyer-1', first_name: 'Ana', last_name: 'Lopez', tier: 'A', target_zips: ['75201'], notes: 'Existing notes', strategy: ['fix_flip'] },
@@ -13,7 +14,7 @@ vi.mock('@/hooks/useBuyers', () => ({
   useCreateBuyer: () => ({ mutateAsync: mocks.create, isPending: false, ready: true, pending: mocks.pending,
     checking: false, recoveryError: '', checkPending: mocks.check, cancelPending: mocks.cancel }),
   useUpdateBuyer: () => ({ mutateAsync: mocks.update, isPending: false }),
-  useDeleteBuyer: () => ({ mutate: vi.fn() }),
+  useDeleteBuyer: () => ({ mutate: mocks.remove }),
 }));
 vi.mock('@/hooks/useDeals', () => ({ useDeals: () => ({ data: [] }) }));
 vi.mock('@/hooks/useAIAgent', () => ({ useBuyerMatcher: () => ({ match: vi.fn() }) }));
@@ -112,4 +113,16 @@ it('keeps an empty receipt read and failed stop from enabling another buyer crea
   await waitFor(() => expect(mocks.cancel).toHaveBeenCalledTimes(1));
   expect(screen.getByLabelText('First Name *')).toBeDisabled();
   expect(mocks.create).not.toHaveBeenCalled();
+});
+
+it('requires the named irreversible-delete confirmation and passes the original buyer snapshot', () => {
+  const prompt = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+  render(<Buyers />);
+  fireEvent.click(screen.getByRole('button', { name: 'Actions for Ana Lopez' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete', exact: true }));
+  expect(prompt).toHaveBeenCalledWith(expect.stringContaining('Delete Ana Lopez and all their purchase history?'));
+  expect(mocks.remove).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Actions for Ana Lopez' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete', exact: true }));
+  expect(mocks.remove).toHaveBeenCalledWith(buyers[0]);
 });

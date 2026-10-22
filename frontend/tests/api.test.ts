@@ -32,3 +32,10 @@ describe('authenticated API requests', () => {
     await expect(apiFetch('/api/buyers/score')).rejects.toThrow('Database unavailable');
   });
 });
+
+it('binds a retained write to the same authenticated actor before sending', async () => {
+  getSession.mockResolvedValue({ data: { session: { access_token: 'test-token', user:{id:'different-actor'} } } });
+  const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+  await expect(apiFetch('/api/buyers/mutations',{method:'POST'},'original-actor')).rejects.toThrow('original operator');
+  expect(fetcher).not.toHaveBeenCalled();
+});

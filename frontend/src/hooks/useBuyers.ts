@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Buyer, LandBuyerType } from '@/types';
 import { toast } from 'sonner';
+import { buyerChangeMessage, saveBuyerChange } from '@/lib/buyerChanges';
 import { queryAllConfirmed } from '@/lib/queryAll';
 import { useEffect, useState } from 'react';
 import { createManualBuyer, pendingManualBuyer, recoverManualBuyer, type PendingBuyer, type ManualBuyerReceipt } from '@/lib/manualBuyer';
@@ -77,20 +78,13 @@ export function useCreateBuyer() {
 export function useUpdateBuyer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: BuyerWrite }) => {
-      const { data, error } = await supabase
-        .from('buyers')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Buyer;
+    mutationFn: async ({ id, updates, expected }: { id: string; updates: BuyerWrite; expected: Buyer }) => {
+      if (expected.id !== id) throw new Error('Original buyer record is required');
+      const result = await saveBuyerChange('update', expected as unknown as Record<string, unknown>, updates as Record<string, unknown>);
+      if (result.state !== 'updated') throw new Error(buyerChangeMessage(result.state));
+      return result.buyer as unknown as Buyer;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['buyers'] });
-      toast.success('Buyer updated');
-    },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['buyers'] }); toast.success('Buyer edit recorded. Refresh for current details.'); },
     onError: (e: Error) => toast.error(e.message),
   });
 }
@@ -98,14 +92,12 @@ export function useUpdateBuyer() {
 export function useDeleteBuyer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('buyers').delete().eq('id', id);
-      if (error) throw error;
+    mutationFn: async (buyer: Buyer) => {
+      const result = await saveBuyerChange('delete', buyer as unknown as Record<string, unknown>, null);
+      if (result.state !== 'deleted') throw new Error(buyerChangeMessage(result.state));
+      return result;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['buyers'] });
-      toast.success('Buyer deleted');
-    },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['buyers'] }); toast.success('Buyer deletion recorded'); },
     onError: (e: Error) => toast.error(e.message),
   });
 }

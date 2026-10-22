@@ -1,3 +1,4 @@
+vi.mock('@/components/buyers/BuyerChangeRecovery', () => ({ BuyerChangeRecovery: () => null }));
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, expect, it, vi } from 'vitest';

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BuyerChangeRecovery } from '@/components/buyers/BuyerChangeRecovery';
 import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer, type BuyerWrite } from '@/hooks/useBuyers';
 import { useBuyerMatcher } from '@/hooks/useAIAgent';
 import { useDeals } from '@/hooks/useDeals';
@@ -57,6 +58,8 @@ export function Buyers() {
           </Button>
         </div>
       </div>
+
+      <BuyerChangeRecovery />
 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
@@ -148,7 +151,7 @@ export function Buyers() {
                             <Edit className="h-3.5 w-3.5" /> Edit
                           </button>
                           <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                            onClick={() => { if (confirm('Delete buyer?')) deleteBuyer.mutate(buyer.id); setOpenMenuId(null); }}>
+                            onClick={() => { if (confirm(`Delete ${buyer.first_name} ${buyer.last_name} and all their purchase history? Retained consent and outreach receipts remain. This cannot be undone.`)) deleteBuyer.mutate(buyer); setOpenMenuId(null); }}>
                             <Trash2 className="h-3.5 w-3.5" /> Delete
                           </button>
                         </div>
@@ -234,7 +237,7 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
     };
     try {
       if (isEdit && buyer) {
-        await updateBuyer.mutateAsync({ id: buyer.id, updates: payload });
+        await updateBuyer.mutateAsync({ id: buyer.id, updates: payload, expected: buyer });
       } else {
         await createBuyer.mutateAsync(payload);
       }

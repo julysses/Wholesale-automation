@@ -38,12 +38,13 @@ jobs:
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip==26.2.2
           .venv/bin/python -m pip install --require-hashes -r requirements.txt
-      - name: Verify twenty-proposal rollback, manual saves and retained analysis
+      - name: Verify twenty-one-proposal rollback and buyer mutation recovery
         env:
           PG_BIN: /usr/lib/postgresql/17/bin
         run: |
           .venv/bin/python scripts/run_offline_tests.py --buyer-manual
           .venv/bin/python scripts/run_offline_tests.py --buyer-analysis
+          .venv/bin/python scripts/run_offline_tests.py --buyer-mutations
 
   vercel-release:
     name: Vercel Linux build and bundled API cold start

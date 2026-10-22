@@ -1,3 +1,4 @@
+vi.mock('@/components/buyers/BuyerChangeRecovery', () => ({ BuyerChangeRecovery: () => null }));
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -8,24 +9,12 @@ const state = vi.hoisted(() => ({
   update: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: (table: string) => ({
-      update: (payload: Record<string, unknown>) => {
-        state.update(table, payload);
-        return {
-          eq: (column: string, id: string) => ({
-            select: () => ({
-              single: async () => {
-                if (column !== 'id' || id !== state.record.id) throw new Error('Wrong buyer updated');
-                state.record = { ...state.record, ...payload };
-                return { data: state.record, error: null };
-              },
-            }),
-          }),
-        };
-      },
-    }),
+vi.mock('@/lib/buyerChanges', () => ({
+  buyerChangeMessage: () => 'Buyer change requires review',
+  saveBuyerChange: async (_kind: string, expected: Record<string, unknown>, updates: Record<string, unknown>) => {
+    if (expected.id !== state.record.id) throw new Error('Wrong buyer updated');
+    state.update('buyers', updates); state.record = { ...state.record, ...updates };
+    return { state: 'updated', buyer: state.record };
   },
 }));
 vi.mock('@/hooks/useBuyers', async (importOriginal) => ({

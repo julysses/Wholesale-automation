@@ -1,0 +1,10 @@
+{
+  "buyer_mutations": "passed",
+  "contact_change_revokes_consent": true,
+  "deleted_history_rows": 1003,
+  "independent_sessions": 8,
+  "ledger_rollback": true,
+  "lost_response": "retained receipt",
+  "provider_calls": 0,
+  "stale_record_preserved": true
+}

@@ -1,15 +1,21 @@
+Current addition: retained single-buyer edit/delete candidate, twenty-first proposal.
+Local SQL/API recovery, UI tests and regression checks pass; the current full intake
+rehearsal/remote CI are recorded separately when terminal. Runtime source commit is
+recorded in the mutation manifest/evidence after push. The production refresh below
+is still an earlier read-only observation, not proof of a candidate deployment.
+
 # Current release decision — October 22, 2026
 
 Full Friday launch remains unproven. Buyer SMS is required; no buyer campaign has
 been registered or approved. This is the current decision record; dated sections
 in older feature documents are historical evidence.
 
-## Verified candidate
+## Previously verified analysis candidate
 
 Runtime44894b8, docs checkpoint2c32c0c, PR21 OPEN/DRAFT. All nine Linux checks passed
 in run39869071876 (713). The tested head and PR merge have identical tree65af0a6.
 See buyer-analysis-ci-evidence.json for exact full references and counts.
-Twenty reviewed forward proposals remain unapplied. The native Facebook receipt
+Twenty-one reviewed forward proposals remain unapplied. The native Facebook receipt
 migration is already in production with a different server timestamp; never replay
 it or the full migration directory. The live history ends at the released Facebook
 receipt migration, as recorded in production-release-refresh-2026-10-22.json.
@@ -56,14 +62,16 @@ approved spending limit. No Buy or Register action was taken.
 
 - Verify effective production flags and current signed-in operator/JWT boundaries;
   resolve the existing Vercel email-verification handoff without reading OTPs.
-- Complete manual buyer edit/delete and cleanup recovery review. Inspection confirms
+- Single-buyer form edit/delete recovery is implemented and verified locally; current
+  remote CI and signed-in acceptance remain to be confirmed. Import cleanup/other
+  legacy editor recovery review remains separate. Inspection confirms
   import cleanup loops through1000-row batches, so it is not a total1000-row cap.
   Partial deletion/lost acknowledgment remains unproven; existing tests are narrower.
 - Complete production-volume/source/APN review and PropStream handoff acceptance
   within the existing cumulative$50 cap.
 - Establish an approved maintenance boundary and verified restorable production backup.
   Saved-catalog local rehearsal and the existing restore project are not that proof.
-- Review the exact twenty-file hashes and matching runtime, a paused deployment and
+- Review the exact twenty-one-file hashes and matching runtime, a paused deployment and
   forward-compatible recovery. Preserve all consent/suppression/unknown receipts.
 
 After that concrete release review, publish and verify approved buyer pages and the
