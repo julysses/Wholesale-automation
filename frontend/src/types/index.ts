@@ -109,6 +109,9 @@ export interface Deal {
 }
 
 export interface Buyer {
+  buys_land?: boolean;
+  buys_infill?: boolean;
+  land_buyer_type?: LandBuyerType;
   id: string;
   created_at: string;
   updated_at: string;

@@ -1,5 +1,23 @@
 # Selective WholesaleOS integration
 
+## Latest October 22 checkpoint — buyer reads and preferences
+
+- [x] Complete count-checked buyers, leaderboard and land-buyer reads; 25-record
+  pages, literal search, uncategorized land visibility and explicit error recovery.
+- [x] Buyer-specific purchase history with cancellation, response identity/count
+  checks, bounded rendering and no false empty result after failure.
+- [x] Complete active-buyer matching and classifier history; expose existing
+  active/land/infill/category preferences while preserving nullable values.
+- [x] Local SQL proves 1,003 buyers/history rows with a forced 200-row cap; a best
+  match beyond row 1,000 wins and deactivation excludes it. Zero provider calls.
+- [x] Backend 1,340/10 skipped; frontend 289/58 files; build/typecheck and lint gate
+  pass (143 existing findings). Pipeline source retains prior 231-test evidence.
+- [ ] Finish buyer import/acknowledgment and background-result review, outreach-log
+  completeness, signed-in operator acceptance and all remaining live release gates.
+
+See `BUYER-READ-COMPLETENESS.md`. No new migration or production mutation. Thirteen
+proposed migrations remain unapplied; broad schedules stay paused and PR #21 draft.
+
 ## Latest October 22 checkpoint — durable AI batch recovery
 
 - [x] Read current Vercel runtime metadata: Python/FastAPI, Fluid enabled; no settings

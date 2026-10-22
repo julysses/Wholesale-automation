@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { Buyer } from '@/types';
+import type { Buyer, LandBuyerType } from '@/types';
 import { toast } from 'sonner';
-import { queryAll } from '@/lib/queryAll';
+import { queryAllConfirmed } from '@/lib/queryAll';
 
 interface BuyersFilter {
   search?: string;
@@ -10,7 +10,11 @@ interface BuyersFilter {
   active?: boolean;
 }
 
-export type BuyerWrite = Omit<Partial<Buyer>, 'min_price' | 'max_price' | 'close_speed_days' | 'pof_amount'> & {
+export type BuyerWrite = Omit<Partial<Buyer>, 'min_price' | 'max_price' | 'close_speed_days' | 'pof_amount' | 'land_buyer_type' | 'active' | 'buys_land' | 'buys_infill'> & {
+  active?: boolean | null;
+  buys_land?: boolean | null;
+  buys_infill?: boolean | null;
+  land_buyer_type?: LandBuyerType | null;
   min_price?: number | null;
   max_price?: number | null;
   close_speed_days?: number | null;
@@ -21,26 +25,14 @@ export function useBuyers(filters: BuyersFilter = {}) {
   const { search, tier, active } = filters;
 
   return useQuery({
-    queryKey: ['buyers', filters],
-    queryFn: async () => {
-      return queryAll<Buyer>((from, to) => {
-        let query = supabase
-          .from('buyers')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .order('id', { ascending: false });
-
-        if (tier) query = query.eq('tier', tier);
-        if (active !== undefined) query = query.eq('active', active);
-        if (search) {
-          query = query.or(
-            `first_name.ilike.%${search}%,last_name.ilike.%${search}%,company.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
-          );
-        }
-
-        return query.range(from, to);
-      });
-    },
+    queryKey: ['buyers', 'all-pages'],
+    queryFn: () => queryAllConfirmed<Buyer>((from, to) => supabase.from('buyers')
+      .select('*', { count: 'exact' }).order('created_at', { ascending: false })
+      .order('id', { ascending: true }).range(from, to), 'Buyers'),
+    select: rows => rows.filter(buyer => (!tier || buyer.tier === tier)
+      && (active === undefined || buyer.active === active)
+      && (!search || [buyer.first_name, buyer.last_name, buyer.company, buyer.email, buyer.phone]
+        .some(value => String(value || '').toLowerCase().includes(search.toLowerCase())))),
     staleTime: 60000,
   });
 }

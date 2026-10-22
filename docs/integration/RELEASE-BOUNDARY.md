@@ -2,6 +2,14 @@
 
 This branch must not be deployed or merged until its isolated regression requirements pass and the owner approves the release. Code preparation is not SMS, provider or collection activation.
 
+## October 22 buyer visibility checkpoint
+
+Complete buyer reads/history and existing land preference editing now pass local
+checks, including 1,003-row capped real-SQL reads. No additional migration. Buyer
+import/background-result durability, outreach-log completeness and signed-in
+operator/live acceptance remain open; see `BUYER-READ-COMPLETENESS.md`. This does
+not authorize provider activation or change the thirteen-file release boundary.
+
 ## Separate Facebook handoff repair
 
 The native blocker is now repaired locally. `FACEBOOK-HANDOFF-FIX.md` records passing connected journeys; `facebook-handoff-release-manifest.json` contains one additional native-receipt migration, applied only to disposable databases. It is separate from the eleven county feature migrations below. Production-shaped upgrade review and separately authorized release/live acceptance are still required.

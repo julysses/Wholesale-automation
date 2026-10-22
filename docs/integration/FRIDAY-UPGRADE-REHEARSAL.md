@@ -1,3 +1,13 @@
+## Latest — complete buyer reads on the full upgrade
+
+The same thirteen migration apply/rollback and historical/access checks pass, plus
+CSV/land imports, batch scoring, pinned call/SMS contention and all ten intake
+journeys (123.53 seconds). New real-SQL buyer checks prove 1,003 buyers/history rows
+through a 200-row response cap, a late best match and inactive-buyer exclusion.
+Backend 1,340/10 skipped; frontend 289/58 files; build/typecheck and lint gate pass
+with 143 existing findings. See `BUYER-READ-COMPLETENESS.md` for remaining buyer
+import/background-result and operator gates. No production changes.
+
 ## Latest — durable 25-lead AI batches and operator recovery
 
 The thirteenth unapplied proposal now adds private batch evidence, current progress

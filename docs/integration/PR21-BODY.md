@@ -6,15 +6,18 @@ The Facebook intake schema is already released in production. Do not reapply it.
 
 The candidate includes production commit `a89815126d9a98ced016167d8e383641d133135f`, including native queue recovery and competing-insert tests. Both candidate deployment blocks are retained.
 
+Buyer lists now confirm complete reads before replacing records/totals, paginate rendering, retain cached records on failed refresh and show uncategorized land buyers. Purchase history is bound to the selected buyer and validated before display. Complete active-buyer matching, classifier history and existing active/land preference editing are also covered. Buyer import/background-result durability, manual-create uncertainty and outreach-log completeness remain open.
+
 Validation to date:
 
-- Backend: 1,334 passed, 10 skipped; frontend: 274 tests across 56 files passed. Typecheck/build and lint gate pass, with 143 existing findings. Pipeline source is unchanged from its prior 231-test checkpoint.
+- Backend: 1,340 passed, 10 skipped; frontend: 289 tests across 58 files passed. Typecheck/build and lint gate pass, with 143 existing findings. Pipeline source is unchanged from its prior 231-test checkpoint.
 - The October 22 production metadata capture matches the restored baseline plus the released Facebook delta, including 17 view security/grant sets. Thirteen-migration apply, full/injected failure rollback and historical preservation pass.
 - Ten connected API/PostgreSQL intake journeys pass across Hilltop, Jays and native Facebook with Auth/providers stubbed (final timing recorded in the upgrade result).
 - Main CSV real-SQL checks cover 24 normalization cases, configured ownership/due tasks, 501-row task creation, lookup beyond 1,000 existing records, immutable retry, history/DNC/completed-task preservation and eight overlapping uploads creating one property/task.
 - Connected CSV API/scoring checks prove commit-then-lost-response recovery at data/claim/result boundaries, timeout no-repeat behavior, invalid/stale result holds, eight contending scoring claims with one dispatch winner and eight exact finish replays. Actual provider calls: zero.
 - Multi-batch checks complete 60 leads as 25/25/10, retain earlier scores after an unknown later batch, recover a lost finish acknowledgment without repeating IDs and deny another approved actor access. Read-only progress starts no model.
 - Component checks prove exact explicit retries, wrong-reference refusal, all-row import, saved-data vs scoring-review outcomes stable Master List identity across SPA remounts, single/all remaining scoring, pause, stopped advancement after uncertainty and full-body transport limits.
+- Real PostgreSQL buyer checks read 1,003 buyers and 1,003 purchase records with a forced 200-row cap, find the best match beyond row 1,000 and exclude it after deactivation. Component tests cover late/wrong history, failed refresh, literal search and nullable preferences.
 - Existing offer, trace-budget, scoring, lot, valuation and pinned-call/SMS contention checks pass. Nine land-list cases cover row caps, 1,003 synthetic records, complete totals, bounded rendering, filters and failed-refresh recovery.
 
 **Keep this PR draft. It is not approved to merge, deploy or activate.** Real-provider latency/maximum database volume, buyer UI coverage, signed-in operator acceptance, dependency/security review and exact release/recovery review remain open. Controlled live tests still require confirmed recipient/inbox details, Meta routing and effective sending-flag verification. Broad sending schedules remain paused; these checkpoints performed no production migration, deployment or provider message.
@@ -29,5 +32,6 @@ Review:
 - [Durable AI batch recovery and runtime evidence](docs/integration/CSV-BATCH-RECOVERY.md)
 - [Connected main CSV and remaining work](docs/integration/CSV-LEAD-TRANSACTION.md)
 - [Manual land import repair](docs/integration/MANUAL-LAND-IMPORT.md)
+- [Complete buyer reads and remaining buyer work](docs/integration/BUYER-READ-COMPLETENESS.md)
 - [Complete land-list visibility](docs/integration/LAND-LIST-COMPLETENESS.md)
 - [Explicit migration order](docs/integration/forward-migration-order.json)

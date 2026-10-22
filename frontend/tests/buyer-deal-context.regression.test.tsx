@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const mocks = vi.hoisted(() => ({ api: vi.fn(), send: vi.fn() }));
 vi.mock('@/lib/api', () => ({ apiFetch: mocks.api }));
@@ -8,6 +9,7 @@ vi.mock('@/lib/supabase', () => ({ supabase: { from: () => {
   const query = {
     select: () => query,
     order: () => query,
+    range: () => Promise.resolve({ data: [], error: null, count: 0 }),
     limit: () => Promise.resolve({ data: [], error: null }),
   };
   return query;
@@ -19,6 +21,11 @@ vi.mock('@/hooks/useDeals', () => ({ useDeals: () => ({ data: [
 vi.mock('@/components/buyers/BuyerImportModal', () => ({ BuyerImportModal: () => null }));
 vi.mock('@/components/buyers/BuyerProfileDrawer', () => ({ BuyerProfileDrawer: () => null }));
 import { BuyerIntelligence } from '@/pages/BuyerIntelligence';
+
+function renderBuyers() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><BuyerIntelligence /></QueryClientProvider>);
+}
 
 function match(id: string, name: string) {
   return { rank: 1, buyer_id: id, buyer_name: name, company: '', phone: '', email: '', ibie_score: 80, match_score: 90, zip_score: 30, price_score: 30, type_score: 30, tags: [], match_reasons: [] };
@@ -40,7 +47,7 @@ async function openMatch(dealId: string) {
 }
 
 it('carries the selected property into outreach, resets drafts for new recipients, and clears the old deal', async () => {
-  render(<BuyerIntelligence />);
+  renderBuyers();
   fireEvent.click(screen.getByRole('button', { name: 'Deal Match' }));
   await openMatch('deal-dallas');
   fireEvent.click(screen.getByText('First Buyer'));
@@ -72,7 +79,7 @@ it('ignores an old deal match response after another deal has been selected', as
   let resolveOld!: (value: ReturnType<typeof response>) => void;
   mocks.api.mockReturnValueOnce(new Promise<ReturnType<typeof response>>((resolve) => { resolveOld = resolve; }));
   mocks.api.mockResolvedValueOnce(response([match('current-buyer', 'Current Buyer')]));
-  render(<BuyerIntelligence />);
+  renderBuyers();
   fireEvent.click(screen.getByRole('button', { name: 'Deal Match' }));
   fireEvent.change(screen.getByLabelText('Select Deal'), { target: { value: 'deal-dallas' } });
   fireEvent.click(screen.getByRole('button', { name: 'Find Buyers' }));

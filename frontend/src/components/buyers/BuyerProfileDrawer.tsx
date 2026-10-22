@@ -11,7 +11,8 @@ import { apiFetch } from '@/lib/api';
  *  - Classify button (trigger AI buyer type classification)
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BuyerScoreRing } from './BuyerScoreRing';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, formatDate, phoneFormat } from '@/lib/utils';
@@ -55,30 +56,33 @@ const TAG_COLORS: Record<string, string> = {
 };
 
 export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerProfileDrawerProps) {
-  const [transactions, setTransactions] = useState<BuyerTransaction[]>([]);
-  const [txLoading, setTxLoading] = useState(false);
   const [classifying, setClassifying] = useState(false);
-
-  useEffect(() => {
-    if (open && buyer?.id) {
-      loadTransactions(buyer.id);
-    }
-  }, [open, buyer?.id]);
-
-  const loadTransactions = async (buyerId: string) => {
-    setTxLoading(true);
-    try {
-      const resp = await apiFetch(`/api/buyers/${buyerId}/transactions`);
-      if (resp.ok) {
-        const data = await resp.json();
-        setTransactions(data.transactions || []);
+  const [historyPage, setHistoryPage] = useState(1);
+  const buyerId = buyer?.id ? String(buyer.id) : null;
+  const history = useQuery({
+    queryKey: ['buyer_transactions', buyerId],
+    enabled: open && buyerId !== null,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const resp = await apiFetch(`/api/buyers/${buyerId}/transactions`, { signal });
+      const data = await resp.json();
+      if (!resp.ok || data.buyer_id !== buyerId || !Array.isArray(data.transactions)
+        || !Number.isInteger(data.total) || data.total !== data.transactions.length) {
+        throw new Error('Purchase history could not be confirmed for this buyer.');
       }
-    } catch {
-      // Non-critical
-    } finally {
-      setTxLoading(false);
-    }
-  };
+      const ids = new Set<string>();
+      for (const row of data.transactions) {
+        if (!row || typeof row.id !== 'string' || !row.id || ids.has(row.id) || row.buyer_id !== buyerId) {
+          throw new Error('Purchase history does not match this buyer.');
+        }
+        ids.add(row.id);
+      }
+      return data.transactions as BuyerTransaction[];
+    },
+  });
+  const transactions = history.data;
+  const currentPage = Math.min(historyPage, Math.max(1, Math.ceil((transactions?.length ?? 0) / 25)));
+  const visibleTransactions = transactions?.slice((currentPage - 1) * 25, currentPage * 25) ?? [];
 
   const handleClassify = async () => {
     if (!buyer?.id) return;
@@ -94,7 +98,7 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
     }
   };
 
-  if (!buyer) return null;
+  if (!buyer || !open) return null;
 
   const tags: string[] = buyer.tags || [];
   const score: number  = buyer.ibie_score ?? 0;
@@ -133,7 +137,7 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
               )}
             </div>
           </div>
-          <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-0.5">
+          <button aria-label="Close buyer profile" onClick={onClose} className="text-white/60 hover:text-white p-1 mt-0.5">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -145,7 +149,7 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
           <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-200">
             <Kpi label="IBIE Score" value={`${Math.round(score)}`} sub={`Tier ${tier}`} color={tier === 'A' ? 'text-green-600' : tier === 'B' ? 'text-blue-600' : 'text-gray-700'} />
             <Kpi label="Purchases 12mo" value={String(buyer.total_purchases_12mo ?? 0)} sub="transactions" />
-            <Kpi label="Avg Buy Price" value={buyer.avg_purchase_price ? formatCurrency(buyer.avg_purchase_price) : '—'} sub="avg per deal" />
+            <Kpi label="Avg Buy Price" value={buyer.avg_purchase_price != null ? formatCurrency(buyer.avg_purchase_price) : '—'} sub="avg per deal" />
           </div>
 
           <div className="p-5 space-y-5">
@@ -179,16 +183,16 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
             {/* Buy box */}
             <Section icon={<DollarSign className="h-3.5 w-3.5" />} title="Buy Box">
               <Row label="Price Range" value={
-                buyer.min_price || buyer.max_price
-                  ? `${buyer.min_price ? formatCurrency(buyer.min_price) : 'any'} – ${buyer.max_price ? formatCurrency(buyer.max_price) : 'any'}`
+                buyer.min_price != null || buyer.max_price != null
+                  ? `${buyer.min_price != null ? formatCurrency(buyer.min_price) : 'any'} – ${buyer.max_price != null ? formatCurrency(buyer.max_price) : 'any'}`
                   : '—'
               } />
               <Row label="Target Zips" value={(buyer.target_zips || []).join(', ') || '—'} />
               <Row label="Property Types" value={(buyer.property_types || []).join(', ') || '—'} />
-              <Row label="Close Speed" value={buyer.close_speed_days ? `${buyer.close_speed_days} days` : '—'} />
+              <Row label="Close Speed" value={buyer.close_speed_days != null ? `${buyer.close_speed_days} days` : '—'} />
               <Row label="Cash Buyer" value={buyer.cash_buyer ? '✓ Yes' : 'No'} highlight={buyer.cash_buyer} />
               {buyer.pof_verified && (
-                <Row label="POF" value={buyer.pof_amount ? `✓ ${formatCurrency(buyer.pof_amount)}` : '✓ Verified'} highlight />
+                <Row label="POF" value={buyer.pof_amount != null ? `✓ ${formatCurrency(buyer.pof_amount)}` : '✓ Verified'} highlight />
               )}
             </Section>
 
@@ -211,14 +215,16 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
             </div>
 
             {/* Transaction history */}
-            <Section icon={<TrendingUp className="h-3.5 w-3.5" />} title={`Purchase History (${transactions.length})`}>
-              {txLoading ? (
+            <Section icon={<TrendingUp className="h-3.5 w-3.5" />} title={transactions ? `Purchase History (${transactions.length})` : 'Purchase History'}>
+              {history.isPending ? (
                 <p className="text-xs text-gray-400 py-2">Loading…</p>
+              ) : !transactions ? (
+                <p className="text-xs text-gray-500">Purchase history unavailable.</p>
               ) : transactions.length === 0 ? (
                 <p className="text-xs text-gray-400 py-2">No transactions on record. Import county data to populate.</p>
               ) : (
                 <div className="space-y-2 mt-2">
-                  {transactions.map((tx) => (
+                  {visibleTransactions.map((tx) => (
                     <div key={tx.id} className="flex items-start gap-2 p-2 bg-gray-50 rounded text-xs">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-800 truncate">{tx.property_address}</p>
@@ -229,7 +235,7 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-semibold text-gray-800">
-                          {tx.purchase_price ? formatCurrency(tx.purchase_price) : '—'}
+                          {tx.purchase_price != null ? formatCurrency(tx.purchase_price) : '—'}
                         </p>
                         <p className="text-gray-400">{formatDate(tx.purchase_date)}</p>
                         <div className="flex gap-1 justify-end mt-0.5">
@@ -245,6 +251,15 @@ export function BuyerProfileDrawer({ buyer, open, onClose, onUpdated }: BuyerPro
                   ))}
                 </div>
               )}
+              {history.isError && <div role="alert" className="mt-2 space-y-2 text-xs text-red-700">
+                <p>Unable to load purchase history: {history.error.message}. {transactions && 'Showing last confirmed history for this buyer.'}</p>
+                <Button variant="outline" size="sm" disabled={history.isFetching} onClick={() => void history.refetch()}>Retry purchase history</Button>
+              </div>}
+              {transactions && transactions.length > 25 && <nav aria-label="Purchase history pages" className="flex gap-2 items-center text-xs mt-3">
+                <span>{(currentPage - 1) * 25 + 1}–{Math.min(currentPage * 25, transactions.length)} of {transactions.length}</span>
+                <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setHistoryPage(currentPage - 1)}>Previous purchases</Button>
+                <Button variant="outline" size="sm" disabled={currentPage * 25 >= transactions.length} onClick={() => setHistoryPage(currentPage + 1)}>Next purchases</Button>
+              </nav>}
             </Section>
 
           </div>

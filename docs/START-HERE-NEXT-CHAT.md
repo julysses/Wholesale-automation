@@ -1,3 +1,26 @@
+## Latest checkpoint — October 22 buyer reads and preferences
+
+Continue on `codex/wholesale-integration-review` in this exact `integration/`
+checkout. The commit containing this checkpoint follows `7f62bbe`; inspect Git HEAD
+and remote before editing. PR #21 remains OPEN/DRAFT against production baseline
+`a89815126d9a98ced016167d8e383641d133135f`. Candidate deployments remain excluded.
+
+Read `docs/integration/BUYER-READ-COMPLETENESS.md` and the current Friday acceptance
+matrix. Complete buyer/leaderboard/land reads, buyer-specific complete purchase
+history and nullable active/land preference edits now pass local checks. Backend
+1,340/10 skipped, frontend 289/58 files, build/typecheck and lint gate pass (143
+existing findings). Real PostgreSQL reads 1,003 buyers/history rows through a forced
+200-row cap, finds the late best match and excludes it after deactivation. No new
+migration: the same thirteen forward proposals remain unapplied in production.
+
+Next independent work: buyer CSV import and background classification/rescore
+outcome durability, manual-create lost acknowledgments, outreach-log completeness,
+Python dependency security and remaining signed-in operator/release review.
+Fresh live tests remain authorized with one shared phone, but recipient last four
+and owner inbox are still unconfirmed. Do not infer a number, clear suppression,
+replay held sessions or enable broad schedules. No production schema, data,
+runtime, flags, providers or schedules were mutated by this checkpoint.
+
 # Latest handoff — October 22 bounded CSV AI batches
 
 Branch `codex/wholesale-integration-review`; previous pushed checkpoint `8f14e1a`.

@@ -94,6 +94,36 @@ def _get_supabase() -> Optional[Any]:
         return None
 
 
+def _read_all_confirmed(query_factory, label: str) -> list[dict[str, Any]]:
+    """Read stable, count-checked pages; never rank or show a capped subset as complete."""
+    rows = []
+    identities = set()
+    expected = None
+    offset = 0
+    while True:
+        response = query_factory().range(offset, offset + 499).execute()
+        page = response.data
+        count = getattr(response, 'count', None)
+        if not isinstance(page, list) or type(count) is not int or count < 0:
+            raise ValueError(f'{label} count/result could not be confirmed')
+        if expected is not None and count != expected:
+            raise ValueError(f'{label} changed while loading')
+        expected = count
+        for row in page:
+            identity = row.get('id') if isinstance(row, dict) else None
+            if not isinstance(identity, str) or not identity or identity in identities:
+                raise ValueError(f'{label} identities changed while loading')
+            identities.add(identity)
+        if len(identities) > expected:
+            raise ValueError(f'{label} count changed while loading')
+        if not page:
+            if len(rows) != expected:
+                raise ValueError(f'{label} read was incomplete')
+            return rows
+        rows.extend(page)
+        offset += len(page)
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/import")
@@ -441,8 +471,8 @@ def match_deal_to_buyers(req: MatchRequest) -> dict:
 
     try:
         # Load active buyers
-        buyer_resp = sb.table("buyers").select("*").eq("active", True).execute()
-        buyers = buyer_resp.data or []
+        buyers = _read_all_confirmed(lambda: sb.table("buyers").select("*",count="exact")
+            .eq("active",True).order("id"),"Active buyers")
 
         deal = DealMatchInput(
             deal_id=req.deal_id or "",
@@ -678,16 +708,12 @@ def get_buyer_transactions(buyer_id: str) -> dict:
     if not sb:
         raise HTTPException(503, "Database not configured")
     try:
-        resp = (
-            sb.table("buyer_transactions")
-            .select("*")
-            .eq("buyer_id", buyer_id)
-            .order("purchase_date", desc=True)
-            .execute()
-        )
-        return {"transactions": resp.data or [], "buyer_id": buyer_id}
-    except Exception as exc:
-        raise HTTPException(500, f"Transaction query failed: {exc}")
+        rows = _read_all_confirmed(lambda: sb.table("buyer_transactions").select("*",count="exact")
+            .eq("buyer_id",buyer_id).order("purchase_date",desc=True).order("id"),"Buyer purchase history")
+        return {"transactions":rows,"buyer_id":buyer_id,"total":len(rows)}
+    except Exception:
+        logger.exception("Buyer purchase history read failed")
+        raise HTTPException(503,"Purchase history could not be confirmed. Retry loading it.")
 
 
 @router.post("/{buyer_id}/classify")
@@ -710,8 +736,8 @@ async def _run_classify(buyer_id: str) -> None:
         if not buyer:
             return
 
-        tx_resp = sb.table("buyer_transactions").select("*").eq("buyer_id", buyer_id).execute()
-        txs = tx_resp.data or []
+        txs = _read_all_confirmed(lambda: sb.table("buyer_transactions").select("*",count="exact")
+            .eq("buyer_id",buyer_id).order("purchase_date",desc=True).order("id"),"Buyer classification history")
 
         from agents.buyer_intelligence_agent import BuyerIntelligenceAgent
         agent = BuyerIntelligenceAgent()
