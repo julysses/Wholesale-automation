@@ -10,5 +10,6 @@
   "20261020163219_integration_land_valuation_receipts.sql",
   "20261020163221_integration_preserve_valuation_radius.sql",
   "20261020163223_integration_retell_claim_identity.sql",
-  "20261022160020_integration_manual_land_import.sql"
+  "20261022160020_integration_manual_land_import.sql",
+  "20261022170346_integration_csv_lead_intake.sql"
 ]

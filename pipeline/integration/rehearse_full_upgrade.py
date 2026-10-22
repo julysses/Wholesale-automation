@@ -1,4 +1,4 @@
-"""Rehearse only the reviewed eleven-file proposal on a disposable local database.
+"""Rehearse only the reviewed migration allowlist on a disposable local database.
 
 Restore the saved catalog and rehearse the released Facebook migration first via
 run_production_upgrade.py. No production DSN or provider access is accepted.
@@ -42,9 +42,9 @@ def seed_legacy_features(db):
 
 def rehearse(db):
     names = json.loads((ROOT/'docs/integration/forward-migration-order.json').read_text())
-    assert len(names) == len(set(names)) == 12
+    assert len(names) == len(set(names)) == 13
     paths = [ROOT/'frontend/supabase/migrations'/name for name in names]
-    assert all((p.name.startswith('20261020') or p.name == '20261022160020_integration_manual_land_import.sql') and '_integration_' in p.name and p.parent == paths[0].parent for p in paths)
+    assert all((p.name.startswith('20261020') or p.name in {'20261022160020_integration_manual_land_import.sql','20261022170346_integration_csv_lead_intake.sql'}) and '_integration_' in p.name and p.parent == paths[0].parent for p in paths)
     legacy_features = seed_legacy_features(db)
     tables = {}
     for row in db.query("SELECT table_schema,table_name,column_name FROM information_schema.columns WHERE table_schema IN ('public','private','wholesale_ingest') AND table_name IN (SELECT tablename FROM pg_tables WHERE schemaname IN ('public','private','wholesale_ingest')) ORDER BY ordinal_position"):
@@ -97,6 +97,12 @@ def rehearse(db):
             permission_checks.append({'role':role,'function':signature,**access})
             # Trigger functions cannot be called as ordinary RPCs; private-schema
             # EXECUTE alone is also insufficient without schema USAGE.
+            if role == 'authenticated' and signature == 'private.csv_lead_key(text,text,text)':
+                # Reviewed pure index expression, never a business-data endpoint.
+                helper = db.query("SELECT provolatile,prosecdef FROM pg_proc WHERE oid=%s::regprocedure",[signature])[0]
+                assert helper == {'provolatile':'i','prosecdef':False},helper
+                assert access['executable'] and access['schema_access']
+                continue
             assert not (access['executable'] and access['schema_access'] and not access['is_trigger']), (role, signature, access)
     assert db.query('SELECT * FROM supabase_migrations.schema_migrations ORDER BY version') == history
     assert not db.query('SELECT * FROM cron.job WHERE active')

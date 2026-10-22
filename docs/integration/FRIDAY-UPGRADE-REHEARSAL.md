@@ -1,3 +1,12 @@
+## Current candidate — thirteen migrations
+
+The main CSV database transaction foundation adds
+`20261022170346_integration_csv_lead_intake.sql` to the explicit allowlist.
+It verifies approved configured ownership, linked due tasks, immutable replay,
+existing-work preservation, normalization, large batches and eight-session
+manual-upload overlap. The new API/UI and optional AI dispatch are not connected;
+R8 remains open. See `CSV-LEAD-TRANSACTION.md` and current result JSON.
+
 ## Current candidate — twelve migrations
 
 The original eleven-file rehearsal is historical evidence. The October 22 manual

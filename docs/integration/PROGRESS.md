@@ -1,5 +1,23 @@
 # Selective WholesaleOS integration
 
+## October 22 main CSV database foundation
+
+The original application importer still needs replacement. The thirteenth proposed
+migration now provides an atomic data transaction, immutable same-reference replay,
+approved configured intake ownership, linked due tasks, safe blank-field merging
+and free rules scoring without rewriting worked/DNC records. Eight overlapping
+manual uploads create one property/task. A 501-row import creates 501 owned tasks.
+AI intent is durable only; provider claim/finish and API/UI integration remain open.
+See `CSV-LEAD-TRANSACTION.md` for exact tests and next implementation. No production
+changes or provider calls; PR #21 remains draft and schedules stay paused.
+
+- [x] Prepare real-SQL transaction foundation with server-only receipt access.
+- [x] Verify configured owner, due task, exact retry, ambiguity refusal and overlap.
+- [x] Preserve worked fields, completed tasks, long provenance and no-change rows.
+- [ ] Add durable AI claims/results and uncertain-attempt handling.
+- [ ] Connect verified Auth/API receipts and stable per-upload browser retries.
+- [ ] Complete application/SQL and operator acceptance, then exact release review.
+
 ## October 21 Friday launch continuation
 
 See `FRIDAY-UPGRADE-REHEARSAL.md`: saved production-shaped catalog restoration, the released Facebook migration, the eleven integration migrations, rollback/preservation/permissions and all ten post-upgrade intake journeys now pass locally. This supersedes the missing full-catalog composition evidence below, but not feature concurrency, fresh catalog drift, live acceptance or release authorization. Active checkout is in the October 21 launch workspace's `integration/` directory.

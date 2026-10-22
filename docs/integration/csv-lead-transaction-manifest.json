@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-22",
+  "status": "local_database_foundation_only_not_deployed",
+  "migration": "20261022170346_integration_csv_lead_intake.sql",
+  "migration_count": 13,
+  "application_route_connected": false,
+  "ai_dispatch_implemented": false,
+  "outreach_authorized": false,
+  "rpc": "public.import_csv_leads(uuid,uuid,jsonb,jsonb)",
+  "tables": [
+    "private.csv_lead_imports",
+    "private.csv_import_scoring"
+  ],
+  "files": [
+    {
+      "path": "frontend/supabase/migrations/20261022170346_integration_csv_lead_intake.sql",
+      "sha256": "a6bb373f25752d03951cfaf85972c56023b84f5705167e9cbc122acdadb0696e"
+    },
+    {
+      "path": "pipeline/integration/verify_csv_import.py",
+      "sha256": "ebfb8fb339e15b76c26b86029caa164d5a9848dc87afe838bb34190175a7c1a2"
+    }
+  ],
+  "rollback": "Preserve immutable import receipts, created tasks and original assignments. Runtime rollback must retain schema and paused transport; do not drop receipt evidence. Final release/recovery review remains open."
+}

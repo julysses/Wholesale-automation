@@ -1,3 +1,33 @@
+# Latest handoff — October 22 main CSV transaction foundation
+
+Active integration branch: `codex/wholesale-integration-review`, production parent
+`a89815126d9a98ced016167d8e383641d133135f`; previous pushed checkpoint `098fcce`.
+The current change adds a thirteenth proposed forward migration for main CSV data
+transactions and its real-SQL verifier. No production mutation or provider call.
+PR #21 remains draft; both candidate branches remain deployment-disabled.
+
+Read `docs/integration/CSV-LEAD-TRANSACTION.md`, its manifest/result JSON and
+`FRIDAY-ACCEPTANCE-STATUS.md`. Full thirteen-migration apply/rollback and all ten
+intake journeys pass (124.92 seconds). Main CSV normalization, configured ownership,
+due tasks, replay, 501-row import, existing lookup beyond 1,000 rows, historical
+preservation, real browser-role index writes/denials and eight-session overlap pass.
+The only callable new browser helper is a pure immutable private index normalizer.
+
+**The application importer is still the old non-atomic implementation.** Continue
+with durable AI claim/finish, unknown-result handling and stale-snapshot refusal;
+then wire verified Auth, exact receipt validation, stable per-upload browser IDs
+and explicit retries. Preserve optional AI and default free rules; separate saved
+data from uncertain scoring. Numeric cleaner currently strips minus signs and
+engine validation is permissive; fix these while changing the endpoint. Adapt API
+and UI tests, retaining large-file/history/ownership business coverage. R8 remains
+open; do not deploy merely because database foundation tests pass.
+
+The new AI journal stores pending intent only, no dispatch or claim yet. Untracked
+old ' 2' export copies are preserved and excluded. Shared test number preference is
+confirmed, but last four digits and notification inbox remain pending. Keep broad
+schedules paused, held sessions untouched and no suppression reset. Friday
+October 23 remains the objective. Historical handoffs below remain for context.
+
 # WholesaleOS current launch checkpoint
 
 Target: Friday October 23, 2026. Production is the baseline and remains paused.

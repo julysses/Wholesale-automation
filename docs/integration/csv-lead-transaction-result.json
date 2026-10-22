@@ -1,0 +1,23 @@
+{
+  "csv_lead_transaction": "passed",
+  "application_route": "not_yet_connected",
+  "normalization_cases": 24,
+  "owned_due_tasks": 6,
+  "bulk_owned_tasks": 501,
+  "existing_lookup_beyond_1000": true,
+  "worked_fields_and_completed_task_preserved": true,
+  "same_reference_replay": "passed",
+  "ambiguous_identity": "refused",
+  "invalid_batch_rollback": "passed",
+  "owner_fail_closed": "passed",
+  "rules_scored": 1,
+  "ai_pending_intent_only": true,
+  "browser_index_write": "passed",
+  "server_only_rpc": "passed",
+  "immutable_receipt": "passed",
+  "concurrent_sessions": 8,
+  "concurrent_new_properties": 1,
+  "concurrent_existing_results": 7,
+  "concurrent_tasks": 1,
+  "provider_calls": 0
+}
