@@ -70,7 +70,7 @@ def verify(db):
                 client.connection.close()
 
     results = [overlap('+12145550971', False), overlap('+12145550972', True)]
-    print(json.dumps({'versioned_call_concurrency':'passed','scenarios':results,'immutable_fields_tested':4,'same_reference_replay':'refused','schema':'restored saved catalog plus eleven integration migrations','provider_calls':0}), flush=True)
+    print(json.dumps({'versioned_call_concurrency':'passed','scenarios':results,'immutable_fields_tested':4,'same_reference_replay':'refused','schema':'restored saved catalog plus current allowlisted integration migrations','provider_calls':0}), flush=True)
 
 
 if __name__ == '__main__':

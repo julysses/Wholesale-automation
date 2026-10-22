@@ -8,7 +8,7 @@ The native blocker is now repaired locally. `FACEBOOK-HANDOFF-FIX.md` records pa
 
 ## Schema proposal
 
-`forward-migration-map.json` records the eleven newly generated migration files; `forward-migration-order.json` gives their explicit allowlist and order. The four historical collection SMS-install migrations are excluded. All production historical migration files, including the unapplied empty-session repair, remain byte-identical to the production baseline.
+`forward-migration-map.json` records the original eleven ported feature files. The October 22 manual CSV repair adds `20261022160020_integration_manual_land_import.sql`; `forward-migration-order.json` now explicitly lists twelve files. `MANUAL-LAND-IMPORT.md` and its manifest explain this additional proposal. The four historical collection SMS-install migrations are excluded. All production historical migration files, including the unapplied empty-session repair, remain byte-identical to the production baseline.
 
 **Never run a directory-wide database push against production.** Repository history does not match server timestamps, and the earlier empty-session reconciliation file is deliberately unapplied and excluded from this integration. Applying all pending migrations would exceed authorization.
 
@@ -26,7 +26,7 @@ The metadata is a point-in-time planning snapshot, not full schema acceptance. R
 ## Eventual ordering
 
 1. Refresh deployed schema, history and ACL fingerprints.
-2. Verify baseline compatibility using a disposable production-shaped database and the explicit eleven-file allowlist.
+2. Verify baseline compatibility using a disposable production-shaped database and the explicit twelve-file allowlist.
 3. Independently review historical timestamp equivalence. Do not repair migration history by guesswork.
 4. After separate release authorization, apply only the reviewed new feature schema in allowlist order, with workers and calling off.
 5. Deploy the matching tested runtime in paused mode. The versioned-call migration revokes the old RPC, so calling must remain off across the schema/runtime transition.

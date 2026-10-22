@@ -95,3 +95,18 @@ intake journeys pass again (122.08 seconds). Separate real-role authorization ch
 pass against current fingerprint-matching admin functions. Sending flag values still
 need Vercel email verification; database scheduling remains paused. Continue with
 import component coverage and operator acceptance while recipient identity is pending.
+
+## October 22 import repair
+
+- Fixed active land CSV truncation to preview five/save all; immutable manual-import
+  receipts, explicit retry, exact property deduplication, parcel-conflict refusal,
+  owned review tasks and history preservation pass actual SQL/API checks.
+- Fixed the unmounted standalone lead importer to use server reconciliation and
+  report uncertain outcomes; no browser insert or separate background model run.
+- Twelve proposed migrations now pass the full upgrade/rollback rehearsal and ten
+  intake journeys. Historical files remain unchanged. Nothing deployed.
+- Backend 1,288 pass/10 skip; frontend 245 pass (52 files, maxWorkers=4); pipeline
+  231 pass; build and lint gate pass (143 existing findings).
+- Continue with main lead CSV ownership/concurrency, buyer/Master List coverage and
+  large-land-list pagination/error handling. Detailed source/evidence and release
+  limits: `MANUAL-LAND-IMPORT.md`. Live acceptance inputs and flag verification remain open.

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 import { LotInbox } from '@/components/land/LotInbox';
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -14,7 +15,7 @@ import {
 import Papa from 'papaparse';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (n?: number | null) => n ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—';
+const fmt = (n?: number | null) => n != null ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—';
 const acr = (n?: number | null) => n ? n.toFixed(2) + ' ac' : '—';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -54,14 +55,16 @@ const XLEADS_MAP: Record<string, keyof LandLead> = {
 };
 
 function mapXLeadsRow(row: Record<string, string>): Partial<LandLead> {
-  const lead: Partial<LandLead> = { source: 'xleads', water_source: 'unknown', sewage: 'unknown', contact_attempts: 0, dnc: false, sms_sequence_active: false, infill_lot: false };
+  const lead: Partial<LandLead> = { state: 'TX' };
   for (const [col, field] of Object.entries(XLEADS_MAP)) {
     const val = row[col]?.trim();
     if (!val) continue;
     if (field === 'lot_size_acres' || field === 'tav') {
-      (lead as Record<string, unknown>)[field] = parseFloat(val.replace(/[$,]/g, '')) || undefined;
+      const number = Number(val.replace(/[$,]/g, ''));
+      if (!Number.isFinite(number)) throw new Error(`Invalid number in ${col}`);
+      (lead as Record<string, unknown>)[field] = number;
     } else {
-      (lead as Record<string, unknown>)[field] = val;
+      (lead as Record<string, unknown>)[field] = field === 'state' ? val.toUpperCase() : val;
     }
   }
   // Derive lot_size_sqft
@@ -189,36 +192,66 @@ function LandLeadCard({ lead, onSelect }: { lead: LandLead; onSelect: (l: LandLe
 }
 
 // ── Import modal ──────────────────────────────────────────────────────────────
-function ImportModal({ onClose }: { onClose: () => void }) {
+export function LandLeadImportModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<Partial<LandLead>[]>([]);
+  const [rows, setRows] = useState<Partial<LandLead>[]>([]);
+  const preview = rows.slice(0, 5);
+  const reference = useRef<string | null>(null);
+  const fileRead = useRef(0);
   const [fileName, setFileName] = useState('');
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [message, setMessage] = useState('');
+  const [result, setResult] = useState<{ imported: number; existing: number; skipped: number } | null>(null);
 
   const importMutation = useMutation({
-    mutationFn: async (rows: Partial<LandLead>[]) => {
-      const valid = rows.filter(r => r.owner_name && r.property_address && r.city);
-      if (valid.length === 0) throw new Error('No valid rows found');
-      const { error } = await supabase.from('land_leads').insert(valid);
-      if (error) throw error;
-      return { imported: valid.length, skipped: rows.length - valid.length };
+    retry: false,
+    mutationFn: async () => {
+      const valid = rows.filter(row => row.owner_name && row.property_address && row.city)
+        .map(({ xleads_id, ...row }) => ({ ...row, ...(xleads_id ? { external_id: xleads_id } : {}) }));
+      const requestId = reference.current;
+      if (!valid.length || !requestId) throw new Error('No valid rows found');
+      const response = await apiFetch('/api/land/imports', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: requestId, rows: valid }),
+      });
+      const saved = await response.json();
+      const receipt = saved?.receipt, counts = receipt?.result;
+      if (receipt?.id !== requestId || !Array.isArray(receipt?.payload)
+          || receipt.payload.length !== valid.length
+          || !valid.every((row, i) => Object.keys(row).length === Object.keys(receipt.payload[i] || {}).length
+            && Object.entries(row).every(([key, value]) => receipt.payload[i][key] === value))
+          || !counts || !Number.isInteger(counts.imported) || counts.imported < 0
+          || !Number.isInteger(counts.existing) || counts.existing < 0
+          || counts.imported + counts.existing !== valid.length || saved.outreach_authorized !== false) {
+        throw new Error('The server did not confirm the original import receipt.');
+      }
+      return { imported: counts.imported as number, existing: counts.existing as number,
+        skipped: rows.length - valid.length };
     },
-    onSuccess: (res) => {
-      setResult(res);
-      qc.invalidateQueries({ queryKey: ['land_leads'] });
+    onSuccess: (saved) => { setResult(saved); setMessage(''); },
+    onError: (error) => { setMessage(error.message); },
+    onSettled: async () => {
+      await Promise.all([qc.invalidateQueries({ queryKey: ['land_leads'] }),
+        qc.invalidateQueries({ queryKey: ['tasks'] })]);
     },
   });
 
   const handleFile = (file: File) => {
-    setFileName(file.name);
+    if (importMutation.isPending) return;
+    const read = ++fileRead.current;
+    setFileName(file.name); setRows([]); setResult(null); setMessage(''); reference.current = null;
     Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rows = (results.data as Record<string, string>[]).map(mapXLeadsRow);
-        setPreview(rows.slice(0, 5));
+      header: true, skipEmptyLines: true,
+      complete: (parsed) => {
+        if (read !== fileRead.current) return;
+        try {
+          if (parsed.errors.length) throw new Error('The CSV could not be parsed. Review its columns and quoting.');
+          const mapped = (parsed.data as Record<string, string>[]).map(mapXLeadsRow);
+          if (!mapped.length || mapped.length > 10000) throw new Error('Select a CSV with 1 to 10,000 rows.');
+          setRows(mapped); reference.current = crypto.randomUUID();
+        } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not read CSV.'); }
       },
+      error: (error) => { if (read === fileRead.current) setMessage(error.message); },
     });
   };
 
@@ -227,18 +260,19 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
         <div className="flex items-center justify-between p-5 border-b">
           <div>
-            <h2 className="text-base font-bold text-[#1B3A5C]">Import XLeads / CSV</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Accepts standard XLeads CSV export or any CSV with matching columns</p>
+            <h2 className="text-base font-bold text-[#1B3A5C]">Import Land CSV</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Accepts PropStream or compatible CSV exports with matching columns</p>
           </div>
           <button onClick={onClose}><X className="h-5 w-5 text-gray-400 hover:text-gray-600" /></button>
         </div>
 
         <div className="p-5 space-y-4">
+          {message && <p role="alert" className="text-sm text-red-700">{message} Review saved land records before retrying.</p>}
           {result ? (
             <div className="text-center py-8 space-y-2">
               <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
               <p className="font-bold text-gray-900">Import complete!</p>
-              <p className="text-sm text-gray-600">{result.imported} leads imported · {result.skipped} skipped (missing required fields)</p>
+              <p className="text-sm text-gray-600">{result.imported} leads imported · {result.existing} existing records preserved · {result.skipped} skipped (missing required fields)</p>
               <button onClick={onClose} className="mt-4 px-5 py-2 bg-[#1B3A5C] text-white text-sm font-bold rounded-lg">Done</button>
             </div>
           ) : (
@@ -251,14 +285,14 @@ function ImportModal({ onClose }: { onClose: () => void }) {
                 className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-[#1B3A5C] transition-colors">
                 <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-700">{fileName || 'Drop your CSV here or click to browse'}</p>
-                <p className="text-xs text-gray-400 mt-1">XLeads export · Standard CSV · Up to 10,000 rows</p>
+                <p className="text-xs text-gray-400 mt-1">Standard CSV · Up to 10,000 rows</p>
               </div>
-              <input ref={fileRef} type="file" accept=".csv" className="hidden"
+              <input ref={fileRef} type="file" accept=".csv" className="hidden" disabled={importMutation.isPending}
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
 
               {/* Column mapping reference */}
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs font-bold text-gray-600 mb-2">Required column headers (XLeads defaults):</p>
+                <p className="text-xs font-bold text-gray-600 mb-2">Supported column headers:</p>
                 <div className="flex flex-wrap gap-1">
                   {Object.keys(XLEADS_MAP).map(col => (
                     <span key={col} className="text-xs bg-white border border-gray-200 px-2 py-0.5 rounded font-mono">{col}</span>
@@ -286,16 +320,16 @@ function ImportModal({ onClose }: { onClose: () => void }) {
                             <td className="px-3 py-1.5">{row.property_address ?? '—'}</td>
                             <td className="px-3 py-1.5">{row.city ?? '—'}</td>
                             <td className="px-3 py-1.5">{row.lot_size_acres ?? '—'}</td>
-                            <td className="px-3 py-1.5">{row.tav ? fmt(row.tav as number) : '—'}</td>
+                            <td className="px-3 py-1.5">{row.tav != null ? fmt(row.tav as number) : '—'}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  <button onClick={() => importMutation.mutate(preview.concat())}
+                  <button onClick={() => { setMessage(''); importMutation.mutate(); }}
                     disabled={importMutation.isPending}
                     className="w-full py-2.5 bg-[#E8720C] text-white font-bold text-sm rounded-lg hover:bg-[#d4660b] disabled:opacity-60">
-                    {importMutation.isPending ? 'Importing…' : `Import ${preview.length}+ leads`}
+                    {importMutation.isPending ? 'Importing…' : message ? 'Retry original import' : `Import ${rows.length} leads`}
                   </button>
                 </div>
               )}
@@ -392,7 +426,7 @@ export function LandLeads() {
         </div>
         <button onClick={() => setShowImport(true)}
           className="flex items-center gap-2 px-4 py-2 bg-[#1B3A5C] text-white text-sm font-bold rounded-xl hover:bg-[#152d47]">
-          <Upload className="h-4 w-4" /> Import XLeads
+          <Upload className="h-4 w-4" /> Import CSV
         </button>
       </div>
 
@@ -456,10 +490,10 @@ export function LandLeads() {
             <div className="text-center py-16 text-gray-400">
               <TreePine className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm font-medium">No land leads yet</p>
-              <p className="text-xs mt-1">Import an XLeads CSV or add manually</p>
+              <p className="text-xs mt-1">Import a CSV or add manually</p>
               <button onClick={() => setShowImport(true)}
                 className="mt-4 px-4 py-2 bg-[#1B3A5C] text-white text-sm font-bold rounded-lg">
-                Import XLeads
+                Import CSV
               </button>
             </div>
           ) : (
@@ -531,7 +565,7 @@ export function LandLeads() {
       )}
 
       {/* Import modal */}
-      {showImport && <ImportModal onClose={() => setShowImport(false)} />}
+      {showImport && <LandLeadImportModal onClose={() => setShowImport(false)} />}
     </div>
   );
 }

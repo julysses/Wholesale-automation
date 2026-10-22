@@ -1,0 +1,15 @@
+{
+  "manual_land_import": "passed",
+  "full_file_rows": 6,
+  "same_reference_replay": "passed",
+  "different_reference_deduplication": "passed",
+  "worked_land_and_completed_task_preserved": true,
+  "invalid_batch_rollback": "passed",
+  "parcel_conflict": "refused",
+  "immutable_receipt": "passed",
+  "connected_api_receipt": "passed",
+  "concurrent_sessions": 8,
+  "concurrent_new_properties": 1,
+  "concurrent_existing_results": 7,
+  "provider_calls": 0
+}

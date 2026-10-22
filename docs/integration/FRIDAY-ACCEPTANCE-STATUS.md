@@ -1,5 +1,12 @@
 # Friday acceptance status — October 22
 
+## Latest candidate scope — October 22
+
+Manual CSV repair adds one forward migration to the original eleven, making twelve
+in the explicit allowlist. See `MANUAL-LAND-IMPORT.md` for scope, proof and remaining
+import gaps. Backend 1,288 / frontend 245 / pipeline 231 tests pass. No production
+schema, runtime, schedules or providers were changed.
+
 Target: October 23, 2026. This is a requirement review checkpoint, not go-live certification.
 The original requirements remain in `WholesaleOS-Integration-Assessment.md` R1–R12.
 
@@ -12,11 +19,11 @@ The original requirements remain in `WholesaleOS-Integration-Assessment.md` R1�
 | R5 Provider receipts | Connected mocked receipt and duplicate/out-of-order suites pass | Actual bound carrier delivery/callback and owner handset evidence |
 | R6 Pause and expiry | Upgraded synthetic scheduler pauses retained; disabled/expiry suites pass | Database schedulers and outbound cron freshly confirmed paused; effective runtime flags require Vercel email verification before bounded live scope |
 | R7 Tasks and alerts | Connected reply tasks, notification and mocked email journeys pass | Owner confirms real email, task and CRM history during live tests |
-| R8 Retention and import | Pipeline and frontend regression suites pass | Leads and master-list routes use reconciliation; standalone LeadImportModal still inserts directly and lacks a consumer. Cover every import component and operator import review |
+| R8 Retention and import | Pipeline and frontend regression suites pass | Land and standalone lead import regressions fixed; real SQL retries/concurrency/preservation pass. Main lead CSV ownership/concurrency, buyer/Master List UI coverage, large land-list pagination and operator review remain open |
 | R9 County/trace/scoring | Restricted ingress, trace caps and scoring concurrency pass; pipeline 231 tests | Current source completeness/PropStream end-to-end acceptance within existing spend cap |
 | R10 Feature bundles | Real concurrent offer/property, lot and valuation checks pass on minimal fixtures | Full upgraded-schema call/SMS overlap now passes; remaining feature interactions and operator workflow acceptance |
-| R11 Schema and access | Saved catalog with synthetic historical rows, eleven migrations, partial/full rollback, ACL assertions pass | Fresh shape comparison now matches the released baseline across tables, constraints, indexes, triggers, policies, views, view security and grants. Function delta matches the Facebook release. Exact release manifest/recovery review and production-volume locks remain open |
-| R12 Frontend and release | 240 tests, build/typecheck and lint gate pass; candidate deployment disabled | Signed-in complete operator walkthrough, matching deployed API/schema, reviewed release artifact |
+| R11 Schema and access | Saved catalog with synthetic historical rows, twelve proposed migrations, partial/full rollback, ACL assertions pass | Fresh shape comparison now matches the released baseline across tables, constraints, indexes, triggers, policies, views, view security and grants. Function delta matches the Facebook release. Exact release manifest/recovery review and production-volume locks remain open |
+| R12 Frontend and release | 245 tests, build/typecheck and lint gate pass; candidate deployment disabled | Signed-in complete operator walkthrough, matching deployed API/schema, reviewed release artifact |
 
 Frontend dependencies: Vite 6.4.5, Vitest 4.1.12, follow-redirects 1.16.1;
 clean installation audits report zero vulnerabilities. Pipeline installation audit

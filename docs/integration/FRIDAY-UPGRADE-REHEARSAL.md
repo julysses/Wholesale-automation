@@ -1,3 +1,11 @@
+## Current candidate — twelve migrations
+
+The original eleven-file rehearsal is historical evidence. The October 22 manual
+land import repair adds one new forward migration, making twelve in the current
+explicit allowlist. Full apply, partial failure rollback, historical preservation,
+manual import/API/eight-session deduplication, pinned call/SMS overlap and ten intake
+journeys pass (123.14 seconds). See `MANUAL-LAND-IMPORT.md` and current result JSON.
+
 # October 21 production-shaped integration rehearsal
 
 Status: eleven-file schema composition and protected intake journeys passed locally. PR #21 remains draft; full integration readiness and production rollout are not certified.

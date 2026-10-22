@@ -1,13 +1,12 @@
 import { useState, useCallback } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAutoScoreStore } from '@/stores/useAutoScoreStore';
 
 interface LeadImportModalProps {
   open: boolean;
@@ -54,7 +53,7 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
   const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ imported: number; skipped: number; errors: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; updated: number; skipped: number; errors: number; message?: string } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const qc = useQueryClient();
 
@@ -92,55 +91,47 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
     if (!file) return;
     setImporting(true);
 
+    let imported = 0, updated = 0, skipped = 0;
     try {
-      let imported = 0, skipped = 0, errors = 0;
-
-      await new Promise<void>((resolve) => {
+      const rows = await new Promise<Record<string, string>[]>((resolve, reject) => {
         Papa.parse(file, {
-          header: true,
-          skipEmptyLines: true,
-          complete: async (results) => {
-            const rows = results.data as Record<string, string>[];
-            const CHUNK = 100;
-
-            for (let i = 0; i < rows.length; i += CHUNK) {
-              const chunk = rows.slice(i, i + CHUNK);
-              const records = chunk.map((row) => {
-                const record: Record<string, unknown> = { state: 'TX', status: 'new' };
-                Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
-                  if (row[csvCol] !== undefined && row[csvCol] !== '') {
-                    record[dbCol] = row[csvCol];
-                  }
-                });
-                return record;
-              }).filter((r) => r.property_address && r.city);
-
-              if (records.length === 0) {
-                skipped += chunk.length;
-                continue;
-              }
-
-              const { error } = await supabase.from('leads').insert(records);
-              if (error) {
-                errors += records.length;
-              } else {
-                imported += records.length;
-                skipped += chunk.length - records.length;
-              }
-            }
-            resolve();
-          },
+          header: true, skipEmptyLines: true,
+          complete: (parsed) => parsed.errors.length
+            ? reject(new Error('The CSV could not be parsed. Review its columns and quoting.'))
+            : resolve(parsed.data as Record<string, string>[]),
+          error: reject,
         });
       });
-
-      setResult({ imported, skipped, errors });
-      qc.invalidateQueries({ queryKey: ['leads'] });
-      toast.success(`Imported ${imported} leads`);
-      if (imported > 0) useAutoScoreStore.getState().start();
-    } catch (e) {
-      toast.error('Import failed');
+      const records = rows.map((row) => {
+        const record: Record<string, unknown> = { state: 'TX' };
+        Object.entries(columnMapping).forEach(([column, field]) => {
+          const value = row[column]?.trim();
+          if (field && value) record[field] = value;
+        });
+        return record;
+      }).filter(row => row.property_address && row.city);
+      skipped = rows.length - records.length;
+      if (!records.length) throw new Error('No rows contain both a property address and a verified city.');
+      const response = await apiFetch('/api/ai/import-master-list', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: records, engine: 'rules', score_with_claude: true,
+          list_name: file.name.replace(/\.[^.]+$/, '').slice(0, 120), filename: file.name }),
+      });
+      const saved = await response.json();
+      if (saved.status !== 'ok' || !Number.isInteger(saved.imported) || saved.imported < 0
+          || !Number.isInteger(saved.updated) || saved.updated < 0) {
+        throw new Error('The server did not confirm the import outcome.');
+      }
+      imported = saved.imported; updated = saved.updated; skipped += saved.skipped || 0;
+      setResult({ imported, updated, skipped, errors: 0 });
+      toast.success(`Imported ${imported} leads; ${updated} existing leads reconciled`);
+    } catch (error) {
+      setResult({ imported, updated, skipped, errors: 0,
+        message: error instanceof Error ? error.message : 'Import outcome unconfirmed.' });
     } finally {
       setImporting(false);
+      await Promise.all([qc.invalidateQueries({ queryKey: ['leads'] }),
+        qc.invalidateQueries({ queryKey: ['lead-lists'] })]);
     }
   };
 
@@ -252,6 +243,8 @@ export function LeadImportModal({ open, onClose }: LeadImportModalProps) {
         {/* Result */}
         {result && (
           <div className="space-y-4">
+            {result.updated > 0 && <p>{result.updated} existing leads reconciled; no duplicate created for these properties.</p>}
+            {result.message && <p role="alert">{result.message} Import stopped. Review saved leads before retrying.</p>}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-green-600">{result.imported}</p>
