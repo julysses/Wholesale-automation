@@ -4,8 +4,10 @@ A real packaging defect was reproduced and fixed: direct buyer/privacy/terms
 navigation returned 404 under the Python/container server. Focused regression
 checks pass, including preserved API/asset errors. The test-only CI Docker job
 builds the actual release image and checks real HTTP startup without external
-networking, credentials, deployment or image publication. Remote execution is not
-accepted until its exact job result is observed. See LINUX-RELEASE-CHECK.md.
+networking, credentials, deployment or image publication. All seven remote jobs now passed in run 39858996754 for runtime candidate
+93e27a4 (PR merge has the identical tree). CI backend 1408/10 skipped/6 subtests;
+frontend 327/62; actual Docker runtime, API-only install, security/pipeline/PG pass.
+See LINUX-RELEASE-CHECK.md and linux-release-evidence.json. Vercel evidence is separate.
 Owner wording approval remains recorded. Registration draft now uses that exact
 approved disclosure and describes the real invitation/review flow; publication,
 carrier approval, priced purchase and live acceptance remain open.

@@ -130,3 +130,15 @@ An approved administrator reviews the retained evidence before SMS eligibility.
 A refusal disables buyer SMS immediately and existing DNC is never cleared.
 This flow does not prove phone ownership. Submit this description only after the
 actual published flow and proof links have been verified.
+
+October 22 read-only pricing follow-up: the signed-in number search lists US local
+SMS-capable numbers at $1.15/month. Searches restricted to SMS in area codes 214
+and 469 returned no results at that moment. No number was selected or purchased;
+availability must be refreshed before choosing the dedicated sender. Public
+[US SMS pricing](https://www.twilio.com/en-us/sms/pricing/us) lists $0.0083 per
+outbound/inbound SMS segment, plus carrier fees; Unicode/multipart messages may
+consume multiple segments. Together with the previously observed Marketing fee,
+base recurring cost is $11.15/month before usage/carrier fees/taxes, plus the $15
+campaign vetting fee. This is a planning subtotal, not a final checkout quote or
+purchase authorization. Current account-specific taxes, any extra registration
+charges, actual selected number and total cap still require concrete review.
