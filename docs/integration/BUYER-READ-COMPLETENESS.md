@@ -51,8 +51,9 @@ single-buyer classifier also reads complete history before classification.
 ## Remaining buyer and release work
 
 This is complete-read and preference-edit coverage, not complete buyer acceptance.
-Buyer CSV import still uses background persistence; atomic/idempotent import,
-acknowledgment loss and durable import/classification/rescoring outcomes need review.
+Buyer CSV background persistence, acknowledgment recovery and consent preservation
+are now repaired in `BUYER-CSV-TRANSACTION.md` (fourteenth proposal). Durable explicit
+classification/rescoring and production-volume/APN event review remain open.
 Manual buyer creation also needs duplicate/lost-response review. The outreach log's
 100-row cap/error behavior and the separate API leaderboard endpoint are outside
 this fix. Production-volume read latency/memory, signed-in browser workflow,

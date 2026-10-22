@@ -1,5 +1,24 @@
 # Selective WholesaleOS integration
 
+## Latest October 22 checkpoint — atomic buyer CSV recovery
+
+- [x] Replace background partial buyer persistence and insert fallbacks with one
+  server-only data/log/immutable-receipt transaction and stable explicit retries.
+- [x] Preserve existing buyer controls and consent; never infer opt-in from contact
+  presence or bind imported contacts to a blank already-consented destination.
+- [x] Refuse conflicting identities/history, invalid prices and ambiguous same-name
+  buyers. Missing finance data is not cash; duplicate rows do not inflate signals.
+- [x] Prove real SQL commit/lost-response recovery, full rollback, all 1,003 purchase
+  rows and four competing import sessions. Above-limit source rows are refused.
+- [x] Backend 1,345/10 skipped; frontend 295/59 files; pipeline 231; build/typecheck
+  and lint gate pass (142 existing findings). No provider/model calls.
+- [ ] Production-volume locks, APN event-history review, signed-in browser/reload
+  recovery, manual-create ambiguity, durable explicit classification/rescoring,
+  outreach-log completeness and remaining live/security/release gates.
+
+The allowlist now has fourteen unapplied proposals. See `BUYER-CSV-TRANSACTION.md`.
+PR #21 remains draft; production and broad schedules remain unchanged.
+
 ## Latest October 22 checkpoint — buyer reads and preferences
 
 - [x] Complete count-checked buyers, leaderboard and land-buyer reads; 25-record

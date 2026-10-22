@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import csv
 import io
+import math
 import logging
 import re
 import unicodedata
@@ -130,6 +131,7 @@ BUYER_COLUMN_MAP: dict[str, str] = {
     "mailing state":         "mailing_state",
     "mailing zip":           "mailing_zip",
     "absentee owner":        "absentee_owner",
+    "phone":                 "phone",
     "phone 1":               "phone",
     "phone1":                "phone",
     "primary phone":         "phone",
@@ -210,6 +212,7 @@ class ParseResult:
     """Complete result of parsing a buyer CSV file."""
     buyers:       list[dict[str, Any]] = field(default_factory=list)
     transactions: list[dict[str, Any]] = field(default_factory=list)
+    groups:       list[dict[str, Any]] = field(default_factory=list)
     errors:       list[dict[str, Any]] = field(default_factory=list)
     log:          dict[str, Any]       = field(default_factory=dict)
 
@@ -322,7 +325,10 @@ def _parse(
 
         # Aggregate signals
         from tools.buyer_intelligence_engine import aggregate_transactions, compute_ibie_score, assign_ibie_tier, compute_tags
-        signals = aggregate_transactions(buyer_txs)
+        # Duplicate source rows still reconcile to existing purchases, but must
+        # not inflate a newly created buyer's deterministic score/signals.
+        unique_txs = {tuple((k,str(v)) for k,v in sorted(tx.items()) if k != 'raw_data'): tx for tx in buyer_txs}
+        signals = aggregate_transactions(list(unique_txs.values()))
         buyer.update(signals)
 
         # Initial score
@@ -353,7 +359,7 @@ def _parse(
         f"[buyer_csv] Parsed {rows_total} rows → "
         f"{buyers_created} buyers, {tx_created} transactions, {rows_skipped} skipped"
     )
-    return ParseResult(buyers=buyers, transactions=transactions, errors=errors, log=log)
+    return ParseResult(buyers=buyers, transactions=transactions, groups=list(entity_groups.values()), errors=errors, log=log)
 
 
 # ── Column mapping ────────────────────────────────────────────────────────────
@@ -392,6 +398,8 @@ def _normalize_row(raw: dict, col_map: dict, row_num: int) -> BuyerTxRow:
 
     # Purchase price
     price = _parse_money(g("purchase_price"))
+    if g("purchase_price").strip() and price is None:
+        return BuyerTxRow(row_num=row_num, error="Invalid purchase price", raw=dict(raw))
 
     # Purchase date
     p_date = _parse_date(g("purchase_date"))
@@ -401,8 +409,7 @@ def _normalize_row(raw: dict, col_map: dict, row_num: int) -> BuyerTxRow:
     financing = g("financing_type").lower()
     cash_tx = (
         cash_raw in ("1", "true", "yes", "y", "cash", "x") or
-        financing.lower() in CASH_FINANCING_KEYWORDS or
-        (not g("lender_name") and not g("loan_amount") and not financing)
+        financing.lower() in CASH_FINANCING_KEYWORDS
     )
 
     # Zip code — 5 digits only
@@ -470,8 +477,8 @@ def _build_buyer_record(row: BuyerTxRow, market: str) -> dict[str, Any]:
         "repeat_buyer":  False,
         "source":        "csv_import",
         "active":        True,
-        "email_opt_in":  bool(row.email),
-        "sms_opt_in":    bool(row.phone),
+        "email_opt_in":  False,
+        "sms_opt_in":    False,
         "deals_closed":  0,
         "pof_verified":  False,
         "tier":          "C",
@@ -543,13 +550,11 @@ def _split_name(full_name: str) -> tuple[str, str]:
 def _parse_money(val: str) -> Optional[float]:
     if not val:
         return None
-    try:
-        cleaned = re.sub(r"[^\d.]", "", str(val))
-        if not cleaned:
-            return None
-        return float(cleaned)
-    except (ValueError, TypeError):
+    cleaned = str(val).strip().replace('$', '').replace(',', '').strip()
+    if not re.fullmatch(r'(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)', cleaned):
         return None
+    number = float(cleaned)
+    return number if math.isfinite(number) else None
 
 
 DATE_FORMATS = [

@@ -2,13 +2,23 @@
 
 This branch must not be deployed or merged until its isolated regression requirements pass and the owner approves the release. Code preparation is not SMS, provider or collection activation.
 
+## October 22 atomic buyer CSV checkpoint
+
+The additional proposal `20261022190018_integration_buyer_csv_transaction.sql`
+introduces private immutable receipts and a service-only transaction. Apply schema
+before matching API. Fourteen proposals are now allowlisted. Buyer and transaction
+write locks, production APN uniqueness and production-volume acceptance require
+review before deployment. No historical migrations or APN indexes were modified.
+See `BUYER-CSV-TRANSACTION.md`; broad schedules remain paused.
+
 ## October 22 buyer visibility checkpoint
 
 Complete buyer reads/history and existing land preference editing now pass local
 checks, including 1,003-row capped real-SQL reads. No additional migration. Buyer
 import/background-result durability, outreach-log completeness and signed-in
-operator/live acceptance remain open; see `BUYER-READ-COMPLETENESS.md`. This does
-not authorize provider activation or change the thirteen-file release boundary.
+operator/live acceptance remain open; see `BUYER-READ-COMPLETENESS.md`. This did
+not add a migration. The subsequent fourteenth proposal is described above; neither
+checkpoint authorizes provider activation.
 
 ## Separate Facebook handoff repair
 
@@ -16,7 +26,7 @@ The native blocker is now repaired locally. `FACEBOOK-HANDOFF-FIX.md` records pa
 
 ## Schema proposal
 
-`forward-migration-map.json` records the original eleven ported feature files. The October 22 manual CSV repair adds `20261022160020_integration_manual_land_import.sql`; `forward-migration-order.json` now explicitly lists thirteen files, including `20261022170346_integration_csv_lead_intake.sql` for connected main CSV intake and one-way optional AI claims/results. Matching schema must precede runtime; missing RPCs fail closed. Bounded AI batch recovery now passes; real provider/production-volume behavior and operator review remain open; see `CSV-LEAD-TRANSACTION.md`. `MANUAL-LAND-IMPORT.md` and its manifest explain this additional proposal. The four historical collection SMS-install migrations are excluded. All production historical migration files, including the unapplied empty-session repair, remain byte-identical to the production baseline.
+`forward-migration-map.json` records the original eleven ported feature files. The October 22 manual CSV repair adds `20261022160020_integration_manual_land_import.sql`; `forward-migration-order.json` now explicitly lists fourteen files, including `20261022170346_integration_csv_lead_intake.sql` for connected main CSV intake and one-way optional AI claims/results. Matching schema must precede runtime; missing RPCs fail closed. Bounded AI batch recovery now passes; real provider/production-volume behavior and operator review remain open; see `CSV-LEAD-TRANSACTION.md`. `MANUAL-LAND-IMPORT.md` and its manifest explain this additional proposal. The four historical collection SMS-install migrations are excluded. All production historical migration files, including the unapplied empty-session repair, remain byte-identical to the production baseline.
 
 **Never run a directory-wide database push against production.** Repository history does not match server timestamps, and the earlier empty-session reconciliation file is deliberately unapplied and excluded from this integration. Applying all pending migrations would exceed authorization.
 

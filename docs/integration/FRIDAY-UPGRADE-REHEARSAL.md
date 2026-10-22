@@ -1,3 +1,15 @@
+## Latest — atomic buyer CSV with fourteen proposals
+
+Fourteen-migration apply/full rollback, injected failure rollback, historical/access
+preservation, CSV/land data/scoring, buyer import and complete reads, pinned call/SMS
+contention and ten intake journeys pass (122.59 seconds). The new buyer import
+transaction recovers a lost committed response, preserves controls/consent, saves
+all 1,003 source purchases and survives four competing import sessions without
+duplicate buyers/history. Source data and Auth/providers are synthetic/stubbed.
+Backend 1,345/10 skipped; frontend 295/59 files; pipeline 231; build/typecheck and
+lint gate pass with 142 existing findings. Production is unchanged. See
+`BUYER-CSV-TRANSACTION.md` for production lock/APN and other unresolved gates.
+
 ## Latest — complete buyer reads on the full upgrade
 
 The same thirteen migration apply/rollback and historical/access checks pass, plus

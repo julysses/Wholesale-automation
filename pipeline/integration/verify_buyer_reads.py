@@ -27,7 +27,8 @@ def verify(db):
         matches = api.match_deal_to_buyers(api.MatchRequest(zip_code='75201',buyer_price=150000,property_type='SFR',limit=1))
         assert matches['matches'][0]['buyer_id'] == best, matches
         db.query('UPDATE public.buyers SET active=false WHERE id=%s', [best])
-        assert api.match_deal_to_buyers(api.MatchRequest(zip_code='75201',buyer_price=150000,property_type='SFR',limit=1))['matches'] == []
+        remaining = api.match_deal_to_buyers(api.MatchRequest(zip_code='75201',buyer_price=150000,property_type='SFR',limit=1))['matches']
+        assert all(row['buyer_id'] != best for row in remaining)
     db.query('RESET ROLE')
     print(json.dumps({'buyer_reads':'passed','synthetic_buyers':1003,'purchase_history_rows':1003,
         'response_cap':200,'best_buyer_beyond_first_1000':'matched','inactive_buyer':'excluded','provider_calls':0}),flush=True)

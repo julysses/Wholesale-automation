@@ -1,3 +1,33 @@
+## Latest checkpoint — October 22 atomic buyer CSV
+
+Continue in this exact `integration/` checkout on `codex/wholesale-integration-review`.
+The commit containing this checkpoint follows `276ae8e`; verify HEAD and remote.
+Production baseline remains `a89815126d9a98ced016167d8e383641d133135f`; app checkout
+remains `7df5e30`. PR #21 remains draft and candidate deployment blocks remain.
+
+Read `docs/integration/BUYER-CSV-TRANSACTION.md`, its manifest, the current fourteen-file
+forward allowlist, final upgrade result and Friday acceptance matrix. Buyer CSV
+now commits complete data/log/private receipt before confirming, recovers exact
+retries and lost acknowledgments, preserves saved controls/consent and rejects
+conflicting history/identity. No contact-based opt-in, untracked insert fallback or
+background import persistence/scoring. Missing financing does not imply cash and
+negative/malformed prices cannot become positive. Full-file SQL proof saves 1,003
+purchases; four competing sessions create one buyer/two purchases.
+
+Backend 1,345/10 skipped; frontend 295/59 files; pipeline 231; build/typecheck and
+lint gate pass (142 existing findings). Fourteen-migration full/injected-failure
+rollback/history/access, data/scoring, buyer import/reads, call/SMS contention and ten
+intake journeys pass (122.59 seconds). All DB rows/Auth/providers are synthetic/local.
+No production schema/data/runtime/flag/provider/schedule changes.
+
+Next: review production-volume table locks and APN event/reacquisition limitation;
+finish signed-in browser/reload recovery, manual-create lost acknowledgments,
+durable explicit buyer classification/rescore and complete outreach history.
+Also finish Python security, exact release/rollback, runtime flags and live gates.
+The owner chose one shared phone; last four and notification inbox are unconfirmed.
+Do not infer identity, clear suppression, replay held sessions or enable broad
+schedules. Friday October 23 remains the full target, not a readiness claim.
+
 ## Latest checkpoint — October 22 buyer reads and preferences
 
 Continue on `codex/wholesale-integration-review` in this exact `integration/`

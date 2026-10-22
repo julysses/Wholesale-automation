@@ -15,6 +15,10 @@ Routes (all under /api/buyers):
 from __future__ import annotations
 
 import io
+import hashlib
+import json
+import math
+from uuid import UUID, uuid5, NAMESPACE_URL
 import html
 import logging
 import os
@@ -22,7 +26,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile, Request
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
@@ -128,175 +132,72 @@ def _read_all_confirmed(query_factory, label: str) -> list[dict[str, Any]]:
 
 @router.post("/import")
 async def import_buyers_csv(
-    background_tasks: BackgroundTasks,
+    request: Request,
     file: UploadFile = File(...),
     market: str = Form(default=""),
     cash_only: bool = Form(default=False),
     entities_only: bool = Form(default=False),
     min_price: float = Form(default=0.0),
     max_price: float = Form(default=0.0),
+    request_id: Optional[UUID] = Form(default=None),
 ) -> dict:
-    """
-    Upload a county deed / PropStream CSV and ingest buyers + transactions.
-
-    Responds immediately with an import_log_id.
-    All Supabase writes happen in the background.
-    """
-    content = await file.read()
-    text = content.decode("utf-8-sig", errors="replace")
-    filename = file.filename or "upload.csv"
-
+    """Parse and atomically save the entire buyer import before acknowledging it."""
+    operator = getattr(request.state, 'user_id', None)
+    if not operator:
+        raise HTTPException(401, 'Sign in to import buyers')
+    content = await file.read(4_000_001)
+    if len(content) > 4_000_000:
+        raise HTTPException(413, 'Buyer CSV exceeds the 4 MB upload limit')
+    try:
+        text = content.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        raise HTTPException(422, 'Buyer CSV must use UTF-8 text')
     sb = _get_supabase()
-    log_id = None
-    if sb:
-        try:
-            log_resp = sb.table("buyer_import_log").insert({
-                "source":   "county_csv",
-                "filename": filename,
-                "market":   market,
-                "status":   "processing",
-            }).execute()
-            log_id = (log_resp.data or [{}])[0].get("id")
-        except Exception as exc:
-            logger.error(f"[buyers_api/import] log insert failed: {exc}")
-
-    background_tasks.add_task(
-        _process_import,
-        text=text,
-        filename=filename,
-        market=market,
-        cash_only=cash_only,
-        entities_only=entities_only,
-        min_price=min_price,
-        max_price=max_price,
-        log_id=log_id,
-    )
-
-    return {
-        "status": "processing",
-        "import_log_id": log_id,
-        "message": f"Processing {filename} — check import log for results",
-    }
-
-
-async def _process_import(
-    text: str,
-    filename: str,
-    market: str,
-    cash_only: bool,
-    entities_only: bool,
-    min_price: float,
-    max_price: float,
-    log_id: Optional[str],
-) -> None:
-    """Background: parse CSV → upsert buyers + transactions → update log."""
-    sb = _get_supabase()
-
-    result = parse_buyer_csv(
-        io.StringIO(text),
-        market=market,
-        cash_only=cash_only,
-        entities_only=entities_only,
-        min_price=min_price,
-        max_price=max_price,
-        filename=filename,
-    )
-
-    buyers_created = 0
-    buyers_updated = 0
-    tx_created = 0
-    touched_ids: list[str] = []
-
-    # Index transactions by grantee once (was a full scan of every transaction
-    # for every buyer: O(buyers x transactions) on county-size files).
-    tx_by_grantee: dict[str, list[dict[str, Any]]] = {}
-    for tx in result.transactions:
-        tx_by_grantee.setdefault(str(tx.get("grantee", "")).upper(), []).append(tx)
-
-    if sb:
-        try:
-            # Upsert buyers (match on company+email or first+last+phone)
-            for buyer in result.buyers:
-                try:
-                    # Try to find existing buyer by entity_name or name+phone
-                    entity = buyer.get("entity_name", "").strip()
-                    existing = None
-                    if entity:
-                        resp = sb.table("buyers").select("id").eq("entity_name", entity).limit(1).execute()
-                        existing = (resp.data or [{}])[0].get("id")
-                    if not existing:
-                        phone = buyer.get("phone", "")
-                        if phone:
-                            resp = sb.table("buyers").select("id").eq("phone", phone).limit(1).execute()
-                            existing = (resp.data or [{}])[0].get("id")
-
-                    if existing:
-                        # Update existing buyer with richer data
-                        update = {k: v for k, v in buyer.items() if k not in ("id", "created_at")}
-                        sb.table("buyers").update(update).eq("id", existing).execute()
-                        buyer_db_id = existing
-                        buyers_updated += 1
-                    else:
-                        try:
-                            resp = sb.table("buyers").insert(
-                                {**buyer, **({"import_log_id": log_id} if log_id else {})}
-                            ).execute()
-                        except Exception:
-                            # import_log_id column missing (migration pending): import untracked.
-                            resp = sb.table("buyers").insert(buyer).execute()
-                        buyer_db_id = (resp.data or [{}])[0].get("id")
-                        buyers_created += 1
-
-                    # Insert transactions for this buyer
-                    if buyer_db_id:
-                        touched_ids.append(buyer_db_id)
-                        grantee_key = (buyer.get("entity_name") or f"{buyer['first_name']} {buyer['last_name']}").upper()
-                        for tx in tx_by_grantee.get(grantee_key, []):
-                            tx_row = {**tx, "buyer_id": buyer_db_id}
-                            tx_row.pop("grantee", None)
-                            try:
-                                sb.table("buyer_transactions").upsert(
-                                    tx_row,
-                                    on_conflict="buyer_id,apn" if tx_row.get("apn") else "id",
-                                ).execute()
-                                tx_created += 1
-                            except Exception:
-                                sb.table("buyer_transactions").insert(tx_row).execute()
-                                tx_created += 1
-
-                except Exception as exc:
-                    logger.error(f"[buyers_api/import] Buyer upsert failed: {exc}")
-
-            # Update import log
-            if log_id:
-                sb.table("buyer_import_log").update({
-                    "rows_total":         result.log.get("rows_total", 0),
-                    "rows_imported":      result.log.get("rows_imported", 0),
-                    "buyers_created":     buyers_created,
-                    "buyers_updated":     buyers_updated,
-                    "transactions_created": tx_created,
-                    "rows_skipped":       result.log.get("rows_skipped", 0),
-                    "errors":             result.log.get("errors", []),
-                    "status":             "complete",
-                    "completed_at":       datetime.now(timezone.utc).isoformat(),
-                }).eq("id", log_id).execute()
-
-        except Exception as exc:
-            logger.error(f"[buyers_api/import] Batch persist failed: {exc}")
-            if sb and log_id:
-                sb.table("buyer_import_log").update({
-                    "status": "failed",
-                    "errors": [{"error": str(exc)}],
-                }).eq("id", log_id).execute()
-
-    # Automatic scoring: a freshly imported list is ranked without a second click.
-    if touched_ids:
-        await _run_scoring(None, touched_ids)
-
-    logger.info(
-        f"[buyers_api/import] Done — {buyers_created} created, "
-        f"{buyers_updated} updated, {tx_created} transactions"
-    )
+    if sb is None:
+        raise HTTPException(503, 'Database not configured; no import was started')
+    options = {'filename': file.filename or 'upload.csv', 'market': market,
+        'cash_only': cash_only, 'entities_only': entities_only,
+        'min_price': min_price, 'max_price': max_price}
+    if not all(math.isfinite(v) and v >= 0 for v in (min_price,max_price)) or (max_price and min_price > max_price):
+        raise HTTPException(422, 'Invalid purchase price range')
+    fingerprint = hashlib.sha256(content + json.dumps(options, sort_keys=True).encode()).hexdigest()
+    reference = str(request_id or uuid5(NAMESPACE_URL, 'wholesaleos:buyer-csv:'+operator+':'+fingerprint))
+    parsed = await run_in_threadpool(parse_buyer_csv, io.StringIO(text), **options)
+    # Malformed rows cannot be acknowledged as a complete successful import.
+    if parsed.errors or parsed.log.get('errors') or parsed.log.get('status') != 'complete':
+        raise HTTPException(422, {'message': 'Fix invalid CSV rows before importing; no records saved',
+            'errors': (parsed.errors or parsed.log.get('errors', []))[:20]})
+    if parsed.log['rows_total'] > 5000:
+        raise HTTPException(413, 'Buyer CSV exceeds 5,000 rows; no records saved')
+    options.update(rows_total=parsed.log['rows_total'], rows_skipped=parsed.log['rows_skipped'])
+    try:
+        value = await run_in_threadpool(lambda: sb.rpc('import_buyer_csv', {
+            'p_id': reference, 'p_operator': operator, 'p_fingerprint': fingerprint,
+            'p_groups': parsed.groups, 'p_options': options}).execute().data)
+    except Exception as exc:
+        logger.warning('Buyer CSV result unconfirmed for import %s', reference)
+        if (getattr(exc, 'code', None) or getattr(exc, 'pgcode', None)) in {'22023','42501'}:
+            raise HTTPException(409, 'Import needs identity/history review or its reference changed. No partial batch was saved.')
+        raise HTTPException(503, {'message': 'Import outcome unconfirmed. Retry the same file, options and reference.', 'import_id': reference})
+    try:
+        result = value['result']
+        if (value['import_id'] != reference or value['operator_id'] != operator
+            or value['fingerprint'] != fingerprint or value['options'] != options
+            or value['outreach_authorized'] is not False or type(value['replayed']) is not bool):
+            raise ValueError('Uncorrelated import receipt')
+        for key in ['buyers_created','buyers_existing','transactions_created','transactions_existing','rows_total','rows_skipped']:
+            if type(result.get(key)) is not int or result[key] < 0: raise ValueError('Unconfirmed totals')
+        if (result['buyers_created'] + result['buyers_existing'] != len(parsed.groups)
+            or result['transactions_created'] + result['transactions_existing'] != len(parsed.transactions)
+            or result['rows_total'] != options['rows_total'] or result['rows_skipped'] != options['rows_skipped']
+            or len(result['buyer_ids']) != len(parsed.groups)):
+            raise ValueError('Unconfirmed row mapping')
+        for identity in result['buyer_ids']:
+            if str(UUID(identity)) != identity: raise ValueError('Invalid buyer identity')
+    except (ValueError, TypeError, KeyError, AttributeError):
+        raise HTTPException(503, {'message': 'Import receipt unconfirmed. Retry the original file and reference.', 'import_id': reference})
+    return {'status': 'complete', 'import_id': reference, 'import_log_id': reference,
+        'replayed': value['replayed'], 'outreach_authorized': False, **result}
 
 
 @router.post("/score")
