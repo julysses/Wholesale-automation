@@ -1,3 +1,15 @@
+## October 22 — Linux release build and direct navigation
+
+A real packaging defect was reproduced and fixed: direct buyer/privacy/terms
+navigation returned 404 under the Python/container server. Focused regression
+checks pass, including preserved API/asset errors. The test-only CI Docker job
+builds the actual release image and checks real HTTP startup without external
+networking, credentials, deployment or image publication. Remote execution is not
+accepted until its exact job result is observed. See LINUX-RELEASE-CHECK.md.
+Owner wording approval remains recorded. Registration draft now uses that exact
+approved disclosure and describes the real invitation/review flow; publication,
+carrier approval, priced purchase and live acceptance remain open.
+
 ## October 22 checkpoint — buyer enrollment and exact policy review
 
 - [x] Separate public consumer form/privacy/terms routes outside operator login;

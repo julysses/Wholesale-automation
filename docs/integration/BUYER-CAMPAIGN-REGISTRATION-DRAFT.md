@@ -81,13 +81,13 @@ to opt out or HELP for help.
 Do not list keyword enrollment; replying START must not enroll someone without
 new reviewed buyer-specific consent or automatically clear CRM DNC.
 
-Proposed written disclosure for a future buyer form/document:
+Owner-approved written disclosure (October 22, 2026):
 
-I agree to receive recurring automated marketing texts from Hilltop Home Co., a
-DBA of The Jays Dallas, LLC, about wholesale property opportunities and Buyer Deal
-Alerts at the mobile number I provide. Message frequency varies. Message and data
-rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition
-of purchase. Privacy Policy and Buyer SMS Terms are available beside this choice.
+I agree to receive recurring automated marketing text messages from Hilltop Home Co. (The Jays Dallas, LLC) about wholesale property opportunities and Buyer Deal Alerts at the mobile number I provide. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase. The Buyer SMS Terms and Privacy Statement are available beside this optional choice.
+
+Exact version: `7d063db412e8c02a7de1d048b8604bcc775b987be84e9e7fdcda304bcc2738be`. The complete approved privacy/terms and
+identity/support are retained in BUYER-SMS-APPROVED-WORDING.md; any changed copy
+requires a new exact version review. Approval is wording only, not fees or sending.
 
 The checkbox must begin unchecked and remain optional. The reviewed source must
 retain the exact text, choice, phone, timestamp and affirmative action. Existing
@@ -113,7 +113,20 @@ buyer SMS REQUIRED / NOT ACCEPTED; broad sending and schedules remain paused.
 
 Current candidate update: invitation-based consumer enrollment and separate buyer
 policy pages are now implemented, but remain unpublished/disabled and their exact
-wording awaits owner review. Registration must describe this actual invitation,
+wording was approved by the owner on October 22. Registration must describe this actual invitation,
 optional choice and administrator review flow once it is live; do not claim that
 consumer enrollment is already available or submit an invented public proof URL.
 See BUYER-ENROLLMENT.md. No registration or purchase was performed.
+
+Candidate message-flow description for verification before registration:
+
+An administrator creates a seven-day, one-use private enrollment link after a
+buyer requests enrollment. The app does not send that link. The buyer enters the
+number bound to the invitation and makes an optional, initially unchecked choice
+beside the exact buyer disclosure and public privacy/terms links. The app retains
+the choice, exact program version and immutable receipt. A positive choice creates
+an assigned administrator review task; it does not immediately enable messaging.
+An approved administrator reviews the retained evidence before SMS eligibility.
+A refusal disables buyer SMS immediately and existing DNC is never cleared.
+This flow does not prove phone ownership. Submit this description only after the
+actual published flow and proof links have been verified.

@@ -29,7 +29,7 @@ from typing import Optional
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from web.spa import SPAFiles
 from fastapi.templating import Jinja2Templates
 
 # ── Path setup ─────────────────────────────────────────────────────────────────
@@ -335,11 +335,10 @@ def v1_audit(request: Request, agent: str = "") -> HTMLResponse:
 
 # ── Serve React frontend (WholesaleOS) ────────────────────────────────────────
 # MUST be registered last — acts as catch-all for all unmatched paths.
-# html=True means any unknown path returns index.html, letting React Router
-# handle client-side navigation (/leads, /pipeline, /buyers, etc.).
+# React navigation falls back to index.html; missing APIs/assets remain errors.
 _frontend_dist = ROOT / "frontend" / "dist"
 if _frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="wholesaleos")
+    app.mount("/", SPAFiles(directory=str(_frontend_dist), html=True), name="wholesaleos")
     logger.info(f"[WholesaleOS] Serving React build from {_frontend_dist}")
 else:
     logger.info("[WholesaleOS] No React build. Run:  cd frontend && npm install && npm run build")

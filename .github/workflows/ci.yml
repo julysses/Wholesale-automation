@@ -10,6 +10,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  docker-release:
+    name: Linux Docker release (isolated runtime)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build actual release Dockerfile without credentials or image publication
+        run: |
+          git rev-parse HEAD
+          docker build --label org.opencontainers.image.revision="$(git rev-parse HEAD)" -t wholesaleos-release-check .
+          docker image inspect wholesaleos-release-check --format '{{.Id}} {{json .Config.Labels}}'
+      - name: Verify dependencies and real HTTP startup without external networking
+        run: |
+          docker run --rm --network none --entrypoint python wholesaleos-release-check -m pip check
+          docker run --rm --network none --entrypoint python wholesaleos-release-check scripts/release/docker_runtime_smoke.py
+
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
@@ -25,7 +45,7 @@ jobs:
           pip install --require-hashes -r requirements.txt
           pip check
       - name: Run tests
-        run: python -m pytest -q
+        run: python scripts/run_offline_tests.py python -m pytest -q
 
   python-dependencies:
     name: Python locked dependencies and known vulnerabilities
