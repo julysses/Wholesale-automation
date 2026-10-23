@@ -48,3 +48,26 @@ Evidence reviewed:
 - https://supabase.com/docs/guides/troubleshooting/permission-denied-when-deleting-the-cli_login_postgres-role-808bae
 - https://github.com/supabase/cli/blob/v2.79.0/pkg/api/types.gen.go
 - https://github.com/supabase/cli/blob/v2.79.0/internal/utils/flags/db_url.go
+
+
+## Approved probe completed October 23
+
+The owner explicitly approved creation and verification of the read-only login.
+Native verified-TLS connection and catalog-only probe succeeded. The login is
+NOINHERIT, so SET LOCAL ROLE into supabase_read_only_user is required. That
+read-only parent has broad SELECT and RLS bypass for complete reads; sensitive
+backup scope still needs explicit exclusions. All128 scoped tables were selectable
+and none granted INSERT/UPDATE/DELETE/TRUNCATE. No customer rows were selected.
+
+The pooler did not retain the startup read-only option. An explicit READ ONLY
+transaction was required and verified; do not assume startup settings survived.
+The issued password lifetime was300 seconds, with catalog-confirmed finite expiry.
+Initial certificate trust failed; the public CA linked by the authenticated
+Supabase dashboard resolved it with TLS/hostname checks retained. The same
+read-only principal's credential was refreshed for bounded diagnostic retries;
+no second privilege class or write-capable fallback was created. All native
+connections closed. No credentials were persisted or output. Role record lifetime
+is separate from its expiring password; no global CLI-role deletion was attempted.
+
+Exact safe metadata: backup-readonly-access-result.json. Backup export and restore
+remain unperformed and unverified; approval covered the access probe only.
