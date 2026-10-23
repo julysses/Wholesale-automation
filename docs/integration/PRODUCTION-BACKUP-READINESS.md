@@ -77,3 +77,10 @@ Sources:
 - [Installed-version credential behavior](https://github.com/supabase/cli/blob/v2.79.0/internal/utils/flags/db_url.go)
 - [Installed-version dump execution](https://github.com/supabase/cli/blob/v2.79.0/internal/db/dump/dump.go)
 - [Official backup and restore guide](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore)
+
+
+Further isolation review found that this CLI version's default data-dump filter
+includes cron and net. Production has scheduler and outbound request-queue tables.
+Do not restore those operational rows into a running target. Exact proposed scope,
+consistency, protected storage, isolation and acceptance steps are recorded in
+BACKUP-RESTORE-ISOLATION-REVIEW.md. No row export or restore has been performed.
