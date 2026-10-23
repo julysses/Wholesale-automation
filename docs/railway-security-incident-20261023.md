@@ -2,6 +2,16 @@
 
 ## Status
 
+**Latest result:** User explicitly approved discarding the pending Supabase addition and deploying only the Anthropic replacement. Removed the pending `SUPABASE_SERVICE_ROLE_KEY` variable via Railway UI; `get_staged_changes` independently confirmed exactly one remaining change, `ANTHROPIC_API_KEY`, before deployment. Committed that patch with `accept_deploy`.
+
+- New deployment `c54eab32-4dbb-45c5-8a86-3519b74a36ee` reached **SUCCESS** on October 23, 2026 (approximately 3:46 PM America/Chicago), using the same source commit `ad70c7c29d618efe3aad848a386ca1779f0e7b8f` as the prior deployment.
+- Runtime logs: application startup complete, uvicorn listening, platform health request HTTP 200. Independent HTTPS GET `/api/health` returned `{"status":"ok","service":"wholesaleos"}`.
+- No staged changes remain. Post-commit live variable inventory includes ANTHROPIC_API_KEY and excludes SUPABASE_SERVICE_ROLE_KEY. Existing DATABASE_URL, VITE_SUPABASE_ANON_KEY, and VITE_SUPABASE_URL remain configured. No Supabase-provider credential was revoked/modified and no live database credential was removed.
+- User confirms replacement key saved securely and Claude Done clicked. The earlier one-time-display handoff blocker is resolved by the user.
+- Anthropic API authentication and database CRUD were not exercised; successful process health must not be represented as proof of either. Other exposed credential rotations and incident audit remain outstanding.
+
+The following sections preserve earlier investigation checkpoints; where they describe pending deployment, the latest result above supersedes that state.
+
 The user disabled the April Anthropic key; its Claude console record and success notification were independently verified as Disabled. No replacement key has been created or installed. No deployment, migration, outreach, or scheduler changes made. Other credentials remain unresolved; incident is not yet contained.
 
 ### Follow-up after user reported disabled
