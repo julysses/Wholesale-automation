@@ -17,7 +17,7 @@ const channelConfig: Record<string, { icon: React.ReactNode; color: string; labe
 };
 
 export function OutreachTimeline({ leadId }: OutreachTimelineProps) {
-  const { data: activities, isLoading } = useOutreachActivity(leadId);
+  const { data: activities, isLoading, error, refetch } = useOutreachActivity(leadId);
 
   if (isLoading) {
     return (
@@ -34,6 +34,10 @@ export function OutreachTimeline({ leadId }: OutreachTimelineProps) {
       </div>
     );
   }
+
+  if (error) return <div role="alert" className="text-sm text-red-700">
+    Contact history could not be loaded. <button onClick={() => refetch()} className="underline">Retry</button>
+  </div>;
 
   if (!activities || activities.length === 0) {
     return (

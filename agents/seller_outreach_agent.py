@@ -272,7 +272,7 @@ class SellerOutreachAgent(BaseAgent):
     ) -> OutreachMessage:
         """
         Draft a CAN-SPAM compliant seller outreach email.
-        Uses Claude within strict template guidance.
+        Uses fixed text; model output and context cannot establish offer terms.
         Email is the preferred channel (Section 5 priority #1).
         """
         is_followup = attempt_number > 1
@@ -292,53 +292,38 @@ class SellerOutreachAgent(BaseAgent):
             return msg
 
         owner_first = lead.owner_name.split()[0] if lead.owner_name else "there"
-        prompt = f"""
-Draft a CAN-SPAM compliant seller outreach email.
-
-Property: {lead.address.full}
-Owner first name: {owner_first}
-Sender name: {settings.agency_contact_name}
-Agency: {settings.agency_name}
-Agency phone: {settings.agency_phone or "available on request"}
-Attempt number: {attempt_number}
-Context: {context or "None"}
-
-MANDATORY STRUCTURE:
-Subject: A question about your property at {lead.address.street}
-
-Body (3–4 sentences max):
-- Open with "Hi {owner_first},"
-- Introduce sender as local to the area using ONLY one of:
-  "I live in the area" / "I'm local to the neighborhood" / "I'm based nearby"
-- Frame as: "I came across your property through public records and wanted to ask..."
-- State clearly this is optional / no pressure / no rush
-- Include physical mailing address for CAN-SPAM compliance
-- Include unsubscribe instruction: "Reply UNSUBSCRIBE to stop receiving messages"
-- Sign with: sender name, agency name, phone
-
-HARD RULES:
-- NO pressure language
-- NO urgency or deadlines
-- NO "drove by", "noticed", "saw your property" or any physical observation phrasing
-- NO promotional language
-- Tone: informational, respectful, peer-to-peer
-
-Return body (full email text including subject line as "Subject: ...\\n\\nBody text"),
-tone_assessment, compliance_notes, channel="email".
-"""
-        draft = self._call_structured(prompt, MessageDraft)
+        mailing_address = settings.agency_mailing_address.strip()
+        if not mailing_address:
+            return OutreachMessage(
+                lead_id=lead.id, channel=OutreachChannel.EMAIL, body="",
+                attempt_number=attempt_number, is_followup=is_followup,
+                is_inbound_reply=has_inbound_reply, status=OutreachStatus.STOPPED,
+                compliance_notes="[BLOCKED] Configure the agency mailing address before seller email outreach.",
+            )
+        introduction = ("I'm following up on my earlier message about your property."
+                        if is_followup else
+                        "I'm reaching out to ask whether you would be open to discussing your property.")
+        body = (
+            f"Subject: A question about your property at {lead.address.street}\n\n"
+            f"Hi {owner_first},\n"
+            f"My name is {settings.agency_contact_name} with {settings.agency_name}. "
+            f"{introduction} There is no pressure or rush; any offer terms require our acquisitions manager's review and approval.\n\n"
+            "Reply UNSUBSCRIBE to stop receiving messages.\n"
+            f"{settings.agency_contact_name}\n{settings.agency_name}\n"
+            f"{settings.agency_phone}\n{mailing_address}"
+        )
 
         msg = OutreachMessage(
             lead_id=lead.id,
             channel=OutreachChannel.EMAIL,
-            body=draft.body,
+            body=body,
             attempt_number=attempt_number,
             is_followup=is_followup,
             is_inbound_reply=has_inbound_reply,
-            compliance_notes=draft.compliance_notes,
+            compliance_notes="Fixed outreach template; no offer terms generated or approved.",
         )
 
-        if self._validate_and_block(draft.body, lead, msg):
+        if self._validate_and_block(body, lead, msg):
             return msg
 
         msg.compliance_cleared = True
@@ -379,7 +364,7 @@ Their response: {response_text}
 Classify:
 - sentiment: "positive" | "negative" | "neutral" | "unsubscribe"
 - next_action: "schedule_call" | "send_follow_up" | "stop_outreach" | "clarify"
-- suggested_reply: brief respectful reply (empty string if stopping)
+- Do not generate suggested replies, prices, offer terms, or negotiating instructions.
 
 Rules (Section 4):
 - ANY hint of disinterest → stop_outreach immediately
@@ -388,16 +373,24 @@ Rules (Section 4):
 - suggested_reply must be non-pressuring, informational only
 - If uncertain about sentiment → stop_outreach (reputation > conversion)
 
-Return valid JSON with: sentiment, next_action, suggested_reply.
+Return valid JSON with: sentiment, next_action.
 """
         raw = self._call(prompt)
         try:
             result = json.loads(raw)
-            # Safety: if sentiment is negative/unsubscribe, force stop
-            if result.get("sentiment") in ("negative", "unsubscribe"):
-                result["next_action"] = "stop_outreach"
-                result["suggested_reply"] = ""
-            return result
+            # Model classifications are untrusted; no generated prose reaches callers.
+            sentiment = result.get("sentiment")
+            action = result.get("next_action")
+            if sentiment not in ("positive", "neutral") or action not in ("schedule_call", "send_follow_up", "clarify"):
+                return {"sentiment": sentiment if sentiment in ("negative", "unsubscribe") else "unknown",
+                        "next_action": "stop_outreach", "suggested_reply": ""}
+            replies = {
+                "schedule_call": "Thank you. What time would work for a conversation with our acquisitions manager?",
+                "send_follow_up": "Thank you for your reply. What would you like our acquisitions manager to know?",
+                "clarify": "Could you share more about what you would like to discuss?",
+            }
+            return {"sentiment": sentiment, "next_action": action,
+                    "suggested_reply": replies[action]}
         except Exception:
             # Default safe: stop outreach on any parse failure
             return {

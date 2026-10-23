@@ -463,6 +463,11 @@ def _send_lead_pipeline_sms(
     from config.settings import settings
 
     supabase = _get_supabase()
+    from tools.retell_form_sms import enabled as retell_enabled, enqueue as enqueue_retell
+    retell_selected = retell_enabled('RETELL_FORM_SMS_ENABLED')
+    # Durable form receipt is required, even while sending stays disabled.
+    retell_consent = str(answers.get('sms_opt_in', '')).strip().lower() in {'1','true','yes','on','agree','agreed','opted_in'}
+    retell_schedule = (enqueue_retell(supabase, lead_id) if retell_consent else 'no_consent_or_form_confirmation_disabled') if retell_selected else None
     notification_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{lead_id}"))
     notification = {
         "id": notification_id, "recipient_role": "admin", "type": "pipeline_step",
@@ -551,7 +556,9 @@ def _send_lead_pipeline_sms(
         except Exception:
             outcomes["owner_email"] = "unknown"
             logger.exception("[lead_forms] Owner email outcome unknown for lead %s", lead_id)
-    if seller_allowed:
+    if retell_selected:
+        outcomes["seller_sms"] = retell_schedule
+    elif seller_allowed:
         outcomes["seller_sms"] = _send(
             phone, f"Hi {name}, thanks for reaching out to Hilltop Home Co. about "
             f"{property_address}. We'll be in touch shortly. Reply STOP to opt out.",

@@ -526,6 +526,23 @@ async def retell_webhook(
     except Exception:
         raise HTTPException(400, "Invalid JSON payload")
 
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Invalid webhook object")
+    if payload.get("event") in {"chat_started", "chat_ended", "chat_analyzed"} or (
+        payload.get("event") == "transcript_updated" and "chat" in payload
+    ):
+        from tools.retell_sms import record_chat_event
+        sb = _get_supabase()
+        if sb is None:
+            raise HTTPException(503, "SMS receipt storage unavailable")
+        try:
+            return await run_in_threadpool(record_chat_event, sb, payload)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        except Exception:
+            logger.exception("Retell SMS receipt persistence failed")
+            raise HTTPException(503, "SMS receipt not confirmed; retry required")
+
     event_type = payload.get("event") or payload.get("event_type", "")
     call_data  = payload.get("call", {})
     call_id    = call_data.get("call_id", "")
@@ -972,6 +989,7 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
         if not saved.data:
             raise RuntimeError("Retell suppressed call outcome was not confirmed")
         return  # A later provider outcome cannot reactivate a suppressed lead.
+    _persist_retell_follow_up(sb, event, raw_payload)
     nonconversation_status = _retell_nonconversation_status(event, call_data)
     if not transcript and not nonconversation_status:
         if event_type in {"call_ended", "retell.call.completed"}:
@@ -1003,6 +1021,33 @@ async def _retell_call_completed(event: AICallResultEvent, raw_payload: dict) ->
         except Exception:
             logger.exception("Could not park failed Retell completion receipt")
         raise
+
+
+def _persist_retell_follow_up(sb: Any, event: AICallResultEvent, payload: dict) -> None:
+    """Create one review task per call, including late analysis; never dispatch."""
+    if event.disposition.value not in {"callback", "appointment_set", "warm"}:
+        return
+    task_id = _retell_receipt_id(event.call_id, "follow_up")
+    existing = sb.table("tasks").select("id").eq("id", task_id).limit(1).execute().data
+    if existing:
+        return  # Preserve a human's completed task on webhook redelivery.
+    analysis = payload.get("call", {}).get("call_analysis") or {}
+    custom = analysis.get("custom_analysis_data") or {}
+    requested_time = str(custom.get("callback_time") or "Not supplied; confirm with owner")[:500]
+    saved = sb.table("tasks").upsert({
+        "id": task_id, "lead_id": event.lead_id,
+        "title": "Retell follow-up: " + event.disposition.value.replace("_", " "),
+        "description": (
+            f"Call: {event.call_id}\nRequested time (unverified): {requested_time}\n"
+            + str(analysis.get("call_summary") or "Review the saved call transcript.")[:4000]
+            + "\nHuman review required. No call or SMS has been scheduled."
+        ),
+        "priority": "high", "status": "pending", "type": "acquisition_review",
+    }, on_conflict="id", ignore_duplicates=True).execute()
+    if not saved.data:
+        confirmed = sb.table("tasks").select("id").eq("id", task_id).limit(1).execute().data
+        if not confirmed:
+            raise RuntimeError("Retell follow-up persistence was not confirmed")
 
 
 def _retell_opted_out(event: AICallResultEvent, transcript: Any) -> bool:
@@ -1042,6 +1087,13 @@ def _persist_retell_opt_out(sb: Any, event: AICallResultEvent, payload: dict) ->
     }).eq("id", event.lead_id).execute()
     if not saved.data:
         raise RuntimeError("Retell lead suppression was not confirmed")
+    # Close only this integration's pending follow-up, preserving human work.
+    task_id = _retell_receipt_id(event.call_id, "follow_up")
+    pending = sb.table("tasks").select("id").eq("id", task_id).eq("status", "pending").execute().data
+    if pending:
+        saved = sb.table("tasks").update({"status": "cancelled"}).eq("id", task_id).eq("status", "pending").execute()
+        if not saved.data:
+            raise RuntimeError("Retell opt-out follow-up cancellation was not confirmed")
     saved = sb.table("ai_call_records").update({"disposition": "dnc"}).eq("call_id", event.call_id).execute()
     if not saved.data:
         raise RuntimeError("Retell opt-out call outcome was not confirmed")
@@ -1088,8 +1140,8 @@ async def _run_retell_completion(sb: Any, event: AICallResultEvent, raw_payload:
                 "qualification_score": qual.qualification_score,
                 "classification":      qual.classification,
                 "score_breakdown":     qual.score_breakdown,
-                "offer_range_low":     qual.offer_range_low,
-                "offer_range_high":    qual.offer_range_high,
+                "offer_range_low":     None,
+                "offer_range_high":    None,
                 "summary":             qual.summary,
                 "key_quotes":          qual.key_quotes,
             }).execute()
@@ -1106,8 +1158,8 @@ async def _run_retell_completion(sb: Any, event: AICallResultEvent, raw_payload:
                 "qual_score":      qual.qualification_score,
                 "classification":  qual.classification,
                 "sentiment":       qual.sentiment,
-                "offer_range_low": qual.offer_range_low,
-                "offer_range_high":qual.offer_range_high,
+                "offer_range_low": None,
+                "offer_range_high":None,
                 "call_notes":      qual.summary,
                 "qual_result_id":  qual_record_id,
             }).eq("call_id", event.call_id).execute()
@@ -1202,6 +1254,8 @@ async def _run_retell_completion(sb: Any, event: AICallResultEvent, raw_payload:
 
 
 def _launch_control_configured() -> bool:
+    if not settings.sms_live_enabled:
+        return False
     if settings.launch_control_mode == "csv_sync":
         return True
     if settings.launch_control_mode == "api_direct":
@@ -1232,11 +1286,6 @@ async def _trigger_hot_lead_automation(
 
     # 1. Create acquisition task
     asking_str = f"${qual.asking_price:,.0f}" if qual.asking_price else "Unknown"
-    offer_str  = (
-        f"${qual.offer_range_low:,.0f}–${qual.offer_range_high:,.0f}"
-        if qual.offer_range_low and qual.offer_range_high
-        else (f"${mao:,.0f}" if mao else "TBD")
-    )
     arv_str = f"${arv:,.0f}" if arv else "Unknown"
 
     task_description = (
@@ -1248,7 +1297,7 @@ async def _trigger_hot_lead_automation(
         f"Occupancy:   {qual.occupancy.replace('_', ' ').title()}\n"
         f"Asking:      {asking_str}\n"
         f"Est. Value:  {arv_str}\n"
-        f"Offer Range: {offer_str}\n"
+        "Offer:       Awaiting human-entered price and approval\n"
         f"Sentiment:   {qual.sentiment.title()}\n\n"
         f"Summary: {qual.summary}\n\n"
         + (f"Key quotes:\n" + "\n".join(f'  • "{q}"' for q in qual.key_quotes[:3]) if qual.key_quotes else "")
@@ -1318,8 +1367,8 @@ async def _trigger_hot_lead_automation(
                 "qualification_score": qual.qualification_score,
                 "classification":      qual.classification,
                 "asking_price":        qual.asking_price,
-                "offer_range_low":     qual.offer_range_low,
-                "offer_range_high":    qual.offer_range_high,
+                "offer_range_low":     None,
+                "offer_range_high":    None,
             },
         }).execute()
         if not notification_result.data:
@@ -1648,8 +1697,8 @@ async def _handle_vapi_call_result(result: VapiCallResult) -> None:
                     "named_price":          qual.named_price,
                     "qualification_score":  qual.qualification_score,
                     "classification":       qual.classification,
-                    "offer_range_low":      qual.offer_range_low,
-                    "offer_range_high":     qual.offer_range_high,
+                    "offer_range_low":      None,
+                    "offer_range_high":     None,
                     "raw_signals":          qual.raw_signals if hasattr(qual, "raw_signals") else {},
                 }).execute()
 

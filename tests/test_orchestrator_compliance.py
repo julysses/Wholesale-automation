@@ -44,3 +44,18 @@ def test_prepare_outreach_blocks_persisted_suppressed_phone():
 
     assert cleared == []
     assert orch.state.outreach_messages == []
+
+
+def test_prepare_email_keeps_missing_mailing_address_blocked(monkeypatch):
+    from config.settings import settings
+    monkeypatch.setattr(settings, 'agency_mailing_address', '')
+    lead = _make_lead()
+    lead.email = 'synthetic@example.invalid'
+    with patch('agents.base_agent.anthropic.Anthropic'):
+        orch = MasterOrchestrator()
+        orch.compliance = ComplianceLoggingAgent(crm_store=CRMStore(database_url='sqlite:///:memory:'))
+    with patch('agents.compliance_logging_agent._texas_now') as now:
+        now.return_value.hour = 11
+        now.return_value.weekday.return_value = 1
+        assert orch.prepare_outreach([lead], channel=OutreachChannel.EMAIL) == []
+    assert orch.state.outreach_messages == []

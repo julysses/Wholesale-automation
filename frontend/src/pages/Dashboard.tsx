@@ -1,3 +1,4 @@
+import { ForeclosureActions } from '@/components/lists/ForeclosureActions';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { queryAll } from '@/lib/queryAll';
@@ -80,6 +81,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <ForeclosureActions compact />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-0.5">Business activity excludes confirmed internal QA records.</p>

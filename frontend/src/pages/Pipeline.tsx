@@ -234,7 +234,7 @@ export function Pipeline() {
               const lead = leadData?.data.find((item) => item.id === e.target.value);
               setNewDeal({ ...newDeal, lead_id: e.target.value,
                 deal_name: lead?.property_address || newDeal.deal_name,
-                contract_price: lead?.offer_price ?? undefined,
+                contract_price: undefined, // Lead estimates are not human-approved contract terms.
                 arv: lead?.estimated_arv, repair_estimate: lead?.estimated_repairs,
               });
             }}
@@ -256,8 +256,8 @@ export function Pipeline() {
             <Select label="Stage" value={newDeal.stage || 'offer_made'}
               onChange={(e) => setNewDeal({ ...newDeal, stage: e.target.value })}
               options={[...COLUMNS.map((c) => ({ value: c.id, label: c.title })), { value:'cancelled',label:'Cancelled' }]} />
-            <Input label="Contract Price" type="number" value={newDeal.contract_price || ''}
-              onChange={(e) => setNewDeal({ ...newDeal, contract_price: Number(e.target.value) })} />
+            <Input label="Contract Price" type="number" value={newDeal.contract_price ?? ''}
+              onChange={(e) => setNewDeal({ ...newDeal, contract_price: e.target.value === '' ? undefined : Number(e.target.value) })} />
             <Input label="Assignment Fee" type="number" value={newDeal.assignment_fee || ''}
               onChange={(e) => setNewDeal({ ...newDeal, assignment_fee: Number(e.target.value) })} />
             <Input label="Contract Date" type="date" value={newDeal.contract_date || ''} onChange={e=>setNewDeal({...newDeal,contract_date:e.target.value||null})} />
@@ -269,7 +269,7 @@ export function Pipeline() {
           <Textarea label="Notes" value={newDeal.notes || ''} rows={2}
             onChange={(e) => setNewDeal({ ...newDeal, notes: e.target.value })} />
           <DealHandoffFields value={newDeal} onChange={setNewDeal} />
-          <p className="text-sm">Moving beyond Offer Made requires recorded contract evidence, title company and dates. No external action is performed by this form.</p>
+          <p className="text-sm">Enter contract prices yourself from reviewed terms. Lead estimates are not copied or approved. Moving beyond Offer Made requires recorded contract evidence, title company and dates. No external action is performed by this form.</p>
           </fieldset>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setNewDealOpen(false)}>Cancel</Button>

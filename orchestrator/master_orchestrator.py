@@ -148,9 +148,9 @@ class MasterOrchestrator:
         leads: Optional[list[PropertyLead]] = None,
     ) -> dict[str, SkipTraceResult]:
         """
-        Skip trace all leads via BatchData.
-        Enriches phone numbers and emails; updates phone_numbers on the lead.
-        Returns a dict of lead_id → SkipTraceResult.
+        Preserve legacy callers with explicit per-lead blocked tracing results.
+        Paid tracing is handled by the durable list-tracing workflow; it must not
+        promote unreviewed contacts into this in-memory outreach pipeline.
         """
         if leads is None:
             leads = self.state.raw_leads
@@ -173,20 +173,14 @@ class MasterOrchestrator:
             result = self.batchdata.skip_trace_property(payload, lead_id=str(lead.id))
             results[str(lead.id)] = result
 
-            # Enrich lead phone list with skip-trace results
-            if result.phones:
-                enriched = [p.number for p in result.phones if p.number]
-                # Merge with existing phones (deduplicate)
-                existing = set(lead.phone_numbers)
-                lead.phone_numbers = list(existing | set(enriched))
-
         self.state.skip_trace_results.update(results)
-        enriched_count = sum(1 for r in results.values() if r.phones)
+        enriched_count = sum(1 for r in results.values() if r.success and r.phones)
+        blocked_count = sum(1 for r in results.values() if not r.success)
 
         self.compliance.log_action(
             agent="orchestrator",
             action="skip_trace_complete",
-            output_summary=f"enriched={enriched_count}/{len(leads)}",
+            output_summary=f"enriched={enriched_count}/{len(leads)}, blocked={blocked_count}",
         )
         logger.info(
             f"[Orchestrator] Skip trace complete — "

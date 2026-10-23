@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
+const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+test('versioned call claims persist immutable identity and deny unversioned or browser initiation',async t=>{
+ const db=new PGlite();t.after(()=>db.close());
+ await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role BYPASSRLS;
+ CREATE TABLE public.profiles(id uuid PRIMARY KEY,status text,role text);
+ CREATE TABLE public.leads(id uuid PRIMARY KEY,dnc boolean,ai_calling_paused boolean);
+ INSERT INTO public.profiles VALUES('${id(1)}','approved','admin');
+ INSERT INTO public.leads VALUES('${id(2)}',false,false);
+ GRANT SELECT ON public.profiles,public.leads TO service_role;
+ CREATE FUNCTION public.intake_phone_status(text,uuid,text) RETURNS jsonb LANGUAGE sql AS $$SELECT '{"suppressed":false}'::jsonb$$;
+ CREATE FUNCTION public.outreach_recipient_limits(text) RETURNS jsonb LANGUAGE sql AS $$SELECT '{"blocker":null}'::jsonb$$;
+ CREATE FUNCTION public.claim_retell_call(uuid,uuid,text,uuid) RETURNS jsonb LANGUAGE sql AS $$SELECT '{}'::jsonb$$;
+ REVOKE ALL ON FUNCTION public.claim_retell_call(uuid,uuid,text,uuid) FROM PUBLIC,anon,authenticated;
+ GRANT EXECUTE ON FUNCTION public.claim_retell_call(uuid,uuid,text,uuid) TO service_role;`);
+ for(const file of ['20261008181234_retell_call_requests.sql','20261012223527_retell_claim_identity.sql'])await db.exec(fs.readFileSync(new URL('../../frontend/supabase/migrations/'+file,import.meta.url),'utf8'));
+ const claim=()=>db.query('select public.claim_retell_call_versioned($1,$2,$3,$4,$5,$6,$7) AS result',[id(3),id(2),'+12145550198',id(1),'agent_reviewed',7,'+14698049920']);
+ await db.exec('SET ROLE service_role');
+ assert.equal((await claim()).rows[0].result.claimed,true);
+ const saved=(await db.query('select * from public.retell_call_requests')).rows[0];
+ assert.equal(saved.requested_agent_id,'agent_reviewed');assert.equal(saved.requested_agent_version,7);
+ await assert.rejects(db.query("update public.retell_call_requests set requested_agent_version=8"),/immutable/);
+ await db.query("update public.retell_call_requests set status='accepted',provider_call_id='call_test'");
+ assert.equal((await claim()).rows[0].result.reason,'existing_reference');
+ await assert.rejects(db.query('select public.claim_retell_call($1,$2,$3,$4)',[id(4),id(2),'+12145550198',id(1)]),/permission denied/);
+ for(const role of ['anon','authenticated']){await db.exec('RESET ROLE; SET ROLE '+role);await assert.rejects(claim(),/permission denied/);}
+});

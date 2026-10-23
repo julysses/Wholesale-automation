@@ -28,6 +28,7 @@ const mainNav = [
 ];
 
 const adminNav = [
+  { path: '/daily-lists', label: 'Daily Lists', icon: Layers },
   { path: '/admin/users',  label: 'Manage Users', icon: ShieldCheck },
   { path: '/setup',        label: 'Setup Wizard', icon: Zap },
 ];

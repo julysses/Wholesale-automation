@@ -33,6 +33,8 @@ const LeadForm = lazy(() => import('@/pages/LeadForm').then(m => ({ default: m.L
 const FacebookAdsCommandCenter = lazy(() => import('@/pages/FacebookAdsCommandCenter').then(m => ({ default: m.FacebookAdsCommandCenter })));
 const DevelopmentCommandCenter = lazy(() => import('@/pages/DevelopmentCommandCenter').then(m => ({ default: m.DevelopmentCommandCenter })));
 
+const DailyLists = lazy(() => import('@/pages/DailyLists').then(m => ({ default: m.DailyLists })));
+
 // Admin pages
 const AdminUsers = lazy(() => import('@/pages/admin/Users').then(m => ({ default: m.AdminUsers })));
 
@@ -228,7 +230,8 @@ function OperatorApp() {
         {/* Full-screen routes — no layout wrapper */}
         <Route element={<AdminGate userId={session.user.id} />}>
           <Route path="/setup" element={<SetupWizard />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/daily-lists" element={<DailyLists />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
         </Route>
 
         {/* Main app with shared Layout (sidebar + topbar) */}

@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timezone
-from string import Formatter
 from uuid import UUID, uuid5
 
 from fastapi import APIRouter, HTTPException
@@ -21,23 +20,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/marketing", tags=["Marketing"])
 
 
+WARM_FOLLOWUP_TEMPLATE = "Hi {first_name}, this is Hilltop Home Co following up on your property inquiry at {address}. Would you like Julio to follow up? Reply STOP to opt out."
+
+
 class BulkSMSRequest(BaseModel):
     request_id: UUID
     lead_ids: list[UUID] = Field(min_length=1, max_length=25)
-    template: str = Field(
-        default="Hi {first_name}, this is Hilltop Home Co following up on your property inquiry at {address}. Would you like Julio to follow up? Reply STOP to opt out.",
-        min_length=1, max_length=1600,
-    )
+    # Preserve the old field for clients replaying the standard template. Never
+    # allow this informational route to bypass exact human offer approval.
+    template: str = WARM_FOLLOWUP_TEMPLATE
 
     @field_validator("template")
     @classmethod
     def validate_template(cls, value: str) -> str:
-        try:
-            for _, field, spec, conversion in Formatter().parse(value):
-                if field is not None and (field not in {"first_name", "address"} or spec or conversion):
-                    raise ValueError("Only {first_name} and {address} placeholders are supported.")
-        except ValueError as exc:
-            raise ValueError("Use a valid SMS template with only {first_name} and {address} placeholders.") from exc
+        if value != WARM_FOLLOWUP_TEMPLATE:
+            raise ValueError("Only the standard property-inquiry follow-up is enabled. Custom messages and offer terms require a separate approved delivery workflow.")
         return value
 
 
@@ -61,6 +58,8 @@ async def bulk_sms_warm(body: BulkSMSRequest) -> dict:
 
 
 def _process_bulk_sms(body: BulkSMSRequest) -> dict:
+    if body.template != WARM_FOLLOWUP_TEMPLATE:
+        raise HTTPException(422, "Custom SMS is disabled; review exact offer terms separately")
     sb = get_supabase_client()
     if sb is None:
         raise HTTPException(503, "Database not configured")

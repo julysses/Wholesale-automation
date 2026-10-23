@@ -190,3 +190,42 @@ def test_signed_tracked_failure_requires_operator_alert(setup,monkeypatch,state)
     alert.assert_called_once_with(db,'twilio',ref,state,lead_id)
     alert.side_effect=RuntimeError('alert unavailable')
     assert signed(client,'status',data,'?message_id='+ref).status_code==503
+
+
+@pytest.mark.parametrize("provider", ["telnyx", "messagebird"])
+@pytest.mark.parametrize("enabled", [False, True])
+def test_unintegrated_sms_providers_never_bypass_launch_guards(monkeypatch, provider, enabled):
+    monkeypatch.setattr(hooks.settings, 'sms_live_enabled', enabled)
+    sender = SMSClient(provider)
+    sender._configured = True
+    monkeypatch.setattr(sender, '_in_allowed_hours', lambda: True)
+    monkeypatch.setattr(sender, '_is_weekend', lambda: False)
+    dispatch = MagicMock()
+    monkeypatch.setattr(sender, '_dispatch', dispatch)
+    message = OutreachMessage(lead_id=uuid4(), channel=OutreachChannel.SMS,
+                              body='Unreviewed offer', compliance_cleared=True)
+    assert sender.send(message, PHONE) is False
+    assert message.status == OutreachStatus.STOPPED
+    dispatch.assert_not_called()
+
+
+def test_natural_language_stop_classified_after_signature(setup):
+    client,db=setup
+    payload={'AccountSid':SID,'MessageSid':MESSAGE,'From':PHONE,'To':SENDER,'Body':'Please remove me'}
+    response=signed(client,data=payload)
+    assert response.status_code==200
+    assert '<Redirect' not in response.text
+    assert db.rpc.call_args.args[1]['p_payload']['crm_opt_out'] is True
+
+
+def test_handoff_only_after_durable_receipt(setup,monkeypatch):
+    client,db=setup
+    handoff=MagicMock(return_value='https://api.retellai.com/twilio-sms-webhook/org_test')
+    monkeypatch.setattr(hooks,'reply_redirect',handoff)
+    payload={'AccountSid':SID,'MessageSid':MESSAGE,'From':PHONE,'To':SENDER,'Body':'Tomorrow works'}
+    response=signed(client,data=payload)
+    assert response.status_code==200 and '<Redirect method="POST">' in response.text
+    db.rpc.return_value.execute.side_effect=RuntimeError('offline')
+    handoff.reset_mock()
+    assert signed(client,data=payload).status_code==503
+    handoff.assert_not_called()
