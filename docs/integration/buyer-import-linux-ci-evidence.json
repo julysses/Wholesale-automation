@@ -1,0 +1,23 @@
+{
+  "run_id": 39875339193,
+  "run_number": 719,
+  "url": "https://github.com/julysses/Wholesale-automation/actions/runs/39875339193",
+  "head": "cf4dd50441688aacbd1f88fd16762c42f66751be",
+  "tested_pr_merge": "0da1a550f0ca4685ba25263c76a4457a0507b562",
+  "identical_tree": "ac62abb840b63e862f65fff5c86f1297a68ee660",
+  "all_nine_jobs": "completed/success",
+  "buyer_job_id": 120159637693,
+  "runtime": "PostgreSQL17.11 Ubuntu",
+  "dedicated_mode": "--buyer-import",
+  "max_single_buyer_purchases": 5000,
+  "max_single_buyer_seconds": 4.807,
+  "max_distinct_buyers": 5000,
+  "max_distinct_buyers_seconds": 11.685,
+  "lock_refusal_seconds": 3.005,
+  "lock_refusal_no_partial_write": true,
+  "same_reference_retry": "complete",
+  "oversized_5001_rows": "rejected before writes",
+  "real_provider_calls": 0,
+  "production_changes": 0,
+  "limits": "synthetic data and Auth; cloud runner timing is not production MICRO performance or live acceptance"
+}

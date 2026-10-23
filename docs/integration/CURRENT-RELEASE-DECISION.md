@@ -1,3 +1,10 @@
+Cloud follow-up VERIFIED: all9 jobs of run719/39875339193 succeeded for
+cf4dd50441688aacbd1f88fd16762c42f66751be. Buyer job logs prove the dedicated
+maximum CSV import/lock assertions ran on LinuxPG17.11. Head and tested PR merge
+have identical Git trees. See buyer-import-linux-ci-evidence.json. Prior717 has
+canceled jobs and is not a full pass. This changes software evidence only;
+all21 migrations remain unapplied and live launch gates remain open.
+
 Latest follow-up: maximum buyer CSV imports and bounded lock refusal/retry pass
 locally, with both5000-row extremes and all10 intake journeys. See
 BUYER-IMPORT-VOLUME.md. The dedicated Linux job must include `--buyer-import`;

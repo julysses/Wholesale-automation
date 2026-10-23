@@ -35,3 +35,13 @@ Cloud coverage: `scripts/run_offline_tests.py --buyer-import` is the dedicated
 entry point added to the existing PostgreSQL17 buyer job. Prior run717 began
 before this wiring change and does not prove the new assertions ran in Linux.
 Its outcome must remain separate from the next run with this workflow change.
+
+Linux verification completed: all9 jobs in run719/39875339193 succeeded. The
+buyer job log explicitly includes the dedicated mode and successful maximum
+CSV assertions. Headcf4dd50 and tested PR merge0da1a55 have identical Git tree
+ac62abb840b63e862f65fff5c86f1297a68ee660, verified through GitHub commit objects.
+On UbuntuPG17.11, one-buyer5000 purchases took4.807s and5000 buyers took11.685s;
+lock refusal3.005s saved no partial state and exact retry completed. These
+cloud timings do not establish productionMICRO or live HTTP performance.
+Exact references: buyer-import-linux-ci-evidence.json. Prior run717 has canceled
+jobs and is not a complete acceptance result. Application runtime remainsbd30ba0.
