@@ -1,3 +1,5 @@
+> **Latest state — released October 20, 2026:** PR #22 is merged and serving production at `a89815126d9a98ced016167d8e383641d133135f`. Only the Facebook migration was applied. Messaging and outbound schedules remain paused. See [the release checkpoint](RELEASED-PAUSED.md) for verification scope and remaining live-test approval. The preparation record below is historical.
+
 # Facebook-only release candidate — October 20, 2026
 
 Goal: reach a production-ready application as quickly as verified evidence permits. This checkpoint prepares the Facebook release for owner review; it does not authorize production activation.

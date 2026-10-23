@@ -1,3 +1,15 @@
+## Current launch work — October 23, 2026
+
+Continue from [today's readiness checkpoint](facebook-release/LAUNCH-2026-10-23.md). Controlled fresh live tests are authorized with confirmed owner destinations; broad outreach and schedules remain paused. The candidate fixes are not yet deployed, and remaining Railway credential exposure is not yet contained.
+
+## Released with messaging paused — October 20, 2026
+
+The owner authorized releasing PR #22 and applying only its migration. Production now serves `a89815126d9a98ced016167d8e383641d133135f`; deployment `dpl_Dwjn7sjLUB5C9X2JsoezbSKjJ6go` is READY. Facebook receipt migration source `20261020184154` was applied as Supabase history version `20261020192531`. Do not reapply it.
+
+SMS, email, both Retell schedulers, both Retell cron jobs and Vercel outbound cron remain disabled. Non-sending intake configuration/rejection checks passed. Valid live submissions, Meta retrieval and actual provider/handset testing still require separate approval. The older empty-session migration remains unapplied. Continue from [the release checkpoint](facebook-release/RELEASED-PAUSED.md); older instructions below do not authorize resuming paused operations.
+
+---
+
 ## Facebook-only candidate — October 20, 2026
 
 Latest authorization permits local repairs and tests with mocked providers and disposable databases. Production changes, live messages, provider activity, and all schedules remain paused pending owner review. This does **not** authorize the older empty-session recovery steps below.
