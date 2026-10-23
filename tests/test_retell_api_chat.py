@@ -138,3 +138,37 @@ def test_live_version_invalid_or_conflicting_alias_stays_held(monkeypatch, patch
     monkeypatch.setattr('tools.retell_api_chat.requests.post', post)
     with pytest.raises(ChatOutcomeUncertain): client().create(OP, LEAD)
     assert post.call_count == 1
+
+
+@pytest.mark.parametrize('failure', ['http200','timeout','shape'])
+def test_completed_history_reconciles_without_second_post(monkeypatch, verified_api_chat, failure):
+    before = session(message_with_tool_calls=[])
+    after = session(message_with_tool_calls=[
+        {'role':'user','message_id':'u1','content':'Please call'},
+        {'role':'agent','message_id':'a1','content':'What time works?'}])
+    verified_api_chat.side_effect = [response(before,200),response(after,200)]
+    post = Mock(side_effect=requests.Timeout() if failure=='timeout' else None,
+                return_value=response({} if failure=='shape' else reply(),200 if failure=='http200' else 201))
+    monkeypatch.setattr('tools.retell_api_chat.requests.post',post)
+    assert client().complete('chat_test','Please call',OP,LEAD)[0].content == 'What time works?'
+    assert post.call_count == 1
+    assert verified_api_chat.call_count == 2
+
+@pytest.mark.parametrize('change', ['no_reply','wrong_input','tool','long','duplicate','prior_changed','wrong_chat','other_user'])
+def test_read_only_reconciliation_rejects_ambiguous_or_unsafe_history(monkeypatch, verified_api_chat, change):
+    prior = [{'role':'agent','message_id':'a0','content':'Welcome'}]
+    history = prior + [{'role':'user','message_id':'u1','content':'Please call'},
+                       {'role':'agent','message_id':'a1','content':'What time works?'}]
+    after = session(message_with_tool_calls=history)
+    if change=='no_reply': history.pop()
+    if change=='wrong_input': history[1]['content']='Another input'
+    if change=='tool': history[2]['role']='tool_call_invocation'
+    if change=='long': history[2]['content']='x'*199
+    if change=='duplicate': history[2]['message_id']='a0'
+    if change=='prior_changed': history[0]={'role':'agent','message_id':'a0','content':'Changed'}
+    if change=='wrong_chat': after['chat_id']='chat_other'
+    if change=='other_user': history.append({'role':'user','message_id':'u2','content':'Again'})
+    verified_api_chat.side_effect=[response(session(message_with_tool_calls=prior),200),response(after,200)]
+    post=Mock(return_value=response({},200));monkeypatch.setattr('tools.retell_api_chat.requests.post',post)
+    with pytest.raises(ChatOutcomeUncertain):client().complete('chat_test','Please call',OP,LEAD)
+    assert post.call_count==1

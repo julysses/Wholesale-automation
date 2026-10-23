@@ -16,6 +16,10 @@ from tools.sms_reply_budget import short_sms_reply
 class ChatOutcomeUncertain(RuntimeError):
     """The provider may have consumed the operation; park it for reconciliation."""
 
+    def __init__(self, message, *, code='provider_outcome_uncertain'):
+        super().__init__(message)
+        self.code = code
+
 
 class ChatReviewRequired(ValueError):
     """Output cannot be automatically used as an SMS response."""
@@ -86,7 +90,8 @@ class RetellAPIChat:
             # Treat every unexpected status conservatively. Never retry a POST,
             # follow a redirect or expose provider response bodies in logs/errors.
             if response.status_code != 201:
-                raise ChatOutcomeUncertain('Retell operation requires reconciliation')
+                raise ChatOutcomeUncertain('Retell operation requires reconciliation',
+                    code='provider_http_' + str(response.status_code))
             data = response.json()
             if not isinstance(data, dict):
                 raise ChatOutcomeUncertain('Retell operation has no usable receipt')
@@ -132,10 +137,41 @@ class RetellAPIChat:
                 headers={'Authorization': 'Bearer ' + self._key}, timeout=(5, 20), allow_redirects=False)
             if response.status_code != 200:
                 raise ChatOutcomeUncertain('Retell session verification failed; no completion attempted')
-            self._verify_session(response.json(), metadata, chat_id)
+            before = response.json()
+            self._verify_session(before, metadata, chat_id)
         except (requests.RequestException, ValueError, TypeError):
             raise ChatOutcomeUncertain('Retell session verification failed; no completion attempted') from None
         # Consent and durable claiming remain caller responsibilities. Never
         # invent an input turn, truncate recipient text, or send an SMS here.
-        data = self._post('create-chat-completion', {'chat_id': chat_id, 'content': recipient_text})
-        return agent_texts(data.get('messages'))
+        try:
+            data = self._post('create-chat-completion', {'chat_id': chat_id, 'content': recipient_text})
+            return agent_texts(data.get('messages'))
+        except (ChatOutcomeUncertain, ChatReviewRequired):
+            # A completion may have succeeded despite an unusable HTTP receipt.
+            # Read once; never submit the input twice. Only a strictly appended
+            # actual user message followed by bounded agent text is recoverable.
+            prior = before.get('message_with_tool_calls')
+            if not isinstance(prior, list) or len(prior) > 100:
+                raise
+            try:
+                response = requests.get('https://api.retellai.com/get-chat/' + chat_id,
+                    headers={'Authorization': 'Bearer ' + self._key}, timeout=(5, 20), allow_redirects=False)
+                if response.status_code != 200:
+                    raise ValueError('Lookup failed')
+                after = response.json()
+                self._verify_session(after, metadata, chat_id)
+                history = after.get('message_with_tool_calls')
+                if (not isinstance(history, list) or not len(prior)+2 <= len(history) <= len(prior)+21
+                        or history[:len(prior)] != prior):
+                    raise ValueError('History changed')
+                ids = [m.get('message_id') if isinstance(m, dict) else None for m in history]
+                if any(not _identifier(mid) for mid in ids) or len(set(ids)) != len(ids):
+                    raise ValueError('Ambiguous identities')
+                user = history[len(prior)]
+                if (user.get('role') != 'user' or user.get('content') != recipient_text
+                        or user.get('multimedia')):
+                    raise ValueError('Input mismatch')
+                return agent_texts(history[len(prior)+1:])
+            except (requests.RequestException, ValueError, TypeError, ChatOutcomeUncertain):
+                raise ChatOutcomeUncertain('Read-only completion reconciliation unconfirmed',
+                    code='provider_outcome_uncertain') from None

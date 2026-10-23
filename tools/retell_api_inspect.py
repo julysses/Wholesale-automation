@@ -1,10 +1,11 @@
 """Read-only reconciliation of a provider chat against an existing held session."""
 import os
+import hashlib
 from uuid import UUID
 
 import requests
 
-from tools.retell_api_chat import _identifier, matches_agent_version
+from tools.retell_api_chat import _identifier, matches_agent_version, agent_texts, ChatReviewRequired
 from tools.retell_api_turns import _row
 
 
@@ -50,6 +51,29 @@ def inspect_session(sb, session_id, chat_id):
             value = data[field]
             history[field] = {'type': type(value).__name__,
                               'empty': value == '' or value == []}
-    return {'status': 'inspected', 'session_id': target, 'chat_id': chat_id,
+    result = {'status': 'inspected', 'session_id': target, 'chat_id': chat_id,
             'checks': checks, 'history_shape': history,
             'dispatch_authorized': False}
+    # A first-turn recovery needs exact live history, not merely a webhook or
+    # an operator-supplied message. Return fingerprints only, never transcript.
+    required = ('chat_id', 'chat_type', 'agent_id', 'metadata', 'ongoing', 'pinned_version_valid')
+    messages = data.get('message_with_tool_calls')
+    if (all(checks[k] for k in required) and isinstance(messages, list) and len(messages) == 2
+            and isinstance(messages[0], dict) and messages[0].get('role') == 'user'
+            and isinstance(messages[0].get('content'), str)):
+        try:
+            generated = agent_texts(messages[1:])
+            # Distinct provider IDs and no unsupported input media.
+            if (not _identifier(messages[0].get('message_id'))
+                    or messages[0]['message_id'] == generated[0].message_id
+                    or messages[0].get('multimedia')):
+                return result
+            result['first_turn_proof'] = {
+                'user_message_id': messages[0]['message_id'],
+                'recipient_sha256': hashlib.sha256(messages[0]['content'].encode()).hexdigest(),
+                'message_id': generated[0].message_id,
+                'content_sha256': hashlib.sha256(generated[0].content.encode()).hexdigest(),
+            }
+        except ChatReviewRequired:
+            pass
+    return result

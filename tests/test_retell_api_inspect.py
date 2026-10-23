@@ -73,3 +73,31 @@ def test_invalid_chat_does_not_reach_provider(setup):
     client, get, post, row, data, read = setup
     with pytest.raises(ValueError): subject.inspect_session(None, OP, '../unsafe')
     get.assert_not_called(); post.assert_not_called(); read.assert_not_called()
+
+
+def test_exact_first_turn_proof_has_only_fingerprints(setup):
+    import hashlib
+    _, get, post, row, data, _ = setup
+    data['message_with_tool_calls'] = [
+        {'role':'user','message_id':'u1','content':'Please call'},
+        {'role':'agent','message_id':'a1','content':'What time works?'}]
+    result = subject.inspect_session(None, OP, 'chat_test')
+    assert result['first_turn_proof']['content_sha256'] == hashlib.sha256(b'What time works?').hexdigest()
+    assert 'What time' not in str(result)
+    assert 'Please call' not in str(result)
+    post.assert_not_called()
+
+@pytest.mark.parametrize('change', ['extra_user','tool','long','wrong_chat','duplicate_id','media'])
+def test_ambiguous_history_never_gets_recovery_proof(setup, change):
+    _, get, post, row, data, _ = setup
+    messages = [{'role':'user','message_id':'u1','content':'Please call'},
+                {'role':'agent','message_id':'a1','content':'What time works?'}]
+    if change == 'extra_user': messages.append({'role':'user','message_id':'u2','content':'Again'})
+    if change == 'tool': messages[1]['role'] = 'tool_call_invocation'
+    if change == 'long': messages[1]['content'] = 'x'*199
+    if change == 'wrong_chat': data['chat_id'] = 'chat_other'
+    if change == 'duplicate_id': messages[1]['message_id'] = 'u1'
+    if change == 'media': messages[0]['multimedia'] = [{}]
+    data['message_with_tool_calls'] = messages
+    assert 'first_turn_proof' not in subject.inspect_session(None, OP, 'chat_test')
+    post.assert_not_called()

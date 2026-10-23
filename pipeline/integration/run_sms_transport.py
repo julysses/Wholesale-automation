@@ -28,7 +28,7 @@ with tempfile.TemporaryDirectory(prefix='wholesale-sms-') as folder:
         run([pg/'createdb','-h','127.0.0.1','-p',port,'-U','test_admin','wholesale_sms_test'],env=env)
         env['SMS_TEST_ADMIN_URL']=f'postgresql://test_admin:local-only-test-admin@127.0.0.1:{port}/wholesale_sms_test'
         target=sys.argv[1] if len(sys.argv)>1 else 'pipeline/integration/retell-app-concurrency.mjs'
-        if target not in ('pipeline/integration/retell-app-concurrency.mjs','pipeline/integration/retell-owner-retest.mjs'):
+        if target not in ('pipeline/integration/retell-app-concurrency.mjs','pipeline/integration/retell-owner-retest.mjs','pipeline/integration/retell-generation-recovery.mjs'):
             raise SystemExit('Unknown SMS integration suite')
         run([node,target],cwd=root,env=env,timeout=60)
     finally:

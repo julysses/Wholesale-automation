@@ -1,6 +1,6 @@
 ## Current launch work — October 23, 2026
 
-Continue from [today's readiness checkpoint](facebook-release/LAUNCH-2026-10-23.md). Controlled fresh live tests are authorized with confirmed owner destinations; broad outreach and schedules remain paused. The candidate fixes are not yet deployed, and remaining Railway credential exposure is not yet contained.
+Continue from [today's readiness checkpoint](facebook-release/LAUNCH-2026-10-23.md), especially its latest section. Automatic owner acknowledgment delivered and owner replied. Retell generated a response but the CRM held it before delivery. Both SMS schedulers are currently disabled. Verified-history repair is being tested/released; broad acceptance is not verified. Do not replay the held completion, extend expired input, or send manually through Twilio. Remaining Railway credential exposure and voice readiness are still unresolved.
 
 ## Released with messaging paused — October 20, 2026
 

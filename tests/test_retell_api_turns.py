@@ -164,3 +164,13 @@ def test_valid_owner_first_turn_still_generates_exactly_once(setup, monkeypatch)
     assert worker.process_turn(setup.db, TURN)['status'] == 'generated'
     setup.provider.create.assert_called_once()
     setup.provider.complete.assert_called_once()
+
+
+@pytest.mark.parametrize('code,expected', [('provider_http_200','provider_http_200'),
+    ('private credential','provider_or_persistence_failure')])
+def test_failure_diagnostic_is_allowlisted_without_replay(setup, code, expected):
+    from tools.retell_api_chat import ChatOutcomeUncertain
+    setup.provider.complete.side_effect = ChatOutcomeUncertain('secret response', code=code)
+    assert worker.process_turn(setup.db,TURN)['status'] == 'review'
+    assert setup.db.rpc.call_args.args[1]['p_reason'] == expected + '; no automatic retry'
+    assert setup.provider.complete.call_count == 1

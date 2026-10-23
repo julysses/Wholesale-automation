@@ -10,7 +10,7 @@ from uuid import UUID
 from config.settings import settings
 from tools.facebook_consent import normalize_us_phone
 from tools.retell_form_sms import configured_version, enabled
-from tools.retell_api_chat import RetellAPIChat
+from tools.retell_api_chat import RetellAPIChat, ChatOutcomeUncertain, ChatReviewRequired
 from tools.sms_client import SMSClient, sms_consent_blocker
 from tools.sms_controls import is_control
 from tools.retell_app_test_scope import launch_allowed, operation_allowed
@@ -118,7 +118,16 @@ def process_turn(sb, turn_id):
         if not isinstance(saved, dict) or saved.get('saved') is not True:
             return _hold(sb, target, stage, 'Generation persistence unconfirmed; do not regenerate')
         return {'status': 'generated', 'message_count': len(messages), 'dispatch_authorized': False}
-    except Exception:
+    except Exception as exc:
         # No provider response, message text or credentials are exposed here.
         # Holding may itself fail; the already claimed state still blocks replay.
-        return _hold(sb, target, stage, 'Provider or persistence outcome requires review; no automatic retry')
+        # Fixed labels only. Do not copy arbitrary exception or provider bodies.
+        code = 'provider_or_persistence_failure'
+        if isinstance(exc, ChatOutcomeUncertain):
+            candidate = getattr(exc, 'code', '')
+            if candidate == 'provider_outcome_uncertain' or candidate in {
+                    'provider_http_' + str(n) for n in range(100, 600)}:
+                code = candidate
+        elif isinstance(exc, ChatReviewRequired):
+            code = 'generated_output_rejected'
+        return _hold(sb, target, stage, code + '; no automatic retry')
