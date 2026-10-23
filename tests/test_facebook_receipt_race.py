@@ -8,7 +8,7 @@ import pytest
 from tools.facebook_inquiry import save_submission
 
 
-@pytest.mark.parametrize("code_attribute", ["code", "pgcode"])
+@pytest.mark.parametrize("code_attribute", ["code", "pgcode", "empty_code_with_pgcode"])
 @pytest.mark.parametrize("outcome", ["identical", "changed", "missing", "other_error"])
 def test_unique_receipt_race(code_attribute, outcome):
     answers = {"_facebook_consent": {"leadgen_id": "race", "form_id": "form",
@@ -18,7 +18,11 @@ def test_unique_receipt_race(code_attribute, outcome):
         "submitted_at": "2026-10-21T12:00:00Z", "phone_number": "+12145550100",
         "raw_answers": deepcopy(answers)}
     error = RuntimeError("database failure")
-    setattr(error, code_attribute, "42501" if outcome == "other_error" else "23505")
+    if code_attribute == "empty_code_with_pgcode":
+        error.code = None
+        error.pgcode = "42501" if outcome == "other_error" else "23505"
+    else:
+        setattr(error, code_attribute, "42501" if outcome == "other_error" else "23505")
     db = MagicMock()
     table = db.table.return_value
     table.upsert.return_value.execute.side_effect = error
