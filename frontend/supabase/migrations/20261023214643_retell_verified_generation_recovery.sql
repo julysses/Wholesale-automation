@@ -81,7 +81,7 @@ BEGIN
  SELECT * INTO s FROM public.retell_api_sessions WHERE id=t.session_id FOR UPDATE;
  SELECT * INTO t FROM public.retell_api_turns WHERE id=p_turn FOR UPDATE;
  IF s.status<>'review' OR t.status<>'review' OR t.generated_messages IS NOT NULL OR t.outbound_id IS NOT NULL
-  OR s.chat_id IS NULL OR t.expires_at<=now()
+  OR s.chat_id IS NULL
   OR EXISTS(SELECT 1 FROM private.retell_generation_reconciliations WHERE turn_id=t.id)
   OR (SELECT count(*) FROM public.retell_api_turns WHERE session_id=s.id)<>1
   OR EXISTS(SELECT 1 FROM public.sms_events WHERE raw_payload->>'api_turn_id'=t.id::text)
@@ -126,9 +126,9 @@ BEGIN
  INSERT INTO private.retell_generation_reconciliations(turn_id,session_id,request_id,event_id,messages,before_state,proof,note)
  VALUES(t.id,s.id,p_request,p_event,messages,jsonb_build_object('turn',to_jsonb(t),'session',to_jsonb(s)),proof,p_note);
  UPDATE public.retell_api_sessions SET status='ready',reason='Existing generated reply verified; no completion replay' WHERE id=s.id;
- UPDATE public.retell_api_turns SET status='generated',generated_messages=messages,
-  reason='Existing provider reply verified against signed event and fresh GET; no regeneration' WHERE id=t.id;
+ UPDATE public.retell_api_turns SET status=CASE WHEN t.expires_at>now() THEN 'generated' ELSE 'stopped' END,generated_messages=messages,
+  reason='Existing provider reply verified; expired input stopped without sending; no regeneration' WHERE id=t.id;
  UPDATE private.retell_generation_reconciliations SET applied_at=now() WHERE turn_id=t.id;
- RETURN jsonb_build_object('reconciled',true,'turn_id',t.id,'dispatch_authorized',false);
+ RETURN jsonb_build_object('reconciled',true,'turn_id',t.id,'turn_status',CASE WHEN t.expires_at>now() THEN 'generated' ELSE 'stopped' END,'dispatch_authorized',false);
 END $$;
 REVOKE ALL ON FUNCTION private.reconcile_retell_generation(uuid,bigint,uuid,text) FROM PUBLIC,anon,authenticated,service_role;

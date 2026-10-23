@@ -53,6 +53,16 @@ try {
   const [r]=await q("select has_function_privilege($1,'private.reconcile_retell_generation(uuid,bigint,uuid,text)','EXECUTE') f,has_table_privilege($1,'private.retell_generation_reconciliations','INSERT') t",[role]);
   assert.equal(r.f,false);assert.equal(r.t,false);
  }cases++;
+ // Construct expired fixture without changing the production immutability rule.
+ const c=await sql.reserve();try{
+  await c`begin`;
+  await c.unsafe('alter table public.retell_api_turns disable trigger protect_retell_api_turn');
+  await c.unsafe("update public.retell_api_turns set expires_at=now()-interval '1 second' where id=$1",[turn]);
+  await c.unsafe('alter table public.retell_api_turns enable trigger protect_retell_api_turn');
+  const [r]=await c.unsafe(recover,[turn,event]);assert.equal(r.result.turn_status,'stopped');
+  const [s]=await c.unsafe('select status from public.retell_api_sessions where id=$1',[job]);assert.equal(s.status,'ready');
+  const [claim]=await c.unsafe('select public.claim_retell_app_reply($1) result',[turn]);assert.equal(claim.result.claimed,false);cases++;
+ }finally{await c`rollback`;c.release();}
  const recovered=(await q(recover,[turn,event]))[0].result;assert.equal(recovered.reconciled,true);
  assert.equal(recovered.dispatch_authorized,false);
  assert.equal((await q('select count(*)::int n from public.sms_events'))[0].n,2);
