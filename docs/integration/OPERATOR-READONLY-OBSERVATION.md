@@ -16,3 +16,19 @@ It does not prove fresh collection, current source coverage, provider billing,
 assigned ownership, live delivery, or the unpublished candidate's operator acceptance.
 No records were completed, scored, exported, imported or changed; no outreach,
 spend, settings or schedules were activated. No customer contacts copied to Git.
+
+
+## Ownership follow-up
+
+Read-only database verification confirmed the sampled historical result's task
+has an approved admin assignee. A broader open-task audit found one unassigned
+SMS failure-review task whose linked lead already had an approved admin owner.
+That single task's assignee was corrected to its linked lead owner, preserving
+pending review status and all other fields. Tasks had no non-internal update
+triggers. Independent read-back confirmed the exact match; the open-task audit
+then found no unassigned tasks, missing owner profiles, unapproved owners or
+missing linked leads. Private identifiers and precise counts remain local.
+
+No outreach, retries, schedule/config/schema changes or purchases occurred.
+The origin of the older orphan task is unproven; this correction does not claim
+to fix prospective task creation. Fresh end-to-end operator acceptance is open.
