@@ -1,0 +1,89 @@
+{
+  "observed_date": "2026-10-22",
+  "workflow_url": "https://github.com/julysses/Wholesale-automation/actions/runs/39858996754",
+  "run_id": 39858996754,
+  "event": "pull_request",
+  "conclusion": "success",
+  "candidate_head": "93e27a4dd5de1b374f1bb92ebb2c7044a9c4c371",
+  "checked_out_merge_commit": "07d6b93eb8a8a0417817525fd074e1ccd81c1e81",
+  "candidate_and_merge_tree": "105a261b9e3f786f0f42988e0f269fa69ca8b708",
+  "tree_identity_verified_by": "GitHub commit API for candidate and PR merge commit",
+  "image_id": "sha256:206cbb0027ca357cb832991994577a36b462d82288610e620aed8b11eb5b87fc",
+  "docker_job_id": 120104500820,
+  "runtime": {
+    "asset_count": 82,
+    "external_network": "disabled by docker --network none",
+    "frontend_index_sha256": "d5a67f31b22e0041bedf54c99841e32dca7dc9d9a35ead969fdc7ff138e9653d",
+    "pip": "26.2.2",
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.41",
+    "production_credentials": false,
+    "provider_calls": 0,
+    "python": "3.12.15",
+    "result": "passed",
+    "twilio": "9.11.2",
+    "uid": 1001
+  },
+  "jobs": [
+    {
+      "id": 120104500474,
+      "name": "Production API dependency boundary",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120104500725,
+      "name": "Real PostgreSQL ingestion, tracing and scoring contention",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120104500759,
+      "name": "Backend (pytest)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120104500761,
+      "name": "Frontend (typecheck, build, lint)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120104500820,
+      "name": "Linux Docker release (isolated runtime)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120104500846,
+      "name": "Python locked dependencies and known vulnerabilities",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120104500964,
+      "name": "Pipeline contracts and isolated SQL",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "backend": {
+    "ci_scope": "python -m pytest -q through offline wrapper; includes additional discovered collector tests",
+    "passed": 1408,
+    "skipped": 10,
+    "subtests_passed": 6,
+    "warnings": 413,
+    "local_tests_directory_passed": 1371
+  },
+  "frontend": {
+    "passed": 327,
+    "files": 62,
+    "lint_build_audit": "success"
+  },
+  "limits": [
+    "No production deploy or image publication",
+    "No current production configuration, database, provider or handset acceptance",
+    "Vercel artifact/interpreter/installer remain separate evidence",
+    "All eighteen candidate migrations remain unapplied"
+  ]
+}

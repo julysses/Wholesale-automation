@@ -101,7 +101,7 @@ def _frequency_score(purchases_12mo: int) -> float:
     return min(math.sqrt(max(purchases_12mo, 0) / FREQUENCY_CAP) * 100, 100.0)
 
 
-def _recency_score(last_purchase_date: Optional[date]) -> float:
+def _recency_score(last_purchase_date: Optional[date], as_of: Optional[date] = None) -> float:
     """
     Score based on days since last purchase:
       ≤ 30 days  → 100
@@ -112,7 +112,7 @@ def _recency_score(last_purchase_date: Optional[date]) -> float:
     """
     if not last_purchase_date:
         return 0.0
-    today = date.today()
+    today = as_of or date.today()
     # Accept both date and datetime objects
     if isinstance(last_purchase_date, datetime):
         last_purchase_date = last_purchase_date.date()
@@ -178,6 +178,7 @@ def compute_ibie_score(
     buyer: dict[str, Any],
     deal_price_min: int = DEFAULT_DEAL_PRICE_MIN,
     deal_price_max: int = DEFAULT_DEAL_PRICE_MAX,
+    as_of: Optional[date] = None,
 ) -> float:
     """
     Compute the IBIE score (0–100) for a single buyer record.
@@ -210,7 +211,7 @@ def compute_ibie_score(
     # Weighted base score
     base = (
         _frequency_score(purchases_12mo) * W_FREQUENCY +
-        _recency_score(last_purchase)    * W_RECENCY +
+        _recency_score(last_purchase, as_of) * W_RECENCY +
         _cash_score(is_cash)             * W_CASH +
         _volume_score(all_time_deals)    * W_VOLUME +
         _price_alignment_score(avg_price, deal_price_min, deal_price_max) * W_PRICE_ALIGN
@@ -236,7 +237,7 @@ def assign_ibie_tier(score: float) -> str:
 
 # ── Segmentation / Auto-tagging ───────────────────────────────────────────────
 
-def compute_tags(buyer: dict[str, Any]) -> list[str]:
+def compute_tags(buyer: dict[str, Any], as_of: Optional[date] = None) -> list[str]:
     """
     Auto-generate behavioral tags for a buyer.
     Existing tags are preserved; only system-generated tags are refreshed.
@@ -299,7 +300,7 @@ def compute_tags(buyer: dict[str, Any]) -> list[str]:
     if last_raw:
         try:
             ld = date.fromisoformat(str(last_raw)[:10])
-            if (date.today() - ld).days > 365:
+            if ((as_of or date.today()) - ld).days > 365:
                 tags.append("dormant")
         except (ValueError, TypeError):
             pass
@@ -476,7 +477,7 @@ def match_buyers_to_deal(
 
 # ── Transaction aggregation ───────────────────────────────────────────────────
 
-def aggregate_transactions(transactions: list[dict[str, Any]]) -> dict[str, Any]:
+def aggregate_transactions(transactions: list[dict[str, Any]], as_of: Optional[date] = None) -> dict[str, Any]:
     """
     Compute buyer-level signals from a list of their transaction records.
 
@@ -492,7 +493,7 @@ def aggregate_transactions(transactions: list[dict[str, Any]]) -> dict[str, Any]
             "repeat_buyer": False,
         }
 
-    cutoff_12mo = date.today() - timedelta(days=365)
+    cutoff_12mo = (as_of or date.today()) - timedelta(days=365)
     prices: list[float] = []
     last_date: Optional[date] = None
     purchases_12mo = 0
@@ -541,6 +542,7 @@ def batch_score_buyers(
     transactions_by_buyer: dict[str, list[dict[str, Any]]],
     deal_price_min: int = DEFAULT_DEAL_PRICE_MIN,
     deal_price_max: int = DEFAULT_DEAL_PRICE_MAX,
+    as_of: Optional[datetime] = None,
 ) -> list[dict[str, Any]]:
     """
     Score + tag every buyer in the list.
@@ -552,19 +554,20 @@ def batch_score_buyers(
     cash_buyer, repeat_buyer, total_purchases_12mo, ... }
     """
     updates: list[dict[str, Any]] = []
-    now_iso = datetime.now(timezone.utc).isoformat()
+    when = as_of or datetime.now(timezone.utc)
+    now_iso = when.isoformat()
 
     for b in buyers:
         bid = b["id"]
         txs = transactions_by_buyer.get(bid, [])
 
         # Merge transaction-derived signals into buyer snapshot
-        tx_signals = aggregate_transactions(txs)
+        tx_signals = aggregate_transactions(txs, when.date())
         enriched = {**b, **tx_signals}
 
-        score = compute_ibie_score(enriched, deal_price_min, deal_price_max)
+        score = compute_ibie_score(enriched, deal_price_min, deal_price_max, when.date())
         tier  = assign_ibie_tier(score)
-        tags  = compute_tags(enriched)
+        tags  = compute_tags(enriched, when.date())
 
         updates.append({
             "id":                  bid,

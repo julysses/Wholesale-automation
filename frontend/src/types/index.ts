@@ -109,6 +109,9 @@ export interface Deal {
 }
 
 export interface Buyer {
+  buys_land?: boolean;
+  buys_infill?: boolean;
+  land_buyer_type?: LandBuyerType;
   id: string;
   created_at: string;
   updated_at: string;
@@ -326,7 +329,7 @@ export interface LandLead {
   lead_id?: string;
   xleads_id?: string;
   source: string;
-  owner_name: string;
+  owner_name: string | null;
   owner_phone_1?: string;
   owner_phone_2?: string;
   owner_mailing_address?: string;
@@ -515,10 +518,13 @@ export interface LandComps {
   direct_comp_count?: number;
   direct_comp_low?: number;
   direct_comp_high?: number;
-  direct_comp_details?: Array<{ address: string; price: number; sqft: number; date: string; distance_mi: number }>;
+  revision?: number;
+  tav_assessment_date?: string | null;
+  direct_comp_details?: Array<{ address: string; price: number; sqft: number | null; date: string | null; distance_mi: number | null; source_url?: string | null }>;
   avg_house_arv?: number;
   arv_15pct_value?: number;
   house_comp_count?: number;
+  house_comp_radius_mi?: number | null;
   tav?: number;
   tav_source?: string;
   recommended_offer_low?: number;

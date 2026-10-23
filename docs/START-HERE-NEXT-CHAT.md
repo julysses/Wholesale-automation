@@ -1,10 +1,433 @@
-## Facebook-only candidate — October 20, 2026
+## October 22 — manual buyer creation and consent defaults
 
-Latest authorization permits local repairs and tests with mocked providers and disposable databases. Production changes, live messages, provider activity, and all schedules remain paused pending owner review. This does **not** authorize the older empty-session recovery steps below.
+New manual buyer creates now have stable references, private immutable receipts,
+atomic creation and durable cancellation. New SMS/email consent defaults are false;
+existing records remain unchanged. Browser drafts restore original details and
+hold unknown saves; retries/cancel cannot duplicate or resurrect deleted buyers.
+Backend1379/10skip, frontend342/63, build/lint/API-only pass. Nineteen-proposal
+restore/rollback/ACL and real manual SQL/API races pass; ten intake journeys123.04s.
+All nine Linux jobs passed in run39866097570 (711) at2a3d28c; PG17.11 restored
+the exact catalog and passed all19/manual checks. CI backend1416/10skip/6subtests;
+frontend342/63; native Vercel/Docker/API/pipeline/PG pass. See manual-buyer-ci-evidence.json. See MANUAL-BUYER-RECOVERY.md.
+Manual edit/delete ambiguity, explicit classification/rescore, APN/volume/source,
+operator/JWT/tenancy and buyer publication/carrier/live delivery gates remain open.
+All nineteen proposals remain unapplied; no production/provider activation.
 
-Continue from [the Facebook release checkpoint](facebook-release/PROGRESS.md) on `codex/facebook-release-candidate`, based on production `19c117ad7a8ab10656bf116a2a6835508f7f1f01`. The only release migration is `20261020184154_facebook_inquiry_sms_receipts.sql`. The county integration and the unapplied empty-session migration are excluded. Fresh production catalog definitions, local evidence and exact release gates are under `docs/facebook-release/`.
+## October 22 — Vercel production observation and native build repair
 
----
+Production metadata now proves Python3.12 / timeout300s / memory2048MB / iad1 at
+released a898151; runtime flags still need dashboard email verification. Native
+builder discovery ignored the root Python selector for api/requirements.txt.
+Candidate API selector + explicit native pyproject/uv lock retain all61 versions
+and known artifact hashes; builder25.1.3 is pinned. Eight drift checks pass.
+Observed build uv0.10.11 has three advisory IDs; the candidate build check uses
+hash-pinned audited uv0.13.5. Linux Vercel bundle CI run39861484224 passed all8 jobs; mapped6529-file coldstart,
+all61 API versions, platform SDK and full bundle/installer audits pass. CI backend
+1416/10skip/6subtests; frontend327/62; exact evidence in vercel-artifact-evidence.json. No deploy, environment pull, production
+mutation, message, purchase or activation occurred. See VERCEL-RELEASE-ARTIFACT.md.
+
+## October 22 — Linux release build and direct navigation
+
+A real packaging defect was reproduced and fixed: direct buyer/privacy/terms
+navigation returned 404 under the Python/container server. Focused regression
+checks pass, including preserved API/asset errors. The test-only CI Docker job
+builds the actual release image and checks real HTTP startup without external
+networking, credentials, deployment or image publication. All seven remote jobs now passed in run 39858996754 for runtime candidate
+93e27a4 (PR merge has the identical tree). CI backend 1408/10 skipped/6 subtests;
+frontend 327/62; actual Docker runtime, API-only install, security/pipeline/PG pass.
+See LINUX-RELEASE-CHECK.md and linux-release-evidence.json. Vercel evidence is separate.
+Owner wording approval remains recorded. Registration draft now uses that exact
+approved disclosure and describes the real invitation/review flow; publication,
+carrier approval, priced purchase and live acceptance remain open.
+
+## October 22 checkpoint — buyer enrollment and exact policy review
+
+- [x] Separate public consumer form/privacy/terms routes outside operator login;
+  default-off enrollment, reviewed policies and exact approved-version gating.
+- [x] Administrator-only one-time private links, hashed capability, current-phone
+  binding, seven-day expiry and immutable choices/receipts. No invitations sent.
+- [x] Positive choices await administrator review with due task/notification;
+  refusals immediately keep buyer SMS off and block later review of older positives.
+  Review copies actual retained evidence and completes its task; DNC stays intact.
+- [x] Public receipt recovery without replay, disabled-program recovery, private
+  retained history and failed-save/correction UI. No SMS, email or phone verification.
+- [x] Backend 1370/10 skipped; frontend 327/62 files; build/typecheck and lint gate
+  pass (142 existing findings). Eighteen-proposal restore/rollback/ACL and real
+  enrollment/API tests pass. Final intake timing is in the upgrade result.
+- [x] Owner approved exact buyer policy wording/identity/privacy handling on
+  October 22: "Approve exact wording". Exact copy and version are retained in
+  BUYER-SMS-APPROVED-WORDING.md and buyer-sms-approved-program.json.
+- [ ] Publish the approved buyer policies and verify carrier domain/source proof.
+  No buyer consumer page has been published or enabled; fees/sending are separate.
+- [ ] Carrier registration/pricing approval, approved sender, handset delivery/
+  reply/STOP, operator/JWT/tenancy, artifact/release/rollback and other Friday gates.
+
+Read docs/integration/BUYER-ENROLLMENT.md. All eighteen migration proposals remain
+unapplied; PR #21 stays draft and sending/schedules remain unactivated by this work.
+No actual provider calls, purchases, live data changes or deployment.
+
+## October 22 checkpoint — dedicated buyer SMS implemented, live acceptance open
+
+- [x] Separate buyer route/configuration and private approval record; no homeowner
+  sender fallback. No approved route or live configuration is seeded/enabled.
+- [x] Immutable reservation/log before one-way final authorization, current written
+  consent/DNC recheck, five-second non-retrying SDK, uncertainty holds, one attempt
+  per number/day and shared-destination deduplication. Known result recovery never
+  calls create again. Consent review and authorization share phone/row lock order.
+- [x] Signed buyer callbacks bind saved route/recipient/reference/SID, preserve
+  delivery/terminal conflicts and continue while sending is paused. Human replies
+  retain history and assigned due tasks, including duplicate/owner/deletion recovery.
+  Native or buyer STOP suppresses buyer eligibility; START never clears DNC.
+- [x] Explicit UI readiness and full branded/STOP preview; consent inspection does
+  not send. Failed/malformed readiness keeps sending disabled.
+- [x] Backend 1,370/10 skipped; frontend 320/61 files; build/typecheck, API-only cold
+  start and lint gate pass (142 existing findings). Seventeen-proposal apply,
+  rollback/retention/ACL and ten local intake journeys pass (124.43 seconds).
+  Final async callback path additionally passes a fresh buyer-only SQL rehearsal.
+- [ ] Buyer SMS remains REQUIRED / NOT ACCEPTED: consumer enrollment and policy/
+  terms coverage, priced registration approval, carrier-approved sender, actual
+  handset receipt/reply/STOP, signed-in/JWT/tenancy and deployed artifact/rollback.
+
+Read BUYER-SMS-TRANSPORT.md and its source manifest in docs/integration.
+All seventeen migration proposals are unapplied; PR #21 remains draft. No real
+provider messages, production mutations, paid registrations or sending activation.
+The latest carrier review evidence does not establish a Friday buyer-SMS launch.
+Other source/PropStream, volume/APN and manual CRUD/classification gates remain.
+
+## October 22 checkpoint — buyer SMS consent and verified campaign limitation
+
+Fresh signed-in Twilio evidence confirms only one campaign, Verified for homeowner
+property inquiries; its description and opt-in flow exclude unrelated marketing.
+Buyer deal alerts need separate approval. User sign-in is complete. No campaign,
+service, number, opt-out configuration or production settings were changed.
+Twilio's current quickstart estimates 10–15 days for review; next-day approval and
+Friday buyer-SMS launch cannot be promised. Buyer SMS remains REQUIRED / NOT ACCEPTED.
+
+- [x] Candidate administrator-only immutable written-consent review, saved original
+  disclosure/action/source/hash/date and exact current phone; no automatic sends.
+- [x] Buyer profile review/read screen, failed-read state, stable retry, local file
+  fingerprinting and role/suppression visibility. Files stay on the device.
+- [x] Real API/SQL confirms current roles, legacy boolean insufficiency, lost committed
+  response recovery, changed phone/refusal/late replay, DNC, deletion retention,
+  browser denial and an actual still-blocked buyer SMS request after consent review.
+- [x] Backend 1,348/10 skipped; frontend 315/61 files; build/typecheck, lint gate
+  (142 existing findings), API-only cold start, sixteen-proposal upgrade/rollback
+  and ten local journeys pass (124.27 seconds). No real provider calls.
+- [ ] Dedicated buyer SMS transport, signed receipts/replies/STOP, consumer enrollment,
+  policy/terms coverage, priced sender/campaign approval, handset delivery and full
+  signed-in release/artifact/rollback acceptance. Broad schedules stay paused.
+
+See BUYER-SMS-CONSENT.md, BUYER-CAMPAIGN-REGISTRATION-DRAFT.md and
+BUYER-SMS-LAUNCH-GATE.md in docs/integration. The registration draft is not ready
+for submission: real enrollment/evidence, policy coverage, transport and concrete
+purchase approval remain missing. PR #21 stays draft; sixteen proposals unapplied.
+
+## October 22 checkpoint — durable buyer outreach; buyer SMS required
+
+User requires buyer SMS for Friday October 23. Email-only launch does not meet the
+brief. Buyer SMS remains blocked in this candidate while a separate buyer-consent,
+suppression, durable claim and signed receipt/reply route is prepared. Do not reuse
+property-inquiry consent or fabricate leads. Current provider campaign scope is
+unverified; local Twilio settings are absent and the existing console is signed out (confirmed after the timeout).
+Broad schedules remain paused. No production changes or real provider calls.
+
+- [x] Save immutable per-request/per-buyer attempt and public history before email
+  dispatch; stable retries, destination holds and ambiguous-result stops prevent
+  automatic repeat sends. Explicit reconciliation reads saved receipts only.
+- [x] Preserve history after buyer deletion; deny browser writes to saved history.
+- [x] Bind signed SendGrid delivery events to app message ID and recipient. Keep API
+  submission and event IDs separate. Opens/clicks do not imply delivery; conflicting
+  terminal evidence holds for review. Buyer email replies remain unimplemented.
+- [x] Real SQL tests cover eight competing sessions, lost claim/finish responses,
+  rollback before dispatch, signed/wrong-recipient callbacks, retention and ACLs.
+- [x] Backend 1,345 passed / 10 skipped; frontend 308 across 60 files; build/typecheck,
+  API-only cold start and lint gate pass (142 existing findings). Full fifteen-
+  migration rehearsal and ten connected local journeys pass with stubbed providers.
+- [ ] Required buyer SMS implementation, verified sender/campaign scope, immutable
+  buyer-specific consent and actual handset delivery/reply/STOP acceptance.
+
+See `BUYER-OUTREACH-DURABILITY.md` and `BUYER-SMS-LAUNCH-GATE.md` in
+`docs/integration/`. PR #21 remains draft; all fifteen migration proposals unapplied.
+
+## Latest checkpoint — October 22 saved buyer outreach history
+
+Continue in this exact `integration/` checkout on `codex/wholesale-integration-review`.
+This commit follows `35d8387`; verify local/remote HEAD before editing. PR #21 remains
+draft, production baseline `a898151`, app checkout `7df5e30`, candidate deployments
+excluded. No production mutation or provider call in this checkpoint.
+
+Read `docs/integration/BUYER-OUTREACH-HISTORY.md` and the current Friday matrix.
+The old silent 100-row history cap is replaced with count/identity-confirmed complete
+reads, 25-row rendering, literal search/channel filters, escaped full messages,
+destinations and raw status/provider/reply evidence. Unavailable history cannot
+become a verified empty set; failed refresh retains confirmed records with retry.
+Reading/refreshing starts no send. Confirmed buyer import refresh is immediate.
+Frontend 303/60 files, typecheck/build and lint gate pass (142 existing findings).
+Backend/pipeline/dependencies/fourteen migrations unchanged; prior evidence retained.
+
+Priority next: actual durable buyer attempts/logs/receipt/reply/retention. Existing
+buyer provider calls happen before logs, skipped attempts are not saved, buyer
+inserts omit provider IDs and repository search found no buyer-log callback update
+path. Do not mistake complete saved rows for complete actual-send evidence or replay
+unknown attempts. Also finish explicit classification/rescore durability, manual
+buyer-create lost acknowledgments, APN event-history/volume locks and signed-in
+whole workflows. Production JWT/tenancy, artifact/interpreter/installer/rollback,
+source consent/routing and controlled live owner inbox/handset delivery/reply/STOP
+remain open. Shared phone authorized; last four and owner inbox unconfirmed. Keep
+broad schedules paused, suppression intact and held sessions unreplayed. Friday
+October 23 remains the full active launch goal, with readiness unproven.
+
+## Latest checkpoint — October 22 Python dependency security
+
+Continue in the exact `integration/` checkout on `codex/wholesale-integration-review`.
+The commit containing this checkpoint follows `684c5a4`. Verify HEAD/remote before
+editing. PR #21 remains draft; production baseline is `a898151`; app stays `7df5e30`.
+
+Start at `docs/integration/PYTHON-DEPENDENCY-SECURITY.md`, the audit JSON and current
+Friday matrix. Root 84/API 61 packages are fully pinned with hashes at unchanged
+already-tested versions, plus an isolated 29-package audit-tool lock. All three
+PyPI scans have zero known findings/zero skips/zero ignored IDs. Old shared local
+pip 25.0.1 findings are recorded separately and the old environment is untouched;
+CI/Docker/fresh environments now use reviewed pip 26.2.2. `.python-version` makes
+Vercel Python 3.12 explicit; CI/Docker and legacy metadata align to 3.12.
+
+Clean root/API/tool installs and dependency checks pass. Clean backend: 1,345/10
+skipped; API-only real cold start/health/unauthenticated buyer GET/import rejection
+and Twilio version pass offline. Linux x86 hashes/wheel availability verified for
+all 84 root packages; Linux execution, Docker image build, Vercel artifact and actual
+production interpreter/installer remain unproven. New CI jobs are prepared but not
+remotely executed (skip-CI and candidate deployment blocks retained). Frontend 295,
+pipeline 231 and fourteen-migration/ten-journey evidence are prior unchanged-source
+checks, not fresh runs this slice. No production schema/data/runtime/flags/providers/
+schedules changed. Audit is dependency scope, not a full security certification.
+
+Next: review production-volume buyer import locks and APN event-history limitation;
+finish signed-in full API/browser/reload workflows, manual buyer-create ambiguity,
+durable explicit classification/rescore, complete outreach history, JWT/tenancy and
+exact deployment/rollback artifact review. Live test recipient last four/inbox and
+runtime flag verification remain pending. One shared phone is authorized for fresh
+per-source tests; do not infer identity, clear suppression or replay held sessions.
+Broad schedules stay paused. Friday October 23 remains the full active goal.
+
+## Latest checkpoint — October 22 atomic buyer CSV
+
+Continue in this exact `integration/` checkout on `codex/wholesale-integration-review`.
+The commit containing this checkpoint follows `276ae8e`; verify HEAD and remote.
+Production baseline remains `a89815126d9a98ced016167d8e383641d133135f`; app checkout
+remains `7df5e30`. PR #21 remains draft and candidate deployment blocks remain.
+
+Read `docs/integration/BUYER-CSV-TRANSACTION.md`, its manifest, the current fourteen-file
+forward allowlist, final upgrade result and Friday acceptance matrix. Buyer CSV
+now commits complete data/log/private receipt before confirming, recovers exact
+retries and lost acknowledgments, preserves saved controls/consent and rejects
+conflicting history/identity. No contact-based opt-in, untracked insert fallback or
+background import persistence/scoring. Missing financing does not imply cash and
+negative/malformed prices cannot become positive. Full-file SQL proof saves 1,003
+purchases; four competing sessions create one buyer/two purchases.
+
+Backend 1,345/10 skipped; frontend 295/59 files; pipeline 231; build/typecheck and
+lint gate pass (142 existing findings). Fourteen-migration full/injected-failure
+rollback/history/access, data/scoring, buyer import/reads, call/SMS contention and ten
+intake journeys pass (122.59 seconds). All DB rows/Auth/providers are synthetic/local.
+No production schema/data/runtime/flag/provider/schedule changes.
+
+Next: review production-volume table locks and APN event/reacquisition limitation;
+finish signed-in browser/reload recovery, manual-create lost acknowledgments,
+durable explicit buyer classification/rescore and complete outreach history.
+Also finish Python security, exact release/rollback, runtime flags and live gates.
+The owner chose one shared phone; last four and notification inbox are unconfirmed.
+Do not infer identity, clear suppression, replay held sessions or enable broad
+schedules. Friday October 23 remains the full target, not a readiness claim.
+
+## Latest checkpoint — October 22 buyer reads and preferences
+
+Continue on `codex/wholesale-integration-review` in this exact `integration/`
+checkout. The commit containing this checkpoint follows `7f62bbe`; inspect Git HEAD
+and remote before editing. PR #21 remains OPEN/DRAFT against production baseline
+`a89815126d9a98ced016167d8e383641d133135f`. Candidate deployments remain excluded.
+
+Read `docs/integration/BUYER-READ-COMPLETENESS.md` and the current Friday acceptance
+matrix. Complete buyer/leaderboard/land reads, buyer-specific complete purchase
+history and nullable active/land preference edits now pass local checks. Backend
+1,340/10 skipped, frontend 289/58 files, build/typecheck and lint gate pass (143
+existing findings). Real PostgreSQL reads 1,003 buyers/history rows through a forced
+200-row cap, finds the late best match and excludes it after deactivation. No new
+migration: the same thirteen forward proposals remain unapplied in production.
+
+Next independent work: buyer CSV import and background classification/rescore
+outcome durability, manual-create lost acknowledgments, outreach-log completeness,
+Python dependency security and remaining signed-in operator/release review.
+Fresh live tests remain authorized with one shared phone, but recipient last four
+and owner inbox are still unconfirmed. Do not infer a number, clear suppression,
+replay held sessions or enable broad schedules. No production schema, data,
+runtime, flags, providers or schedules were mutated by this checkpoint.
+
+# Latest handoff — October 22 bounded CSV AI batches
+
+Branch `codex/wholesale-integration-review`; previous pushed checkpoint `8f14e1a`.
+Production baseline remains `a89815126d9a98ced016167d8e383641d133135f`. The thirteenth
+still-unapplied migration is expanded, not a new fourteenth migration. No production
+settings/schema/runtime, provider or schedule mutations. PR #21 stays draft.
+
+Start at `docs/integration/CSV-BATCH-RECOVERY.md`, the current CSV manifest/results,
+`csv-runtime-observation-2026-10-22.json` and `FRIDAY-ACCEPTANCE-STATUS.md`.
+Optional AI now has immutable private batch evidence <=25 IDs, aggregate progress,
+45-second SDK network timeout and no automatic SDK retries. Original data replay
+uses an initial-only claim and cannot advance later paid batches. Separate GET/POST
+progress/continuation and `/leads?csv_import=` support read-only refresh, a single
+batch, all remaining batches and pause after the current submitted batch. Unknown
+outcomes preserve last confirmed totals/null counts and require review/refresh;
+no model retry or advance follows uncertainty. Default free atomic rules remain.
+
+Proof: real SQL/API completes 60 rows as 25/25/10, retains the first 25 after an
+unknown second batch, recovers 50 known scores after a lost second finish response,
+then processes only the final 10; old exact finish replay stays immutable. Original
+upload replay starts no new paid batch. Foreign approved-actor GET/POST are denied.
+Eight actual contending batch claims produce one winner; terminal finish replay
+and the last remaining record pass. Full thirteen-migration apply/rollback/history/
+access, existing data/land tests, pinned-call/SMS overlap and ten intake journeys
+pass (124.46 seconds). Backend 1,334/10 skip; frontend 274/56 files; typecheck/build/
+lint gate pass (143 existing findings). Synthetic Auth/models only; zero providers.
+
+The browser rejects oversized serialized uploads before sending and preserves all
+10,000 short rows in a transport-only test. This does not prove 10,000-row SQL/model
+performance or bypass Vercel payload limits. Actual Vercel reads report Fluid=true
+and current READY baseline; no explicit per-function duration was established.
+The client-loop score-all action is user initiated, durable between requests,
+pausable, and stops on uncertainty; no background worker/schedule was introduced.
+
+Next priority: buyer workflow QA, signed-in operator acceptance, Python dependency/
+security review, exact release/recovery/index lock exposure and live Meta/website/
+provider acceptance. Verify real model latency and production-volume behavior as
+required; do not substitute synthetic recovery for those gates. Shared-number
+preference is confirmed but last four digits and notification inbox remain pending.
+Sending flags still need verified access; never bypass email verification. Keep
+broad schedules paused, held sessions/DNC untouched and PropStream spending capped.
+Friday October 23 remains the full active objective. Earlier handoffs are historical.
+
+# Latest handoff — October 22 connected CSV intake
+
+Integration branch `codex/wholesale-integration-review`; previous pushed checkpoint
+`b148869`; production baseline `a89815126d9a98ced016167d8e383641d133135f` retained.
+The candidate now connects main CSV API/UI to the thirteenth proposed migration's
+atomic import and one-way optional AI claim/result RPCs. No production migration,
+deployment, provider or schedule changes. PR #21 remains draft.
+
+Start at `docs/integration/CSV-LEAD-TRANSACTION.md`, its manifest/result JSON and
+`FRIDAY-ACCEPTANCE-STATUS.md`. Backend 1,325 pass/10 skip; frontend 262/54 files;
+build/typecheck/lint gate pass (143 existing findings). Full thirteen-migration
+apply/rollback/history/access, connected CSV/API/scoring, land import, pinned-call/
+SMS overlap and ten intake journeys pass (125.82 seconds), synthetic data only.
+Three real SQL commit-then-lost-response phases prove no repeated paid dispatch.
+
+Main CSV uses configured approved owner and due tasks, immutable exact data replay,
+strict numerical/engine validation, verified Auth and correlated results. Optional
+AI claims persist before dispatch, disable SDK retries, validate exact IDs/scores,
+hold changed work/completed tasks and never take over unknown attempts. Browser
+callers use stable explicit references; Master List keeps its ID/list name in its
+existing SPA store and uses atomic free rules instead of a global background score.
+
+Next: review real runtime limits/large optional AI multi-batch execution and partial
+completion recovery; small synthetic model cases do not prove production-scale AI.
+Complete buyer UI and signed-in operator workflow acceptance, Python dependency/
+security review, exact release/recovery and live Meta/provider gates. R8–R12 remain
+open where their evidence is incomplete. Preserve all prior requirements.
+
+Shared test number preference confirmed; last four digits and notification inbox
+still pending. Effective sending flags require verified access; no email step-up
+was bypassed. Keep broad schedules paused, held sessions untouched and no suppression
+reset. Friday October 23 remains the full launch objective. Untracked old ' 2'
+exports remain preserved/excluded. Earlier handoffs below are historical.
+
+# Latest handoff — October 22 main CSV transaction foundation
+
+Active integration branch: `codex/wholesale-integration-review`, production parent
+`a89815126d9a98ced016167d8e383641d133135f`; previous pushed checkpoint `098fcce`.
+The current change adds a thirteenth proposed forward migration for main CSV data
+transactions and its real-SQL verifier. No production mutation or provider call.
+PR #21 remains draft; both candidate branches remain deployment-disabled.
+
+Read `docs/integration/CSV-LEAD-TRANSACTION.md`, its manifest/result JSON and
+`FRIDAY-ACCEPTANCE-STATUS.md`. Full thirteen-migration apply/rollback and all ten
+intake journeys pass (124.92 seconds). Main CSV normalization, configured ownership,
+due tasks, replay, 501-row import, existing lookup beyond 1,000 rows, historical
+preservation, real browser-role index writes/denials and eight-session overlap pass.
+The only callable new browser helper is a pure immutable private index normalizer.
+
+**The application importer is still the old non-atomic implementation.** Continue
+with durable AI claim/finish, unknown-result handling and stale-snapshot refusal;
+then wire verified Auth, exact receipt validation, stable per-upload browser IDs
+and explicit retries. Preserve optional AI and default free rules; separate saved
+data from uncertain scoring. Numeric cleaner currently strips minus signs and
+engine validation is permissive; fix these while changing the endpoint. Adapt API
+and UI tests, retaining large-file/history/ownership business coverage. R8 remains
+open; do not deploy merely because database foundation tests pass.
+
+The new AI journal stores pending intent only, no dispatch or claim yet. Untracked
+old ' 2' export copies are preserved and excluded. Shared test number preference is
+confirmed, but last four digits and notification inbox remain pending. Keep broad
+schedules paused, held sessions untouched and no suppression reset. Friday
+October 23 remains the objective. Historical handoffs below remain for context.
+
+# WholesaleOS current launch checkpoint
+
+Target: Friday October 23, 2026. Production is the baseline and remains paused.
+
+## Current source
+
+This checkout is `codex/wholesale-integration-review`; draft PR #21 targets
+`codex/retell-sms-production`. Integration now includes current production commit
+`a89815126d9a98ced016167d8e383641d133135f` (released Facebook intake, PR #22).
+The release-candidate sibling remains a separate paused review path; do not replace
+shared production files blindly or infer live delivery from a READY deployment.
+Both candidate branches are explicitly excluded from Vercel Git deployment.
+
+Start with `docs/integration/FRIDAY-ACCEPTANCE-STATUS.md`, `PROGRESS.md` and
+`RELEASE-BOUNDARY.md`. The explicit feature allowlist currently has twelve forward
+migrations. The already released Facebook migration and the historical empty-session
+recovery are not part of that allowlist. Never push the migration directory wholesale.
+
+The current candidate repairs manual land CSV import loss/retry behavior and complete
+land-list visibility. Local API, SQL and component checks are synthetic and do not
+prove production carrier or operator acceptance. Production's additional Facebook
+concurrency tests and queue-conflict recovery are retained alongside the expanded
+upgrade, role, schema-shape and retry checks.
+
+## Next required work
+
+Main-lead CSV imports still need approved ownership, due follow-up and concurrent
+reconciliation proof. Buyer/Master List UI coverage, operator acceptance, exact
+release/recovery review and controlled live delivery remain open. Use the manifest
+and detailed evidence in `docs/integration/`; no launch certification has been issued.
+
+Live testing is already authorized, but shared recipient last-four/owner inbox
+confirmation, Meta routing and effective Vercel sending-flag verification are still
+pending. The dashboard requires email step-up to reveal those values. Keep broad
+schedules paused until owner review. Do not replay held sessions, reset suppression,
+change providers or exceed the existing PropStream spend cap.
+
+Codex handles Git pull/commit/push. Preserve untracked artifacts and record exact
+commits, evidence and next work before a handoff.
+
+## Historical handoff before the production merge
+
+The following checkpoint is retained as history. Use the current entry point above
+for active authorization, scope and remaining work. The production-side handoff is
+also preserved in Git at `a89815126d9a98ced016167d8e383641d133135f`.
+
+## October 20 native Facebook handoff fixed locally
+
+Owner authorized repair and local testing. See `docs/integration/FACEBOOK-HANDOFF-FIX.md` for the exact changes and evidence. Native consent-bearing receipts now link to one Retell queue job without creating website submissions. Ten connected API/PostgreSQL journeys passed across Hilltop, Jays seller and native Facebook paths, including acknowledgment, reply, delivery receipts, STOP, no consent and recovery. Eight-worker native contention passed; 1,261 backend, 231 pipeline and 240 frontend tests passed.
+
+Production, live provider activity, messages and schedules remain paused. New migration `20261020184154_facebook_inquiry_sms_receipts.sql` was applied ONLY to disposable local databases. See the separate `facebook-handoff-release-manifest.json`; never directory-push migrations. No held message was replayed. Full production-shaped upgrade, actual browser/Meta/carrier configuration and controlled live acceptance remain unverified.
+
+## Selective integration draft — October 20, 2026
+
+Owner authorized proceeding with the integration recommendation. Work is isolated on `codex/wholesale-integration-review`, based on production `19c117a`; do not merge the collection branch. See `docs/integration/PROGRESS.md` for exact scope, static checks, proposed migrations, and remaining regression requirements.
+
+Production deployments, database changes, collection schedules, SMS operations and provider activity remain paused. Local testing with mocked providers and disposable databases is authorized for both Facebook Instant Forms and website forms. Results are tracked in docs/integration/PROGRESS.md. The integration branch is excluded from Vercel deployment and checkpoint commits use `[skip ci]`. No existing production migration was changed; the held-session repair below remains unapplied and is excluded from the new feature migration allowlist.
+
+The code is a review draft, not a certified integration or release. Local verification is resumed; any later deployment or operational activation remains a separate decision.
 
 ## PAUSED at owner request — October 19, 2026, 4:44 PM Central
 

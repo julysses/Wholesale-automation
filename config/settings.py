@@ -18,6 +18,7 @@ class Settings:
     agency_state: str = os.getenv("AGENCY_STATE", "TX")
     agency_contact_name: str = os.getenv("AGENCY_CONTACT_NAME", "Alex")
     agency_phone: str = os.getenv("AGENCY_PHONE", "")
+    agency_mailing_address: str = os.getenv("AGENCY_MAILING_ADDRESS", "")
 
     # Lead pipeline
     distress_score_threshold: int = int(os.getenv("DISTRESS_SCORE_THRESHOLD", "45"))
@@ -67,6 +68,19 @@ class Settings:
     telnyx_from_number: str = os.getenv("TELNYX_FROM_NUMBER", "")
     messagebird_api_key: str = os.getenv("MESSAGEBIRD_API_KEY", "")
     messagebird_originator: str = os.getenv("MESSAGEBIRD_ORIGINATOR", "Texas Wholesale")
+
+    # Dedicated buyer route: no fallback to the homeowner inquiry sender.
+    buyer_sms_live_enabled: bool = os.getenv("BUYER_SMS_LIVE_ENABLED", "false").lower() == "true"
+    buyer_sms_campaign_sid: str = os.getenv("BUYER_SMS_CAMPAIGN_SID", "")
+    buyer_sms_service_sid: str = os.getenv("BUYER_SMS_SERVICE_SID", "")
+    buyer_sms_from_number: str = os.getenv("BUYER_SMS_FROM_NUMBER", "")
+    buyer_sms_brand: str = os.getenv("BUYER_SMS_BRAND", "")
+
+    buyer_enrollment_enabled: bool = os.getenv("BUYER_ENROLLMENT_ENABLED", "false").lower() == "true"
+    buyer_enrollment_policies_reviewed: bool = os.getenv("BUYER_ENROLLMENT_POLICIES_REVIEWED", "false").lower() == "true"
+    buyer_enrollment_public_origin: str = os.getenv("BUYER_ENROLLMENT_PUBLIC_ORIGIN", "")
+    buyer_enrollment_approved_version: str = os.getenv("BUYER_ENROLLMENT_APPROVED_VERSION", "")
+    buyer_enrollment_support: str = os.getenv("BUYER_ENROLLMENT_SUPPORT", "")
 
     # Email provider (SendGrid, Mailgun, Instantly)
     email_provider: str = os.getenv("EMAIL_PROVIDER", "sendgrid")
@@ -128,6 +142,7 @@ class Settings:
     # Retell AI (primary AI calling provider)
     retell_api_key: str = os.getenv("RETELL_API_KEY", "")
     retell_agent_id: str = os.getenv("RETELL_AGENT_ID", "")
+    retell_agent_version: str = os.getenv("RETELL_AGENT_VERSION", "")
     retell_from_number: str = os.getenv("RETELL_FROM_NUMBER", "")
     retell_webhook_secret: str = os.getenv("RETELL_WEBHOOK_SECRET", "")
     ai_calling_live_enabled: bool = os.getenv("AI_CALLING_LIVE_ENABLED", "false").lower() == "true"
@@ -173,7 +188,7 @@ class Settings:
     seller_score_dialer_min_tier: str = os.getenv("SELLER_SCORE_DIALER_MIN_TIER", "B")
     seller_score_sms_min_tier: str = os.getenv("SELLER_SCORE_SMS_MIN_TIER", "C")
     # Skip trace all leads by default before scoring
-    auto_skip_trace: bool = os.getenv("AUTO_SKIP_TRACE", "true").lower() == "true"
+    auto_skip_trace: bool = os.getenv("AUTO_SKIP_TRACE", "false").lower() == "true"
     # Auto-push A/B leads to BatchDialer after scoring
     auto_push_to_dialer: bool = os.getenv("AUTO_PUSH_TO_DIALER", "false").lower() == "true"
     # Auto-enroll C leads in Launch Control SMS

@@ -1,0 +1,36 @@
+{
+  "parent_checkpoint": "f55007b3f8ac0429b602890013a4d7e99ac8f3b0",
+  "scope": "native Vercel build inputs and production metadata; no deployment",
+  "api_package_versions": 61,
+  "application_package_upgrades": 0,
+  "local_backend_passed": 1379,
+  "local_backend_skipped": 10,
+  "focused_drift_checks": 8,
+  "patched_uv": "0.13.5",
+  "patched_uv_known_findings": 0,
+  "observed_old_uv_advisories": [
+    "PYSEC-2026-4321",
+    "GHSA-pjjw-68hj-v9mw",
+    "GHSA-4gg8-gxpx-9rph"
+  ],
+  "remote_native_build": "passed current manual runtime in run711; prior run705 remains historical",
+  "production_mutations": 0,
+  "files": {
+    "api/.python-version": "7b55f8e67b5623c4bef3fa691288da9437d79d3aba156de48d481db32ac7d16d",
+    "api/pyproject.toml": "899ecb5fecebaf2a581d5599d95cc3adcd1582f87951b274e78d2401c6213a92",
+    "api/uv.lock": "094fa20b3a37e5033a4cf232593b1335b6b1b21288802ffdf406add4ca6a3a4d",
+    "requirements-vercel-build.in": "4bca1a5f9094adeda9c086f692a9f5c2c82cd178c93b3c83290241cb926c9ad2",
+    "requirements-vercel-build.txt": "5bce2db38b52fa25f0751bab37d89e70dfd2978b07133b5b1946f98695778726",
+    "vercel.json": "3766095ee775a9d0f01b564b35f7344d75fbbee52f5ee9ade2de1c29f5a1c3ee",
+    "scripts/release/check_python_locks.py": "77878e021ad2a7b3f99df67d179ffd62491f475a617a0e404977fcf2b4acc16d",
+    "scripts/release/prepare_vercel_build.py": "ec139f03aec8e9adb8cbcaff0a2eeb443fe63d7e444842104da457bd5a7125bf",
+    "scripts/release/vercel_artifact_smoke.py": "3da9bff0320c4b60599b661fc7b4ac0b744cfa31e1c69808dfee21d9e0e02169",
+    ".github/workflows/ci.yml": "4dcb84d3d02b866ef31f24a0e7aeba420f9ec904cc140026e34e4c93b7ada8f7",
+    "tests/test_release_python_locks.py": "87e320d7a4ff35189197bdc2f0b706322099fecb7c63d44a902cd86fcdfda65a"
+  },
+  "evidence": "vercel-artifact-evidence.json",
+  "manual_buyer_update": "Hashes refreshed for manual buyer recovery; original counts/remote runs are historical. Current candidate needs the new nine-job CI run.",
+  "current_runtime": "2a3d28c4e2f6c5e367b6e863c4afdce131412064",
+  "remote_ci": "All nine jobs passed in run39866097570 (711)",
+  "current_ci_evidence": "manual-buyer-ci-evidence.json"
+}

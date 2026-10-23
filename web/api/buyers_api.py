@@ -15,14 +15,17 @@ Routes (all under /api/buyers):
 from __future__ import annotations
 
 import io
+import hashlib
+import json
+import math
+from uuid import UUID, uuid5, NAMESPACE_URL
 import html
 import logging
 import os
 import re
-from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Request
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
@@ -36,7 +39,9 @@ from tools.buyer_intelligence_engine import (
     match_buyers_to_deal,
 )
 from tools.buyer_csv_parser import parse_buyer_csv
+from web.api.buyer_sms_consent import ConsentReview
 
+IN_CHUNK = 200
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/buyers", tags=["Buyer Intelligence"])
 
@@ -60,6 +65,7 @@ class MatchRequest(BaseModel):
 
 
 class OutreachRequest(BaseModel):
+    request_id: UUID
     buyer_ids: list[str]
     deal_id: Optional[str] = None
     property_address: str = ""
@@ -94,262 +100,115 @@ def _get_supabase() -> Optional[Any]:
         return None
 
 
+def _read_all_confirmed(query_factory, label: str) -> list[dict[str, Any]]:
+    """Read stable, count-checked pages; never rank or show a capped subset as complete."""
+    rows = []
+    identities = set()
+    expected = None
+    offset = 0
+    while True:
+        response = query_factory().range(offset, offset + 499).execute()
+        page = response.data
+        count = getattr(response, 'count', None)
+        if not isinstance(page, list) or type(count) is not int or count < 0:
+            raise ValueError(f'{label} count/result could not be confirmed')
+        if expected is not None and count != expected:
+            raise ValueError(f'{label} changed while loading')
+        expected = count
+        for row in page:
+            identity = row.get('id') if isinstance(row, dict) else None
+            if not isinstance(identity, str) or not identity or identity in identities:
+                raise ValueError(f'{label} identities changed while loading')
+            identities.add(identity)
+        if len(identities) > expected:
+            raise ValueError(f'{label} count changed while loading')
+        if not page:
+            if len(rows) != expected:
+                raise ValueError(f'{label} read was incomplete')
+            return rows
+        rows.extend(page)
+        offset += len(page)
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/import")
 async def import_buyers_csv(
-    background_tasks: BackgroundTasks,
+    request: Request,
     file: UploadFile = File(...),
     market: str = Form(default=""),
     cash_only: bool = Form(default=False),
     entities_only: bool = Form(default=False),
     min_price: float = Form(default=0.0),
     max_price: float = Form(default=0.0),
+    request_id: Optional[UUID] = Form(default=None),
 ) -> dict:
-    """
-    Upload a county deed / PropStream CSV and ingest buyers + transactions.
-
-    Responds immediately with an import_log_id.
-    All Supabase writes happen in the background.
-    """
-    content = await file.read()
-    text = content.decode("utf-8-sig", errors="replace")
-    filename = file.filename or "upload.csv"
-
+    """Parse and atomically save the entire buyer import before acknowledging it."""
+    operator = getattr(request.state, 'user_id', None)
+    if not operator:
+        raise HTTPException(401, 'Sign in to import buyers')
+    content = await file.read(4_000_001)
+    if len(content) > 4_000_000:
+        raise HTTPException(413, 'Buyer CSV exceeds the 4 MB upload limit')
+    try:
+        text = content.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        raise HTTPException(422, 'Buyer CSV must use UTF-8 text')
     sb = _get_supabase()
-    log_id = None
-    if sb:
-        try:
-            log_resp = sb.table("buyer_import_log").insert({
-                "source":   "county_csv",
-                "filename": filename,
-                "market":   market,
-                "status":   "processing",
-            }).execute()
-            log_id = (log_resp.data or [{}])[0].get("id")
-        except Exception as exc:
-            logger.error(f"[buyers_api/import] log insert failed: {exc}")
-
-    background_tasks.add_task(
-        _process_import,
-        text=text,
-        filename=filename,
-        market=market,
-        cash_only=cash_only,
-        entities_only=entities_only,
-        min_price=min_price,
-        max_price=max_price,
-        log_id=log_id,
-    )
-
-    return {
-        "status": "processing",
-        "import_log_id": log_id,
-        "message": f"Processing {filename} — check import log for results",
-    }
-
-
-async def _process_import(
-    text: str,
-    filename: str,
-    market: str,
-    cash_only: bool,
-    entities_only: bool,
-    min_price: float,
-    max_price: float,
-    log_id: Optional[str],
-) -> None:
-    """Background: parse CSV → upsert buyers + transactions → update log."""
-    sb = _get_supabase()
-
-    result = parse_buyer_csv(
-        io.StringIO(text),
-        market=market,
-        cash_only=cash_only,
-        entities_only=entities_only,
-        min_price=min_price,
-        max_price=max_price,
-        filename=filename,
-    )
-
-    buyers_created = 0
-    buyers_updated = 0
-    tx_created = 0
-    touched_ids: list[str] = []
-
-    # Index transactions by grantee once (was a full scan of every transaction
-    # for every buyer: O(buyers x transactions) on county-size files).
-    tx_by_grantee: dict[str, list[dict[str, Any]]] = {}
-    for tx in result.transactions:
-        tx_by_grantee.setdefault(str(tx.get("grantee", "")).upper(), []).append(tx)
-
-    if sb:
-        try:
-            # Upsert buyers (match on company+email or first+last+phone)
-            for buyer in result.buyers:
-                try:
-                    # Try to find existing buyer by entity_name or name+phone
-                    entity = buyer.get("entity_name", "").strip()
-                    existing = None
-                    if entity:
-                        resp = sb.table("buyers").select("id").eq("entity_name", entity).limit(1).execute()
-                        existing = (resp.data or [{}])[0].get("id")
-                    if not existing:
-                        phone = buyer.get("phone", "")
-                        if phone:
-                            resp = sb.table("buyers").select("id").eq("phone", phone).limit(1).execute()
-                            existing = (resp.data or [{}])[0].get("id")
-
-                    if existing:
-                        # Update existing buyer with richer data
-                        update = {k: v for k, v in buyer.items() if k not in ("id", "created_at")}
-                        sb.table("buyers").update(update).eq("id", existing).execute()
-                        buyer_db_id = existing
-                        buyers_updated += 1
-                    else:
-                        try:
-                            resp = sb.table("buyers").insert(
-                                {**buyer, **({"import_log_id": log_id} if log_id else {})}
-                            ).execute()
-                        except Exception:
-                            # import_log_id column missing (migration pending): import untracked.
-                            resp = sb.table("buyers").insert(buyer).execute()
-                        buyer_db_id = (resp.data or [{}])[0].get("id")
-                        buyers_created += 1
-
-                    # Insert transactions for this buyer
-                    if buyer_db_id:
-                        touched_ids.append(buyer_db_id)
-                        grantee_key = (buyer.get("entity_name") or f"{buyer['first_name']} {buyer['last_name']}").upper()
-                        for tx in tx_by_grantee.get(grantee_key, []):
-                            tx_row = {**tx, "buyer_id": buyer_db_id}
-                            tx_row.pop("grantee", None)
-                            try:
-                                sb.table("buyer_transactions").upsert(
-                                    tx_row,
-                                    on_conflict="buyer_id,apn" if tx_row.get("apn") else "id",
-                                ).execute()
-                                tx_created += 1
-                            except Exception:
-                                sb.table("buyer_transactions").insert(tx_row).execute()
-                                tx_created += 1
-
-                except Exception as exc:
-                    logger.error(f"[buyers_api/import] Buyer upsert failed: {exc}")
-
-            # Update import log
-            if log_id:
-                sb.table("buyer_import_log").update({
-                    "rows_total":         result.log.get("rows_total", 0),
-                    "rows_imported":      result.log.get("rows_imported", 0),
-                    "buyers_created":     buyers_created,
-                    "buyers_updated":     buyers_updated,
-                    "transactions_created": tx_created,
-                    "rows_skipped":       result.log.get("rows_skipped", 0),
-                    "errors":             result.log.get("errors", []),
-                    "status":             "complete",
-                    "completed_at":       datetime.now(timezone.utc).isoformat(),
-                }).eq("id", log_id).execute()
-
-        except Exception as exc:
-            logger.error(f"[buyers_api/import] Batch persist failed: {exc}")
-            if sb and log_id:
-                sb.table("buyer_import_log").update({
-                    "status": "failed",
-                    "errors": [{"error": str(exc)}],
-                }).eq("id", log_id).execute()
-
-    # Automatic scoring: a freshly imported list is ranked without a second click.
-    if touched_ids:
-        await _run_scoring(None, touched_ids)
-
-    logger.info(
-        f"[buyers_api/import] Done — {buyers_created} created, "
-        f"{buyers_updated} updated, {tx_created} transactions"
-    )
+    if sb is None:
+        raise HTTPException(503, 'Database not configured; no import was started')
+    options = {'filename': file.filename or 'upload.csv', 'market': market,
+        'cash_only': cash_only, 'entities_only': entities_only,
+        'min_price': min_price, 'max_price': max_price}
+    if not all(math.isfinite(v) and v >= 0 for v in (min_price,max_price)) or (max_price and min_price > max_price):
+        raise HTTPException(422, 'Invalid purchase price range')
+    fingerprint = hashlib.sha256(content + json.dumps(options, sort_keys=True).encode()).hexdigest()
+    reference = str(request_id or uuid5(NAMESPACE_URL, 'wholesaleos:buyer-csv:'+operator+':'+fingerprint))
+    parsed = await run_in_threadpool(parse_buyer_csv, io.StringIO(text), **options)
+    # Malformed rows cannot be acknowledged as a complete successful import.
+    if parsed.errors or parsed.log.get('errors') or parsed.log.get('status') != 'complete':
+        raise HTTPException(422, {'message': 'Fix invalid CSV rows before importing; no records saved',
+            'errors': (parsed.errors or parsed.log.get('errors', []))[:20]})
+    if parsed.log['rows_total'] > 5000:
+        raise HTTPException(413, 'Buyer CSV exceeds 5,000 rows; no records saved')
+    options.update(rows_total=parsed.log['rows_total'], rows_skipped=parsed.log['rows_skipped'])
+    try:
+        value = await run_in_threadpool(lambda: sb.rpc('import_buyer_csv', {
+            'p_id': reference, 'p_operator': operator, 'p_fingerprint': fingerprint,
+            'p_groups': parsed.groups, 'p_options': options}).execute().data)
+    except Exception as exc:
+        logger.warning('Buyer CSV result unconfirmed for import %s', reference)
+        if (getattr(exc, 'code', None) or getattr(exc, 'pgcode', None)) in {'22023','42501'}:
+            raise HTTPException(409, 'Import needs identity/history review or its reference changed. No partial batch was saved.')
+        raise HTTPException(503, {'message': 'Import outcome unconfirmed. Retry the same file, options and reference.', 'import_id': reference})
+    try:
+        result = value['result']
+        if (value['import_id'] != reference or value['operator_id'] != operator
+            or value['fingerprint'] != fingerprint or value['options'] != options
+            or value['outreach_authorized'] is not False or type(value['replayed']) is not bool):
+            raise ValueError('Uncorrelated import receipt')
+        for key in ['buyers_created','buyers_existing','transactions_created','transactions_existing','rows_total','rows_skipped']:
+            if type(result.get(key)) is not int or result[key] < 0: raise ValueError('Unconfirmed totals')
+        if (result['buyers_created'] + result['buyers_existing'] != len(parsed.groups)
+            or result['transactions_created'] + result['transactions_existing'] != len(parsed.transactions)
+            or result['rows_total'] != options['rows_total'] or result['rows_skipped'] != options['rows_skipped']
+            or len(result['buyer_ids']) != len(parsed.groups)):
+            raise ValueError('Unconfirmed row mapping')
+        for identity in result['buyer_ids']:
+            if str(UUID(identity)) != identity: raise ValueError('Invalid buyer identity')
+    except (ValueError, TypeError, KeyError, AttributeError):
+        raise HTTPException(503, {'message': 'Import receipt unconfirmed. Retry the original file and reference.', 'import_id': reference})
+    return {'status': 'complete', 'import_id': reference, 'import_log_id': reference,
+        'replayed': value['replayed'], 'outreach_authorized': False, **result}
 
 
 @router.post("/score")
-async def score_buyers(req: ScoreRequest, background_tasks: BackgroundTasks) -> dict:
-    """
-    Re-score one buyer or all buyers (buyer_id=None).
-    Returns immediately; scoring happens in background.
-    """
-    background_tasks.add_task(_run_scoring, req.buyer_id)
-    return {
-        "status": "scoring_queued",
-        "buyer_id": req.buyer_id or "all",
-        "message": "Scores will be updated in the background",
-    }
+async def score_buyers(req: ScoreRequest) -> dict:
+    raise HTTPException(409, 'Prepare a retained buyer analysis request before rescoring')
 
 
-SCORE_PAGE = 1000
-IN_CHUNK = 200
-
-
-async def _run_scoring(buyer_id: Optional[str], buyer_ids: Optional[list[str]] = None) -> None:
-    """Background: load buyers + transactions → compute + persist scores.
-
-    Pages through buyers (PostgREST caps a response at ~1000 rows) and chunks the
-    transaction ``in`` filter so large books don't silently truncate or overflow
-    the request URL.
-    """
-    sb = _get_supabase()
-    if not sb:
-        return
-
-    try:
-        buyers: list[dict[str, Any]] = []
-        if buyer_id:
-            buyer_resp = sb.table("buyers").select("*").eq("id", buyer_id).single().execute()
-            buyers = [buyer_resp.data] if buyer_resp.data else []
-        elif buyer_ids:
-            for i in range(0, len(buyer_ids), IN_CHUNK):
-                resp = sb.table("buyers").select("*").in_("id", buyer_ids[i:i + IN_CHUNK]).execute()
-                buyers.extend(resp.data or [])
-        else:
-            offset = 0
-            while True:
-                page = (
-                    sb.table("buyers").select("*").eq("active", True)
-                    .order("id").range(offset, offset + SCORE_PAGE - 1).execute().data or []
-                )
-                if not page:
-                    break
-                buyers.extend(page)
-                offset += len(page)
-
-        if not buyers:
-            return
-
-        all_ids = [b["id"] for b in buyers]
-        tx_map: dict[str, list] = {bid: [] for bid in all_ids}
-        for i in range(0, len(all_ids), IN_CHUNK):
-            offset = 0
-            while True:
-                page = (
-                    sb.table("buyer_transactions").select("*")
-                    .in_("buyer_id", all_ids[i:i + IN_CHUNK])
-                    .order("id").range(offset, offset + SCORE_PAGE - 1).execute().data or []
-                )
-                if not page:
-                    break
-                for tx in page:
-                    if tx.get("buyer_id") in tx_map:
-                        tx_map[tx["buyer_id"]].append(tx)
-                offset += len(page)
-
-        from tools.buyer_intelligence_engine import batch_score_buyers
-        updates = batch_score_buyers(buyers, tx_map)
-
-        for update in updates:
-            bid = update.pop("id")
-            sb.table("buyers").update(update).eq("id", bid).execute()
-
-        logger.info(f"[buyers_api/score] Scored {len(updates)} buyers")
-
-    except Exception as exc:
-        logger.error(f"[buyers_api/score] Scoring failed: {exc}")
+async def _run_scoring(*args, **kwargs) -> None:
+    raise RuntimeError('Use explicit retained buyer analysis; background scoring is disabled')
 
 
 @router.get("/imports")
@@ -441,8 +300,8 @@ def match_deal_to_buyers(req: MatchRequest) -> dict:
 
     try:
         # Load active buyers
-        buyer_resp = sb.table("buyers").select("*").eq("active", True).execute()
-        buyers = buyer_resp.data or []
+        buyers = _read_all_confirmed(lambda: sb.table("buyers").select("*",count="exact")
+            .eq("active",True).order("id"),"Active buyers")
 
         deal = DealMatchInput(
             deal_id=req.deal_id or "",
@@ -501,174 +360,40 @@ def match_deal_to_buyers(req: MatchRequest) -> dict:
 
 
 @router.post("/outreach/sms")
-async def send_sms_blast(req: OutreachRequest, background_tasks: BackgroundTasks) -> dict:
-    """Complete a bounded batch and report actual provider results."""
-    if not req.buyer_ids or len(req.buyer_ids) > 25:
-        raise HTTPException(422, "Send between 1 and 25 buyer IDs per batch.")
-    return await run_in_threadpool(_send_sms_blast, req)
-
-
-def _send_sms_blast(req: OutreachRequest) -> dict:
-    sb = _get_supabase()
-    if sb is None:
-        raise HTTPException(503, "Database not configured")
-    from tools.sms_client import SMSClient
-    from schemas.outreach import OutreachChannel, OutreachMessage
-    from web.api.marketing_api import _contact_suppressed
-    sms = SMSClient()
-    counts = {"sent_count": 0, "failed_count": 0, "skipped_count": 0, "dry_run_count": 0, "log_failed_count": 0}
-    buyer_ids = list(dict.fromkeys(req.buyer_ids))
-
-    for buyer_id in buyer_ids:
-        delivery_recorded = False
-        try:
-            if sb:
-                buyer_resp = sb.table("buyers").select("first_name,last_name,phone,sms_opt_in,active").eq("id", buyer_id).single().execute()
-                buyer = buyer_resp.data or {}
-            else:
-                buyer = {}
-
-            phone = buyer.get("phone", "")
-            if (not phone or buyer.get("sms_opt_in") is not True or buyer.get("active") is False
-                    or _contact_suppressed(sb, phone)):
-                counts["skipped_count"] += 1
-                continue
-
-            name = f"{buyer.get('first_name','')} {buyer.get('last_name','')}".strip()
-            body = req.custom_message or build_deal_sms(
-                buyer_name=name,
-                zip_code=req.zip_code,
-                price=req.price,
-                property_type=req.property_type,
-                beds=req.beds,
-                baths=req.baths,
-            )
-
-            if not re.search(r"reply\s+stop\b", body, re.IGNORECASE):
-                body += " Reply STOP to opt out."
-            message = OutreachMessage(
-                lead_id=buyer_id, channel=OutreachChannel.SMS,
-                body=body, compliance_cleared=True,
-            )
-            result = sms.send(message, phone)
-            status = "dry_run" if result and message.a2p_provider.endswith(":dry-run") else "sent" if result else "failed"
-            counts[f"{status}_count"] += 1
-            delivery_recorded = True
-
-            if sb:
-                sb.table("buyer_outreach_log").insert({
-                    "buyer_id":     buyer_id,
-                    "deal_id":      req.deal_id,
-                    "channel":      "sms",
-                    "status":       status,
-                    "body":         body,
-                    "to_address":   phone,
-                    "provider":     message.a2p_provider or sms._provider,
-                }).execute()
-
-                # Update ignore count if this is a re-blast (not first contact)
-                if status == "sent":
-                    sb.table("buyers").update({
-                        "last_contact_date": datetime.now(timezone.utc).date().isoformat()
-                    }).eq("id", buyer_id).execute()
-
-        except Exception as exc:
-            counts["log_failed_count" if delivery_recorded else "failed_count"] += 1
-            logger.error(f"[buyers_api/sms] Send to {buyer_id} failed: {exc}")
-
-    return {
-        "status": "partial" if counts["failed_count"] or counts["log_failed_count"] else "complete",
-        "recipient_count": len(buyer_ids),
-        **counts,
-    }
+async def send_sms_blast(req: OutreachRequest, request: Request) -> dict:
+    return await _buyer_dispatch(req,request,'sms')
 
 
 @router.post("/outreach/email")
-async def send_email_blast(req: OutreachRequest, background_tasks: BackgroundTasks) -> dict:
-    """Send a bounded batch and preserve the operator's edited subject/body."""
-    if not req.buyer_ids or len(req.buyer_ids) > 25:
-        raise HTTPException(422, "Send between 1 and 25 buyer IDs per batch.")
-    return await run_in_threadpool(_send_email_blast, req)
+async def send_email_blast(req: OutreachRequest, request: Request) -> dict:
+    return await _buyer_dispatch(req,request,'email')
 
 
-def _send_email_blast(req: OutreachRequest) -> dict:
-    sb = _get_supabase()
-    if sb is None:
-        raise HTTPException(503, "Database not configured")
-    from config.settings import settings
-    from tools.email_client import EmailClient
-    email = EmailClient()
-    counts = {"sent_count": 0, "failed_count": 0, "skipped_count": 0, "dry_run_count": 0, "log_failed_count": 0}
-    buyer_ids = list(dict.fromkeys(req.buyer_ids))
+async def _buyer_dispatch(req: OutreachRequest,request: Request,channel: str):
+    from .buyer_outreach import dispatch
+    sb=_get_supabase()
+    if sb is None:raise HTTPException(503,'Database not configured')
+    return await run_in_threadpool(dispatch,sb,getattr(request.state,'user_id',None),req,channel)
 
-    for buyer_id in buyer_ids:
-        delivery_recorded = False
-        try:
-            if sb:
-                buyer_resp = sb.table("buyers").select("first_name,last_name,email,email_opt_in,active").eq("id", buyer_id).single().execute()
-                buyer = buyer_resp.data or {}
-            else:
-                buyer = {}
 
-            email_addr = buyer.get("email", "")
-            if not email_addr or buyer.get("email_opt_in") is not True or buyer.get("active") is False:
-                counts["skipped_count"] += 1
-                continue
-            if sb.table("dnc_registry").select("id").eq("email", email_addr.strip().lower()).limit(1).execute().data:
-                counts["skipped_count"] += 1
-                continue
-
-            name = f"{buyer.get('first_name','')} {buyer.get('last_name','')}".strip()
-            subject, html_body = build_deal_email(
-                buyer_name=name,
-                property_address=req.property_address,
-                zip_code=req.zip_code,
-                price=req.price,
-                arv=req.arv,
-                assignment_fee=req.assignment_fee,
-                property_type=req.property_type,
-                beds=req.beds,
-                baths=req.baths,
-                condition=req.condition,
-                sender_name=settings.agency_contact_name or "Alex",
-                agency_name=settings.agency_name or "Texas Wholesale Solutions",
-            )
-
-            subject = req.custom_subject or subject
-            if req.custom_message:
-                plain_body = req.custom_message
-                html_body = "<p>" + html.escape(plain_body).replace("\n", "<br>\n") + "</p>"
-            else:
-                plain_body = html.unescape(re.sub(r"<[^>]+>", "", html_body))
-            sent = email.send(to_email=email_addr, subject=subject, body=plain_body, html_body=html_body)
-            status = "dry_run" if sent and not email._configured else "sent" if sent else "failed"
-            counts[f"{status}_count"] += 1
-            delivery_recorded = True
-
-            if sb:
-                sb.table("buyer_outreach_log").insert({
-                    "buyer_id":   buyer_id,
-                    "deal_id":    req.deal_id,
-                    "channel":    "email",
-                    "status":     status,
-                    "subject":    subject,
-                    "body":       html_body,
-                    "to_address": email_addr,
-                    "provider":   email._provider,
-                }).execute()
-                if status == "sent":
-                    sb.table("buyers").update({
-                        "last_contact_date": datetime.now(timezone.utc).date().isoformat()
-                    }).eq("id", buyer_id).execute()
-
-        except Exception as exc:
-            counts["log_failed_count" if delivery_recorded else "failed_count"] += 1
-            logger.error(f"[buyers_api/email] Send to {buyer_id} failed: {exc}")
-
-    return {
-        "status": "partial" if counts["failed_count"] or counts["log_failed_count"] else "complete",
-        "recipient_count": len(buyer_ids), **counts,
-    }
+@router.post("/outreach/{reference}/reconcile")
+async def reconcile_buyer_outreach(reference: UUID,request: Request):
+    sb=_get_supabase()
+    if sb is None:raise HTTPException(503,'Database not configured')
+    operator=getattr(request.state,'user_id',None)
+    if not operator:raise HTTPException(401,'Sign in to reconcile outreach')
+    try:
+        value=await run_in_threadpool(lambda:sb.rpc('reconcile_buyer_outreach_campaign',{
+            'p_request':str(reference),'p_operator':operator}).execute().data)
+        if (not isinstance(value,dict) or value.get('request_id')!=str(reference)
+            or type(value.get('checked')) is not int or value['checked']<1
+            or type(value.get('provider_calls')) is not int or value['provider_calls']!=0):
+            raise ValueError('Reconciliation response unconfirmed')
+        return value
+    except Exception as exc:
+        if (getattr(exc,'code',None) or getattr(exc,'pgcode',None))=='42501':
+            raise HTTPException(404,'Outreach reference unavailable for this account')
+        raise HTTPException(503,'Reconciliation outcome unconfirmed; refresh saved history before retrying')
 
 
 @router.get("/{buyer_id}/transactions")
@@ -678,56 +403,47 @@ def get_buyer_transactions(buyer_id: str) -> dict:
     if not sb:
         raise HTTPException(503, "Database not configured")
     try:
-        resp = (
-            sb.table("buyer_transactions")
-            .select("*")
-            .eq("buyer_id", buyer_id)
-            .order("purchase_date", desc=True)
-            .execute()
-        )
-        return {"transactions": resp.data or [], "buyer_id": buyer_id}
-    except Exception as exc:
-        raise HTTPException(500, f"Transaction query failed: {exc}")
+        rows = _read_all_confirmed(lambda: sb.table("buyer_transactions").select("*",count="exact")
+            .eq("buyer_id",buyer_id).order("purchase_date",desc=True).order("id"),"Buyer purchase history")
+        return {"transactions":rows,"buyer_id":buyer_id,"total":len(rows)}
+    except Exception:
+        logger.exception("Buyer purchase history read failed")
+        raise HTTPException(503,"Purchase history could not be confirmed. Retry loading it.")
 
 
 @router.post("/{buyer_id}/classify")
-async def classify_buyer(buyer_id: str, background_tasks: BackgroundTasks) -> dict:
-    """Run AI classification for a single buyer."""
-    background_tasks.add_task(_run_classify, buyer_id)
-    return {
-        "status": "classification_queued",
-        "buyer_id": buyer_id,
-    }
+async def classify_buyer(buyer_id: str) -> dict:
+    raise HTTPException(409, 'Prepare a retained request and review paid classification first')
 
 
-async def _run_classify(buyer_id: str) -> None:
-    sb = _get_supabase()
-    if not sb:
-        return
-    try:
-        buyer_resp = sb.table("buyers").select("*").eq("id", buyer_id).single().execute()
-        buyer = buyer_resp.data
-        if not buyer:
-            return
+async def _run_classify(*args, **kwargs) -> None:
+    raise RuntimeError('Use explicit retained buyer analysis; background classification is disabled')
 
-        tx_resp = sb.table("buyer_transactions").select("*").eq("buyer_id", buyer_id).execute()
-        txs = tx_resp.data or []
 
-        from agents.buyer_intelligence_agent import BuyerIntelligenceAgent
-        agent = BuyerIntelligenceAgent()
-        result = agent.classify_buyer(buyer, txs)
+@router.get("/{buyer_id}/sms-consent")
+async def buyer_sms_consent_status(buyer_id: UUID, request: Request):
+    from web.api.buyer_sms_consent import status
+    operator=getattr(request.state,'user_id',None)
+    if not operator:raise HTTPException(401,'Sign in to review buyer consent')
+    db=_get_supabase()
+    if db is None:raise HTTPException(503,'Consent storage unavailable')
+    return await run_in_threadpool(status,db,buyer_id,operator)
 
-        from tools.buyer_intelligence_engine import compute_tags
-        tags = compute_tags({**buyer, "buyer_type_ibie": result.buyer_type_ibie})
-        all_tags = list(set(tags + result.suggested_tags))
 
-        sb.table("buyers").update({
-            "buyer_type_ibie":  result.buyer_type_ibie,
-            "ai_classified_at": datetime.now(timezone.utc).isoformat(),
-            "tags":             all_tags,
-        }).eq("id", buyer_id).execute()
+@router.post("/{buyer_id}/sms-consent")
+async def review_buyer_sms_consent(buyer_id: UUID, req: ConsentReview, request: Request):
+    from web.api.buyer_sms_consent import review
+    operator=getattr(request.state,'user_id',None)
+    if not operator:raise HTTPException(401,'Sign in to review buyer consent')
+    db=_get_supabase()
+    if db is None:raise HTTPException(503,'Consent storage unavailable')
+    return await run_in_threadpool(review,db,buyer_id,operator,req)
 
-        logger.info(f"[buyers_api/classify] {buyer_id} → {result.buyer_type_ibie} ({result.confidence:.2f})")
 
-    except Exception as exc:
-        logger.error(f"[buyers_api/classify] Failed for {buyer_id}: {exc}")
+@router.get("/outreach/sms/readiness")
+async def buyer_sms_readiness(request: Request):
+    from tools.buyer_sms import readiness
+    if not getattr(request.state,'user_id',None):raise HTTPException(401,'Sign in to check buyer SMS')
+    db=_get_supabase()
+    if db is None:raise HTTPException(503,'Buyer SMS storage unavailable')
+    return await run_in_threadpool(readiness,db)

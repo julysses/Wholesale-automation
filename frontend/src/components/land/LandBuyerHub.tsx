@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { queryAllConfirmed } from '@/lib/queryAll';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { LandBuyer, LandBuyerType, LandLead } from '@/types';
@@ -53,17 +56,11 @@ const BUYER_TYPES: Record<LandBuyerType, {
 
 function useLandBuyers() {
   return useQuery({
-    queryKey: ['land_buyers'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('buyers')
-        .select('*')
-        .eq('buys_land', true)
-        .eq('active', true)
-        .order('deals_closed', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as LandBuyer[];
-    },
+    queryKey: ['buyers', 'land', 'all-pages'],
+    queryFn: () => queryAllConfirmed<LandBuyer>((from, to) => supabase.from('buyers')
+      .select('*', { count: 'exact' }).eq('buys_land', true).eq('active', true)
+      .order('deals_closed', { ascending: false }).order('id', { ascending: true }).range(from, to), 'Land buyers'),
+    retry: false,
   });
 }
 
@@ -112,7 +109,7 @@ function BuyerCard({ buyer, lead }: { buyer: LandBuyer; lead?: LandLead }) {
           <div><span className="text-gray-400">Acres:</span> {buyer.target_acres_min}–{buyer.target_acres_max ?? '∞'}</div>
         )}
         {buyer.min_price != null && (
-          <div><span className="text-gray-400">Budget:</span> ${(buyer.min_price/1000).toFixed(0)}k–${buyer.max_price ? (buyer.max_price/1000).toFixed(0)+'k' : '∞'}</div>
+          <div><span className="text-gray-400">Budget:</span> ${(buyer.min_price/1000).toFixed(0)}k–${buyer.max_price != null ? (buyer.max_price/1000).toFixed(0)+'k' : '∞'}</div>
         )}
         {buyer.preferred_zoning && buyer.preferred_zoning.length > 0 && (
           <div className="col-span-2">
@@ -127,7 +124,7 @@ function BuyerCard({ buyer, lead }: { buyer: LandBuyer; lead?: LandLead }) {
           </div>
         )}
         <div><span className="text-gray-400">Deals closed:</span> {buyer.deals_closed}</div>
-        {buyer.close_speed_days && (
+        {buyer.close_speed_days != null && (
           <div><span className="text-gray-400">Close speed:</span> {buyer.close_speed_days}d</div>
         )}
       </div>
@@ -149,10 +146,14 @@ function BuyerCard({ buyer, lead }: { buyer: LandBuyer; lead?: LandLead }) {
   );
 }
 
-function BuyerTypeSection({ type, buyers, lead }: { type: LandBuyerType; buyers: LandBuyer[]; lead?: LandLead }) {
-  const cfg = BUYER_TYPES[type];
+function BuyerTypeSection({ type, buyers, lead }: { type: LandBuyerType | 'uncategorized'; buyers: LandBuyer[]; lead?: LandLead }) {
+  const cfg = type === 'uncategorized' ? { label: 'Needs category review', icon: Building2, color: 'text-gray-700',
+    bg: 'bg-gray-50', border: 'border-gray-200', description: 'Active land buyers without a category. Review their preferences before matching.', hotButtons: [] as string[] } : BUYER_TYPES[type];
   const Icon = cfg.icon;
-  const typeBuyers = buyers.filter(b => b.land_buyer_type === type);
+  const [page, setPage] = useState(1);
+  const typeBuyers = buyers.filter(b => type === 'uncategorized' ? !b.land_buyer_type || !(b.land_buyer_type in BUYER_TYPES) : b.land_buyer_type === type);
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(typeBuyers.length / 25)));
+  const visible = typeBuyers.slice((currentPage - 1) * 25, currentPage * 25);
 
   return (
     <div className="space-y-3">
@@ -180,11 +181,16 @@ function BuyerTypeSection({ type, buyers, lead }: { type: LandBuyerType; buyers:
       {/* Buyer cards */}
       {typeBuyers.length > 0 ? (
         <div className="grid grid-cols-1 gap-3">
-          {typeBuyers.map(b => <BuyerCard key={b.id} buyer={b} lead={lead} />)}
+          {visible.map(b => <BuyerCard key={b.id} buyer={b} lead={lead} />)}
         </div>
       ) : (
         <p className="text-xs text-gray-400 italic pl-2">No {cfg.label.toLowerCase()} in your buyer list yet.</p>
       )}
+      {typeBuyers.length > 25 && <nav aria-label={`${cfg.label} pages`} className="flex gap-2 items-center text-xs">
+        <span>{(currentPage - 1) * 25 + 1}–{Math.min(currentPage * 25, typeBuyers.length)} of {typeBuyers.length}</span>
+        <Button variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous {cfg.label.toLowerCase()}</Button>
+        <Button variant="outline" disabled={currentPage * 25 >= typeBuyers.length} onClick={() => setPage(currentPage + 1)}>Next {cfg.label.toLowerCase()}</Button>
+      </nav>}
     </div>
   );
 }
@@ -194,7 +200,8 @@ interface Props {
 }
 
 export function LandBuyerHub({ lead }: Props) {
-  const { data: buyers = [], isLoading } = useLandBuyers();
+  const { data: savedBuyers, isLoading, isFetching, error, refetch } = useLandBuyers();
+  const buyers = savedBuyers ?? [];
 
   const infillBuyers = buyers.filter(b => b.buys_infill);
 
@@ -203,10 +210,14 @@ export function LandBuyerHub({ lead }: Props) {
       <div>
         <h3 className="text-base font-bold text-[#1B3A5C]">Land Buyer Hub</h3>
         <p className="text-xs text-gray-500 mt-0.5">
-          {buyers.length} active land buyers across 4 categories
+          {savedBuyers ? `${buyers.length.toLocaleString()} active land buyers` : isLoading ? 'Loading buyer totals…' : 'Land buyer totals unavailable'}
         </p>
       </div>
 
+      {error && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+        <p>Unable to load land buyers: {error.message}. {savedBuyers && 'Showing last confirmed buyer records.'}</p>
+        <Button variant="outline" disabled={isFetching} onClick={() => void refetch()}>Retry loading land buyers</Button>
+      </div>}
       {/* Infill lot callout */}
       {lead?.infill_lot && (
         <div className="bg-[#E8720C]/10 border border-[#E8720C]/30 rounded-xl p-4 flex items-start gap-3">
@@ -215,7 +226,7 @@ export function LandBuyerHub({ lead }: Props) {
             <p className="text-sm font-bold text-[#E8720C]">Infill Lot Flagged — Premium Opportunity</p>
             <p className="text-xs text-gray-600 mt-0.5">
               This is a House-Land-House configuration. Builders pay a premium for infill lots.
-              {infillBuyers.length > 0 && ` You have ${infillBuyers.length} buyer${infillBuyers.length > 1 ? 's' : ''} who specifically buy infill.`}
+              {savedBuyers && infillBuyers.length > 0 && ` You have ${infillBuyers.length} buyer${infillBuyers.length > 1 ? 's' : ''} who specifically buy infill.`}
             </p>
           </div>
         </div>
@@ -226,11 +237,12 @@ export function LandBuyerHub({ lead }: Props) {
           <div className="h-5 w-5 border-2 border-gray-300 border-t-[#1B3A5C] rounded-full animate-spin mr-2" />
           Loading buyers…
         </div>
-      ) : (
+      ) : !savedBuyers ? null : (
         <div className="space-y-8">
           {(Object.keys(BUYER_TYPES) as LandBuyerType[]).map(type => (
             <BuyerTypeSection key={type} type={type} buyers={buyers} lead={lead} />
           ))}
+          {buyers.some(b => !b.land_buyer_type || !(b.land_buyer_type in BUYER_TYPES)) && <BuyerTypeSection type="uncategorized" buyers={buyers} lead={lead} />}
         </div>
       )}
 

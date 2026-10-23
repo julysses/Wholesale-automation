@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
+const LotOperations = lazy(() => import('@/components/lists/LotOperations').then(module => ({ default: module.LotOperations })));
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ function Pipeline({ actor }: { actor: string }) {
   const [showReview, setShowReview] = useState(false);
   const [showHandoff, setShowHandoff] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [showLots, setShowLots] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
   async function exportDialer() {
@@ -105,6 +107,12 @@ function Pipeline({ actor }: { actor: string }) {
       <p className="text-sm text-gray-600">Batch matching prepares the verification queue. It does not confirm an active foreclosure, authorize tracing, or send outreach.</p>
     </section>
     <ForeclosureActions />
+    <section aria-label="Lot underwriting review" className="rounded-xl border bg-white p-5 space-y-3">
+      <h2 className="text-xl font-semibold">Lot underwriting review</h2>
+      <p>Review property evidence before handing a lot to underwriting. This does not authorize outreach.</p>
+      <Button onClick={() => setShowLots(!showLots)}>{showLots ? 'Hide lot reviews' : 'Open lot reviews'}</Button>
+      {showLots && <Suspense fallback={<p>Loading lot reviews…</p>}><LotOperations /></Suspense>}
+    </section>
     <section aria-label="Property verification" className="rounded-xl border bg-white p-5 space-y-3">
       <h2 className="text-xl font-semibold">Verify properties for the CRM</h2>
       <p>Match each county notice to an official property record. Existing CRM matches are linked before a new lead is created.</p>

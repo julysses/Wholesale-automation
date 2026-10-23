@@ -1,0 +1,42 @@
+{
+  "production_baseline": "19c117ad7a8ab10656bf116a2a6835508f7f1f01",
+  "status": "local_only",
+  "backend_passed": 1261,
+  "pipeline_passed": 231,
+  "frontend_passed": 240,
+  "connected_journeys_passed": 10,
+  "native_concurrency_workers": 8,
+  "external_provider_calls": 0,
+  "historical_migrations_unchanged": 103,
+  "protected_modules_unchanged": [
+    "web/api/lead_forms_api.py",
+    "web/api/twilio_webhooks.py",
+    "web/api/nurture_api.py",
+    "tools/retell_reply_routing.py",
+    "tools/retell_sms.py",
+    "tools/retell_api_chat.py",
+    "tools/retell_api_receipts.py",
+    "tools/retell_api_turns.py",
+    "tools/retell_app_dispatch.py",
+    "tools/retell_app_routing.py",
+    "tools/retell_app_automatic.py",
+    "tools/sms_controls.py",
+    "tools/seller_reply_email.py",
+    "tools/twilio_receipts.py",
+    "frontend/src/hooks/useNotifications.ts",
+    "frontend/src/components/layout/NotificationPanel.tsx",
+    "schemas/outreach.py"
+  ],
+  "intentional_protected_module_changes": [
+    "tools/sms_client.py",
+    "tools/retell_form_sms.py"
+  ],
+  "logs_sha256": {
+    "facebook-fix-backend.log": "fcba66fa9b63edb1d75593a5f185e073394bed49a704eede6fef2df77fef91c6",
+    "facebook-fix-pipeline.log": "f19cf862abf2b189cd7fe1dc72383af39b6a3e427e7e1e433843484d64ebb49c",
+    "facebook-fix-frontend.log": "303975f1a1698ebfa7034152aa9fee0af17d2fa26d5d924256e5a43dea08f295",
+    "facebook-fix-frontend-bounded.log": "ec7ae51044bd767b850e4a4b30fe5f1afb634caadee391b76aef13745f1c984e",
+    "facebook-fix-sql.log": "0d209a889af4ee5b51fbc1e889309c538d1d155a95f78c7d08e34c9d4ade238d",
+    "local-lead-journeys.log": "2e1578e26da2178ac801bb7731b093c7ccb06808ebf0a1eea61396cb1ab11fbf"
+  }
+}

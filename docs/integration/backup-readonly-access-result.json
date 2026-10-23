@@ -1,0 +1,29 @@
+{
+  "observed_at": "2026-10-23T16:44:58.691444+00:00",
+  "scope": "approved temporary read-only login and catalog/permission probe only",
+  "probe_passed": true,
+  "credential_ttl_seconds": 300,
+  "password_expiry": "2026-10-23T16:49:57.658359+00:00",
+  "tls": "verify-full with CA linked from authenticated Supabase dashboard",
+  "public_ca_sha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7",
+  "effective_role": "supabase_read_only_user",
+  "explicit_transaction_read_only": true,
+  "scoped_tables": 128,
+  "scoped_tables_with_select": 128,
+  "scoped_tables_with_any_insert_update_delete_truncate": 0,
+  "effective_role_bypass_rls": true,
+  "login_can_create_roles_or_databases": false,
+  "login_superuser": false,
+  "connections_closed": true,
+  "credentials_persisted": false,
+  "customer_rows_exported": 0,
+  "application_writes": 0,
+  "backup_or_restore_verified": false,
+  "limitations": [
+    "native pooler did not retain startup read-only option; explicit transaction required",
+    "login NOINHERIT requires SET LOCAL ROLE into approved read-only parent",
+    "broad read-only role can see sensitive tables; export scope must exclude Vault and operational replay inputs",
+    "password expiry blocks new login but does not remove role record or terminate existing sessions; probe connections closed",
+    "no proof yet of complete export, snapshot consistency, protected storage or compatible isolated restore"
+  ]
+}

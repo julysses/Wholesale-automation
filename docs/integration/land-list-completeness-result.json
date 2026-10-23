@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-22",
+  "source_sha256": "38502585aef22e43f40d8676148f45e3aecf1ec455b0fe39d4f2bd007faf49be",
+  "test_sha256": "1feeb5bc8a1585074bdf01a36ba6063dc6dc22fca889ce60bf5ed8e26f5a7033",
+  "new_regression_cases": 9,
+  "reproduction": "seven of initial eight cases failed before repair; range-ignoring case separately failed before early identity guard",
+  "simulated_max_records": 1003,
+  "full_frontend_suite": {
+    "files": 53,
+    "passed": 254,
+    "max_workers": 4
+  },
+  "build": "passed",
+  "lint_gate": "passed",
+  "existing_lint_findings": 143,
+  "checks": [
+    "API row cap and full totals",
+    "25-card navigation and late-record search/filter",
+    "partial read is not empty",
+    "last complete result preserved on refresh error and recovered",
+    "exact count required",
+    "count change and duplicate identities refused",
+    "verified empty state",
+    "import invalidation immediately refreshes total",
+    "dead records excluded from comping",
+    "range-ignoring read bounded by first repeated identity"
+  ],
+  "scope": "React component tests with simulated database responses; no production writes, providers or real-browser acceptance"
+}

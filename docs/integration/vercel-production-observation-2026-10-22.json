@@ -1,0 +1,25 @@
+{
+  "observed_date": "2026-10-22",
+  "source": "authenticated Vercel deployment metadata and retained build events",
+  "canonical_url": "https://wholesale-automation.vercel.app",
+  "deployment_id": "dpl_Dwjn7sjLUB5C9X2JsoezbSKjJ6go",
+  "state": "READY",
+  "target": "production",
+  "source_commit": "a89815126d9a98ced016167d8e383641d133135f",
+  "entrypoint": "api/index.py",
+  "runtime": "python3.12",
+  "memory_mb": 2048,
+  "timeout_seconds": 300,
+  "regions": [
+    "iad1"
+  ],
+  "artifact_digest_suffix": "50b5087e39c0a3b834e57c74bc1b547bc45bf4d883460c3a1899bfc245c685e9",
+  "artifact_bytes": 61328573,
+  "build_cli": "64.5.0",
+  "build_installer": "uv 0.10.11",
+  "python_selection": "No explicit selector in released source; build log selected Python 3.12 default",
+  "sending_flags": "unverified; dashboard email verification required",
+  "runtime_log_window": "30m error/fatal grouped query returned no groups; not all-time or business acceptance",
+  "candidate_deployed": false,
+  "production_mutations": 0
+}

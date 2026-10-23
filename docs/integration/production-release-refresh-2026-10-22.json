@@ -1,0 +1,110 @@
+{
+  "captured_at": "2026-10-22T23:07:56.303225+00:00",
+  "read_only": true,
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "deployment": {
+    "id": "dpl_Dwjn7sjLUB5C9X2JsoezbSKjJ6go",
+    "state": "READY",
+    "createdAt": 1792524369254,
+    "target": "production",
+    "source": "a89815126d9a98ced016167d8e383641d133135f",
+    "sourceRef": "a89815126d9a98ced016167d8e383641d133135f"
+  },
+  "migrations": {
+    "count": 92,
+    "latest": {
+      "version": "20261020192531",
+      "name": "facebook_inquiry_sms_receipts"
+    },
+    "candidate_forward_applied": 0
+  },
+  "buyer_data": {
+    "buyers": 0,
+    "captured_at": "2026-10-22T23:07:56.303225+00:00",
+    "transactions": 0,
+    "active_buyers": 0,
+    "active_cron_jobs": [
+      {
+        "name": "launch-monitor-every-15m",
+        "active": true
+      },
+      {
+        "name": "refresh-lead-retention",
+        "active": true
+      }
+    ],
+    "buyers_with_history": 0,
+    "max_history_per_buyer": 0,
+    "transactions_without_apn": 0,
+    "transactions_without_date": 0,
+    "nonempty_parcels_shared_across_buyers": 0
+  },
+  "saved_pause_settings": {
+    "captured_at": "2026-10-22T23:10:13.558766+00:00",
+    "ingest_settings": {
+      "outreach_enabled": false,
+      "daily_trace_cap_cents": 0
+    },
+    "saved_boolean_settings": []
+  },
+  "limitations": [
+    "Database saved settings do not prove Vercel environment overrides",
+    "Two existing active database cron jobs are monitoring/retention; deployed Vercel SMS cron remains configured",
+    "Zero existing buyers does not prove future import maximum-volume latency or event-level APN semantics",
+    "No production backup/restore, operator JWT or carrier-delivery acceptance performed"
+  ],
+  "production_mutations": 0,
+  "schema_comparison": {
+    "old_captured_at": "2026-10-22T15:46:27.300685+00:00",
+    "new_captured_at": "2026-10-22T23:05:56.586937+00:00",
+    "comparison": {
+      "views": {
+        "equal": true,
+        "count": 17
+      },
+      "tables": {
+        "equal": true,
+        "count": 101
+      },
+      "indexes": {
+        "equal": true,
+        "count": 113
+      },
+      "policies": {
+        "equal": true,
+        "count": 127
+      },
+      "triggers": {
+        "equal": true,
+        "count": 28
+      },
+      "constraints": {
+        "equal": true,
+        "count": 395
+      },
+      "schema_acls": {
+        "equal": true,
+        "count": 3
+      },
+      "default_acls": {
+        "equal": true,
+        "count": null
+      },
+      "view_security": {
+        "equal": true,
+        "count": 17
+      },
+      "server_version": {
+        "equal": true,
+        "count": null
+      }
+    }
+  },
+  "function_comparison": {
+    "old": 121,
+    "current": 121,
+    "added": [],
+    "removed": [],
+    "changed": []
+  }
+}

@@ -43,6 +43,10 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
   const [market, setMarket] = useState('');
   const [cashOnly, setCashOnly] = useState(false);
   const [entitiesOnly, setEntitiesOnly] = useState(false);
+  const [reference, setReference] = useState<string | null>(null);
+  const [uncertain, setUncertain] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<Record<string, number> | null>(null);
   const [logId, setLogId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -53,6 +57,10 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
       toast.error('Please upload a CSV file');
       return;
     }
+    if (f.size > 4_000_000) { toast.error('Buyer CSV exceeds the 4 MB upload limit'); return; }
+    setReference(crypto.randomUUID());
+    setFailure(null);
+    setUncertain(false);
     setFile(f);
     // Quick preview parse
     Papa.parse(f, {
@@ -98,11 +106,13 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
   };
 
   const handleSubmit = async () => {
-    if (!file) return;
+    if (!file || !reference || step === 'importing') return;
     setStep('importing');
+    setUncertain(true);
     try {
       const form = new FormData();
       form.append('file', file);
+      form.append('request_id', reference);
       form.append('market', market);
       form.append('cash_only', String(cashOnly));
       form.append('entities_only', String(entitiesOnly));
@@ -111,13 +121,33 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
         method: 'POST',
         body: form,
       });
-      if (!resp.ok) throw new Error(await resp.text());
+      if (!resp.ok) {
+        setUncertain(![409,413,422].includes(resp.status));
+        throw new Error(await resp.text());
+      }
       const data = await resp.json();
+      const keys = ['buyers_created','buyers_existing','transactions_created','transactions_existing','rows_total','rows_skipped'];
+      if (data.status !== 'complete' || data.import_id !== reference || data.import_log_id !== reference
+        || data.outreach_authorized !== false || typeof data.replayed !== 'boolean'
+        || keys.some(key => !Number.isInteger(data[key]) || data[key] < 0)
+        || data.rows_skipped > data.rows_total
+        || data.transactions_created + data.transactions_existing !== data.rows_total - data.rows_skipped
+        || !Array.isArray(data.buyer_ids) || data.buyer_ids.length !== data.buyers_created + data.buyers_existing
+        || data.buyer_ids.some((id: unknown) => typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id))
+        || new Set(data.buyer_ids).size !== data.buyer_ids.length) {
+        setUncertain(true);
+        throw new Error('Import receipt could not be confirmed. Retry this same import.');
+      }
+      setUncertain(false);
+      setFailure(null);
+      setOutcome(data);
+      setTotalRows(data.rows_total);
       setLogId(data.import_log_id);
       setStep('done');
-      onImported?.();
+      try { onImported?.(); } catch { toast.error('Import saved; refresh the buyer list to see it.'); }
     } catch (err) {
-      toast.error(`Import failed: ${err}`);
+      setFailure(String(err));
+      toast.error(`Import needs attention: ${err}`);
       setStep('preview');
     }
   };
@@ -128,11 +158,17 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
     setPreview([]);
     setTotalRows(0);
     setLogId(null);
+    setReference(null);
+    setOutcome(null);
+    setFailure(null);
+    setUncertain(false);
   };
 
   return (
-    <Modal open={open} onClose={() => { reset(); onClose(); }} title="Import Buyer List" size="xl">
+    <Modal open={open} onClose={() => { if (step === 'importing') return; if (!uncertain) reset(); onClose(); }} title="Import Buyer List" size="xl">
       <div className="p-6 space-y-5">
+
+        {failure && <div role="alert" className="rounded-lg border border-amber-200 p-3 text-sm"><p>{failure}</p><p>{uncertain ? 'Outcome unconfirmed. Keep this file and reference; retry to recover the saved receipt.' : 'No partial batch was saved. Review the file or matching history before retrying.'}</p><p>Import reference: {reference}</p></div>}
 
         {/* ── Step: Upload ─────────────────────────────────────────────── */}
         {step === 'upload' && (
@@ -155,7 +191,7 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
                 ref={fileRef}
                 type="file"
                 accept=".csv"
-                className="hidden"
+                aria-label="Buyer CSV file" className="hidden"
                 onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }}
               />
             </div>
@@ -230,17 +266,17 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <p>
-                The parser will group rows by buyer entity, compute IBIE scores,
-                and deduplicate by APN. Existing buyers with matching phone/entity
-                will be enriched rather than duplicated.
+                The complete file is saved together with an import receipt. Existing buyer
+                controls and history are preserved. Conflicting identities or purchase
+                history require review. Imported contact details do not grant messaging consent.
               </p>
             </div>
 
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => { setStep('upload'); setFile(null); }}>Back</Button>
+              <Button variant="outline" disabled={uncertain} onClick={() => { setStep('upload'); setFile(null); }}>Back</Button>
               <Button onClick={handleSubmit}>
                 <Upload className="h-4 w-4 mr-2" />
-                Import {file?.name}
+                {uncertain ? 'Retry original import' : `Import ${file?.name}`}
               </Button>
             </div>
           </div>
@@ -250,9 +286,9 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
         {step === 'importing' && (
           <div className="flex flex-col items-center py-10 gap-4">
             <Loader2 className="h-12 w-12 text-[#E8720C] animate-spin" />
-            <p className="font-semibold text-gray-700">Parsing and scoring buyers…</p>
+            <p className="font-semibold text-gray-700">Saving buyers and purchase history…</p>
             <p className="text-sm text-gray-400">
-              Large files may take up to 30 seconds. You'll be notified when complete.
+              Wait for the confirmed import receipt. No outreach is started.
             </p>
           </div>
         )}
@@ -261,9 +297,11 @@ export function BuyerImportModal({ open, onClose, onImported }: BuyerImportModal
         {step === 'done' && (
           <div className="flex flex-col items-center py-10 gap-4">
             <CheckCircle2 className="h-12 w-12 text-green-500" />
-            <p className="font-semibold text-gray-700">Import queued successfully!</p>
+            <p className="font-semibold text-gray-700">Import saved and confirmed</p>
             <p className="text-sm text-gray-500">
-              Buyers are being scored and saved in the background.
+              {totalRows} source rows reviewed. {outcome?.buyers_created} buyers created, {outcome?.buyers_existing} existing.
+              {' '}{outcome?.transactions_created} purchases added, {outcome?.transactions_existing} already recorded.
+              No messaging consent was granted.
               {logId && <> Import log ID: <code className="text-xs bg-gray-100 px-1 rounded">{logId}</code></>}
             </p>
             <Button onClick={() => { reset(); onClose(); }}>Done</Button>

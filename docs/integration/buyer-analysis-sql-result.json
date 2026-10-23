@@ -1,0 +1,11 @@
+{
+  "bounded_step": 20,
+  "concurrent_attempts": 8,
+  "full_history": 1003,
+  "paid_unknown_held": true,
+  "private_receipts": true,
+  "provider": "synthetic only",
+  "provider_calls_per_request": 1,
+  "real_sql": true,
+  "stale_input_preserved": true
+}

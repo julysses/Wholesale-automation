@@ -1,0 +1,14 @@
+{
+  "manual_buyer": "passed",
+  "concurrent_creates": 8,
+  "lost_response": "recovered without duplicate",
+  "cancellation": "durable; late save blocked or committed save recovered",
+  "deletion": "receipt retained; no resurrection",
+  "consent": "new defaults false; existing records preserved",
+  "role_immutability_rollback": "passed",
+  "provider_calls": 0,
+  "migration_count": 19,
+  "connected_intake_journeys": 10,
+  "intake_seconds": 123.04,
+  "provider_boundaries": "mocked/stubbed; no actual delivery proof"
+}

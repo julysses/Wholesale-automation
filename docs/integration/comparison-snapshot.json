@@ -1,0 +1,15 @@
+{
+  "base": "5c138f1afaaa37651682eff211bca2a56903a61c",
+  "collection": "8bec6d825071993d59bc623b346046c3f249fba2",
+  "production": "19c117ad7a8ab10656bf116a2a6835508f7f1f01",
+  "commits": "134\t96",
+  "collection_changed": 311,
+  "production_changed": 292,
+  "unique_paths": 431,
+  "both_changed": 172,
+  "both_identical": 124,
+  "both_divergent": 48,
+  "migration_paths": 69,
+  "source_worktree": "/Users/juliodominguez/Documents/Codex/2026-09-28/make-sure-to-review-my-wholesale/work/wholesale-sms-production",
+  "method": "Read-only Git object inspection and authenticated GitHub GET; no fetch/pull/checkout/merge or test execution."
+}

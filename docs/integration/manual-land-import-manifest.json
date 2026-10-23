@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-22",
+  "status": "local_candidate_only_not_deployed",
+  "migration": "20261022160020_integration_manual_land_import.sql",
+  "migration_count": 12,
+  "schema_before_runtime": true,
+  "outreach_authorized": false,
+  "api": "POST /api/land/imports",
+  "rpc": "public.import_manual_land_leads(uuid,uuid,jsonb)",
+  "receipt": "private.manual_land_imports",
+  "files": [
+    {
+      "path": "frontend/supabase/migrations/20261022160020_integration_manual_land_import.sql",
+      "sha256": "d5cdc466d4ae099f4f911b050a485e2b756e132a206230a49c9fda2f9453b73a"
+    },
+    {
+      "path": "web/api/land_import_api.py",
+      "sha256": "8b22bd67168fe00e0a4c2d3ef4ed4089e0848e622da083e10c00d87d20af062c"
+    },
+    {
+      "path": "web/app.py",
+      "sha256": "bbfd122514f19d9432290a5212f0f145e8311ef9251e84d352d2c27f6f6c1d06"
+    },
+    {
+      "path": "frontend/src/pages/LandLeads.tsx",
+      "sha256": "38502585aef22e43f40d8676148f45e3aecf1ec455b0fe39d4f2bd007faf49be"
+    },
+    {
+      "path": "frontend/src/components/leads/LeadImportModal.tsx",
+      "sha256": "72c29c2c72d119be26aa3a1b50d4a2b48f86ada39653d9967b232d2ae568a158"
+    },
+    {
+      "path": "frontend/tests/import-components.test.tsx",
+      "sha256": "244224d9014458a3882188bca4daf7008298d3af97933d613ebdff00bfbae92d"
+    },
+    {
+      "path": "tests/test_land_import_api.py",
+      "sha256": "3c4ab31d55f6ed98e06a6a3a932b18c7fc04859bbc3be216a218469d2175a0ec"
+    },
+    {
+      "path": "pipeline/integration/verify_land_import.py",
+      "sha256": "86296b012e4066517df6102e09f2a270bae867dde84696170e512b478d609139"
+    },
+    {
+      "path": "frontend/tests/land-list-completeness.test.tsx",
+      "sha256": "1feeb5bc8a1585074bdf01a36ba6063dc6dc22fca889ce60bf5ed8e26f5a7033"
+    }
+  ],
+  "porting_note": "If released separately, append only the land import router registration to the production web/app.py; do not overwrite other routing from this integration file.",
+  "rollback": "Preserve receipt table and history. Keep manual imports unused if rolling back to the old runtime; it has the five-row bug. Do not drop receipts or replay historical migrations.",
+  "runtime_followup": "Complete checked land-list pagination, shared funnel/list cache, search, bounded rendering and visible failed refreshes; no additional schema change."
+}

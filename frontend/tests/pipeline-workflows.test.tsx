@@ -15,7 +15,7 @@ const deals = [
   { id: 'deal-1', lead_id: 'lead-1', deal_name: '123 Main St', updated_at:'2026-10-08T12:00:00Z', stage: 'offer_made', closing_date: '2026-09-15' },
   { id: 'deal-2', lead_id: 'lead-2', deal_name: '456 Oak St', updated_at:'2026-10-08T12:00:00Z', stage: 'closed', actual_close_date: '2026-09-01' },
 ] as Deal[];
-const leads = [{ id: 'lead-1', property_address: '123 Main St', city: 'Dallas', mao: 125000 }] as Lead[];
+const leads = [{ id: 'lead-1', property_address: '123 Main St', city: 'Dallas', mao: 125000, offer_price: 119000 }] as Lead[];
 
 vi.mock('@/hooks/useDeals', () => ({
   useDeals: () => ({ data: deals, isLoading: false, error: mocks.error, refetch: mocks.refetch }),
@@ -118,4 +118,30 @@ it('shows a query failure with retry instead of an empty pipeline', () => {
   expect(screen.getByRole('alert')).toHaveTextContent('Unable to load deals: Offline');
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   expect(mocks.refetch).toHaveBeenCalled();
+});
+
+
+it('requires manual prices and clears them when the selected property changes', async () => {
+  mocks.leads.mockReturnValue({ data: { data: [...leads,
+    { id: 'lead-2', property_address: '456 Oak St', city: 'Dallas', offer_price: 245000 }], count: 2 }, isLoading: false });
+  render(<Pipeline />);
+  fireEvent.click(screen.getByRole('button', { name: 'New Deal', exact: true }));
+  fireEvent.change(screen.getByLabelText('Lead *'), { target: { value: 'lead-1' } });
+  expect(screen.getByLabelText('Contract Price')).toHaveValue(null);
+  fireEvent.change(screen.getByLabelText('Contract Price'), { target: { value: '130000' } });
+  fireEvent.change(screen.getByLabelText('Lead *'), { target: { value: 'lead-2' } });
+  expect(screen.getByLabelText('Contract Price')).toHaveValue(null);
+  fireEvent.change(screen.getByLabelText('Contract Price'), { target: { value: '230000' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create Deal' }));
+  await waitFor(() => expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ lead_id: 'lead-2', contract_price: 230000 })));
+});
+
+it('keeps a cleared manual price unknown rather than submitting zero', async () => {
+  render(<Pipeline />);
+  fireEvent.click(screen.getByRole('button', { name: 'New Deal', exact: true }));
+  fireEvent.change(screen.getByLabelText('Lead *'), { target: { value: 'lead-1' } });
+  fireEvent.change(screen.getByLabelText('Contract Price'), { target: { value: '130000' } });
+  fireEvent.change(screen.getByLabelText('Contract Price'), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create Deal' }));
+  await waitFor(() => expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ contract_price: undefined })));
 });

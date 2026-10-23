@@ -29,6 +29,7 @@ const LandLeads = lazy(() => import('@/pages/LandLeads').then(m => ({ default: m
 const BuyerIntelligence = lazy(() => import('@/pages/BuyerIntelligence').then(m => ({ default: m.BuyerIntelligence })));
 const LeadGenEngine = lazy(() => import('@/pages/LeadGenEngine').then(m => ({ default: m.LeadGenEngine })));
 const MasterListBuilder = lazy(() => import('@/pages/MasterListBuilder').then(m => ({ default: m.MasterListBuilder })));
+const BuyerEnrollment = lazy(() => import('@/pages/BuyerEnrollment').then(m => ({ default: m.BuyerEnrollment })));
 const LeadForm = lazy(() => import('@/pages/LeadForm').then(m => ({ default: m.LeadForm })));
 const FacebookAdsCommandCenter = lazy(() => import('@/pages/FacebookAdsCommandCenter').then(m => ({ default: m.FacebookAdsCommandCenter })));
 const DevelopmentCommandCenter = lazy(() => import('@/pages/DevelopmentCommandCenter').then(m => ({ default: m.DevelopmentCommandCenter })));
@@ -312,6 +313,9 @@ export default function App() {
       <BrowserRouter>
         <Suspense fallback={<Spinner />}>
           <Routes>
+            <Route path="/buyer-sms" element={<BuyerEnrollment />} />
+            <Route path="/buyer-sms/privacy" element={<BuyerEnrollment />} />
+            <Route path="/buyer-sms/terms" element={<BuyerEnrollment />} />
             <Route path="/form/:formId" element={<LeadForm />} />
             <Route path="*" element={<OperatorApp />} />
           </Routes>

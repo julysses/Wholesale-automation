@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BuyerChangeRecovery } from '@/components/buyers/BuyerChangeRecovery';
 import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer, type BuyerWrite } from '@/hooks/useBuyers';
 import { useBuyerMatcher } from '@/hooks/useAIAgent';
 import { useDeals } from '@/hooks/useDeals';
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import type { Buyer } from '@/types';
+import type { Buyer, LandBuyerType } from '@/types';
 import { getTierClass, phoneFormat, formatDate, formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { Plus, Search, MoreHorizontal, Trash2, Edit, Bot } from 'lucide-react';
@@ -28,12 +29,16 @@ const SOURCE_OPTIONS = [
 export function Buyers() {
   const [search, setSearch] = useState('');
   const [tier, setTier] = useState('');
+  const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
   const [editBuyer, setEditBuyer] = useState<Buyer | null>(null);
   const [matchOpen, setMatchOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const { data: buyers = [], isLoading, error: buyersError, refetch } = useBuyers({ search, tier: tier || undefined });
+  const { data: savedBuyers, isLoading, isFetching, error: buyersError, refetch } = useBuyers({ search, tier: tier || undefined });
+  const buyers = savedBuyers ?? [];
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(buyers.length / 25)));
+  const visible = buyers.slice((currentPage - 1) * 25, currentPage * 25);
   const deleteBuyer = useDeleteBuyer();
 
   return (
@@ -42,7 +47,7 @@ export function Buyers() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Buyers</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{buyers.length} buyers in database</p>
+          <p className="text-sm text-gray-500 mt-0.5">{savedBuyers ? `${buyers.length.toLocaleString()} buyers ${search || tier ? 'matching filters' : 'in database'}` : isLoading ? 'Loading buyer totals…' : 'Buyer totals unavailable'}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" icon={<Bot className="h-4 w-4" />} onClick={() => setMatchOpen(true)}>
@@ -54,6 +59,8 @@ export function Buyers() {
         </div>
       </div>
 
+      <BuyerChangeRecovery />
+
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
         <div className="relative flex-1 min-w-48">
@@ -61,15 +68,20 @@ export function Buyers() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search buyers..."
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            aria-label="Search buyers" placeholder="Search buyers..."
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#1B3A5C]"
           />
         </div>
-        <Select value={tier} onChange={(e) => setTier(e.target.value)}
+        <Select aria-label="Buyer tier" value={tier} onChange={(e) => { setTier(e.target.value); setPage(1); }}
           options={[{ value: '', label: 'All Tiers' }, { value: 'A', label: 'Tier A' }, { value: 'B', label: 'Tier B' }, { value: 'C', label: 'Tier C' }]}
           className="w-32" />
       </div>
+
+      {buyersError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+        <p>Unable to load buyers: {buyersError.message}. {savedBuyers && 'Showing last confirmed buyer records.'}</p>
+        <Button variant="outline" size="sm" disabled={isFetching} onClick={() => void refetch()}>Retry</Button>
+      </div>}
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -85,11 +97,8 @@ export function Buyers() {
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr><td colSpan={13} className="px-4 py-6"><TableSkeleton rows={6} cols={7} /></td></tr>
-              ) : buyersError ? (
-                <tr><td colSpan={13} className="px-4 py-8 text-center">
-                  <p role="alert" className="text-red-600">Unable to load buyers: {buyersError.message}</p>
-                  <Button variant="outline" size="sm" onClick={() => void refetch()}>Retry</Button>
-                </td></tr>
+              ) : !savedBuyers ? (
+                <tr><td colSpan={13} className="px-4 py-8 text-center">Buyer records unavailable.</td></tr>
               ) : buyers.length === 0 ? (
                 <tr>
                   <td colSpan={13} className="px-4 py-16 text-center">
@@ -97,7 +106,7 @@ export function Buyers() {
                     <p className="text-xs text-gray-300 mt-1">Add your first buyer to get started</p>
                   </td>
                 </tr>
-              ) : buyers.map((buyer) => (
+              ) : visible.map((buyer) => (
                 <tr key={buyer.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
                     {buyer.first_name} {buyer.last_name}
@@ -120,8 +129,8 @@ export function Buyers() {
                   <td className="px-4 py-3 text-xs text-gray-500">
                     {(buyer.target_zips || []).slice(0, 3).join(', ')}{(buyer.target_zips?.length || 0) > 3 ? '…' : ''}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-600">{buyer.max_price ? formatCurrency(buyer.max_price) : '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{buyer.close_speed_days ? `${buyer.close_speed_days}d` : '—'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-gray-600">{buyer.max_price != null ? formatCurrency(buyer.max_price) : '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{buyer.close_speed_days != null ? `${buyer.close_speed_days}d` : '—'}</td>
                   <td className="px-4 py-3">
                     {buyer.pof_verified
                       ? <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">✓ Verified</span>
@@ -142,7 +151,7 @@ export function Buyers() {
                             <Edit className="h-3.5 w-3.5" /> Edit
                           </button>
                           <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                            onClick={() => { if (confirm('Delete buyer?')) deleteBuyer.mutate(buyer.id); setOpenMenuId(null); }}>
+                            onClick={() => { if (confirm(`Delete ${buyer.first_name} ${buyer.last_name} and all their purchase history? Retained consent and outreach receipts remain. This cannot be undone.`)) deleteBuyer.mutate(buyer); setOpenMenuId(null); }}>
                             <Trash2 className="h-3.5 w-3.5" /> Delete
                           </button>
                         </div>
@@ -156,6 +165,14 @@ export function Buyers() {
         </div>
       </div>
 
+      {savedBuyers && <nav aria-label="Buyer record pages" className="flex justify-between items-center text-sm">
+        <span>{buyers.length ? (currentPage - 1) * 25 + 1 : 0}–{Math.min(currentPage * 25, buyers.length)} of {buyers.length.toLocaleString()} buyers</span>
+        <div className="flex gap-2">
+          <Button variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous buyer page</Button>
+          <Button variant="outline" disabled={currentPage * 25 >= buyers.length} onClick={() => setPage(currentPage + 1)}>Next buyer page</Button>
+        </div>
+      </nav>}
+
       {(addOpen || editBuyer) && <BuyerFormModal key={editBuyer?.id ?? 'new'} open buyer={editBuyer} onClose={() => { setAddOpen(false); setEditBuyer(null); }} />}
       <BuyerMatchModal open={matchOpen} onClose={() => setMatchOpen(false)} />
     </div>
@@ -163,12 +180,8 @@ export function Buyers() {
 }
 
 // ─── Buyer Form Modal ─────────────────────────────────────────────────────────
-function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () => void; buyer?: Buyer | null }) {
-  const createBuyer = useCreateBuyer();
-  const updateBuyer = useUpdateBuyer();
-  const isEdit = !!buyer;
-
-  const [form, setForm] = useState({
+function buyerFormValues(buyer?: BuyerWrite | null) {
+  return {
     first_name: buyer?.first_name || '',
     last_name: buyer?.last_name || '',
     company: buyer?.company || '',
@@ -185,7 +198,20 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
     pof_verified: buyer?.pof_verified || false,
     pof_amount: buyer?.pof_amount?.toString() ?? '',
     notes: buyer?.notes || '',
-  });
+    active: buyer ? (buyer.active ?? null) as boolean | null : true,
+    buys_land: buyer ? (buyer.buys_land ?? null) as boolean | null : false,
+    buys_infill: buyer ? (buyer.buys_infill ?? null) as boolean | null : false,
+    land_buyer_type: (buyer?.land_buyer_type ?? '') as LandBuyerType | '',
+  };
+}
+
+function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () => void; buyer?: Buyer | null }) {
+  const createBuyer = useCreateBuyer();
+  const updateBuyer = useUpdateBuyer();
+  const isEdit = !!buyer;
+  const [editableForm, setForm] = useState(() => buyerFormValues(buyer));
+  const form = !isEdit && createBuyer.pending ? buyerFormValues(createBuyer.pending.buyer) : editableForm;
+  const createBlocked = !isEdit && (!!createBuyer.pending || !!createBuyer.recoveryError || createBuyer.ready === false);
 
   const toggleArr = (key: 'strategy' | 'property_types', val: string) => {
     setForm((f) => ({
@@ -200,6 +226,7 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
     const { target_zips_str, ...fields } = form;
     const payload: BuyerWrite = {
       ...fields,
+      land_buyer_type: form.land_buyer_type || null,
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
       target_zips: target_zips_str.split(',').map((z) => z.trim()).filter(Boolean),
@@ -210,7 +237,7 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
     };
     try {
       if (isEdit && buyer) {
-        await updateBuyer.mutateAsync({ id: buyer.id, updates: payload });
+        await updateBuyer.mutateAsync({ id: buyer.id, updates: payload, expected: buyer });
       } else {
         await createBuyer.mutateAsync(payload);
       }
@@ -223,6 +250,21 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Buyer' : 'Add Buyer'} size="xl">
       <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        {!isEdit && <p className="text-sm text-gray-600">Adding a buyer does not grant SMS or email consent. Review each channel separately before outreach.</p>}
+        {!isEdit && createBuyer.ready === false && !createBuyer.recoveryError && <p role="status">Checking for a previous buyer save…</p>}
+        {!isEdit && createBuyer.recoveryError && <p role="alert">{createBuyer.recoveryError}</p>}
+        {!isEdit && createBuyer.pending && <section aria-label="Recover buyer save" className="rounded border p-3 space-y-2">
+          <p role="status">A previous buyer save is unconfirmed. The original details are locked until its result is recovered or the request is stopped.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" disabled={createBuyer.isPending || createBuyer.checking}
+              onClick={() => void createBuyer.checkPending().then(receipt => { if (receipt?.state !== 'pending') onClose(); }).catch(() => {})}>Check saved result</Button>
+            <Button type="button" disabled={createBuyer.isPending || createBuyer.checking}
+              onClick={() => void createBuyer.mutateAsync(createBuyer.pending!.buyer).then(onClose).catch(() => {})}>Retry original save</Button>
+            <Button type="button" variant="outline" disabled={createBuyer.isPending || createBuyer.checking}
+              onClick={() => void createBuyer.cancelPending().then(onClose).catch(() => {})}>Stop pending request</Button>
+          </div>
+        </section>}
+        <fieldset disabled={createBlocked || createBuyer.isPending || updateBuyer.isPending} className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <Input label="First Name *" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
           <Input label="Last Name *" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
@@ -284,11 +326,27 @@ function BuyerFormModal({ open, onClose, buyer }: { open: boolean; onClose: () =
           </div>
         </div>
 
+        <fieldset className="rounded-lg border border-gray-200 p-3 space-y-3">
+          <legend className="text-sm font-medium">Buyer availability and land preferences</legend>
+          <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={form.active === true}
+            onChange={e => setForm({ ...form, active: e.target.checked })} />Active buyer</label>
+          <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={form.buys_land === true}
+            onChange={e => setForm({ ...form, buys_land: e.target.checked })} />Buys land</label>
+          <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={form.buys_infill === true}
+            onChange={e => setForm({ ...form, buys_infill: e.target.checked })} />Buys infill lots</label>
+          <Select label="Land buyer category" value={form.land_buyer_type}
+            onChange={e => setForm({ ...form, land_buyer_type: e.target.value as LandBuyerType | '' })}
+            options={[{ value: '', label: 'Needs category review' }, { value: 'builder', label: 'Builder' },
+              { value: 'land_banker', label: 'Land banker' }, { value: 'trailer_park', label: 'Trailer park owner' },
+              { value: 'mineral_rights', label: 'Mineral rights buyer' }]} />
+        </fieldset>
+
         <Textarea id="buyer-notes" label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
+        </fieldset>
 
         <div className="flex justify-end gap-3">
           <Button variant="outline" type="button" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={createBuyer.isPending || updateBuyer.isPending}>
+          <Button type="submit" disabled={createBlocked} loading={createBuyer.isPending || updateBuyer.isPending}>
             {isEdit ? 'Save Changes' : 'Add Buyer'}
           </Button>
         </div>

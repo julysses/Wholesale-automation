@@ -6,7 +6,6 @@ from uuid import uuid4
 import pytest
 from fastapi import BackgroundTasks, HTTPException
 
-from web import api
 from web.api import buyers_api, lead_forms_api, marketing_api
 
 
@@ -82,6 +81,27 @@ class Database:
         self.pages, self.inserts, self.updates = [], [], []
         self.fail_inserts = set()
     def table(self, name): return Table(self, name)
+    def rpc(self, name, params):
+        # Unit boundary only. Actual latches/ACLs/native receipts are exercised by
+        # verify_buyer_outreach.py on the restored PostgreSQL catalog.
+        def execute():
+            attempts=getattr(self,'attempts',{});self.attempts=attempts
+            key=params['p_id']
+            if name in {'claim_buyer_outreach','claim_buyer_sms'}:
+                if key in attempts:return SimpleNamespace(data={**attempts[key],'claimed':False})
+                buyer=next((b for b in self.tables.get('buyers',[]) if b['id']==params['p_buyer']),{})
+                why=params['p_hold']
+                if buyer.get('active') is not True or buyer.get(params.get('p_channel','sms')+'_opt_in') is not True:why='buyer_unavailable'
+                if params.get('p_channel','sms')=='sms':why='buyer_sms_route_unavailable'
+                value={'id':key,'claimed':not why,'status':'skipped' if why else 'submitting','reason':why}
+                attempts[key]=value
+            elif name=='finish_buyer_outreach':
+                value={**attempts[key],'claimed':False,'status':params['p_status']}
+                attempts[key]=value
+            else:raise AssertionError('Unexpected RPC')
+            return SimpleNamespace(data=value)
+        return SimpleNamespace(execute=execute)
+
 
 
 class FakeSMS:
@@ -105,28 +125,24 @@ def sms(monkeypatch):
     return FakeSMS
 
 
+def operator_request():
+    return SimpleNamespace(state=SimpleNamespace(user_id='00000000-0000-4000-8000-000000000777'))
+
+
 def buyer_row(**kwargs):
     return {"id": str(uuid4()), "first_name": "Test", "last_name": "Buyer", "phone": "+12145550100", "sms_opt_in": True, "active": True, **kwargs}
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("sent,dry_run,expected", [(True, False, "sent_count"), (False, False, "failed_count"), (True, True, "dry_run_count")])
-async def test_buyer_sms_uses_real_client_contract_and_reports_delivery(monkeypatch, sms, sent, dry_run, expected):
-    buyer = buyer_row()
-    db = Database({"buyers": [buyer]})
-    monkeypatch.setattr(buyers_api, "_get_supabase", lambda: db)
-    sms.result, sms.dry_run = sent, dry_run
-    background = BackgroundTasks()
-    result = await buyers_api.send_sms_blast(buyers_api.OutreachRequest(buyer_ids=[buyer["id"], buyer["id"]]), background)
-    assert result[expected] == 1
-    assert result["recipient_count"] == 1
-    assert len(sms.sends) == 1
-    assert not background.tasks
-    message, phone = sms.sends[0]
-    assert str(message.lead_id) == buyer["id"]
-    assert phone == buyer["phone"]
-    assert "Reply STOP to opt out." in message.body
-    assert bool(db.updates) is (sent and not dry_run)
+@pytest.mark.parametrize("sent,dry_run", [(True, False), (False, False), (True, True)])
+async def test_buyer_sms_keeps_inquiry_only_sender_unavailable(monkeypatch, sms, sent, dry_run):
+    buyer=buyer_row();db=Database({'buyers':[buyer]})
+    monkeypatch.setattr(buyers_api,'_get_supabase',lambda:db)
+    sms.result,sms.dry_run=sent,dry_run
+    result=await buyers_api.send_sms_blast(buyers_api.OutreachRequest(request_id=uuid4(),buyer_ids=[buyer['id'],buyer['id']]),operator_request())
+    assert result['skipped_count']==1 and result['recipient_count']==1
+    assert result['outcomes'][0]['reason']=='buyer_sms_route_unavailable'
+    assert not sms.sends
 
 
 @pytest.mark.asyncio
@@ -134,7 +150,7 @@ async def test_buyer_sms_skips_opt_out_inactive_and_shared_suppression(monkeypat
     buyers = [buyer_row(sms_opt_in=False), buyer_row(active=False), buyer_row()]
     db = Database({"buyers": buyers, "dnc_registry": [{"id": "suppressed", "phone_number": "2145550100"}]})
     monkeypatch.setattr(buyers_api, "_get_supabase", lambda: db)
-    result = await buyers_api.send_sms_blast(buyers_api.OutreachRequest(buyer_ids=[b["id"] for b in buyers]), BackgroundTasks())
+    result = await buyers_api.send_sms_blast(buyers_api.OutreachRequest(request_id=uuid4(),buyer_ids=[b["id"] for b in buyers]), operator_request())
     assert result["skipped_count"] == 3
     assert not sms.sends
 
@@ -143,7 +159,7 @@ async def test_buyer_sms_skips_opt_out_inactive_and_shared_suppression(monkeypat
 async def test_buyer_sms_requires_database_before_reporting_success(monkeypatch, sms):
     monkeypatch.setattr(buyers_api, "_get_supabase", lambda: None)
     with pytest.raises(HTTPException) as exc:
-        await buyers_api.send_sms_blast(buyers_api.OutreachRequest(buyer_ids=[str(uuid4())]), BackgroundTasks())
+        await buyers_api.send_sms_blast(buyers_api.OutreachRequest(request_id=uuid4(),buyer_ids=[str(uuid4())]), operator_request())
     assert exc.value.status_code == 503
     assert not sms.sends
 
@@ -206,72 +222,42 @@ async def test_form_persists_supported_qualification_without_missing_agent_metho
     assert "neutral defaults pending verification" in row["ai_qualification_summary"]
     assert "agent failed" not in caplog.text
 
-
-def test_import_finds_existing_row_beyond_postgrest_cap(monkeypatch):
-    rows = [{"id": f"lead-{i:04d}", "property_address": f"{i} Main Street", "city": "Dallas", "state": "TX"} for i in range(1002)]
-    db = Database({"leads": rows}, cap=500)
-    monkeypatch.setattr("tools.crm.get_supabase_client", lambda: db)
-    result = api.import_master_list(api.ImportMasterListRequest(rows=[api.ImportLeadRow(property_address="1001 Main St", city="dallas", zip_code="75201")], score_with_claude=False))
-    assert result["updated"] == 1
-    assert result["imported"] == 0
-    assert len(db.tables["leads"]) == 1002
-    assert [start for start, end in db.pages] == [0, 500, 1000, 1002]
-
-
-def test_import_keeps_same_street_in_different_cities_separate(monkeypatch):
-    db = Database()
-    monkeypatch.setattr("tools.crm.get_supabase_client", lambda: db)
-    result = api.import_master_list(api.ImportMasterListRequest(rows=[
-        api.ImportLeadRow(property_address="123 Main St", city="Dallas"),
-        api.ImportLeadRow(property_address="123 Main Street", city="Houston"),
-    ], score_with_claude=False))
-    assert result["imported"] == 2
-    assert {row["city"] for row in db.tables["leads"]} == {"Dallas", "Houston"}
-
-
-def test_import_new_rows_use_bounded_bulk_inserts(monkeypatch):
-    db = Database()
-    monkeypatch.setattr("tools.crm.get_supabase_client", lambda: db)
-    result = api.import_master_list(api.ImportMasterListRequest(rows=[api.ImportLeadRow(property_address=f"{i} Main St", city="Dallas") for i in range(501)], score_with_claude=False))
-    assert result["imported"] == 501
-    assert [len(rows) for table, rows in db.inserts] == [250, 250, 1]
-
-
-def test_reimport_unchanged_records_does_not_write_each_row(monkeypatch):
-    db = Database({"leads": [{"id": "existing", "property_address": "123 Main St", "city": "Dallas", "state": "TX", "status": "qualified_warm"}]})
-    monkeypatch.setattr("tools.crm.get_supabase_client", lambda: db)
-    result = api.import_master_list(api.ImportMasterListRequest(rows=[api.ImportLeadRow(property_address="123 Main St", city="Dallas")], score_with_claude=False))
-    assert result["updated"] == 1
-    assert db.updates == []
-    assert db.tables["leads"][0]["status"] == "qualified_warm"
+# CSV lookup, bulk task creation and unchanged-row preservation now execute
+# real PostgreSQL in pipeline/integration/verify_csv_import.py.
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("sent,configured,expected", [(True, True, "sent_count"), (False, True, "failed_count"), (True, False, "dry_run_count")])
+@pytest.mark.parametrize("sent,configured,expected", [(True, True, "sent_count"), (False, True, "unknown_count"), (True, False, "skipped_count")])
 async def test_buyer_email_preserves_reviewed_copy_and_delivery_results(monkeypatch, sent, configured, expected):
     buyer = buyer_row(email="buyer@example.test", email_opt_in=True)
     db = Database({"buyers": [buyer]})
     monkeypatch.setattr(buyers_api, "_get_supabase", lambda: db)
     deliveries = []
+    monkeypatch.setattr('web.api.buyer_outreach.settings.email_live_enabled',True)
+    monkeypatch.setattr('web.api.buyer_outreach.settings.email_allowed_recipients','')
     class FakeEmail:
         _provider = "mailgun"
         _configured = configured
-        def send(self, to_email, subject, body, html_body=None):
+        message_id=None
+        def send(self, to_email, subject, body, html_body=None, message_id=None):
+            self.message_id=message_id
             deliveries.append((to_email, subject, body, html_body))
             return sent
     monkeypatch.setattr("tools.email_client.EmailClient", FakeEmail)
     background = BackgroundTasks()
-    result = await buyers_api.send_email_blast(buyers_api.OutreachRequest(
+    result = await buyers_api.send_email_blast(buyers_api.OutreachRequest(request_id=uuid4(),
         buyer_ids=[buyer["id"]], custom_subject="Edited property subject",
         custom_message="Reviewed <details>\nSecond line",
-    ), background)
+    ), operator_request())
     assert result[expected] == 1
+    if not configured:
+        assert not deliveries
+        return
     assert len(deliveries) == 1
     assert deliveries[0][:3] == (buyer["email"], "Edited property subject", "Reviewed <details>\nSecond line")
     assert "&lt;details&gt;" in deliveries[0][3]
     assert "<br>" in deliveries[0][3]
     assert not background.tasks
-    assert bool(db.updates) is (sent and configured)
 
 
 @pytest.mark.asyncio
@@ -282,5 +268,5 @@ async def test_buyer_email_skips_opted_out_and_inactive(monkeypatch):
     class FakeEmail:
         def send(self, *args, **kwargs): raise AssertionError("Must not send")
     monkeypatch.setattr("tools.email_client.EmailClient", FakeEmail)
-    result = await buyers_api.send_email_blast(buyers_api.OutreachRequest(buyer_ids=[b["id"] for b in buyers]), BackgroundTasks())
+    result = await buyers_api.send_email_blast(buyers_api.OutreachRequest(request_id=uuid4(),buyer_ids=[b["id"] for b in buyers]), operator_request())
     assert result["skipped_count"] == 2

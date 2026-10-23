@@ -1,0 +1,362 @@
+{
+  "lints": [
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "count": 33,
+      "findings": [
+        {
+          "detail": "Table \\`private.retell_app_scheduler\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "retell_app_scheduler",
+            "type": "table",
+            "schema": "private"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`private.retell_sms_scheduler\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "retell_sms_scheduler",
+            "type": "table",
+            "schema": "private"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.email_delivery_events\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "email_delivery_events",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.email_messages\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "email_messages",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.email_suppressions\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "email_suppressions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.facebook_lead_submissions\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "facebook_lead_submissions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.launch_monitor_incidents\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "launch_monitor_incidents",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.retell_api_sessions\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "retell_api_sessions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.retell_api_turns\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "retell_api_turns",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.retell_call_batches\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "retell_call_batches",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.retell_call_requests\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "retell_call_requests",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.retell_form_sms_jobs\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "retell_form_sms_jobs",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.sms_nurture_jobs\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "sms_nurture_jobs",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.sms_resubscription_reviews\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "sms_resubscription_reviews",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`public.webhook_jobs\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "webhook_jobs",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.foreclosure_appraisal_batches\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "foreclosure_appraisal_batches",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.foreclosure_batches\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "foreclosure_batches",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.foreclosure_captures\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "foreclosure_captures",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.foreclosure_extractions\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "foreclosure_extractions",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.monitor_incidents\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "monitor_incidents",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.onboarding_promotion_parts\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "onboarding_promotion_parts",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.onboarding_promotions\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "onboarding_promotions",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.propstream_abandoned_events\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "propstream_abandoned_events",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.propstream_batches\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "propstream_batches",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.propstream_events\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "propstream_events",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.propstream_external_submissions\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "propstream_external_submissions",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.propstream_handoffs\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "propstream_handoffs",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.review_events\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "review_events",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.scoring_incidents\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "scoring_incidents",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.scoring_jobs\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "scoring_jobs",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.scoring_operator_events\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "scoring_operator_events",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.settings\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "settings",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Table \\`wholesale_ingest.trace_operator_events\\` has RLS enabled, but no policies exist",
+          "metadata": {
+            "name": "trace_operator_events",
+            "type": "table",
+            "schema": "wholesale_ingest"
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        }
+      ]
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "count": 3,
+      "findings": [
+        {
+          "detail": "Function `public.admin_set_user_role(target_user_id uuid, new_role text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/admin_set_user_role`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+          "metadata": {
+            "name": "admin_set_user_role",
+            "schema": "public",
+            "language": "plpgsql",
+            "arguments": "target_user_id uuid, new_role text",
+            "security_definer": true
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Function `public.admin_set_user_status(target_user_id uuid, new_status text, reason text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/admin_set_user_status`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+          "metadata": {
+            "name": "admin_set_user_status",
+            "schema": "public",
+            "language": "plpgsql",
+            "arguments": "target_user_id uuid, new_status text, reason text",
+            "security_definer": true
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        },
+        {
+          "detail": "Function `public.is_approved()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_approved`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+          "metadata": {
+            "name": "is_approved",
+            "schema": "public",
+            "language": "sql",
+            "arguments": "",
+            "security_definer": true
+          },
+          "observed_at": "2026-10-22T15:53:02.605Z"
+        }
+      ]
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import { sendOutreachBatches, outreachResultText, type OutreachSummary } from '@
  */
 
 import { useState } from 'react';
+import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -75,16 +76,34 @@ Reply or call to get photos, comps, and full details. This one moves fast.`;
 
 export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLauncherProps) {
   const [channel, setChannel] = useState<Channel>('sms');
+  const [smsPolicy, setSmsPolicy] = useState<{ available: boolean; brand: string; footer: string } | null>(null);
+  const [checkingSms, setCheckingSms] = useState(false);
+  const [smsReadinessError, setSmsReadinessError] = useState('');
   const [smsBody, setSmsBody] = useState(() => defaultSms(deal));
   const [emailSubject, setEmailSubject] = useState(() => defaultEmailSubject(deal));
   const [emailBody, setEmailBody] = useState(() => defaultEmailBody(deal));
   const [status, setStatus] = useState<Status>('idle');
   const [summary, setSummary] = useState<OutreachSummary | null>(null);
 
+  const fullSms = smsPolicy?.available ? `${smsPolicy.brand}: ${smsBody.trim()}\n${smsPolicy.footer}` : '';
+  const checkSms = async () => {
+    setCheckingSms(true); setSmsPolicy(null); setSmsReadinessError('');
+    try {
+      const response = await apiFetch('/api/buyers/outreach/sms/readiness');
+      const data = await response.json();
+      if (!response.ok || typeof data.available !== 'boolean' || typeof data.brand !== 'string' || typeof data.footer !== 'string'
+        || data.max_length !== 1600 || data.daily_recipient_limit !== 1 || (data.available && (!data.brand || !data.footer))) {
+        throw new Error('Buyer SMS readiness is unconfirmed.');
+      }
+      setSmsPolicy(data);
+    } catch { setSmsReadinessError('Buyer SMS readiness could not be confirmed. Sending remains unavailable.'); }
+    finally { setCheckingSms(false); }
+  };
   const handleSend = async () => {
+    if (channel === 'sms' && (!smsPolicy?.available || checkingSms || !smsBody.trim() || fullSms.length > 1600)) return toast.error('Check buyer SMS readiness and review the complete message.');
     if (buyerIds.length === 0) return toast.error('No buyers selected');
     if (status !== 'idle') return;
-    if (!(channel === 'sms' ? smsBody.trim() : emailBody.trim()) || (channel === 'email' && !emailSubject.trim())) return toast.error('Enter a message and, for email, a subject.');
+    if (channel === 'email' && (!emailBody.trim() || !emailSubject.trim())) return toast.error('Enter a message and, for email, a subject.');
     setStatus('sending');
       const endpoint = `/api/buyers/outreach/${channel}`;
       const payload = {
@@ -99,8 +118,8 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
         beds:            deal.beds || 0,
         baths:           deal.baths || 0,
         condition:       deal.condition || '',
-        custom_message:  channel === 'sms' ? smsBody : emailBody,
-        custom_subject: channel === 'email' ? emailSubject : undefined,
+        custom_message:  channel === 'sms' ? fullSms : emailBody,
+        custom_subject: channel === 'email' ? emailSubject : '',
       };
 
       const result = await sendOutreachBatches(endpoint, 'buyer_ids', buyerIds, payload);
@@ -114,7 +133,7 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
   if (status === 'done' && summary) {
     return (
       <div className="flex flex-col items-center gap-3 py-6">
-        {summary.interrupted || summary.failed || summary.logFailed || summary.dryRun
+        {summary.interrupted || summary.failed || summary.logFailed || summary.dryRun || summary.skipped
           ? <AlertTriangle className="h-12 w-12 text-amber-600" />
           : <CheckCircle2 className="h-12 w-12 text-green-500" />}
         <p className="font-semibold text-gray-700">
@@ -166,10 +185,13 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
             rows={3}
             placeholder="Your message…"
           />
-          <p className="text-xs text-gray-400 text-right">{smsBody.length}/160 chars</p>
+          <p className="text-xs text-gray-400 text-right">{fullSms ? fullSms.length : smsBody.length}/1600 characters including sender and opt-out text</p>
           <p className="text-xs text-gray-400">
-            This message is sent to each selected buyer. Reply STOP instructions are included automatically.
+            Review the complete message below before sending. Each number can receive at most one buyer SMS attempt per day.
           </p>
+          {fullSms && <div className="text-sm whitespace-pre-wrap rounded border p-3" aria-label="Complete buyer SMS preview">{fullSms}</div>}
+          <Button size="sm" variant="outline" disabled={checkingSms || status === 'sending'} onClick={checkSms}>{checkingSms ? 'Checking buyer SMS…' : 'Check buyer SMS readiness'}</Button>
+          {smsReadinessError && <p role="alert">{smsReadinessError}</p>}
         </div>
       )}
 
@@ -200,7 +222,8 @@ export function OutreachLauncher({ buyerIds, deal = {}, onSent }: OutreachLaunch
         </div>
       )}
 
-      <Button onClick={handleSend} loading={status === 'sending'} className="w-full">
+      {channel === 'sms' && <p role="status" className="text-sm text-amber-700">{smsPolicy?.available ? 'Buyer sender approved. Each recipient still needs current written consent and suppression checks.' : 'Buyer SMS is unavailable until its separate sender and campaign pass readiness checks.'}</p>}
+      <Button onClick={handleSend} disabled={channel === 'sms' && (!smsPolicy?.available || checkingSms || !smsBody.trim() || fullSms.length > 1600)} loading={status === 'sending'} className="w-full">
         <Send className="h-4 w-4 mr-2" />
         Send {channel.toUpperCase()} to {buyerIds.length} Buyers
       </Button>

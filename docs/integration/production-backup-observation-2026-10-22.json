@@ -1,0 +1,80 @@
+{
+  "observed_at": "2026-10-22T23:42:41Z",
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "method": "Authenticated dashboard read-only; storage aggregate read-only; public HTTP health check",
+  "scheduled_physical_backups": [
+    {
+      "at": "2026-10-22T12:13:03Z",
+      "state": "COMPLETED"
+    },
+    {
+      "at": "2026-10-21T11:51:20Z",
+      "state": "COMPLETED"
+    },
+    {
+      "at": "2026-10-20T11:53:27Z",
+      "state": "COMPLETED"
+    },
+    {
+      "at": "2026-10-19T11:48:06Z",
+      "state": "COMPLETED"
+    },
+    {
+      "at": "2026-10-18T11:49:56Z",
+      "state": "COMPLETED"
+    },
+    {
+      "at": "2026-10-17T11:47:08Z",
+      "state": "COMPLETED"
+    },
+    {
+      "at": "2026-10-16T11:45:40Z",
+      "state": "COMPLETED"
+    },
+    {
+      "at": "2026-10-15T11:47:05Z",
+      "state": "COMPLETED"
+    }
+  ],
+  "previous_restore": {
+    "project_id": "tbhwxgfzbiaqjurghntj",
+    "name": "wholesale-restore-rehearsal-20261008",
+    "completed_at": "2026-10-08T17:53:43Z",
+    "state": "COMPLETED",
+    "proves_current_restore": false
+  },
+  "pitr": "not enabled; UI offers add-on",
+  "storage": {
+    "buckets": 0,
+    "objects": 0,
+    "captured_at": "2026-10-22T23:37:36.637974+00:00"
+  },
+  "live_health": {
+    "http_status": 200,
+    "payload": {
+      "status": "ok",
+      "service": "wholesaleos"
+    },
+    "scope": "Process/HTTP response only, not database, auth or provider acceptance"
+  },
+  "provider_incident": {
+    "title": "API Gateway Request Issues",
+    "state": "Monitoring",
+    "affected_components": [
+      "Data APIs",
+      "Project Creation"
+    ],
+    "project_region_listed": "us-west-2",
+    "url": "https://status.supabase.com/incidents/01M5J8ZQ04EZXAYF10Q75MGC1T"
+  },
+  "local_connection_setup": {
+    "database_credentials_configured": false,
+    "cli_linked": false,
+    "checked": "Known local env files, process database-credential variable presence and standard PostgreSQL passfile presence only; no secret value printed",
+    "standard_passfile_present": false
+  },
+  "current_backup_restore_verified": false,
+  "production_mutations": 0,
+  "new_projects_created": 0,
+  "paid_addons_enabled": 0
+}

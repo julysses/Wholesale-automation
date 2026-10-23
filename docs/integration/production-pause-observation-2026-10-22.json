@@ -1,0 +1,25 @@
+{
+  "captured_at": "2026-10-22T15:52:49.847844+00:00",
+  "source": "read-only production SQL",
+  "enums": 0,
+  "sequences": 0,
+  "app_scheduler": false,
+  "native_scheduler": false,
+  "outbound_crons": [
+    {
+      "name": "wholesaleos-retell-form-sms",
+      "active": false
+    },
+    {
+      "name": "wholesaleos-retell-app-sms",
+      "active": false
+    }
+  ],
+  "runtime_environment_flags": "unverified; connector 403, CLI auth refresh DNS failure, UI requires email step-up verification",
+  "production_deployment": {
+    "id": "dpl_Dwjn7sjLUB5C9X2JsoezbSKjJ6go",
+    "state": "READY",
+    "commit": "a89815126d9a98ced016167d8e383641d133135f"
+  },
+  "external_mutations": 0
+}

@@ -47,16 +47,19 @@ class Database:
 class Table:
     def __init__(self, db, name):
         self.db, self.name = db, name
-        self.filters, self.ordering, self.bound = [], None, None
+        self.filters, self.ordering, self.bound = [], [], None
+        self.span = None
+        self.count_exact = False
         self.action, self.payload, self.one, self.conflict = "select", None, False, None
 
-    def select(self, *_): return self
+    def select(self, *_, **kwargs): self.count_exact = kwargs.get("count") == "exact"; return self
     def eq(self, key, value): self.filters.append((key, "=", value)); return self
     def is_(self, key, value):
         assert value == "null"
         self.filters.append((key, "IS", None)); return self
     def in_(self, key, value): self.filters.append((key, "IN", value)); return self
-    def order(self, key, desc=False): self.ordering = (key, desc); return self
+    def order(self, key, desc=False): self.ordering.append((key, desc)); return self
+    def range(self, start, end): self.span = (int(start),int(end)); return self
     def limit(self, n): self.bound = int(n); return self
     def single(self): self.one = True; return self
     def insert(self, row): self.action, self.payload = "insert", row; return self
@@ -82,8 +85,13 @@ class Table:
         if self.action == "select":
             statement = sql.SQL("SELECT * FROM {}").format(name) + suffix
             if self.ordering:
-                statement += sql.SQL(" ORDER BY {} {}").format(sql.Identifier(self.ordering[0]), sql.SQL("DESC" if self.ordering[1] else "ASC"))
-            if self.bound is not None: statement += sql.SQL(" LIMIT {}").format(sql.Literal(self.bound))
+                statement += sql.SQL(" ORDER BY ")+sql.SQL(",").join(sql.SQL("{} {}").format(sql.Identifier(key),sql.SQL("DESC" if desc else "ASC")) for key,desc in self.ordering)
+            bound=self.bound
+            if self.span:
+                start,end=self.span;bound=end-start+1
+                if getattr(self.db,'response_cap',None) is not None:bound=min(bound,self.db.response_cap)
+                statement += sql.SQL(" OFFSET {}").format(sql.Literal(start))
+            if bound is not None: statement += sql.SQL(" LIMIT {}").format(sql.Literal(bound))
         elif self.action == "insert":
             statement = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(name,
                 sql.SQL(",").join(map(sql.Identifier, self.payload)), sql.SQL(",").join(sql.Placeholder() for _ in self.payload))
@@ -94,5 +102,6 @@ class Table:
             statement = sql.SQL("UPDATE {} SET {}").format(name,
                 sql.SQL(",").join(sql.SQL("{}=%s").format(sql.Identifier(k)) for k in self.payload)) + suffix + sql.SQL(" RETURNING *")
             params = list(self.payload.values()) + params
+        count = self.db.query(sql.SQL("SELECT count(*) n FROM {}").format(name)+suffix,params)[0]['n'] if self.action=='select' and self.count_exact else None
         result = self.db.query(statement, params)
-        return SimpleNamespace(data=(result[0] if result else None) if self.one else result)
+        return SimpleNamespace(data=(result[0] if result else None) if self.one else result,count=count)

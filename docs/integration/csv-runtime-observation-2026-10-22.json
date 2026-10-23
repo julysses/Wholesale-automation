@@ -1,0 +1,31 @@
+{
+  "recorded_at": "2026-10-22T18:14:49.255947+00:00",
+  "read_only": true,
+  "project_id": "prj_ZRURRXQ1GbBiIUBtmGFiYZdVMNgd",
+  "team_id": "team_XZeRcNxzGjDXsr7Z2AqwhfAe",
+  "deployment_id": "dpl_Dwjn7sjLUB5C9X2JsoezbSKjJ6go",
+  "deployment_state": "READY",
+  "production_sha": "a89815126d9a98ced016167d8e383641d133135f",
+  "api_runtime": "Vercel Python/FastAPI via api/index.py",
+  "railway_proxy": false,
+  "project_resource_config": {
+    "fluid": true,
+    "functionDefaultRegions": [
+      "iad1"
+    ],
+    "buildMachineType": "basic",
+    "buildMachineSelection": "fixed"
+  },
+  "explicit_project_function_timeout_observed": null,
+  "effective_per_function_max_duration_verified": false,
+  "documentation_default_fluid_seconds": 300,
+  "documentation_request_response_limit_mb": 4.5,
+  "sources": [
+    "https://vercel.com/docs/functions/limitations",
+    "https://vercel.com/docs/functions/configuring-functions/duration"
+  ],
+  "observation_method": "Vercel connector project/deployment GET, CLI inspect JSON, CLI project/deployment API GET; only runtime metadata retained; no environment values printed or saved",
+  "configuration_changed": false,
+  "model_calls": 0,
+  "production_rows_changed": 0
+}

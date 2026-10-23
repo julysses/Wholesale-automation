@@ -199,76 +199,6 @@ class FailingForLeadClaude:
     messages = Messages()
 
 
-def test_import_master_list_consolidates_updates_and_scores():
-    fake_db = FakeSupabase([
-        {
-            "id": "existing-1",
-            "property_address": "123 Main Street",
-            "city": "Dallas",
-            "state": "TX",
-            "zip_code": "75201",
-            "owner_first_name": "Jane",
-            "owner_last_name": "Seller",
-            "owner_phone_1": None,
-            "source": "old_list",
-            "status": "new",
-        }
-    ])
-
-    rows = [
-        {
-            "property_address": "123 Main St.",
-            "city": "Dallas",
-            "state": "tx",
-            "zip_code": "75201-1234",
-            "owner_phone_1": "(214) 555-0100",
-            "sources": ["tax delinquent"],
-            "stack_count": 2,
-        },
-        {
-            "property_address": "123 Main Street",
-            "city": "Dallas",
-            "state": "TX",
-            "zip_code": "75201",
-            "owner_email": "seller@example.com",
-            "sources": ["vacant"],
-            "stack_count": 2,
-        },
-        {
-            "property_address": "500 New Ave",
-            "city": "Dallas",
-            "state": "TX",
-            "zip_code": "75202",
-            "sources": ["probate"],
-            "stack_count": 1,
-        },
-    ]
-
-    with patch("tools.crm.get_supabase_client", return_value=fake_db), patch(
-        "web.api._get_client", return_value=FakeClaude()
-    ):
-        response = client.post("/api/ai/import-master-list", json={"rows": rows, "engine": "ai"})
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["consolidated_rows"] == 2
-    assert data["updated"] == 1
-    assert data["imported"] == 1
-    assert data["scored"] == 2
-
-    existing = next(row for row in fake_db.rows if row["id"] == "existing-1")
-    assert existing["owner_phone_1"] == "2145550100"
-    assert existing["owner_email"] == "seller@example.com"
-    assert existing["source"] == "old_list | tax delinquent | vacant"
-    assert existing["score_motivation"] == 3
-    assert existing["precision_tier"] == 1
-
-    inserted = next(row for row in fake_db.rows if row["id"] == "new-1")
-    assert inserted["property_address"] == "500 New Ave"
-    assert inserted["score_timeline"] == 3
-    assert "recompute_priority_ranks" in fake_db.rpcs
-
-
 def test_lead_scoring_status_uses_database_counts():
     fake_db = FakeSupabase([
         {"id": "lead-1", "property_address": "1 A St", "status": "qualified_hot", "score_motivation": 3},
@@ -376,46 +306,5 @@ def test_score_unscored_leads_quarantines_bad_leads_without_500():
     assert "existing note" in bad["internal_notes"]
     assert "Claude scoring error" in bad["internal_notes"]
 
-
-def test_import_with_list_name_survives_missing_lead_lists_table_and_scores_with_rules():
-    """Deploy-order safety: API live before the lead_lists migration must still import + score."""
-    fake_db = FakeSupabase([])
-    rows = [{"property_address": "500 New Ave", "city": "Dallas", "state": "TX",
-             "sources": ["probate", "tax delinquent"], "stack_count": 2}]
-    with patch("tools.crm.get_supabase_client", return_value=fake_db):
-        response = client.post("/api/ai/import-master-list", json={"rows": rows, "list_name": "Probate roll"})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["imported"] == 1 and data["scored"] == 1 and data["list_id"] is None
-    saved = fake_db.rows[0]
-    assert saved["status"].startswith("qualified_") and saved["score_motivation"] == 3
-
-
-def test_import_rejects_unconfirmed_existing_lead_update():
-    db = FakeSupabase([{'id': 'existing', 'property_address': '123 Test St', 'city': 'Dallas', 'state': 'TX'}])
-    original = FakeLeadTable.execute
-    def execute(table):
-        if table._op == 'update':
-            return FakeResponse([])
-        return original(table)
-    with patch('tools.crm.get_supabase_client', return_value=db), patch.object(FakeLeadTable, 'execute', execute):
-        response = client.post('/api/ai/import-master-list', json={'score_with_claude': False, 'rows': [
-            {'property_address': '123 Test St', 'city': 'Dallas', 'owner_email': 'test@example.com'}]})
-    assert response.status_code == 503
-
-
-def test_repeat_import_preserves_history_and_imported_motivation():
-    db = FakeSupabase([])
-    row = {'property_address': '123 Test Street', 'city': 'Dallas', 'motivation_tag': 'probate',
-           'seller_notes': 'Imported evidence', 'owner_phone_1': '(214) 555-0123'}
-    with patch('tools.crm.get_supabase_client', return_value=db):
-        first = client.post('/api/ai/import-master-list', json={'rows': [row], 'score_with_claude': False})
-        db.rows[0].update({'dnc': True, 'status': 'dnc', 'contact_attempts': 3})
-        second = client.post('/api/ai/import-master-list', json={'rows': [row], 'score_with_claude': False})
-    assert first.json()['imported'] == 1
-    assert second.json()['imported'] == 0 and second.json()['updated'] == 1
-    assert len(db.rows) == 1
-    assert db.rows[0]['dnc'] is True and db.rows[0]['status'] == 'dnc'
-    assert db.rows[0]['contact_attempts'] == 3
-    assert db.rows[0]['motivation_tag'] == 'probate'
-    assert db.rows[0]['seller_notes'] == 'Imported evidence'
+# Atomic import persistence/history coverage now executes real PostgreSQL in
+# pipeline/integration/verify_csv_import.py and verify_csv_scoring.py.

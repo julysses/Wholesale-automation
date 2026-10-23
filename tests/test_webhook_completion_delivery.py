@@ -488,3 +488,90 @@ async def test_unknown_analyzed_without_transcript_remains_retryable(completion)
     assert webhooks._retell_receipt_id("call-1", "completion") not in db.tables["webhook_jobs"]
     qualify.assert_not_called()
     hot.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_hot_alert_never_promotes_legacy_range_or_mao_to_offer(monkeypatch):
+    from config.settings import settings
+    db = MemoryDB()
+    monkeypatch.setattr(webhooks, "_launch_control_configured", lambda: False)
+    monkeypatch.setattr(settings, "notification_email", "test@example.invalid")
+    email = SimpleNamespace(_configured=True, send=MagicMock(return_value=True))
+    monkeypatch.setattr(webhooks, "EmailClient", lambda: email)
+    qual = QualificationResult(classification="HOT", asking_price=300000,
+                               offer_range_low=210000, offer_range_high=255000)
+    await webhooks._trigger_hot_lead_automation(
+        db, "lead-1", "call-1", "Test address", "Test Owner", qual, 400000, 275000,
+    )
+    description = next(iter(db.tables["tasks"].values()))["description"]
+    assert "$300,000" in description
+    assert "Awaiting human-entered price and approval" in description
+    for price in ("$210,000", "$255,000", "$275,000"):
+        assert price not in description
+    assert email.send.call_args.kwargs["body"] == description
+    metadata = next(iter(db.tables["app_notifications"].values()))["metadata"]
+    assert metadata["offer_range_low"] is None
+    assert metadata["offer_range_high"] is None
+
+@pytest.mark.asyncio
+async def test_late_callback_creates_one_followup_and_preserves_human_completion(completion):
+    db, _, _ = completion
+    await webhooks._process_inline("retell", final_event())
+    payload = final_event("call_analyzed")
+    payload["call"]["call_analysis"]["custom_analysis_data"] = {
+        "disposition": "callback_requested", "callback_time": "tomorrow afternoon",
+    }
+    await webhooks._process_inline("retell", payload)
+    tasks = db.tables["tasks"]
+    assert len(tasks) == 1
+    task = next(iter(tasks.values()))
+    assert task["lead_id"] == "lead-1"
+    assert "tomorrow afternoon" in task["description"]
+    task["status"] = "completed"
+    await webhooks._process_inline("retell", payload)
+    assert len(tasks) == 1
+    assert task["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_callback_optout_never_creates_followup(completion):
+    db, qualify, _ = completion
+    payload = final_event("call_analyzed", "User: Do not call me.")
+    payload["call"]["call_analysis"]["custom_analysis_data"]["disposition"] = "callback_requested"
+    await webhooks._process_inline("retell", payload)
+    assert db.tables["leads"]["lead-1"]["dnc"] is True
+    assert not db.tables.get("tasks")
+    qualify.assert_not_called()
+
+
+def test_sms_off_blocks_even_configured_followup_provider(monkeypatch):
+    monkeypatch.setattr(webhooks.settings, "sms_live_enabled", False)
+    monkeypatch.setattr(webhooks.settings, "launch_control_mode", "csv_sync")
+    assert webhooks._launch_control_configured() is False
+
+
+@pytest.mark.asyncio
+async def test_warm_analysis_creates_followup_with_sms_off(completion, monkeypatch):
+    db, qualify, _ = completion
+    qualify.return_value = QualificationResult(classification="WARM", qualification_score=60)
+    monkeypatch.setattr(webhooks.settings, "sms_live_enabled", False)
+    send = MagicMock(side_effect=AssertionError("SMS must remain off"))
+    monkeypatch.setattr(webhooks, "LaunchControlAdapter", send)
+    payload = final_event("call_analyzed")
+    payload["call"]["call_analysis"]["custom_analysis_data"]["disposition"] = "warm_lead"
+    await webhooks._process_inline("retell", payload)
+    assert len(db.tables["tasks"]) == 1
+    assert db.tables["leads"]["lead-1"]["status"] == "warm"
+    send.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_late_optout_cancels_pending_callback(completion):
+    db, _, _ = completion
+    payload = final_event("call_analyzed")
+    payload["call"]["call_analysis"]["custom_analysis_data"]["disposition"] = "callback_requested"
+    await webhooks._process_inline("retell", payload)
+    payload["call"]["transcript"] = "User: Stop calling me."
+    await webhooks._process_inline("retell", payload)
+    assert next(iter(db.tables["tasks"].values()))["status"] == "cancelled"
+    assert db.tables["leads"]["lead-1"]["sms_sequence_active"] is False

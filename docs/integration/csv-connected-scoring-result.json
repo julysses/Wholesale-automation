@@ -1,0 +1,33 @@
+{
+  "csv_connected_api_scoring": "passed",
+  "durable_dispatch_claim": "passed",
+  "exact_terminal_replay": "passed",
+  "unknown_outcome": "review_no_retry",
+  "new_reference_does_not_repeat_ai": true,
+  "invalid_result_variants": 6,
+  "stale_snapshot": "held",
+  "completed_task": "held",
+  "connected_api": "real SQL; Auth/model stubbed",
+  "same_reference_model_attempts": 1,
+  "timeout_model_attempts": 1,
+  "legacy_stable_reference": true,
+  "data_request_replay_advances_batches": false,
+  "multi_batch_rows": 60,
+  "multi_batch_sizes": [
+    25,
+    25,
+    10
+  ],
+  "partial_unknown_retained_scored": 25,
+  "multi_batch_lost_finish": "resumed_without_repeat",
+  "foreign_actor_progress_and_continue": "refused",
+  "preworked_batch_model_attempts": 0,
+  "terminal_batch_evidence": "immutable",
+  "read_only_progress": "no model calls",
+  "lost_sql_acknowledgment_phases": 3,
+  "lost_claim_model_attempts": 0,
+  "concurrent_claim_sessions": 8,
+  "dispatch_winners": 1,
+  "concurrent_finish_replays": 8,
+  "provider_calls": 0
+}

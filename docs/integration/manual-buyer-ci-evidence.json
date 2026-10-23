@@ -1,0 +1,199 @@
+{
+  "date": "2026-10-22",
+  "run_id": 39866097570,
+  "run_url": "https://github.com/julysses/Wholesale-automation/actions/runs/39866097570",
+  "status": "completed",
+  "conclusion": "success",
+  "head_sha": "2a3d28c4e2f6c5e367b6e863c4afdce131412064",
+  "pr_merge_sha": "37e1281ccb16dcedc84825e7dbb9930d1af65556",
+  "identical_tree": "610269896e68765196d63dd63d7fc05eae0cdc30",
+  "tree_identity_verified": true,
+  "postgres_version": "17.11 (Ubuntu PGDG)",
+  "migration_count": 19,
+  "migration_hashes": [
+    {
+      "name": "20261020163157_integration_human_offer_review.sql",
+      "sha256": "b2735e388d5c26c8240934a1954e7f7a72d636db9b303ba1ffa365f97f6b6622"
+    },
+    {
+      "name": "20261020163209_integration_offer_review_history.sql",
+      "sha256": "1d8658c8528d1d46d72ae5e28cb2a302336d5b74b1693646585dd51e2ea0cea5"
+    },
+    {
+      "name": "20261020163211_integration_offer_content_binding.sql",
+      "sha256": "d531a4fdd40de6e89035383ad7a920ddc7f863881fbf1e906d6c6ba1e2327f75"
+    },
+    {
+      "name": "20261020163212_integration_list_lot_handoff.sql",
+      "sha256": "d3e44cec9976c3933fa8a849284b6f5f4fbe0215a0518e05a6a0a72cd524f502"
+    },
+    {
+      "name": "20261020163214_integration_list_lot_receiving_evidence.sql",
+      "sha256": "70359b289ab1e2e53c3e2acee478d6772eba965b41d1a159d5c55689916ee69f"
+    },
+    {
+      "name": "20261020163215_integration_list_lot_worker.sql",
+      "sha256": "37c7e14e883dd4cd0e9c2443ff8ed8050ffdc8f24fc660047d74cb52a16df4c4"
+    },
+    {
+      "name": "20261020163217_integration_list_lot_reconciliation.sql",
+      "sha256": "ced9029cc51d1c6891668ac0e39408dc7951d9fbe6cfee3bb84058cc29c2de76"
+    },
+    {
+      "name": "20261020163218_integration_list_lot_missing_property.sql",
+      "sha256": "1fc06dcabd8b281001ca7b2d6a241157440c8399a2004e727223b96523b2d3dc"
+    },
+    {
+      "name": "20261020163219_integration_land_valuation_receipts.sql",
+      "sha256": "e7c92f8c68351d9327a42dd5f1103b8e420a83801dae0d3894f8e8cf55255319"
+    },
+    {
+      "name": "20261020163221_integration_preserve_valuation_radius.sql",
+      "sha256": "add40173db742d6a7db72a8b519fe2f63838d810a7281907a485baf9947f2eb4"
+    },
+    {
+      "name": "20261020163223_integration_retell_claim_identity.sql",
+      "sha256": "ce65ca718c4404ffeb0bfdb0a8dcd23d4686cdc8c28c0e912fa89276a934a2a0"
+    },
+    {
+      "name": "20261022160020_integration_manual_land_import.sql",
+      "sha256": "d5cdc466d4ae099f4f911b050a485e2b756e132a206230a49c9fda2f9453b73a"
+    },
+    {
+      "name": "20261022170346_integration_csv_lead_intake.sql",
+      "sha256": "83204a4f2eb04d47b2ae0330e7a32187716c5a9fde99aa9d099b2c8a087096a4"
+    },
+    {
+      "name": "20261022190018_integration_buyer_csv_transaction.sql",
+      "sha256": "c06ec2da5cce8316740319ea968dd1201f89074fe840e8dd7f87c0e95921836d"
+    },
+    {
+      "name": "20261022194256_integration_buyer_outreach_claims.sql",
+      "sha256": "e390f99f921d8faf7296f3c260c281d36122920292ff74c1b87d7164a8c54747"
+    },
+    {
+      "name": "20261022201934_integration_buyer_sms_consent.sql",
+      "sha256": "0f75b6ab165011121948e5aac0ec1f649578de91933e366a2b81843cf88a0d73"
+    },
+    {
+      "name": "20261022203734_integration_buyer_sms_transport.sql",
+      "sha256": "9580e9224d298d2a5b14e740997f23d588b982ac8dd15a0925bd3549cfd89324"
+    },
+    {
+      "name": "20261022210254_integration_buyer_enrollment.sql",
+      "sha256": "1dbcdd426ab38b348932fa6c5d8966d20653dee32bc618d33b085329c9d7b181"
+    },
+    {
+      "name": "20261022220540_integration_buyer_manual_receipts.sql",
+      "sha256": "f28d4aaba8b108283cf48a7264f498c3f3a24a671f778ddf42310f4faa41cacc"
+    }
+  ],
+  "upgrade": {
+    "passed": "passed",
+    "rollback": "passed",
+    "injected_failure_rollback": "passed"
+  },
+  "manual_buyer": {
+    "manual_buyer": "passed",
+    "concurrent_creates": 8,
+    "lost_response": "recovered without duplicate",
+    "cancellation": "durable; late save blocked or committed save recovered",
+    "deletion": "receipt retained; no resurrection",
+    "consent": "new defaults false; existing records preserved",
+    "role_immutability_rollback": "passed",
+    "provider_calls": 0
+  },
+  "native_vercel": {
+    "architecture": "x86_64",
+    "frontend_index_sha256": "9b095d3e3c5e7c1498e6f6195ea06f61e63c9b621a4d4bcb5abd8123d5d9cf09",
+    "function_runtime": "python3.12",
+    "mapped_files": 6539,
+    "provider_calls": 0,
+    "python": "3.12.15",
+    "result": "passed"
+  },
+  "local_intake_journeys": {
+    "count": 10,
+    "seconds": 123.04,
+    "auth_provider_boundaries": "stubbed"
+  },
+  "ci_backend": {
+    "passed": 1416,
+    "skipped": 10,
+    "subtests_passed": 6,
+    "scope": "full pytest discovery through offline guard"
+  },
+  "local_backend": {
+    "passed": 1379,
+    "skipped": 10,
+    "scope": "tests/ only"
+  },
+  "frontend": {
+    "passed": 342,
+    "files": 63
+  },
+  "jobs": [
+    {
+      "id": 120128547176,
+      "name": "Manual buyer receipts on real PostgreSQL 17",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120128547386,
+      "name": "Backend (pytest)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120128547429,
+      "name": "Pipeline contracts and isolated SQL",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120128547432,
+      "name": "Vercel Linux build and bundled API cold start",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120128547438,
+      "name": "Frontend (typecheck, build, lint)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120128547463,
+      "name": "Linux Docker release (isolated runtime)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120128547655,
+      "name": "Real PostgreSQL ingestion, tracing and scoring contention",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120128547793,
+      "name": "Production API dependency boundary",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120128547804,
+      "name": "Python locked dependencies and known vulnerabilities",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "real_provider_calls": 0,
+  "production_mutations": 0,
+  "limits": [
+    "All nineteen proposals remain unapplied",
+    "No policy publication, carrier purchase/approval, live provider or handset proof",
+    "Manual edits/deletes and explicit classification/rescore remain open",
+    "Vercel sending settings, full operator/JWT/tenancy and production release acceptance remain separate"
+  ]
+}

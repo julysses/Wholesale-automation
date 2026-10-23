@@ -9,12 +9,13 @@ export class ApiError extends Error {
 }
 
 /** Send the current session to our API and surface unsuccessful operations. */
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+export async function apiFetch(path: string, init?: RequestInit, expectedActor?: string): Promise<Response> {
   if (!path.startsWith('/api/') || path.includes('\\')) {
     throw new Error('Invalid API path');
   }
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session) throw new Error('Your session has expired. Please sign in again.');
+  if (expectedActor && data.session.user?.id !== expectedActor) throw new Error('Sign in as the original operator to send this request.');
   const headers = new Headers(init?.headers);
   headers.set('Authorization', `Bearer ${data.session.access_token}`);
   const response = await fetch(path, { ...init, headers });

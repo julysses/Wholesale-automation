@@ -29,7 +29,7 @@ from typing import Optional
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from web.spa import SPAFiles
 from fastapi.templating import Jinja2Templates
 
 # ── Path setup ─────────────────────────────────────────────────────────────────
@@ -46,6 +46,8 @@ from schemas.property import DataSource           # noqa: E402
 from tools.crm import CRMStore                    # noqa: E402
 from web.api import router as ai_router           # noqa: E402
 from web.api.twilio_webhooks import router as twilio_router
+from web.api.buyer_twilio_webhooks import router as buyer_twilio_router
+from web.api.buyer_enrollment import router as buyer_enrollment_router
 from web.api.sendgrid_webhooks import router as sendgrid_router
 from web.api.email_api import router as email_router
 from web.api.calls_api import router as calls_router
@@ -55,6 +57,9 @@ from web.api.nurture_api import router as nurture_router
 from web.api.webhooks import router as webhook_router  # noqa: E402
 from web.api.lead_forms_api import router as lead_forms_router  # noqa: E402
 from web.api.buyers_api import router as buyers_router  # noqa: E402
+from web.api.buyer_manual import router as buyer_manual_router
+from web.api.buyer_mutations import router as buyer_mutations_router
+from web.api.buyer_analysis import router as buyer_analysis_router
 from web.api.fb_ads_api import router as fb_ads_router  # noqa: E402
 from web.api.marketing_api import router as marketing_router  # noqa: E402
 from web.api.leads_api import router as leads_router          # noqa: E402
@@ -111,17 +116,28 @@ else:
 # ── AI endpoints (used by React/WholesaleOS) ───────────────────────────────────
 app.include_router(ai_router)          # POST /api/ai/*
 app.include_router(twilio_router)
+app.include_router(buyer_twilio_router)
+app.include_router(buyer_enrollment_router)
 app.include_router(sendgrid_router)
 app.include_router(email_router)
 app.include_router(calls_router)
 app.include_router(operations_router)
 from web.api.list_pipeline_api import router as list_pipeline_router
 app.include_router(list_pipeline_router)
+from web.api.land_valuation_api import router as land_valuation_router
+app.include_router(land_valuation_router)
+from web.api.land_import_api import router as land_import_router
+app.include_router(land_import_router)
+from web.api.offer_review_api import router as offer_review_router
+app.include_router(offer_review_router)
 app.include_router(monitoring_router)
 app.include_router(nurture_router)
 app.include_router(webhook_router)     # POST /webhooks/* — dialer + SMS inbound events
 app.include_router(lead_forms_router)  # GET/POST /api/forms/*, /api/lead-gen/*, /api/ai/lead-gen/*
 app.include_router(buyers_router)      # POST/GET /api/buyers/*
+app.include_router(buyer_analysis_router)
+app.include_router(buyer_manual_router)
+app.include_router(buyer_mutations_router)
 app.include_router(fb_ads_router)      # POST /api/ai/fb-ads/*
 app.include_router(marketing_router)   # POST /api/marketing/*
 app.include_router(leads_router)       # POST /api/leads/*
@@ -325,11 +341,10 @@ def v1_audit(request: Request, agent: str = "") -> HTMLResponse:
 
 # ── Serve React frontend (WholesaleOS) ────────────────────────────────────────
 # MUST be registered last — acts as catch-all for all unmatched paths.
-# html=True means any unknown path returns index.html, letting React Router
-# handle client-side navigation (/leads, /pipeline, /buyers, etc.).
+# React navigation falls back to index.html; missing APIs/assets remain errors.
 _frontend_dist = ROOT / "frontend" / "dist"
 if _frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="wholesaleos")
+    app.mount("/", SPAFiles(directory=str(_frontend_dist), html=True), name="wholesaleos")
     logger.info(f"[WholesaleOS] Serving React build from {_frontend_dist}")
 else:
     logger.info("[WholesaleOS] No React build. Run:  cd frontend && npm install && npm run build")

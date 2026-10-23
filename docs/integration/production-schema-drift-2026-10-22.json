@@ -1,0 +1,84 @@
+{
+  "captured_at": "2026-10-22T15:46:27.300685+00:00",
+  "comparison": "saved October 20 catalog versus current production, using matching search path and non-pretty view definitions",
+  "categories": {
+    "tables": {
+      "baseline": 100,
+      "current": 101,
+      "added": [
+        "public.facebook_lead_submissions"
+      ],
+      "removed": [],
+      "changed": [
+        {
+          "object": "public.retell_form_sms_jobs",
+          "fields": [
+            "columns"
+          ]
+        }
+      ]
+    },
+    "constraints": {
+      "baseline": 384,
+      "current": 395,
+      "added": [
+        "public.facebook_lead_submissions.facebook_lead_submissions_id_lead_id_phone_number_key",
+        "public.facebook_lead_submissions.facebook_lead_submissions_lead_id_fkey",
+        "public.facebook_lead_submissions.facebook_lead_submissions_lead_id_key",
+        "public.facebook_lead_submissions.facebook_lead_submissions_leadgen_id_check",
+        "public.facebook_lead_submissions.facebook_lead_submissions_leadgen_id_key",
+        "public.facebook_lead_submissions.facebook_lead_submissions_phone_number_check",
+        "public.facebook_lead_submissions.facebook_lead_submissions_pkey",
+        "public.facebook_lead_submissions.facebook_lead_submissions_raw_answers_check",
+        "public.retell_form_sms_jobs.retell_facebook_inquiry_identity",
+        "public.retell_form_sms_jobs.retell_form_sms_jobs_facebook_submission_id_key",
+        "public.retell_form_sms_jobs.retell_inquiry_exact_source"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "policies": {
+      "baseline": 127,
+      "current": 127,
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "views": {
+      "baseline": 17,
+      "current": 17,
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "schema_acls": {
+      "baseline": 3,
+      "current": 3,
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "default_acls": {
+      "baseline": 0,
+      "current": 0,
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "indexes": {
+      "baseline": 113,
+      "current": 113,
+      "added": [],
+      "removed": []
+    },
+    "triggers": {
+      "baseline": 27,
+      "current": 28,
+      "added": [
+        "CREATE TRIGGER protect_facebook_submission BEFORE DELETE OR UPDATE ON public.facebook_lead_submissions FOR EACH ROW EXECUTE FUNCTION protect_facebook_submission()"
+      ],
+      "removed": []
+    }
+  },
+  "classification": "All differences match the released Facebook migration in the disposable schema comparison; no unexplained shape drift."
+}

@@ -1,0 +1,40 @@
+{
+  "authorization_guards": "passed",
+  "denied_cases": [
+    {
+      "role": "user",
+      "status": "approved",
+      "forged_user_metadata": "rejected",
+      "denied_mutations": 2
+    },
+    {
+      "role": "user",
+      "status": "pending",
+      "forged_user_metadata": "rejected",
+      "denied_mutations": 2
+    },
+    {
+      "role": "admin",
+      "status": "pending",
+      "forged_user_metadata": "rejected",
+      "denied_mutations": 2
+    },
+    {
+      "role": "admin",
+      "status": "denied",
+      "forged_user_metadata": "rejected",
+      "denied_mutations": 2
+    },
+    {
+      "role": "admin",
+      "status": "suspended",
+      "forged_user_metadata": "rejected",
+      "denied_mutations": 2
+    }
+  ],
+  "missing_identity": "denied",
+  "anonymous_rpc_access": "denied",
+  "approved_admin_mutations": "passed",
+  "production_changes": 0,
+  "provider_calls": 0
+}

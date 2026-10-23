@@ -1,0 +1,25 @@
+{
+  "scope": "candidate-only reviewed buyer SMS consent; carrier campaign and sending remain unaccepted",
+  "parent_checkpoint": "499ffbf0b48220bceeaa6ea6dcbbae4d360f629d",
+  "forward_migrations": 16,
+  "backend_passed": 1348,
+  "backend_skipped": 10,
+  "frontend_passed": 315,
+  "frontend_files": 61,
+  "real_provider_calls": 0,
+  "production_mutations": 0,
+  "files": {
+    "web/api/buyer_sms_consent.py": "d30b1f12683ef806fe2f4c900fc362d9b655de47382aba40f6c1793e8edacb16",
+    "web/api/buyers_api.py": "ab5bf8eeeee3c981b3fa0a71166e7971db118c6ddd72552c4a122b34e2a71906",
+    "frontend/src/components/buyers/BuyerSmsConsent.tsx": "4a9ca5ddda692570d8ac41e7252a028d55f7bb01440abdada697cffa1435f9e8",
+    "frontend/src/components/buyers/BuyerProfileDrawer.tsx": "c9e198eba6544e72109304e1d5b0a0c6b104d066ca09a1276805e03e84f89c53",
+    "frontend/tests/buyer-sms-consent.test.tsx": "fb6c242d5c52b89c9999ec2680a5983080c13ff34b41bfe1fa3fa08b6b359a9e",
+    "tests/test_buyer_sms_consent_errors.py": "9cff2943b148cdc775aa035cd05f4b30da8b48379097ee5aa0f69c29878769b9",
+    "frontend/supabase/migrations/20261022201934_integration_buyer_sms_consent.sql": "0f75b6ab165011121948e5aac0ec1f649578de91933e366a2b81843cf88a0d73",
+    "pipeline/integration/verify_buyer_sms_consent.py": "669c997c12d2060c98d55f19e907d8d45693cd9af61b4bd454550d5b49d3310f",
+    "pipeline/integration/rehearse_full_upgrade.py": "7b270e2eda329d01d10fadc6a95369aac940e71e2f55f5b7a1692b8722062742",
+    "pipeline/integration/run_production_upgrade.py": "0482b4511a242edd2d820456a4dfe8dd4da53bd32624907fd39d4cfb237650eb"
+  },
+  "current_candidate_note": "Source hashes refreshed for consumer enrollment; original checkpoint counts remain historical and scoped.",
+  "manual_buyer_update": "Hashes refreshed for manual buyer recovery; original counts/remote runs are historical. Current candidate needs the new nine-job CI run."
+}

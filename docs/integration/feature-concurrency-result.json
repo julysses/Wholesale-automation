@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-22",
+  "checkout_branch": "codex/wholesale-integration-review",
+  "command": "clean environment Python -> pipeline/integration/run_local.py",
+  "deno_version": "2.9.6",
+  "postgresql": "disposable localhost TLS cluster",
+  "schema_scope": "minimal synthetic ingress and feature fixtures; separate from full saved-catalog upgrade rehearsal",
+  "provider_calls": 0,
+  "inherited_credentials": false,
+  "pass_messages": [
+    "PASS property update contention: approval waits, rechecks committed identity, and rejects stale content",
+    "PASS actual overlapping offer decisions: one winner, one conflict, no duplicate event, revoked approval stays revoked on replay",
+    "PASS real concurrent daily and cumulative trace caps and uncertain-outcome hold; no provider invoked",
+    "PASS actual simultaneous scoring claims and model-free receipt recovery; no model invoked",
+    "PASS concurrent lot reconciliation has one winner, one conflict and historical retries preserve newer decisions",
+    "PASS overlapping lot workers return busy and persist one automatic receipt without a human initiator",
+    "PASS concurrent lot handoff creates one destination and retains first receiver acknowledgement; no model or outreach",
+    "PASS actual concurrent valuation saves create one record, preserve subsequent edits and never write offer prices",
+    "PASS actual ingress success, overlapping duplicate requests, lost-ACK replay, conflict, expiry, disabled source and restricted-role checks"
+  ],
+  "log_sha256": "bb489739b93ab876fee83e7ecf228a27b3bbe077035a8ab2eb083f8108156541"
+}

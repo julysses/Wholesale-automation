@@ -1,4 +1,3 @@
-import { apiFetch } from '@/lib/api';
 /**
  * BuyerIntelligence — Investor Buyer Intelligence Engine (IBIE) Dashboard.
  *
@@ -9,8 +8,11 @@ import { apiFetch } from '@/lib/api';
  *   Outreach Log  — SMS/email sent history with response tracking
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BuyerOutreachHistory } from '@/components/buyers/BuyerOutreachHistory';
+import { queryAllConfirmed } from '@/lib/queryAll';
 import { BuyerScoreRing, BuyerScoreBadge } from '@/components/buyers/BuyerScoreRing';
 import { BuyerImportModal } from '@/components/buyers/BuyerImportModal';
 import { DealMatchingPanel } from '@/components/buyers/DealMatchingPanel';
@@ -19,11 +21,12 @@ import { BuyerProfileDrawer } from '@/components/buyers/BuyerProfileDrawer';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, formatDate, phoneFormat } from '@/lib/utils';
 import {
-  Users, Upload, Zap, MessageSquare, RefreshCw, Filter,
+  Users, Upload, Zap, MessageSquare, Filter,
   Search, ChevronDown, TrendingUp, Building2, DollarSign,
   Star, Award, Flame
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BuyerAnalysisPanel } from '@/components/buyers/BuyerAnalysisPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,18 +61,6 @@ interface IBIEBuyer {
   transaction_count?: number;
   outreach_ignore_count?: number;
   ai_classified_at?: string;
-}
-
-interface OutreachRow {
-  id: string;
-  created_at: string;
-  channel: string;
-  status: string;
-  body: string;
-  to_address: string;
-  buyer_id: string;
-  replied_at?: string;
-  buyers?: { first_name: string; last_name: string };
 }
 
 interface SegmentSummary {
@@ -129,10 +120,8 @@ type TabId = typeof TABS[number]['id'];
 
 export function BuyerIntelligence() {
   const [tab, setTab] = useState<TabId>('leaderboard');
-  const [buyers, setBuyers] = useState<IBIEBuyer[]>([]);
-  const [outreachLog, setOutreachLog] = useState<OutreachRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [rescoring, setRescoring] = useState(false);
+  const [page, setPage] = useState(1);
+  const queryClient = useQueryClient();
 
   // Filters
   const [search, setSearch] = useState('');
@@ -147,61 +136,38 @@ export function BuyerIntelligence() {
   const [matchSelectedIds, setMatchSelectedIds] = useState<string[]>([]);
   const [matchDeal, setMatchDeal] = useState<DealContext>({});
 
-  const loadBuyers = useCallback(async () => {
-    setLoading(true);
-    try {
-      let query = supabase.from('buyer_leaderboard').select('*').order('ibie_score', { ascending: false }).limit(500);
-      if (filterTier)   query = query.eq('ibie_tier', filterTier);
-      if (filterType)   query = query.eq('buyer_type_ibie', filterType);
-      if (filterMarket) query = query.eq('market', filterMarket);
-      if (cashOnly)     query = query.eq('cash_buyer', true);
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setBuyers((data as IBIEBuyer[]) || []);
-    } catch (err) {
-      toast.error(`Failed to load buyers: ${err}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [filterTier, filterType, filterMarket, cashOnly]);
-
-  const loadOutreachLog = async () => {
-    const { data } = await supabase
-      .from('buyer_outreach_log')
-      .select('*, buyers(first_name, last_name)')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    setOutreachLog((data as OutreachRow[]) || []);
-  };
-
-  useEffect(() => { loadBuyers(); }, [loadBuyers]);
-  useEffect(() => { if (tab === 'outreach') loadOutreachLog(); }, [tab]);
-
-  const handleRescore = async () => {
-    setRescoring(true);
-    try {
-      await apiFetch('/api/buyers/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-      toast.success('Re-scoring queued — refresh in 30 seconds');
-    } catch {
-      toast.error('Re-score failed');
-    } finally {
-      setRescoring(false);
-    }
-  };
+  const buyersQuery = useQuery({
+    queryKey: ['buyers', 'leaderboard', 'all-pages'],
+    queryFn: () => queryAllConfirmed<IBIEBuyer>((from, to) => supabase.from('buyer_leaderboard')
+      .select('*', { count: 'exact' }).order('ibie_score', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: true }).range(from, to), 'Buyer leaderboard'),
+    staleTime: 60000,
+    retry: false,
+  });
+  const buyers = buyersQuery.data ?? [];
+  const loading = buyersQuery.isPending && !buyersQuery.data;
+  const loadBuyers = () => { void buyersQuery.refetch(); };
 
   // Client-side search filter
   const filtered = buyers.filter((b) => {
+    if (filterTier && b.ibie_tier !== filterTier) return false;
+    if (filterType && b.buyer_type_ibie !== filterType) return false;
+    if (filterMarket && b.market !== filterMarket) return false;
+    if (cashOnly && !b.cash_buyer) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
       `${b.first_name} ${b.last_name}`.toLowerCase().includes(q) ||
       (b.company || '').toLowerCase().includes(q) ||
       (b.entity_name || '').toLowerCase().includes(q) ||
+      (b.email || '').toLowerCase().includes(q) ||
       (b.phone || '').includes(q) ||
       (b.target_zips || []).some((z) => z.includes(q))
     );
   });
+
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 25)));
+  const visible = filtered.slice((currentPage - 1) * 25, currentPage * 25);
 
   return (
     <div className="space-y-5">
@@ -210,14 +176,12 @@ export function BuyerIntelligence() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Buyer Intelligence Engine</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {buyers.length.toLocaleString()} active buyers · IBIE-scored &amp; segmented
+            {buyersQuery.data ? `${buyers.length.toLocaleString()} active buyers · IBIE-scored & segmented`
+              : loading ? 'Loading buyer totals…' : 'Buyer totals unavailable'}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleRescore} loading={rescoring}>
-            <RefreshCw className="h-4 w-4 mr-1.5" />
-            Re-Score All
-          </Button>
+          <BuyerAnalysisPanel kind="score" onUpdated={loadBuyers} />
           <Button size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-1.5" />
             Import CSV
@@ -226,7 +190,11 @@ export function BuyerIntelligence() {
       </div>
 
       {/* KPI Strip */}
-      <KpiStrip buyers={buyers} />
+      {buyersQuery.data && <KpiStrip buyers={buyers} />}
+      {buyersQuery.isError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+        <p>Unable to load buyers: {buyersQuery.error.message}. {buyersQuery.data && 'Showing last confirmed buyer records and totals.'}</p>
+        <Button variant="outline" disabled={buyersQuery.isFetching} onClick={loadBuyers}>Retry loading buyers</Button>
+      </div>}
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 gap-1">
@@ -257,8 +225,8 @@ export function BuyerIntelligence() {
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search buyers…"
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                aria-label="Search buyer leaderboard" placeholder="Search buyers…"
                 className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#1B3A5C]"
               />
             </div>
@@ -268,8 +236,9 @@ export function BuyerIntelligence() {
             ].map(({ label, val, set, opts }) => (
               <select
                 key={label}
+                aria-label={label}
                 value={val}
-                onChange={(e) => { set(e.target.value); }}
+                onChange={(e) => { set(e.target.value); setPage(1); }}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A5C]"
               >
                 <option value="">{label}</option>
@@ -277,7 +246,7 @@ export function BuyerIntelligence() {
               </select>
             ))}
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-              <input type="checkbox" checked={cashOnly} onChange={(e) => setCashOnly(e.target.checked)} className="w-4 h-4 rounded" />
+              <input type="checkbox" checked={cashOnly} onChange={(e) => { setCashOnly(e.target.checked); setPage(1); }} className="w-4 h-4 rounded" />
               Cash only
             </label>
             <Button variant="outline" size="sm" onClick={loadBuyers}>Apply</Button>
@@ -297,6 +266,8 @@ export function BuyerIntelligence() {
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
                     <tr><td colSpan={11} className="px-4 py-12 text-center text-gray-400">Loading buyers…</td></tr>
+                  ) : !buyersQuery.data ? (
+                    <tr><td colSpan={11} className="px-4 py-8 text-center">Buyer records unavailable.</td></tr>
                   ) : filtered.length === 0 ? (
                     <tr>
                       <td colSpan={11} className="px-4 py-16 text-center">
@@ -304,13 +275,13 @@ export function BuyerIntelligence() {
                         <p className="text-xs text-gray-300 mt-1">Import county records or add buyers manually to get started</p>
                       </td>
                     </tr>
-                  ) : filtered.map((b, i) => (
+                  ) : visible.map((b, i) => (
                     <tr
                       key={b.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => setActiveBuyer(b)}
                     >
-                      <td className="px-4 py-3 text-gray-400 font-mono text-xs">#{i + 1}</td>
+                      <td className="px-4 py-3 text-gray-400 font-mono text-xs">#{(currentPage - 1) * 25 + i + 1}</td>
                       <td className="px-4 py-3">
                         <p className="font-semibold text-gray-900">{b.first_name} {b.last_name}</p>
                         {b.company && <p className="text-xs text-gray-400">{b.company}</p>}
@@ -328,7 +299,7 @@ export function BuyerIntelligence() {
                       <td className="px-4 py-3 text-xs text-gray-500">{b.market || '—'}</td>
                       <td className="px-4 py-3 text-center font-semibold text-gray-700">{b.total_purchases_12mo ?? 0}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
-                        {b.avg_purchase_price ? formatCurrency(b.avg_purchase_price) : '—'}
+                        {b.avg_purchase_price != null ? formatCurrency(b.avg_purchase_price) : '—'}
                       </td>
                       <td className="px-4 py-3">
                         {b.cash_buyer
@@ -361,6 +332,13 @@ export function BuyerIntelligence() {
               </table>
             </div>
           </div>
+          {buyersQuery.data && <nav aria-label="Buyer leaderboard pages" className="flex items-center justify-between text-sm">
+            <span>{filtered.length ? (currentPage - 1) * 25 + 1 : 0}–{Math.min(currentPage * 25, filtered.length)} of {filtered.length.toLocaleString()} matching buyers</span>
+            <div className="flex gap-2">
+              <Button variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous buyer page</Button>
+              <Button variant="outline" disabled={currentPage * 25 >= filtered.length} onClick={() => setPage(currentPage + 1)}>Next buyer page</Button>
+            </div>
+          </nav>}
         </div>
       )}
 
@@ -466,7 +444,8 @@ export function BuyerIntelligence() {
                 onSent={() => {
                   setMatchSelectedIds([]);
                   setTab('outreach');
-                  loadOutreachLog();
+                  void queryClient.invalidateQueries({ queryKey: ['buyer_outreach_log'] });
+                  setTab('outreach');
                 }}
               />
             )}
@@ -474,65 +453,17 @@ export function BuyerIntelligence() {
         </div>
       )}
 
-      {/* ── Tab: Outreach Log ─────────────────────────────────────────── */}
-      {tab === 'outreach' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  {['Buyer','Channel','Status','Message','Sent','Reply'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {outreachLog.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-400">No outreach sent yet</td></tr>
-                ) : outreachLog.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {row.buyers?.first_name} {row.buyers?.last_name}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={cn('text-xs px-2 py-0.5 rounded font-medium uppercase',
-                        row.channel === 'sms' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-                      )}>
-                        {row.channel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={cn('text-xs px-2 py-0.5 rounded',
-                        row.status === 'sent' || row.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                        row.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                      )}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 max-w-64 truncate text-xs">{row.body}</td>
-                    <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{formatDate(row.created_at)}</td>
-                    <td className="px-4 py-3">
-                      {row.replied_at
-                        ? <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Replied</span>
-                        : <span className="text-xs text-gray-300">—</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {tab === 'outreach' && <BuyerOutreachHistory />}
 
       {/* Import modal */}
       <BuyerImportModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onImported={() => { setTimeout(loadBuyers, 3000); }}
+        onImported={loadBuyers}
       />
 
       {/* Buyer profile drawer */}
-      <BuyerProfileDrawer
+      <BuyerProfileDrawer key={activeBuyer?.id ?? 'none'}
         buyer={activeBuyer}
         open={!!activeBuyer}
         onClose={() => setActiveBuyer(null)}

@@ -21,6 +21,8 @@ import json
 import logging
 from dataclasses import dataclass
 from typing import Any, Optional
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field
 
 from agents.base_agent import BaseAgent
 from tools.buyer_intelligence_engine import (
@@ -32,6 +34,16 @@ from tools.buyer_intelligence_engine import (
 )
 
 logger = logging.getLogger(__name__)
+
+class InvalidBuyerClassification(ValueError):
+    """The provider returned an unusable result; do not replace existing evidence."""
+
+class ClassificationOutput(BaseModel):
+    model_config = ConfigDict(extra='forbid', allow_inf_nan=False, strict=True)
+    buyer_type: Literal['flipper', 'landlord', 'institutional', 'builder']
+    confidence: float = Field(ge=0, le=1)
+    reasoning: str = Field(min_length=1, max_length=2000)
+    suggested_tags: list[str] = Field(max_length=10)
 
 
 # ── Classification output ────────────────────────────────────────────────────
@@ -136,25 +148,19 @@ Classify this buyer. Return JSON:
                 user=prompt,
                 max_tokens=512,
             )
-            parsed = json.loads(raw)
+            parsed = ClassificationOutput.model_validate(json.loads(raw))
+            if not parsed.reasoning.strip() or any(not tag.strip() or len(tag)>80 for tag in parsed.suggested_tags):
+                raise ValueError('Invalid classification tag')
             return BuyerClassification(
                 buyer_id=buyer_id,
-                buyer_type_ibie=parsed.get("buyer_type", "landlord"),
-                confidence=float(parsed.get("confidence", 0.5)),
-                reasoning=parsed.get("reasoning", ""),
-                suggested_tags=parsed.get("suggested_tags", []),
+                buyer_type_ibie=parsed.buyer_type,
+                confidence=parsed.confidence,
+                reasoning=parsed.reasoning,
+                suggested_tags=parsed.suggested_tags,
                 raw_response=raw,
             )
         except (json.JSONDecodeError, ValueError) as exc:
-            logger.warning(f"[BuyerIntel] Classification parse error for {buyer_id}: {exc}")
-            return BuyerClassification(
-                buyer_id=buyer_id,
-                buyer_type_ibie="landlord",
-                confidence=0.0,
-                reasoning="Classification failed — defaulting to landlord",
-                suggested_tags=[],
-                raw_response=str(raw) if "raw" in dir() else "",
-            )
+            raise InvalidBuyerClassification('Provider classification was invalid; existing classification is unchanged') from exc
 
     def batch_classify(
         self,
@@ -206,12 +212,12 @@ Classify this buyer. Return JSON:
 
     def _call_claude(self, system: str, user: str, max_tokens: int = 512) -> str:
         """Call Claude and return the raw text response."""
-        import anthropic
-        client = anthropic.Anthropic(api_key=self.settings.anthropic_api_key)
+        client = self._client.with_options(timeout=20.0, max_retries=0)
         message = client.messages.create(
             model=self.MODEL,
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": user}],
         )
+        self._last_message_id = getattr(message, 'id', '')
         return message.content[0].text if message.content else ""

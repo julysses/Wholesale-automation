@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import {useProfile} from '@/hooks/useProfile';
+import {useLandValuation} from '@/hooks/useLandValuation';
 import type { LandLead, LandComps } from '@/types';
-import { Calculator, TrendingUp, DollarSign, FileText, Info } from 'lucide-react';
+import { Calculator, TrendingUp, FileText, Info } from 'lucide-react';
 
 interface Props {
   lead: LandLead;
@@ -10,7 +10,7 @@ interface Props {
 }
 
 function fmt(n: number | undefined | null) {
-  if (!n) return '—';
+  if (n===null||n===undefined) return '—';
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
@@ -28,29 +28,50 @@ interface CompRow {
   sqft: number | '';
   date: string;
   distance_mi: number | '';
+  source_url: string;
 }
 
-const emptyRow = (): CompRow => ({ address: '', price: '', sqft: '', date: '', distance_mi: '' });
+const emptyRow = (): CompRow => ({ address: '', price: '', sqft: '', date: '', distance_mi: '', source_url: '' });
 
-export function QuickCompCalculator({ lead, existing }: Props) {
-  const qc = useQueryClient();
-
+export function QuickCompCalculator({lead}:Props){
+ const {profile,isApproved}=useProfile();
+ return profile&&isApproved?<ValuationWorkspace key={`${profile.id}:${lead.id}`} actor={profile.id} lead={lead}/>:<p>Sign in as an approved operator to review valuation evidence.</p>;
+}
+function ValuationWorkspace({actor,lead}:{actor:string;lead:LandLead}){
+ const workflow=useLandValuation(actor,lead.id);
+ const [reload,setReload]=useState(0);
+ const snapshot=workflow.query.data;
+ return <div className="space-y-3">
+  {workflow.notice&&<p role="status">{workflow.notice}</p>}{workflow.error&&<p role="alert">{workflow.error}</p>}
+  {workflow.pending&&<div role="alert"><p>A valuation save is unconfirmed. Retry the original saved inputs before editing.</p><button disabled={workflow.busy} onClick={()=>void workflow.retry()}>Retry saved valuation</button></div>}
+  <button disabled={workflow.locked||workflow.query.isFetching} onClick={()=>{setReload(value=>value+1);void workflow.query.refetch();}}>Reload saved analysis (discard unsaved edits)</button>
+  {workflow.query.isLoading&&<p>Loading saved valuation…</p>}
+  {workflow.query.error&&<p role="alert">Saved valuation unavailable: {workflow.query.error.message}</p>}
+  {snapshot&&!workflow.query.error&&<>
+   <p>Saved analyses: {snapshot.record_count}. {snapshot.record_count>1?'The newest record is selected; earlier records remain unchanged.':''}</p>
+   <CalculatorForm key={`${snapshot.snapshot_hash}:${reload}`} lead={{...lead,property_address:snapshot.property_address,tav:snapshot.reference_tav??undefined}} existing={snapshot.comp as unknown as LandComps|undefined} locked={workflow.locked||workflow.query.isFetching} onSave={input=>workflow.save(snapshot.snapshot_hash,input)}/>
+  </>}
+ </div>;
+}
+function CalculatorForm({lead,existing,locked,onSave}:Props&{locked:boolean;onSave:(input:unknown)=>Promise<void>}){
   // Method 1: Direct land comps
   const [directRows, setDirectRows] = useState<CompRow[]>(
     existing?.direct_comp_details?.map(d => ({
-      address: d.address, price: d.price, sqft: d.sqft,
-      date: d.date, distance_mi: d.distance_mi,
+      address: d.address, price: d.price, sqft: d.sqft??'',
+      date: d.date??'', distance_mi: d.distance_mi??'', source_url:d.source_url??'',
     })) ?? [emptyRow()]
   );
 
   // Method 2: 15% rule
+  const radius=existing ? existing.house_comp_radius_mi : 0.5;
   const [avgHouseArv, setAvgHouseArv] = useState<number | ''>(existing?.avg_house_arv ?? '');
   const [houseCompCount, setHouseCompCount] = useState<number | ''>(existing?.house_comp_count ?? '');
 
   // Method 3: TAV
-  const [tav, setTav] = useState<number | ''>(existing?.tav ?? lead.tav ?? '');
-  const [tavSource, setTavSource] = useState(existing?.tav_source ?? 'county');
+  const [tav, setTav] = useState<number | ''>(existing ? existing.tav ?? '' : lead.tav ?? '');
+  const [tavSource, setTavSource] = useState(existing?.tav_source ?? 'manual');
 
+  const [assessmentDate,setAssessmentDate]=useState(existing?.tav_assessment_date??'');
   const [notes, setNotes] = useState(existing?.comp_notes ?? '');
 
   // ── Calculations ──────────────────────────────────────────────────────────
@@ -63,53 +84,16 @@ export function QuickCompCalculator({ lead, existing }: Props) {
 
   const arv15pct = avgHouseArv ? Number(avgHouseArv) * 0.15 : undefined;
 
-  // Recommended offer: 70% of the lowest of the three methods
-  const values = [directCompAvg, arv15pct, tav ? Number(tav) : undefined].filter((v): v is number => v !== undefined);
-  const lowestValue = values.length > 0 ? Math.min(...values) : undefined;
-  const recommendedLow  = lowestValue ? lowestValue * 0.65 : undefined;
-  const recommendedHigh = lowestValue ? lowestValue * 0.75 : undefined;
 
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const payload = {
-        land_lead_id: lead.id,
-        direct_comp_avg:    directCompAvg,
-        direct_comp_count:  validDirectRows.length,
-        direct_comp_low:    directCompLow,
-        direct_comp_high:   directCompHigh,
-        direct_comp_details: validDirectRows.map(r => ({
-          address: r.address, price: Number(r.price),
-          sqft: Number(r.sqft), date: r.date, distance_mi: Number(r.distance_mi),
-        })),
-        avg_house_arv:      avgHouseArv ? Number(avgHouseArv) : null,
-        arv_15pct_value:    arv15pct,
-        house_comp_count:   houseCompCount ? Number(houseCompCount) : null,
-        tav:                tav ? Number(tav) : null,
-        tav_source:         tavSource,
-        recommended_offer_low:  recommendedLow,
-        recommended_offer_high: recommendedHigh,
-        comp_notes: notes,
-      };
-
-      if (existing?.id) {
-        const { error } = await supabase.from('land_comps').update(payload).eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('land_comps').insert(payload);
-        if (error) throw error;
-      }
-
-      await supabase.from('land_leads').update({
-        status: 'comped',
-        mao: recommendedHigh,
-        tav: tav ? Number(tav) : undefined,
-      }).eq('id', lead.id);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['land_leads'] }),
-  });
+  function save(){
+   const rows=directRows.filter(row=>Object.values(row).some(value=>value!==''));
+   void onSave({direct_comp_details:rows.map(row=>({address:row.address,price:row.price===''?null:row.price,sqft:row.sqft===''?null:row.sqft,date:row.date||null,distance_mi:row.distance_mi===''?null:row.distance_mi,source_url:row.source_url||null})),
+    avg_house_arv:avgHouseArv===''?null:avgHouseArv,house_comp_count:houseCompCount===''?null:houseCompCount,
+    tav:tav===''?null:tav,tav_source:tavSource,tav_assessment_date:assessmentDate||null,comp_notes:notes});
+  }
 
   return (
-    <div className="space-y-6">
+    <fieldset disabled={locked} className="space-y-6">
       <div>
         <h3 className="text-base font-bold text-[#1B3A5C]">Quick-Comp Calculator</h3>
         <p className="text-xs text-gray-500 mt-0.5">{lead.property_address} · {lead.lot_size_acres ?? '?'} acres</p>
@@ -120,7 +104,7 @@ export function QuickCompCalculator({ lead, existing }: Props) {
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-blue-700" />
           <span className="text-sm font-bold text-blue-800">Method 1 — Direct Land Comps</span>
-          <InfoTip text="Average of nearby sold vacant land records. Strongest signal." />
+          <InfoTip text="Compare sold vacant-land evidence. Verify sale date, location, size and comparability before relying on an average." />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -131,6 +115,7 @@ export function QuickCompCalculator({ lead, existing }: Props) {
                 <th className="text-left pb-1.5 font-semibold w-20">Sqft</th>
                 <th className="text-left pb-1.5 font-semibold w-28">Sale Date</th>
                 <th className="text-left pb-1.5 font-semibold w-16">Mi away</th>
+                <th className="text-left pb-1.5">Source URL (optional)</th>
                 <th className="w-8" />
               </tr>
             </thead>
@@ -144,24 +129,25 @@ export function QuickCompCalculator({ lead, existing }: Props) {
                   </td>
                   <td className="pr-2 py-1">
                     <input type="number" value={row.price} onChange={e => {
-                      const r = [...directRows]; r[i] = { ...r[i], price: parseFloat(e.target.value) || '' }; setDirectRows(r);
+                      const r = [...directRows]; r[i] = { ...r[i], price: e.target.value===''?'':Number(e.target.value) }; setDirectRows(r);
                     }} placeholder="45000" className="w-full border border-blue-200 rounded px-2 py-1 bg-white text-xs" />
                   </td>
                   <td className="pr-2 py-1">
                     <input type="number" value={row.sqft} onChange={e => {
-                      const r = [...directRows]; r[i] = { ...r[i], sqft: parseInt(e.target.value) || '' }; setDirectRows(r);
+                      const r = [...directRows]; r[i] = { ...r[i], sqft: e.target.value===''?'':Number(e.target.value) }; setDirectRows(r);
                     }} placeholder="10890" className="w-full border border-blue-200 rounded px-2 py-1 bg-white text-xs" />
                   </td>
                   <td className="pr-2 py-1">
-                    <input type="date" value={row.date} onChange={e => {
+                    <input aria-label={`Comp ${i+1} sale date`} type="date" value={row.date} onChange={e => {
                       const r = [...directRows]; r[i] = { ...r[i], date: e.target.value }; setDirectRows(r);
                     }} className="w-full border border-blue-200 rounded px-2 py-1 bg-white text-xs" />
                   </td>
                   <td className="pr-2 py-1">
                     <input type="number" step="0.1" value={row.distance_mi} onChange={e => {
-                      const r = [...directRows]; r[i] = { ...r[i], distance_mi: parseFloat(e.target.value) || '' }; setDirectRows(r);
+                      const r = [...directRows]; r[i] = { ...r[i], distance_mi: e.target.value===''?'':Number(e.target.value) }; setDirectRows(r);
                     }} placeholder="0.3" className="w-full border border-blue-200 rounded px-2 py-1 bg-white text-xs" />
                   </td>
+                  <td className="pr-2 py-1"><input aria-label={`Comp ${i+1} source URL`} type="url" value={row.source_url} placeholder="https://…" onChange={e=>{const rows=[...directRows];rows[i]={...rows[i],source_url:e.target.value};setDirectRows(rows);}} className="border rounded px-2 py-1"/></td>
                   <td className="py-1">
                     <button onClick={() => setDirectRows(directRows.filter((_, idx) => idx !== i))}
                       className="text-red-400 hover:text-red-600 text-base leading-none px-1">×</button>
@@ -171,7 +157,7 @@ export function QuickCompCalculator({ lead, existing }: Props) {
             </tbody>
           </table>
         </div>
-        <button onClick={() => setDirectRows([...directRows, emptyRow()])}
+        <button disabled={directRows.length>=50} onClick={() => setDirectRows([...directRows, emptyRow()])}
           className="text-xs text-blue-700 hover:text-blue-900 font-medium">+ Add comp</button>
         {directCompAvg && (
           <div className="flex gap-4 pt-1 border-t border-blue-200 text-xs text-blue-800 font-medium">
@@ -188,20 +174,20 @@ export function QuickCompCalculator({ lead, existing }: Props) {
         <div className="flex items-center gap-2">
           <Calculator className="h-4 w-4 text-orange-700" />
           <span className="text-sm font-bold text-orange-800">Method 2 — The 15% Rule</span>
-          <InfoTip text="15% of the average ARV of sold houses within 0.5 miles. Use when no direct land comps exist." />
+          <InfoTip text="A 15% reference calculation using the entered house values. Verify comparable selection and the saved radius before relying on it; this does not establish land market value." />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-orange-700 font-medium block mb-1">Avg House ARV (0.5mi radius)</label>
+            <label className="text-xs text-orange-700 font-medium block mb-1">Avg House ARV ({radius==null?'radius unknown':`${radius}mi radius`})</label>
             <input type="number" value={avgHouseArv}
-              onChange={e => setAvgHouseArv(parseFloat(e.target.value) || '')}
+              onChange={e => setAvgHouseArv(e.target.value===''?'':Number(e.target.value))}
               placeholder="280000"
               className="w-full border border-orange-200 rounded-lg px-3 py-2 text-sm bg-white" />
           </div>
           <div>
             <label className="text-xs text-orange-700 font-medium block mb-1">House comp count</label>
             <input type="number" value={houseCompCount}
-              onChange={e => setHouseCompCount(parseInt(e.target.value) || '')}
+              onChange={e => setHouseCompCount(e.target.value===''?'':Number(e.target.value))}
               placeholder="6"
               className="w-full border border-orange-200 rounded-lg px-3 py-2 text-sm bg-white" />
           </div>
@@ -218,13 +204,13 @@ export function QuickCompCalculator({ lead, existing }: Props) {
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-green-700" />
           <span className="text-sm font-bold text-green-800">Method 3 — Tax Assessed Value (TAV)</span>
-          <InfoTip text="The county's assessed value. Usually conservative — useful as a floor, not a ceiling." />
+          <InfoTip text="Tax assessed value is a separate reference and may differ from market value. Verify its source and assessment date." />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-green-700 font-medium block mb-1">TAV</label>
             <input type="number" value={tav}
-              onChange={e => setTav(parseFloat(e.target.value) || '')}
+              onChange={e => setTav(e.target.value===''?'':Number(e.target.value))}
               placeholder="42000"
               className="w-full border border-green-200 rounded-lg px-3 py-2 text-sm bg-white" />
           </div>
@@ -240,53 +226,27 @@ export function QuickCompCalculator({ lead, existing }: Props) {
         </div>
       </div>
 
-      {/* ── Recommended Offer ─────────────────────────────────────────────── */}
-      {lowestValue && (
-        <div className="bg-[#1B3A5C] text-white rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <DollarSign className="h-5 w-5 text-[#E8720C]" />
-            <span className="font-bold text-base">Recommended Offer Range</span>
-          </div>
-          <div className="grid grid-cols-3 gap-4 text-center mb-3">
-            {directCompAvg && (
-              <div>
-                <p className="text-white/60 text-xs mb-1">Direct Comps</p>
-                <p className="text-white font-bold text-lg">{fmt(directCompAvg)}</p>
-              </div>
-            )}
-            {arv15pct && (
-              <div>
-                <p className="text-white/60 text-xs mb-1">15% Rule</p>
-                <p className="text-white font-bold text-lg">{fmt(arv15pct)}</p>
-              </div>
-            )}
-            {tav && (
-              <div>
-                <p className="text-white/60 text-xs mb-1">TAV</p>
-                <p className="text-white font-bold text-lg">{fmt(Number(tav))}</p>
-              </div>
-            )}
-          </div>
-          <div className="border-t border-white/20 pt-3">
-            <p className="text-white/60 text-xs mb-1">Offer range (65–75% of lowest value)</p>
-            <p className="text-[#E8720C] font-black text-2xl">{fmt(recommendedLow)} – {fmt(recommendedHigh)}</p>
-          </div>
-        </div>
-      )}
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+        These estimates support valuation review. A human must establish the offer price
+        and approve its exact terms in Human Offer Review. Saving this analysis does not
+        set an offer, change the lead stage, or contact the seller.
+      </div>
 
+      <label className="block text-sm">Tax assessment date (optional)<input aria-label="Tax assessment date" type="date" value={assessmentDate} onChange={e=>setAssessmentDate(e.target.value)} className="block border rounded p-2"/></label>
+      <p className="text-xs text-gray-500">Blank area, date, distance and source fields remain unknown. These calculations do not independently verify comparable sales or market value.</p>
       {/* Notes + Save */}
       <div className="space-y-3">
         <div>
           <label className="text-xs font-medium text-gray-500 block mb-1">Comp notes</label>
-          <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)}
+          <textarea aria-label="Comp notes" maxLength={10000} rows={2} value={notes} onChange={e => setNotes(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" />
         </div>
-        <button onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending || values.length === 0}
+        <button onClick={save}
+          disabled={locked}
           className="w-full py-2.5 bg-[#E8720C] text-white font-bold text-sm rounded-lg hover:bg-[#d4660b] disabled:opacity-50">
-          {saveMutation.isPending ? 'Saving…' : 'Save Comp Analysis'}
+          Save Comp Analysis
         </button>
       </div>
-    </div>
+    </fieldset>
   );
 }

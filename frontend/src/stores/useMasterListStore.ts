@@ -27,6 +27,8 @@ interface MasterListStore {
   files: SourceFile[];
   merged: MergedRow[] | null;
   imported: boolean;
+  importRequestId: string | null;
+  importListName: string | null;
   setFiles: (updater: SourceFile[] | ((prev: SourceFile[]) => SourceFile[])) => void;
   setMerged: (rows: MergedRow[] | null) => void;
   setImported: (v: boolean) => void;
@@ -37,9 +39,13 @@ export const useMasterListStore = create<MasterListStore>((set) => ({
   files: [],
   merged: null,
   imported: false,
+  importRequestId: null,
+  importListName: null,
   setFiles: (updater) =>
     set((s) => ({ files: typeof updater === 'function' ? updater(s.files) : updater })),
-  setMerged: (rows) => set({ merged: rows }),
+  setMerged: (rows) => set({ merged: rows, imported: false,
+    importRequestId: rows ? crypto.randomUUID() : null,
+    importListName: rows ? `Master list ${new Date().toISOString().slice(0, 10)}` : null }),
   setImported: (v) => set({ imported: v }),
-  clearAll: () => set({ files: [], merged: null, imported: false }),
+  clearAll: () => set({ files: [], merged: null, imported: false, importRequestId: null, importListName: null }),
 }));

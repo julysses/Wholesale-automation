@@ -1,0 +1,103 @@
+{
+  "observed_date": "2026-10-22",
+  "run_id": 39861484224,
+  "run_url": "https://github.com/julysses/Wholesale-automation/actions/runs/39861484224",
+  "event": "pull_request",
+  "conclusion": "success",
+  "head_sha": "1b6288ec950748b8cf08c067f6f63b7fa466dfdf",
+  "checked_out_merge_sha": "d432c5ff246e45b2d886e534fdbab6152145d3ca",
+  "head_and_merge_identical_tree": "b865d8ade365a9e31ca1a715ffac9cad97312755",
+  "tree_equality_verified": true,
+  "build_tools": {
+    "cli": "64.5.0",
+    "python_builder": "25.1.3",
+    "uv": "0.13.5",
+    "uv_known_findings": 0
+  },
+  "runtime": {
+    "architecture": "x86_64",
+    "frontend_index_sha256": "d5a67f31b22e0041bedf54c99841e32dca7dc9d9a35ead969fdc7ff138e9653d",
+    "function_runtime": "python3.12",
+    "mapped_files": 6529,
+    "provider_calls": 0,
+    "python": "3.12.15",
+    "result": "passed"
+  },
+  "api_versions_validated": 61,
+  "platform_runtime_version_validated": "0.23.3",
+  "complete_bundle_audit": "No known vulnerabilities found",
+  "ci_backend": {
+    "passed": 1416,
+    "skipped": 10,
+    "warnings": 413,
+    "subtests_passed": 6,
+    "scope": "full pytest discovery through offline wrapper"
+  },
+  "local_backend": {
+    "passed": 1379,
+    "skipped": 10,
+    "scope": "tests/ only through offline wrapper"
+  },
+  "frontend": {
+    "passed": 327,
+    "files": 62
+  },
+  "jobs": [
+    {
+      "id": 120113020270,
+      "name": "Real PostgreSQL ingestion, tracing and scoring contention",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120113020302,
+      "name": "Linux Docker release (isolated runtime)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120113020343,
+      "name": "Backend (pytest)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120113020353,
+      "name": "Vercel Linux build and bundled API cold start",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120113020401,
+      "name": "Production API dependency boundary",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120113020473,
+      "name": "Frontend (typecheck, build, lint)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120113020495,
+      "name": "Pipeline contracts and isolated SQL",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120113020904,
+      "name": "Python locked dependencies and known vulnerabilities",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "production_mutations": 0,
+  "deployment_created": false,
+  "production_environment_retrieved": false,
+  "limits": [
+    "This is a disposable build check, not a staged/retained production artifact",
+    "Actual production effective flags, operator, database/release and live acceptance remain separate",
+    "No production migration, policy publication, purchase, messages or provider/schedule activation"
+  ]
+}

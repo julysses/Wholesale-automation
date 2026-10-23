@@ -23,9 +23,10 @@ def save_submission(sb, lead_id, answers):
             row, on_conflict="id", ignore_duplicates=True,
         ).execute().data
     except Exception as exc:
-        # Concurrent inserts may hit another unique index before the id arbiter.
-        # Only a unique conflict may recover by reading and validating the exact id.
-        if getattr(exc, "code", getattr(exc, "pgcode", None)) != "23505":
+        # Concurrent inserts can collide on a secondary UNIQUE index even when
+        # ON CONFLICT(id) ignores the primary key. Recover only the exact receipt
+        # below, with the same immutable evidence checks as an ordinary retry.
+        if (getattr(exc, "code", None) or getattr(exc, "pgcode", None)) != "23505":
             raise
         saved = None
     if not saved:

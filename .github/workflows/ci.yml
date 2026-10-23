@@ -10,6 +10,98 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  manual-buyer-database:
+    name: Manual buyer receipts on real PostgreSQL 17
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install disposable database runtime and hash-pinned test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl ca-certificates openssl
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-17
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip==26.2.2
+          .venv/bin/python -m pip install --require-hashes -r requirements.txt
+      - name: Verify twenty-one-proposal rollback, buyer recovery and maximum CSV import
+        env:
+          PG_BIN: /usr/lib/postgresql/17/bin
+        run: |
+          .venv/bin/python scripts/run_offline_tests.py --buyer-manual
+          .venv/bin/python scripts/run_offline_tests.py --buyer-analysis
+          .venv/bin/python scripts/run_offline_tests.py --buyer-mutations
+          .venv/bin/python scripts/run_offline_tests.py --buyer-import
+
+  vercel-release:
+    name: Vercel Linux build and bundled API cold start
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install patched hash-pinned build installer and isolated audit tools
+        run: |
+          python -m pip install --require-hashes -r requirements-vercel-build.txt
+          python -m venv "$RUNNER_TEMP/vercel-audit"
+          "$RUNNER_TEMP/vercel-audit/bin/python" -m pip install --require-hashes -r requirements-security.txt
+          npm install --prefix "$RUNNER_TEMP/vercel-cli" --ignore-scripts --no-audit --no-fund vercel@64.5.0
+      - name: Build with empty credentials and no production environment retrieval
+        run: |
+          python scripts/release/check_python_locks.py
+          python scripts/release/prepare_vercel_build.py
+          mkdir -p "$RUNNER_TEMP/vercel-home"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/vercel-home" CI=true VERCEL_TELEMETRY_DISABLED=1 PYTHON_DOTENV_DISABLED=1 "$RUNNER_TEMP/vercel-cli/node_modules/.bin/vercel" build --prod
+      - name: Cold-start exact mapped function without provider networking
+        run: python scripts/run_offline_tests.py python scripts/release/vercel_artifact_smoke.py
+      - name: Audit the build installer and complete platform-added runtime dependencies
+        run: |
+          "$RUNNER_TEMP/vercel-audit/bin/pip-audit" --strict --no-deps --disable-pip -r requirements-vercel-build.txt
+          "$RUNNER_TEMP/vercel-audit/bin/pip-audit" --strict --no-deps --disable-pip -r logs/vercel-bundle-requirements.txt
+
+  docker-release:
+    name: Linux Docker release (isolated runtime)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build actual release Dockerfile without credentials or image publication
+        run: |
+          git rev-parse HEAD
+          docker build --label org.opencontainers.image.revision="$(git rev-parse HEAD)" -t wholesaleos-release-check .
+          docker image inspect wholesaleos-release-check --format '{{.Id}} {{json .Config.Labels}}'
+      - name: Verify dependencies and real HTTP startup without external networking
+        run: |
+          docker run --rm --network none --entrypoint python wholesaleos-release-check -m pip check
+          docker run --rm --network none --entrypoint python wholesaleos-release-check scripts/release/docker_runtime_smoke.py
+
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
@@ -17,15 +109,54 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+          python -m pip install --upgrade pip==26.2.2
+          pip install --require-hashes -r requirements.txt
+          pip check
       - name: Run tests
-        run: python -m pytest -q
+        run: python scripts/run_offline_tests.py python -m pytest -q
+
+  python-dependencies:
+    name: Python locked dependencies and known vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Check hashed locks and shared API versions
+        run: python scripts/release/check_python_locks.py
+      - name: Install isolated, hash-pinned audit tools
+        run: |
+          python -m venv /tmp/wholesale-audit
+          /tmp/wholesale-audit/bin/python -m pip install --require-hashes -r requirements-security.txt
+          /tmp/wholesale-audit/bin/python -m pip check
+      - name: Audit root, production API and audit-tool locks
+        run: |
+          /tmp/wholesale-audit/bin/pip-audit --strict --no-deps --disable-pip -r requirements.txt
+          /tmp/wholesale-audit/bin/pip-audit --strict --no-deps --disable-pip -r api/requirements.txt
+          /tmp/wholesale-audit/bin/pip-audit --strict --no-deps --disable-pip -r requirements-security.txt
+
+  api-dependencies:
+    name: Production API dependency boundary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install only the hash-pinned API requirements
+        run: |
+          python -m pip install --upgrade pip==26.2.2
+          python -m pip install --require-hashes -r api/requirements.txt
+          python -m pip check
+      - name: Verify actual API cold start without provider access
+        run: python scripts/run_offline_tests.py python scripts/release/python_api_smoke.py
 
   frontend:
     name: Frontend (typecheck, build, lint)

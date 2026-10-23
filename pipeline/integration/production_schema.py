@@ -10,6 +10,7 @@ from tests.local_journey_db import Database
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = json.loads((ROOT/'docs/facebook-release/production-catalog.json').read_text())
 META = json.loads((ROOT/'docs/facebook-release/production-metadata.json').read_text())
+VIEW_SECURITY = json.loads((ROOT/'docs/integration/production-schema-shapes-2026-10-22.json').read_text())['view_security']
 def ident(s): return '"'+s.replace('"','""')+'"'
 def qualified(t): return ident(t['schema'])+'.'+ident(t['name'])
 def literal(s): return "'"+s.replace("'","''")+"'"
@@ -57,14 +58,22 @@ def restore(db):
             if c['type'] in kind:
                 db.query('ALTER TABLE '+ident(c['schema'])+'.'+ident(c['table'])+' ADD CONSTRAINT '+ident(c['name'])+' '+c['definition'])
     for index in CATALOG['indexes']: db.query(index)
+    view_security = {(row['schema'],row['name']):row for row in VIEW_SECURITY}
+    assert set(view_security) == {(row['schema'],row['name']) for row in CATALOG['views']}
     pending=list(CATALOG['views'])
     while pending:
         failed=[]
         for v in pending:
-            try: db.query('CREATE VIEW '+qualified(v)+' AS '+v['definition'])
+            try:
+                security = view_security[(v['schema'],v['name'])]
+                options = security['options'] or []
+                assert all(option in {'security_invoker=true','security_barrier=true'} for option in options), options
+                db.query('CREATE VIEW '+qualified(v)+(' WITH ('+','.join(options)+')' if options else '')+' AS '+v['definition'])
             except Exception as exc: failed.append(v); error=exc
         if len(failed)==len(pending): raise error
         pending=failed
+    for view in CATALOG['views']:
+        grants(db,view_security[(view['schema'],view['name'])]['acl'],qualified(view),'TABLE')
     for trigger in CATALOG['triggers']: db.query(trigger)
     for p in CATALOG['policies']:
         command='CREATE POLICY '+ident(p['policyname'])+' ON '+ident(p['schemaname'])+'.'+ident(p['tablename'])
