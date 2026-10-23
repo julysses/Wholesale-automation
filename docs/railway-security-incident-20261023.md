@@ -2,7 +2,15 @@
 
 ## Status
 
-Investigation and credential handoff prepared. No credentials have been rotated or revoked by this session. No deployment, migration, outreach, or scheduler changes made. Incident is not yet contained.
+The user disabled the April Anthropic key; its Claude console record and success notification were independently verified as Disabled. No replacement key has been created or installed. No deployment, migration, outreach, or scheduler changes made. Other credentials remain unresolved; incident is not yet contained.
+
+### Follow-up after user reported disabled
+
+- Verified `wholesale_automation` / `apikey_01GkYe6foE35RfAXqcGxniVk` displays Disabled. No API request using the old key was made; evidence is provider-console status.
+- Opened replacement-key form for user handoff: proposed name `wholesale-railway-recovery-20261023`, Default workspace, linked to current user. UI defaults to 30-day expiry (November 22, 2026). Nothing submitted or typed. User must complete credential creation and preserve the one-time secret outside chat.
+- Supabase production has existing modern default publishable and secret keys; legacy tab still exposes Disable JWT-based API keys. No disable performed: both legacy anon and service-role consumers require migration before that action. Existing default secret's exposure/usage history is not yet known.
+- Production checkout fast-forwarded from `19c117a` to `a898151`, branch `codex/retell-sms-production`. Current railway.toml starts uvicorn only. Service-role consumers found in `web/app.py`, `web/api/webhooks.py`, and `web/api/buyers_api.py`; broader dependency audit remains pending.
+- Attempted sanitized parsing of Railway DATABASE_URL could not identify the host. Earlier Postgres scheme observation stands, but exact database mapping is still unverified. No raw value persisted.
 
 User requested remediation of Railway's October 21 security incident and signed into Railway, Supabase, and the Claude API console. Official source: https://blog.railway.com/p/preliminary-report-october-security-incident . Treat all sensitive credentials stored before the incident as potentially exposed; present-day variable inventory is not proof of historical scope.
 
