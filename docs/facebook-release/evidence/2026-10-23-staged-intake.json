@@ -1,0 +1,97 @@
+{
+  "deployment": "wholesale-automation-55vgsb88b-julysses-projects.vercel.app",
+  "scope": "configuration_and_rejection_only",
+  "valid_submissions": 0,
+  "checks": [
+    {
+      "path": "/api/readiness",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "response": {
+        "status": "ok"
+      }
+    },
+    {
+      "path": "/api/forms/hilltop-home-co",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "slug": "hilltop-home-co",
+      "question_count": 11,
+      "required_fields": [
+        "property_address",
+        "first_name",
+        "phone",
+        "motivation",
+        "timeline",
+        "condition",
+        "occupancy"
+      ]
+    },
+    {
+      "path": "/form/hilltop-home-co",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "html": true
+    },
+    {
+      "path": "/api/forms/hilltop-home-co/submit",
+      "method": "POST",
+      "status": 422,
+      "expected": 422,
+      "response": {
+        "detail": "Property Address is required"
+      }
+    },
+    {
+      "path": "/api/forms/the-jays-dallas",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "slug": "the-jays-dallas",
+      "question_count": 8,
+      "required_fields": [
+        "first_name",
+        "email",
+        "inquiry_type",
+        "message"
+      ]
+    },
+    {
+      "path": "/form/the-jays-dallas",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "html": true
+    },
+    {
+      "path": "/api/forms/the-jays-dallas/submit",
+      "method": "POST",
+      "status": 422,
+      "expected": 422,
+      "response": {
+        "detail": "Name is required"
+      }
+    },
+    {
+      "path": "/webhooks/facebook/lead?hub.mode=subscribe&hub.verify_token=invalid-release-probe&hub.challenge=paused-release",
+      "method": "GET",
+      "status": 403,
+      "expected": 403,
+      "response": {
+        "detail": "Verification token mismatch"
+      }
+    },
+    {
+      "path": "/webhooks/facebook/lead",
+      "method": "POST",
+      "status": 403,
+      "expected": 403,
+      "response": {
+        "detail": "Invalid Facebook signature"
+      }
+    }
+  ]
+}
