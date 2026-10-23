@@ -15,8 +15,9 @@ try {
  await db.exec(`create schema private; create schema net;
  create table net._http_response(id bigint,status_code int,timed_out boolean,created timestamptz,content text);
  create table public.webhook_jobs(id uuid primary key,source text,status text,payload jsonb);`);
- await db.exec(read('20261019213545_retell_empty_session_reconciliation.sql'));
  await db.exec(read('20261023214643_retell_verified_generation_recovery.sql'));
+ await db.exec(read('20261023221455_retell_recovery_production_guard.sql'));
+ assert.equal((await q("select to_regclass('private.retell_empty_session_reconciliations') as t"))[0].t,null);
  await db.exec(read('20261017013643_retell_app_twilio_outbox.sql'));
  await ack(); await q("update public.sms_events set status='delivered' where id=$1",[job]);
  const turn=await inbound();const enqueued=await rpc('enqueue_retell_api_turn',[job,turn]);assert.equal(enqueued.queued,true,JSON.stringify(enqueued));
