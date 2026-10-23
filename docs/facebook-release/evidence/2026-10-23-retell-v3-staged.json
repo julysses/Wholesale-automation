@@ -1,0 +1,69 @@
+{
+  "deployment": "wholesale-automation-i0fgqw38f-julysses-projects.vercel.app",
+  "valid_submissions": 0,
+  "checks": [
+    {
+      "path": "/api/readiness",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "path": "/api/forms/hilltop-home-co",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "path": "/form/hilltop-home-co",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "path": "/api/forms/hilltop-home-co/submit",
+      "method": "POST",
+      "status": 422,
+      "expected": 422,
+      "ok": true
+    },
+    {
+      "path": "/api/forms/the-jays-dallas",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "path": "/form/the-jays-dallas",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "path": "/api/forms/the-jays-dallas/submit",
+      "method": "POST",
+      "status": 422,
+      "expected": 422,
+      "ok": true
+    },
+    {
+      "path": "/webhooks/facebook/lead?hub.mode=subscribe&hub.verify_token=invalid-release-probe&hub.challenge=paused-release",
+      "method": "GET",
+      "status": 403,
+      "expected": 403,
+      "ok": true
+    },
+    {
+      "path": "/webhooks/facebook/lead",
+      "method": "POST",
+      "status": 403,
+      "expected": 403,
+      "ok": true
+    }
+  ]
+}

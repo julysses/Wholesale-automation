@@ -1,0 +1,16 @@
+{
+  "deployment_id": "dpl_3VmD6PS8eWxGYPh5qzVCZ9ouWW5d",
+  "primary_domain": "wholesale-automation.vercel.app",
+  "configured_agent_version": 3,
+  "request_id": 44,
+  "status_code": 200,
+  "timed_out": false,
+  "connected": true,
+  "checks": {
+    "published": true,
+    "agent_matches": true,
+    "version_matches": true,
+    "callback_matches": true
+  },
+  "dispatch_authorized": false
+}

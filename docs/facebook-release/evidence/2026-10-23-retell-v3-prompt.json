@@ -1,0 +1,15 @@
+{
+  "agent_id": "agent_193fc3ebd9844b50d54352f200",
+  "published_version": 3,
+  "name": "Neutral callback review wording",
+  "published_local_time": "2026-10-23 17:54 America/Chicago",
+  "source": "Signed-in Retell UI: Published successfully; version history shows published V3 from V2; selected V3 prompt verified",
+  "prompt_file": "config/retell-seller-sms-prompt.txt",
+  "prompt_sha256": "415e33b1f5e799c807a21d43fa63b651829b27f543ef2a12c0e722272977d790",
+  "routine_callback_reply": "Your request needs review, and we'll be in contact shortly.",
+  "welcome_unchanged": true,
+  "consent_and_opt_out_preserved": true,
+  "direct_identity_answers_truthful": true,
+  "existing_chats_rebound": false,
+  "live_sms_sent": false
+}
