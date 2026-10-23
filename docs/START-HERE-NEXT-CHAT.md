@@ -1,6 +1,6 @@
 ## Current launch work — October 23, 2026
 
-Continue from [today's readiness checkpoint](facebook-release/LAUNCH-2026-10-23.md), especially its latest section. Automatic owner acknowledgment delivered and owner replied. Retell generated a response but the CRM held it before delivery. Both SMS schedulers are currently disabled. Verified-history repair is being tested/released; broad acceptance is not verified. Do not replay the held completion, extend expired input, or send manually through Twilio. Remaining Railway credential exposure and voice readiness are still unresolved.
+Continue from [today's readiness checkpoint](facebook-release/LAUNCH-2026-10-23.md), latest section "Reply repair released; ready for fresh owner input". Automatic acknowledgment delivered; owner replied; generated response was held. Repair is now live, both recovery migrations applied and exact conversation restored. Expired original turn is stopped with its evidence intact and no reply SMS sent. Waiting for the owner to text one fresh reply from0280; then pin that exact new turn/window and run automatic delivery plusSTOP. Both schedulers remain disabled and old window expired. No new inquiry/manualTwilio send or expiry extension. Broader launch gates remain open.
 
 ## Released with messaging paused — October 20, 2026
 
