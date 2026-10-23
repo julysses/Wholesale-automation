@@ -84,7 +84,7 @@ def enqueue(sb, lead_id):
     try:
         saved = sb.table('retell_form_sms_jobs').upsert(row, on_conflict='id', ignore_duplicates=True).execute().data
     except Exception as exc:
-        if not native or getattr(exc, 'code', getattr(exc, 'pgcode', None)) != '23505':
+        if not native or (getattr(exc, 'code', None) or getattr(exc, 'pgcode', None)) != '23505':
             raise
         saved = None  # Recover a competing native insert through the exact job id below.
     if not saved:

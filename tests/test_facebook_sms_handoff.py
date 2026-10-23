@@ -291,7 +291,8 @@ async def test_native_receipt_is_authoritative_when_alert_consent_is_edited(inta
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('table', ['facebook_lead_submissions', 'retell_form_sms_jobs'])
-async def test_competing_native_insert_recovers_exact_committed_id(intake, monkeypatch, table):
+@pytest.mark.parametrize('empty_code', [False, True])
+async def test_competing_native_insert_recovers_exact_committed_id(intake, monkeypatch, table, empty_code):
     db, sdk, email = intake
     monkeypatch.setenv('RETELL_FORM_SMS_ENABLED', 'true')
     monkeypatch.setenv('RETELL_SMS_TRANSPORT', 'app_twilio')
@@ -300,7 +301,8 @@ async def test_competing_native_insert_recovers_exact_committed_id(intake, monke
     original = Query.execute
     raised = []
     class Conflict(Exception):
-        code = '23505'
+        code = None if empty_code else '23505'
+        pgcode = '23505'
     def execute(self):
         result = original(self)
         if self.name == table and self.action == 'upsert' and not raised:
@@ -311,6 +313,8 @@ async def test_competing_native_insert_recovers_exact_committed_id(intake, monke
     adapter = MagicMock(); adapter.fetch_lead_form_data.return_value = data()
     entry = SimpleNamespace(leadgen_id='competing-native-insert', campaign_id='')
     await webhooks._process_facebook_lead(entry, adapter)
+    notice = next(row for row in db.tables['app_notifications'].values() if row.get('type') == 'pipeline_step')
+    assert notice['metadata']['seller_sms'] in ('scheduled_app_twilio_60_seconds', 'existing_app_twilio_job')
     await webhooks._process_facebook_lead(entry, adapter)
     assert raised
     assert len(db.tables['facebook_lead_submissions']) == 1
