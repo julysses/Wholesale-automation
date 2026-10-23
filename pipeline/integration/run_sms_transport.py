@@ -1,5 +1,6 @@
 """Own and stop a disposable localhost cluster for SMS transport contention QA."""
 import os
+import sys
 from pathlib import Path
 import shutil
 import socket
@@ -26,6 +27,9 @@ with tempfile.TemporaryDirectory(prefix='wholesale-sms-') as folder:
         env={**os.environ,'PGPASSWORD':'local-only-test-admin'}
         run([pg/'createdb','-h','127.0.0.1','-p',port,'-U','test_admin','wholesale_sms_test'],env=env)
         env['SMS_TEST_ADMIN_URL']=f'postgresql://test_admin:local-only-test-admin@127.0.0.1:{port}/wholesale_sms_test'
-        run([node,'pipeline/integration/retell-app-concurrency.mjs'],cwd=root,env=env,timeout=60)
+        target=sys.argv[1] if len(sys.argv)>1 else 'pipeline/integration/retell-app-concurrency.mjs'
+        if target not in ('pipeline/integration/retell-app-concurrency.mjs','pipeline/integration/retell-owner-retest.mjs'):
+            raise SystemExit('Unknown SMS integration suite')
+        run([node,target],cwd=root,env=env,timeout=60)
     finally:
         if started:run([pg/'pg_ctl','-D',data,'-m','immediate','-w','stop'],stdout=subprocess.DEVNULL)
