@@ -16,6 +16,17 @@ User requested remediation of Railway's October 21 security incident and signed 
 
 ## Verified inventory (production environments only)
 
+### Latest handoff: replacement saved, not deployed
+
+- User reports replacement Anthropic key created and saved via Railway Submit. Form is closed. Claude one-time display confirmed creation and expiry **December 31, 2026, 2:00 PM CST**, overriding the earlier form default. Do not copy its secret into logs or source. Exact Railway/new-key matching and runtime authentication remain unverified.
+- Railway connector now works with `link_6adba03c016c819195522e805ef1ad51`. The other listed connection repeatedly requests authentication; use the working connection for this verified project.
+- `get_staged_changes` identifies patch `4aaefe75-c577-499d-ae21-681491c57a26`, created April 22, updated October 23, status STAGED, two variable changes: ANTHROPIC_API_KEY and SUPABASE_SERVICE_ROLE_KEY. No other staged configuration change. Do not accept this whole patch without addressing the privileged key addition.
+- `get_service_config` confirms the live variable inventory has ANTHROPIC_API_KEY but **does not have SUPABASE_SERVICE_ROLE_KEY**. Earlier browser inventory included pending state. Treat the pending service-role secret as potentially exposed storage, but do not describe it as a currently deployed service credential.
+- Live Railway source branch is `claude/ai-wholesaling-agency-KkDF1`, not the local launch-prep or retell branch. UI config-as-code points to commit `ad70c7c29d618efe3aad848a386ca1779f0e7b8f`. Start command is uvicorn; active deployment remains `bf158634-88aa-4a64-80aa-0e7f6c8bce7d`. No deployment performed.
+- Recommended immediate action: discard only the pre-existing pending service-role addition, preserve the new Anthropic value, re-read staged diff and obtain explicit deployment approval as required by Railway accept-deploy. This avoids introducing unplanned database privileges. Preserve existing live database/anon settings.
+- Browser automatic approval review blocked clicking Done on Claude's one-time key display until secure retention is confirmed. Left it open; ask user to save the key securely and close it. Do not bypass the block or reproduce the key.
+- Railway outage banner now says a fix is out and monitoring is underway. This is not deployment or credential verification.
+
 - Railway workspace: julysses's Projects, `d4ee9a0a-3bb5-47cc-a255-3e02cf5dcfef`.
 - `practical-youthfulness`, project `8a8dc45c-5c24-4a50-877f-1cd48caf1577`, service `web` (`9768c6aa-f30f-49d6-9be9-5b4a80fd35b4`), environment `5382d87c-b87a-4137-b704-e380541586d4`: 22 saved variables, including ANTHROPIC_API_KEY, DATABASE_URL, REALTY_API_KEY, SUPABASE_SERVICE_ROLE_KEY. Public VITE_SUPABASE_URL points to production `dvzhzlipbwzzcliujzyz`. DATABASE_URL begins with a Postgres scheme; password/host dependency mapping remains unfinished. Values were not saved to this document.
 - Anthropic: Railway key's visible prefix matches `wholesale_automation`, created April 21, 2026, key record `apikey_01GkYe6foE35RfAXqcGxniVk`, Default workspace, legacy/unlinked, last used 30+ days ago. Do not confuse with `Wholesale_automation_july2026`. The April key menu exposes Disable API key and Delete API key. No disable submitted. Exact full-value equality was not checked.
