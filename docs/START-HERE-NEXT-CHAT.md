@@ -1,3 +1,7 @@
+## Current launch work — October 23, 2026
+
+Continue from [today's readiness checkpoint](facebook-release/LAUNCH-2026-10-23.md). Controlled fresh live tests are authorized with confirmed owner destinations; broad outreach and schedules remain paused. The candidate fixes are not yet deployed, and remaining Railway credential exposure is not yet contained.
+
 ## Released with messaging paused — October 20, 2026
 
 The owner authorized releasing PR #22 and applying only its migration. Production now serves `a89815126d9a98ced016167d8e383641d133135f`; deployment `dpl_Dwjn7sjLUB5C9X2JsoezbSKjJ6go` is READY. Facebook receipt migration source `20261020184154` was applied as Supabase history version `20261020192531`. Do not reapply it.
