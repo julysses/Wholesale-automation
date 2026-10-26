@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '@/lib/api';
+import { IntakeQualification } from './IntakeQualification';
 
 type Intake = { id: string; lead_id: string; classification: string; created_at: string };
 type Detail = Intake & { prepared_answers: { answers: Record<string, string>; missing_fields: string[]; reason_codes: string[] }; normalization_notes: string[] };
@@ -61,6 +62,8 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
   const [note, setNote] = useState(''); const [ack, setAck] = useState(false); const [feedback, setFeedback] = useState('');
   const [pending, setPending] = useState<Decision | null>(null); const [busy, setBusy] = useState(false); const inFlight = useRef(false);
   const [before, setBefore] = useState<number | null>(null);
+  const [assessmentPending, setAssessmentPending] = useState(false);
+  const [assessmentRevision, setAssessmentRevision] = useState(0);
   const detail = useQuery({ ...options, queryKey: ['intake-detail', userId, workspace, intake], queryFn: async ({ signal }) => {
     const value = await read<Detail>(path, signal);
     if (!value?.prepared_answers?.answers || !Array.isArray(value.prepared_answers.missing_fields) || !Array.isArray(value.prepared_answers.reason_codes) || !Array.isArray(value.normalization_notes)) throw new Error('Invalid intake evidence');
@@ -87,7 +90,7 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
   const valid = available && ack && note.trim().length >= 20 && (action === 'revoke' ? !!state.data?.latest_review && state.data.latest_review.action !== 'revoke'
     : !!target && !!state.data?.target_hash && !!basis && propertyRef.trim().length >= 10 && (action !== 'repeat_inquiry' || sellerRef.trim().length >= 10));
   async function submit() {
-    if (inFlight.current || (!pending && !valid)) return;
+    if (inFlight.current || assessmentPending || (!pending && !valid)) return;
     inFlight.current = true; setBusy(true); setFeedback(''); let request = pending;
     try {
       if (!request) {
@@ -103,7 +106,7 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
       const result = await (await apiFetch(`${path}/identity-reviews`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) })).json();
       if (result?.review_id !== request.id || result.sequence !== request.expected_sequence + 1 || typeof result.duplicate !== 'boolean' || result.outreach_authorized !== false) throw new Error('Unconfirmed result');
       setPending(null); setAck(false); setNote(''); setBefore(null); setFeedback('Identity review recorded. Original records remain intact; no seller contact or offer was authorized.');
-      void state.refetch(); void history.refetch(); onSaved();
+      void state.refetch(); void history.refetch(); setAssessmentRevision(value => value + 1); onSaved();
     } catch (error) {
       const definite = error instanceof ApiError && [400, 401, 403, 404, 409, 422].includes(error.status);
       if (definite) { setPending(null); setAck(false); void state.refetch(); }
@@ -126,7 +129,7 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
         {candidates.data.items.map(row => <div key={row.lead_id} className="border rounded p-3 my-2 text-sm">
           <p>{row.property_address || 'Address missing'}, {row.city} {row.state}</p><p>{row.match_basis === 'CONTACT_ONLY' ? 'Contact-only match; independent property evidence required.' : 'Exact address text; independent verification still required.'}</p>
           <p>Parcel: {row.parcel_id ?? 'Unbound'} · County: {row.county ?? 'Unknown'} · Unit: {row.county_unit ?? 'Unknown'}</p>
-          <button className={button} disabled={busy || !!pending || !row.property_id} onClick={() => { setTarget(row.lead_id); setAck(false); }}>{target === row.lead_id ? 'Selected property' : 'Select property'}</button>
+          <button className={button} disabled={assessmentPending || busy || !!pending || !row.property_id} onClick={() => { setTarget(row.lead_id); setAck(false); }}>{target === row.lead_id ? 'Selected property' : 'Select property'}</button>
         </div>)}
       </>}
     </div>
@@ -134,7 +137,7 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
       <p>Review sequence {state.data.sequence}. {state.data.link_current ? 'Reviewed link is current.' : 'No currently valid reviewed link.'}</p>
       {state.data.target_snapshot && <details><summary>Exact target evidence</summary><dl>{Object.entries(state.data.target_snapshot).filter(([key]) => key !== 'contact_fingerprint').map(([key, value]) => <div key={key} className="break-all"><dt>{key.replaceAll('_', ' ')}</dt><dd>{value === null ? 'Unknown' : String(value)}</dd></div>)}</dl></details>}
     </div>}
-    <fieldset disabled={!available || busy || !!pending} className="space-y-3">
+    <fieldset disabled={!available || assessmentPending || busy || !!pending} className="space-y-3">
       <label className="block text-sm">Identity decision<select className={input} value={action} onChange={e => { setAction(e.target.value); setAck(false); }}><option value="link_property">Link property</option><option value="repeat_inquiry">Mark reviewed repeat inquiry</option><option value="revoke">Revoke prior link</option></select></label>
       {action !== 'revoke' && <>
         <label className="block text-sm">Property evidence basis<select className={input} value={basis} onChange={e => setBasis(e.target.value)}><option value="">Select evidence basis</option><option value="parcel_document">Parcel document</option><option value="verified_address">Independently verified address</option></select></label>
@@ -144,16 +147,17 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
       <label className="block text-sm">Identity review note<textarea className={input} maxLength={2000} value={note} onChange={e => setNote(e.target.value)} /></label>
       <label className="flex gap-2 text-sm"><input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)} />I reviewed the displayed source, target and evidence for this decision.</label>
     </fieldset>
-    <div className="flex flex-wrap gap-2"><button className={button} disabled={busy || (!pending && !valid)} onClick={() => { void submit(); }}>{busy ? 'Recording identity review…' : pending ? 'Retry exact identity request' : 'Record identity review'}</button>
-      <button className={button} disabled={busy || !!pending} onClick={() => { setAck(false); void detail.refetch(); void candidates.refetch(); void state.refetch(); void access.refetch(); void history.refetch(); }}>Refresh identity evidence</button>
-      <button className={button} disabled={busy || !!pending} onClick={onClose}>Close intake review</button></div>
+    <div className="flex flex-wrap gap-2"><button className={button} disabled={assessmentPending || busy || (!pending && !valid)} onClick={() => { void submit(); }}>{busy ? 'Recording identity review…' : pending ? 'Retry exact identity request' : 'Record identity review'}</button>
+      <button className={button} disabled={assessmentPending || busy || !!pending} onClick={() => { setAck(false); void detail.refetch(); void candidates.refetch(); void state.refetch(); void access.refetch(); void history.refetch(); setAssessmentRevision(value => value + 1); }}>Refresh identity evidence</button>
+      <button className={button} disabled={assessmentPending || busy || !!pending} onClick={onClose}>Close intake review</button></div>
     {feedback && <p role="status">{feedback}</p>}
+    <IntakeQualification userId={userId} workspace={workspace} intake={intake} revision={assessmentRevision} locked={busy || !!pending} onPending={setAssessmentPending} />
     <h4 className="font-medium">Identity review history</h4>
     {history.isFetching ? <p>Loading review history…</p> : history.isError ? <p role="alert">Review history unavailable.</p> : <>
       {!history.data?.length && <p>No identity reviews on this page.</p>}
       {history.data?.map(row => <div key={row.id} className="text-sm border rounded p-2 break-words"><p>{row.sequence} · {row.action.replaceAll('_', ' ')} · {row.created_at}</p><p>{row.review_note}</p><p>{row.property_evidence_ref} {row.seller_evidence_ref}</p></div>)}
-      <div className="flex gap-2"><button className={button} disabled={busy || !!pending || before === null} onClick={() => setBefore(null)}>Latest identity reviews</button>
-        <button className={button} disabled={busy || !!pending || history.data?.length !== 20} onClick={() => setBefore(history.data!.at(-1)!.sequence)}>Older identity reviews</button></div>
+      <div className="flex gap-2"><button className={button} disabled={assessmentPending || busy || !!pending || before === null} onClick={() => setBefore(null)}>Latest identity reviews</button>
+        <button className={button} disabled={assessmentPending || busy || !!pending || history.data?.length !== 20} onClick={() => setBefore(history.data!.at(-1)!.sequence)}>Older identity reviews</button></div>
     </>}
   </section>;
 }

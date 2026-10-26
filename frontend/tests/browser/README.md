@@ -34,3 +34,7 @@ Intake identity checks:
 2. Select the synthetic property, choose Parcel document, enter a property evidence reference and a review note, and acknowledge the displayed evidence. Recording must remain disabled before these requirements are met.
 3. Record the link, then verify the current-link indicator and history entry. Select Revoke prior link, document a correction, acknowledge it and record. Verify sequence two, no current valid link, and both historical decisions.
 4. Component tests separately exercise repeat-inquiry seller evidence, lost replies with exact retries across queue refresh, stale hashes, operator restrictions and workspace switching. These synthetic actions never call a provider or database.
+
+Qualification checks:
+
+Open the synthetic intake and verify Current acquisition screening shows Incomplete with missing condition/timeline. Save assessment snapshot; verify matching-current confirmation, disabled redundant save and Version 1 history. Identity review changes refresh the screening and make the prior snapshot stale. This fixture provides display state only; the real qualification policy is covered by isolated PostgreSQL tests.

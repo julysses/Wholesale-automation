@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — current screening and saved assessment UI
+
+- Previous turn was progress: `e59334c` implemented/tested/pushed qualification assessments. Pulled current branch and connected qualification-state/history APIs to the selected intake review with reasons, missing fields, canonical territory, policy version and explicit current-versus-stale status.
+- Added snapshot saving with fresh hash/sequence checks, stable request identity, exact unknown-response retry and response validation that rejects authority flags. Pending assessment work locks parent identity edits/close; identity changes trigger fresh qualification reads. Queue refresh does not discard the pending snapshot request.
+- Validation: **212 frontend tests passed across 50 files**, including seven new qualification cases. Synthetic browser verified incomplete remains incomplete after saving, matching-current/history state, disabled redundant save and no console errors. Screenshot: `evidence/2026-10-26-qualification-browser.png`. Final **14 focused UI tests** and feature-enabled TypeScript/Vite build passed after response-validation tightening; lint reports no new findings (147 existing). `git diff --check` passed.
+- Initial fixture-edit script used a redundant frontend path and wrote nothing; corrected before final checks. No backend/schema/provider/runtime changes or production migrations, deployment, outreach, fulfillment or binding transactions. Current screening remains separate from title verification and contact/offer authority.
+
+Next: canonical underwriting reservation using a fresh qualified identity/assessment within one transaction; automatic assessment snapshots at that handoff. Campaign attribution, remaining sequential phases, full-schema/PostgREST/browser acceptance and mobile QA remain open. Goal active.
+
 ## Implementation checkpoint — versioned canonical intake qualification
 
 - Previous turn was progress: `ff54056` implemented/tested/pushed the review dashboard. Pulled current branch, inspected the intake/identity records and catalog, and added CLI-generated `20261026181452_acquisition_intake_qualification.sql` plus current-state, append-only recording and paginated history APIs.

@@ -15,9 +15,28 @@ const intake = { id: 'fixture-intake', lead_id: 'fixture-source', classification
   prepared_answers: { answers: { property_address: '123 Fixture Lane', city: 'Dallas', state: 'TX', authority: 'yes', phone: '2145550101' }, missing_fields: ['condition', 'timeline'], reason_codes: ['MISSING_REQUIRED_ANSWERS'] }, normalization_notes: [] };
 const identityEvents: { id: string; sequence: number; action: string; review_note: string; created_at: string }[] = [];
 const candidate = { lead_id: 'fixture-lead', property_id: 'fixture-property', property_address: '123 Fixture Lane', city: 'Dallas', state: 'TX', county: 'Dallas', parcel_id: 'fixture-parcel', county_unit: null, match_basis: 'EXACT_ADDRESS_TEXT' };
+function screening() {
+  const repeat = identityEvents.at(-1)?.action === 'repeat_inquiry';
+  return { classification: repeat ? 'duplicate' : 'incomplete', policy_version: 'intake-qualification-v1',
+    reason_codes: [repeat ? 'REVIEWED_REPEAT_INQUIRY' : 'MISSING_REQUIRED_ANSWERS'], missing_fields: ['condition', 'timeline'],
+    canonical_county: identityEvents.length ? 'dallas' : null, canonical_state: identityEvents.length ? 'tx' : null,
+    identity_link_current: !!identityEvents.length && identityEvents.at(-1)?.action !== 'revoke',
+    ownership_verified: false, outreach_authorized: false, binding_offer: false, contact_permission_granted: false };
+}
+const assessmentHash = () => identityEvents.length.toString(16).padStart(64, '0');
+const assessmentEvents: { id: string; sequence: number; classification: string; evidence_hash: string; assessment: ReturnType<typeof screening>; created_at: string }[] = [];
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   let value: unknown;
-  if (init?.method === 'POST' && path.endsWith('/identity-reviews')) {
+  if (init?.method === 'POST' && path.endsWith('/assessments')) {
+    const body = JSON.parse(String(init.body));
+    if (replies.has(body.id)) value = replies.get(body.id);
+    else {
+      if (body.expected_sequence !== assessmentEvents.length || body.evidence_hash !== assessmentHash()) throw new ApiError('Assessment changed');
+      const assessment = screening();
+      assessmentEvents.push({ id: body.id, sequence: assessmentEvents.length + 1, classification: assessment.classification, evidence_hash: body.evidence_hash, assessment, created_at: new Date().toISOString() });
+      value = { assessment_id: body.id, sequence: assessmentEvents.length, classification: assessment.classification, duplicate: false, outreach_authorized: false }; replies.set(body.id, value);
+    }
+  } else if (init?.method === 'POST' && path.endsWith('/identity-reviews')) {
     const body = JSON.parse(String(init.body));
     if (replies.has(body.id)) value = replies.get(body.id);
     else {
@@ -50,6 +69,9 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   else if (path.endsWith('/recoveries')) value = recoveries;
   else if (path.includes('/inquiries/health')) value = { summary: { requires_review: held.state === 'review' ? 1 : 0, retrying: 0, expired_leases: 0, awaiting_worker: held.state === 'ready' ? 1 : 0, leased: 0, completed: 0 }, items: [{ ...held }], next_after: null, checked_at: new Date().toISOString() };
   else if (path.includes('/intakes?')) value = { items: [intake], next_after: null };
+  else if (path.endsWith('/qualification-state')) value = { assessment: screening(), evidence_hash: assessmentHash(), sequence: assessmentEvents.length,
+    latest_assessment: assessmentEvents.at(-1) ?? null, assessment_current: assessmentEvents.at(-1)?.evidence_hash === assessmentHash() };
+  else if (path.includes('/assessments?')) value = [...assessmentEvents].reverse();
   else if (path.includes('/identity-state')) value = { sequence: identityEvents.length, preparation_hash: 'a'.repeat(64),
     target_hash: path.includes('?target=') ? 'b'.repeat(64) : null, target_snapshot: path.includes('?target=') ? candidate : null,
     latest_review: identityEvents.at(-1) ?? null, link_current: !!identityEvents.length && identityEvents.at(-1)?.action !== 'revoke' };
