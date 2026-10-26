@@ -27,6 +27,7 @@ OFFER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041236_acquisitio
 OFFER_STATE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041845_acquisition_offer_review_state.sql'
 INBOX_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153314_acquisition_provider_inbox.sql'
 LEASE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153939_acquisition_inbox_leases.sql'
+INTAKE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026162924_acquisition_seller_intakes.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -136,6 +137,7 @@ class WorkspaceTests(unittest.TestCase):
                  "INSERT INTO webhook_jobs(source,payload) VALUES('legacy_fixture','{\"sentinel\":true}');")
         self.sql(INBOX_MIGRATION.read_text())
         self.sql(LEASE_MIGRATION.read_text())
+        self.sql(INTAKE_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -291,6 +293,88 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"UPDATE workspaces SET status='suspended' WHERE id='{WORKSPACE}';")
         self.inbox_claim(fail=True)
         self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE status='pending';"),'1')
+
+    def prepared_intake(self, **overrides):
+        import importlib.util
+        # Load the pure normalizer without tools.__init__ importing provider SDKs.
+        spec=importlib.util.spec_from_file_location('isolated_acquisition_intake',ROOT/'tools/acquisition_intake.py')
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        prepare_facebook_intake=module.prepare_facebook_intake
+        answers=dict(property_address='123 Fixture',city='Dallas',state='TX',authority='yes',
+                     condition='repairs',timeline='soon',motivation='move',asking_price='150000',phone='2145550101')
+        answers.update(overrides)
+        return prepare_facebook_intake(leadgen_id='fixture',provider_data={'id':'fixture','form_id':'form',
+            'field_data':[{'name':k,'values':[v]} for k,v in answers.items()]})
+
+    def complete_intake(self, claim, prepared=None, role='service_role', fail=False):
+        if prepared is None: prepared=self.prepared_intake()
+        value=self.sql(f"SELECT public.complete_facebook_acquisition_intake('{claim['receipt_id']}','{claim['lease_token']}',"
+                       f"{literal(json.dumps(prepared))}::jsonb);",user=ADMIN,role=role,fail=fail)
+        return value if fail else json.loads(value)
+
+    def test_intake_atomic_idempotent_and_workspace_scoped(self):
+        # Exercise the inspected production retention trigger, not just a stub.
+        retention=(ROOT/'frontend/supabase/migrations/20261016230511_protect_website_inquiry_retention.sql').read_text()
+        self.sql(retention.split('-- Repair only the display classifications')[0])
+        self.inbox_config(); self.inbox_accept(); claim=self.inbox_claim()[0]
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.complete_intake(claim),range(3)))
+        self.assertEqual(len({r['lead_id'] for r in results}),1)
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        lead=results[0]['lead_id']
+        self.assertNotEqual(lead,LEAD) # Same phone never merges unrelated CRM property.
+        self.assertEqual(self.sql(f"SELECT owner_phone_1 FROM leads WHERE id='{lead}';"),'+12145550101')
+        self.assertEqual(self.sql(f"SELECT (bound_by IS NULL AND binding_integration_id IS NOT NULL AND property_id IS NULL)::text FROM workspace_leads WHERE lead_id='{lead}';"),'true')
+        self.assertEqual(self.sql(f"SELECT (NOT sms_sequence_active AND NOT email_sequence_active AND ai_calling_paused AND NOT retention_deletable)::text FROM leads WHERE id='{lead}';"),'true')
+        self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes;",user=ADMIN),'1')
+        for actor in (OTHER,CALLER):
+            self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes;",user=actor),'0')
+        self.assertEqual(self.sql("SELECT state FROM private.acquisition_inbox_processing;"),'completed')
+        self.assertEqual(self.inbox_claim(),[])
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake';"),'1')
+        self.complete_intake(claim,self.prepared_intake(asking_price='1'),fail=True)
+        self.complete_intake(claim,role='authenticated',fail=True)
+        self.sql("UPDATE seller_intakes SET classification='unqualified';",user=ADMIN,role='service_role',fail=True)
+
+    def test_intake_incomplete_and_invalid_contact_evidence_preserved(self):
+        self.inbox_config(); self.inbox_accept(); claim=self.inbox_claim()[0]
+        result=self.complete_intake(claim,self.prepared_intake(property_address='',asking_price='',phone='2145550101 ext 2'))
+        self.assertEqual(result['classification'],'incomplete')
+        lead=result['lead_id']
+        self.assertEqual(self.sql(f"SELECT (property_address='' AND asking_price IS NULL AND owner_phone_1 IS NULL)::text FROM leads WHERE id='{lead}';"),'true')
+        self.assertEqual(self.sql("SELECT normalization_notes[1] FROM seller_intakes;"),'PHONE_REVIEW_REQUIRED')
+        self.assertEqual(self.sql("SELECT prepared_answers->'answers'->>'phone' FROM seller_intakes;"),'2145550101 ext 2')
+
+    def test_intake_failure_rolls_back_lead_binding_and_completion(self):
+        self.inbox_config(); self.inbox_accept(); claim=self.inbox_claim()[0]
+        self.sql("CREATE FUNCTION private.fail_intake_fixture() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture failure'; END $$; "
+                 "CREATE TRIGGER fail_intake_fixture BEFORE INSERT ON seller_intakes FOR EACH ROW EXECUTE FUNCTION private.fail_intake_fixture();")
+        self.complete_intake(claim,fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='facebook_acquisition';"),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM workspace_leads WHERE binding_integration_id IS NOT NULL;"),'0')
+        self.assertEqual(self.sql("SELECT state FROM private.acquisition_inbox_processing;"),'leased')
+        self.sql("DROP TRIGGER fail_intake_fixture ON seller_intakes;")
+        self.assertFalse(self.complete_intake(claim)['duplicate'])
+
+    def test_intake_lease_activation_and_permission_assertions_enforced(self):
+        self.inbox_config(); self.inbox_accept(); claim=self.inbox_claim()[0]
+        invalid=self.prepared_intake(); invalid['outreach_authorized']=True
+        self.complete_intake(claim,invalid,fail=True)
+        invalid=self.prepared_intake(); invalid['external_lead_id']='another-event'
+        self.complete_intake(claim,invalid,fail=True)
+        invalid=self.prepared_intake(); invalid['classification']='qualified'
+        self.complete_intake(claim,invalid,fail=True)
+        self.sql("UPDATE private.acquisition_inbox_processing SET lease_expires_at=now()-interval '1 second';")
+        self.complete_intake(claim,fail=True)
+        fresh=self.inbox_claim()[0]
+        self.complete_intake(claim,fail=True)
+        self.sql("UPDATE private.acquisition_activation SET enabled=false;")
+        self.complete_intake(fresh,fail=True)
+        self.activate()
+        self.sql("UPDATE private.acquisition_integrations SET enabled=false;")
+        self.complete_intake(fresh,fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes;"),'0')
 
     def reserve_analysis(self, identity='b0000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, inputs=None, fail=False):
         if inputs is None: inputs={'cases':{name:{'strategy':'fix_and_flip'} for name in ('base','downside','upside')}}
@@ -1143,4 +1227,9 @@ def main(test_case=WorkspaceTests, test_names=None):
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    import argparse
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--test', action='append', choices=unittest.defaultTestLoader.getTestCaseNames(WorkspaceTests),
+                        help='Run named acceptance cases; default runs the full suite')
+    args=parser.parse_args()
+    raise SystemExit(main(test_names=args.test))

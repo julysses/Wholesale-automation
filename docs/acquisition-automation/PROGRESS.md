@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — atomic seller intake persistence
+
+- Previous turn was progress: `23fddf1` added/tested/pushed versioned intake preparation. Pulled clean branch; re-inspected catalog lead indexes/triggers, source retention function, workspace binding schema and receipt/lease state before creating SQL.
+- Added CLI-generated `20261026162924_acquisition_seller_intakes.sql`: thin immutable channel-neutral seller_intakes relation over canonical CRM leads and receipts, workspace membership RLS, and exactly-one human/integration binding provenance. Existing human bindings and call qualification records/triggers remain intact.
+- Service-only completion checks activation/integration/workspace, receipt lead/form identity, current lease, payload retention, preparation version and false verification/permission/offer assertions. Lead, binding, intake, completed state and audit commit atomically. Concurrent exact retries return one lead; changed input fails. No phone/address-only merge or canonical property assertion occurs.
+- Missing source address/city are empty values; price/state remain nullable. Contact normalization failures preserve originals plus review notes instead of discarding the inquiry. SMS/email sequences remain false, AI calling paused, acquisition retention held for review. Added a final-order retention guard and tested alongside the actual inspected legacy retention function.
+- Validation: the broad database run passed **73 existing cases** but the four new cases initially failed before SQL because package import pulled unavailable provider dependencies into the stdlib runner. Corrected isolated loading to execute only the pure normalizer. **All 4 new cases then passed**, including final identity/assertion checks, concurrency, rollback and real retention-trigger interaction. **3 API/calculator/database journeys passed** with the additive schema. Added optional named-case selection; default CI still runs the full suite. `git diff --check` passed. No production SQL/deployment/provider changes.
+- This creates one lead per distinct native event. Cross-inquiry resolution, qualified/duplicate transitions, complete retrieved provider consent-response retention, campaign attribution, operator intake UI and actual HTTP/worker integration remain outstanding. CRM/intake retention is distinct from raw-inbox retention and must receive a policy/workflow before activation.
+
+Next: complete provider retrieval evidence/consent preservation and connect a default-off Facebook worker/verified durable HTTP receiver; canonical owner/property matching and repeat inquiry linking, then attribution/operator review and end-to-end acceptance. Goal active.
+
 ## Implementation checkpoint — native seller-intake preparation
 
 - Previous turn was progress: `d4570aa` implemented/tested/pushed recoverable inbox leases. Pulled the clean branch and inspected catalog qualification/lead columns and constraints, canonical binding requirements, and legacy qualification notification triggers before attempting the atomic writer.

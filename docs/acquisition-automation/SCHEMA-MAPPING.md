@@ -84,3 +84,7 @@ The production-based implementation adds `acquisition_contact_points` and `acqui
 ## Provider inbox implementation follow-up
 
 `webhook_jobs` is extended with immutable acquisition integration/workspace/event identity, original body and hashes, and retention metadata. `private.acquisition_integrations` supplies privileged account-to-workspace routing with disabled defaults; no fourth campaign store is introduced. Acquisition receipts use a separate source/status namespace so existing pending-job processors do not claim them. Existing native Facebook/SMS receipt constraints remain unchanged pending explicit inquiry linkage. See PROVIDER-INBOX.md for retention, compensation and activation limits.
+
+## Seller intake implementation follow-up
+
+The thin `seller_intakes` relation links immutable canonical receipts to workspace-bound existing CRM leads. It avoids fabricating call_id/transcript values or activating HOT call triggers in qualification_results. `workspace_leads` now distinguishes human binding from same-workspace integration binding with an exclusive origin constraint. Canonical property/owner resolution remains separate; receipt-level retry deduplication does not claim cross-inquiry identity resolution. See SELLER-INTAKE.md.
