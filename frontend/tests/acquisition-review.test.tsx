@@ -55,3 +55,9 @@ it('rechecks permissions immediately before recording and removes prior workspac
   await waitFor(() => expect(screen.queryByLabelText('Selected offer review')).toBeNull());
   await screen.findByText('No proposals on this page.');
 });
+it('locks workspace selection while a saved campaign request needs reconciliation', async () => {
+  const key = 'acquisition-campaign-request:v1:user-a:w';
+  sessionStorage.setItem(key, JSON.stringify({ id: '11111111-1111-4111-8111-111111111111', name: 'Saved draft', channel: 'facebook', budget_cents: 100, currency: 'USD' }));
+  await open(); await waitFor(() => expect(screen.getByLabelText('Workspace')).toBeDisabled());
+  expect(screen.getByRole('button', { name: 'Retry exact draft request' })).toBeEnabled(); sessionStorage.removeItem(key);
+});

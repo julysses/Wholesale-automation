@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
 import { AcquisitionUnderwriting } from '@/pages/AcquisitionUnderwriting';
 import { IntakeReview } from '@/components/acquisition/IntakeReview';
+import { CampaignDrafts } from '@/components/acquisition/CampaignDrafts';
 import { InquiryHealth } from '@/components/acquisition/InquiryHealth';
 import { ScenarioSummary } from '@/components/acquisition/ScenarioSummary';
 
@@ -28,6 +29,7 @@ async function read<T>(path: string, signal?: AbortSignal): Promise<T> { return 
 
 export function AcquisitionReview({ userId }: { userId: string }) {
   const [workspace, setWorkspace] = useState('');
+  const [campaignPending, setCampaignPending] = useState(false);
   const spaces = useQuery({ queryKey: ['acquisition-review', userId, 'workspaces'],
     queryFn: ({ signal }) => read<Workspace[]>('/api/acquisition/workspaces', signal), retry: false, gcTime: 0, staleTime: 0 });
   return <main className="max-w-6xl mx-auto p-6 space-y-6">
@@ -35,14 +37,14 @@ export function AcquisitionReview({ userId }: { userId: string }) {
       <p className="text-gray-600 mt-2">Review the proposed amount and supporting underwriting. Amount approval does not send an offer or approve a contract.</p></header>
     {spaces.isPending && <p role="status">Loading your workspaces…</p>}
     {spaces.isError && <p role="alert">{message(spaces.error)}</p>}
-    {spaces.data && <label className="block max-w-md">Workspace<select className={input} value={workspace} onChange={e => setWorkspace(e.target.value)}>
+    {spaces.data && <label className="block max-w-md">Workspace<select className={input} disabled={campaignPending} value={workspace} onChange={e => setWorkspace(e.target.value)}>
       <option value="">Select a workspace</option>{spaces.data.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>}
     {spaces.data?.length === 0 && <p>No acquisition workspace is available to your account.</p>}
-    {workspace && spaces.data?.some(w => w.id === workspace) && <WorkspaceReview key={`${userId}:${workspace}`} userId={userId} workspace={workspace} />}
+    {workspace && spaces.data?.some(w => w.id === workspace) && <WorkspaceReview key={`${userId}:${workspace}`} userId={userId} workspace={workspace} onCampaignPending={setCampaignPending} />}
   </main>;
 }
 
-function WorkspaceReview({ userId, workspace }: { userId: string; workspace: string }) {
+function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: string; workspace: string; onCampaignPending: (pending: boolean) => void }) {
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [selected, setSelected] = useState<Offer | null>(null);
   const after = cursors[cursors.length - 1];
@@ -50,6 +52,7 @@ function WorkspaceReview({ userId, workspace }: { userId: string; workspace: str
   const queue = useQuery({ queryKey: ['acquisition-review', userId, workspace, 'queue', after],
     queryFn: ({ signal }) => read<Page>(`${base}/offers?limit=20${after ? `&after=${after}` : ''}`, signal), retry: false, gcTime: 0, staleTime: 0 });
   return <section className="space-y-4">
+    <CampaignDrafts userId={userId} workspace={workspace} onPending={onCampaignPending} />
     <InquiryHealth userId={userId} workspace={workspace} />
     <IntakeReview userId={userId} workspace={workspace} />
     <AcquisitionUnderwriting userId={userId} workspace={workspace} onProposed={() => { void queue.refetch(); }} />

@@ -40,3 +40,7 @@ Qualification checks:
 Open the synthetic intake and verify Current acquisition screening shows Incomplete with missing condition/timeline. Save assessment snapshot; verify matching-current confirmation, disabled redundant save and Version 1 history. Identity review changes refresh the screening and make the prior snapshot stale. This fixture provides display state only; the real qualification policy is covered by isolated PostgreSQL tests.
 
 For the qualified-intake handoff fixture, append `?qualified=1` to `acquisition-review.html`. This seeds synthetic complete seller answers and a reviewed canonical link. Open the intake, choose Underwrite qualified intake, and save blank underwriting inputs: the fixture returns an incomplete scenario plus the automatic assessment snapshot. It has no provider/database transport and does not validate production calculations.
+
+Campaign draft checks:
+
+Select the local QA workspace, enter a campaign name and USD budget, and save. Verify a draft card with exact budget and unavailable observed spend. The adapter keeps synthetic campaign rows in memory and cannot publish or fund anything. The real component preserves uncertain requests in tab session storage; completed saves clear them. Reload resets the fixture database, so this fixture is not persistence/reconciliation acceptance. Component tests separately exercise lost responses, reload recovery, permission changes and tenant denial.

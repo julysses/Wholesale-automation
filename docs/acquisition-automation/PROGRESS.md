@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — campaign draft dashboard
+
+- Continued from pushed `1773ddd` and pulled the current branch. Added the campaign draft panel to the existing default-off acquisition review page. Owner/admin membership permits entry; operators can inspect drafts. Existing database authorization remains authoritative. Channel choices are planning metadata and confer no phase activation.
+- The panel uses bounded, workspace-validated cursor pages, exact integer-cent conversion from USD input, explicit unknown observed spend and strict response identity/budget/authority validation. No publish, funding or provider action is exposed.
+- Unknown saves retain the exact UUID and payload in tab session storage keyed by user/workspace, including across reload/navigation; editing and workspace switching remain locked until reconciliation. A rejected retry does not erase an earlier uncertain request. Corrupt/unavailable storage fails closed, and failure to persist a new request prevents sending it. Stored payload contains campaign planning fields only, no credentials or seller records; closing the browser tab clears session storage and requires checking saved drafts before repeating an unresolved creation.
+- Updated the isolated browser adapter with synthetic campaign creation/listing and manual check instructions; it has no provider transport.
+- Validation: **243 frontend tests across 52 files passed**, including exact cent validation, unknown reply/reload/retry, revoked retry, malformed successes, operator restrictions, tenant response denial, pagination, storage failure and parent workspace lock. Feature-enabled TypeScript/Vite build passed; lint has no new findings (147 existing). Initial focused test-file creation used the wrong relative directory, was corrected, and the focused/full runs passed. No backend/schema/provider/runtime/deployment changes. This panel has component/build validation; rendered browser and live PostgREST acceptance remain open.
+
+Next: reviewed external account/campaign links with correction/revocation history, source associations and cost/funnel reporting. Campaign amendments, full production-schema acceptance and later sequential phases remain open. Goal active.
+
 ## Implementation checkpoint — workspace campaign drafts
 
 - Previous turn was progress: `a4346ef` captured the live schema and expanded upgrade fixtures. Pulled the branch, inspected existing ownership/worker guard patterns and current Supabase RLS guidance, then created `20261026205233_acquisition_campaign_ownership.sql` through the CLI.

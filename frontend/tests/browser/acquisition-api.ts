@@ -1,4 +1,5 @@
-// Isolated browser fixture. No fetch, credentials, storage or provider transport.
+// Isolated browser API fixture. No fetch, credentials or provider transport.
+// The real campaign UI uses tab session storage for pending-request recovery.
 export class ApiError extends Error { status = 409; }
 const offer = {
   offer_id: 'c0000000-0000-4000-8000-000000000001', workspace_id: 'fixture-workspace', lead_id: 'fixture-lead', property_id: 'fixture-property',
@@ -9,6 +10,7 @@ const offer = {
 };
 const events: { id: string; sequence: number; status: string; note: string; review_notes: Record<string, string> }[] = [];
 const replies = new Map<string, unknown>();
+const campaigns: { id: string; workspace_id: string; name: string; status: string; acquisition_channel: string; acquisition_budget_cents: number; acquisition_currency: string }[] = [];
 const held = { receipt_id: 'fixture-receipt', provider: 'facebook', state: 'review', attempts: 1, reason_code: 'CREDENTIALS_INVALID', blockers: ['CREDENTIALS_INVALID'], updated_at: '2026-10-26T12:00:00.123456+00:00', guidance: 'Ask the integration administrator to verify the Page credential.', next_attempt_at: null, lease_expires_at: null };
 const recoveries: unknown[] = [];
 const intake = { id: 'fixture-intake', lead_id: 'fixture-source', classification: 'incomplete', created_at: '2026-10-26T12:00:00Z',
@@ -70,6 +72,12 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       held.state = 'ready'; held.reason_code = ''; held.blockers = []; held.guidance = 'Awaiting the configured worker; runtime is not independently verified.';
       value = { recovery_id: body.id, receipt_id: held.receipt_id, cycle: 1, duplicate: false, outreach_authorized: false }; replies.set(body.id, value);
     }
+  } else if (init?.method === 'POST' && path.endsWith('/campaigns')) {
+    const body = JSON.parse(String(init.body));
+    const saved = campaigns.find(row => row.id === body.id);
+    if (saved && (saved.name !== body.name || saved.acquisition_channel !== body.channel || saved.acquisition_budget_cents !== body.budget_cents || saved.acquisition_currency !== body.currency)) throw new ApiError('Conflicting fixture request');
+    if (!saved) campaigns.push({ id: body.id, workspace_id: 'fixture-workspace', name: body.name, status: 'draft', acquisition_channel: body.channel, acquisition_budget_cents: body.budget_cents, acquisition_currency: body.currency });
+    value = { ...body, workspace_id: 'fixture-workspace', status: 'draft', duplicate: !!saved, execution_authorized: false };
   } else if (init?.method === 'POST') {
     if (!path.endsWith('/reviews')) throw new Error('Unexpected fixture mutation');
     const body = JSON.parse(String(init.body));
@@ -83,6 +91,11 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     }
   } else if (path.endsWith('/workspaces')) value = [{ id: 'fixture-workspace', name: 'Hilltop — local QA' }];
   else if (path.endsWith('/memberships')) value = [{ workspace_id: 'fixture-workspace', user_id: 'fixture-reviewer', role: 'owner', status: 'active' }];
+  else if (path.includes('/campaigns?')) {
+    const after = new URL(path, 'http://fixture.invalid').searchParams.get('after');
+    const rows = campaigns.filter(row => !after || row.id > after).sort((a, b) => a.id.localeCompare(b.id));
+    value = { items: rows.slice(0, 20), next_after: rows.length > 20 ? rows[19].id : null };
+  }
   else if (path.endsWith('/recoveries')) value = recoveries;
   else if (path.includes('/inquiries/health')) value = { summary: { requires_review: held.state === 'review' ? 1 : 0, retrying: 0, expired_leases: 0, awaiting_worker: held.state === 'ready' ? 1 : 0, leased: 0, completed: 0 }, items: [{ ...held }], next_after: null, checked_at: new Date().toISOString() };
   else if (path.includes('/intakes?')) value = { items: [intake], next_after: null };

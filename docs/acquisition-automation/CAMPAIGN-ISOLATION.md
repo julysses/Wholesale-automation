@@ -55,3 +55,13 @@ Validation includes five focused PostgreSQL cases, three final database regressi
 Compensation: keep acquisition activation and provider routes disabled, preserve draft rows and audit history, and retain the new access controls. Do not drop ownership columns or remove restrictive policies to roll back a UI feature: that would expose scoped rows through shared paths. Restore the application version only with shared-campaign exclusion retained. No destructive down migration is provided. Controlled amendment/cancellation, reviewed external account mapping, source links, cost observations and reporting remain to be implemented.
 
 Reference checked during implementation: [Supabase RLS and grants](https://supabase.com/docs/guides/database/postgres/row-level-security). The migration combines restrictive policies with explicit grants and mutation guards because service-role access bypasses RLS.
+
+## Draft dashboard
+
+`CampaignDrafts.tsx` is available inside the existing feature-gated acquisition review page. It lists only validated workspace drafts, shows planned USD budgets separately from unknown observed spend, and exposes creation to current owner/admin members. The database checks fresh authority at execution. Future-channel draft metadata does not activate those channels.
+
+Dollar entry converts decimal digits directly to integer cents, rejecting negative, exponential, excessive precision and out-of-range values. Response checks bind the returned UUID, workspace, channel, budget, currency and draft status and require `execution_authorized=false`.
+
+Before sending, the panel saves its exact request in browser tab session storage under a user/workspace key. Lost replies, mismatched results and later retry rejections retain that original request. Reloading the tab restores reconciliation; changing workspaces is disabled while unresolved. A definitive first-attempt rejection clears it. Storage failure before sending prevents the mutation; unreadable saved requests block new creation. This browser recovery state is not an audit record or server authority. Tab closure removes it, so reconcile saved drafts before recreating an unresolved request after closing the tab. No credentials or seller data are stored by this panel.
+
+Validated through component tests, the full 243-test frontend suite, a feature-enabled build and lint baseline. Rendered browser/live API acceptance remains pending. Campaign linking, amendments and activation are not implemented by this UI.
