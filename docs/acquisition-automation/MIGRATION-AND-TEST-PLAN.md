@@ -53,3 +53,7 @@ Migration `20261026153939_acquisition_inbox_leases.sql` adds private processing 
 ## Atomic intake rehearsal
 
 Migration `20261026162924_acquisition_seller_intakes.sql` adds a receipt-backed intake relation and explicit integration binding origin. Acceptance checks run the real pure normalizer and SQL transaction: concurrent completion yields one lead, unrelated same-phone leads remain separate, incomplete/invalid contact evidence survives, downstream insert failure rolls back lead/binding/completion, stale lease and execution assertions fail, workspace reads isolate evidence, and the legacy retention trigger cannot mark the new source for unattended cleanup. Existing 73 cases and three API journeys were also exercised; see PROGRESS.md for the corrected test-import failure and final targeted results. Disable the integration/worker to compensate, preserving records. No production migration authorized.
+
+## Facebook batch acceptance rehearsal
+
+Migration `20261026163900_acquisition_facebook_batch_acceptance.sql` wraps existing event acceptance in one transaction and deterministic lock order. Two disposable database cases verify whole-batch rollback for unconfigured accounts, cross-workspace routing from privileged integration configuration, opposite-order concurrent replays, conflicts and denied browser calls. HTTP tests use the real new receiver/client over mocked PostgREST; actual remote PostgREST/provider acceptance remains a release gate. Compensation is to disable the new ingestion flag/integrations; existing inline routes remain unchanged.

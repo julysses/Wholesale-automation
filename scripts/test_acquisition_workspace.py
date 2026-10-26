@@ -28,6 +28,7 @@ OFFER_STATE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041845_acqu
 INBOX_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153314_acquisition_provider_inbox.sql'
 LEASE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153939_acquisition_inbox_leases.sql'
 INTAKE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026162924_acquisition_seller_intakes.sql'
+BATCH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026163900_acquisition_facebook_batch_acceptance.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -138,6 +139,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(INBOX_MIGRATION.read_text())
         self.sql(LEASE_MIGRATION.read_text())
         self.sql(INTAKE_MIGRATION.read_text())
+        self.sql(BATCH_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -375,6 +377,36 @@ class WorkspaceTests(unittest.TestCase):
         self.sql("UPDATE private.acquisition_integrations SET enabled=false;")
         self.complete_intake(fresh,fail=True)
         self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes;"),'0')
+
+    def batch_accept(self, events, role='service_role', fail=False):
+        result=self.sql(f"SELECT public.accept_facebook_acquisition_batch({literal(json.dumps(events))}::jsonb,convert_to('signed fixture','UTF8'));",user=ADMIN,role=role,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_facebook_batch_atomic_rollback_and_replay(self):
+        self.inbox_config(account='100')
+        first={'page_id':'100','leadgen_id':'1','form_id':'200'}
+        second={'page_id':'999','leadgen_id':'2','form_id':'200'}
+        self.batch_accept([first,second],fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE workspace_id IS NOT NULL;"),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM private.acquisition_inbox_processing;"),'0')
+        self.inbox_config(account='999',workspace=WORKSPACE_B)
+        results=self.batch_accept([first,second])
+        replay=self.batch_accept([second,first])
+        self.assertEqual({r['receipt_id'] for r in results},{r['receipt_id'] for r in replay})
+        self.assertTrue(all(r['duplicate'] for r in replay))
+        self.assertEqual({r['workspace_id'] for r in results},{WORKSPACE,WORKSPACE_B})
+        self.batch_accept([first],role='authenticated',fail=True)
+
+    def test_facebook_batch_parallel_and_conflicting_events(self):
+        self.inbox_config(account='100')
+        events=[{'page_id':'100','leadgen_id':str(i),'form_id':'200'} for i in (1,2)]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(self.batch_accept,[events,list(reversed(events))]))
+        self.assertEqual(sum(not r['duplicate'] for batch in results for r in batch),2)
+        conflicting=dict(events[0],form_id='201')
+        self.batch_accept([conflicting],fail=True)
+        self.batch_accept([],fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE workspace_id IS NOT NULL;"),'2')
 
     def reserve_analysis(self, identity='b0000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, inputs=None, fail=False):
         if inputs is None: inputs={'cases':{name:{'strategy':'fix_and_flip'} for name in ('base','downside','upside')}}

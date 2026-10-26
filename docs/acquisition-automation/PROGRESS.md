@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — durable Facebook HTTP acceptance
+
+- Previous turn was progress: `64a06aa` implemented/tested/pushed atomic CRM intake persistence. Pulled clean branch and inspected existing worker credential conventions, app router registration, receipt RPC and isolated test harness.
+- Added separate default-off GET/POST `/webhooks/facebook/acquisition`, exact raw-body signature verification, bounded streaming body/batch validation and dedicated configuration. It uses no Graph retrieval or legacy processors. Generic service credentials and old Facebook route are not fallbacks.
+- Added CLI-generated atomic batch RPC migration `20261026163900_acquisition_facebook_batch_acceptance.sql`. One database call accepts the entire signed batch with deterministic lock order and existing workspace routing/gates/idempotency. HTTP success requires confirmed receipt results; failure/unknown commit returns sanitized retryable 503. Replayed deliveries reconcile saved receipts.
+- Validation: **22 HTTP/client boundary tests passed**, including default-off/missing credentials, tampering, oversize/malformed payloads, storage failures, malformed database successes and lost-commit response replay. **2 real PostgreSQL batch tests passed** for rollback, routing, concurrent opposite-order retries and conflicts. **Full backend 1,339 passed, 10 skipped, 368 existing warnings**. `git diff --check` passed. No live provider/PostgREST acceptance claimed.
+- Official Meta webhook/retrieval documentation requests returned 429; current provider permissions/subscriptions/API fields remain unverified release requirements. No Graph version was changed. No production migration, configuration, deployment, subscription, campaign or SMS scheduler changed.
+
+Next: preserve full retrieved provider/consent evidence and implement the separate default-off worker with authenticated Meta retrieval, credential error handling and atomic intake completion. Then canonical owner/property resolution, repeat-inquiry linking, attribution/operator review and actual controlled end-to-end acceptance. Goal active.
+
 ## Implementation checkpoint — atomic seller intake persistence
 
 - Previous turn was progress: `23fddf1` added/tested/pushed versioned intake preparation. Pulled clean branch; re-inspected catalog lead indexes/triggers, source retention function, workspace binding schema and receipt/lease state before creating SQL.
