@@ -88,3 +88,7 @@ The production-based implementation adds `acquisition_contact_points` and `acqui
 ## Seller intake implementation follow-up
 
 The thin `seller_intakes` relation links immutable canonical receipts to workspace-bound existing CRM leads. It avoids fabricating call_id/transcript values or activating HOT call triggers in qualification_results. `workspace_leads` now distinguishes human binding from same-workspace integration binding with an exclusive origin constraint. Canonical property/owner resolution remains separate; receipt-level retry deduplication does not claim cross-inquiry identity resolution. See SELLER-INTAKE.md.
+
+## Intake underwriting provenance implementation follow-up
+
+`acquisition_analysis_intakes` links existing `deal_analyses` to existing `seller_intakes`, qualification assessments and identity reviews. This small immutable relation stores source provenance rather than a parallel underwriting engine or CRM property. Composite tenant/source foreign keys and membership RLS protect the link. Existing analysis, offer and calculation functions gain current-source checks only for analyses with intake provenance. See INTAKE-QUALIFICATION.md for atomicity and compensation.

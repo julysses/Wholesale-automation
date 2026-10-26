@@ -34,6 +34,7 @@ RECOVERY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026170113_acquisi
 CANDIDATES_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026171817_acquisition_intake_candidates.sql'
 IDENTITY_REVIEW_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026173422_acquisition_intake_identity_reviews.sql'
 QUALIFICATION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026181452_acquisition_intake_qualification.sql'
+HANDOFF_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026184848_acquisition_intake_underwriting_handoff.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -150,6 +151,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(CANDIDATES_MIGRATION.read_text())
         self.sql(IDENTITY_REVIEW_MIGRATION.read_text())
         self.sql(QUALIFICATION_MIGRATION.read_text())
+        self.sql(HANDOFF_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -335,6 +337,91 @@ class WorkspaceTests(unittest.TestCase):
         value=self.sql(f"SELECT public.acquisition_intake_candidates('{workspace}','{intake}',{limit});",
                        user=user,fail=fail,**kwargs)
         return value if fail else json.loads(value)
+
+    def reserve_intake_analysis(self, intake, state, request='b0000000-0000-4000-8000-000000000001', user=ADMIN, inputs=None, fail=False, **kwargs):
+        if inputs is None: inputs={'cases':{name:{'strategy':'fix_and_flip'} for name in ('base','downside','upside')}}
+        result=self.sql(f"SELECT public.reserve_acquisition_intake_analysis('{request}','{WORKSPACE}','{intake}',"
+            f"{literal(state['evidence_hash'])},{literal(json.dumps(inputs))}::jsonb);",user=user,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_intake_handoff_atomic_idempotent_and_canonical(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']
+        self.identity_review(intake,self.identity_state(intake)); state=self.qualification_state(intake)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.reserve_intake_analysis(intake,state),range(3)))
+        self.assertEqual(sum(not row['duplicate'] for row in results),1)
+        self.assertTrue(all(row['lead_id']==LEAD and row['property_id']==PROPERTY and row['qualification_current'] for row in results))
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments;'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_analysis_intakes;'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_analysis_jobs;'),'1')
+        self.assertEqual(self.sql(f"SELECT count(*) FROM workspace_leads WHERE lead_id='{saved['lead_id']}' AND property_id IS NULL;"),'1')
+        self.reserve_intake_analysis(intake,state,inputs={'cases':{}},fail=True)
+        fresh=self.qualification_state(intake)
+        self.reserve_intake_analysis(intake,fresh,request='b0000000-0000-4000-8000-000000000002',inputs={'cases':{}},fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments;'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM deal_analyses;'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='intake_handoff';"),'1')
+        self.sql("UPDATE acquisition_analysis_intakes SET evidence_hash='changed';",user=ADMIN,fail=True)
+        self.sql('TRUNCATE acquisition_analysis_intakes;',user=ADMIN,role='service_role',fail=True)
+
+    def test_intake_handoff_rejects_unqualified_duplicate_stale_and_scope(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']
+        self.reserve_intake_analysis(intake,self.qualification_state(intake),fail=True)
+        self.identity_review(intake,self.identity_state(intake),action='repeat_inquiry')
+        self.reserve_intake_analysis(intake,self.qualification_state(intake),fail=True)
+        self.identity_review(intake,self.identity_state(intake),request='71000000-0000-4000-8000-000000000002')
+        state=self.qualification_state(intake)
+        self.reserve_intake_analysis(intake,state,user=OTHER,fail=True)
+        self.reserve_intake_analysis(intake,state,session=False,fail=True)
+        self.reserve_intake_analysis(intake,state,role='service_role',fail=True)
+        self.sql(f"UPDATE wholesale_ingest.properties SET unit='B' WHERE id='{PROPERTY}';")
+        self.reserve_intake_analysis(intake,state,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM deal_analyses;'),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments;'),'0')
+
+    def test_intake_handoff_revocation_blocks_worker_completion(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']
+        self.identity_review(intake,self.identity_state(intake)); state=self.qualification_state(intake)
+        self.reserve_intake_analysis(intake,state,user=OPERATOR)
+        snapshot=self.calculation_snapshot()
+        self.identity_review(intake,self.identity_state(intake),request='71000000-0000-4000-8000-000000000002',action='revoke')
+        self.calculation_snapshot(fail=True); self.complete_analysis(snapshot,fail=True)
+        replay=self.reserve_intake_analysis(intake,state,user=OPERATOR)
+        self.assertTrue(replay['duplicate']); self.assertFalse(replay['qualification_current'])
+        self.assertEqual(self.sql("SELECT acquisition_status FROM deal_analyses;"),'pending')
+
+    def test_intake_handoff_stale_source_invalidates_offer_but_allows_revocation(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']
+        self.identity_review(intake,self.identity_state(intake)); self.reserve_intake_analysis(intake,self.qualification_state(intake))
+        output={'status':'calculated','calculation_version':'acquisition-underwriting-v1','strategy':'fix_and_flip',
+            'cases':{name:{'status':'calculated','mao':'150000.00','proposed_offer_range':{'low':'120000.00','high':'150000.00'}} for name in ('base','downside','upside')},
+            'binding_offer':False,'human_approval_required':True}
+        self.complete_analysis(self.calculation_snapshot(),output=output)
+        self.propose_offer(); self.review_offer()
+        self.propose_offer(identity='c0000000-0000-4000-8000-000000000002')
+        self.assertTrue(self.offer_state()['amount_approval_current'])
+        self.identity_review(intake,self.identity_state(intake),request='71000000-0000-4000-8000-000000000002',action='revoke')
+        current=self.offer_state()
+        self.assertFalse(current['amount_approval_current'])
+        self.assertIn('INTAKE_QUALIFICATION_CHANGED',current['amount_review_blockers'])
+        self.assertNotIn('amount_approved',current['available_review_actions'])
+        self.propose_offer(identity='c0000000-0000-4000-8000-000000000003',fail=True)
+        notes={key:'Synthetic complete diligence evidence' for key in ('title','liens','occupancy','valuation','repairs','financing','downside')}
+        failure=self.sql(f"SELECT public.review_acquisition_offer('d0000000-0000-4000-8000-000000000003','{WORKSPACE}',"
+            f"'c0000000-0000-4000-8000-000000000002',1,'amount_approved','Synthetic decision',{literal(json.dumps(notes))}::jsonb);",user=ADMIN,fail=True)
+        self.assertIn('Intake qualification changed',failure)
+        cross_scope=self.sql(f"SELECT public.propose_acquisition_offer('c0000000-0000-4000-8000-000000000004','{WORKSPACE_B}',"
+            "'b0000000-0000-4000-8000-000000000001','base',140000,'Synthetic cross-scope attempt');",user=OTHER,fail=True)
+        self.assertIn('Workspace analysis unavailable',cross_scope)
+        self.review_offer(identity='d0000000-0000-4000-8000-000000000002',status='approval_revoked',sequence=2)
+        self.assertEqual(self.offer_state()['historical_status'],'approval_revoked')
+
+    def test_intake_handoff_cannot_adopt_an_existing_manual_analysis(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']
+        self.identity_review(intake,self.identity_state(intake)); self.reserve_analysis()
+        self.reserve_intake_analysis(intake,self.qualification_state(intake),fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_analysis_intakes;'),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments;'),'0')
 
     def qualification_state(self, intake, user=ADMIN, fail=False, **kwargs):
         result=self.sql(f"SELECT public.acquisition_intake_qualification_state('{WORKSPACE}','{intake}');",user=user,fail=fail,**kwargs)

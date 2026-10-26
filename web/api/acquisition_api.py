@@ -245,7 +245,6 @@ class AnalysisReservation(BaseModel):
 @router.post('/workspaces/{workspace_id}/leads/{lead_id}/underwriting/scenarios')
 async def save_scenario(workspace_id: UUID, lead_id: UUID, body: AnalysisReservation,
                         store=Depends(acquisition_store)):
-    from tools.acquisition_calculator import process_reserved_analysis, CalculationUnavailable
     reserved=await store.request('POST','rpc/reserve_acquisition_analysis',body={
         'p_id':str(body.id),'p_workspace':str(workspace_id),'p_lead':str(lead_id),
         'p_inputs':body.inputs.model_dump(mode='json'),
@@ -253,16 +252,21 @@ async def save_scenario(workspace_id: UUID, lead_id: UUID, body: AnalysisReserva
     if (not isinstance(reserved,dict) or reserved.get('id')!=str(body.id)
             or reserved.get('workspace_id')!=str(workspace_id) or reserved.get('lead_id')!=str(lead_id)):
         raise HTTPException(503,'Analysis reservation is unconfirmed; retry the same reference')
+    return await _finish_reserved_analysis(store, workspace_id, lead_id, body.id)
+
+
+async def _finish_reserved_analysis(store, workspace_id: UUID, lead_id: UUID, analysis_id: UUID):
+    from tools.acquisition_calculator import process_reserved_analysis, CalculationUnavailable
     try:
-        calculation=await process_reserved_analysis(workspace_id,body.id)
+        calculation=await process_reserved_analysis(workspace_id,analysis_id)
     except CalculationUnavailable:
         calculation={'status':'pending','reason':'CALCULATION_UNCONFIRMED_RETRY_SAME_REFERENCE'}
     # Re-read through current user RLS, never return a privileged worker payload.
     rows=await store.request('GET','deal_analyses',params={
         'select':'id,workspace_id,lead_id,property_id,acquisition_revision,acquisition_strategy,calculation_version,acquisition_status,acquisition_inputs,acquisition_outputs,analyzed_at',
-        'id':'eq.'+str(body.id),'workspace_id':'eq.'+str(workspace_id),'lead_id':'eq.'+str(lead_id),'limit':'1',
+        'id':'eq.'+str(analysis_id),'workspace_id':'eq.'+str(workspace_id),'lead_id':'eq.'+str(lead_id),'limit':'1',
     })
-    if (not isinstance(rows,list) or len(rows)!=1 or rows[0].get('id')!=str(body.id)
+    if (not isinstance(rows,list) or len(rows)!=1 or rows[0].get('id')!=str(analysis_id)
             or rows[0].get('workspace_id')!=str(workspace_id) or rows[0].get('lead_id')!=str(lead_id)):
         raise HTTPException(403,'Workspace analysis access is not authorized')
     if calculation.get('status') == 'pending' and rows[0].get('acquisition_status') in {'calculated','incomplete','invalid'}:
@@ -511,3 +515,32 @@ async def intake_assessment_history(workspace_id: UUID, intake_id: UUID,
     if before is not None:
         params['sequence'] = 'lt.'+str(before)
     return await store.request('GET', 'acquisition_intake_assessments', params=params)
+
+
+class IntakeAnalysisReservation(AnalysisReservation):
+    evidence_hash: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+
+@router.post('/workspaces/{workspace_id}/intakes/{intake_id}/underwriting/scenarios')
+async def save_intake_scenario(workspace_id: UUID, intake_id: UUID, body: IntakeAnalysisReservation,
+                               store=Depends(acquisition_store)):
+    reserved = await store.request('POST', 'rpc/reserve_acquisition_intake_analysis', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_intake': str(intake_id),
+        'p_evidence_hash': body.evidence_hash, 'p_inputs': body.inputs.model_dump(mode='json'),
+    })
+    if (not isinstance(reserved, dict) or reserved.get('id') != str(body.id)
+            or reserved.get('workspace_id') != str(workspace_id) or reserved.get('intake_id') != str(intake_id)):
+        raise HTTPException(503, 'Intake analysis reservation is unconfirmed; retry the same reference')
+    try:
+        canonical_lead = UUID(str(reserved['lead_id']))
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(503, 'Canonical analysis identity is unconfirmed') from None
+    result = await _finish_reserved_analysis(store, workspace_id, canonical_lead, body.id)
+    context = await store.request('POST', 'rpc/acquisition_intake_analysis_state', body={
+        'p_workspace': str(workspace_id), 'p_analysis': str(body.id),
+    })
+    if (not isinstance(context, dict) or context.get('analysis_id') != str(body.id)
+            or context.get('intake_id') != str(intake_id) or context.get('has_intake') is not True
+            or not isinstance(context.get('qualification_current'), bool)):
+        raise HTTPException(503, 'Intake analysis state is unconfirmed')
+    return {**result, 'intake_context': context}

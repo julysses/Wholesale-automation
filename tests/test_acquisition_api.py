@@ -430,3 +430,29 @@ def test_intake_assessment_is_server_derived_and_scoped(api):
     params = state['requests'][-1].url.params
     assert params['workspace_id'] == 'eq.'+W and params['intake_id'] == 'eq.'+intake
     assert params['sequence'] == 'lt.4' and params['limit'] == '2'
+
+
+def test_intake_underwriting_uses_server_canonical_identity_and_fresh_context(api, monkeypatch):
+    client, state = api
+    monkeypatch.delenv('ACQUISITION_CALCULATOR_ENABLED', raising=False)
+    intake = '70000000-0000-4000-8000-000000000001'
+    canonical = '20000000-0000-4000-8000-000000000001'
+    path = f'/api/acquisition/workspaces/{W}/intakes/{intake}/underwriting/scenarios'
+    body = {'id': U, 'evidence_hash': 'a'*64, 'inputs': {'cases': {name: {'strategy': 'fix_and_flip'} for name in ['base', 'downside', 'upside']}}}
+    state['responses'] = [
+        {'id': U, 'workspace_id': W, 'intake_id': intake, 'lead_id': canonical, 'status': 'pending'},
+        [{'id': U, 'workspace_id': W, 'lead_id': canonical, 'acquisition_status': 'pending'}],
+        {'analysis_id': U, 'intake_id': intake, 'has_intake': True, 'qualification_current': False},
+    ]
+    response = client.post(path, headers={'Authorization': 'Bearer user-token'}, json=body)
+    assert response.status_code == 200
+    assert response.json()['analysis']['lead_id'] == canonical
+    assert response.json()['intake_context']['qualification_current'] is False
+    assert response.json()['calculation']['reason'] == 'CALCULATOR_NOT_ENABLED'
+    request = state['requests'][0]
+    assert request.url.path.endswith('/rpc/reserve_acquisition_intake_analysis')
+    assert json.loads(request.content)['p_intake'] == intake
+    assert 'p_lead' not in json.loads(request.content)
+    assert state['requests'][1].url.params['lead_id'] == 'eq.'+canonical
+    assert all(request.headers['authorization'] == 'Bearer user-token' for request in state['requests'])
+    assert client.post(path, headers={'Authorization': 'Bearer user-token'}, json={**body, 'target_lead_id': canonical}).status_code == 422

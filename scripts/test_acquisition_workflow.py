@@ -28,6 +28,8 @@ OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
  'recover_acquisition_inquiry': ['p_id','p_workspace','p_receipt','p_expected_updated_at','p_expected_reason','p_note','p_evidence_ref'],
+ 'reserve_acquisition_intake_analysis': ['p_id','p_workspace','p_intake','p_evidence_hash','p_inputs'],
+ 'acquisition_intake_analysis_state': ['p_workspace','p_analysis'],
  'acquisition_intake_qualification_state': ['p_workspace','p_intake'],
  'record_acquisition_intake_assessment': ['p_id','p_workspace','p_intake','p_expected_sequence','p_evidence_hash'],
  'acquisition_intake_identity_state': ['p_workspace','p_intake','p_target'],
@@ -98,7 +100,7 @@ class WorkflowTests(WorkspaceTests):
                 return httpx.Response(400,json={'error':{'code':self.provider_error,'message':'Synthetic private provider detail'}})
             return httpx.Response(200,json={'id':request.url.path.split('/')[-1],'form_id':self.provider_form,
                 'created_time':'2026-10-26T12:00:00Z',
-                'field_data':[{'name':'phone_number','values':['2145550101']}],
+                'field_data':getattr(self,'provider_fields',[{'name':'phone_number','values':['2145550101']}]),
                 'custom_disclaimer_responses':[{'checkbox_key':'sms','is_checked':False}]})
         self.assertEqual(request.url.host,'workflow.example.test')
         identity,role={
@@ -269,6 +271,49 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.facebook_worker().json(),{'status':'idle'})
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake'"),'2')
         self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE status='pending'"),'1') # Legacy sentinel only.
+
+    def test_qualified_facebook_intake_handoff_calculates_canonical_property_and_goes_stale(self):
+        self.configure_facebook()
+        answers=dict(property_address='1 Fixture St',city='Dallas',state='TX',authority='yes',
+            condition='repairs',timeline='soon',motivation='move',asking_price='150000',phone='2145550101')
+        self.provider_fields=[{'name':key,'values':[value]} for key,value in answers.items()]
+        self.assertEqual(self.facebook_delivery().status_code,200)
+        self.assertEqual(self.facebook_worker().status_code,200)
+        intake=self.sql('SELECT id FROM seller_intakes')
+        source_lead=self.sql('SELECT lead_id FROM seller_intakes')
+        identity_path=f'{self.base}/intakes/{intake}'
+        identity=self.client.get(identity_path+f'/identity-state?target={LEAD}',headers=self.headers).json()
+        decision={'id':'75000000-0000-4000-8000-000000000001','expected_sequence':0,
+            'preparation_hash':identity['preparation_hash'],'action':'link_property','target_lead_id':LEAD,'target_hash':identity['target_hash'],
+            'property_basis':'parcel_document','property_evidence_ref':'synthetic-parcel-review-42','review_note':'Synthetic canonical property evidence reviewed for handoff.'}
+        self.assertEqual(self.client.post(identity_path+'/identity-reviews',headers=self.headers,json=decision).status_code,200)
+        qualified=self.client.get(identity_path+'/qualification-state',headers=self.headers).json()
+        self.assertEqual(qualified['assessment']['classification'],'qualified')
+        body={'id':ANALYSIS,'evidence_hash':qualified['evidence_hash'],'inputs':inputs()}
+        path=identity_path+'/underwriting/scenarios'
+        response=self.client.post(path,headers=self.headers,json=body)
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()['analysis']['lead_id'],LEAD)
+        self.assertNotEqual(response.json()['analysis']['lead_id'],source_lead)
+        self.assertEqual(response.json()['analysis']['acquisition_status'],'calculated')
+        self.assertTrue(response.json()['intake_context']['qualification_current'])
+        self.assertFalse(response.json()['binding_offer'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments'),'1')
+        self.assertEqual(self.proposal().status_code,200)
+        self.assertEqual(self.client.post(path,headers=self.headers,json=body).status_code,200)
+        revoked={ 'id':'75000000-0000-4000-8000-000000000002','expected_sequence':1,'preparation_hash':identity['preparation_hash'],
+            'action':'revoke','review_note':'Synthetic correction revokes this canonical property association.'}
+        self.assertEqual(self.client.post(identity_path+'/identity-reviews',headers=self.headers,json=revoked).status_code,200)
+        replay=self.client.post(path,headers=self.headers,json=body)
+        self.assertEqual(replay.status_code,200,replay.text)
+        self.assertFalse(replay.json()['intake_context']['qualification_current'])
+        offer=self.client.get(f'{self.base}/offers/{OFFER}/state',headers=self.headers).json()
+        self.assertIn('INTAKE_QUALIFICATION_CHANGED',offer['amount_review_blockers'])
+        self.assertNotIn('amount_approved',offer['available_review_actions'])
+        self.assertEqual(self.sql('SELECT count(*) FROM deal_analyses'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'1')
+        self.assertEqual(self.sql(f"SELECT (property_id IS NULL)::text FROM workspace_leads WHERE lead_id='{source_lead}'"),'true')
 
     def test_facebook_unknown_receipt_and_completion_replies_reconcile(self):
         self.configure_facebook()

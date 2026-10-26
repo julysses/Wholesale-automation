@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — qualified intake underwriting handoff
+
+- Pulled `codex/acquisition-foundation` at `4db34c9`. Added CLI-generated `20261026184848_acquisition_intake_underwriting_handoff.sql` and a dedicated intake underwriting API. A fresh qualified assessment and scenario reservation commit atomically against the server-resolved canonical property; the original inquiry lead remains separate.
+- Added immutable tenant-scoped intake/assessment/identity provenance. Exact reservation retries preserve one scenario and one snapshot. Existing manual analyses cannot be retroactively adopted. Worker completion, proposals and amount approval recheck the source; identity revocation makes historical scenarios/approvals stale while preserving withdrawal/rejection/revocation.
+- Validation: **7 real PostgreSQL tests**, **37 API tests** and **all 9 integrated journeys passed**. The new journey covers signed synthetic Facebook receipt, complete intake, canonical identity review, qualification, actual calculation, proposal, exact retry and source revocation. The final focused PostgreSQL test also passed after adding explicit stale-source amount-approval denial and cross-workspace proposal denial. `git diff --check` passed.
+- PostgreSQL validation uses a disposable socket-only database; integrated HTTP calls use an isolated SQL adapter. This is not live Meta/PostgREST acceptance. No production migrations, deployment, activation, outreach, fulfillment or binding transactions occurred.
+
+Next: connect the qualified intake dashboard to the new underwriting endpoint, preserving explicit market inputs and pending-request reconciliation. Campaign attribution, remaining sequential phases, full-schema/PostgREST/browser acceptance and mobile QA remain open. Goal active.
+
 ## Implementation checkpoint — current screening and saved assessment UI
 
 - Previous turn was progress: `e59334c` implemented/tested/pushed qualification assessments. Pulled current branch and connected qualification-state/history APIs to the selected intake review with reasons, missing fields, canonical territory, policy version and explicit current-versus-stale status.
