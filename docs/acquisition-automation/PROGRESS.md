@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — inquiry recovery review screen
+
+- Pulled clean `codex/acquisition-foundation` at `d26bdbd`. Added a scoped recovery review form to inquiry health with exact hold timestamp/reason, recovery history, MFA guidance, owner/admin affordance, correction evidence and explicit acknowledgment. Server-side authority remains decisive.
+- Fresh health validation precedes initial submission. Unknown outcomes retain the exact UUID/body and freeze edits for explicit reconciliation. The review stays mounted across health refreshes; workspace/account changes reset its scope. Three recorded cycles or disabled/expired gates prevent initial approval.
+- Validation: **198 frontend tests passed across 48 files**, including five new recovery cases and four existing health cases. Feature-enabled TypeScript/Vite build passed; lint ratchet reports no new findings (147 existing). Browser fixture verified disabled-before-review, synthetic approval, history, awaiting-worker count and no console errors. Screenshot: `evidence/2026-10-26-inquiry-recovery-browser.png`. This is synthetic UI evidence, not real provider or PostgREST acceptance.
+- Initial test command used the repo root instead of frontend and failed without running tests; rerun from frontend passed. Local browser server required the existing localhost escalation permission after a sandbox bind denial. No production schema/configuration/deployment, worker, outreach or spending activated.
+
+Next: canonical identity/property resolution and repeat-inquiry review; campaign attribution; full schema/PostgREST acceptance and remaining sequential phases. Recovery mobile layout still needs a focused pass. Goal active.
+
 ## Implementation checkpoint — audited bounded inquiry recovery
 
 - Previous turn was progress: `bfe4dda` implemented/tested/pushed workspace inquiry health and visible guidance. Pulled clean branch and inspected session/role helpers, health concurrency timestamp and processing lease invariants.

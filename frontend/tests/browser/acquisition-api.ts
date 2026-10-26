@@ -9,9 +9,20 @@ const offer = {
 };
 const events: { id: string; sequence: number; status: string; note: string; review_notes: Record<string, string> }[] = [];
 const replies = new Map<string, unknown>();
+const held = { receipt_id: 'fixture-receipt', provider: 'facebook', state: 'review', attempts: 1, reason_code: 'CREDENTIALS_INVALID', blockers: ['CREDENTIALS_INVALID'], updated_at: '2026-10-26T12:00:00.123456+00:00', guidance: 'Ask the integration administrator to verify the Page credential.', next_attempt_at: null, lease_expires_at: null };
+const recoveries: unknown[] = [];
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   let value: unknown;
-  if (init?.method === 'POST') {
+  if (init?.method === 'POST' && path.endsWith('/recoveries')) {
+    const body = JSON.parse(String(init.body));
+    if (replies.has(body.id)) value = replies.get(body.id);
+    else {
+      if (held.state !== 'review' || body.expected_updated_at !== held.updated_at) throw new ApiError('Hold changed');
+      recoveries.push({ ...body, cycle: 1, reason_code: held.reason_code, created_at: new Date().toISOString() });
+      held.state = 'ready'; held.reason_code = ''; held.blockers = []; held.guidance = 'Awaiting the configured worker; runtime is not independently verified.';
+      value = { recovery_id: body.id, receipt_id: held.receipt_id, cycle: 1, duplicate: false, outreach_authorized: false }; replies.set(body.id, value);
+    }
+  } else if (init?.method === 'POST') {
     if (!path.endsWith('/reviews')) throw new Error('Unexpected fixture mutation');
     const body = JSON.parse(String(init.body));
     if (replies.has(body.id)) value = replies.get(body.id);
@@ -23,7 +34,9 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       events.push({ ...body, sequence: offer.sequence }); value = { status: body.status }; replies.set(body.id, value);
     }
   } else if (path.endsWith('/workspaces')) value = [{ id: 'fixture-workspace', name: 'Hilltop — local QA' }];
-  else if (path.includes('/inquiries/health')) value = { summary: { requires_review: 0, retrying: 0, expired_leases: 0, awaiting_worker: 0, leased: 0, completed: 0 }, items: [], next_after: null, checked_at: new Date().toISOString() };
+  else if (path.endsWith('/memberships')) value = [{ workspace_id: 'fixture-workspace', user_id: 'fixture-reviewer', role: 'owner', status: 'active' }];
+  else if (path.endsWith('/recoveries')) value = recoveries;
+  else if (path.includes('/inquiries/health')) value = { summary: { requires_review: held.state === 'review' ? 1 : 0, retrying: 0, expired_leases: 0, awaiting_worker: held.state === 'ready' ? 1 : 0, leased: 0, completed: 0 }, items: [{ ...held }], next_after: null, checked_at: new Date().toISOString() };
   else if (path.endsWith('/state')) value = offer;
   else if (path.endsWith('/summary')) value = { id: offer.lead_id, property_id: offer.property_id, property_address: '123 Fixture Lane', city: 'Dallas' };
   else if (path.includes('/leads?')) value = []; // Review-only fixture; scenario entry has separate component tests.

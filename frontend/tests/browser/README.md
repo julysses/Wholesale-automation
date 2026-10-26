@@ -20,3 +20,10 @@ Repeatable checks:
 6. Check browser console errors. Reloading discards all fixture decisions.
 
 The fixture validates browser presentation and interaction only. Session/RLS, real API persistence, provider integration and production cutover require separate acceptance tests.
+
+Inquiry recovery checks:
+
+1. Select the fixture workspace and open Review hold. Verify credential guidance, exact timestamp, empty history and disabled approval.
+2. Enter a correction note of at least 20 characters and an evidence reference, then acknowledge the specific hold.
+3. Approve the synthetic cycle. Verify the recorded history, confirmation, disabled repeat approval and Awaiting worker count of one. No worker runs in this fixture.
+4. Reload resets the synthetic hold. Component tests separately cover unknown responses, exact-request retries, stale gates, roles and exhausted recovery budgets.

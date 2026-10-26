@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { InquiryRecovery } from './InquiryRecovery';
 
-type Item = { receipt_id: string; provider: string; state: string; attempts: number; reason_code: string | null;
+type Item = { updated_at?: string; receipt_id: string; provider: string; state: string; attempts: number; reason_code: string | null;
   guidance: string; next_attempt_at: string; lease_expires_at: string | null; blockers: string[] };
 type Health = { summary: Record<string, number>; items: Item[]; next_after: string | null; checked_at: string };
 const metrics = [['requires_review', 'Need review'], ['retrying', 'Retrying'], ['expired_leases', 'Expired leases'],
@@ -27,14 +28,16 @@ export function InquiryHealth({ userId, workspace }: { userId: string; workspace
 }
 function ScopedHealth({ userId, workspace }: { userId: string; workspace: string }) {
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
+  const [selected, setSelected] = useState<{ item: Item; path: string } | null>(null);
   const after = cursors[cursors.length - 1];
+  const healthPath = `/api/acquisition/workspaces/${workspace}/inquiries/health?limit=20${after ? `&after=${encodeURIComponent(after)}` : ''}`;
   const query = useQuery({ queryKey: ['acquisition-inquiry-health', userId, workspace, after],
-    queryFn: ({ signal }) => load(`/api/acquisition/workspaces/${workspace}/inquiries/health?limit=20${after ? `&after=${encodeURIComponent(after)}` : ''}`, signal),
+    queryFn: ({ signal }) => load(healthPath, signal),
     retry: false, gcTime: 0, staleTime: 0 });
   return <section aria-labelledby="inquiry-health-title" className="rounded-xl border bg-white p-4 space-y-4">
     <div className="flex flex-wrap gap-3 items-center justify-between"><h2 id="inquiry-health-title" className="font-semibold text-lg">Seller inquiry health</h2>
       <button className={button} disabled={query.isFetching} onClick={() => { void query.refetch(); }}>Refresh inquiry health</button></div>
-    <p className="text-sm text-gray-600">Review processing issues before approving recovery. This view does not retry inquiries or enable integrations.</p>
+    <p className="text-sm text-gray-600">Review processing issues before approving recovery. Reviewed recovery requires owner/admin approval and MFA.</p>
     {query.isFetching ? <p role="status">Loading inquiry health…</p> : query.isError ?
       <p role="alert">Inquiry health is unavailable. Refresh or check your workspace access.</p> : query.data && <>
         {query.data.summary.requires_review > 0 && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-900">{query.data.summary.requires_review} {query.data.summary.requires_review === 1 ? 'inquiry needs' : 'inquiries need'} review.</p>}
@@ -49,9 +52,11 @@ function ScopedHealth({ userId, workspace }: { userId: string; workspace: string
           {item.blockers.length > 0 && <p className="text-sm text-amber-800">{item.blockers.map(code => code.replaceAll('_', ' ').toLowerCase()).join(' · ')}</p>}
           {item.state === 'retry' && <p className="text-xs">Next attempt after {date(item.next_attempt_at)}</p>}
           {item.state === 'leased' && <p className="text-xs">Lease expires {date(item.lease_expires_at)}</p>}
+          {item.state === 'review' && <button className={button} disabled={!!selected} onClick={() => setSelected({ item, path: healthPath })}>Review hold</button>}
           <details className="text-xs text-gray-500"><summary>Inquiry reference</summary><p className="break-all mt-1">{item.receipt_id}</p></details>
         </li>)}</ul>
       </>}
+    {selected && <InquiryRecovery key={selected.item.receipt_id} userId={userId} workspace={workspace} item={selected.item} healthPath={selected.path} onSaved={() => { void query.refetch(); }} onClose={() => setSelected(null)} />}
     <nav aria-label="Inquiry health pages" className="flex gap-2">
       <button className={button} disabled={query.isFetching || cursors.length === 1} onClick={() => setCursors(c => c.slice(0, -1))}>Previous inquiries</button>
       <button className={button} disabled={query.isFetching || query.isError || !query.data?.next_after} onClick={() => { if (query.data?.next_after) setCursors(c => [...c, query.data!.next_after]); }}>More inquiries</button>
