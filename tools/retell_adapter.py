@@ -34,7 +34,8 @@ from typing import Any, Optional
 from uuid import uuid4
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_not_exception_type
+from tools.acquisition_transport import AcquisitionExecutionRequired
 
 from config.settings import settings
 
@@ -235,6 +236,8 @@ class RetellAdapter:
         retain it across retries. Retell's provider deduplication lasts one hour;
         it does not replace the application's durable initiation ledger.
         """
+        from tools.acquisition_transport import require_legacy_transport_allowed
+        require_legacy_transport_allowed()
         if not all((self.api_key, self.agent_id, self.from_number)):
             raise RuntimeError("Retell API key, published agent and caller number are required")
         if not re.fullmatch(r"[A-Za-z0-9_-]{5,255}", req.request_id):
@@ -389,9 +392,12 @@ class AirAIAdapter:
             "Content-Type": "application/json",
         }
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10),
+           retry=retry_if_not_exception_type(AcquisitionExecutionRequired))
     def create_call(self, req: CallRequest) -> CallRecord:
         """Initiate an outbound AI call via Air AI."""
+        from tools.acquisition_transport import require_legacy_transport_allowed
+        require_legacy_transport_allowed()
         if self._dry_run:
             logger.info(
                 f"[air_ai][dry-run] Would call {req.phone_number} for lead {req.lead_id} "
@@ -527,6 +533,8 @@ class AICallingAdapter:
         logger.info(f"[ai_calling] Using provider: {chosen.value}")
 
     def create_call(self, req: CallRequest) -> CallRecord:
+        from tools.acquisition_transport import require_legacy_transport_allowed
+        require_legacy_transport_allowed()
         return self._impl.create_call(req)
 
     def create_call_for_lead(

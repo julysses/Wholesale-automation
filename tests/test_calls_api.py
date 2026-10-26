@@ -295,3 +295,20 @@ def test_failed_review_receipt_cannot_unpause(setup,monkeypatch):
     assert error.value.status_code==503
     lead_query.update.assert_not_called()
     provider.create_call.assert_not_called()
+
+
+def test_acquisition_mode_never_reports_legacy_call_ready(setup,monkeypatch):
+    body,lead,_,db,provider=setup
+    monkeypatch.setenv('ACQUISITION_ENABLED','true')
+    original=db.table.side_effect
+    def table(name):
+        q=original(name)
+        q.select.return_value.eq.return_value.neq.return_value.order.return_value.limit.return_value.execute.return_value.data=[]
+        return q
+    db.table.side_effect=table
+    for paused in (False,True):
+        lead['ai_calling_paused']=paused
+        result=calls.lead_readiness(body.lead_id)
+        assert result['can_review'] is False and result['can_call'] is False
+        assert 'acquisition_execution_not_authorized' in result['blockers']
+    provider.create_call.assert_not_called()

@@ -36,6 +36,9 @@ def acknowledgement_window(submitted):
 
 
 def enqueue(sb, lead_id):
+    from tools.acquisition_transport import legacy_transport_held, HOLD_REASON
+    if legacy_transport_held():
+        return HOLD_REASON
     if not enabled('RETELL_FORM_SMS_ENABLED'):
         return 'disabled'
     transport = os.getenv('RETELL_SMS_TRANSPORT', 'retell_native')
@@ -112,6 +115,9 @@ def configured_version():
 
 
 def activation_ready():
+    from tools.acquisition_transport import legacy_transport_held
+    if legacy_transport_held():
+        return False
     return (os.getenv('RETELL_SMS_TRANSPORT', 'retell_native') == 'retell_native'
             and enabled('RETELL_FORM_SMS_ENABLED') and enabled('RETELL_SMS_LIVE_ENABLED')
             and settings.sms_live_enabled
@@ -158,6 +164,8 @@ def finish(sb, job, status, reason, chat_id=None):
 
 def process_claim(sb, job):
     # Recheck immediately before the provider request; no fallback to Twilio.
+    from tools.acquisition_transport import require_legacy_transport_allowed
+    require_legacy_transport_allowed()
     if job.get('delivery_transport', 'retell_native') != 'retell_native':
         raise RuntimeError('Native worker cannot process app-owned claims')
     if not activation_ready():

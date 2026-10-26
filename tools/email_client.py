@@ -54,6 +54,9 @@ class EmailClient:
         """
         Attempt to send an email. Returns True only for provider acceptance.
         """
+        from tools.acquisition_transport import legacy_transport_held
+        if legacy_transport_held():
+            return False
         if not to_email:
             logger.error("[EmailClient] BLOCKED invalid to_email: empty")
             return False
@@ -147,6 +150,9 @@ class EmailClient:
         body: str,
         html_body: Optional[str] = None,
     ) -> bool:
+        from tools.acquisition_transport import legacy_transport_held
+        if legacy_transport_held():
+            return False
         url = "https://api.sendgrid.com/v3/mail/send"
         headers = {
             "Authorization": f"Bearer {settings.sendgrid_api_key}",
@@ -180,6 +186,9 @@ class EmailClient:
         html_body: Optional[str] = None,
     ) -> bool:
         # Mailgun domain is usually separate from API key, assuming we extract it from from_email
+        from tools.acquisition_transport import legacy_transport_held
+        if legacy_transport_held():
+            return False
         domain = self._from_email.split("@")[-1]
         url = f"https://api.mailgun.net/v3/{domain}/messages"
         auth = ("api", settings.mailgun_api_key)

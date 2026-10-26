@@ -3,6 +3,19 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — legacy provider execution fence
+
+- Pulled clean `d8d266a`; previous turn implemented/tested/pushed structured permission evidence (progress). Traced actual provider calls separately from LLM `messages.create` calls; no LLM generation methods were treated as outreach.
+- Added `tools/acquisition_transport.py` and guards in legacy SMS, email, Retell voice/native SMS/app Twilio, Air AI and Vapi transport methods. With `ACQUISITION_ENABLED=true`, these paths require the future acquisition executor and cannot send under existing legacy clearance alone. No payload boolean, cached decision, recipient allowlist or existing live flag bypasses the fence. Feature flag is rechecked per invocation; existing clients cannot cache permission.
+- Guarded native SMS enrollment/draining, app worker readiness/direct submit, carrier reply redirect and voice initiation/batch advancement before database claims or provider requests. Read-only reconciliation remains available. Pending-policy holds are excluded from Air/Vapi retry decorators. Existing paused jobs are not replayed or mutated by the hold paths tested.
+- Added equivalent early rejection in the legacy Facebook Edge Function: acquisition-mode handler returns 409 before parsing/DB writes, and its direct SMS function returns false. This is a separate runtime: its deployment/flag must be coordinated or the legacy function retired before activation. No Edge Function deployed.
+- The fence holds all legacy email, including internal alerts, during acquisition mode because the shared adapter lacks a trusted purpose distinction. Separate internal operational notifications and implement scoped approved execution before activation; do not whitelist based on a caller-supplied purpose. Flag-off legacy behavior is preserved.
+- Validation: **10 targeted transport tests pass**, covering public/private methods, zero DB/provider access and no retry on the new hold. **One Deno runtime test passes** for the actual legacy Edge source with external imports replaced by failing spies and no network permission. Added that test to CI. **Full offline backend: 1,233 passed, 10 environment-dependent tests skipped, 368 deprecation warnings.** After adding the call-readiness display hold, **64 focused call/transport tests pass**, including readiness false even when legacy consent/live settings are otherwise ready. `git diff --check` passes.
+
+**Not a final sender implementation:** no ALLOW execution path, transactionally consumed authorization, approved legal policy or automatic provider activation has been introduced. The fence prevents known legacy bypasses while those pieces are built; it is not proof of a complete production cutover or every externally configured sender. Current SQL/operator tooling and deployed runtime flags still require coordinated acceptance. Production remains unchanged.
+
+Next: implement policy review/versioning and fresh execution authorizations; split internal alerts; complete owner assertion invalidation and effective evidence/expiry handling. Then durable Facebook intake and remaining ordered channels. Goal active.
+
 ## Implementation checkpoint — structured permission evidence and revocation
 
 - Pulled clean branch at `9d8558b`; previous turn implemented/tested/pushed owner associations (progress). Inspected existing website receipt capture, native checkbox parser, SMS consent checks and native immutable-receipt migration. Source receipts and held SMS recovery records remain unchanged.

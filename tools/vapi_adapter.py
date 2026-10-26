@@ -29,7 +29,8 @@ from enum import Enum
 from typing import Any, Optional
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_not_exception_type
+from tools.acquisition_transport import AcquisitionExecutionRequired
 
 from config.settings import settings
 from config.vapi_prompt import VAPI_VOICE_SYSTEM_PROMPT
@@ -219,7 +220,8 @@ class VapiAdapter:
             "Content-Type": "application/json",
         }
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10),
+           retry=retry_if_not_exception_type(AcquisitionExecutionRequired))
     def create_call(self, req: VapiCallRequest) -> VapiCallRecord:
         """
         Initiate an outbound AI call via VAPI.
@@ -228,6 +230,8 @@ class VapiAdapter:
         no prompt tokens on every call).  Otherwise the full system prompt is
         sent inline so no VAPI dashboard setup is required.
         """
+        from tools.acquisition_transport import require_legacy_transport_allowed
+        require_legacy_transport_allowed()
         if self._dry_run:
             logger.info(
                 f"[vapi][dry-run] Would call {req.phone_number} for lead {req.lead_id} "

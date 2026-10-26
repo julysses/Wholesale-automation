@@ -53,6 +53,9 @@ def queue_validity(expires_at, now=None):
 
 
 def dispatch_ready():
+    from tools.acquisition_transport import legacy_transport_held
+    if legacy_transport_held():
+        return False
     base = urlsplit(settings.twilio_webhook_base_url)
     return (ready() and bool(settings.twilio_account_sid) and bool(settings.twilio_auth_token)
             and re.fullmatch(r'MG[0-9a-fA-F]{32}', settings.twilio_messaging_service_sid or '') is not None
@@ -96,6 +99,8 @@ def _park(sb, claim, status):
 
 def _submit(sb, claim):
     """Private: accepts only the new claim returned in this worker invocation."""
+    from tools.acquisition_transport import require_legacy_transport_allowed
+    require_legacy_transport_allowed()
     message_id = str(UUID(str(claim['message_id'])))
     ledger = _row(sb, 'sms_events', message_id)
     metadata = ledger.get('raw_payload') or {}

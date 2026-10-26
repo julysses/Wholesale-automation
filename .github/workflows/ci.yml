@@ -77,6 +77,10 @@ jobs:
         working-directory: .
         run: npx --yes deno@2.9.6 test --lock=deno.lock --frozen --node-modules-dir=none --allow-env --allow-read pipeline/tests/edge-deno.ts
 
+      - name: Acquisition legacy Edge transport rejection
+        working-directory: .
+        run: npx --yes deno@2.9.6 test --no-check --no-remote --allow-read=frontend/supabase/functions/fb-lead-intake --allow-env=ACQUISITION_ENABLED pipeline/tests/acquisition-edge-deno.ts
+
   postgres-integration:
     name: Real PostgreSQL ingestion, tracing and scoring contention
     runs-on: ubuntu-24.04

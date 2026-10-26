@@ -33,6 +33,8 @@ function routeSituations(situations: string[], timeline?: string): string {
 
 // ── Twilio SMS ─────────────────────────────────────────────────────────────────
 async function sendSMS(to: string, body: string): Promise<boolean> {
+  // Legacy transport has no acquisition execution authorization.
+  if ((Deno.env.get('ACQUISITION_ENABLED') || '').toLowerCase() === 'true') return false;
   const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
   const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
   const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER');
@@ -61,6 +63,14 @@ async function sendSMS(to: string, body: string): Promise<boolean> {
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  // This legacy direct-post ingestion bypasses the workspace/eligibility inbox.
+  // During acquisition cutover use the reviewed durable ingestion endpoint.
+  if ((Deno.env.get('ACQUISITION_ENABLED') || '').toLowerCase() === 'true') {
+    return new Response(JSON.stringify({ error: 'acquisition_execution_not_authorized' }), {
+      status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {

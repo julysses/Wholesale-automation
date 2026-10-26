@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 TEXAS_TZ = "America/Chicago"
 CONFIRMED_SUPPRESSION = "Confirmed phone or lead suppression"
 SMS_OUTCOME_REASONS = {
+    "acquisition_execution_not_authorized": "Fresh acquisition execution authorization is required",
     "compliance_not_cleared": "Compliance review has not cleared this message",
     "outside_contact_hours": "Outside configured contact hours",
     "weekend_contact_blocked": "Weekend contact is blocked for this message",
@@ -185,6 +186,9 @@ class SMSClient:
         Attempt to send an SMS. Returns True only when the provider accepts the message.
         All compliance guards are enforced before sending.
         """
+        from tools.acquisition_transport import legacy_transport_held, HOLD_REASON
+        if legacy_transport_held():
+            return _sms_outcome(message, 'blocked', HOLD_REASON)
         # Guard 1: compliance clearance
         if not message.compliance_cleared:
             logger.error(
@@ -243,6 +247,9 @@ class SMSClient:
             return _sms_outcome(message, "unknown", "dispatch_unconfirmed")
 
     def _send_twilio(self, message: OutreachMessage, to_number: str) -> bool:
+        from tools.acquisition_transport import legacy_transport_held, HOLD_REASON
+        if legacy_transport_held():
+            return _sms_outcome(message, 'blocked', HOLD_REASON)
         from twilio.rest import Client
         from twilio.http.http_client import TwilioHttpClient
         from tools.crm import get_supabase_client

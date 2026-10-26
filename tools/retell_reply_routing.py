@@ -16,6 +16,9 @@ RETELL_REPLY_URL = 'https://api.retellai.com/twilio-sms-webhook/org_A7WQTvreWdPM
 
 def reply_redirect(sb, data, receipt):
     """Return a target only after the carrier receipt and all sending gates pass."""
+    from tools.acquisition_transport import legacy_transport_held
+    if legacy_transport_held():
+        return None
     if (not enabled('RETELL_SMS_REPLY_ROUTING_ENABLED') or not activation_ready()
             or receipt.get('saved') is not True or receipt.get('duplicate') is not False
             or receipt.get('suppressed') is not False or receipt.get('opt_out') is not False

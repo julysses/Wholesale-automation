@@ -26,6 +26,9 @@ def recipient_allowed(phone):
 
 
 def ready():
+    from tools.acquisition_transport import legacy_transport_held
+    if legacy_transport_held():
+        return False
     return (enabled('RETELL_APP_TRANSPORT_ENABLED') and os.getenv('RETELL_SMS_TRANSPORT') == 'app_twilio'
             and enabled('RETELL_FORM_SMS_ENABLED') and enabled('RETELL_SMS_LIVE_ENABLED')
             and settings.sms_live_enabled

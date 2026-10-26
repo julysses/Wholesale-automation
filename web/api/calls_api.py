@@ -62,7 +62,8 @@ def lead_readiness(lead_id):
             raise HTTPException(404,'Lead not found')
         lead=rows[0]
         receipt=_receipt(sb,str(lead_id))
-        blockers=[]
+        from tools.acquisition_transport import legacy_transport_held, HOLD_REASON
+        blockers=[HOLD_REASON] if legacy_transport_held() else []
         phone=None
         try:phone=_phone(lead.get('owner_phone_1'))
         except HTTPException:blockers.append('A valid US lead phone is required')
@@ -155,6 +156,9 @@ def _record(row):
 
 def start_call(body: StartCall, operator_id: str):
     # A finite controlled recipient list remains mandatory during acceptance.
+    from tools.acquisition_transport import legacy_transport_held, HOLD_REASON
+    if legacy_transport_held():
+        raise HTTPException(409, HOLD_REASON)
     if not settings.ai_calling_live_enabled:
         raise HTTPException(409,'AI calling is disabled pending launch acceptance')
     if not all((settings.retell_api_key,settings.retell_agent_id,settings.retell_from_number,settings.retell_webhook_secret)):
@@ -362,6 +366,9 @@ def _finish_batch(sb, batch_id, item, status, reason):
 
 
 def batch_next(batch_id, operator_id):
+    from tools.acquisition_transport import legacy_transport_held, HOLD_REASON
+    if legacy_transport_held():
+        raise HTTPException(409, HOLD_REASON)
     batch_status(batch_id,operator_id)
     sb=_storage()
     result=sb.rpc('claim_retell_batch_next',{'p_batch':str(batch_id),'p_operator':operator_id}).execute().data
