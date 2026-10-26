@@ -305,3 +305,18 @@ def test_review_lead_summary_requires_exact_workspace_binding_before_address_rea
     assert response.json()['property_id']==U
     assert state['requests'][-1].url.params['select']=='id,property_address,city'
     assert all(request.headers['Authorization']=='Bearer user-token' for request in state['requests'])
+
+
+def test_inquiry_health_forwards_user_scope_and_bounds_page(api):
+    client,state=api
+    header={'Authorization':'Bearer operator-session'}
+    response=client.get(f'/api/acquisition/workspaces/{W}/inquiries/health?limit=5',headers=header)
+    assert response.status_code==200
+    request=state['requests'][-1]
+    assert request.url.path.endswith('/rpc/acquisition_inquiry_health')
+    assert request.headers['Authorization']=='Bearer operator-session'
+    assert json.loads(request.content)=={'p_workspace':W,'p_after':None,'p_limit':5}
+    count=len(state['requests'])
+    assert client.get(f'/api/acquisition/workspaces/{W}/inquiries/health?limit=51',headers=header).status_code==422
+    assert client.get(f'/api/acquisition/workspaces/{W}/inquiries/health?after=invalid',headers=header).status_code==422
+    assert len(state['requests'])==count

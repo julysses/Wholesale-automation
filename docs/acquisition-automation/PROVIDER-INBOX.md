@@ -69,3 +69,13 @@ Validation uses fake HTTP provider/PostgREST transports and separate real SQL in
 ## Combined local acceptance follow-up
 
 The integrated workflow harness now runs the real signed receiver and worker against real SQL through the strict PostgREST adapter, with Meta responses simulated. Five Facebook journeys pass, including lost responses after actual commits and integration disable during retrieval. See WORKFLOW-ACCEPTANCE.md for evidence and exclusions. This closes the previously noted combined local worker/database test gap, not the live provider/PostgREST release gates.
+
+## Workspace inquiry health and in-app guidance
+
+Migration `20261026165322_acquisition_inquiry_health.sql` adds a bounded, authenticated workspace projection and supporting index. `GET /api/acquisition/workspaces/{workspace}/inquiries/health` forwards the user's token/public key, never the service credential. Active owner/admin/operator membership and session/profile checks are required. Caller/agency and unrelated workspace access are denied. The projection remains readable during global/integration disablement so an authorized operator can see the hold.
+
+The projection provides counts, noncompleted receipt references, state/attempts/times, safe reason codes, gate blockers and specific guidance for credential, permission, identity, retry-budget and expired-payload issues. It excludes seller payloads, Page/external lead IDs, lease tokens and secrets. Counts cover the whole workspace independently of UUID cursor pagination. Completed records leave the unfinished list while remaining in summary counts. Worker runtime health is explicitly unknown; a database queue state is not proof that a worker is deployed/running.
+
+The default-off acquisition workspace now displays this health panel ahead of underwriting. Credential-review cases show a visible alert and remediation guidance when the panel loads or is refreshed. Workspace/user changes reset query state; pending/error responses hide stale guidance. No recovery, retry, credential-edit or enable control is exposed. This is an in-app review alert, not a background notification/email or proof of delivery to an absent owner.
+
+The existing app_notifications policies use global recipient roles. No acquisition payload was inserted into that feed. A workspace-aware notification extension and reviewed recovery action remain separate work. Compensation is to keep the acquisition route disabled; this additive read projection changes no job/lead/provider state. Local component tests, feature-enabled build and real database/API acceptance passed; visual browser QA of this new panel and real PostgREST acceptance remain outstanding.

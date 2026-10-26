@@ -29,6 +29,7 @@ INBOX_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153314_acquisitio
 LEASE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153939_acquisition_inbox_leases.sql'
 INTAKE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026162924_acquisition_seller_intakes.sql'
 BATCH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026163900_acquisition_facebook_batch_acceptance.sql'
+HEALTH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026165322_acquisition_inquiry_health.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -140,6 +141,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(LEASE_MIGRATION.read_text())
         self.sql(INTAKE_MIGRATION.read_text())
         self.sql(BATCH_MIGRATION.read_text())
+        self.sql(HEALTH_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -407,6 +409,59 @@ class WorkspaceTests(unittest.TestCase):
         self.batch_accept([conflicting],fail=True)
         self.batch_accept([],fail=True)
         self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE workspace_id IS NOT NULL;"),'2')
+
+    def inquiry_health(self, actor=ADMIN, workspace=WORKSPACE, after=None, limit=20, fail=False):
+        cursor=literal(after)+'::uuid' if after else 'NULL'
+        result=self.sql(f"SELECT public.acquisition_inquiry_health('{workspace}',{cursor},{limit});",user=actor,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_inquiry_health_workspace_roles_and_safe_summary(self):
+        self.inbox_config(); self.inbox_accept(); claim=self.inbox_claim()[0]
+        self.inbox_defer(claim,'review','CREDENTIALS_INVALID')
+        health=self.inquiry_health()
+        self.assertEqual(health['summary']['requires_review'],1)
+        self.assertEqual(health['items'][0]['reason_code'],'CREDENTIALS_INVALID')
+        self.assertIn('credential',health['items'][0]['guidance'])
+        self.assertFalse(health['recovery_authorized'])
+        self.assertFalse(health['worker_runtime_verified'])
+        encoded=json.dumps(health)
+        for value in ('lease_token','payload','fixture-page','external_event_id'):
+            self.assertNotIn(value,encoded)
+        self.inquiry_health(actor=OTHER,fail=True)
+        self.member(target=CALLER,role='acquisition_caller')
+        self.inquiry_health(actor=CALLER,fail=True)
+        self.member(target=OPERATOR,role='operator')
+        self.assertEqual(self.inquiry_health(actor=OPERATOR)['summary']['received'],1)
+        self.member(target=OPERATOR,role='operator',status='revoked')
+        self.inquiry_health(actor=OPERATOR,fail=True)
+        self.assertEqual(self.inquiry_health(actor=OTHER,workspace=WORKSPACE_B)['summary']['received'],0)
+
+    def test_inquiry_health_pagination_gates_and_completion(self):
+        self.inbox_config(account='100')
+        self.batch_accept([{'page_id':'100','leadgen_id':str(i),'form_id':'200'} for i in (1,2,3)])
+        first=self.inquiry_health(limit=2)
+        self.assertEqual(len(first['items']),2)
+        last=self.inquiry_health(after=first['next_after'],limit=2)
+        self.assertEqual(len(last['items']),1)
+        self.assertIsNone(last['next_after'])
+        self.assertEqual(first['summary'],last['summary'])
+        self.assertEqual(len({item['receipt_id'] for item in first['items']+last['items']}),3)
+        self.inquiry_health(limit=51,fail=True)
+        self.sql("UPDATE private.acquisition_integrations SET enabled=false;")
+        self.sql("UPDATE private.acquisition_activation SET enabled=false;")
+        held=self.inquiry_health()
+        self.assertEqual(held['summary']['disabled_integration_pending'],3)
+        self.assertIn('ACQUISITION_ACTIVATION_DISABLED',held['items'][0]['blockers'])
+        self.assertIn('INTEGRATION_DISABLED',held['items'][0]['blockers'])
+        self.activate()
+        self.sql("UPDATE private.acquisition_integrations SET enabled=true;")
+        integration=self.sql("SELECT id FROM private.acquisition_integrations WHERE account_id='100';")
+        claim=json.loads(self.sql(f"SELECT public.claim_acquisition_events('{integration}',1,120);",user=ADMIN,role='service_role'))[0]
+        prepared=self.prepared_intake(); prepared['external_lead_id']=claim['external_event_id']; prepared['provider_form_id']='200'
+        self.complete_intake(claim,prepared)
+        done=self.inquiry_health()
+        self.assertEqual(done['summary']['completed'],1)
+        self.assertEqual(len(done['items']),2)
 
     def reserve_analysis(self, identity='b0000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, inputs=None, fail=False):
         if inputs is None: inputs={'cases':{name:{'strategy':'fix_and_flip'} for name in ('base','downside','upside')}}

@@ -27,6 +27,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_inquiry_health': ['p_workspace','p_after','p_limit'],
  'accept_facebook_acquisition_batch': ['p_events','p_raw_body'],
  'claim_acquisition_events': ['p_integration','p_limit','p_lease_seconds'],
  'defer_acquisition_event': ['p_receipt','p_lease','p_outcome','p_reason'],
@@ -110,10 +111,10 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease'}
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after'}
                       else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
-                args.append(f'{key}=>{literal(text)}::{kind}')
+                args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
         else:
             self.assertEqual(request.method,'GET')
@@ -213,6 +214,12 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql("SELECT state||':'||reason_code FROM private.acquisition_inbox_processing"),'review:CREDENTIALS_INVALID')
         self.assertEqual(self.facebook_worker().json(),{'status':'idle'})
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='processing_deferred'"),'1')
+        health=self.client.get(self.base+'/inquiries/health',headers=self.headers)
+        self.assertEqual(health.status_code,200,health.text)
+        self.assertEqual(health.json()['summary']['requires_review'],1)
+        self.assertEqual(health.json()['items'][0]['reason_code'],'CREDENTIALS_INVALID')
+        self.assertIn('credential',health.json()['items'][0]['guidance'])
+        self.assertEqual(self.client.get(self.base+'/inquiries/health',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
 
     def test_facebook_signature_and_form_mismatch_do_not_create_leads(self):
         self.configure_facebook()

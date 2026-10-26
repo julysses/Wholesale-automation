@@ -23,6 +23,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       events.push({ ...body, sequence: offer.sequence }); value = { status: body.status }; replies.set(body.id, value);
     }
   } else if (path.endsWith('/workspaces')) value = [{ id: 'fixture-workspace', name: 'Hilltop — local QA' }];
+  else if (path.includes('/inquiries/health')) value = { summary: { requires_review: 0, retrying: 0, expired_leases: 0, awaiting_worker: 0, leased: 0, completed: 0 }, items: [], next_after: null, checked_at: new Date().toISOString() };
   else if (path.endsWith('/state')) value = offer;
   else if (path.endsWith('/summary')) value = { id: offer.lead_id, property_id: offer.property_id, property_address: '123 Fixture Lane', city: 'Dallas' };
   else if (path.includes('/leads?')) value = []; // Review-only fixture; scenario entry has separate component tests.

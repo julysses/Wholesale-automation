@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — workspace inquiry health and visible review alerts
+
+- Previous turn was progress: `24c8958` verified/pushed integrated Facebook journeys. Pulled clean branch and inspected existing API/store patterns and app_notifications catalog policies. Notifications use global recipient roles, so acquisition details were not added to that feed.
+- Added CLI-generated read-only health migration `20261026165322_acquisition_inquiry_health.sql`, a workspace-keyset index, and authenticated GET health API. Actual owner/admin/operator membership/session is required; caller/agency/unrelated access denied. Counts cover all workspace inquiries; bounded cursor pages show safe state, blockers and recovery guidance without payloads, external/Page identities, secrets or lease tokens. Runtime health and recovery authority are never inferred.
+- Added a visible health panel/credential-review alert to the default-off acquisition workspace, with summary counts, guidance, timestamps, paging and refresh. User/workspace switches reset scope; loading/errors hide stale details. No retry/enable/recovery mutation is exposed. Updated the isolated review fixture and added four component tests.
+- Validation: **2 real PostgreSQL health cases passed**, **31 acquisition API tests passed**, and **8 integrated API/database journeys passed**, including credential failure -> scoped actionable guidance and cross-tenant denial. **193 frontend tests passed across 47 files**, feature-enabled TypeScript/Vite build passed (existing chunk warnings), lint ratchet reported no new findings (147 existing). `git diff --check` passed.
+- Initial frontend test-file creation used a redundant frontend path from inside that directory and failed without writing files; corrected paths and reran the final suite/build successfully. Browser visual QA of the new panel and real PostgREST acceptance remain pending. No production migration/configuration/deployment or external notifications sent.
+
+Next: explicit reviewed recovery with audit/idempotency and a controlled UI action; browser QA of the health panel; workspace-aware notification delivery if required beyond the in-app alert. Then canonical identity/property resolution, repeat inquiries, attribution and remaining sequential phases. Goal active.
+
 ## Implementation checkpoint — integrated Facebook ingestion acceptance
 
 - Previous turn was progress: `e857148` implemented/tested/pushed the leased retrieval worker and evidence snapshot. Pulled clean branch and inspected the existing API/calculator/SQL harness plus dedicated CI invocation.

@@ -367,3 +367,11 @@ async def acquisition_lead_summary(workspace_id: UUID, lead_id: UUID, store=Depe
     if not isinstance(leads,list) or len(leads)!=1 or leads[0].get('id')!=str(lead_id):
         raise HTTPException(403,'Workspace lead access is not authorized')
     return {**leads[0],'property_id':bindings[0].get('property_id')}
+
+
+@router.get('/workspaces/{workspace_id}/inquiries/health')
+async def acquisition_inquiry_health(workspace_id: UUID, after: UUID | None = None,
+                                     limit: int = Query(20, ge=1, le=50), store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/acquisition_inquiry_health', body={
+        'p_workspace': str(workspace_id), 'p_after': str(after) if after is not None else None, 'p_limit': limit,
+    })
