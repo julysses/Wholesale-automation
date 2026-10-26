@@ -653,3 +653,43 @@ async def campaign_link_reviews(workspace_id: UUID, intake_id: UUID, before: int
     if before is not None:
         params['sequence'] = 'lt.'+str(before)
     return await store.request('GET', 'acquisition_campaign_links', params=params)
+
+
+class AcquisitionSourceCampaignCapture(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    link_review_id: UUID
+
+
+@router.post('/workspaces/{workspace_id}/intakes/{intake_id}/source-campaign-reviews')
+async def capture_source_campaign(workspace_id: UUID, intake_id: UUID, body: AcquisitionSourceCampaignCapture, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/capture_acquisition_source_campaign', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_source': str(intake_id), 'p_link_review': str(body.link_review_id)})
+
+
+@router.get('/workspaces/{workspace_id}/leads/{lead_id}/sources')
+async def acquisition_lead_sources(workspace_id: UUID, lead_id: UUID, after: UUID | None = None,
+                                   limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select': 'id,workspace_id,lead_id,receipt_id,integration_id,source_type,preparation_hash,external_lead_id,form_id,external_campaign_id,adset_id,ad_id,submitted_at_raw,utm_data,projection_version,recorded_at',
+              'workspace_id': 'eq.'+str(workspace_id), 'lead_id': 'eq.'+str(lead_id), 'order': 'id', 'limit': str(limit+1)}
+    if after is not None:
+        params['id'] = 'gt.'+str(after)
+    rows = await store.request('GET', 'acquisition_lead_sources', params=params)
+    return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}/source-campaign-reviews')
+async def source_campaign_reviews(workspace_id: UUID, intake_id: UUID, after: UUID | None = None,
+                                  limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select': 'id,workspace_id,source_id,link_review_id,campaign_id,preparation_hash,created_at',
+              'workspace_id': 'eq.'+str(workspace_id), 'source_id': 'eq.'+str(intake_id), 'order': 'id', 'limit': str(limit+1)}
+    if after is not None:
+        params['id'] = 'gt.'+str(after)
+    rows = await store.request('GET', 'acquisition_source_campaign_reviews', params=params)
+    # Read current authority after history, so a later capture cannot be labelled
+    # current using an earlier campaign review. This is a reporting snapshot only.
+    state = await store.request('POST', 'rpc/acquisition_campaign_link_state', body={
+        'p_workspace': str(workspace_id), 'p_intake': str(intake_id)})
+    current_review = (state.get('latest_review') or {}).get('id') if state.get('link_current') is True else None
+    return {'items': [{**row, 'attribution_current': current_review is not None and row['link_review_id'] == current_review} for row in rows[:limit]],
+            'next_after': rows[limit-1]['id'] if len(rows)>limit else None, 'execution_authorized': False}

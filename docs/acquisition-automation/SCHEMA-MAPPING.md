@@ -96,3 +96,7 @@ The thin `seller_intakes` relation links immutable canonical receipts to workspa
 ## Campaign catalog refresh — October 26
 
 A fresh read-only production inspection confirms 70 columns across ad_campaigns/ad_creatives/lead_form_configs/lead_form_submissions and 14 inbound/outbound constraints. The detailed catalog, privileges, generated numeric columns and migration ledger are in `evidence/2026-10-26-campaign-catalog.json`. `CAMPAIGN-ISOLATION.md` records live shared/public access paths and the required ownership/child/service-write controls. The disposable acquisition harness now restores these parent tables and their previously omitted lead/form foreign keys before boundary migrations. Campaign ownership itself is not implemented by this fixture change.
+
+### Source attribution implementation update (October 26)
+
+The lead_sources logical entity is now represented by additive `acquisition_lead_sources` over original intake/lead/receipt/integration keys; no equivalent deployed relation existed in the read-only preflight. `acquisition_source_campaign_reviews` records versioned campaign association to exact `acquisition_campaign_links` reviews. Existing leads.source and ad_campaign_id remain unchanged. Canonical multi-touch rollups, campaign events, costs and funnel reporting remain incomplete; this is an association foundation, not completed FB-006 reporting.

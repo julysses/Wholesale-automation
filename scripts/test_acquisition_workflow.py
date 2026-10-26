@@ -27,6 +27,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'capture_acquisition_source_campaign':['p_id','p_workspace','p_source','p_link_review'],
  'acquisition_campaign_link_state':['p_workspace','p_intake'],
  'review_acquisition_campaign_link':['p_id','p_workspace','p_intake','p_expected_sequence','p_preparation_hash','p_action','p_campaign','p_ad_account','p_evidence_ref','p_note'],
  'create_acquisition_campaign':['p_id','p_workspace','p_name','p_channel','p_budget_cents','p_currency'],
@@ -122,11 +123,27 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign'}
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review'}
                       else 'timestamptz' if key=='p_expected_updated_at' else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
+        elif request.url.path in ('/rest/v1/acquisition_lead_sources','/rest/v1/acquisition_source_campaign_reviews'):
+            self.assertEqual(request.method,'GET')
+            table=request.url.path.rsplit('/',1)[-1]
+            fields=('id,workspace_id,lead_id,receipt_id,integration_id,source_type,preparation_hash,external_lead_id,form_id,external_campaign_id,adset_id,ad_id,submitted_at_raw,utm_data,projection_version,recorded_at'
+                    if table=='acquisition_lead_sources' else 'id,workspace_id,source_id,link_review_id,campaign_id,preparation_hash,created_at')
+            self.assertEqual(request.url.params['select'],fields)
+            relation='lead_id' if table=='acquisition_lead_sources' else 'source_id'
+            self.assertTrue(set(request.url.params)<={'select','workspace_id',relation,'order','limit','id'})
+            self.assertEqual(request.url.params['order'],'id')
+            filters=[]
+            for key in ('workspace_id',relation):
+                op,value=request.url.params[key].split('.',1); self.assertEqual(op,'eq'); filters.append(f'{key}={literal(value)}::uuid')
+            if 'id' in request.url.params:
+                op,value=request.url.params['id'].split('.',1); self.assertEqual(op,'gt'); filters.append(f'id>{literal(value)}::uuid')
+            limit=int(request.url.params['limit']); self.assertTrue(1<=limit<=51)
+            query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {fields} FROM public.{table} WHERE {' AND '.join(filters)} ORDER BY id LIMIT {limit}) row;"
         elif request.url.path=='/rest/v1/acquisition_campaign_links':
             self.assertEqual(request.method,'GET')
             fields='id,workspace_id,integration_id,external_campaign_id,sequence,action,campaign_id,ad_account_id,intake_id,evidence_ref,review_note,created_at'
@@ -393,10 +410,25 @@ class WorkflowTests(WorkspaceTests):
         self.assertTrue(linked['link_current']); self.assertFalse(linked['execution_authorized'])
         self.assertEqual(linked['internal_campaign_id'],campaign)
         self.assertEqual(self.client.get(path+'/campaign-link-state',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
+        lead=self.sql('SELECT lead_id FROM seller_intakes')
+        sources=self.client.get(self.base+'/leads/'+lead+'/sources',headers=self.headers)
+        self.assertEqual(sources.status_code,200,sources.text); self.assertEqual(sources.json()['items'][0]['external_campaign_id'],'300')
+        self.assertIsNone(sources.json()['items'][0]['utm_data'])
+        capture={'id':'cd000000-0000-4000-8000-000000000001','link_review_id':body['id']}
+        self.lose_facebook_reply='capture_acquisition_source_campaign'
+        self.assertEqual(self.client.post(path+'/source-campaign-reviews',headers=self.headers,json=capture).status_code,503)
+        captured=self.client.post(path+'/source-campaign-reviews',headers=self.headers,json=capture)
+        self.assertEqual(captured.status_code,200,captured.text); self.assertTrue(captured.json()['duplicate'])
+        current=self.client.get(path+'/source-campaign-reviews',headers=self.headers)
+        self.assertEqual(current.status_code,200,current.text); self.assertTrue(current.json()['items'][0]['attribution_current'])
         revoke={**body,'id':'cf000000-0000-4000-8000-000000000003','expected_sequence':1,'action':'revoke','campaign_id':None,'ad_account_id':None}
         self.assertEqual(self.client.post(path+'/campaign-link-reviews',headers=self.headers,json=revoke).status_code,200)
         self.assertFalse(self.client.get(path+'/campaign-link-state',headers=self.headers).json()['link_current'])
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_campaign_links'),'2')
+        historical=self.client.get(path+'/source-campaign-reviews',headers=self.headers)
+        self.assertEqual(historical.status_code,200,historical.text); self.assertFalse(historical.json()['items'][0]['attribution_current'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_source_campaign_reviews'),'1')
+        self.assertEqual(self.client.get(self.base+'/leads/'+lead+'/sources',headers={'Authorization':'Bearer synthetic-other-session'}).json()['items'],[])
         history=self.client.get(path+'/campaign-link-reviews?limit=1',headers=self.headers)
         self.assertEqual(history.status_code,200,history.text); self.assertEqual(history.json()[0]['action'],'revoke')
         older=self.client.get(path+'/campaign-link-reviews?limit=1&before=2',headers=self.headers)

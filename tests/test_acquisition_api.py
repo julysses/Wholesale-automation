@@ -557,3 +557,25 @@ def test_campaign_history_resolves_scope_server_side_and_bounds_pages(api):
     assert last.url.params['workspace_id']=='eq.'+W and last.url.params['integration_id']=='eq.'+U
     assert last.url.params['external_campaign_id']=='eq.123' and last.url.params['sequence']=='lt.5' and last.url.params['limit']=='10'
     assert last.headers['authorization']=='Bearer user-token'
+
+
+def test_source_capture_and_read_are_scoped_versioned_and_non_executing(api):
+    client,state=api
+    base=f'/api/acquisition/workspaces/{W}'
+    path=base+f'/intakes/{U}/source-campaign-reviews'
+    state['body']={'id':U,'source_id':U,'link_review_id':W,'execution_authorized':False}
+    response=client.post(path,headers={'Authorization':'Bearer user-token'},json={'id':U,'link_review_id':W})
+    assert response.status_code==200
+    assert json.loads(state['requests'][-1].content)=={'p_id':U,'p_workspace':W,'p_source':U,'p_link_review':W}
+    assert client.post(path,headers={'Authorization':'Bearer user-token'},json={'id':U,'link_review_id':W,'campaign_id':W}).status_code==422
+    state['body']=[{'id':U},{'id':W}]
+    response=client.get(base+f'/leads/{U}/sources?limit=1&after={U}',headers={'Authorization':'Bearer user-token'})
+    assert response.json()['next_after']==U
+    params=state['requests'][-1].url.params
+    assert params['workspace_id']=='eq.'+W and params['lead_id']=='eq.'+U and params['id']=='gt.'+U
+    state['responses']=[[{'id':U,'link_review_id':W}],{'latest_review':{'id':W},'link_current':True}]
+    response=client.get(path,headers={'Authorization':'Bearer user-token'})
+    assert response.json()['items'][0]['attribution_current'] is True and response.json()['execution_authorized'] is False
+    assert state['requests'][-2].url.params['source_id']=='eq.'+U
+    state['responses']=[[{'id':U,'link_review_id':W}],{'latest_review':{'id':W},'link_current':False}]
+    assert client.get(path,headers={'Authorization':'Bearer user-token'}).json()['items'][0]['attribution_current'] is False

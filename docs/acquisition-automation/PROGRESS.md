@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — immutable source touches and campaign snapshots
+
+- Previous turn made progress: `5531f88` connected campaign review/history to intake UI. Pulled the branch and rechecked production catalog: no lead_sources/acquisition_lead_sources/proposed source-review relation exists; migration ledger remains 95 entries/latest `20261023221455`. CLI created `20261026221434_acquisition_lead_sources.sql`; production remains untouched.
+- Added an immutable, RLS-protected source record over each original intake/lead/receipt/integration, with composite tenant foreign keys, preparation provenance and typed provider identifiers. Missing/invalid identifiers and UTM data stay null; submitted time is explicitly raw evidence, not a validated reporting date. No seller answers/contact details are copied. Intake insertion records source plus audit atomically; additive backfill projects existing immutable intake evidence without creating/rebinding leads.
+- Added immutable campaign-attribution snapshots referencing exact reviewed campaign-link versions. Controlled owner/admin/operator capture checks live access, locks current integration/reviewer/campaign authority and serializes with campaign review/revocation. One source/review pair cannot be duplicated; exact UUID retries preserve history even if the review later goes stale. Corrections append versions, never overwrite the source or prior snapshot.
+- Authenticated APIs list original-lead source touches, capture exact reviewed attribution, and paginate historical captures with a separately checked current/historical indicator. No spend, execution, consent or legacy-routing authority is inferred.
+- Validation: **47 API tests**, **four focused PostgreSQL cases**, and **all 12 integrated real-SQL journeys passed**, including post-commit lost-reply reconciliation and historical status after revocation. A fifth focused fault-injection case verifies source-projection failure rolls back the intake/CRM write and retries once. Initial focused run exposed duplicate migration application in test setup; corrected setup and reran successfully. Populated-intake backfill preserves the exact prior intake rows and creates one source/audit per inquiry. No frontend changes this increment.
+
+Next: connect capture/display to the review workflow and derive canonical lead multi-touch rollups through current reviewed identity associations; original inquiry IDs must remain intact. Cost/coverage ingestion, funnel reporting, campaign events and later phases remain open. Full production-schema/PostgREST/provider release acceptance is still required. Goal active.
+
 ## Implementation checkpoint — campaign attribution review dashboard
 
 - Previous turn made progress: `2967de1` implemented and pushed reviewed campaign links. Pulled the branch and connected an optional Campaign attribution review panel inside the selected intake, preserving the default-off acquisition entry point.

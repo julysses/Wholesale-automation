@@ -157,6 +157,8 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(HANDOFF_MIGRATION.read_text())
         self.sql(CAMPAIGN_MIGRATION.read_text())
         self.sql((ROOT/"frontend/supabase/migrations/20261026214412_acquisition_campaign_links.sql").read_text())
+        if self._testMethodName != 'test_source_migration_backfills_without_changing_intakes':
+            self.sql((ROOT/'frontend/supabase/migrations/20261026221434_acquisition_lead_sources.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -192,6 +194,77 @@ class WorkspaceTests(unittest.TestCase):
     def campaign_draft(self, identity='91000000-0000-4000-8000-000000000001',actor=ADMIN,workspace=WORKSPACE,fail=False):
         value=self.sql(f"SELECT public.create_acquisition_campaign('{identity}','{workspace}','Draft campaign','facebook',50000,'USD')",user=actor,fail=fail)
         return value if fail else json.loads(value)
+
+    def source_capture(self, intake, review, user=ADMIN, fail=False, identity='cd000000-0000-4000-8000-000000000001', workspace=WORKSPACE):
+        result=self.sql(f"SELECT public.capture_acquisition_source_campaign('{identity}','{workspace}','{intake}','{review}')",user=user,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_sources_record_original_evidence_atomic_and_scoped(self):
+        self.link_campaign=self.campaign_draft()['id']; intake=self.campaign_link_fixture()
+        source=json.loads(self.sql(f"SELECT to_jsonb(s) FROM acquisition_lead_sources s WHERE id='{intake}'",user=ADMIN))
+        self.assertEqual(source['external_campaign_id'],'987654'); self.assertIsNone(source['utm_data']); self.assertIsNone(source['ad_id'])
+        self.assertNotIn('phone',json.dumps(source)); self.assertNotIn('answers',source)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_lead_sources',user=OTHER),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_lead_source'"),'1')
+        for role in ('authenticated','service_role'):
+            for table in ('acquisition_lead_sources','acquisition_source_campaign_reviews'):
+                for query in (f'DELETE FROM {table}',f'TRUNCATE {table}',f'INSERT INTO {table} SELECT * FROM {table}'):
+                    self.sql(query,user=ADMIN,role=role,fail=True)
+        self.sql(f"UPDATE acquisition_lead_sources SET external_campaign_id='999' WHERE id='{intake}'",fail=True)
+
+    def test_source_projection_failure_rolls_back_intake_and_retries_once(self):
+        self.inbox_config(); self.inbox_accept(); claim=self.inbox_claim()[0]
+        self.sql("CREATE FUNCTION private.fixture_source_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic source failure'; END $$; "
+                 "CREATE TRIGGER fixture_source_failure BEFORE INSERT ON acquisition_lead_sources FOR EACH ROW EXECUTE FUNCTION private.fixture_source_failure();")
+        self.complete_intake(claim,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='facebook_acquisition'"),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_lead_sources'),'0')
+        self.assertEqual(self.sql('SELECT state FROM private.acquisition_inbox_processing'),'leased')
+        self.sql('DROP TRIGGER fixture_source_failure ON acquisition_lead_sources')
+        self.complete_intake(claim); self.assertTrue(self.complete_intake(claim)['duplicate'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_lead_sources'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_lead_source'"),'1')
+
+    def test_source_campaign_capture_concurrent_and_revocation_preserves_history(self):
+        self.link_campaign=self.campaign_draft()['id']; intake=self.campaign_link_fixture(); state=self.campaign_link_state(intake)
+        reviewed=self.campaign_link_review(intake,state)
+        with ThreadPoolExecutor(max_workers=3) as pool: results=list(pool.map(lambda _:self.source_capture(intake,reviewed['review_id']),range(3)))
+        self.assertEqual(sum(not row['duplicate'] for row in results),1)
+        self.assertTrue(all(not row['execution_authorized'] for row in results))
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_source_campaign'"),'1')
+        self.source_capture(intake,reviewed['review_id'],identity='cd000000-0000-4000-8000-000000000002',fail=True)
+        fresh=self.campaign_link_state(intake)
+        self.campaign_link_review(intake,fresh,p_id='cf000000-0000-4000-8000-000000000002',p_action='revoke',p_campaign=None,p_ad_account=None)
+        self.assertTrue(self.source_capture(intake,reviewed['review_id'])['duplicate'])
+        self.source_capture(intake,reviewed['review_id'],identity='cd000000-0000-4000-8000-000000000003',fail=True)
+        corrected=self.campaign_link_review(intake,self.campaign_link_state(intake),p_id='cf000000-0000-4000-8000-000000000003')
+        self.source_capture(intake,corrected['review_id'],identity='cd000000-0000-4000-8000-000000000004')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_source_campaign_reviews'),'2')
+        self.sql('DELETE FROM acquisition_source_campaign_reviews',fail=True)
+
+    def test_source_campaign_capture_requires_current_matching_review_and_role(self):
+        self.link_campaign=self.campaign_draft()['id']; intake=self.campaign_link_fixture(); reviewed=self.campaign_link_review(intake,self.campaign_link_state(intake))
+        self.source_capture(intake,reviewed['review_id'],user=OTHER,workspace=WORKSPACE_B,fail=True)
+        other=self.campaign_link_fixture(external='123456',account='second-page')
+        self.source_capture(other,reviewed['review_id'],fail=True)
+        self.sql('UPDATE private.acquisition_integrations SET enabled=false')
+        self.source_capture(intake,reviewed['review_id'],fail=True)
+        self.sql('UPDATE private.acquisition_integrations SET enabled=true')
+        self.member(target=OPERATOR,role='operator')
+        result=self.source_capture(intake,reviewed['review_id'],user=OPERATOR)
+        self.assertEqual(result['campaign_id'],self.link_campaign)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_source_campaign_reviews',user=OTHER),'0')
+
+    def test_source_migration_backfills_without_changing_intakes(self):
+        intake=self.campaign_link_fixture()
+        before=self.sql('SELECT jsonb_agg(to_jsonb(i)) FROM seller_intakes i')
+        self.sql((ROOT/'frontend/supabase/migrations/20261026221434_acquisition_lead_sources.sql').read_text())
+        self.assertEqual(before,self.sql('SELECT jsonb_agg(to_jsonb(i)) FROM seller_intakes i'))
+        self.assertEqual(self.sql('SELECT id FROM acquisition_lead_sources'),intake)
+        self.sql(f"SELECT private.record_acquisition_lead_source('{intake}')")
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_lead_sources'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_lead_source'"),'1')
 
     def campaign_link_fixture(self, external='987654', account='fixture-page', workspace=WORKSPACE):
         self.inbox_config(account=account,workspace=workspace); self.inbox_accept(account=account)
