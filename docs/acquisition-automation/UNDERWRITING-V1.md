@@ -1,6 +1,6 @@
 # Acquisition underwriting v1
 
-Implementation: `schemas/acquisition_underwriting.py` and `tools/acquisition_underwriting.py`. Calculation identifier: `acquisition-underwriting-v1`. This is an internal, deterministic preview engine, not an offer, market-data service or persisted scenario lifecycle. Existing legacy analyzer/manual-save behavior remains unchanged.
+Implementation: `schemas/acquisition_underwriting.py` and `tools/acquisition_underwriting.py`. Calculation identifier: `acquisition-underwriting-v1`. This is an internal deterministic calculation engine with immutable scenario persistence, not an offer or market-data service. Unbound legacy analysis synchronization is preserved; workspace-bound analyses use the new lifecycle.
 
 ## Inputs and evidence
 
@@ -45,6 +45,18 @@ The proposed range uses an explicit input floor fraction × MAO through MAO. No 
 
 `POST /api/acquisition/workspaces/{workspace_id}/leads/{lead_id}/underwriting/preview` first checks the canonical workspace lead binding through the user-scoped store/RLS. Owner/admin/operator roles can read this binding; callers/agencies cannot. The response derives property ID from the binding rather than accepting it from the client. The endpoint performs only a scoped read, reports `persisted=false`, and changes no lead MAO, analysis record, offer or source data.
 
-## Remaining persistence work
+## Immutable scenario persistence
 
-Extend the existing `deal_analyses` table for strategy, versioned input/output snapshots and case relationships rather than adding a duplicate analysis store. Its legacy `sync_deal_to_lead` trigger must be adapted/tested so historic or downside/upside scenarios cannot overwrite current lead MAO. Add immutable approvals, historical versions, current-scenario selection and offer linkage under workspace roles. The current preview alone does not satisfy UW-002/UW-007 persistence or offer lifecycle requirements. Full-schema migration and production activation remain separately gated.
+Migration `20261026040321_acquisition_analysis_versions.sql` extends existing `deal_analyses`; no parallel analysis store is created. POST `/api/acquisition/workspaces/{workspace_id}/leads/{lead_id}/underwriting/scenarios` accepts a stable UUID `id` and `inputs` in preview format. Reuse the exact ID and inputs on retries. Each new ID allocates the next lead revision under a database lock. Canonical property ID comes from the binding. GET on the same path returns bounded revision history (`after`, `limit`).
+
+The user-scoped reservation saves immutable inputs and a pending result, with actor, original session, input hash and calculation version. A separate server worker reads that snapshot and completes through two service-only RPCs. Clients cannot supply computed outputs. Raw service-role analysis changes are also rejected; only reviewed database functions can finalize. The worker credential is privileged and remains a trusted server boundary, not a cryptographically verified arithmetic service. Results and completed versions cannot be rewritten; calculation/request audit events are append-only. Saving a scenario does not change current lead MAO or approve an offer. Legacy writes to a bound lead's analysis are held, including moving it to an unbound lead.
+
+`ACQUISITION_CALCULATOR_ENABLED=true` and an explicit server-only `ACQUISITION_CALCULATOR_SERVICE_KEY` are required in addition to acquisition activation. There is no fallback to the general service credential or user token. No credential or runtime flag was configured. The API reserves with the user JWT, invokes the worker for that exact ID, then reads the result again through current user RLS. A disabled/unavailable worker leaves pending input history and reports the hold. A timeout has an unknown outcome: retry the same ID, never create another reference automatically.
+
+Worker read and completion each recheck the original creator's approved profile, active workspace/operator membership, live original session and activation. Revoked/expired original sessions leave requests held; after authorized review, a new session can submit a new revision with a new ID. No job reassignment or background scheduler is implemented. Schema-invalid inputs submitted directly through the reservation RPC produce an explicit invalid result; unsupported calculation versions are held rather than reinterpreted.
+
+Compensation: disable calculator execution and acquisition activation, retain scenarios/jobs/audit, and correct calculation errors through a new version/revision. Do not reverse this migration by deleting history or replay old saves to select a lead MAO. Full-schema upgrade rehearsal and coordinated legacy UI/API cutover remain gates.
+
+## Remaining lifecycle work
+
+Add immutable approvals, current-scenario selection and offer linkage under workspace roles. Property/comparable evidence, explicit uncertainty review, full offer history, seller-facing isolation and approval UI remain incomplete. Focused SQL tests validate persistence/security using synthetic result payloads; Python tests validate arithmetic and worker orchestration separately. This is not a complete PostgREST-to-production acceptance test. Production activation remains separately gated.

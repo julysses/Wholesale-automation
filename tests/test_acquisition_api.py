@@ -24,7 +24,8 @@ def api(monkeypatch):
         state['requests'].append(request)
         if state.get('timeout'):
             raise httpx.ReadTimeout('secret upstream details', request=request)
-        return httpx.Response(state['status'], json=state['body'])
+        body=state['responses'].pop(0) if state.get('responses') else state['body']
+        return httpx.Response(state['status'], json=body)
     original = httpx.AsyncClient
     monkeypatch.setattr('tools.acquisition_store.httpx.AsyncClient',
                         lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
@@ -234,3 +235,20 @@ def test_underwriting_preview_checks_scoped_binding_and_does_not_write(api):
     assert result['property_id'] is None
     assert all(request.method=='GET' for request in state['requests'])
     assert all(request.url.params['workspace_id']=='eq.'+W for request in state['requests'])
+
+
+def test_scenario_reservation_stays_user_scoped_when_worker_disabled(api,monkeypatch):
+    client,state=api
+    monkeypatch.delenv('ACQUISITION_CALCULATOR_ENABLED',raising=False)
+    path=f'/api/acquisition/workspaces/{W}/leads/{U}/underwriting/scenarios'
+    state['responses']=[{'id':U,'workspace_id':W,'lead_id':U,'status':'pending'},
+                        [{'id':U,'workspace_id':W,'lead_id':U,'acquisition_status':'pending'}]]
+    body={'id':U,'inputs':{'cases':{name:{'strategy':'fix_and_flip'} for name in ['base','downside','upside']}}}
+    response=client.post(path,headers={'Authorization':'Bearer user-token'},json=body)
+    assert response.status_code==200
+    assert response.json()['analysis']['acquisition_status']=='pending'
+    assert response.json()['calculation']['reason']=='CALCULATOR_NOT_ENABLED'
+    assert len(state['requests'])==2
+    assert all(request.headers['Authorization']=='Bearer user-token' for request in state['requests'])
+    assert 'p_outputs' not in json.loads(state['requests'][0].content)
+    assert client.post(path,headers={'Authorization':'Bearer user-token'},json={**body,'outputs':{'mao':999999}}).status_code==422

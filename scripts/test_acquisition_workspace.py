@@ -22,6 +22,7 @@ CONTACT_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032050_acquisit
 ELIGIBILITY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032519_acquisition_eligibility_ledger.sql'
 OWNER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033010_acquisition_owner_relationships.sql'
 PERMISSION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033554_acquisition_permission_evidence.sql'
+ANALYSIS_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026040321_acquisition_analysis_versions.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -76,7 +77,7 @@ class WorkspaceTests(unittest.TestCase):
         for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'),
                               ('wholesale_ingest','properties'), ('public','campaigns'),
                               ('public','buyer_import_log'), ('public','buyers'), ('public','deals'), ('public','deal_matches'),
-                              ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts'), ('public','dnc_registry'), ('public','email_suppressions'), ('public','lead_form_submissions'), ('public','facebook_lead_submissions')):
+                              ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts'), ('public','dnc_registry'), ('public','email_suppressions'), ('public','lead_form_submissions'), ('public','facebook_lead_submissions'), ('public','deal_analyses')):
             columns = []
             for c in catalog['columns']:
                 if c['table_schema'] == schema and c['table_name'] == table:
@@ -107,6 +108,9 @@ class WorkspaceTests(unittest.TestCase):
         for user, role in ((ADMIN,'admin'),(OTHER,'admin'),(CALLER,'user'),(OPERATOR,'user')):
             self.sql(f"INSERT INTO auth.users VALUES('{user}'); INSERT INTO auth.sessions VALUES('{user}','{user}',NULL); "
                      f"INSERT INTO profiles(id,email,role,status) VALUES('{user}','{user}@example.test','{role}','approved');")
+        self.sql((ROOT/'frontend/supabase/migrations/20261008223315_repair_analysis_lead_sync.sql').read_text())
+        self.sql('CREATE TRIGGER deal_analysis_sync AFTER INSERT OR UPDATE ON deal_analyses FOR EACH ROW EXECUTE FUNCTION sync_deal_to_lead(); '
+                 'GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE ON deal_analyses TO service_role;')
         self.sql(MIGRATION.read_text())
         if self._testMethodName == 'test_migration_scopes_preexisting_memberships':
             self.create(ADMIN, WORKSPACE)
@@ -118,6 +122,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(ELIGIBILITY_MIGRATION.read_text())
         self.sql(OWNER_MIGRATION.read_text())
         self.sql(PERMISSION_MIGRATION.read_text())
+        self.sql(ANALYSIS_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -126,6 +131,77 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def reserve_analysis(self, identity='b0000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, inputs=None, fail=False):
+        if inputs is None: inputs={'cases':{name:{'strategy':'fix_and_flip'} for name in ('base','downside','upside')}}
+        result=self.sql(f"SELECT public.reserve_acquisition_analysis('{identity}','{workspace}','{lead}',{literal(json.dumps(inputs))}::jsonb);",user=actor,fail=fail)
+        return result if fail else json.loads(result)
+
+    def calculation_snapshot(self, identity='b0000000-0000-4000-8000-000000000001', workspace=WORKSPACE, role='service_role', fail=False):
+        result=self.sql(f"SELECT public.read_acquisition_calculation('{identity}','{workspace}');",user=ADMIN,role=role,fail=fail)
+        return result if fail else json.loads(result)
+
+    def complete_analysis(self, snapshot, role='service_role', fail=False, output=None):
+        if output is None:
+            output={'status':'incomplete','calculation_version':'acquisition-underwriting-v1','strategy':'fix_and_flip',
+                    'cases':{name:{'mao':None} for name in ('base','downside','upside')},'binding_offer':False,'human_approval_required':True,'persisted':False}
+        return self.sql(f"SELECT public.complete_acquisition_calculation('{snapshot['id']}','{snapshot['workspace_id']}',"
+                        f"{literal(snapshot['input_hash'])},{literal(json.dumps(output))}::jsonb);",user=ADMIN,role=role,fail=fail)
+
+    def test_analysis_versions_are_immutable_and_do_not_sync_lead_mao(self):
+        self.sql(f"UPDATE leads SET mao=12345,estimated_arv=200000,estimated_repairs=10000 WHERE id='{LEAD}';")
+        self.bind()
+        first=self.reserve_analysis()
+        self.assertEqual(first,self.reserve_analysis())
+        second=self.reserve_analysis(identity='b0000000-0000-4000-8000-000000000002')
+        self.assertEqual([first['revision'],second['revision']],[1,2])
+        snapshot=self.calculation_snapshot()
+        finished=self.complete_analysis(snapshot)
+        self.assertEqual(finished,self.complete_analysis(snapshot))
+        self.assertEqual(self.sql(f"SELECT mao||':'||estimated_arv||':'||estimated_repairs FROM leads WHERE id='{LEAD}';"),'12345:200000:10000')
+        self.assertEqual(self.sql("SELECT acquisition_outputs->>'persisted' FROM deal_analyses WHERE acquisition_revision=1"),'true')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_analysis' AND action='calculated'"),'1')
+        self.sql("UPDATE deal_analyses SET acquisition_inputs='{}' WHERE workspace_id IS NOT NULL;",fail=True)
+        self.sql('DELETE FROM deal_analyses WHERE workspace_id IS NOT NULL;',fail=True)
+        changed={'cases':{name:{'strategy':'rental'} for name in ('base','downside','upside')}}
+        self.reserve_analysis(inputs=changed,fail=True)
+
+    def test_analysis_output_requires_worker_rpc_not_user_or_raw_service_write(self):
+        self.bind(); self.reserve_analysis()
+        snapshot=self.calculation_snapshot()
+        self.calculation_snapshot(role='authenticated',fail=True)
+        self.complete_analysis(snapshot,role='authenticated',fail=True)
+        self.sql("UPDATE deal_analyses SET acquisition_status='invalid',acquisition_outputs='{}' WHERE workspace_id IS NOT NULL;",user=ADMIN,role='service_role',fail=True)
+        self.sql('TRUNCATE deal_analyses;',user=ADMIN,role='service_role',fail=True)
+        self.complete_analysis({**snapshot,'input_hash':'wrong'},fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_analysis_jobs'),'1')
+
+    def test_analysis_scope_revocation_and_worker_session_recheck(self):
+        self.bind();self.reserve_analysis()
+        self.reserve_analysis(actor=OTHER,fail=True)
+        self.calculation_snapshot(workspace=WORKSPACE_B,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM deal_analyses',user=OTHER),'0')
+        self.member(target=CALLER,role='acquisition_caller')
+        self.reserve_analysis(actor=CALLER,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM deal_analyses',user=CALLER),'0')
+        self.sql(f"DELETE FROM auth.sessions WHERE user_id='{ADMIN}';")
+        self.calculation_snapshot(fail=True)
+
+    def test_unbound_legacy_sync_preserved_but_bound_legacy_writes_held(self):
+        self.sql(f"INSERT INTO deal_analyses(lead_id,arv_low,mao,repair_cost_mid) VALUES('{LEAD_B}',250000,120000,20000);")
+        self.assertEqual(self.sql(f"SELECT mao FROM leads WHERE id='{LEAD_B}'"),'120000')
+        self.bind()
+        self.sql(f"INSERT INTO deal_analyses(lead_id,arv_low,mao) VALUES('{LEAD}',999999,999999);",user=ADMIN,role='service_role',fail=True)
+        self.sql(f"INSERT INTO deal_analyses(lead_id,arv_low,mao) VALUES('{LEAD}',999999,999999);")
+        self.sql(f"UPDATE deal_analyses SET lead_id='{LEAD_B}' WHERE lead_id='{LEAD}';",user=ADMIN,role='service_role',fail=True)
+        self.assertEqual(self.sql(f"SELECT coalesce(mao,-1) FROM leads WHERE id='{LEAD}'"),'-1')
+
+    def test_parallel_analysis_requests_get_distinct_ordered_revisions(self):
+        self.bind()
+        ids=['b0000000-0000-4000-8000-000000000001','b0000000-0000-4000-8000-000000000002']
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            values=list(pool.map(lambda identity:self.reserve_analysis(identity=identity),ids))
+        self.assertEqual(sorted(value['revision'] for value in values),[1,2])
 
     def permission_receipt(self, source='website', accepted=True, disclosure='Synthetic SMS checkbox disclosure', when='2020-01-01T12:00:00Z', phone='+12145550101'):
         receipt = '90000000-0000-4000-8000-000000000001'

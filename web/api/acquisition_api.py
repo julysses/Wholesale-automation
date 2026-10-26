@@ -234,3 +234,45 @@ async def underwriting_preview(workspace_id: UUID, lead_id: UUID, body: Underwri
         raise HTTPException(403,'Workspace underwriting access is not authorized')
     return {**calculate_preview(body),'workspace_id':str(workspace_id),'lead_id':str(lead_id),
             'property_id':rows[0].get('property_id')}
+
+
+class AnalysisReservation(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    inputs: UnderwritingPreview
+
+
+@router.post('/workspaces/{workspace_id}/leads/{lead_id}/underwriting/scenarios')
+async def save_scenario(workspace_id: UUID, lead_id: UUID, body: AnalysisReservation,
+                        store=Depends(acquisition_store)):
+    from tools.acquisition_calculator import process_reserved_analysis, CalculationUnavailable
+    reserved=await store.request('POST','rpc/reserve_acquisition_analysis',body={
+        'p_id':str(body.id),'p_workspace':str(workspace_id),'p_lead':str(lead_id),
+        'p_inputs':body.inputs.model_dump(mode='json'),
+    })
+    if (not isinstance(reserved,dict) or reserved.get('id')!=str(body.id)
+            or reserved.get('workspace_id')!=str(workspace_id) or reserved.get('lead_id')!=str(lead_id)):
+        raise HTTPException(503,'Analysis reservation is unconfirmed; retry the same reference')
+    try:
+        calculation=await process_reserved_analysis(workspace_id,body.id)
+    except CalculationUnavailable:
+        calculation={'status':'pending','reason':'CALCULATION_UNCONFIRMED_RETRY_SAME_REFERENCE'}
+    # Re-read through current user RLS, never return a privileged worker payload.
+    rows=await store.request('GET','deal_analyses',params={
+        'select':'id,workspace_id,lead_id,property_id,acquisition_revision,acquisition_strategy,calculation_version,acquisition_status,acquisition_inputs,acquisition_outputs,analyzed_at',
+        'id':'eq.'+str(body.id),'workspace_id':'eq.'+str(workspace_id),'lead_id':'eq.'+str(lead_id),'limit':'1',
+    })
+    if (not isinstance(rows,list) or len(rows)!=1 or rows[0].get('id')!=str(body.id)
+            or rows[0].get('workspace_id')!=str(workspace_id) or rows[0].get('lead_id')!=str(lead_id)):
+        raise HTTPException(403,'Workspace analysis access is not authorized')
+    return {'analysis':rows[0],'calculation':calculation,'binding_offer':False}
+
+
+@router.get('/workspaces/{workspace_id}/leads/{lead_id}/underwriting/scenarios')
+async def scenario_history(workspace_id: UUID, lead_id: UUID, after: int = Query(0,ge=0),
+                           limit: int = Query(20,ge=1,le=50), store=Depends(acquisition_store)):
+    return await store.request('GET','deal_analyses',params={
+        'select':'id,property_id,acquisition_revision,acquisition_strategy,calculation_version,acquisition_status,acquisition_inputs,acquisition_outputs,analyzed_at',
+        'workspace_id':'eq.'+str(workspace_id),'lead_id':'eq.'+str(lead_id),
+        'acquisition_revision':'gt.'+str(after),'order':'acquisition_revision','limit':str(limit),
+    })

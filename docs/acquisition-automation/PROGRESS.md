@@ -3,6 +3,17 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — immutable underwriting scenario history
+
+- Continued from pushed `32f0401`; pulled again before finalizing (already current). Inspected the existing analysis table, latest legacy sync function, manual-save RPC and tenant boundaries before generating the additive migration with Supabase CLI.
+- Extended `deal_analyses` through `20261026040321_acquisition_analysis_versions.sql`. User-scoped reservations preserve canonical lead/property binding, immutable inputs, original actor/session, hash, calculation version and ordered revisions. Exact retries are idempotent; changed inputs under the same ID conflict. Concurrent requests allocate distinct revisions.
+- Added dedicated server calculation read/finalize RPCs and `tools/acquisition_calculator.py`. The worker reads the stored input snapshot, computes with the tested four-strategy engine, and records outputs once. Caller-supplied outputs and raw service writes are rejected. Worker operations recheck original session, profile, role, workspace and activation. User-visible results are re-read through user RLS. Worker trust and dedicated service credential limits are documented in UNDERWRITING-V1.md.
+- Added scenario save/history APIs. Disabled or unavailable calculator leaves an explicit pending record; an unknown result requires retry of the same ID. No generic service-key fallback, provider calls, background scheduling or offer approval. Invalid stored schemas get a terminal rejection, while unknown engine versions remain held.
+- Preserved legacy synchronization for unbound analyses; workspace-bound analyses never change lead ARV/repairs/MAO. Final review found and closed an old-record reassignment bypass by checking both old and new lead bindings before legacy writes. Completed history and audit are immutable.
+- Validation: **55 focused Python tests passed; full offline backend 1,265 passed, 10 skipped, 368 existing deprecation warnings.** Final focused disposable PostgreSQL suite after the reassignment fix: **56 passed**. `git diff --check` passes. SQL uses synthetic result payloads to test persistence boundaries; Python independently tests calculation/orchestration. Full production-schema and PostgREST end-to-end acceptance remain open.
+
+Next: scenario selection/approval and offer lifecycle; property/market uncertainty evidence and dashboard; policy/execute controls and owner assertion invalidation; durable Facebook capture and sequential later channels. No production migration, environment flag, credential, sender, campaign, mail or binding transaction changed. Goal active.
+
 ## Implementation checkpoint — shared underwriting calculations
 
 - Pulled clean `7bc438f`; prior turn implemented/tested/pushed legacy transport fences (progress). Inspected existing manual-analysis API, legacy ratio-based analyzer, `deal_analyses` columns/constraints and the schema-mapping persistence plan. Existing workflows remain unchanged.
