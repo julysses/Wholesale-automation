@@ -3,6 +3,16 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — workspace offer-review screen
+
+- Pulled clean `fb131f5`; previous turn implemented/tested/pushed current approval projections (progress). Inspected current app routing, sidebar, API session helper and frontend tests. Applied React best-practices skill for keyed components, parallel reads, accessibility and lazy loading.
+- Added a default-off `VITE_ACQUISITION_ENABLED` route/navigation entry for `/acquisition-review`, inside existing authentication/approval/layout. Workspace-specific queue and detail show exact scenario/case, proposed amount/ceiling, current versus historical decision, blockers, canonical address, base/downside/upside MAO/metrics and expandable provenance/history.
+- Added a minimal user-token lead summary endpoint: exact binding is authorized before returning address/city. Missing/mismatched property or analysis evidence prevents review recording. No contact export or client-selected property is introduced.
+- Decisions require an explicit action/note/acknowledgment and seven diligence notes for approval. UI rechecks state before POST and uses the exact sequence. Double clicks are guarded; unknown outcomes retain UUID/payload for explicit retry. Workspace/account changes reset detail state, query keys include user/workspace, and drafts are not persisted locally.
+- Validation: **182 frontend tests pass across 43 files**, including deliberate approval, revoked-action preflight, exact retry payload and workspace switching. **Full backend 1,269 passed, 10 skipped, 368 existing warnings.** TypeScript/Vite builds passed both default-off and feature-enabled configurations (existing large-chunk and dependency annotation warnings). Dependencies installed with `npm ci --ignore-scripts`; audit reported zero vulnerabilities. One initial test command used the repository root instead of frontend and was corrected; no test failure was hidden. Lint ratchet passes with **no new findings** (147 existing findings remain). `git diff --check` passes.
+
+Next: local browser visual QA and full database-connected UI acceptance; intake/underwriting/proposal entry and final document approval; policy execution, Facebook intake and ordered later channels. No production migration, deployment, configuration, provider, campaign, mail or binding transaction changed. Goal active.
+
 ## Implementation checkpoint — current approval state and review queue
 
 - Pulled clean `1fbbd72`; prior turn implemented/tested/pushed proposal/amount-review lifecycle (progress). Rechecked current membership timestamp semantics, offer-event schema and role helpers before adding forward-only read projections.

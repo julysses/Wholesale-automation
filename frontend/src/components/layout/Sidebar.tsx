@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 const mainNav = [
+  ...(import.meta.env.VITE_ACQUISITION_ENABLED === 'true' ? [{ path: '/acquisition-review', label: 'Offer Review', icon: ShieldCheck }] : []),
   { path: '/',              label: 'Dashboard',      icon: LayoutDashboard },
   { path: '/leads',         label: 'Leads',          icon: Users },
   { path: '/master-list',   label: 'Master List',    icon: Layers },

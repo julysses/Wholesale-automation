@@ -290,3 +290,18 @@ def test_current_offer_review_and_queue_use_scoped_read_rpcs(api):
     response=client.get(path+f'/{U}/state',headers=headers)
     assert response.status_code==200 and response.json()['amount_approval_current'] is False
     assert json.loads(state['requests'][-1].content)=={'p_workspace':W,'p_offer':U}
+
+
+def test_review_lead_summary_requires_exact_workspace_binding_before_address_read(api):
+    client,state=api
+    headers={'Authorization':'Bearer user-token'}
+    path=f'/api/acquisition/workspaces/{W}/leads/{U}/summary'
+    state['body']=[]
+    assert client.get(path,headers=headers).status_code==403
+    assert len(state['requests'])==1
+    state['responses']=[[{'workspace_id':W,'lead_id':U,'property_id':U}],[{'id':U,'property_address':'Fixture address','city':'Dallas'}]]
+    response=client.get(path,headers=headers)
+    assert response.status_code==200
+    assert response.json()['property_id']==U
+    assert state['requests'][-1].url.params['select']=='id,property_address,city'
+    assert all(request.headers['Authorization']=='Bearer user-token' for request in state['requests'])

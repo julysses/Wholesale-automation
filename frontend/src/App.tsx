@@ -20,6 +20,7 @@ const Pipeline = lazy(() => import('@/pages/Pipeline').then(m => ({ default: m.P
 const DealAnalyzer = lazy(() => import('@/pages/DealAnalyzer').then(m => ({ default: m.DealAnalyzer })));
 const Buyers = lazy(() => import('@/pages/Buyers').then(m => ({ default: m.Buyers })));
 const AIAgents = lazy(() => import('@/pages/AIAgents').then(m => ({ default: m.AIAgents })));
+const AcquisitionReview = lazy(() => import('@/pages/AcquisitionReview').then(m => ({ default: m.AcquisitionReview })));
 const Acquisitions = lazy(() => import('@/pages/Acquisitions').then(m => ({ default: m.Acquisitions })));
 const Tasks = lazy(() => import('@/pages/Tasks').then(m => ({ default: m.Tasks })));
 const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
@@ -244,6 +245,7 @@ function OperatorApp() {
           <Route path="/buyers"       element={<Buyers />} />
           <Route path="/ai-agents"    element={<AIAgents />} />
           <Route path="/acquisitions" element={<Acquisitions />} />
+          {import.meta.env.VITE_ACQUISITION_ENABLED === 'true' && <Route path="/acquisition-review" element={<AcquisitionReview key={session.user.id} userId={session.user.id} />} />}
           <Route path="/tasks"        element={<Tasks />} />
           <Route path="/reports"      element={<Reports />} />
           <Route path="/manual"       element={<UserManual />} />

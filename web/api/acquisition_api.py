@@ -347,3 +347,19 @@ async def offer_review_queue(workspace_id: UUID, after: UUID | None = None,
     return await store.request('POST','rpc/acquisition_offer_review_queue',body={
         'p_workspace':str(workspace_id),'p_after':str(after) if after is not None else None,'p_limit':limit,
     })
+
+
+@router.get('/workspaces/{workspace_id}/leads/{lead_id}/summary')
+async def acquisition_lead_summary(workspace_id: UUID, lead_id: UUID, store=Depends(acquisition_store)):
+    bindings=await store.request('GET','workspace_leads',params={
+        'select':'workspace_id,lead_id,property_id','workspace_id':'eq.'+str(workspace_id),'lead_id':'eq.'+str(lead_id),'limit':'1',
+    })
+    if (not isinstance(bindings,list) or len(bindings)!=1 or bindings[0].get('workspace_id')!=str(workspace_id)
+            or bindings[0].get('lead_id')!=str(lead_id)):
+        raise HTTPException(403,'Workspace lead access is not authorized')
+    leads=await store.request('GET','leads',params={
+        'select':'id,property_address,city','id':'eq.'+str(lead_id),'limit':'1',
+    })
+    if not isinstance(leads,list) or len(leads)!=1 or leads[0].get('id')!=str(lead_id):
+        raise HTTPException(403,'Workspace lead access is not authorized')
+    return {**leads[0],'property_id':bindings[0].get('property_id')}
