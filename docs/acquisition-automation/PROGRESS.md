@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — property-source dashboard
+
+- Previous goal turn made progress: pushed `bddf062` with canonical-property source SQL/API and complete focused/integrated validation. Pulled before this increment; sandbox DNS failure resolved through approved Git escalation, with no remote changes.
+- Added an on-demand Property inquiry sources panel to the selected bound property in the underwriting workspace. Queries include user/workspace/lead/property scope, and the parent resets on property/workspace selection. Unbound inquiries do not expose this control.
+- Validates returned scope, ordered IDs, advancing bounded cursors, count consistency, association identity and current campaign capture. Separate inquiries and historical attribution stay distinct. Fully excluded pages can continue; previous-page navigation and refresh from the first page are explicit. Failed refresh hides prior evidence.
+- Validation: **280 frontend tests across 55 files passed**, including 13 new property-source cases; feature-enabled TypeScript/Vite build passed and lint reports no new findings (147 existing). Focused component/underwriting set passed 20 tests. Initial test-file creation used a repository-relative path from frontend and failed; corrected the location before running the new tests. React skill checklist applied to query scope, component state, accessibility and TypeScript validation. No new dependencies.
+- No schema, backend, provider or production changes. Rendered-browser/mobile proof for the new panel is still pending. The prior backend SQL acceptance remains applicable but does not establish actual PostgREST/provider acceptance.
+
+Next: verify the property-source panel with the isolated browser fixture, then implement cost coverage/currency and conversion reporting. Campaign events, full-schema upgrade/provider acceptance and later sequential PRD phases remain open. Goal active.
+
 ## Implementation checkpoint — canonical property source reporting
 
 - Continued from pushed `6ec8df1`; pulled the branch with no remote changes. Read-only catalog preflight confirmed the proposed function absent and the migration ledger unchanged at 95 entries/latest `20261023221455`. CLI-generated migration `20261026223054_acquisition_property_source_touches.sql` remains unapplied to production.

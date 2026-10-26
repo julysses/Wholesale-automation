@@ -1,3 +1,4 @@
+import { PropertySources } from '@/components/acquisition/PropertySources';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
@@ -26,16 +27,17 @@ export function AcquisitionUnderwriting({userId,workspace,onProposed}:{userId:st
       <label>Property<select className={input} value={lead?.lead_id??''} onChange={e=>setLead(leads.data?.find(l=>l.lead_id===e.target.value)??null)}><option value="">Choose a property</option>{leads.data?.map(l=><option key={l.lead_id} value={l.lead_id}>{l.property_address}, {l.city}{!l.property_id?' — property binding incomplete':''}</option>)}</select></label>
       <div className="flex gap-2 mt-2"><button className={button} disabled={!after||leads.isFetching} onClick={()=>{setLead(null);setAfter(null);}}>First property page</button><button className={button} disabled={leads.data?.length!==20||leads.isFetching} onClick={()=>{setLead(null);setAfter(leads.data![19].lead_id);}}>More properties</button></div>
     </>}
-    {lead && <PropertyWorkspace key={lead.lead_id} base={base} lead={lead} userId={userId} onProposed={onProposed}/>}
+    {lead && <PropertyWorkspace key={lead.lead_id} base={base} workspace={workspace} lead={lead} userId={userId} onProposed={onProposed}/>}
   </details>;
 }
 
-function PropertyWorkspace({base,lead,userId,onProposed}:{base:string;lead:Lead;userId:string;onProposed:()=>void}) {
+function PropertyWorkspace({base,workspace,lead,userId,onProposed}:{base:string;workspace:string;lead:Lead;userId:string;onProposed:()=>void}) {
   const [revisionAfter,setRevisionAfter]=useState(0); const [selected,setSelected]=useState<Analysis|null>(null);
   const path=`${base}/leads/${lead.lead_id}/underwriting`;
   const history=useQuery({queryKey:['acquisition-scenarios',userId,base,lead.lead_id,revisionAfter],queryFn:({signal})=>get<Analysis[]>(`${path}/scenarios?after=${revisionAfter}&limit=20`,signal),retry:false,gcTime:0,staleTime:0});
   return <section className="mt-4 space-y-4"><h3 className="font-semibold">{lead.property_address}</h3>
     {!lead.property_id && <p role="alert">This lead needs a canonical property binding before an offer can be proposed.</p>}
+    {lead.property_id && <PropertySources userId={userId} workspace={workspace} lead={lead.lead_id} property={lead.property_id}/>}
     <ScenarioEditor path={path} onSaved={analysis=>{setSelected(analysis);void history.refetch();}}/>
     <h4 className="font-semibold">Saved scenarios</h4>
     <button className={button} disabled={history.isFetching} onClick={()=>{setSelected(null);void history.refetch();}}>Refresh saved scenarios</button>

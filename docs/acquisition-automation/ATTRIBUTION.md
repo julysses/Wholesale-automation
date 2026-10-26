@@ -62,3 +62,12 @@ Current campaign attribution requires both a current campaign-link review and a 
 The UUID cursor advances across bounded candidate pages, including excluded candidates. An empty `items` page may still have `next_after`; consumers must follow that cursor rather than infer completion from an empty page. Limits are 1–50. `scanned_count` and `excluded_count` describe only this candidate page; `totals_available` is false. Each request is a reporting snapshot, and separate pages do not share a database transaction. Refresh rather than treating accumulated pages as an immutable total during concurrent review changes. All ownership, contact-permission and execution authority flags remain false.
 
 Compensation: disable the reporting route/feature if necessary and retain immutable source/review history. This additive migration creates only functions and a supporting target-review index; it does not rewrite CRM records. No production migration was applied. The property-source dashboard, cost coverage/currency, campaign events and funnel metrics remain open.
+
+
+## Property-source dashboard
+
+The selected bound property in the acquisition underwriting workspace now offers **View property inquiry sources**. `PropertySources.tsx` fetches only after opening and keys requests by user, workspace, canonical lead, property and cursor. The parent remounts on property selection and the workspace parent remounts on user/workspace changes. Unbound leads do not expose this control.
+
+The panel validates exact response scope, denied execution/ownership/contact flags, candidate counts, ordered source IDs, advancing cursors and consistent current campaign capture before displaying evidence. Errors and refreshes hide earlier data. Separate inquiry IDs, association type, exact identity review, current campaign and historical campaign attribution remain distinguishable. An empty page with excluded candidates still enables continuation. Previous-page navigation and refresh from the first page avoid presenting accumulated pages as one consistent total. No writes, source merging or provider calls are introduced.
+
+Component tests cover lazy loading, historical/current display, empty-page continuation, first-page refresh, denied refresh and malformed/wrong-scope responses. Feature-enabled build and lint baseline pass. Rendered browser and mobile proof for this panel remain pending; component coverage does not establish live PostgREST/provider acceptance.
