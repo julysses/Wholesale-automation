@@ -13,6 +13,7 @@ beforeEach(() => {
     if (init?.method === 'POST') { if (mock.failOnce) { mock.failOnce = false; throw new Error('network'); } return { json: async () => ({ status: 'amount_approved' }) }; }
     const value = path.endsWith('/workspaces') ? [{ id: 'w', name: 'Hilltop' }, { id: 'z', name: 'Other workspace' }] :
       path.endsWith('/summary') ? { id: 'l', property_id: 'p', property_address: '123 Fixture St', city: 'Dallas' } :
+      path.includes('/leads?') ? [] :
       path.includes('/underwriting/') ? [{ id: 'a', acquisition_inputs: { source: 'Fixture' }, acquisition_outputs: { mao: '150000' }, calculation_version: 'v1' }] :
       path.includes('/state') ? { ...offer, available_review_actions: mock.revoked ? [] : offer.available_review_actions } :
       path.includes('/reviews') ? [] : { items: path.includes('/z/') ? [] : [offer], next_after: null };

@@ -25,6 +25,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   } else if (path.endsWith('/workspaces')) value = [{ id: 'fixture-workspace', name: 'Hilltop — local QA' }];
   else if (path.endsWith('/state')) value = offer;
   else if (path.endsWith('/summary')) value = { id: offer.lead_id, property_id: offer.property_id, property_address: '123 Fixture Lane', city: 'Dallas' };
+  else if (path.includes('/leads?')) value = []; // Review-only fixture; scenario entry has separate component tests.
   else if (path.includes('/underwriting/')) value = [{ id: offer.analysis_id, calculation_version: 'acquisition-underwriting-v1',
     acquisition_inputs: { source: 'Synthetic browser fixture; not market data', asking_price: { value: '175000', basis: 'estimate', confidence: 'low' } },
     acquisition_outputs: { cases: Object.fromEntries(['downside', 'base', 'upside'].map((name, i) => [name, { mao: [125000, 150000, 175000][i],

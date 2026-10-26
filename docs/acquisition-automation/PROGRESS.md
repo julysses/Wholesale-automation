@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — underwriting entry and proposal creation
+
+- Pulled clean `1fad9ca`; previous turn browser-tested review and pushed financial formatting (progress). Rechecked current input models, workspace lead listing and saved scenario/proposal API contracts.
+- Added a paginated property/scenario workspace within the default-off review screen. Four strategy forms collect independent base/downside/upside assumptions with explicit source, basis, confidence and date; wholesale includes separate buyer economics. Blank remains missing, sourced zero is preserved, malformed values are blocked, and no market data is invented.
+- Added preview, immutable save, pending-calculation resume and proposal creation against a selected saved revision. Stable IDs/exact payloads survive uncertain responses for explicit retries. Pending calculations never become calculated in the browser. A just-saved scenario is selected directly, independent of history pagination; server role/session/property/latest-revision checks remain authoritative.
+- Extracted the scenario comparison into a shared component that displays missing inputs and appropriately formatted financial metrics for preview, saved scenario selection and review. Kept mutation controls separate from approval/delivery and left all activation controls unchanged.
+- Updated the review-only browser fixture for the new read request; it does not simulate underwriting creation. New input-flow validation is through component tests, not a claim of browser or production-connected acceptance. Validation: **189 frontend tests passed across 46 files**, feature-enabled TypeScript/Vite build passed, and lint ratchet reported no new findings (147 existing). After the final direct-selection change, **9 focused tests and TypeScript compilation passed**. `git diff --check` passes. No backend/schema code changed in this checkpoint.
+
+Next: browser input-flow and database-connected acceptance, current selection/approved document workflow, policy execution and shared intake/attribution foundation for Facebook. All later ordered channels remain in scope. No backend/schema/deployment/provider activation changed. Goal active.
+
 ## Implementation checkpoint — browser QA and financial display units
 
 - Pulled clean `8e45d1a`; previous turn implemented/tested/pushed the default-off review screen (progress). Created a reusable localhost-only browser fixture that renders the actual component/styles and replaces only the API with synthetic in-memory data. No environment files, auth, Supabase, providers or real transactions are used.
