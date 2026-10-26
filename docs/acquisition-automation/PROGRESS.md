@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — workspace campaign drafts
+
+- Previous turn was progress: `a4346ef` captured the live schema and expanded upgrade fixtures. Pulled the branch, inspected existing ownership/worker guard patterns and current Supabase RLS guidance, then created `20261026205233_acquisition_campaign_ownership.sql` through the CLI.
+- Extended existing `ad_campaigns` with immutable workspace ownership, channel, explicit USD budget cents and creator. Owner/admin live session and activation checks govern an idempotent draft-creation RPC with immutable audit. Observed spend/counts, daily spend and external provider ID remain null; no advertising/fulfillment authority is granted.
+- Scoped reads allow actual owner/admin/operator membership. Direct edits/deletes/reassignment and raw service-role creation are blocked; truncate/trigger privileges are revoked on campaign/form/creative parents. Legacy form, creative and lead association writes reject scoped parents, including definer/service paths; no old campaign is silently enrolled or historical child reassigned.
+- Added authenticated campaign create/list APIs with strict integer budgets and bounded cursor pagination. Shared campaign list/KPI/optimizer paths exclude scoped records even when acquisition flags are off; legacy patch/sync reject scoped records before provider actions. Existing unscoped behavior remains covered.
+- Validation: **5 focused real PostgreSQL cases passed**, then **3 final database regressions passed** after trigger-grant/raw-insert assertions. **142 API/legacy/public-form/Retell form-SMS tests passed** and **all 11 integrated real-SQL journeys passed**, including idempotent HTTP draft creation, workspace denial and no processing/outreach effect. `git diff --check` passed. No production migration, deployment, flags, provider calls, ads, spend or outreach changed.
+
+Next: reviewed campaign amendments/provider links and source associations, followed by cost/currency coverage and funnel reporting. Draft UI, populated full-schema/PostgREST acceptance and remaining sequential PRD phases stay open. See CAMPAIGN-ISOLATION.md. Goal active.
+
 ## Implementation checkpoint — live campaign inventory and upgrade fixture
 
 - Previous turn was progress: `d6d2d7a` implemented/tested/pushed Facebook metadata attribution. Pulled the branch, inspected current campaign/form application paths and performed read-only production catalog queries before designing the campaign ownership migration.

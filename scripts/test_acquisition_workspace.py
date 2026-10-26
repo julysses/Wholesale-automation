@@ -36,6 +36,7 @@ CANDIDATES_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026171817_acqui
 IDENTITY_REVIEW_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026173422_acquisition_intake_identity_reviews.sql'
 QUALIFICATION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026181452_acquisition_intake_qualification.sql'
 HANDOFF_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026184848_acquisition_intake_underwriting_handoff.sql'
+CAMPAIGN_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026205233_acquisition_campaign_ownership.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -154,6 +155,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(IDENTITY_REVIEW_MIGRATION.read_text())
         self.sql(QUALIFICATION_MIGRATION.read_text())
         self.sql(HANDOFF_MIGRATION.read_text())
+        self.sql(CAMPAIGN_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -182,9 +184,48 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns',user=ADMIN),'1')
         self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns',user=OTHER),'1')
         self.assertEqual(self.sql('SELECT count(*) FROM lead_form_configs',user=ADMIN,role='anon'),'1')
-        self.assertEqual(self.sql("SELECT has_table_privilege('anon','ad_campaigns','TRUNCATE')::text"),'true')
+        self.assertEqual(self.sql("SELECT has_table_privilege('anon','ad_campaigns','TRUNCATE')::text"),'false')
         self.member(role='operator',target=OPERATOR)
         self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns',user=OPERATOR),'0')
+
+    def campaign_draft(self, identity='91000000-0000-4000-8000-000000000001',actor=ADMIN,workspace=WORKSPACE,fail=False):
+        value=self.sql(f"SELECT public.create_acquisition_campaign('{identity}','{workspace}','Draft campaign','facebook',50000,'USD')",user=actor,fail=fail)
+        return value if fail else json.loads(value)
+
+    def test_campaign_draft_scope_idempotence_and_unknown_spend(self):
+        with ThreadPoolExecutor(max_workers=3) as pool: results=list(pool.map(lambda _:self.campaign_draft(),range(3)))
+        self.assertEqual(sum(not row['duplicate'] for row in results),1)
+        self.assertTrue(all(row['status']=='draft' and not row['execution_authorized'] for row in results))
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_campaign'"),'1')
+        self.assertEqual(self.sql("SELECT (total_spend IS NULL AND cpl IS NULL AND daily_budget IS NULL AND external_campaign_id IS NULL)::text FROM ad_campaigns"),'true')
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns',user=OTHER),'0')
+        self.member(target=OPERATOR,role='operator')
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns',user=OPERATOR),'1')
+        self.campaign_draft(actor=OPERATOR,fail=True)
+        self.campaign_draft(actor=OTHER,workspace=WORKSPACE_B,fail=True)
+
+    def test_campaign_draft_service_mutation_and_child_associations_blocked(self):
+        campaign=self.campaign_draft()['id']
+        for query in (f"UPDATE ad_campaigns SET status='active' WHERE id='{campaign}'",f"UPDATE ad_campaigns SET workspace_id=NULL WHERE id='{campaign}'",
+                      f"DELETE FROM ad_campaigns WHERE id='{campaign}'",'TRUNCATE ad_campaigns CASCADE',
+                      f"INSERT INTO ad_creatives(name,campaign_id) VALUES('Unsafe','{campaign}')",
+                      f"INSERT INTO lead_form_configs(name,slug,campaign_id) VALUES('Unsafe','unsafe','{campaign}')",
+                      f"UPDATE leads SET ad_campaign_id='{campaign}' WHERE id='{LEAD}'"):
+            self.sql(query,user=ADMIN,role='service_role',fail=True)
+        self.sql(f"UPDATE ad_campaigns SET name='overwrite' WHERE id='{campaign}'",user=ADMIN)
+        self.assertEqual(self.sql(f"SELECT name FROM ad_campaigns WHERE id='{campaign}'"),'Draft campaign')
+        self.sql(f"INSERT INTO ad_creatives(name,campaign_id) VALUES('Unsafe','{campaign}')",fail=True)
+        self.sql(f"INSERT INTO ad_campaigns(name,workspace_id,acquisition_channel,acquisition_budget_cents,acquisition_currency,acquisition_created_by) VALUES('Raw','{WORKSPACE}','facebook',1,'USD','{ADMIN}')",user=ADMIN,role='service_role',fail=True)
+        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','ad_campaigns','TRIGGER')::text"),'false')
+        self.assertEqual(self.sql('SELECT count(*) FROM lead_form_configs',user=ADMIN,role='anon'),'0')
+
+    def test_campaign_creation_requires_live_authority_and_activation(self):
+        self.sql("UPDATE private.acquisition_activation SET enabled=false")
+        self.campaign_draft(fail=True)
+        self.activate()
+        self.sql(f"DELETE FROM auth.sessions WHERE id='{ADMIN}'")
+        self.campaign_draft(fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns'),'0')
 
     def inbox_config(self, account='fixture-page', workspace=WORKSPACE, enabled=True):
         self.sql(f"INSERT INTO private.acquisition_integrations(workspace_id,provider,account_id,enabled,approval_ref) "

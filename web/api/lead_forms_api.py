@@ -631,13 +631,26 @@ def _send_hot_lead_notification(lead_id: str, answers: dict, score: int):
             logger.error(f"HOT lead email alert failed: {exc}")
 
 
+def _legacy_campaigns(rows):
+    # Works before the additive migration too: old rows omit workspace_id.
+    # Keep scoped records out of shared views even with acquisition flags off.
+    return [row for row in (rows or []) if row.get('workspace_id') is None]
+
+
+def _legacy_campaign(supabase, campaign_id):
+    row = supabase.table('ad_campaigns').select('*').eq('id', campaign_id).single().execute().data
+    if not row or row.get('workspace_id') is not None:
+        raise HTTPException(404, 'Campaign not found')
+    return row
+
+
 # ── Authenticated campaign/creative/form endpoints ─────────────────────────────
 
 @router.get("/api/lead-gen/campaigns")
 async def list_campaigns():
     supabase = _get_supabase()
     resp = supabase.table("ad_campaigns").select("*").order("created_at", desc=True).execute()
-    return resp.data or []
+    return _legacy_campaigns(resp.data)
 
 
 class CreateCampaignRequest(BaseModel):
@@ -663,6 +676,9 @@ async def create_campaign(body: CreateCampaignRequest):
 @router.patch("/api/lead-gen/campaigns/{campaign_id}")
 async def update_campaign(campaign_id: str, body: dict):
     supabase = _get_supabase()
+    _legacy_campaign(supabase, campaign_id)
+    if any(key == 'workspace_id' or key.startswith('acquisition_') for key in body):
+        raise HTTPException(422, 'Use the acquisition campaign workflow')
     resp = supabase.table("ad_campaigns").update(body).eq("id", campaign_id).execute()
     return resp.data[0] if resp.data else {}
 
@@ -792,9 +808,9 @@ async def get_lead_gen_kpis():
         hot_leads = hot_resp.count or 0
 
         # Total campaign spend
-        campaigns_resp = supabase.table("ad_campaigns").select("total_spend, leads_count").execute()
-        total_spend = sum(float(c.get("total_spend") or 0) for c in (campaigns_resp.data or []))
-        total_campaign_leads = sum(int(c.get("leads_count") or 0) for c in (campaigns_resp.data or []))
+        campaigns_resp = supabase.table("ad_campaigns").select("*").execute()
+        total_spend = sum(float(c.get("total_spend") or 0) for c in _legacy_campaigns(campaigns_resp.data))
+        total_campaign_leads = sum(int(c.get("leads_count") or 0) for c in _legacy_campaigns(campaigns_resp.data))
         avg_cpl = total_spend / total_campaign_leads if total_campaign_leads > 0 else 0
 
         # Avg lead quality from inbound leads
@@ -829,7 +845,7 @@ async def run_optimization():
     from agents.lead_generation_agent import LeadGenerationAgent
     agent = LeadGenerationAgent()
     report = agent.analyze_campaign_performance(
-        campaigns=campaigns_resp.data or [],
+        campaigns=_legacy_campaigns(campaigns_resp.data),
         creatives=creatives_resp.data or [],
     )
     return report.model_dump()
@@ -860,10 +876,7 @@ async def sync_campaign_from_facebook(campaign_id: str):
     supabase = _get_supabase()
 
     # Get campaign to get external_campaign_id
-    resp = supabase.table("ad_campaigns").select("*").eq("id", campaign_id).single().execute()
-    campaign = resp.data
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
+    campaign = _legacy_campaign(supabase, campaign_id)
 
     external_id = campaign.get("external_campaign_id")
     if not external_id:

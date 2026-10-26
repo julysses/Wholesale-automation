@@ -582,3 +582,31 @@ async def intake_source_attribution(workspace_id: UUID, intake_id: UUID, store=D
         raise HTTPException(404, 'Intake unavailable')
     return {'intake_id': rows[0]['id'], 'lead_id': rows[0]['lead_id'],
             'attribution': facebook_attribution(rows[0]['prepared_answers'])}
+
+
+class AcquisitionCampaignDraft(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    name: str = Field(min_length=1, max_length=200)
+    channel: Literal['facebook', 'inbound_voice', 'direct_mail', 'online_offer', 'human_voice', 'agency_voice']
+    budget_cents: int = Field(strict=True, ge=0, le=100000000000)
+    currency: Literal['USD']
+
+
+@router.post('/workspaces/{workspace_id}/campaigns')
+async def create_campaign_draft(workspace_id: UUID, body: AcquisitionCampaignDraft, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/create_acquisition_campaign', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_name': body.name,
+        'p_channel': body.channel, 'p_budget_cents': body.budget_cents, 'p_currency': body.currency,
+    })
+
+
+@router.get('/workspaces/{workspace_id}/campaigns')
+async def workspace_campaigns(workspace_id: UUID, after: UUID | None = None,
+                              limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select': 'id,name,workspace_id,status,acquisition_channel,acquisition_budget_cents,acquisition_currency,created_at',
+              'workspace_id': 'eq.'+str(workspace_id), 'order': 'id', 'limit': str(limit+1)}
+    if after is not None:
+        params['id'] = 'gt.'+str(after)
+    rows = await store.request('GET', 'ad_campaigns', params=params)
+    return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}

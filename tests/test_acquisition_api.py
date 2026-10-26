@@ -502,3 +502,22 @@ def test_intake_attribution_returns_metadata_only_through_user_scope(api):
     assert request.headers['authorization']=='Bearer user-token'
     state['body']=[]
     assert client.get(path,headers={'Authorization':'Bearer user-token'}).status_code==404
+
+
+def test_campaign_draft_uses_controlled_rpc_and_scoped_list(api):
+    client,state=api
+    path=f'/api/acquisition/workspaces/{W}/campaigns'
+    body={'id':U,'name':'Facebook draft','channel':'facebook','budget_cents':50000,'currency':'USD'}
+    state['body']={'id':U,'status':'draft','execution_authorized':False}
+    response=client.post(path,headers={'Authorization':'Bearer user-token'},json=body)
+    assert response.status_code==200 and response.json()['execution_authorized'] is False
+    sent=json.loads(state['requests'][-1].content)
+    assert sent=={'p_id':U,'p_workspace':W,'p_name':'Facebook draft','p_channel':'facebook','p_budget_cents':50000,'p_currency':'USD'}
+    assert state['requests'][-1].headers['authorization']=='Bearer user-token'
+    for changes in ({'status':'active'},{'approved_by':U},{'budget_cents':True},{'budget_cents':1.5},{'currency':'EUR'}):
+        assert client.post(path,headers={'Authorization':'Bearer user-token'},json={**body,**changes}).status_code==422
+    state['body']=[{'id':U},{'id':W}]
+    response=client.get(path+'?limit=1&after='+U,headers={'Authorization':'Bearer user-token'})
+    assert response.json()=={'items':[{'id':U}],'next_after':U}
+    params=state['requests'][-1].url.params
+    assert params['workspace_id']=='eq.'+W and params['id']=='gt.'+U and params['limit']=='2'

@@ -27,6 +27,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'create_acquisition_campaign':['p_id','p_workspace','p_name','p_channel','p_budget_cents','p_currency'],
  'recover_acquisition_inquiry': ['p_id','p_workspace','p_receipt','p_expected_updated_at','p_expected_reason','p_note','p_evidence_ref'],
  'reserve_acquisition_intake_analysis': ['p_id','p_workspace','p_intake','p_evidence_hash','p_inputs'],
  'acquisition_intake_analysis_state': ['p_workspace','p_analysis'],
@@ -120,10 +121,22 @@ class WorkflowTests(WorkspaceTests):
             for key in RPC_ARGS[name]:
                 value=body[key]
                 kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target'}
-                      else 'timestamptz' if key=='p_expected_updated_at' else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'numeric' if key=='p_amount' else 'text')
+                      else 'timestamptz' if key=='p_expected_updated_at' else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
+        elif request.url.path=='/rest/v1/ad_campaigns':
+            self.assertEqual(request.method,'GET')
+            self.assertEqual(request.url.params['select'],'id,name,workspace_id,status,acquisition_channel,acquisition_budget_cents,acquisition_currency,created_at')
+            self.assertTrue(set(request.url.params)<={'select','workspace_id','order','limit','id'})
+            self.assertEqual(request.url.params['order'],'id')
+            op,workspace=request.url.params['workspace_id'].split('.',1);self.assertEqual(op,'eq')
+            filters=[f'workspace_id={literal(workspace)}::uuid']
+            if 'id' in request.url.params:
+                op,value=request.url.params['id'].split('.',1);self.assertEqual(op,'gt')
+                filters.append(f'id>{literal(value)}::uuid')
+            limit=int(request.url.params['limit']);self.assertTrue(1<=limit<=51)
+            query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {request.url.params['select']} FROM public.ad_campaigns WHERE {' AND '.join(filters)} ORDER BY id LIMIT {limit}) row;"
         elif request.url.path=='/rest/v1/acquisition_analysis_intakes':
             self.assertEqual(request.method,'GET')
             self.assertEqual(request.url.params['select'],'analysis_id,intake_id,assessment_id,evidence_hash')
@@ -341,6 +354,22 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments'),'1')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'1')
         self.assertEqual(self.sql(f"SELECT (property_id IS NULL)::text FROM workspace_leads WHERE lead_id='{source_lead}'"),'true')
+
+    def test_campaign_draft_http_is_idempotent_scoped_and_non_executing(self):
+        path=self.base+'/campaigns'
+        body={'id':'91000000-0000-4000-8000-000000000001','name':'Synthetic draft','channel':'facebook','budget_cents':50000,'currency':'USD'}
+        first=self.client.post(path,headers=self.headers,json=body)
+        self.assertEqual(first.status_code,200,first.text)
+        self.assertFalse(first.json()['execution_authorized'])
+        self.assertTrue(self.client.post(path,headers=self.headers,json=body).json()['duplicate'])
+        listed=self.client.get(path,headers=self.headers)
+        self.assertEqual(listed.status_code,200,listed.text)
+        self.assertEqual(listed.json()['items'][0]['id'],body['id'])
+        self.assertEqual(listed.json()['items'][0]['status'],'draft')
+        self.assertEqual(self.client.get(path,headers={'Authorization':'Bearer synthetic-other-session'}).json()['items'],[])
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_campaign'"),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_inbox_processing'),'0')
 
     def test_facebook_ad_identity_conflict_holds_without_intake(self):
         self.configure_facebook()
