@@ -640,3 +640,16 @@ async def review_campaign_link(workspace_id: UUID, intake_id: UUID, body: Acquis
         'p_expected_sequence': body.expected_sequence, 'p_preparation_hash': body.preparation_hash,
         'p_action': body.action, 'p_campaign': str(body.campaign_id) if body.campaign_id else None,
         'p_ad_account': body.ad_account_id, 'p_evidence_ref': body.evidence_ref, 'p_note': body.review_note})
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}/campaign-link-reviews')
+async def campaign_link_reviews(workspace_id: UUID, intake_id: UUID, before: int | None = Query(default=None, ge=1),
+                                limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    state = await store.request('POST', 'rpc/acquisition_campaign_link_state', body={
+        'p_workspace': str(workspace_id), 'p_intake': str(intake_id)})
+    params = {'select': 'id,workspace_id,integration_id,external_campaign_id,sequence,action,campaign_id,ad_account_id,intake_id,evidence_ref,review_note,created_at',
+              'workspace_id': 'eq.'+str(workspace_id), 'integration_id': 'eq.'+state['integration_id'],
+              'external_campaign_id': 'eq.'+state['external_campaign_id'], 'order': 'sequence.desc', 'limit': str(limit)}
+    if before is not None:
+        params['sequence'] = 'lt.'+str(before)
+    return await store.request('GET', 'acquisition_campaign_links', params=params)

@@ -545,3 +545,15 @@ def test_campaign_link_review_binds_scope_identity_and_rejects_authority_overrid
         assert client.post(base+'/campaign-link-reviews',headers={'Authorization':'Bearer user-token'},json={**body,**changes}).status_code==422
     assert len(state['requests'])==count
     assert client.post(base+'/campaign-link-reviews',headers={'Authorization':'Bearer user-token'},json={**body,'action':'revoke','campaign_id':None,'ad_account_id':None}).status_code==200
+
+
+def test_campaign_history_resolves_scope_server_side_and_bounds_pages(api):
+    client,state=api
+    state['responses']=[{'integration_id':U,'external_campaign_id':'123'},[]]
+    response=client.get(f'/api/acquisition/workspaces/{W}/intakes/{U}/campaign-link-reviews?before=5&limit=10',headers={'Authorization':'Bearer user-token'})
+    assert response.status_code==200 and response.json()==[]
+    first,last=state['requests']
+    assert json.loads(first.content)=={'p_workspace':W,'p_intake':U}
+    assert last.url.params['workspace_id']=='eq.'+W and last.url.params['integration_id']=='eq.'+U
+    assert last.url.params['external_campaign_id']=='eq.123' and last.url.params['sequence']=='lt.5' and last.url.params['limit']=='10'
+    assert last.headers['authorization']=='Bearer user-token'

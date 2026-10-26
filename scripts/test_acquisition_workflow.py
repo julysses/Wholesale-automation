@@ -127,6 +127,20 @@ class WorkflowTests(WorkspaceTests):
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
+        elif request.url.path=='/rest/v1/acquisition_campaign_links':
+            self.assertEqual(request.method,'GET')
+            fields='id,workspace_id,integration_id,external_campaign_id,sequence,action,campaign_id,ad_account_id,intake_id,evidence_ref,review_note,created_at'
+            self.assertEqual(request.url.params['select'],fields)
+            self.assertTrue(set(request.url.params)<={'select','workspace_id','integration_id','external_campaign_id','order','limit','sequence'})
+            self.assertEqual(request.url.params['order'],'sequence.desc')
+            filters=[]
+            for key in ('workspace_id','integration_id','external_campaign_id'):
+                op,value=request.url.params[key].split('.',1); self.assertEqual(op,'eq')
+                filters.append(f'{key}={literal(value)}')
+            if 'sequence' in request.url.params:
+                op,value=request.url.params['sequence'].split('.',1); self.assertEqual(op,'lt'); filters.append(f'sequence<{int(value)}')
+            limit=int(request.url.params['limit']); self.assertTrue(1<=limit<=50)
+            query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {fields} FROM public.acquisition_campaign_links WHERE {' AND '.join(filters)} ORDER BY sequence DESC LIMIT {limit}) row;"
         elif request.url.path=='/rest/v1/ad_campaigns':
             self.assertEqual(request.method,'GET')
             self.assertEqual(request.url.params['select'],'id,name,workspace_id,status,acquisition_channel,acquisition_budget_cents,acquisition_currency,created_at')
@@ -383,6 +397,11 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.client.post(path+'/campaign-link-reviews',headers=self.headers,json=revoke).status_code,200)
         self.assertFalse(self.client.get(path+'/campaign-link-state',headers=self.headers).json()['link_current'])
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_campaign_links'),'2')
+        history=self.client.get(path+'/campaign-link-reviews?limit=1',headers=self.headers)
+        self.assertEqual(history.status_code,200,history.text); self.assertEqual(history.json()[0]['action'],'revoke')
+        older=self.client.get(path+'/campaign-link-reviews?limit=1&before=2',headers=self.headers)
+        self.assertEqual(older.status_code,200,older.text); self.assertEqual(older.json()[0]['action'],'link')
+        self.assertEqual(self.client.get(path+'/campaign-link-reviews',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
         self.assertEqual(self.sql('SELECT count(*) FROM leads WHERE ad_campaign_id IS NOT NULL'),'0')
         self.assertEqual(sum(path.startswith('/v26.0/') for path,token in self.requests),1)
 

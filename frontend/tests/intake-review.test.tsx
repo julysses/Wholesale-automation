@@ -86,3 +86,11 @@ it('records revocation without carrying a target or new identity evidence', asyn
   const body = JSON.parse(mock.post.mock.calls[0][0].body);
   expect(body.action).toBe('revoke'); expect(body.target_lead_id).toBeNull(); expect(body.property_evidence_ref).toBeNull(); expect(body.expected_sequence).toBe(1);
 });
+it('locks intake editing and closing while campaign review reconciliation is pending', async () => {
+  const key='campaign-link-review:v1:user:w:intake';
+  sessionStorage.setItem(key,JSON.stringify({id:'50000000-0000-4000-8000-000000000001',expected_sequence:0,preparation_hash:'a'.repeat(64),action:'link',campaign_id:'40000000-0000-4000-8000-000000000001',ad_account_id:'999',evidence_ref:'Reviewed ownership file',review_note:'Reviewed account ownership and campaign identity.'}));
+  await open(); fireEvent.click(screen.getByRole('button',{name:'Review campaign attribution'}));
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Close intake review'})).toBeDisabled());
+  expect(screen.getByLabelText('Identity decision')).toBeDisabled(); expect(screen.getByRole('button',{name:'Retry exact campaign review'})).toBeEnabled();
+  sessionStorage.removeItem(key);
+});

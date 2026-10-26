@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — campaign attribution review dashboard
+
+- Previous turn made progress: `2967de1` implemented and pushed reviewed campaign links. Pulled the branch and connected an optional Campaign attribution review panel inside the selected intake, preserving the default-off acquisition entry point.
+- Panel displays Page/external-campaign identity, current versus historical link, and paginated review history. Owners/admins select a workspace Facebook draft, explicitly enter the independently reviewed ad-account ID and document evidence/note/acknowledgment. Revocation supplies no replacement target; an unreconciled prior link blocks correction. Server-side MFA and fresh authority remain decisive.
+- Added a bounded authenticated history endpoint that resolves integration/external campaign through the existing scoped state RPC, then reads the immutable ledger with the user's JWT and workspace filters. It exposes related review versions across intakes for the same exact integration/campaign identity, without caller-selected account filters.
+- Fresh state is checked before submission. Exact uncertain requests survive refresh/reload in user/workspace/intake-keyed tab session storage; malformed success or rejected retry cannot discard an earlier unknown result. Conflicting intake identity/qualification edits and closing are blocked while a campaign request is unresolved. Session storage is recovery convenience, not audit or authority; tab closure requires reconciling history before recreating an unknown decision.
+- Validation: **255 frontend tests across 53 files**, **46 API tests**, and **all 12 real-SQL integrated journeys passed**. Feature-enabled TypeScript/Vite build and lint baseline passed (147 existing findings, no new findings). Final focused test adds rejection of numeric external IDs rather than coercing them. One initial npm command ran from repo root and was corrected to frontend. `git diff --check` passed. No schema/provider/runtime/deployment changes; rendered-browser/live PostgREST/provider acceptance remains pending.
+
+Next: persist immutable multi-touch source records referencing exact reviewed campaign-link versions, then implement coverage-aware cost and funnel reporting. Actual account verification, full-schema upgrade, channel activation and later PRD phases remain open. Goal active.
+
 ## Implementation checkpoint — reviewed Facebook campaign links
 
 - Previous turn made progress: `7513e25` added/pushed the campaign draft dashboard. Pulled the branch and inspected receipt, integration, intake and campaign constraints before extending attribution. Read-only production preflight confirmed the proposed relation is absent and the migration ledger remains 95 entries/latest `20261023221455`. Existing catalog evidence remains the baseline; no production SQL mutation occurred.

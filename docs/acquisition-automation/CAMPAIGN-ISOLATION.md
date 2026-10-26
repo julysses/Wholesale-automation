@@ -81,3 +81,13 @@ The global external-campaign claim fence is conservative: another Page/workspace
 Validation: concurrent SQL review races, competing Page claims, revocation while held, correction/history, tenant-target denial, missing evidence, MFA/live authority, direct service-role/immutable-write denial; API input contracts and a real-SQL HTTP journey with a lost post-commit reply. The 12 integrated journeys passed. Full production upgrade and actual PostgREST/provider acceptance remain pending.
 
 Compensation: hold acquisition/integration gates and preserve the ledger. Use reviewed revocation for incorrect mappings. Do not delete history or remove workspace controls. This migration has only run on disposable local databases; production requires separate approval.
+
+## Dashboard review and history
+
+Selected intakes now offer `Review campaign attribution`, which opens `CampaignLinkReview.tsx`. It displays the receipt-derived Page and external campaign separately from the reviewer-entered ad-account ID. Owner/admin access, independently reviewed evidence, a note and affirmative acknowledgment are required for new reviews. The database still enforces MFA/live authority, current sequence and ownership boundaries. Operators retain read-only state/history access. Unknown/malformed evidence and foreign-workspace records fail closed.
+
+GET `.../intakes/{intake}/campaign-link-reviews` resolves its account/campaign identity with the scoped state RPC, then reads exact matching workspace ledger records via user JWT. Descending sequence pages accept `before` and bounded `limit` (maximum 50). The UI shows 20 records at a time, including prior link/revoke evidence. A stale link remains visible as history and must be revoked before a correction.
+
+The panel checks fresh state before posting and verifies response request ID, sequence and `execution_authorized=false`. Unknown results persist the exact review in tab session storage keyed by user/workspace/intake; retries do not mint a new request. Later permission rejection cannot erase the earlier uncertain result. Intake edits/closing are locked during reconciliation; reload restores the saved request when the same panel is reopened. Closing the browser tab clears this recovery storage, so reconcile ledger history before recreating an unknown review. No credentials are stored by the panel.
+
+Coverage includes stale preflight, wrong-tenant state/history, read-only roles, revocation without replacement, exact request replay after reload, invalid authority replies and parent intake locking. API and real-SQL tests verify history scoping and pagination. Browser rendering/live PostgREST/provider acceptance are still outstanding; the synthetic browser fixture has not yet been extended for this optional panel.
