@@ -33,6 +33,7 @@ HEALTH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026165322_acquisiti
 RECOVERY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026170113_acquisition_inquiry_recovery.sql'
 CANDIDATES_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026171817_acquisition_intake_candidates.sql'
 IDENTITY_REVIEW_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026173422_acquisition_intake_identity_reviews.sql'
+QUALIFICATION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026181452_acquisition_intake_qualification.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -148,6 +149,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(RECOVERY_MIGRATION.read_text())
         self.sql(CANDIDATES_MIGRATION.read_text())
         self.sql(IDENTITY_REVIEW_MIGRATION.read_text())
+        self.sql(QUALIFICATION_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -333,6 +335,94 @@ class WorkspaceTests(unittest.TestCase):
         value=self.sql(f"SELECT public.acquisition_intake_candidates('{workspace}','{intake}',{limit});",
                        user=user,fail=fail,**kwargs)
         return value if fail else json.loads(value)
+
+    def qualification_state(self, intake, user=ADMIN, fail=False, **kwargs):
+        result=self.sql(f"SELECT public.acquisition_intake_qualification_state('{WORKSPACE}','{intake}');",user=user,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def record_assessment(self, intake, state, request='73000000-0000-4000-8000-000000000001', user=ADMIN, fail=False, **kwargs):
+        result=self.sql(f"SELECT public.record_acquisition_intake_assessment('{request}','{WORKSPACE}','{intake}',"
+            f"{state['sequence']},{literal(state['evidence_hash'])});",user=user,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_qualification_complete_requires_current_property_and_territory(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']
+        self.assertEqual(self.qualification_state(intake)['assessment']['classification'],'requires_human_review')
+        self.identity_review(intake,self.identity_state(intake))
+        state=self.qualification_state(intake)
+        self.assertEqual(state['assessment']['classification'],'qualified')
+        self.assertEqual(state['assessment']['canonical_county'],'dallas')
+        self.assertFalse(state['assessment']['ownership_verified']); self.assertFalse(state['assessment']['outreach_authorized'])
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.record_assessment(intake,state),range(3)))
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        self.assertTrue(self.qualification_state(intake)['assessment_current'])
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake_assessment';"),'1')
+        self.sql(f"UPDATE wholesale_ingest.properties SET county='Collin' WHERE id='{PROPERTY}';")
+        changed=self.qualification_state(intake)
+        self.assertFalse(changed['assessment_current'])
+        self.assertEqual(changed['latest_assessment']['classification'],'qualified')
+        self.assertEqual(changed['latest_assessment']['assessment']['target_snapshot']['county'],'Dallas')
+        self.assertEqual(changed['assessment']['target_snapshot']['county'],'Collin')
+        self.assertEqual(changed['assessment']['classification'],'requires_human_review')
+        self.record_assessment(intake,state,request='73000000-0000-4000-8000-000000000002',fail=True)
+        self.identity_review(intake,self.identity_state(intake),request='71000000-0000-4000-8000-000000000002')
+        outside=self.qualification_state(intake)
+        self.assertEqual(outside['assessment']['classification'],'qualified')
+        self.assertEqual(outside['assessment']['canonical_county'],'collin')
+        self.sql(f"UPDATE wholesale_ingest.properties SET county='Denton' WHERE id='{PROPERTY}';",fail=True)
+        self.record_assessment(intake,outside,request='73000000-0000-4000-8000-000000000002',user=OPERATOR)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments;',user=OPERATOR),'2')
+        self.sql("UPDATE acquisition_intake_assessments SET classification='qualified';",user=ADMIN,fail=True)
+        self.sql('TRUNCATE acquisition_intake_assessments;',user=ADMIN,role='service_role',fail=True)
+
+    def test_qualification_incomplete_preserves_missing_and_invalid_contact(self):
+        saved=self.candidate_fixture(condition='',phone='2145550101 ext 9'); intake=saved['intake_id']
+        self.identity_review(intake,self.identity_state(intake))
+        assessment=self.qualification_state(intake)['assessment']
+        self.assertEqual(assessment['classification'],'incomplete')
+        self.assertIn('condition',assessment['missing_fields']); self.assertIn('valid_contact',assessment['missing_fields'])
+
+    def test_qualification_duplicate_requires_reviewed_repeat_not_same_phone(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']
+        self.assertNotEqual(self.qualification_state(intake)['assessment']['classification'],'duplicate')
+        self.identity_review(intake,self.identity_state(intake),action='repeat_inquiry')
+        state=self.qualification_state(intake)
+        self.assertEqual(state['assessment']['classification'],'duplicate')
+        self.record_assessment(intake,state)
+        self.identity_review(intake,self.identity_state(intake),request='71000000-0000-4000-8000-000000000002',action='revoke')
+        self.assertFalse(self.qualification_state(intake)['assessment_current'])
+        self.assertNotEqual(self.qualification_state(intake)['assessment']['classification'],'duplicate')
+
+    def test_qualification_denied_authority_is_not_overridden_by_property_review(self):
+        saved=self.candidate_fixture(authority='no'); intake=saved['intake_id']
+        self.identity_review(intake,self.identity_state(intake))
+        self.assertEqual(self.qualification_state(intake)['assessment']['classification'],'unqualified')
+
+    def test_qualification_ambiguous_price_is_never_zero_or_qualified(self):
+        saved=self.candidate_fixture(asking_price='150k'); intake=saved['intake_id']
+        self.identity_review(intake,self.identity_state(intake))
+        self.assertEqual(self.qualification_state(intake)['assessment']['classification'],'requires_human_review')
+        self.assertEqual(self.sql(f"SELECT (asking_price IS NULL)::text FROM leads WHERE id='{saved['lead_id']}';"),'true')
+
+    def test_qualification_collin_explicit_zero_and_gate_scope_checks(self):
+        saved=self.candidate_fixture(asking_price='0'); intake=saved['intake_id']
+        self.sql(f"UPDATE wholesale_ingest.properties SET county='Collin' WHERE id='{PROPERTY}';")
+        self.identity_review(intake,self.identity_state(intake))
+        state=self.qualification_state(intake)
+        self.assertEqual(state['assessment']['classification'],'qualified')
+        self.qualification_state(intake,user=OTHER,fail=True)
+        self.qualification_state(intake,session=False,fail=True)
+        self.record_assessment(intake,state,user=OTHER,fail=True)
+        self.record_assessment(intake,state,session=False,fail=True)
+        self.record_assessment(intake,state,role='service_role',fail=True)
+        self.record_assessment(intake,state)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments;',user=OTHER),'0')
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        held=self.qualification_state(intake)
+        self.assertFalse(held['assessment_current'])
+        self.assertEqual(held['assessment']['classification'],'requires_human_review')
+        self.record_assessment(intake,held,request='73000000-0000-4000-8000-000000000002',fail=True)
 
     def identity_state(self, intake, target=LEAD, user=ADMIN, fail=False, **kwargs):
         target_sql='NULL' if target is None else literal(target)

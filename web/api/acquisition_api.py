@@ -477,3 +477,37 @@ async def acquisition_intake_detail(workspace_id: UUID, intake_id: UUID, store=D
     if not rows:
         raise HTTPException(status_code=404, detail='Intake unavailable')
     return rows[0]
+
+
+class IntakeAssessment(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    expected_sequence: int = Field(ge=0)
+    evidence_hash: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}/qualification-state')
+async def intake_qualification_state(workspace_id: UUID, intake_id: UUID, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/acquisition_intake_qualification_state', body={
+        'p_workspace': str(workspace_id), 'p_intake': str(intake_id),
+    })
+
+
+@router.post('/workspaces/{workspace_id}/intakes/{intake_id}/assessments')
+async def record_intake_assessment(workspace_id: UUID, intake_id: UUID, body: IntakeAssessment, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/record_acquisition_intake_assessment', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_intake': str(intake_id),
+        'p_expected_sequence': body.expected_sequence, 'p_evidence_hash': body.evidence_hash,
+    })
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}/assessments')
+async def intake_assessment_history(workspace_id: UUID, intake_id: UUID,
+                                     before: int | None = Query(default=None, ge=1),
+                                     limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select': 'id,sequence,policy_version,classification,evidence_hash,assessment,actor_id,created_at',
+              'workspace_id': 'eq.'+str(workspace_id), 'intake_id': 'eq.'+str(intake_id),
+              'order': 'sequence.desc', 'limit': str(limit)}
+    if before is not None:
+        params['sequence'] = 'lt.'+str(before)
+    return await store.request('GET', 'acquisition_intake_assessments', params=params)

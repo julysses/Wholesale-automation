@@ -28,6 +28,8 @@ OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
  'recover_acquisition_inquiry': ['p_id','p_workspace','p_receipt','p_expected_updated_at','p_expected_reason','p_note','p_evidence_ref'],
+ 'acquisition_intake_qualification_state': ['p_workspace','p_intake'],
+ 'record_acquisition_intake_assessment': ['p_id','p_workspace','p_intake','p_expected_sequence','p_evidence_hash'],
  'acquisition_intake_identity_state': ['p_workspace','p_intake','p_target'],
  'review_acquisition_intake_identity': ['p_id','p_workspace','p_intake','p_expected_sequence','p_preparation_hash','p_action','p_target','p_target_hash','p_property_basis','p_property_evidence_ref','p_seller_evidence_ref','p_note'],
  'acquisition_intake_candidates': ['p_workspace','p_intake','p_limit'],
@@ -234,11 +236,29 @@ class WorkflowTests(WorkspaceTests):
         self.assertTrue(self.client.post(identity_path+'/identity-reviews',headers=self.headers,json=review).json()['duplicate'])
         current=self.client.get(identity_path+'/identity-state',headers=self.headers).json()
         self.assertTrue(current['link_current']); self.assertFalse(current['ownership_verified'])
+        qualification=self.client.get(identity_path+'/qualification-state',headers=self.headers)
+        self.assertEqual(qualification.status_code,200,qualification.text)
+        self.assertEqual(qualification.json()['assessment']['classification'],'duplicate')
+        assessment_request={'id':'74000000-0000-4000-8000-000000000001','expected_sequence':qualification.json()['sequence'],
+            'evidence_hash':qualification.json()['evidence_hash']}
+        recorded=self.client.post(identity_path+'/assessments',headers=self.headers,json=assessment_request)
+        self.assertEqual(recorded.status_code,200,recorded.text)
+        self.assertFalse(recorded.json()['duplicate'])
+        self.assertTrue(self.client.post(identity_path+'/assessments',headers=self.headers,json=assessment_request).json()['duplicate'])
+        self.assertTrue(self.client.get(identity_path+'/qualification-state',headers=self.headers).json()['assessment_current'])
+
         revoked=self.client.post(identity_path+'/identity-reviews',headers=self.headers,json={
             'id':'72000000-0000-4000-8000-000000000002','expected_sequence':current['sequence'],
             'preparation_hash':current['preparation_hash'],'action':'revoke','review_note':'Synthetic correction removes the reviewed association.'})
         self.assertEqual(revoked.status_code,200,revoked.text)
         self.assertFalse(self.client.get(identity_path+'/identity-state',headers=self.headers).json()['link_current'])
+        changed_assessment=self.client.get(identity_path+'/qualification-state',headers=self.headers).json()
+        self.assertFalse(changed_assessment['assessment_current'])
+        self.assertEqual(changed_assessment['latest_assessment']['classification'],'duplicate')
+        self.assertEqual(changed_assessment['assessment']['classification'],'incomplete')
+        self.assertFalse(changed_assessment['assessment']['outreach_authorized'])
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake_assessment'"),'1')
+
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake_identity'"),'2')
         self.assertEqual(self.sql('SELECT count(DISTINCT lead_id) FROM seller_intakes'),'2')
 

@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — versioned canonical intake qualification
+
+- Previous turn was progress: `ff54056` implemented/tested/pushed the review dashboard. Pulled current branch, inspected the intake/identity records and catalog, and added CLI-generated `20261026181452_acquisition_intake_qualification.sql` plus current-state, append-only recording and paginated history APIs.
+- Deterministic `intake-qualification-v1` supports qualified, incomplete, duplicate, unqualified and requires-human-review. It checks structural/answer ambiguity, authority/interest denial, current reviewed repeat identity, required answers/normalized contact, current canonical property review and Dallas/Collin territory. Qualified means screening readiness only: title/ownership, contact permissions, outreach and binding-offer flags remain false.
+- Assessment history stores source hash, identity review, target snapshot/hash, policy version, reasons, missing data and audit actor. Fresh authority/source/target locks plus evidence hash/sequence enforce concurrent idempotence and stale rejection. Changed property/reviewer/gate state invalidates current results without rewriting historical decisions or original CRM records.
+- Validation: **6 real PostgreSQL cases passed** covering all five outcomes and authority/history/idempotence boundaries; **36 API contract tests passed**; **all 8 integrated journeys passed**, including duplicate assessment -> exact retry -> identity revocation -> stale historic duplicate/current incomplete. Focused tests repeated after adding complete target snapshot preservation. Final historical target-snapshot assertion passed on disposable PostgreSQL; `git diff --check` passed.
+- The initial Denton fixture was rejected by the existing TX/Dallas/Collin table checks. Tests were corrected to use a valid Dallas-to-Collin change plus explicit Denton rejection; no production constraint was relaxed. No production migrations/configuration/deployment, providers/outreach, fulfillment or binding transactions activated.
+
+Next: display fresh assessments in the reviewer UI and connect current qualified canonical identity to underwriting reservation under the same transaction checks; complete automatic assessment flow, attribution and remaining sequential phases. Full-schema/PostgREST/browser acceptance and release gates remain open. See INTAKE-QUALIFICATION.md. Goal active.
+
 ## Implementation checkpoint — seller intake identity review interface
 
 - Previous turn was progress: `b6b7897` implemented/tested/pushed reviewed identity links. Pulled current branch, inspected dashboard/API patterns, and added scoped paginated intake list/detail APIs using existing seller-intake RLS.

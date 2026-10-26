@@ -407,3 +407,26 @@ def test_intake_queue_and_detail_are_scoped_and_bounded(api):
     assert client.get(base+'/'+intake, headers=headers).json()['id'] == intake
     params = state['requests'][-1].url.params
     assert params['id'] == 'eq.'+intake and params['workspace_id'] == 'eq.'+W and params['limit'] == '1'
+
+
+def test_intake_assessment_is_server_derived_and_scoped(api):
+    client, state = api
+    intake = '70000000-0000-4000-8000-000000000001'
+    base = f'/api/acquisition/workspaces/{W}/intakes/{intake}'
+    headers = {'Authorization': 'Bearer test-jwt'}
+    assert client.get(base+'/qualification-state', headers=headers).status_code == 200
+    assert json.loads(state['requests'][-1].content) == {'p_workspace': W, 'p_intake': intake}
+    body = {'id': intake, 'expected_sequence': 0, 'evidence_hash': 'a'*64}
+    assert client.post(base+'/assessments', headers=headers, json=body).status_code == 200
+    request = state['requests'][-1]
+    assert request.url.path.endswith('/rpc/record_acquisition_intake_assessment')
+    assert request.headers['authorization'] == 'Bearer test-jwt'
+    assert json.loads(request.content) == {'p_id': intake, 'p_workspace': W, 'p_intake': intake, 'p_expected_sequence': 0, 'p_evidence_hash': 'a'*64}
+    count = len(state['requests'])
+    for extra in ({'classification': 'qualified'}, {'actor_id': U}, {'evidence_hash': 'invalid'}):
+        assert client.post(base+'/assessments', headers=headers, json={**body, **extra}).status_code == 422
+    assert len(state['requests']) == count
+    assert client.get(base+'/assessments?before=4&limit=2', headers=headers).status_code == 200
+    params = state['requests'][-1].url.params
+    assert params['workspace_id'] == 'eq.'+W and params['intake_id'] == 'eq.'+intake
+    assert params['sequence'] == 'lt.4' and params['limit'] == '2'
