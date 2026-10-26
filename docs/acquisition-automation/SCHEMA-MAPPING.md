@@ -100,3 +100,8 @@ A fresh read-only production inspection confirms 70 columns across ad_campaigns/
 ### Source attribution implementation update (October 26)
 
 The lead_sources logical entity is now represented by additive `acquisition_lead_sources` over original intake/lead/receipt/integration keys; no equivalent deployed relation existed in the read-only preflight. `acquisition_source_campaign_reviews` records versioned campaign association to exact `acquisition_campaign_links` reviews. Existing leads.source and ad_campaign_id remain unchanged. Canonical multi-touch rollups, campaign events, costs and funnel reporting remain incomplete; this is an association foundation, not completed FB-006 reporting.
+
+
+### Canonical source reporting update (October 26)
+
+`acquisition_property_source_touches` derives canonical property associations from existing source and current identity-review records; it creates no additional property, owner or lead table. A partial workspace/target/intake index supports bounded candidate retrieval. Current campaign snapshots are evaluated independently of historical captures. This read-only endpoint does not supply unique-owner, conversion or spend totals. See ATTRIBUTION.md for pagination, access and compensation details.

@@ -702,3 +702,10 @@ async def source_campaign_reviews(workspace_id: UUID, intake_id: UUID, after: UU
             'current_capture': current_capture,
             'items': [{**row, 'attribution_current': current_review is not None and row['link_review_id'] == current_review} for row in rows[:limit]],
             'next_after': rows[limit-1]['id'] if len(rows)>limit else None, 'execution_authorized': False}
+
+
+@router.get('/workspaces/{workspace_id}/leads/{lead_id}/source-touches')
+async def acquisition_property_source_touches(workspace_id: UUID, lead_id: UUID, after: UUID | None = None,
+                                              limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/acquisition_property_source_touches', body={
+        'p_workspace': str(workspace_id), 'p_lead': str(lead_id), 'p_after': str(after) if after else None, 'p_limit': limit})

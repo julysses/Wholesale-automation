@@ -159,6 +159,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql((ROOT/"frontend/supabase/migrations/20261026214412_acquisition_campaign_links.sql").read_text())
         if self._testMethodName != 'test_source_migration_backfills_without_changing_intakes':
             self.sql((ROOT/'frontend/supabase/migrations/20261026221434_acquisition_lead_sources.sql').read_text())
+            self.sql((ROOT/'frontend/supabase/migrations/20261026223054_acquisition_property_source_touches.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -194,6 +195,64 @@ class WorkspaceTests(unittest.TestCase):
     def campaign_draft(self, identity='91000000-0000-4000-8000-000000000001',actor=ADMIN,workspace=WORKSPACE,fail=False):
         value=self.sql(f"SELECT public.create_acquisition_campaign('{identity}','{workspace}','Draft campaign','facebook',50000,'USD')",user=actor,fail=fail)
         return value if fail else json.loads(value)
+
+    def property_sources(self, lead=LEAD, workspace=WORKSPACE, user=ADMIN, after=None, limit=20, fail=False, **kwargs):
+        cursor='NULL' if after is None else literal(after)
+        result=self.sql(f"SELECT public.acquisition_property_source_touches('{workspace}','{lead}',{cursor},{limit})",user=user,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_property_sources_require_review_and_preserve_separate_inquiries(self):
+        self.bind(); self.member(); self.link_campaign=self.campaign_draft()['id']
+        first=self.campaign_link_fixture(); second=self.campaign_link_fixture(account='second-page',external='123456')
+        self.assertEqual(self.property_sources()['items'],[])
+        self.identity_review(first,self.identity_state(first))
+        self.identity_review(second,self.identity_state(second),request='71000000-0000-4000-8000-000000000002',action='repeat_inquiry')
+        report=self.property_sources(); self.assertEqual(len(report['items']),2)
+        self.assertEqual({row['association'] for row in report['items']},{'reviewed_property','reviewed_repeat_inquiry'})
+        self.assertEqual(len({row['original_lead_id'] for row in report['items']}),2)
+        self.assertTrue(all(row['original_lead_id']!=LEAD and row['current_campaign_id'] is None for row in report['items']))
+        self.assertFalse(report['totals_available']); self.assertFalse(report['ownership_verified']); self.assertFalse(report['execution_authorized'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_lead_sources'),'2')
+        self.assertEqual(self.sql("SELECT count(*) FROM workspace_leads WHERE binding_integration_id IS NOT NULL AND property_id IS NULL"),'2')
+        self.assertNotIn('phone',json.dumps(report)); self.assertNotIn('target_snapshot',json.dumps(report))
+
+    def test_property_sources_exclude_stale_identity_and_allow_empty_continuation(self):
+        self.bind(); self.member()
+        first=self.campaign_link_fixture(); second=self.campaign_link_fixture(account='second-page',external='123456')
+        self.identity_review(first,self.identity_state(first))
+        self.identity_review(second,self.identity_state(second),request='71000000-0000-4000-8000-000000000002')
+        ordered=sorted([first,second]); stale=ordered[0]
+        self.identity_review(stale,self.identity_state(stale),request='71000000-0000-4000-8000-000000000003',action='revoke')
+        page=self.property_sources(limit=1); self.assertEqual(page['items'],[]); self.assertEqual(page['excluded_count'],1); self.assertEqual(page['next_after'],stale)
+        next_page=self.property_sources(after=page['next_after'],limit=1)
+        self.assertEqual(next_page['items'][0]['source_id'],ordered[1]); self.assertIsNone(next_page['next_after'])
+        self.sql(f"UPDATE wholesale_ingest.properties SET unit='new unit' WHERE id='{PROPERTY}'")
+        self.assertEqual(self.property_sources()['items'],[])
+
+    def test_property_sources_current_and_historical_campaign_capture(self):
+        self.bind(); self.member(); self.link_campaign=self.campaign_draft()['id']; intake=self.campaign_link_fixture()
+        self.identity_review(intake,self.identity_state(intake))
+        linked=self.campaign_link_review(intake,self.campaign_link_state(intake))
+        before=self.property_sources()['items'][0]; self.assertEqual(before['attribution_status'],'current_review_not_captured'); self.assertIsNone(before['current_campaign_id'])
+        self.source_capture(intake,linked['review_id'])
+        captured=self.property_sources()['items'][0]; self.assertTrue(captured['attribution_current']); self.assertEqual(captured['current_campaign_id'],self.link_campaign)
+        self.campaign_link_review(intake,self.campaign_link_state(intake),p_id='cf000000-0000-4000-8000-000000000002',p_action='revoke',p_campaign=None,p_ad_account=None)
+        historical=self.property_sources()['items'][0]; self.assertFalse(historical['attribution_current']); self.assertIsNone(historical['current_campaign_id'])
+        self.assertEqual(historical['captured_attribution']['id'],captured['captured_attribution']['id'])
+
+    def test_property_sources_role_scope_limits_and_missing_market_metadata(self):
+        self.bind(); self.member(); saved=self.candidate_fixture_without_config_for_sources()
+        self.identity_review(saved,self.identity_state(saved))
+        report=self.property_sources(); self.assertEqual(report['items'][0]['attribution_status'],'campaign_evidence_unavailable')
+        self.property_sources(user=OTHER,fail=True); self.property_sources(workspace=WORKSPACE_B,user=OTHER,fail=True)
+        self.property_sources(lead=LEAD_B,fail=True); self.property_sources(limit=0,fail=True); self.property_sources(limit=51,fail=True)
+        self.property_sources(session=False,fail=True); self.property_sources(role='service_role',fail=True)
+        self.member(target=OPERATOR,role='operator'); self.assertEqual(len(self.property_sources(user=OPERATOR)['items']),1)
+        self.member(target=CALLER,role='acquisition_caller'); self.property_sources(user=CALLER,fail=True)
+
+    def candidate_fixture_without_config_for_sources(self):
+        self.inbox_config(); self.inbox_accept()
+        return self.complete_intake(self.inbox_claim()[0])['intake_id']
 
     def source_capture(self, intake, review, user=ADMIN, fail=False, identity='cd000000-0000-4000-8000-000000000001', workspace=WORKSPACE):
         result=self.sql(f"SELECT public.capture_acquisition_source_campaign('{identity}','{workspace}','{intake}','{review}')",user=user,fail=fail)

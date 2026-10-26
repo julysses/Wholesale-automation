@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — canonical property source reporting
+
+- Continued from pushed `6ec8df1`; pulled the branch with no remote changes. Read-only catalog preflight confirmed the proposed function absent and the migration ledger unchanged at 95 entries/latest `20261023221455`. CLI-generated migration `20261026223054_acquisition_property_source_touches.sql` remains unapplied to production.
+- Added a read-only canonical-property source RPC and authenticated API over existing immutable inquiry sources. Current reviewed identity links determine inclusion; revoked/stale links are excluded. Property associations and reviewed repeat inquiries remain distinct, with original inquiry IDs preserved. No lead/owner merge or ownership assertion occurs.
+- Campaign snapshots are current only when captured against the exact currently valid campaign review. Historical captures remain visible separately; missing campaign evidence stays missing. Access requires live owner/admin/operator membership and a matching canonical workspace property binding.
+- Candidate retrieval is bounded and indexed. UUID pagination can return an empty page with a continuation cursor when candidates were excluded; no unique-seller, conversion or cross-page totals are claimed. Responses exclude seller answers/contact details and deny contact/execution authority.
+- Validation: **49 API tests**, **four focused real PostgreSQL cases**, and **all 12 integrated real-SQL journeys passed** against final SQL. Coverage includes tenant/role/service-role denial, missing metadata, separate inquiries, historical attribution, revoked/stale identity and empty-page continuation. Earlier test handles were lost during context compaction; confirmed no test processes remained and reran to obtain complete results. No frontend changes this increment.
+- Production, provider configuration, outreach and paused SMS remain unchanged. Full-schema/PostgREST/provider release acceptance remains open.
+
+Next: expose the bounded property-source view in the acquisition dashboard, then implement coverage-aware cost/currency and conversion reporting. Campaign events, later sequential phases and required approvals remain open. Goal active.
+
 ## Implementation checkpoint — source attribution capture dashboard and rendered QA
 
 - Previous turn made progress: `8d8c72a` added immutable source touches/snapshots and APIs. Pulled the branch and added a Source attribution snapshots panel inside campaign review, with user/workspace/intake scope, current versus historical status and bounded history pages.

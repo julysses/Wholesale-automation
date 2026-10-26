@@ -592,3 +592,18 @@ def test_current_source_snapshot_lookup_is_independent_of_history_cursor(api):
     assert state['requests'][0].url.params['id']=='gt.'+W
     assert 'id' not in state['requests'][-1].url.params
     assert state['requests'][-1].url.params['link_review_id']=='eq.'+W
+
+
+def test_property_source_touches_use_scoped_bounded_rpc(api):
+    client,state=api
+    state['body']={'items':[],'next_after':U,'scanned_count':1,'excluded_count':1,'totals_available':False,'execution_authorized':False}
+    path=f'/api/acquisition/workspaces/{W}/leads/{U}/source-touches'
+    response=client.get(path+f'?after={W}&limit=1',headers={'Authorization':'Bearer user-token'})
+    assert response.status_code==200 and response.json()['next_after']==U
+    request=state['requests'][-1]
+    assert request.headers['authorization']=='Bearer user-token'
+    assert json.loads(request.content)=={'p_workspace':W,'p_lead':U,'p_after':W,'p_limit':1}
+    count=len(state['requests'])
+    for query in ('?limit=0','?limit=51','?after=not-a-uuid'):
+        assert client.get(path+query,headers={'Authorization':'Bearer user-token'}).status_code==422
+    assert len(state['requests'])==count

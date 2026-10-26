@@ -27,6 +27,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_property_source_touches':['p_workspace','p_lead','p_after','p_limit'],
  'capture_acquisition_source_campaign':['p_id','p_workspace','p_source','p_link_review'],
  'acquisition_campaign_link_state':['p_workspace','p_intake'],
  'review_acquisition_campaign_link':['p_id','p_workspace','p_intake','p_expected_sequence','p_preparation_hash','p_action','p_campaign','p_ad_account','p_evidence_ref','p_note'],
@@ -348,11 +349,21 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(attribution.json()['attribution']['status'],'available')
         self.assertIsNone(attribution.json()['attribution']['spend_cents'])
         self.assertEqual(self.client.get(identity_path+'/attribution',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,404)
+        source_path=f'{self.base}/leads/{LEAD}/source-touches'
+        before_sources=self.client.get(source_path,headers=self.headers)
+        self.assertEqual(before_sources.status_code,200,before_sources.text); self.assertEqual(before_sources.json()['items'],[])
         identity=self.client.get(identity_path+f'/identity-state?target={LEAD}',headers=self.headers).json()
         decision={'id':'75000000-0000-4000-8000-000000000001','expected_sequence':0,
             'preparation_hash':identity['preparation_hash'],'action':'link_property','target_lead_id':LEAD,'target_hash':identity['target_hash'],
             'property_basis':'parcel_document','property_evidence_ref':'synthetic-parcel-review-42','review_note':'Synthetic canonical property evidence reviewed for handoff.'}
         self.assertEqual(self.client.post(identity_path+'/identity-reviews',headers=self.headers,json=decision).status_code,200)
+        property_sources=self.client.get(source_path,headers=self.headers)
+        self.assertEqual(property_sources.status_code,200,property_sources.text)
+        touch=property_sources.json()['items'][0]
+        self.assertEqual(touch['source_id'],intake); self.assertEqual(touch['original_lead_id'],source_lead)
+        self.assertEqual(touch['identity_review_id'],decision['id']); self.assertEqual(touch['association'],'reviewed_property')
+        self.assertFalse(property_sources.json()['totals_available']); self.assertIsNone(touch['current_campaign_id'])
+        self.assertEqual(self.client.get(source_path,headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
         qualified=self.client.get(identity_path+'/qualification-state',headers=self.headers).json()
         self.assertEqual(qualified['assessment']['classification'],'qualified')
         body={'id':ANALYSIS,'evidence_hash':qualified['evidence_hash'],'inputs':inputs()}
@@ -376,6 +387,7 @@ class WorkflowTests(WorkspaceTests):
         revoked={ 'id':'75000000-0000-4000-8000-000000000002','expected_sequence':1,'preparation_hash':identity['preparation_hash'],
             'action':'revoke','review_note':'Synthetic correction revokes this canonical property association.'}
         self.assertEqual(self.client.post(identity_path+'/identity-reviews',headers=self.headers,json=revoked).status_code,200)
+        self.assertEqual(self.client.get(source_path,headers=self.headers).json()['items'],[])
         replay=self.client.post(path,headers=self.headers,json=body)
         self.assertEqual(replay.status_code,200,replay.text)
         self.assertFalse(replay.json()['intake_context']['qualification_current'])
