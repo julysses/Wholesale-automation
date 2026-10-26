@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — live campaign inventory and upgrade fixture
+
+- Previous turn was progress: `d6d2d7a` implemented/tested/pushed Facebook metadata attribution. Pulled the branch, inspected current campaign/form application paths and performed read-only production catalog queries before designing the campaign ownership migration.
+- Saved `evidence/2026-10-26-campaign-catalog.json`: 70 columns, 14 constraints, nine policies, three triggers and all 95 migration entries. Live campaign/creative/form grants include truncate, legacy policies are shared across approved users, and active forms are publicly readable. Campaign ownership must cover child/lead associations and service-role finalization, not just add a workspace column.
+- Added `scripts/acquisition_campaign_fixture.py` to reconstruct exact numeric/generated columns, policies/grants/triggers and previously omitted campaign/form foreign keys before acquisition boundary migrations. Two baseline fixture cases passed. Initial restore attempted foreign keys before parent primary keys; sorted non-FK constraints first and reran successfully.
+- All **10 integrated real-SQL journeys passed** on the expanded fixture. The full **106-case PostgreSQL run passed 102 cases and exposed four incomplete website-consent fixtures**: their form configuration parents had been omitted by the old harness. Added synthetic inactive forms with SMS confirmation disabled; all four affected cases passed on targeted rerun. No foreign key or assertion was weakened. No migration has been written/applied, no production data mutated, and no provider/deployment/activation action occurred. See CAMPAIGN-ISOLATION.md for the inspected dependencies and required migration behavior.
+
+Next: implement controlled ad_campaigns workspace ownership, external account mapping and related-record isolation under the documented invariants. Remaining PRD scope and release approvals stay open. Goal active.
+
 ## Implementation checkpoint — Facebook attribution evidence
 
 - Previous turn was progress: `efae294` implemented/tested/pushed saved-scenario provenance. Pulled the branch and traced existing provider metadata through receipt, retrieval and immutable seller-intake preparation. No parallel campaign store or historical rewrite was needed for the evidence projection.

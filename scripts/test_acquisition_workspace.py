@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from acquisition_campaign_fixture import install_campaign_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / 'frontend/supabase/migrations/20261026024157_acquisition_workspace_foundation.sql'
@@ -115,6 +116,7 @@ class WorkspaceTests(unittest.TestCase):
                 self.sql(f'ALTER TABLE {schema}.{table} ENABLE ROW LEVEL SECURITY; '
                          f'GRANT SELECT,INSERT,UPDATE,DELETE ON {schema}.{table} TO authenticated; '
                          f'CREATE POLICY legacy_approved ON {schema}.{table} TO authenticated USING (true) WITH CHECK (true);')
+        install_campaign_fixture(self.sql)
         self.sql("ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY; "
                  "GRANT SELECT ON public.audit_logs TO authenticated; GRANT ALL ON public.audit_logs TO service_role; "
                  "CREATE POLICY approved_read_audit_logs ON public.audit_logs FOR SELECT TO authenticated USING (true); "
@@ -160,6 +162,29 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def test_campaign_fixture_preserves_generated_cost_and_parent_constraints(self):
+        campaign='90000000-0000-4000-8000-000000000001'
+        creative='90000000-0000-4000-8000-000000000002'
+        self.sql(f"INSERT INTO ad_campaigns(id,name,total_spend,leads_count) VALUES('{campaign}','Legacy campaign',100,4); "
+                 f"INSERT INTO ad_creatives(id,campaign_id,name) VALUES('{creative}','{campaign}','Legacy creative');")
+        self.assertEqual(self.sql(f"SELECT cpl::text FROM ad_campaigns WHERE id='{campaign}'"),'25.00')
+        self.sql(f"UPDATE ad_campaigns SET cpl=0 WHERE id='{campaign}'",fail=True)
+        self.sql(f"UPDATE leads SET ad_campaign_id='{campaign}',ad_creative_id='{creative}' WHERE id='{LEAD}'")
+        self.sql(f"DELETE FROM ad_campaigns WHERE id='{campaign}'",fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_constraint WHERE conname IN ('leads_ad_campaign_id_fkey','leads_ad_creative_id_fkey','leads_form_submission_id_fkey','lead_form_submissions_form_id_fkey')"),'4')
+        self.sql(f"UPDATE leads SET ad_campaign_id=NULL,ad_creative_id=NULL WHERE id='{LEAD}'; DELETE FROM ad_campaigns WHERE id='{campaign}'")
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_creatives'),'0')
+
+    def test_campaign_fixture_exposes_baseline_access_for_isolation_regressions(self):
+        self.sql("INSERT INTO ad_campaigns(name) VALUES('Legacy shared campaign'); "
+                 "INSERT INTO lead_form_configs(name,slug,active) VALUES('Public fixture','public-fixture',true),('Hidden fixture','hidden-fixture',false)")
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns',user=ADMIN),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns',user=OTHER),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM lead_form_configs',user=ADMIN,role='anon'),'1')
+        self.assertEqual(self.sql("SELECT has_table_privilege('anon','ad_campaigns','TRUNCATE')::text"),'true')
+        self.member(role='operator',target=OPERATOR)
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns',user=OPERATOR),'0')
 
     def inbox_config(self, account='fixture-page', workspace=WORKSPACE, enabled=True):
         self.sql(f"INSERT INTO private.acquisition_integrations(workspace_id,provider,account_id,enabled,approval_ref) "
@@ -1072,6 +1097,7 @@ class WorkspaceTests(unittest.TestCase):
         if source == 'website':
             answers = {'phone':phone, '_sms_consent':{'accepted':accepted,'rendered_disclosure_matches':True,
                 'form_id':form,'disclosure':disclosure,'disclosure_sha256':hashlib.sha256(disclosure.encode()).hexdigest()}}
+            self.sql(f"INSERT INTO lead_form_configs(id,name,slug,active,send_confirmation_sms) VALUES('{form}','Synthetic permission form','synthetic-permission',false,false);")
             self.sql(f"INSERT INTO lead_form_submissions(id,lead_id,form_id,created_at,raw_answers) VALUES('{receipt}','{LEAD}','{form}',{literal(when)},{literal(json.dumps(answers))}::jsonb);")
         else:
             key=disclosure.lower().replace(' ','_')

@@ -92,3 +92,7 @@ The thin `seller_intakes` relation links immutable canonical receipts to workspa
 ## Intake underwriting provenance implementation follow-up
 
 `acquisition_analysis_intakes` links existing `deal_analyses` to existing `seller_intakes`, qualification assessments and identity reviews. This small immutable relation stores source provenance rather than a parallel underwriting engine or CRM property. Composite tenant/source foreign keys and membership RLS protect the link. Existing analysis, offer and calculation functions gain current-source checks only for analyses with intake provenance. See INTAKE-QUALIFICATION.md for atomicity and compensation.
+
+## Campaign catalog refresh — October 26
+
+A fresh read-only production inspection confirms 70 columns across ad_campaigns/ad_creatives/lead_form_configs/lead_form_submissions and 14 inbound/outbound constraints. The detailed catalog, privileges, generated numeric columns and migration ledger are in `evidence/2026-10-26-campaign-catalog.json`. `CAMPAIGN-ISOLATION.md` records live shared/public access paths and the required ownership/child/service-write controls. The disposable acquisition harness now restores these parent tables and their previously omitted lead/form foreign keys before boundary migrations. Campaign ownership itself is not implemented by this fixture change.

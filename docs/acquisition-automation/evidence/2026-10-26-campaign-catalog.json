@@ -1,0 +1,1792 @@
+{
+  "rls": [
+    {
+      "relname": "ad_campaigns",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "ad_creatives",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "lead_form_configs",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "lead_form_submissions",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    }
+  ],
+  "grants": [
+    {
+      "grantee": "anon",
+      "table_name": "ad_campaigns",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_campaigns",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_campaigns",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_campaigns",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_campaigns",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_campaigns",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_campaigns",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_campaigns",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_campaigns",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_campaigns",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_campaigns",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_campaigns",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_campaigns",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_campaigns",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_campaigns",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_campaigns",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_campaigns",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_campaigns",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_campaigns",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_campaigns",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_campaigns",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_campaigns",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_campaigns",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_campaigns",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_campaigns",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_campaigns",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_campaigns",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_campaigns",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_creatives",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_creatives",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_creatives",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_creatives",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_creatives",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_creatives",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ad_creatives",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_creatives",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_creatives",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_creatives",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_creatives",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_creatives",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_creatives",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ad_creatives",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_creatives",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_creatives",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_creatives",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_creatives",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_creatives",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_creatives",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ad_creatives",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_creatives",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_creatives",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_creatives",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_creatives",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_creatives",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_creatives",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ad_creatives",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "lead_form_configs",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "lead_form_configs",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "lead_form_configs",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "lead_form_configs",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "lead_form_configs",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "lead_form_configs",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "lead_form_configs",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "lead_form_configs",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "lead_form_configs",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "lead_form_configs",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "lead_form_configs",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "lead_form_configs",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "lead_form_configs",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "lead_form_configs",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_configs",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_configs",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_configs",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_configs",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_configs",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_configs",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_configs",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_configs",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_configs",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_configs",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_configs",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_configs",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_configs",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_configs",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "lead_form_submissions",
+      "privilege_type": "UPDATE"
+    }
+  ],
+  "columns": [
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "ad_campaigns",
+      "column_name": "id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "ad_campaigns",
+      "column_name": "created_at",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "ad_campaigns",
+      "column_name": "updated_at",
+      "schema_name": "public"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_campaigns",
+      "column_name": "name",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'facebook'::text",
+      "table_name": "ad_campaigns",
+      "column_name": "platform",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'active'::text",
+      "table_name": "ad_campaigns",
+      "column_name": "status",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_campaigns",
+      "column_name": "campaign_objective",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_campaigns",
+      "column_name": "external_campaign_id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(10,2)",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_campaigns",
+      "column_name": "daily_budget",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(10,2)",
+      "generated": "",
+      "expression": "0",
+      "table_name": "ad_campaigns",
+      "column_name": "total_spend",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "0",
+      "table_name": "ad_campaigns",
+      "column_name": "impressions",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "0",
+      "table_name": "ad_campaigns",
+      "column_name": "clicks",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "0",
+      "table_name": "ad_campaigns",
+      "column_name": "leads_count",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(10,2)",
+      "generated": "s",
+      "expression": "\nCASE\n    WHEN (leads_count > 0) THEN (total_spend / (leads_count)::numeric)\n    ELSE NULL::numeric\nEND",
+      "table_name": "ad_campaigns",
+      "column_name": "cpl",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(5,2)",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_campaigns",
+      "column_name": "avg_lead_quality_score",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text[]",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_campaigns",
+      "column_name": "target_zip_codes",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_campaigns",
+      "column_name": "target_audience_notes",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "date",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_campaigns",
+      "column_name": "start_date",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "date",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_campaigns",
+      "column_name": "end_date",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "jsonb",
+      "generated": "",
+      "expression": "'{}'::jsonb",
+      "table_name": "ad_campaigns",
+      "column_name": "settings",
+      "schema_name": "public"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "ad_creatives",
+      "column_name": "id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "ad_creatives",
+      "column_name": "created_at",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "ad_creatives",
+      "column_name": "updated_at",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_creatives",
+      "column_name": "campaign_id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_creatives",
+      "column_name": "name",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_creatives",
+      "column_name": "headline",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_creatives",
+      "column_name": "primary_text",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'Get My Cash Offer'::text",
+      "table_name": "ad_creatives",
+      "column_name": "cta_text",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_creatives",
+      "column_name": "pain_point_angle",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_creatives",
+      "column_name": "image_url",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_creatives",
+      "column_name": "external_ad_id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'active'::text",
+      "table_name": "ad_creatives",
+      "column_name": "status",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "0",
+      "table_name": "ad_creatives",
+      "column_name": "impressions",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "0",
+      "table_name": "ad_creatives",
+      "column_name": "clicks",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "0",
+      "table_name": "ad_creatives",
+      "column_name": "leads_count",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(10,2)",
+      "generated": "s",
+      "expression": "\nCASE\n    WHEN (leads_count > 0) THEN (total_spend / (leads_count)::numeric)\n    ELSE NULL::numeric\nEND",
+      "table_name": "ad_creatives",
+      "column_name": "cpl",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(10,2)",
+      "generated": "",
+      "expression": "0",
+      "table_name": "ad_creatives",
+      "column_name": "total_spend",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(5,2)",
+      "generated": "",
+      "expression": null,
+      "table_name": "ad_creatives",
+      "column_name": "avg_lead_quality_score",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "false",
+      "table_name": "ad_creatives",
+      "column_name": "is_winner",
+      "schema_name": "public"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "lead_form_configs",
+      "column_name": "id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "lead_form_configs",
+      "column_name": "created_at",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "lead_form_configs",
+      "column_name": "updated_at",
+      "schema_name": "public"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_configs",
+      "column_name": "name",
+      "schema_name": "public"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_configs",
+      "column_name": "slug",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_configs",
+      "column_name": "campaign_id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'Get a Fair Cash Offer'::text",
+      "table_name": "lead_form_configs",
+      "column_name": "headline",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'Fill out the form below and we''ll get back to you within minutes.'::text",
+      "table_name": "lead_form_configs",
+      "column_name": "subheadline",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'#1B3A5C'::text",
+      "table_name": "lead_form_configs",
+      "column_name": "brand_color",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_configs",
+      "column_name": "logo_url",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'Thank you! We''ll be in touch within minutes with your cash offer.'::text",
+      "table_name": "lead_form_configs",
+      "column_name": "thank_you_message",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "true",
+      "table_name": "lead_form_configs",
+      "column_name": "send_confirmation_sms",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "false",
+      "table_name": "lead_form_configs",
+      "column_name": "send_confirmation_email",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "true",
+      "table_name": "lead_form_configs",
+      "column_name": "active",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "jsonb",
+      "generated": "",
+      "expression": "'[]'::jsonb",
+      "table_name": "lead_form_configs",
+      "column_name": "questions",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_configs",
+      "column_name": "redirect_url",
+      "schema_name": "public"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "lead_form_submissions",
+      "column_name": "id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "lead_form_submissions",
+      "column_name": "created_at",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "form_id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "lead_id",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "ip_address",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "user_agent",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "utm_source",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "utm_medium",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "utm_campaign",
+      "schema_name": "public"
+    },
+    {
+      "not_null": true,
+      "data_type": "jsonb",
+      "generated": "",
+      "expression": "'{}'::jsonb",
+      "table_name": "lead_form_submissions",
+      "column_name": "raw_answers",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "computed_motivation_tag",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "computed_timeline",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "computed_condition",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'pending'::text",
+      "table_name": "lead_form_submissions",
+      "column_name": "processing_status",
+      "schema_name": "public"
+    },
+    {
+      "not_null": false,
+      "data_type": "jsonb",
+      "generated": "",
+      "expression": null,
+      "table_name": "lead_form_submissions",
+      "column_name": "request_manifest",
+      "schema_name": "public"
+    }
+  ],
+  "indexes": [
+    {
+      "indexdef": "CREATE UNIQUE INDEX ad_campaigns_pkey ON public.ad_campaigns USING btree (id)",
+      "indexname": "ad_campaigns_pkey",
+      "tablename": "ad_campaigns",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX ad_creatives_pkey ON public.ad_creatives USING btree (id)",
+      "indexname": "ad_creatives_pkey",
+      "tablename": "ad_creatives",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX idx_ad_creatives_campaign ON public.ad_creatives USING btree (campaign_id)",
+      "indexname": "idx_ad_creatives_campaign",
+      "tablename": "ad_creatives",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX lead_form_configs_pkey ON public.lead_form_configs USING btree (id)",
+      "indexname": "lead_form_configs_pkey",
+      "tablename": "lead_form_configs",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX lead_form_configs_slug_key ON public.lead_form_configs USING btree (slug)",
+      "indexname": "lead_form_configs_slug_key",
+      "tablename": "lead_form_configs",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX lead_form_submissions_pkey ON public.lead_form_submissions USING btree (id)",
+      "indexname": "lead_form_submissions_pkey",
+      "tablename": "lead_form_submissions",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX idx_lead_form_submissions_form ON public.lead_form_submissions USING btree (form_id)",
+      "indexname": "idx_lead_form_submissions_form",
+      "tablename": "lead_form_submissions",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX idx_lead_form_submissions_lead ON public.lead_form_submissions USING btree (lead_id)",
+      "indexname": "idx_lead_form_submissions_lead",
+      "tablename": "lead_form_submissions",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX intake_monitor_pending ON public.lead_form_submissions USING btree (created_at) WHERE (processing_status <> 'processed'::text)",
+      "indexname": "intake_monitor_pending",
+      "tablename": "lead_form_submissions",
+      "schemaname": "public",
+      "tablespace": null
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ad_campaigns",
+      "permissive": "PERMISSIVE",
+      "policyname": "auth_all_ad_campaigns",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ad_campaigns",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ad_creatives",
+      "permissive": "PERMISSIVE",
+      "policyname": "auth_all_ad_creatives",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ad_creatives",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "lead_form_configs",
+      "permissive": "PERMISSIVE",
+      "policyname": "auth_all_lead_form_configs",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(active = true)",
+      "roles": [
+        "anon"
+      ],
+      "tablename": "lead_form_configs",
+      "permissive": "PERMISSIVE",
+      "policyname": "public_read_active_forms",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "lead_form_configs",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "lead_form_submissions",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_read_lead_form_submissions",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "lead_form_submissions",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    }
+  ],
+  "triggers": [
+    {
+      "tgname": "update_ad_campaigns_updated_at",
+      "definition": "CREATE TRIGGER update_ad_campaigns_updated_at BEFORE UPDATE ON public.ad_campaigns FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "table_name": "ad_campaigns"
+    },
+    {
+      "tgname": "update_ad_creatives_updated_at",
+      "definition": "CREATE TRIGGER update_ad_creatives_updated_at BEFORE UPDATE ON public.ad_creatives FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "table_name": "ad_creatives"
+    },
+    {
+      "tgname": "update_lead_form_configs_updated_at",
+      "definition": "CREATE TRIGGER update_lead_form_configs_updated_at BEFORE UPDATE ON public.lead_form_configs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "table_name": "lead_form_configs"
+    }
+  ],
+  "migrations": [
+    {
+      "name": "priority_rank_recompute",
+      "version": "20260706164602"
+    },
+    {
+      "name": "hilltop_home_co_form",
+      "version": "20260824014738"
+    },
+    {
+      "name": "approval_access_repair",
+      "version": "20260908201056"
+    },
+    {
+      "name": "development_command_center",
+      "version": "20260908213000"
+    },
+    {
+      "name": "launch_consent_and_function_paths",
+      "version": "20260929014526"
+    },
+    {
+      "name": "protect_public_intake",
+      "version": "20260929014852"
+    },
+    {
+      "name": "durable_form_finalization",
+      "version": "20260929015342"
+    },
+    {
+      "name": "grant_server_settings_read",
+      "version": "20260929015419"
+    },
+    {
+      "name": "normalized_contact_suppression",
+      "version": "20260929020229"
+    },
+    {
+      "name": "lead_lists_and_buyer_import_tracking",
+      "version": "20260929151736"
+    },
+    {
+      "name": "lead_street_key",
+      "version": "20260929154956"
+    },
+    {
+      "name": "score_leads_rules",
+      "version": "20260929155030"
+    },
+    {
+      "name": "lead_cleanup_rules",
+      "version": "20260929165030"
+    },
+    {
+      "name": "lead_retention",
+      "version": "20260929170212"
+    },
+    {
+      "name": "lead_lists_grants",
+      "version": "20260929171623"
+    },
+    {
+      "name": "twilio_message_receipts",
+      "version": "20261006202705"
+    },
+    {
+      "name": "sendgrid_delivery_receipts",
+      "version": "20261007163014"
+    },
+    {
+      "name": "lock_launch_function_paths",
+      "version": "20261007165402"
+    },
+    {
+      "name": "jays_website_intake",
+      "version": "20261007204336"
+    },
+    {
+      "name": "retell_call_requests",
+      "version": "20261008182415"
+    },
+    {
+      "name": "enable_notification_realtime",
+      "version": "20261008184051"
+    },
+    {
+      "name": "durable_sms_nurture",
+      "version": "20261008201605"
+    },
+    {
+      "name": "retell_call_batches",
+      "version": "20261008204521"
+    },
+    {
+      "name": "protect_sms_receipts",
+      "version": "20261008205409"
+    },
+    {
+      "name": "protect_consent_evidence",
+      "version": "20261008205411"
+    },
+    {
+      "name": "durable_appointment_workflow",
+      "version": "20261008214850"
+    },
+    {
+      "name": "launch_monitoring",
+      "version": "20261008221715"
+    },
+    {
+      "name": "reopen_monitor_incidents",
+      "version": "20261008221717"
+    },
+    {
+      "name": "monitor_delivery_evidence",
+      "version": "20261008221719"
+    },
+    {
+      "name": "durable_manual_analysis",
+      "version": "20261008223443"
+    },
+    {
+      "name": "repair_analysis_lead_sync",
+      "version": "20261008223445"
+    },
+    {
+      "name": "durable_deal_handoff",
+      "version": "20261008231637"
+    },
+    {
+      "name": "deal_stage_conflict_guards",
+      "version": "20261008231639"
+    },
+    {
+      "name": "exclude_internal_qa_from_business_reporting",
+      "version": "20261008233903"
+    },
+    {
+      "name": "classify_confirmed_launch_test_receipts",
+      "version": "20261008233905"
+    },
+    {
+      "name": "align_legacy_funnel_with_business_reporting",
+      "version": "20261008234537"
+    },
+    {
+      "name": "durable_public_intake_reference",
+      "version": "20261008235905"
+    },
+    {
+      "name": "atomic_intake_alert_delivery",
+      "version": "20261010020730"
+    },
+    {
+      "name": "retell_form_sms_production",
+      "version": "20261015192942"
+    },
+    {
+      "name": "reviewed_sms_resubscription",
+      "version": "20261015203220"
+    },
+    {
+      "name": "preserve_unclassified_dnc",
+      "version": "20261015203533"
+    },
+    {
+      "name": "monitor_retell_sms_outcomes",
+      "version": "20261016191354"
+    },
+    {
+      "name": "daily_list_ingestion",
+      "version": "20261016193644"
+    },
+    {
+      "name": "list_operations",
+      "version": "20261016193656"
+    },
+    {
+      "name": "list_review_batch_guard",
+      "version": "20261016193658"
+    },
+    {
+      "name": "list_monitor_receipts",
+      "version": "20261016193702"
+    },
+    {
+      "name": "list_digest_delivery",
+      "version": "20261016193704"
+    },
+    {
+      "name": "list_trace_budget",
+      "version": "20261016193711"
+    },
+    {
+      "name": "list_trace_contacts",
+      "version": "20261016193713"
+    },
+    {
+      "name": "list_trace_operations",
+      "version": "20261016193715"
+    },
+    {
+      "name": "list_scoring_receipts",
+      "version": "20261016193717"
+    },
+    {
+      "name": "list_scoring_jobs",
+      "version": "20261016193719"
+    },
+    {
+      "name": "list_scoring_monitor",
+      "version": "20261016193722"
+    },
+    {
+      "name": "list_scoring_admin",
+      "version": "20261016193724"
+    },
+    {
+      "name": "list_scoring_worker",
+      "version": "20261016193726"
+    },
+    {
+      "name": "list_scoring_inspection",
+      "version": "20261016193728"
+    },
+    {
+      "name": "dallas_foreclosure_public_search",
+      "version": "20261016193730"
+    },
+    {
+      "name": "list_trace_total_cap",
+      "version": "20261016193738"
+    },
+    {
+      "name": "list_reviewed_identity",
+      "version": "20261016193740"
+    },
+    {
+      "name": "foreclosure_daily_actions",
+      "version": "20261016193742"
+    },
+    {
+      "name": "propstream_operator_handoff",
+      "version": "20261016193745"
+    },
+    {
+      "name": "collin_appraisal_evidence_host",
+      "version": "20261016193747"
+    },
+    {
+      "name": "foreclosure_status_review",
+      "version": "20261016193749"
+    },
+    {
+      "name": "propstream_bulk_actions",
+      "version": "20261016193751"
+    },
+    {
+      "name": "foreclosure_capture_receipts",
+      "version": "20261016193753"
+    },
+    {
+      "name": "foreclosure_extraction_receipts",
+      "version": "20261016193755"
+    },
+    {
+      "name": "foreclosure_trustee_status_evidence",
+      "version": "20261016193757"
+    },
+    {
+      "name": "foreclosure_batch_receipts",
+      "version": "20261016193759"
+    },
+    {
+      "name": "foreclosure_appraisal_index_receipts",
+      "version": "20261016193802"
+    },
+    {
+      "name": "propstream_external_submission_recovery",
+      "version": "20261016193804"
+    },
+    {
+      "name": "scheduled_bulk_supervision",
+      "version": "20261016193806"
+    },
+    {
+      "name": "county_property_notifications",
+      "version": "20261016193808"
+    },
+    {
+      "name": "county_intake_assignment",
+      "version": "20261016194506"
+    },
+    {
+      "name": "weekly_tax_monitoring",
+      "version": "20261016194531"
+    },
+    {
+      "name": "onboarding_promotion_receipts",
+      "version": "20261016200155"
+    },
+    {
+      "name": "reconcile_retell_intake_handoffs",
+      "version": "20261016205558"
+    },
+    {
+      "name": "retell_next_contact_window_handoff",
+      "version": "20261016210249"
+    },
+    {
+      "name": "restricted_collector_login",
+      "version": "20261016210251"
+    },
+    {
+      "name": "list_review_source_filters",
+      "version": "20261016215112"
+    },
+    {
+      "name": "tax_review_evidence_context",
+      "version": "20261016222707"
+    },
+    {
+      "name": "confirmed_suppression_handoff",
+      "version": "20261016224417"
+    },
+    {
+      "name": "protect_website_inquiry_retention",
+      "version": "20261016231306"
+    },
+    {
+      "name": "foreclosure_case_reference_formats",
+      "version": "20261016234054"
+    },
+    {
+      "name": "scope_retell_sms_claims",
+      "version": "20261017000513"
+    },
+    {
+      "name": "foreclosure_address_suffix_triage",
+      "version": "20261017012042"
+    },
+    {
+      "name": "retell_app_transport_ownership",
+      "version": "20261017020136"
+    },
+    {
+      "name": "retell_app_twilio_outbox",
+      "version": "20261017020143"
+    },
+    {
+      "name": "retell_app_recovery_monitoring",
+      "version": "20261017020150"
+    },
+    {
+      "name": "retell_app_automatic_queue",
+      "version": "20261017021928"
+    },
+    {
+      "name": "retell_app_intake_handoff",
+      "version": "20261017023006"
+    },
+    {
+      "name": "sms_reply_notification_handoff",
+      "version": "20261019195321"
+    },
+    {
+      "name": "facebook_inquiry_sms_receipts",
+      "version": "20261020192531"
+    },
+    {
+      "name": "retell_owner_retest_authorization",
+      "version": "20261023213254"
+    },
+    {
+      "name": "retell_verified_generation_recovery",
+      "version": "20261023214643"
+    },
+    {
+      "name": "retell_recovery_production_guard",
+      "version": "20261023221455"
+    }
+  ],
+  "captured_at": "2026-10-26T20:20:47.238142+00:00",
+  "constraints": [
+    {
+      "conname": "lead_form_configs_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "lead_form_configs"
+    },
+    {
+      "conname": "lead_form_configs_slug_key",
+      "definition": "UNIQUE (slug)",
+      "table_name": "lead_form_configs"
+    },
+    {
+      "conname": "lead_form_configs_campaign_id_fkey",
+      "definition": "FOREIGN KEY (campaign_id) REFERENCES ad_campaigns(id)",
+      "table_name": "lead_form_configs"
+    },
+    {
+      "conname": "lead_form_submissions_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "lead_form_submissions"
+    },
+    {
+      "conname": "ad_campaigns_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "ad_campaigns"
+    },
+    {
+      "conname": "ad_creatives_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "ad_creatives"
+    },
+    {
+      "conname": "ad_creatives_campaign_id_fkey",
+      "definition": "FOREIGN KEY (campaign_id) REFERENCES ad_campaigns(id) ON DELETE CASCADE",
+      "table_name": "ad_creatives"
+    },
+    {
+      "conname": "retell_form_sms_jobs_submission_id_fkey",
+      "definition": "FOREIGN KEY (submission_id) REFERENCES lead_form_submissions(id)",
+      "table_name": "retell_form_sms_jobs"
+    },
+    {
+      "conname": "sms_resubscription_reviews_submission_id_fkey",
+      "definition": "FOREIGN KEY (submission_id) REFERENCES lead_form_submissions(id)",
+      "table_name": "sms_resubscription_reviews"
+    },
+    {
+      "conname": "lead_form_submissions_form_id_fkey",
+      "definition": "FOREIGN KEY (form_id) REFERENCES lead_form_configs(id)",
+      "table_name": "lead_form_submissions"
+    },
+    {
+      "conname": "lead_form_submissions_lead_id_fkey",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id)",
+      "table_name": "lead_form_submissions"
+    },
+    {
+      "conname": "leads_ad_campaign_id_fkey",
+      "definition": "FOREIGN KEY (ad_campaign_id) REFERENCES ad_campaigns(id)",
+      "table_name": "leads"
+    },
+    {
+      "conname": "leads_ad_creative_id_fkey",
+      "definition": "FOREIGN KEY (ad_creative_id) REFERENCES ad_creatives(id)",
+      "table_name": "leads"
+    },
+    {
+      "conname": "leads_form_submission_id_fkey",
+      "definition": "FOREIGN KEY (form_submission_id) REFERENCES lead_form_submissions(id)",
+      "table_name": "leads"
+    }
+  ],
+  "dependent_functions": [
+    {
+      "args": "p_submission_id uuid, p_lead jsonb",
+      "proname": "finalize_form_submission",
+      "schema_name": "public"
+    },
+    {
+      "args": "",
+      "proname": "launch_monitor_snapshot",
+      "schema_name": "public"
+    }
+  ]
+}
