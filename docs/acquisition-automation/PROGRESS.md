@@ -3,6 +3,17 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — proposal and amount-review lifecycle
+
+- Pulled clean `fdd426e`; prior turn implemented/tested/pushed immutable scenario persistence (progress). Inspected the current catalog columns, FKs, RLS/ACLs, indexes, reportable view and migration history for `offer_recommendations` before generating the additive migration with Supabase CLI.
+- Extended the existing recommendations with workspace, exact scenario/case, proposer and rationale. Added immutable review events with sequence checks, stable IDs, role-enforced transitions and audit. Proposals require the latest calculated property-bound scenario and an amount at or below its computed case ceiling. No current lead estimate/offer field changes.
+- Owners/admins may approve an internal amount after documenting title, liens, occupancy, valuation, repairs, financing and downside review. Operators can propose/withdraw; callers/agencies cannot approve. New underwriting blocks stale approvals. Concurrent decisions serialize against both the offer and scenario reservation. Activation blocks new approvals but leaves revocation/withdrawal available.
+- Added user-token proposal/review/history APIs, bounded pagination and explicit 409 refresh responses for concurrent state changes. No actor override, sent state or transmission route. Internal amount approval does not approve a final legal document or authorize outreach. See OFFER-REVIEW.md for exact remaining document/approval/expiration/identity gates.
+- Extended isolation to legacy recommendations linked through analysis as well as lead; mixed workspace parents are denied. Raw service-role insert/update/delete/truncate cannot change scoped history. Existing unbound behavior is preserved.
+- Initial SQL fixture run failed because the newly included legacy recommendations referenced the omitted qualification/transcript chain. Scoped fixture now explicitly omits that unrelated FK, while retaining the analysis and lead FKs; production migration does not remove any FK. Initial offer lifecycle cases subsequently passed. Final validation: **62 disposable PostgreSQL tests pass; full offline backend 1,267 passed, 10 skipped, 368 existing deprecation warnings.** `git diff --check` passes.
+
+Next: current scenario selection, effective approval freshness/invalidation, approved-template/document workflow and review dashboard; source/property uncertainty evidence; policy execution and durable Facebook capture, followed by remaining ordered channels. No production schema, runtime flags, provider, campaign, sender, mail or transaction changed. Goal active.
+
 ## Implementation checkpoint — immutable underwriting scenario history
 
 - Continued from pushed `32f0401`; pulled again before finalizing (already current). Inspected the existing analysis table, latest legacy sync function, manual-save RPC and tenant boundaries before generating the additive migration with Supabase CLI.

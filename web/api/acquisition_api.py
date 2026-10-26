@@ -276,3 +276,59 @@ async def scenario_history(workspace_id: UUID, lead_id: UUID, after: int = Query
         'workspace_id':'eq.'+str(workspace_id),'lead_id':'eq.'+str(lead_id),
         'acquisition_revision':'gt.'+str(after),'order':'acquisition_revision','limit':str(limit),
     })
+
+
+from decimal import Decimal
+
+
+class OfferProposal(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    analysis_id: UUID
+    case: Literal['base','downside','upside']
+    amount: Decimal = Field(gt=0,lt=Decimal('1000000000000'),decimal_places=2,allow_inf_nan=False)
+    note: str = Field(min_length=1,max_length=4000)
+
+
+class OfferReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    expected_sequence: int = Field(ge=1)
+    status: Literal['amount_approved','rejected','withdrawn','approval_revoked']
+    note: str = Field(min_length=1,max_length=4000)
+    review_notes: dict[str,str] = Field(default_factory=dict,max_length=20)
+
+
+@router.post('/workspaces/{workspace_id}/offers')
+async def propose_offer(workspace_id: UUID, body: OfferProposal, store=Depends(acquisition_store)):
+    return await store.request('POST','rpc/propose_acquisition_offer',body={
+        'p_id':str(body.id),'p_workspace':str(workspace_id),'p_analysis':str(body.analysis_id),
+        'p_case':body.case,'p_amount':str(body.amount),'p_note':body.note,
+    })
+
+
+@router.post('/workspaces/{workspace_id}/offers/{offer_id}/reviews')
+async def review_offer(workspace_id: UUID, offer_id: UUID, body: OfferReview, store=Depends(acquisition_store)):
+    return await store.request('POST','rpc/review_acquisition_offer',body={
+        'p_id':str(body.id),'p_workspace':str(workspace_id),'p_offer':str(offer_id),
+        'p_expected_sequence':body.expected_sequence,'p_status':body.status,'p_note':body.note,
+        'p_review_notes':body.review_notes,
+    })
+
+
+@router.get('/workspaces/{workspace_id}/leads/{lead_id}/offers')
+async def offer_history(workspace_id: UUID, lead_id: UUID, after: UUID | None = None,
+                         limit: int = Query(20,ge=1,le=50), store=Depends(acquisition_store)):
+    params={'select':'id,lead_id,deal_analysis_id,acquisition_case,target_offer,ceiling_offer,proposed_by,proposal_note,generated_at',
+            'workspace_id':'eq.'+str(workspace_id),'lead_id':'eq.'+str(lead_id),'order':'id','limit':str(limit)}
+    if after is not None: params['id']='gt.'+str(after)
+    return await store.request('GET','offer_recommendations',params=params)
+
+
+@router.get('/workspaces/{workspace_id}/offers/{offer_id}/reviews')
+async def offer_reviews(workspace_id: UUID, offer_id: UUID, after: int = Query(0,ge=0),
+                         limit: int = Query(20,ge=1,le=50), store=Depends(acquisition_store)):
+    return await store.request('GET','acquisition_offer_events',params={
+        'select':'id,sequence,status,actor_id,note,review_notes,created_at','workspace_id':'eq.'+str(workspace_id),
+        'offer_id':'eq.'+str(offer_id),'sequence':'gt.'+str(after),'order':'sequence','limit':str(limit),
+    })

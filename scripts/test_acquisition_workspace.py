@@ -23,6 +23,7 @@ ELIGIBILITY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032519_acqu
 OWNER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033010_acquisition_owner_relationships.sql'
 PERMISSION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033554_acquisition_permission_evidence.sql'
 ANALYSIS_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026040321_acquisition_analysis_versions.sql'
+OFFER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041236_acquisition_offer_review.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -77,7 +78,7 @@ class WorkspaceTests(unittest.TestCase):
         for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'),
                               ('wholesale_ingest','properties'), ('public','campaigns'),
                               ('public','buyer_import_log'), ('public','buyers'), ('public','deals'), ('public','deal_matches'),
-                              ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts'), ('public','dnc_registry'), ('public','email_suppressions'), ('public','lead_form_submissions'), ('public','facebook_lead_submissions'), ('public','deal_analyses')):
+                              ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts'), ('public','dnc_registry'), ('public','email_suppressions'), ('public','lead_form_submissions'), ('public','facebook_lead_submissions'), ('public','deal_analyses'), ('public','offer_recommendations')):
             columns = []
             for c in catalog['columns']:
                 if c['table_schema'] == schema and c['table_name'] == table:
@@ -94,6 +95,8 @@ class WorkspaceTests(unittest.TestCase):
                         continue  # Source form configuration is outside this focused fixture.
                     if table=='contacts' and 'skip_trace_requests' in c['definition']:
                         continue  # Provider job storage is outside this focused fixture.
+                    if table=='offer_recommendations' and 'qualification_results' in c['definition']:
+                        continue  # Existing qualification/transcript chain is outside this focused fixture.
                     if table=='leads' and c['contype']=='f':
                         continue
                     self.sql(f'ALTER TABLE {schema}.{table} ADD CONSTRAINT '+identifier(c['conname'])+' '+c['definition'])
@@ -123,6 +126,8 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(OWNER_MIGRATION.read_text())
         self.sql(PERMISSION_MIGRATION.read_text())
         self.sql(ANALYSIS_MIGRATION.read_text())
+        self.sql('GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE ON offer_recommendations TO service_role;')
+        self.sql(OFFER_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -202,6 +207,93 @@ class WorkspaceTests(unittest.TestCase):
         with ThreadPoolExecutor(max_workers=2) as pool:
             values=list(pool.map(lambda identity:self.reserve_analysis(identity=identity),ids))
         self.assertEqual(sorted(value['revision'] for value in values),[1,2])
+
+    def ready_offer(self):
+        self.bind(); self.reserve_analysis()
+        output={'status':'calculated','calculation_version':'acquisition-underwriting-v1','strategy':'fix_and_flip',
+                'cases':{name:{'status':'calculated','mao':'150000.00','proposed_offer_range':{'low':'120000.00','high':'150000.00'}} for name in ('base','downside','upside')},
+                'binding_offer':False,'human_approval_required':True}
+        self.complete_analysis(self.calculation_snapshot(),output=output)
+
+    def propose_offer(self, identity='c0000000-0000-4000-8000-000000000001', actor=ADMIN, amount=140000, fail=False):
+        result=self.sql(f"SELECT public.propose_acquisition_offer('{identity}','{WORKSPACE}','b0000000-0000-4000-8000-000000000001','base',{amount},'Fixture proposal');",user=actor,fail=fail)
+        return result if fail else json.loads(result)
+
+    def review_offer(self, identity='d0000000-0000-4000-8000-000000000001', actor=ADMIN, status='amount_approved', sequence=1, notes=None, fail=False):
+        if notes is None: notes={key:'Fixture review with unresolved conditions; internal amount only' for key in ('title','liens','occupancy','valuation','repairs','financing','downside')}
+        result=self.sql(f"SELECT public.review_acquisition_offer('{identity}','{WORKSPACE}','c0000000-0000-4000-8000-000000000001',{sequence},{literal(status)},'Fixture decision',{literal(json.dumps(notes))}::jsonb);",user=actor,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_offer_review_is_exact_immutable_idempotent_and_not_transmission(self):
+        self.ready_offer()
+        first=self.propose_offer();self.assertEqual(first,self.propose_offer())
+        self.propose_offer(amount=140001,fail=True)
+        reviewed=self.review_offer();self.assertEqual(reviewed,self.review_offer())
+        self.assertFalse(reviewed['transmission_authorized'])
+        self.assertFalse(reviewed['binding_offer'])
+        self.assertEqual(self.sql("SELECT count(*) FROM acquisition_offer_events"),'2')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_offer'"),'2')
+        self.sql("UPDATE offer_recommendations SET target_offer=1 WHERE workspace_id IS NOT NULL;",fail=True)
+        self.sql("DELETE FROM acquisition_offer_events;",fail=True)
+        self.review_offer(identity='d0000000-0000-4000-8000-000000000002',status='rejected',sequence=2,fail=True)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        revoked=self.review_offer(identity='d0000000-0000-4000-8000-000000000002',status='approval_revoked',sequence=2)
+        self.assertEqual(revoked['status'],'approval_revoked')
+        self.review_offer(identity='d0000000-0000-4000-8000-000000000003',sequence=3,fail=True)
+
+    def test_offer_amount_scope_and_review_roles_are_enforced(self):
+        self.ready_offer()
+        self.propose_offer(amount=150000.01,fail=True)
+        self.propose_offer(amount="'NaN'::numeric",fail=True)
+        self.propose_offer(actor=OTHER,fail=True)
+        self.member(target=OPERATOR,role='operator')
+        self.propose_offer(actor=OPERATOR)
+        self.review_offer(actor=OPERATOR,fail=True)
+        self.review_offer(notes={},fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM offer_recommendations',user=OTHER),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_offer_events',user=OTHER),'0')
+        self.member(target=CALLER,role='acquisition_caller')
+        self.assertEqual(self.sql('SELECT count(*) FROM offer_recommendations',user=CALLER),'0')
+        self.review_offer(actor=CALLER,fail=True)
+        self.assertEqual(self.review_offer(actor=OPERATOR,status='withdrawn')['status'],'withdrawn')
+
+    def test_offer_stale_scenario_and_activation_hold_approval_but_allow_withdrawal(self):
+        self.ready_offer();self.propose_offer()
+        self.reserve_analysis(identity='b0000000-0000-4000-8000-000000000002')
+        self.review_offer(fail=True)
+        self.propose_offer(identity='c0000000-0000-4000-8000-000000000002',fail=True)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        self.review_offer(fail=True)
+        self.assertEqual(self.review_offer(status='withdrawn')['status'],'withdrawn')
+
+    def test_offer_disabled_activation_blocks_fresh_approval_and_preserves_withdrawal(self):
+        self.ready_offer();self.propose_offer()
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        self.review_offer(fail=True)
+        self.propose_offer(identity='c0000000-0000-4000-8000-000000000002',fail=True)
+        self.assertEqual(self.review_offer(status='withdrawn')['status'],'withdrawn')
+
+    def test_offer_legacy_analysis_parent_is_scoped_and_raw_service_mutation_denied(self):
+        self.ready_offer()
+        analysis='b0000000-0000-4000-8000-000000000001'
+        self.sql(f"INSERT INTO offer_recommendations(lead_id,deal_analysis_id,target_offer) VALUES('{LEAD_B}','{analysis}',1);")
+        self.assertEqual(self.sql('SELECT count(*) FROM offer_recommendations',user=OTHER),'0')
+        self.sql(f"INSERT INTO offer_recommendations(lead_id,deal_analysis_id,target_offer) VALUES('{LEAD_B}','{analysis}',1);",user=ADMIN,role='service_role',fail=True)
+        self.sql("UPDATE offer_recommendations SET deal_analysis_id=NULL;",user=ADMIN,role='service_role',fail=True)
+        self.sql('TRUNCATE offer_recommendations;',user=ADMIN,role='service_role',fail=True)
+        self.bind(actor=OTHER,workspace=WORKSPACE_B,lead=LEAD_B,property_id=None)
+        self.assertEqual(self.sql('SELECT count(*) FROM offer_recommendations',user=ADMIN),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM offer_recommendations',user=OTHER),'0')
+
+    def test_offer_review_concurrency_cannot_approve_and_reject_same_revision(self):
+        self.ready_offer();self.propose_offer()
+        def run(status):
+            identity='d0000000-0000-4000-8000-00000000000'+('1' if status=='amount_approved' else '2')
+            try:return self.review_offer(identity=identity,status=status)['status']
+            except AssertionError:return 'conflict'
+        with ThreadPoolExecutor(max_workers=2) as pool: results=list(pool.map(run,['amount_approved','rejected']))
+        self.assertEqual(results.count('conflict'),1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_offer_events'),'2')
 
     def permission_receipt(self, source='website', accepted=True, disclosure='Synthetic SMS checkbox disclosure', when='2020-01-01T12:00:00Z', phone='+12145550101'):
         receipt = '90000000-0000-4000-8000-000000000001'

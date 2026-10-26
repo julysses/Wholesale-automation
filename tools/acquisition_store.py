@@ -26,7 +26,9 @@ class AcquisitionStore:
             if response.status_code == 403 or code == '42501':
                 raise HTTPException(403, 'Workspace access is not authorized')
             if code == '55000':
-                raise HTTPException(409, 'Acquisition activation approval is required')
+                raise HTTPException(409, 'Operation is unavailable in the current acquisition state')
+            if code == '40001':
+                raise HTTPException(409, 'Workspace state changed; refresh before trying again')
             if code in {'22023', '23503', '23505', '23514'}:
                 raise HTTPException(409, 'Request conflicts with workspace state')
             raise HTTPException(503, 'Acquisition database request could not be completed')

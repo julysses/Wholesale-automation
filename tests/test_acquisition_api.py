@@ -80,7 +80,7 @@ def test_membership_routing_uses_validated_ids_and_database_auth(api):
 
 
 @pytest.mark.parametrize('status,code,expected', [(401,'PGRST301',401), (403,'42501',403),
-                                                 (400,'55000',409), (400,'22023',409), (409,'23505',409), (500,'XX000',503)])
+                                                 (400,'55000',409), (409,'40001',409), (400,'22023',409), (409,'23505',409), (500,'XX000',503)])
 def test_database_failures_are_fail_closed_and_sanitized(api, status, code, expected):
     client, state = api
     state.update(status=status, body={'code': code, 'message': 'secret upstream details'})
@@ -252,3 +252,23 @@ def test_scenario_reservation_stays_user_scoped_when_worker_disabled(api,monkeyp
     assert all(request.headers['Authorization']=='Bearer user-token' for request in state['requests'])
     assert 'p_outputs' not in json.loads(state['requests'][0].content)
     assert client.post(path,headers={'Authorization':'Bearer user-token'},json={**body,'outputs':{'mao':999999}}).status_code==422
+
+
+def test_offer_proposals_and_reviews_use_user_identity_and_bounded_contract(api):
+    client,state=api
+    headers={'Authorization':'Bearer user-token'}
+    path=f'/api/acquisition/workspaces/{W}/offers'
+    body={'id':U,'analysis_id':U,'case':'base','amount':'140000.00','note':'Review requested'}
+    assert client.post(path,headers=headers,json=body).status_code==200
+    req=state['requests'][-1]
+    assert req.headers['Authorization']=='Bearer user-token'
+    assert json.loads(req.content)['p_amount']=='140000.00'
+    assert client.post(path,headers=headers,json={**body,'approved_by':U}).status_code==422
+    assert client.post(path,headers=headers,json={**body,'amount':'140000.001'}).status_code==422
+    review={'id':U,'expected_sequence':1,'status':'amount_approved','note':'Internal review','review_notes':{}}
+    assert client.post(path+f'/{U}/reviews',headers=headers,json=review).status_code==200
+    assert json.loads(state['requests'][-1].content)['p_expected_sequence']==1
+    assert client.post(path+f'/{U}/reviews',headers=headers,json={**review,'status':'sent'}).status_code==422
+    assert client.get(path+f'/{U}/reviews?limit=51',headers=headers).status_code==422
+    assert client.get(path+f'/{U}/reviews',headers=headers).status_code==200
+    assert state['requests'][-1].url.params['workspace_id']=='eq.'+W
