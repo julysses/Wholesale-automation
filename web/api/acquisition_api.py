@@ -118,3 +118,59 @@ async def suppress_contact(workspace_id: UUID, lead_id: UUID, contact_id: UUID, 
         'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_lead': str(lead_id),
         'p_contact': str(contact_id), 'p_channel': body.channel, 'p_reason': body.reason,
     })
+
+
+class OwnerCreate(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    source_lead_id: UUID
+
+
+class OwnerPropertyAssociation(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    lead_id: UUID
+    relationship: Literal['reported_owner','reported_representative']
+    review_note: str = Field(min_length=10, max_length=2000)
+
+
+class OwnerContactAssociation(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    contact_point_id: UUID
+    review_note: str = Field(min_length=10, max_length=2000)
+
+
+@router.post('/workspaces/{workspace_id}/owners')
+async def create_owner(workspace_id: UUID, body: OwnerCreate, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/create_acquisition_owner', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_lead': str(body.source_lead_id),
+    })
+
+
+@router.get('/workspaces/{workspace_id}/owners')
+async def list_owners(workspace_id: UUID, after: UUID | None = None,
+                      limit: int = Query(20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select':'id,source_lead_id,display_name,verification_status,created_at',
+              'workspace_id':'eq.'+str(workspace_id), 'order':'id', 'limit':str(limit)}
+    if after is not None:
+        params['id'] = 'gt.'+str(after)
+    return await store.request('GET', 'acquisition_owners', params=params)
+
+
+@router.post('/workspaces/{workspace_id}/owners/{owner_id}/properties')
+async def associate_owner(workspace_id: UUID, owner_id: UUID, body: OwnerPropertyAssociation,
+                          store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/associate_acquisition_owner', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_owner': str(owner_id),
+        'p_lead': str(body.lead_id), 'p_relationship': body.relationship, 'p_note': body.review_note,
+    })
+
+
+@router.post('/workspaces/{workspace_id}/owner-relationships/{relationship_id}/contacts')
+async def associate_owner_contact(workspace_id: UUID, relationship_id: UUID,
+                                  body: OwnerContactAssociation, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/associate_acquisition_owner_contact', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_relationship': str(relationship_id),
+        'p_contact': str(body.contact_point_id), 'p_note': body.review_note,
+    })

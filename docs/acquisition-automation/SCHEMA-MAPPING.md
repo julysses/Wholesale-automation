@@ -72,3 +72,7 @@ Catalog presence is verified; existing user membership intent, record counts/dat
 ## Contact crosswalk implementation follow-up
 
 The production-based implementation adds `acquisition_contact_points` and `acquisition_contact_observations` as the typed source-ID crosswalk proposed above. Existing `wholesale_ingest.contacts` remains the provider observation store and `leads` remains the CRM source. Neither supports one normalized typed endpoint with multiple immutable source/lead links, which justifies these additions. No owner identity or permission is inferred. See PROGRESS.md for test evidence and remaining identity/retention work.
+
+## Owner identity implementation follow-up
+
+`acquisition_owners`, `acquisition_owner_properties`, and `acquisition_owner_contacts` implement explicit workspace-local identity and relationship assertions over canonical lead/property/contact IDs. This is an additive entity because inventory found no owner table. Source owner names come from `public.leads`, not `wholesale_ingest.properties` (which has no owner-name column). All assertions remain unverified; no fuzzy match or phone match creates shared ownership. Verification/correction/revocation workflows remain open.

@@ -3,6 +3,17 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — explicit owner associations
+
+- Pulled clean branch at `a8503a2`; previous turn implemented/tested/pushed pending-policy eligibility (progress). Rechecked live catalog evidence: county properties contain parcel/address identity but no owner name; CRM leads hold owner first/last name. No existing owner entity is duplicated.
+- Added CLI-generated `20261026033010_acquisition_owner_relationships.sql`: workspace owner records with immutable CRM source-name snapshots, explicit owner/property/lead assertions and owner/contact assertions. Composite workspace FKs preserve canonical property identities. All tables require operator membership for reads, deny raw application writes and preserve append-only audit/history.
+- Creation derives names server-side from a bound lead, rejects incomplete names, and uses supplied UUID for retry identity. Same names across leads do not auto-merge. Owner/admin review can associate one owner to multiple bound leads/properties; callers/agencies cannot create or associate owners. A missing canonical property remains null, never a fabricated property.
+- Contact association requires an existing observation on the relationship's exact lead, not merely a matching phone elsewhere. Associations preserve review notes and observation IDs. Owner identities, title/authority and contact relationships remain unverified; no consent or eligibility is inferred. Separate asserted co-owner/representative records are supported, without automatic identity resolution.
+- Added create/list/association API routes with bounded owner pagination and strict request schemas. Client-supplied property IDs, verified status and actor identity cannot override server derivation. Enrollment activation gates all new owner/association writes.
+- Validation: **22 acquisition API tests pass**. **44 disposable PostgreSQL tests pass**, including owner retry/source preservation, same-name separation, multi-property links, matching-lead contact evidence, role isolation and activation gating. `git diff --check` passes. No production migration, data correction, provider call or outreach occurred.
+
+Next: add evidence-backed verification and correction/revocation of owner assertions, structured per-channel permission/revocation evidence and policy review. Finish execution-time sender guards and durable Facebook intake before channel activation. Existing unverified assertions are not legal ownership evidence. Full PRD goal stays active.
+
 ## Implementation checkpoint — pending-policy eligibility and suppressions
 
 - Pulled clean `026fdf6`; previous turn implemented/tested/pushed contact crosswalk (progress). Inspected latest legacy DNC and reviewed SMS resubscription functions before adding separate acquisition evaluation.

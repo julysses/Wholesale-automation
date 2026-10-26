@@ -19,6 +19,7 @@ RELATED_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026030633_acquisit
 ACTIVATION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026031751_acquisition_activation_gate.sql'
 CONTACT_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032050_acquisition_contact_crosswalk.sql'
 ELIGIBILITY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032519_acquisition_eligibility_ledger.sql'
+OWNER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033010_acquisition_owner_relationships.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -111,6 +112,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(ACTIVATION_MIGRATION.read_text())
         self.sql(CONTACT_MIGRATION.read_text())
         self.sql(ELIGIBILITY_MIGRATION.read_text())
+        self.sql(OWNER_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -119,6 +121,91 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def owner(self, owner_id='60000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, fail=False):
+        result = self.sql(f"SELECT public.create_acquisition_owner('{owner_id}','{workspace}','{lead}');", user=actor, fail=fail)
+        return result if fail else json.loads(result)
+
+    def owner_property(self, relationship_id='70000000-0000-4000-8000-000000000001', owner_id='60000000-0000-4000-8000-000000000001',
+                       actor=ADMIN, workspace=WORKSPACE, lead=LEAD, fail=False):
+        result = self.sql(f"SELECT public.associate_acquisition_owner('{relationship_id}','{workspace}','{owner_id}',"
+                          f"'{lead}','reported_owner','Synthetic operator review; title not verified');", user=actor, fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_owner_same_name_does_not_merge_and_retries_preserve_source(self):
+        self.sql("UPDATE leads SET owner_first_name='Jane',owner_last_name='Fixture';")
+        self.bind()
+        self.bind(lead=LEAD_B, property_id=None)
+        first = self.owner()
+        self.assertEqual(first, self.owner())
+        second = self.owner(owner_id='60000000-0000-4000-8000-000000000002', lead=LEAD_B)
+        self.assertNotEqual(first['id'], second['id'])
+        self.assertEqual(first['display_name'], second['display_name'])
+        self.assertEqual(first['verification_status'], 'unverified')
+        self.sql(f"UPDATE leads SET owner_last_name='Changed' WHERE id='{LEAD}';")
+        self.assertEqual(self.owner()['source_evidence']['owner_last_name'], 'Fixture')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_owner'"), '2')
+        self.owner(lead=LEAD_B, fail=True)  # Same UUID cannot be reassigned to another source.
+        self.sql('DELETE FROM acquisition_owners;', fail=True)
+
+    def test_owner_relations_reuse_canonical_property_and_support_multiple_leads(self):
+        self.sql("UPDATE leads SET owner_first_name='Jane',owner_last_name='Fixture';")
+        self.bind()
+        self.bind(lead=LEAD_B, property_id=None)
+        self.owner()
+        first = self.owner_property()
+        self.assertEqual(first, self.owner_property())
+        self.assertEqual(first['property_id'], PROPERTY)
+        second = self.owner_property(relationship_id='70000000-0000-4000-8000-000000000002', lead=LEAD_B)
+        self.assertIsNone(second['property_id'])
+        self.assertEqual(first['owner_id'],second['owner_id'])
+        self.assertFalse(first['evidence']['title_verified'])
+        self.assertEqual(self.sql('SELECT count(*) FROM wholesale_ingest.properties'), '1')
+        self.sql('UPDATE acquisition_owner_properties SET relationship=relationship;', fail=True)
+
+    def test_owner_relations_require_admin_and_workspace_scope(self):
+        self.sql("UPDATE leads SET owner_first_name='Jane',owner_last_name='Fixture';")
+        self.bind()
+        self.member()
+        self.owner(actor=OPERATOR)
+        self.owner_property(actor=OPERATOR, fail=True)
+        self.owner_property(actor=OTHER, fail=True)
+        self.owner_property(workspace=WORKSPACE_B, fail=True)
+        self.owner_property(lead=LEAD_B, fail=True)
+        self.owner_property()
+        self.member(target=CALLER,role='acquisition_caller')
+        self.owner(actor=CALLER, fail=True)
+        for table in ('acquisition_owners','acquisition_owner_properties','acquisition_owner_contacts'):
+            self.assertEqual(self.sql(f'SELECT count(*) FROM {table}',user=CALLER),'0')
+            self.assertEqual(self.sql(f'SELECT count(*) FROM {table}',user=OTHER),'0')
+        self.sql(f"UPDATE acquisition_owners SET verification_status='verified';", user=ADMIN, fail=True)
+
+    def test_owner_contact_link_requires_same_lead_observation_and_never_grants_consent(self):
+        self.sql("UPDATE leads SET owner_first_name='Jane',owner_last_name='Fixture';")
+        self.bind()
+        self.bind(lead=LEAD_B, property_id=None)
+        self.owner()
+        relation=self.owner_property()['id']
+        point=self.import_contact(lead=LEAD_B)['contact_point_id']
+        query=(f"SELECT public.associate_acquisition_owner_contact('80000000-0000-4000-8000-000000000001','{WORKSPACE}',"
+               f"'{relation}','{point}','Synthetic contact association review');")
+        self.sql(query,user=ADMIN,fail=True)
+        self.import_contact()
+        first=json.loads(self.sql(query,user=ADMIN))
+        self.assertEqual(first,json.loads(self.sql(query,user=ADMIN)))
+        self.assertFalse(first['evidence']['consent_inferred'])
+        self.assertEqual(first['verification_status'],'unverified')
+        self.assertEqual(self.evaluate(point)['decision'],'REVIEW')
+        self.sql(query,user=OTHER,fail=True)
+        self.sql('DELETE FROM acquisition_owner_contacts;',fail=True)
+
+    def test_owner_incomplete_intake_and_disabled_activation_block_creation(self):
+        self.bind()
+        self.owner(fail=True)
+        self.sql("UPDATE leads SET owner_first_name='Jane';")
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        self.owner(fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_owners'),'0')
 
     def evaluate(self, contact, actor=ADMIN, workspace=WORKSPACE, lead=LEAD, channel='human_voice', actor_type='human', campaign=None, fail=False, aal='aal2'):
         result = self.sql(f"SELECT public.evaluate_acquisition_eligibility('{workspace}','{lead}','{contact}',"

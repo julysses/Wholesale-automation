@@ -168,3 +168,25 @@ def test_suppression_request_rejects_client_actor(api):
     assert json.loads(state['requests'][0].content)['p_reason'] == 'seller_opt_out'
     assert client.post(path, headers={'Authorization':'Bearer user-token'},
                        json={**payload,'actor_id':U}).status_code == 422
+
+
+def test_owner_creation_uses_server_source_and_rejects_verified_claim(api):
+    client, state = api
+    path = f'/api/acquisition/workspaces/{W}/owners'
+    response = client.post(path, headers={'Authorization':'Bearer user-token'},
+                           json={'id':U,'source_lead_id':U})
+    assert response.status_code == 200
+    assert json.loads(state['requests'][0].content) == {'p_id':U,'p_workspace':W,'p_lead':U}
+    assert client.post(path, headers={'Authorization':'Bearer user-token'},
+                       json={'id':U,'source_lead_id':U,'verification_status':'verified'}).status_code == 422
+    assert client.get(path+'?limit=51',headers={'Authorization':'Bearer user-token'}).status_code == 422
+
+
+def test_owner_relationship_references_derive_property_server_side(api):
+    client, state = api
+    path = f'/api/acquisition/workspaces/{W}/owners/{U}/properties'
+    payload = {'id':U,'lead_id':U,'relationship':'reported_owner','review_note':'Recorded assertion for review'}
+    assert client.post(path,headers={'Authorization':'Bearer user-token'},json=payload).status_code == 200
+    assert json.loads(state['requests'][0].content)['p_relationship'] == 'reported_owner'
+    assert client.post(path,headers={'Authorization':'Bearer user-token'},
+                       json={**payload,'property_id':U}).status_code == 422
