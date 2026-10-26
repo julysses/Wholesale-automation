@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — recoverable acquisition processing leases
+
+- Previous goal turn was progress: `7dc4730` added/tested/pushed isolated durable receipts. Pulled that clean branch and re-inspected receipt gates, retention/immutability and the disposable database harness.
+- Added CLI-generated additive migration `20261026153939_acquisition_inbox_leases.sql`. A private processing row initializes atomically for acquisition receipts only; existing immutable receipt content and all legacy queue states remain unchanged.
+- Service-only claim RPC checks activation/integration/workspace, uses concurrent-safe locks, bounded batches and 30–300 second leases. Expired claims get new tokens; stale workers cannot settle them. Returned work excludes raw request envelopes.
+- Retry/hold RPC enforces exact tokens, expiry, allowlisted non-sensitive reasons, idempotent identical retries, exponential backoff and a five-attempt budget. Credential failures and exhausted/expired work park for review. Deferral remains available after kill switches; fresh claims stop. All claims/deferrals append audit evidence. No generic success marker is exposed: canonical intake and successful completion must be one later transaction with fresh lease checks.
+- Validation: **73 disposable PostgreSQL tests passed**, including four new concurrency/recovery/budget/authority tests; **3 integrated API/calculator/database journeys passed** with the new migration. `git diff --check` passed. No frontend/runtime provider/scheduler changes; no production SQL or deployment.
+- Documented recovery semantics and compensation in PROVIDER-INBOX.md. Held-job operator workflow/credential alerts and real worker wiring remain incomplete; private row edits in tests are fixture clock/state simulations, never an authorized operational recovery method.
+
+Next: provider-specific atomic successful intake completion with current lease validation, shared seller intake/attribution and canonical identity rules; connect verified Facebook HTTP acceptance and worker retrieval, then controlled end-to-end tests. Add reviewed held-job recovery and actionable alerts/retention runner before activation. Goal remains active.
+
 ## Implementation checkpoint — isolated durable provider receipts
 
 - Previous turn was progress: `7c68ef8` hardened Facebook authentication/envelopes and passed backend regressions. Pulled that clean branch before this update. Applied Supabase skill; reviewed function security documentation, catalog queue columns/constraints/policies, source migration/index and Retell/monitoring consumers.

@@ -26,6 +26,7 @@ ANALYSIS_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026040321_acquisi
 OFFER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041236_acquisition_offer_review.sql'
 OFFER_STATE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041845_acquisition_offer_review_state.sql'
 INBOX_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153314_acquisition_provider_inbox.sql'
+LEASE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153939_acquisition_inbox_leases.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -134,6 +135,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql("GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE ON webhook_jobs TO service_role; "
                  "INSERT INTO webhook_jobs(source,payload) VALUES('legacy_fixture','{\"sentinel\":true}');")
         self.sql(INBOX_MIGRATION.read_text())
+        self.sql(LEASE_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -207,6 +209,88 @@ class WorkspaceTests(unittest.TestCase):
                                  "FROM webhook_jobs WHERE external_event_id='expired-fixture';"),'true')
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbox' AND action='payload_purged';"),'1')
         self.assertTrue(self.inbox_accept()['duplicate'])
+
+    def inbox_claim(self, role='service_role', fail=False):
+        integration=self.sql("SELECT id FROM private.acquisition_integrations WHERE account_id='fixture-page';")
+        value=self.sql(f"SELECT public.claim_acquisition_events('{integration}',1,120);",user=ADMIN,role=role,fail=fail)
+        return value if fail else json.loads(value)
+
+    def inbox_defer(self, claim, outcome='retry', reason='PROVIDER_TIMEOUT', fail=False):
+        value=self.sql(f"SELECT public.defer_acquisition_event('{claim['receipt_id']}','{claim['lease_token']}',"
+                       f"{literal(outcome)},{literal(reason)});",user=ADMIN,role='service_role',fail=fail)
+        return value if fail else json.loads(value)
+
+    def test_inbox_leases_are_exclusive_and_recover_crashed_worker(self):
+        self.inbox_config(); self.inbox_accept()
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            claims=list(pool.map(lambda _:self.inbox_claim(),range(4)))
+        claimed=[item for batch in claims for item in batch]
+        self.assertEqual(len(claimed),1)
+        original=claimed[0]
+        self.assertEqual(original['attempt'],1)
+        self.assertNotIn('acquisition_raw_body',original)
+        self.assertEqual(self.inbox_claim(),[])
+        self.sql("UPDATE private.acquisition_inbox_processing SET lease_expires_at=now()-interval '1 second';")
+        self.inbox_defer(original,fail=True)
+        replacement=self.inbox_claim()[0]
+        self.assertEqual(replacement['attempt'],2)
+        self.assertNotEqual(original['lease_token'],replacement['lease_token'])
+        self.inbox_defer(original,fail=True)
+        result=self.inbox_defer(replacement)
+        self.assertEqual(result['state'],'retry')
+        self.assertTrue(self.inbox_defer(replacement)['duplicate'])
+        self.inbox_defer(replacement,reason='PROVIDER_RATE_LIMIT',fail=True)
+        self.assertEqual(self.inbox_claim(),[]) # Backoff is server enforced.
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='processing_deferred';"),'1')
+
+    def test_inbox_retry_budget_and_credential_hold(self):
+        self.inbox_config(); self.inbox_accept()
+        for attempt in range(1,6):
+            claim=self.inbox_claim()[0]
+            self.assertEqual(claim['attempt'],attempt)
+            result=self.inbox_defer(claim)
+            self.assertEqual(result['state'],'review' if attempt==5 else 'retry')
+            self.sql("UPDATE private.acquisition_inbox_processing SET next_attempt_at=now()-interval '1 second';")
+        self.assertEqual(result['reason_code'],'RETRY_EXHAUSTED')
+        self.assertEqual(self.inbox_claim(),[])
+        self.assertTrue(self.inbox_defer(claim)['duplicate'])
+        self.sql("UPDATE private.acquisition_inbox_processing SET state='ready',attempts=0;") # New case fixture only.
+        claim=self.inbox_claim()[0]
+        held=self.inbox_defer(claim,'review','CREDENTIALS_INVALID')
+        self.assertEqual(held['reason_code'],'CREDENTIALS_INVALID')
+        self.assertEqual(self.inbox_claim(),[])
+        self.inbox_defer(claim,'review','secret or arbitrary exception text',fail=True)
+
+    def test_inbox_lease_exhaustion_and_expiry_never_reprocess(self):
+        self.inbox_config(); self.inbox_accept()
+        claim=self.inbox_claim()[0]
+        self.sql("UPDATE private.acquisition_inbox_processing SET attempts=5,lease_expires_at=now()-interval '1 second';")
+        self.assertEqual(self.inbox_claim(),[])
+        self.assertEqual(self.sql("SELECT reason_code FROM private.acquisition_inbox_processing;"),'RETRY_EXHAUSTED')
+        self.inbox_defer(claim,fail=True)
+        self.sql("INSERT INTO webhook_jobs(source,payload,status,workspace_id,acquisition_integration_id,external_event_id,"
+                 "acquisition_event_type,acquisition_payload_hash,acquisition_raw_body,acquisition_raw_hash,acquisition_expires_at) "
+                 "SELECT source,payload,status,workspace_id,acquisition_integration_id,'expired-job',acquisition_event_type,"
+                 "acquisition_payload_hash,acquisition_raw_body,acquisition_raw_hash,now()-interval '1 day' FROM webhook_jobs WHERE workspace_id IS NOT NULL;")
+        self.assertEqual(self.inbox_claim(),[])
+        self.assertEqual(self.sql("SELECT count(*) FROM private.acquisition_inbox_processing WHERE reason_code='PAYLOAD_EXPIRED';"),'1')
+
+    def test_inbox_worker_authority_and_kill_switch(self):
+        self.inbox_config(); self.inbox_accept()
+        self.inbox_claim(role='authenticated',fail=True)
+        self.sql("SELECT * FROM private.acquisition_inbox_processing;",user=ADMIN,role='service_role',fail=True)
+        self.sql("UPDATE private.acquisition_inbox_processing SET state='ready';",user=ADMIN,role='service_role',fail=True)
+        claim=self.inbox_claim()[0]
+        self.sql("UPDATE private.acquisition_activation SET enabled=false;")
+        self.inbox_claim(fail=True)
+        self.assertEqual(self.inbox_defer(claim,'review','UNSUPPORTED_EVENT')['state'],'review')
+        self.activate()
+        self.sql("UPDATE private.acquisition_integrations SET enabled=false;")
+        self.inbox_claim(fail=True)
+        self.sql("UPDATE private.acquisition_integrations SET enabled=true;")
+        self.sql(f"UPDATE workspaces SET status='suspended' WHERE id='{WORKSPACE}';")
+        self.inbox_claim(fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE status='pending';"),'1')
 
     def reserve_analysis(self, identity='b0000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, inputs=None, fail=False):
         if inputs is None: inputs={'cases':{name:{'strategy':'fix_and_flip'} for name in ('base','downside','upside')}}
