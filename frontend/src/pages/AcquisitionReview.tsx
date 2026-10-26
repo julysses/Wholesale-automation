@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
+import { formatAcquisitionMetric } from '@/lib/acquisitionMetric';
 
 type Workspace = { id: string; name: string };
 type Action = 'amount_approved' | 'rejected' | 'withdrawn' | 'approval_revoked';
@@ -159,7 +160,7 @@ function ScenarioSummary({ output }: { output: unknown }) {
       const mao = result.mao == null ? null : Number(result.mao);
       return <article key={name} className="rounded-lg bg-gray-50 p-3 space-y-2"><h4 className="capitalize font-semibold">{name}</h4>
         <p>Maximum allowable offer: {mao !== null && Number.isFinite(mao) ? money(mao) : 'Incomplete'}</p>
-        <dl className="text-sm space-y-1">{Object.entries(metrics).map(([key, value]) => <div key={key}><dt className="text-gray-600">{key.replaceAll('_', ' ')}</dt><dd>{value == null ? 'Unknown' : String(value)}</dd></div>)}</dl>
+        <dl className="text-sm space-y-1">{Object.entries(metrics).map(([key, value]) => <div key={key}><dt className="text-gray-600">{key.replaceAll('_', ' ')}</dt><dd>{formatAcquisitionMetric(key, value)}</dd></div>)}</dl>
         {Array.isArray(result.warnings) && result.warnings.map((warning, index) => <p className="text-xs text-amber-800" key={index}>{String(warning).toLowerCase().replaceAll('_', ' ')}</p>)}
       </article>;
     })}</div>

@@ -65,3 +65,11 @@ The screen loads permitted workspaces, a bounded proposal queue, exact current s
 Reviewers deliberately choose an available action, enter a note, complete seven diligence notes for amount approval and acknowledge the decision's internal scope. The UI refreshes server state immediately before POST and sends the exact expected sequence. A synchronous in-flight guard prevents duplicate clicks. Unknown outcomes keep the same UUID and payload for explicit retry; inputs remain locked until reconciled. If navigating away after an unknown result, review server history before starting another decision. Draft decisions are not saved to local storage.
 
 Query keys include user and workspace, unmounted data has zero cache retention, and account/workspace/detail changes remount their state. Unauthorized/error states hide stale fetched evidence/actions. Parallel evidence reads use abort signals. This is a review interface for existing proposals: intake, underwriting entry, proposal creation, current-scenario selection and final-document approval interfaces remain open. Browser rendering has DOM-level regression coverage; production-connected UI acceptance and visual browser QA remain required before launch.
+
+## Local browser QA — October 26, 2026
+
+The real review component was exercised in the in-app browser using `frontend/tests/browser/` and a synthetic in-memory API adapter. Verified workspace selection, evidence rendering, disabled incomplete approval, completion of all diligence fields, decision confirmation, updated queue status and revocation availability. At 375px width the scenario cards stacked without visible clipping; normal viewport was restored. Browser error log was empty.
+
+Browser inspection identified unformatted profit and ratio values. `formatAcquisitionMetric` now uses explicit engine metric units: dollars for financial amounts, percentages for return ratios, and multiples for debt service coverage. Missing values remain unknown; new unrecognized metrics keep their supplied representation rather than guessing a unit. Regression tests cover these distinctions.
+
+Screenshot: [synthetic review result](evidence/2026-10-26-offer-review-browser.jpg). This is local fixture evidence, not a real seller approval or a production-connected test. The fixture and repeatable steps are retained in `frontend/tests/browser/README.md`.

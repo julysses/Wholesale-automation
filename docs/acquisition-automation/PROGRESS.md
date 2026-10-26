@@ -1,7 +1,17 @@
 # Acquisition automation — progress and resume checkpoint
 
-Checkpoint date: October 25, 2026 (America/Chicago).
+Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
+
+## Implementation checkpoint — browser QA and financial display units
+
+- Pulled clean `8e45d1a`; previous turn implemented/tested/pushed the default-off review screen (progress). Created a reusable localhost-only browser fixture that renders the actual component/styles and replaces only the API with synthetic in-memory data. No environment files, auth, Supabase, providers or real transactions are used.
+- Exercised workspace selection, exact evidence, disabled incomplete approval, seven diligence notes/acknowledgment, synthetic decision confirmation, queue update and revocation availability in the in-app browser. Reviewed a 375px mobile viewport and restored the normal viewport. Browser error log was empty. Saved `evidence/2026-10-26-offer-review-browser.jpg`.
+- Browser inspection found raw profit and ratio values. Added explicit engine-metric currency/percentage/coverage formatting and regression tests, preserving null versus zero and avoiding guessed units for unknown metrics. Verified corrected dollar and percentage values in the browser.
+- Fixture was initially written beneath a duplicated frontend directory; moved it to the intended tests/browser path. Starting localhost was blocked by sandbox binding permissions, then ran under approved command escalation. Browser selector mismatch was resolved through the observed native accessibility control. These were tooling issues, not skipped acceptance checks.
+- Validation: **183 frontend tests passed across 44 files**; feature-enabled TypeScript/Vite build passed (existing chunk/annotation warnings); lint ratchet reports no new findings (147 existing). `git diff --check` passes. No backend/schema/production configuration changes. This fixture does not prove real authentication, RLS, persistence or production integration.
+
+Next: underwriting input/proposal creation interface, current scenario selection and final-document workflow; full-schema/database-connected acceptance, policy execution, durable Facebook ingestion and remaining ordered channels. Goal active.
 
 ## Implementation checkpoint — workspace offer-review screen
 
