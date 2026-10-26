@@ -3,7 +3,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from tools.acquisition_store import acquisition_store
 
@@ -374,4 +374,30 @@ async def acquisition_inquiry_health(workspace_id: UUID, after: UUID | None = No
                                      limit: int = Query(20, ge=1, le=50), store=Depends(acquisition_store)):
     return await store.request('POST', 'rpc/acquisition_inquiry_health', body={
         'p_workspace': str(workspace_id), 'p_after': str(after) if after is not None else None, 'p_limit': limit,
+    })
+
+
+class InquiryRecovery(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    expected_updated_at: AwareDatetime
+    expected_reason: Literal['CREDENTIALS_INVALID','PERMISSION_DENIED','RETRY_EXHAUSTED','INVALID_PROVIDER_DATA','IDENTITY_CONFLICT','UNSUPPORTED_EVENT']
+    review_note: str = Field(min_length=20, max_length=2000)
+    evidence_ref: str = Field(min_length=1, max_length=500)
+
+
+@router.post('/workspaces/{workspace_id}/inquiries/{receipt_id}/recoveries')
+async def recover_inquiry(workspace_id: UUID, receipt_id: UUID, body: InquiryRecovery, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/recover_acquisition_inquiry', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_receipt': str(receipt_id),
+        'p_expected_updated_at': body.expected_updated_at.isoformat(), 'p_expected_reason': body.expected_reason,
+        'p_note': body.review_note, 'p_evidence_ref': body.evidence_ref,
+    })
+
+
+@router.get('/workspaces/{workspace_id}/inquiries/{receipt_id}/recoveries')
+async def inquiry_recovery_history(workspace_id: UUID, receipt_id: UUID, store=Depends(acquisition_store)):
+    return await store.request('GET', 'acquisition_inquiry_recoveries', params={
+        'select': 'id,receipt_id,cycle,actor_id,reason_code,review_note,evidence_ref,previous_attempts,created_at',
+        'workspace_id': 'eq.'+str(workspace_id), 'receipt_id': 'eq.'+str(receipt_id), 'order': 'cycle', 'limit': '3',
     })

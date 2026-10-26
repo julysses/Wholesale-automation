@@ -30,6 +30,7 @@ LEASE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153939_acquisitio
 INTAKE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026162924_acquisition_seller_intakes.sql'
 BATCH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026163900_acquisition_facebook_batch_acceptance.sql'
 HEALTH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026165322_acquisition_inquiry_health.sql'
+RECOVERY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026170113_acquisition_inquiry_recovery.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -142,6 +143,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(INTAKE_MIGRATION.read_text())
         self.sql(BATCH_MIGRATION.read_text())
         self.sql(HEALTH_MIGRATION.read_text())
+        self.sql(RECOVERY_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -462,6 +464,77 @@ class WorkspaceTests(unittest.TestCase):
         done=self.inquiry_health()
         self.assertEqual(done['summary']['completed'],1)
         self.assertEqual(len(done['items']),2)
+
+    def recovery(self, claim, snapshot, identity='e0000000-0000-4000-8000-000000000001', actor=ADMIN, aal='aal2', note='Credential replaced and Page access verified in isolated test', fail=False):
+        result=self.sql(f"SELECT public.recover_acquisition_inquiry('{identity}','{WORKSPACE}','{claim['receipt_id']}',"
+                        f"{literal(snapshot['updated_at'])}::timestamptz,{literal(snapshot['reason_code'])},{literal(note)},'test-evidence/credential-check');",
+                        user=actor,aal=aal,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_recovery_exact_review_idempotence_and_stale_worker_denial(self):
+        self.inbox_config();self.inbox_accept();claim=self.inbox_claim()[0]
+        self.inbox_defer(claim,'review','CREDENTIALS_INVALID'); snapshot=self.inquiry_health()['items'][0]
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.recovery(claim,snapshot),range(3)))
+        self.assertEqual(sum(not result['duplicate'] for result in results),1)
+        self.assertEqual({result['cycle'] for result in results},{1})
+        self.assertFalse(results[0]['outreach_authorized'])
+        self.recovery(claim,snapshot,note='Different review evidence must not replace the original',fail=True)
+        self.recovery(claim,snapshot,identity='e0000000-0000-4000-8000-000000000002',fail=True)
+        self.inbox_defer(claim,'review','CREDENTIALS_INVALID',fail=True)
+        fresh=self.inbox_claim()[0]
+        self.assertNotEqual(fresh['lease_token'],claim['lease_token'])
+        self.assertEqual(fresh['attempt'],1)
+        self.complete_intake(claim,fail=True)
+        self.complete_intake(fresh)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='recovery_approved';"),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inquiry_recoveries;',user=OTHER),'0')
+        self.sql("DELETE FROM acquisition_inquiry_recoveries;",user=ADMIN,role='service_role',fail=True)
+
+    def test_recovery_role_mfa_and_activation_requirements(self):
+        self.inbox_config();self.inbox_accept();claim=self.inbox_claim()[0]
+        self.inbox_defer(claim,'review','PERMISSION_DENIED');snapshot=self.inquiry_health()['items'][0]
+        self.recovery(claim,snapshot,aal='aal1',fail=True)
+        self.recovery(claim,snapshot,actor=OTHER,fail=True)
+        self.member(target=OPERATOR,role='operator')
+        self.recovery(claim,snapshot,actor=OPERATOR,fail=True)
+        self.sql("UPDATE private.acquisition_integrations SET enabled=false;")
+        self.recovery(claim,snapshot,fail=True)
+        self.sql("UPDATE private.acquisition_integrations SET enabled=true;")
+        self.sql("UPDATE private.acquisition_activation SET enabled=false;")
+        self.recovery(claim,snapshot,fail=True)
+        self.activate()
+        self.sql(f"DELETE FROM auth.sessions WHERE user_id='{ADMIN}';")
+        self.recovery(claim,snapshot,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inquiry_recoveries;'),'0')
+
+    def test_recovery_three_cycle_budget_preserves_history(self):
+        self.inbox_config();self.inbox_accept()
+        for cycle in range(1,5):
+            claim=self.inbox_claim()[0]
+            self.inbox_defer(claim,'review','CREDENTIALS_INVALID');snapshot=self.inquiry_health()['items'][0]
+            identity='e0000000-0000-4000-8000-'+str(cycle).zfill(12)
+            if cycle==4:
+                self.recovery(claim,snapshot,identity=identity,fail=True)
+            else:
+                self.assertEqual(self.recovery(claim,snapshot,identity=identity)['cycle'],cycle)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inquiry_recoveries;'),'3')
+        self.assertEqual(self.sql('SELECT sum(previous_attempts) FROM acquisition_inquiry_recoveries;'),'3')
+        self.assertEqual(self.sql('SELECT state FROM private.acquisition_inbox_processing;'),'review')
+
+    def test_recovery_expired_payload_and_stale_review_are_blocked(self):
+        self.inbox_config();self.inbox_accept();claim=self.inbox_claim()[0]
+        self.inbox_defer(claim,'review','CREDENTIALS_INVALID');snapshot=self.inquiry_health()['items'][0]
+        stale=dict(snapshot,updated_at='2000-01-01T00:00:00Z')
+        self.recovery(claim,stale,fail=True)
+        expired=self.sql("INSERT INTO webhook_jobs(source,payload,status,workspace_id,acquisition_integration_id,external_event_id,"
+                 "acquisition_event_type,acquisition_payload_hash,acquisition_raw_body,acquisition_raw_hash,acquisition_expires_at) "
+                 "SELECT source,payload,status,workspace_id,acquisition_integration_id,'expired-recovery',acquisition_event_type,"
+                 "acquisition_payload_hash,acquisition_raw_body,acquisition_raw_hash,now()-interval '1 day' FROM webhook_jobs WHERE workspace_id IS NOT NULL RETURNING id;")
+        self.sql(f"UPDATE private.acquisition_inbox_processing SET state='review',reason_code='CREDENTIALS_INVALID' WHERE receipt_id='{expired}';")
+        expired_snapshot=next(item for item in self.inquiry_health()['items'] if item['receipt_id']==expired)
+        self.recovery({'receipt_id':expired},expired_snapshot,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inquiry_recoveries;'),'0')
 
     def reserve_analysis(self, identity='b0000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, inputs=None, fail=False):
         if inputs is None: inputs={'cases':{name:{'strategy':'fix_and_flip'} for name in ('base','downside','upside')}}

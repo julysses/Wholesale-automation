@@ -320,3 +320,22 @@ def test_inquiry_health_forwards_user_scope_and_bounds_page(api):
     assert client.get(f'/api/acquisition/workspaces/{W}/inquiries/health?limit=51',headers=header).status_code==422
     assert client.get(f'/api/acquisition/workspaces/{W}/inquiries/health?after=invalid',headers=header).status_code==422
     assert len(state['requests'])==count
+
+
+def test_recovery_requires_exact_review_and_forwards_no_actor_override(api):
+    client,state=api
+    receipt='20000000-0000-4000-8000-000000000001'
+    path=f'/api/acquisition/workspaces/{W}/inquiries/{receipt}/recoveries'
+    body={'id':'e0000000-0000-4000-8000-000000000001','expected_updated_at':'2026-10-26T12:00:00.123456Z',
+          'expected_reason':'CREDENTIALS_INVALID','review_note':'Replaced credential and verified Page access','evidence_ref':'review/1'}
+    header={'Authorization':'Bearer owner-session'}
+    assert client.post(path,headers=header,json=body).status_code==200
+    sent=json.loads(state['requests'][-1].content)
+    assert sent['p_expected_updated_at']=='2026-10-26T12:00:00.123456+00:00'
+    assert 'actor_id' not in sent
+    assert state['requests'][-1].headers['Authorization']=='Bearer owner-session'
+    count=len(state['requests'])
+    assert client.post(path,headers=header,json={**body,'actor_id':U}).status_code==422
+    assert client.post(path,headers=header,json={**body,'expected_updated_at':'2026-10-26T12:00:00'}).status_code==422
+    assert client.post(path,headers=header,json={**body,'expected_reason':'PAYLOAD_EXPIRED'}).status_code==422
+    assert len(state['requests'])==count

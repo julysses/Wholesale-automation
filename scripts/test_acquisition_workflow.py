@@ -27,6 +27,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'recover_acquisition_inquiry': ['p_id','p_workspace','p_receipt','p_expected_updated_at','p_expected_reason','p_note','p_evidence_ref'],
  'acquisition_inquiry_health': ['p_workspace','p_after','p_limit'],
  'accept_facebook_acquisition_batch': ['p_events','p_raw_body'],
  'claim_acquisition_events': ['p_integration','p_limit','p_lease_seconds'],
@@ -112,7 +113,7 @@ class WorkflowTests(WorkspaceTests):
             for key in RPC_ARGS[name]:
                 value=body[key]
                 kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after'}
-                      else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'numeric' if key=='p_amount' else 'text')
+                      else 'timestamptz' if key=='p_expected_updated_at' else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
@@ -220,6 +221,21 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(health.json()['items'][0]['reason_code'],'CREDENTIALS_INVALID')
         self.assertIn('credential',health.json()['items'][0]['guidance'])
         self.assertEqual(self.client.get(self.base+'/inquiries/health',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
+        item=health.json()['items'][0]
+        recovery_path=self.base+'/inquiries/'+item['receipt_id']+'/recoveries'
+        review={'id':'e0000000-0000-4000-8000-000000000001','expected_updated_at':item['updated_at'],
+                'expected_reason':item['reason_code'],'review_note':'Synthetic credential repaired and Page access verified',
+                'evidence_ref':'isolated-fixture/credential-review'}
+        self.assertEqual(self.client.post(recovery_path,headers={'Authorization':'Bearer synthetic-other-session'},json=review).status_code,403)
+        approved=self.client.post(recovery_path,headers=self.headers,json=review)
+        self.assertEqual(approved.status_code,200,approved.text)
+        self.assertFalse(approved.json()['outreach_authorized'])
+        self.assertTrue(self.client.post(recovery_path,headers=self.headers,json=review).json()['duplicate'])
+        self.provider_error=None
+        self.assertEqual(self.facebook_worker().json()['status'],'completed')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inquiry_recoveries'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='recovery_approved'"),'1')
 
     def test_facebook_signature_and_form_mismatch_do_not_create_leads(self):
         self.configure_facebook()

@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — audited bounded inquiry recovery
+
+- Previous turn was progress: `bfe4dda` implemented/tested/pushed workspace inquiry health and visible guidance. Pulled clean branch and inspected session/role helpers, health concurrency timestamp and processing lease invariants.
+- Added CLI-generated `20261026170113_acquisition_inquiry_recovery.sql`, immutable scoped recovery history, POST recovery and bounded GET history APIs. Owner/admin MFA plus live approved session/membership are mandatory. Authority, activation, integration and receipt/job state are locked through the atomic approval/reset.
+- Exact request UUID, expected state timestamp/reason, review note and evidence reference enforce auditable idempotence and stale-state rejection. Old lease tokens are cleared. Three reviewed recovery cycles maximum, each retaining previous attempts and limited to the existing five-attempt budget. Disabled integrations/activation, expired payloads and completed intakes cannot recover; no worker/contact/enable action is executed by the approval.
+- Validation: **32 API contract tests passed**; **4 focused real PostgreSQL cases passed** covering concurrent exact approval, stale worker denial, role/MFA/session/gate checks, three-cycle budget, immutable history, stale reviews and expired payloads. **8 integrated journeys passed**, including credential hold -> owner review -> idempotent approval replay -> one completed intake and one approval audit. `git diff --check` passed.
+- Dashboard recovery form remains unwired; health reads are not execution permission. Reviewed recovery does not independently prove the credential was fixed, and the subsequent worker must still validate provider access. No production migration/configuration/deployment, scheduler, provider or outreach activated.
+
+Next: wire a deliberate recovery form with history, MFA guidance, exact-state preview and stable same-request retry; visually QA the inquiry panel. Then canonical identity/property resolution, repeat inquiries, campaign attribution and remaining sequential phases. Goal active.
+
 ## Implementation checkpoint — workspace inquiry health and visible review alerts
 
 - Previous turn was progress: `24c8958` verified/pushed integrated Facebook journeys. Pulled clean branch and inspected existing API/store patterns and app_notifications catalog policies. Notifications use global recipient roles, so acquisition details were not added to that feed.
