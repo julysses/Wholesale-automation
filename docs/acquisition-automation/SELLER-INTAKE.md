@@ -31,3 +31,7 @@ Missing address/city are empty source values, not invented facts; missing state 
 This first writer creates one lead per distinct native event. Cross-inquiry canonical owner/property resolution, repeat-inquiry linking, qualified/duplicate transitions, campaigns/multi-touch attribution and the operator intake interface remain incomplete. The source is `facebook_acquisition`; channel is `facebook_lead_ad`. No fabricated call ID, HOT notification, property match or ownership verification is generated. No HTTP/provider worker wiring is live.
 
 Compensation: disable the integration/worker and keep stored evidence. Do not delete intakes or reverse the additive migration. Release remains blocked pending canonical identity workflow, retention policy, full-schema rehearsal and actual end-to-end ingestion acceptance.
+
+### Retrieved consent evidence
+
+The preparer now preserves selected provider response fields in `provider_evidence`, including full field-data and custom-disclaimer arrays, with a deterministic JSON hash. Missing, empty and declined disclaimer responses are distinct and remain unreviewed. A deep copy prevents later mutation of the source dictionary from rewriting the prepared snapshot. Both response and prepared snapshot sizes are bounded before persistence. This does not replace form-language version review or create contact_permissions records.

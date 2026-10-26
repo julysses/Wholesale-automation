@@ -6,6 +6,9 @@ not ownership verification, valuation, contact permission or offer approval.
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+import copy
+import json
+import hashlib
 import re
 from typing import Any
 
@@ -55,6 +58,20 @@ def prepare_facebook_intake(*, leadgen_id: str, provider_data: dict[str, Any]) -
         value = provider_data.get(name)
         if value is not None and (not isinstance(value, str) or len(value) > 200):
             raise ValueError('Invalid provider metadata')
+    # Preserve the exact returned consent object, including false/empty/missing
+    # distinctions. It is evidence, never an interpreted permission grant.
+    evidence_keys = ('id','form_id','created_time','field_data','custom_disclaimer_responses',
+                     'ad_id','adset_id','campaign_id','is_organic','platform')
+    provider_evidence = {key: copy.deepcopy(provider_data[key]) for key in evidence_keys if key in provider_data}
+    try:
+        encoded = json.dumps(provider_evidence, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
+    except (ValueError, TypeError):
+        raise ValueError('Invalid provider evidence') from None
+    if len(encoded) > 524288:
+        raise ValueError('Provider evidence exceeds intake limit')
+    disclaimers = provider_data.get('custom_disclaimer_responses')
+    if 'custom_disclaimer_responses' in provider_data and not isinstance(disclaimers, list):
+        raise ValueError('Invalid provider disclaimer evidence')
     raw_fields = provider_data.get('field_data')
     if not isinstance(raw_fields, list) or len(raw_fields) > 100:
         raise ValueError('Invalid native field data')
@@ -136,6 +153,8 @@ def prepare_facebook_intake(*, leadgen_id: str, provider_data: dict[str, Any]) -
         'provider_form_id': str(provider_data.get('form_id') or ''),
         'submitted_at': provider_data.get('created_time'),
         'answers': answers, 'field_evidence': evidence,
+        'provider_evidence': provider_evidence,
+        'provider_evidence_hash': hashlib.sha256(encoded).hexdigest(),
         'asking_price': price, 'authority_asserted': authority,
         'classification': classification, 'reason_codes': reasons,
         'missing_fields': missing, 'conflicting_fields': sorted(conflicts),

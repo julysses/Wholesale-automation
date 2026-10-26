@@ -1,5 +1,6 @@
 """Separate signed native-form receiver; disabled until reviewed activation."""
 import json
+import hmac
 import os
 import re
 
@@ -80,3 +81,17 @@ async def receive(request: Request, signature: str = Header('', alias='X-Hub-Sig
         # Retryable; do not expose database/provider errors or private identities.
         raise HTTPException(503, 'Receipt persistence unconfirmed; retry delivery') from None
     return {'received': True, 'events': count}
+
+
+@router.post('/worker')
+async def run_worker(authorization: str = Header('')):
+    secret = os.getenv('ACQUISITION_FACEBOOK_WORKER_TRIGGER_SECRET', '')
+    if not secret.strip():
+        raise HTTPException(503, 'Acquisition worker trigger unavailable')
+    if not hmac.compare_digest(authorization.encode(), ('Bearer ' + secret).encode()):
+        raise HTTPException(403, 'Invalid worker authorization')
+    from tools.acquisition_facebook_worker import WorkerUnavailable, process_facebook_inquiry
+    try:
+        return await process_facebook_inquiry()
+    except WorkerUnavailable:
+        raise HTTPException(503, 'Acquisition worker operation unconfirmed') from None

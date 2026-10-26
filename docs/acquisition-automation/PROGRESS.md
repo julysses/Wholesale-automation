@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — leased Facebook retrieval worker and evidence
+
+- Previous turn was progress: `cd19d8a` implemented/tested/pushed durable HTTP acceptance. Pulled clean branch. Verified requested lead/form/field/disclaimer/attribution fields against Meta's maintained Python Business SDK; main documentation permissions/version acceptance remains a release requirement.
+- Added separate one-inquiry worker with explicit integration/Page pinning, dedicated database/Page credentials, required configured Graph version, fixed Graph origin, app-secret proof, bounded response and separate HTTP clients. It validates claim/Page/form/lead identity before atomic intake completion and never enters legacy SMS/qualification processors.
+- Provider credential/permission/data failures park for review; rate limits/timeouts/server failures use bounded retries. An uncertain completion retries the exact snapshot/token once without refetching or overwriting a possible committed success. Sensitive provider errors are not persisted or returned.
+- Added POST `/webhooks/facebook/acquisition/worker` with a dedicated trigger secret; worker is separately default-off and no cron is installed. Added deep-copied provider field/disclaimer evidence with deterministic JSON hash, preserving missing/empty/false distinctions without granting permission.
+- Validation: **full backend 1,354 passed, 10 skipped, 368 existing warnings**; after the final form-claim guard and added case, **39 focused worker/intake tests passed**. **4 real PostgreSQL atomic intake cases passed** using expanded evidence. `git diff --check` passed. HTTP provider/PostgREST are mocked; no combined real-database worker journey or live Meta acceptance is yet claimed.
+- Documented configuration, field source, exact retry semantics and limitations. No production migration/configuration/deployment, provider subscription, schedule, advertising or outreach activated. Credential-review audit/status is not yet an actionable delivered operator alert.
+
+Next: connect receiver and worker to the real isolated database harness for a complete ingestion-to-intake journey; add held-job operator review/actionable alerts and controlled recovery. Then canonical owner/property resolution, repeat inquiries, attribution and remaining ordered channel capabilities. Goal active.
+
 ## Implementation checkpoint — durable Facebook HTTP acceptance
 
 - Previous turn was progress: `64a06aa` implemented/tested/pushed atomic CRM intake persistence. Pulled clean branch and inspected existing worker credential conventions, app router registration, receipt RPC and isolated test harness.

@@ -49,3 +49,19 @@ Migration `20261026163900_acquisition_facebook_batch_acceptance.sql` accepts the
 Tests cover actual FastAPI routing and the inbox client using mocked PostgREST responses, plus independent real PostgreSQL batch rollback/concurrency/replay tests. These are not a claim of actual PostgREST/Meta end-to-end acceptance. The full raw envelope is retained per event; storage/cost sizing and retention monitoring must be reviewed before volume increases. No subscription or credentials were created or activated.
 
 Official Meta webhook/retrieval documentation fetches returned HTTP 429 during this implementation. Current API fields, permissions, Page subscriptions and consent response handling still require official verification before provider retrieval or live release. The receiver uses the existing raw-body HMAC-SHA256 protocol and does not select a new Graph API version.
+
+## Separate retrieval worker
+
+`tools/acquisition_facebook_worker.py` processes one leased inquiry per invocation. `POST /webhooks/facebook/acquisition/worker` requires its own `ACQUISITION_FACEBOOK_WORKER_TRIGGER_SECRET` bearer secret. No cron/schedule is installed. Global `ACQUISITION_ENABLED` and `ACQUISITION_FACEBOOK_WORKER_ENABLED` must both be true; ingestion and worker switches remain independent so acceptance can be paused separately.
+
+Explicit worker configuration: `ACQUISITION_FACEBOOK_WORKER_SERVICE_KEY`, `ACQUISITION_FACEBOOK_PAGE_TOKEN`, `ACQUISITION_FACEBOOK_APP_SECRET`, `ACQUISITION_FACEBOOK_PAGE_ID`, `ACQUISITION_FACEBOOK_INTEGRATION_ID`, `ACQUISITION_FACEBOOK_GRAPH_VERSION`, plus `SUPABASE_URL`. The worker is pinned to one configured integration/Page and rejects mismatched claims before contacting Meta. No generic key/token fallback exists. The Graph version is required, not guessed; the selected version, Page permissions and subscription must be reviewed before activation.
+
+The worker uses a separate HTTP client for the fixed graph.facebook.com origin, bearer Page authentication, app-secret proof and no redirects. Database credentials never enter that client. It requests lead/form/time/field/disclaimer/attribution metadata, bounds the response, validates returned lead/form identity, prepares intake, and calls atomic completion with the current lease. A lost completion response gets one exact snapshot/token retry, without re-fetching changed provider answers or writing a failure over a possible success.
+
+Credential/permission/data failures park for review; timeouts/rate limits/server failures use the existing bounded retry ledger. Only allowlisted reason codes persist. The trigger returns status/reason only, without seller data or provider exception text. Actual actionable operator alerts and held-job recovery remain open work; a parked audit is not a delivered alert.
+
+Returned disclaimer evidence is deep-copied with missing/empty/false distinctions and a deterministic JSON hash into the immutable intake snapshot. No checkbox is interpreted as a permission grant. Selected response fields are preserved (including complete field/disclaimer arrays); unknown unrequested response keys are excluded. Raw Graph response bytes and a reviewed business-evidence retention policy remain separate release considerations.
+
+Field verification source: [Meta's maintained Python Business SDK Lead model](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/lead.py) includes the requested lead, form, field data, disclaimer responses and attribution fields (reviewed October 26, 2026). This supports field selection; it does not prove the account has permissions or that any particular API version is enabled. The main developer-documentation pages previously returned rate limits.
+
+Validation uses fake HTTP provider/PostgREST transports and separate real SQL intake tests, not real Meta credentials. No campaign, subscription, outbound message, production migration or deployment was activated.
