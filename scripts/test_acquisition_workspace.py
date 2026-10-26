@@ -25,6 +25,7 @@ PERMISSION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033554_acqui
 ANALYSIS_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026040321_acquisition_analysis_versions.sql'
 OFFER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041236_acquisition_offer_review.sql'
 OFFER_STATE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041845_acquisition_offer_review_state.sql'
+INBOX_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026153314_acquisition_provider_inbox.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -76,7 +77,7 @@ class WorkspaceTests(unittest.TestCase):
                  "CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT (auth.jwt()->>'sub')::uuid $$;")
         catalog = json.loads(CATALOG.read_text())
         # Recreate exact inspected column types/defaults for touched legacy tables.
-        for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'),
+        for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'), ('public','webhook_jobs'),
                               ('wholesale_ingest','properties'), ('public','campaigns'),
                               ('public','buyer_import_log'), ('public','buyers'), ('public','deals'), ('public','deal_matches'),
                               ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts'), ('public','dnc_registry'), ('public','email_suppressions'), ('public','lead_form_submissions'), ('public','facebook_lead_submissions'), ('public','deal_analyses'), ('public','offer_recommendations')):
@@ -130,6 +131,9 @@ class WorkspaceTests(unittest.TestCase):
         self.sql('GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE ON offer_recommendations TO service_role;')
         self.sql(OFFER_MIGRATION.read_text())
         self.sql(OFFER_STATE_MIGRATION.read_text())
+        self.sql("GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE ON webhook_jobs TO service_role; "
+                 "INSERT INTO webhook_jobs(source,payload) VALUES('legacy_fixture','{\"sentinel\":true}');")
+        self.sql(INBOX_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -138,6 +142,71 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def inbox_config(self, account='fixture-page', workspace=WORKSPACE, enabled=True):
+        self.sql(f"INSERT INTO private.acquisition_integrations(workspace_id,provider,account_id,enabled,approval_ref) "
+                 f"VALUES('{workspace}','facebook',{literal(account)},{str(enabled).lower()},'isolated test only');")
+
+    def inbox_accept(self, payload='{"leadgen_id":"fixture"}', account='fixture-page', role='service_role', fail=False):
+        result=self.sql(f"SELECT public.accept_acquisition_event('facebook',{literal(account)},'fixture','leadgen',"
+                        f"{literal(payload)}::jsonb,convert_to('synthetic raw envelope','UTF8'));",user=ADMIN,role=role,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_inbox_concurrent_duplicate_and_conflict(self):
+        self.inbox_config()
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            receipts=list(pool.map(lambda _:self.inbox_accept(),range(4)))
+        self.assertEqual(len({r['receipt_id'] for r in receipts}),1)
+        self.assertEqual(sum(not r['duplicate'] for r in receipts),1)
+        self.inbox_accept(payload='{"leadgen_id":"changed"}',fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbox' AND action='received';"),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE status='pending';"),'1')
+        self.assertEqual(self.sql("SELECT payload->>'sentinel' FROM webhook_jobs WHERE source='legacy_fixture';"),'true')
+
+    def test_inbox_mapping_and_activation_fail_closed(self):
+        self.inbox_accept(fail=True)
+        self.inbox_config(enabled=False)
+        self.inbox_accept(fail=True)
+        self.sql("UPDATE private.acquisition_integrations SET enabled=true;")
+        self.sql("UPDATE private.acquisition_activation SET enabled=false;")
+        self.inbox_accept(fail=True)
+        self.activate()
+        self.sql(f"UPDATE workspaces SET status='suspended' WHERE id='{WORKSPACE}';")
+        self.inbox_accept(fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE workspace_id IS NOT NULL;"),'0')
+
+    def test_inbox_private_immutable_and_workspace_routing(self):
+        self.inbox_config()
+        receipt=self.inbox_accept()
+        self.inbox_config(account='other-page',workspace=WORKSPACE_B)
+        other=self.inbox_accept(account='other-page')
+        self.assertNotEqual(receipt['receipt_id'],other['receipt_id'])
+        self.assertEqual(other['workspace_id'],WORKSPACE_B)
+        self.inbox_accept(role='authenticated',fail=True)
+        for actor in (ADMIN,OTHER,CALLER):
+            self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE workspace_id IS NOT NULL;",user=actor),'0')
+        for statement in ("UPDATE webhook_jobs SET status='pending' WHERE workspace_id IS NOT NULL;",
+                          "UPDATE webhook_jobs SET workspace_id=NULL WHERE workspace_id IS NOT NULL;",
+                          "DELETE FROM webhook_jobs WHERE workspace_id IS NOT NULL;", "TRUNCATE webhook_jobs;",
+                          "UPDATE private.acquisition_integrations SET enabled=false;"):
+            self.sql(statement,user=ADMIN,role='service_role',fail=True)
+        self.sql("UPDATE webhook_jobs SET status='done' WHERE source='legacy_fixture';",user=ADMIN,role='service_role')
+
+    def test_inbox_retention_preserves_identity_and_hash(self):
+        self.inbox_config()
+        receipt=self.inbox_accept()
+        self.assertEqual(self.sql("SELECT public.purge_acquisition_payloads();",user=ADMIN,role='service_role'),'0')
+        # Owner-only fixture simulates a receipt whose retention period has elapsed.
+        self.sql("INSERT INTO webhook_jobs(source,payload,status,workspace_id,acquisition_integration_id,external_event_id,"
+                 "acquisition_event_type,acquisition_payload_hash,acquisition_raw_body,acquisition_raw_hash,acquisition_expires_at) "
+                 "SELECT source,payload,status,workspace_id,acquisition_integration_id,'expired-fixture',acquisition_event_type,"
+                 "acquisition_payload_hash,acquisition_raw_body,acquisition_raw_hash,now()-interval '1 day' FROM webhook_jobs WHERE workspace_id IS NOT NULL;")
+        self.assertEqual(self.sql("SELECT public.purge_acquisition_payloads(1);",user=ADMIN,role='service_role'),'1')
+        self.assertEqual(self.sql("SELECT public.purge_acquisition_payloads();",user=ADMIN,role='service_role'),'0')
+        self.assertEqual(self.sql("SELECT (payload='{}'::jsonb AND acquisition_raw_body IS NULL AND length(acquisition_payload_hash)=64)::text "
+                                 "FROM webhook_jobs WHERE external_event_id='expired-fixture';"),'true')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbox' AND action='payload_purged';"),'1')
+        self.assertTrue(self.inbox_accept()['duplicate'])
 
     def reserve_analysis(self, identity='b0000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, inputs=None, fail=False):
         if inputs is None: inputs={'cases':{name:{'strategy':'fix_and_flip'} for name in ('base','downside','upside')}}

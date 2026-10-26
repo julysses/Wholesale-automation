@@ -41,3 +41,7 @@ Record actual commands, fixture revision, run counts, failures and artifacts onl
 ## Next implementation slice
 
 Start with a production-based isolated checkout and a schema/function dependency review, then build the workspace membership design and inert disposable harness. Do not attempt to ship all phases together. Keep eligibility blocked by default and focus the first usable release on durable Facebook intake plus attribution after foundation tests pass.
+
+## Provider inbox additive rehearsal
+
+Migration `20261026153314_acquisition_provider_inbox.sql` extends the existing queue and adds a private integration configuration. Disposable fixtures reconstruct catalog columns/constraints for webhook_jobs and retain a seeded legacy row across the migration. Tests cover concurrent same-event retry, payload conflict, account routing, disabled activation/integration, suspended workspace, denied browser reads and calls, denied service raw edits/deletion/truncate, legacy row updates, and bounded retention purge with hashes/audit preserved. No worker/scheduler is installed. Compensate by disabling integrations/application receivers while retaining records and approved retention, not dropping schema. Full production-schema rehearsal and actual PostgREST acceptance remain outstanding.

@@ -80,3 +80,7 @@ The production-based implementation adds `acquisition_contact_points` and `acqui
 ## Permission evidence implementation follow-up
 
 `acquisition_contact_permissions` structures and snapshots existing website/native consent receipts without replacing them. `acquisition_permission_revocations` is immutable and atomically creates a corresponding contact suppression; an invoker-security status view exposes revoked status under workspace RLS. Affirmative selection remains unreviewed and cannot authorize outreach. Source adapters currently support website SMS and native SMS/AI voice; policy-specific scope/expiry, additional sources/channels and effective-evidence selection remain open.
+
+## Provider inbox implementation follow-up
+
+`webhook_jobs` is extended with immutable acquisition integration/workspace/event identity, original body and hashes, and retention metadata. `private.acquisition_integrations` supplies privileged account-to-workspace routing with disabled defaults; no fourth campaign store is introduced. Acquisition receipts use a separate source/status namespace so existing pending-job processors do not claim them. Existing native Facebook/SMS receipt constraints remain unchanged pending explicit inquiry linkage. See PROVIDER-INBOX.md for retention, compensation and activation limits.

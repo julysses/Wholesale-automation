@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — isolated durable provider receipts
+
+- Previous turn was progress: `7c68ef8` hardened Facebook authentication/envelopes and passed backend regressions. Pulled that clean branch before this update. Applied Supabase skill; reviewed function security documentation, catalog queue columns/constraints/policies, source migration/index and Retell/monitoring consumers.
+- Added CLI-generated `20261026153314_acquisition_provider_inbox.sql`, extending existing webhook_jobs rather than introducing a duplicate inbox. Private disabled-by-default integrations map provider accounts to one workspace; privileged configuration changes are audited and identities cannot be reassigned.
+- Service-only acceptance requires enabled global/integration gates and an active workspace. Unique provider event identity, transaction locks and content hashes make concurrent retries idempotent and conflicting replays fail. Receipts retain the original raw bytes and canonical event payload. No browser-provided workspace routing is accepted.
+- Acquisition source/status remain outside the legacy pending drain. Restrictive browser RLS and guarded raw service writes preserve receipts. Bounded retention purges expired bodies/answers while keeping identity/hashes and audit. No scheduler, subscription, processor, HTTP wiring or production change was introduced.
+- Validation: **69 disposable PostgreSQL tests passed**, including four new inbox tests; **3 real API/calculator/database journeys passed** with the additional migration. SQL guards verified against actual roles and concurrent sessions. `git diff --check` passed. An initial Python compile invocation hit a sandbox cache-write restriction; syntax was verified with in-memory AST parsing and both database runners executed successfully.
+- Documented routing, retention, compensation and unimplemented boundaries in PROVIDER-INBOX.md; updated entity mapping and migration test plan. Full production-schema/actual PostgREST acceptance and reviewed retention policy remain outstanding. Engineering retention default is not legal approval.
+
+Next: dedicated acquisition claim/lease/completion and retry/credential reconciliation; then verified asynchronous Facebook HTTP acceptance with durable persistence before acknowledgment, Page configuration/token management, seller intake and attribution. Install a monitored retention runner before live acceptance. Existing inline Facebook and paused SMS paths remain unchanged. Goal active.
+
 ## Implementation checkpoint — Facebook webhook boundary
 
 - Pulled `2fb4395` successfully after retrying sandbox DNS failure through approved Git network access. Inspected existing adapter, HTTP receiver, generic queue, campaign/entity mapping and receipt uniqueness.
