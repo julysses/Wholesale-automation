@@ -101,7 +101,7 @@ class WorkflowTests(WorkspaceTests):
             return httpx.Response(200,json={'id':request.url.path.split('/')[-1],'form_id':self.provider_form,
                 'created_time':'2026-10-26T12:00:00Z',
                 'field_data':getattr(self,'provider_fields',[{'name':'phone_number','values':['2145550101']}]),
-                'custom_disclaimer_responses':[{'checkbox_key':'sms','is_checked':False}]})
+                'custom_disclaimer_responses':[{'checkbox_key':'sms','is_checked':False}], **getattr(self,'provider_metadata',{})})
         self.assertEqual(request.url.host,'workflow.example.test')
         identity,role={
             'Bearer synthetic-admin-session':(ADMIN,'authenticated'),
@@ -193,9 +193,9 @@ class WorkflowTests(WorkspaceTests):
             'ACQUISITION_FACEBOOK_GRAPH_VERSION':'v26.0',
         })
 
-    def facebook_delivery(self, ids=('1',), tamper=False):
+    def facebook_delivery(self, ids=('1',), tamper=False, metadata=None):
         body=json.dumps({'object':'page','entry':[{'id':'100','changes':[
-            {'field':'leadgen','value':{'leadgen_id':identity,'form_id':'200'}} for identity in ids]}]}).encode()
+            {'field':'leadgen','value':{'leadgen_id':identity,'form_id':'200',**(metadata or {})}} for identity in ids]}]}).encode()
         signature='sha256='+hmac.new(b'synthetic-app-secret',body,hashlib.sha256).hexdigest()
         return self.client.post('/webhooks/facebook/acquisition',content=body+(b' ' if tamper else b''),
                                 headers={'X-Hub-Signature-256':signature})
@@ -284,6 +284,7 @@ class WorkflowTests(WorkspaceTests):
 
     def test_qualified_facebook_intake_handoff_calculates_canonical_property_and_goes_stale(self):
         self.configure_facebook()
+        self.provider_metadata={'campaign_id':'300','adset_id':'400','ad_id':'500','is_organic':False,'platform':'fb'}
         answers=dict(property_address='1 Fixture St',city='Dallas',state='TX',authority='yes',
             condition='repairs',timeline='soon',motivation='move',asking_price='150000',phone='2145550101')
         self.provider_fields=[{'name':key,'values':[value]} for key,value in answers.items()]
@@ -292,6 +293,12 @@ class WorkflowTests(WorkspaceTests):
         intake=self.sql('SELECT id FROM seller_intakes')
         source_lead=self.sql('SELECT lead_id FROM seller_intakes')
         identity_path=f'{self.base}/intakes/{intake}'
+        attribution=self.client.get(identity_path+'/attribution',headers=self.headers)
+        self.assertEqual(attribution.status_code,200,attribution.text)
+        self.assertEqual(attribution.json()['attribution']['campaign_id'],'300')
+        self.assertEqual(attribution.json()['attribution']['status'],'available')
+        self.assertIsNone(attribution.json()['attribution']['spend_cents'])
+        self.assertEqual(self.client.get(identity_path+'/attribution',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,404)
         identity=self.client.get(identity_path+f'/identity-state?target={LEAD}',headers=self.headers).json()
         decision={'id':'75000000-0000-4000-8000-000000000001','expected_sequence':0,
             'preparation_hash':identity['preparation_hash'],'action':'link_property','target_lead_id':LEAD,'target_hash':identity['target_hash'],
@@ -334,6 +341,15 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments'),'1')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'1')
         self.assertEqual(self.sql(f"SELECT (property_id IS NULL)::text FROM workspace_leads WHERE lead_id='{source_lead}'"),'true')
+
+    def test_facebook_ad_identity_conflict_holds_without_intake(self):
+        self.configure_facebook()
+        self.provider_metadata={'ad_id':'501'}
+        self.assertEqual(self.facebook_delivery(metadata={'ad_id':'500'}).status_code,200)
+        response=self.facebook_worker()
+        self.assertEqual(response.json(),{'status':'review','reason_code':'IDENTITY_CONFLICT'})
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        self.assertEqual(self.sql("SELECT state||':'||reason_code FROM private.acquisition_inbox_processing"),'review:IDENTITY_CONFLICT')
 
     def test_facebook_unknown_receipt_and_completion_replies_reconcile(self):
         self.configure_facebook()

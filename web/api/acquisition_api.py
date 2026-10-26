@@ -569,3 +569,16 @@ async def saved_analysis_intake_context(workspace_id: UUID, analysis_id: UUID, s
             or any(c not in '0123456789abcdef' for c in rows[0]['evidence_hash'])):
         raise HTTPException(503, 'Analysis provenance unavailable')
     return {**context, 'evidence_hash': rows[0]['evidence_hash']}
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}/attribution')
+async def intake_source_attribution(workspace_id: UUID, intake_id: UUID, store=Depends(acquisition_store)):
+    from tools.acquisition_attribution import facebook_attribution
+    rows = await store.request('GET', 'seller_intakes', params={
+        'select': 'id,lead_id,prepared_answers', 'workspace_id': 'eq.'+str(workspace_id),
+        'id': 'eq.'+str(intake_id), 'limit': '1',
+    })
+    if not rows:
+        raise HTTPException(404, 'Intake unavailable')
+    return {'intake_id': rows[0]['id'], 'lead_id': rows[0]['lead_id'],
+            'attribution': facebook_attribution(rows[0]['prepared_answers'])}

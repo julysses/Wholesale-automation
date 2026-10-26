@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — Facebook attribution evidence
+
+- Previous turn was progress: `efae294` implemented/tested/pushed saved-scenario provenance. Pulled the branch and traced existing provider metadata through receipt, retrieval and immutable seller-intake preparation. No parallel campaign store or historical rewrite was needed for the evidence projection.
+- Added a read-only, user-token/RLS attribution endpoint with digest validation, exact external identifiers, UTC submission time, organic/platform metadata, explicit missing values and review reasons. Private seller answers are excluded. Campaign spend, currency and internal campaign association remain unknown rather than zero/inferred.
+- The dedicated Facebook worker now holds malformed or contradictory campaign/ad identifiers before intake completion. It preserves the existing preparation format and compares only same-named identifiers when both sources supply them; missing provider values are not invented from receipts. Legacy SMS/Facebook paths are unchanged.
+- Validation: **77 focused attribution/worker/API tests passed** and **all 10 integrated real-SQL journeys passed**, including cross-workspace attribution denial, full metadata retrieval and ad-identity conflict with no intake created. `git diff --check` passed. No schema, runtime/provider configuration, deployment, activation, outreach or advertising actions occurred.
+
+Next: tenant-safe enrollment/linking of existing ad_campaigns, multi-touch source records, cost/currency ingestion and funnel reporting. Metadata projection alone does not complete FB-006. Direct saved-scenario navigation, remaining sequential phases and full-schema/PostgREST/provider release evidence remain open. See ATTRIBUTION.md. Goal active.
+
 ## Implementation checkpoint — saved scenario provenance and resumption
 
 - Previous turn was progress: `e684cd9` implemented/tested/pushed intake dashboard handoff. Pulled the branch and added an authenticated saved-scenario provenance endpoint backed by the existing current-state RPC and user-scoped immutable provenance table read.

@@ -483,3 +483,22 @@ def test_manual_analysis_provenance_needs_no_intake_read(api):
     response = client.get(f'/api/acquisition/workspaces/{W}/underwriting/scenarios/{U}/intake-context', headers={'Authorization': 'Bearer user-token'})
     assert response.status_code == 200 and response.json()['evidence_hash'] is None
     assert len(state['requests']) == 1
+
+
+def test_intake_attribution_returns_metadata_only_through_user_scope(api):
+    from tools.acquisition_intake import prepare_facebook_intake
+    client, state = api
+    state['body'] = [{'id': U, 'lead_id': W, 'prepared_answers': prepare_facebook_intake(leadgen_id='1',provider_data={
+        'id':'1','form_id':'2','campaign_id':'3','field_data':[{'name':'phone','values':['2145550101']}],
+    })}]
+    path=f'/api/acquisition/workspaces/{W}/intakes/{U}/attribution'
+    response=client.get(path,headers={'Authorization':'Bearer user-token'})
+    assert response.status_code==200
+    assert response.json()['attribution']['campaign_id']=='3'
+    assert response.json()['attribution']['spend_cents'] is None
+    assert '2145550101' not in response.text
+    request=state['requests'][0]
+    assert request.url.params['workspace_id']=='eq.'+W and request.url.params['id']=='eq.'+U
+    assert request.headers['authorization']=='Bearer user-token'
+    state['body']=[]
+    assert client.get(path,headers={'Authorization':'Bearer user-token'}).status_code==404

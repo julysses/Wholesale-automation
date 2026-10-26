@@ -120,6 +120,15 @@ async def process_facebook_inquiry():
                 data=await _retrieve(provider,config,claim['external_event_id'])
             if data.get('form_id')!=claim['payload'].get('form_id'):
                 raise ProviderFailure('review','IDENTITY_CONFLICT')
+            for key in ('ad_id','adset_id','campaign_id'):
+                provider_id=data.get(key)
+                receipt_id=claim['payload'].get(key)
+                if provider_id is not None and (not isinstance(provider_id,str) or not re.fullmatch(r'[0-9]{1,200}',provider_id)):
+                    raise ProviderFailure('review','INVALID_PROVIDER_DATA')
+                if receipt_id is not None and (not isinstance(receipt_id,str) or not re.fullmatch(r'[0-9]{1,200}',receipt_id)):
+                    raise ProviderFailure('review','INVALID_PROVIDER_DATA')
+                if provider_id is not None and receipt_id is not None and provider_id!=receipt_id:
+                    raise ProviderFailure('review','IDENTITY_CONFLICT')
             try:
                 prepared=prepare_facebook_intake(leadgen_id=claim['external_event_id'],provider_data=data)
                 if len(json.dumps(prepared).encode())>1048576:

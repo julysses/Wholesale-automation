@@ -136,3 +136,25 @@ def test_missing_form_claim_never_contacts_provider(worker):
     worker['claims'][0]['payload'].pop('form_id')
     with pytest.raises(WorkerUnavailable): asyncio.run(process_facebook_inquiry())
     assert len(worker['requests'])==1
+
+
+@pytest.mark.parametrize('field', ['ad_id','adset_id','campaign_id'])
+def test_conflicting_campaign_identifiers_hold_before_intake(worker,field):
+    worker['claims'][0]['payload'][field]='101'
+    worker['provider'][field]='102'
+    assert asyncio.run(process_facebook_inquiry())['reason_code']=='IDENTITY_CONFLICT'
+    assert worker['complete_calls']==0
+
+
+@pytest.mark.parametrize('value', [True, 123, ['123'], 'not-an-id'])
+def test_malformed_campaign_identifiers_are_not_coerced(worker,value):
+    worker['provider']['campaign_id']=value
+    assert asyncio.run(process_facebook_inquiry())['reason_code']=='INVALID_PROVIDER_DATA'
+    assert worker['complete_calls']==0
+
+
+def test_missing_provider_campaign_does_not_get_invented_from_receipt(worker):
+    worker['claims'][0]['payload']['campaign_id']='101'
+    assert asyncio.run(process_facebook_inquiry())['status']=='completed'
+    evidence=json.loads(worker['requests'][-1].content)['p_prepared']['provider_evidence']
+    assert 'campaign_id' not in evidence
