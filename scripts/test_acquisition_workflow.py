@@ -28,6 +28,8 @@ OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
  'recover_acquisition_inquiry': ['p_id','p_workspace','p_receipt','p_expected_updated_at','p_expected_reason','p_note','p_evidence_ref'],
+ 'acquisition_intake_identity_state': ['p_workspace','p_intake','p_target'],
+ 'review_acquisition_intake_identity': ['p_id','p_workspace','p_intake','p_expected_sequence','p_preparation_hash','p_action','p_target','p_target_hash','p_property_basis','p_property_evidence_ref','p_seller_evidence_ref','p_note'],
  'acquisition_intake_candidates': ['p_workspace','p_intake','p_limit'],
  'acquisition_inquiry_health': ['p_workspace','p_after','p_limit'],
  'accept_facebook_acquisition_batch': ['p_events','p_raw_body'],
@@ -113,7 +115,7 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake'}
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target'}
                       else 'timestamptz' if key=='p_expected_updated_at' else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
@@ -195,6 +197,27 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(len(candidates),2) # Existing scoped lead plus the other native inquiry.
         self.assertTrue(all(row['match_basis']=='CONTACT_ONLY' and not row['merge_authorized'] for row in candidates))
         self.assertEqual(sum(row['previous_intake'] for row in candidates),1)
+        identity_path=f'{self.base}/intakes/{intake}'
+        review_state=self.client.get(identity_path+f'/identity-state?target={LEAD}',headers=self.headers).json()
+        review={'id':'72000000-0000-4000-8000-000000000001','expected_sequence':review_state['sequence'],
+            'preparation_hash':review_state['preparation_hash'],'action':'repeat_inquiry','target_lead_id':LEAD,
+            'target_hash':review_state['target_hash'],'property_basis':'parcel_document',
+            'property_evidence_ref':'synthetic-property-diligence-42','seller_evidence_ref':'synthetic-seller-diligence-42',
+            'review_note':'Independent synthetic documents reviewed by the test administrator.'}
+        approved=self.client.post(identity_path+'/identity-reviews',headers=self.headers,json=review)
+        self.assertEqual(approved.status_code,200,approved.text)
+        self.assertFalse(approved.json()['duplicate'])
+        self.assertTrue(self.client.post(identity_path+'/identity-reviews',headers=self.headers,json=review).json()['duplicate'])
+        current=self.client.get(identity_path+'/identity-state',headers=self.headers).json()
+        self.assertTrue(current['link_current']); self.assertFalse(current['ownership_verified'])
+        revoked=self.client.post(identity_path+'/identity-reviews',headers=self.headers,json={
+            'id':'72000000-0000-4000-8000-000000000002','expected_sequence':current['sequence'],
+            'preparation_hash':current['preparation_hash'],'action':'revoke','review_note':'Synthetic correction removes the reviewed association.'})
+        self.assertEqual(revoked.status_code,200,revoked.text)
+        self.assertFalse(self.client.get(identity_path+'/identity-state',headers=self.headers).json()['link_current'])
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake_identity'"),'2')
+        self.assertEqual(self.sql('SELECT count(DISTINCT lead_id) FROM seller_intakes'),'2')
+
         self.assertEqual(self.client.get(f'{self.base}/intakes/{intake}/candidates',
             headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
 

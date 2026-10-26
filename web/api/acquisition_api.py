@@ -409,3 +409,49 @@ async def intake_identity_candidates(workspace_id: UUID, intake_id: UUID,
     return await store.request('POST', 'rpc/acquisition_intake_candidates', body={
         'p_workspace': str(workspace_id), 'p_intake': str(intake_id), 'p_limit': limit,
     })
+
+
+class IntakeIdentityReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    expected_sequence: int = Field(ge=0)
+    preparation_hash: str = Field(pattern=r'^[a-f0-9]{64}$')
+    action: Literal['link_property', 'repeat_inquiry', 'revoke']
+    target_lead_id: UUID | None = None
+    target_hash: str | None = Field(default=None, pattern=r'^[a-f0-9]{64}$')
+    property_basis: Literal['parcel_document', 'verified_address'] | None = None
+    property_evidence_ref: str | None = Field(default=None, min_length=10, max_length=500)
+    seller_evidence_ref: str | None = Field(default=None, min_length=10, max_length=500)
+    review_note: str = Field(min_length=20, max_length=2000)
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}/identity-state')
+async def intake_identity_state(workspace_id: UUID, intake_id: UUID, target: UUID | None = None,
+                                store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/acquisition_intake_identity_state', body={
+        'p_workspace': str(workspace_id), 'p_intake': str(intake_id), 'p_target': str(target) if target else None,
+    })
+
+
+@router.post('/workspaces/{workspace_id}/intakes/{intake_id}/identity-reviews')
+async def review_intake_identity(workspace_id: UUID, intake_id: UUID, body: IntakeIdentityReview,
+                                 store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/review_acquisition_intake_identity', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_intake': str(intake_id),
+        'p_expected_sequence': body.expected_sequence, 'p_preparation_hash': body.preparation_hash,
+        'p_action': body.action, 'p_target': str(body.target_lead_id) if body.target_lead_id else None,
+        'p_target_hash': body.target_hash, 'p_property_basis': body.property_basis,
+        'p_property_evidence_ref': body.property_evidence_ref, 'p_seller_evidence_ref': body.seller_evidence_ref,
+        'p_note': body.review_note,
+    })
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}/identity-reviews')
+async def intake_identity_history(workspace_id: UUID, intake_id: UUID,
+                                  before: int | None = Query(default=None, ge=1),
+                                  limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select': '*', 'workspace_id': 'eq.'+str(workspace_id), 'intake_id': 'eq.'+str(intake_id),
+              'order': 'sequence.desc', 'limit': str(limit)}
+    if before is not None:
+        params['sequence'] = 'lt.'+str(before)
+    return await store.request('GET', 'acquisition_intake_identity_reviews', params=params)

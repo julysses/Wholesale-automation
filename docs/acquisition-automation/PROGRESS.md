@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — immutable reviewed intake identity links
+
+- Previous turn was progress: `edcf741` added/tested/pushed tenant-scoped identity candidates. Pulled current branch and inspected candidate snapshots, canonical binding constraints and recovery authority-lock patterns before writing the next additive migration.
+- Added CLI-generated `20261026173422_acquisition_intake_identity_reviews.sql`, scoped immutable review history, state/history APIs and reviewed link/repeat/revoke commands. Owner/admin MFA, live approved session, exact source/target hashes, expected sequence and independent property evidence are mandatory; repeat inquiries also require seller identity evidence. No original records are merged or reassigned.
+- Current-state reads invalidate reviewed links on target evidence/contact changes, reviewer membership changes or disabled activation. Corrections retain full history; revocation remains available with activation held. Canonical targets must already be bound in the same workspace, avoiding arbitrary owner/property merges or cross-workspace directory access.
+- Validation: **4 real PostgreSQL cases passed** (concurrent exact request, immutable/non-merging history, stale evidence, authority/MFA/session denial, evidence requirements, scoped access and held-gate revocation); **34 API contract tests passed**. **All 8 integrated journeys passed**, including Facebook intake -> candidate evidence -> reviewed repeat link -> exact retry -> revocation with preserved intakes and two audit events. `git diff --check` passed. No production schema/configuration/deployment, provider/outreach, fulfillment or binding transactions activated.
+
+Next: reviewer UI and fresh-link consumption in canonical qualification/underwriting; duplicate/qualified transitions with territory/ownership diligence; campaign attribution and remaining phases. Links currently preserve separate original CRM/intake records and do not alter existing downstream routing. Goal active.
+
 ## Implementation checkpoint — workspace intake identity candidates
 
 - Previous turn was progress: recovery UI `3e1ffc1` was tested and pushed. Pulled current branch and inspected intake immutability, canonical property binding uniqueness, owner assertions, contact normalization, catalog fields and RLS before creating SQL.

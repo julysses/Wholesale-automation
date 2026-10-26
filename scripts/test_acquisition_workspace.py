@@ -32,6 +32,7 @@ BATCH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026163900_acquisitio
 HEALTH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026165322_acquisition_inquiry_health.sql'
 RECOVERY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026170113_acquisition_inquiry_recovery.sql'
 CANDIDATES_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026171817_acquisition_intake_candidates.sql'
+IDENTITY_REVIEW_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026173422_acquisition_intake_identity_reviews.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -146,6 +147,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(HEALTH_MIGRATION.read_text())
         self.sql(RECOVERY_MIGRATION.read_text())
         self.sql(CANDIDATES_MIGRATION.read_text())
+        self.sql(IDENTITY_REVIEW_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -331,6 +333,82 @@ class WorkspaceTests(unittest.TestCase):
         value=self.sql(f"SELECT public.acquisition_intake_candidates('{workspace}','{intake}',{limit});",
                        user=user,fail=fail,**kwargs)
         return value if fail else json.loads(value)
+
+    def identity_state(self, intake, target=LEAD, user=ADMIN, fail=False, **kwargs):
+        target_sql='NULL' if target is None else literal(target)
+        result=self.sql(f"SELECT public.acquisition_intake_identity_state('{WORKSPACE}','{intake}',{target_sql});",user=user,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def identity_review(self, intake, state, request='71000000-0000-4000-8000-000000000001', action='link_property', user=ADMIN, fail=False, **overrides):
+        values=dict(p_id=request,p_workspace=WORKSPACE,p_intake=intake,p_expected_sequence=state['sequence'],
+            p_preparation_hash=state['preparation_hash'],p_action=action,p_target=None if action=='revoke' else LEAD,
+            p_target_hash=None if action=='revoke' else state['target_hash'],p_property_basis=None if action=='revoke' else 'parcel_document',
+            p_property_evidence_ref=None if action=='revoke' else 'synthetic-parcel-review-42',
+            p_seller_evidence_ref='synthetic-seller-identity-review-42' if action=='repeat_inquiry' else None,
+            p_note='Synthetic reviewer checked the property and seller evidence.')
+        sql_options={k:overrides.pop(k) for k in ('aal','session','role') if k in overrides}
+        values.update(overrides)
+        args=','.join(f"{key}=>"+('NULL' if value is None else str(value) if isinstance(value,int) else literal(value)) for key,value in values.items())
+        result=self.sql(f"SELECT public.review_acquisition_intake_identity({args});",user=user,fail=fail,**sql_options)
+        return result if fail else json.loads(result)
+
+    def test_intake_identity_review_concurrent_idempotent_and_non_merging(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']; state=self.identity_state(intake)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.identity_review(intake,state),range(3)))
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        current=self.identity_state(intake)
+        self.assertTrue(current['link_current']); self.assertEqual(current['sequence'],1)
+        self.assertEqual(current['latest_review']['target_property_id'],PROPERTY)
+        self.assertFalse(current['ownership_verified']); self.assertFalse(current['outreach_authorized'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_identity_reviews;'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake_identity';"),'1')
+        self.assertEqual(self.sql(f"SELECT count(*) FROM workspace_leads WHERE lead_id='{saved['lead_id']}' AND property_id IS NULL;"),'1')
+        self.identity_review(intake,state,p_note='Changed request must not silently replay.',fail=True)
+        self.identity_review(intake,state,request='71000000-0000-4000-8000-000000000002',fail=True)
+        self.sql('UPDATE acquisition_intake_identity_reviews SET sequence=99;',user=ADMIN,fail=True)
+        self.sql('TRUNCATE acquisition_intake_identity_reviews;',user=ADMIN,role='service_role',fail=True)
+
+    def test_intake_identity_review_invalidates_on_evidence_and_authority_changes(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']; state=self.identity_state(intake)
+        self.sql(f"UPDATE leads SET owner_phone_1='+12145550999' WHERE id='{LEAD}';")
+        self.identity_review(intake,state,fail=True)
+        fresh=self.identity_state(intake); self.identity_review(intake,fresh,action='repeat_inquiry')
+        self.assertTrue(self.identity_state(intake)['link_current'])
+        self.sql(f"UPDATE wholesale_ingest.properties SET unit='B' WHERE id='{PROPERTY}';")
+        self.assertFalse(self.identity_state(intake)['link_current'])
+        fresh=self.identity_state(intake)
+        self.identity_review(intake,fresh,request='71000000-0000-4000-8000-000000000002')
+        self.sql(f"UPDATE workspace_memberships SET updated_at=clock_timestamp() WHERE workspace_id='{WORKSPACE}' AND user_id='{ADMIN}';")
+        self.assertFalse(self.identity_state(intake)['link_current'])
+
+    def test_intake_identity_review_requires_scope_mfa_and_documented_evidence(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']; state=self.identity_state(intake)
+        for user in (OTHER,OPERATOR): self.identity_review(intake,state,user=user,fail=True)
+        self.identity_review(intake,state,aal='aal1',fail=True)
+        self.identity_review(intake,state,session=False,fail=True)
+        self.identity_review(intake,state,role='service_role',fail=True)
+        self.identity_review(intake,state,p_property_basis='phone_match',fail=True)
+        self.identity_review(intake,state,p_property_evidence_ref=None,fail=True)
+        self.identity_review(intake,state,action='repeat_inquiry',p_seller_evidence_ref=None,fail=True)
+        self.identity_review(intake,state,p_target=saved['lead_id'],fail=True)
+        self.identity_state(intake,target=LEAD_B,fail=True)
+        self.identity_state(intake,user=OTHER,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_identity_reviews;'),'0')
+
+    def test_intake_identity_revocation_preserves_history_and_remains_available_when_held(self):
+        saved=self.candidate_fixture(); intake=saved['intake_id']; state=self.identity_state(intake)
+        self.identity_review(intake,state,action='revoke',fail=True)
+        self.identity_review(intake,state,action='repeat_inquiry')
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        self.assertFalse(self.identity_state(intake)['link_current'])
+        current=self.identity_state(intake)
+        self.identity_review(intake,current,request='71000000-0000-4000-8000-000000000002',fail=True)
+        self.identity_review(intake,current,request='71000000-0000-4000-8000-000000000003',action='revoke')
+        revoked=self.identity_state(intake)
+        self.assertFalse(revoked['link_current']); self.assertEqual(revoked['latest_review']['action'],'revoke')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_identity_reviews;',user=OPERATOR),'2')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_identity_reviews;',user=OTHER),'0')
 
     def test_intake_candidates_distinguish_contact_from_property(self):
         saved=self.candidate_fixture(property_address='1 Fixture St',city=' Dallas ',state='texas')

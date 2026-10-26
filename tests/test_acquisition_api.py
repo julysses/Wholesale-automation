@@ -355,3 +355,34 @@ def test_intake_candidates_forwards_user_scope_and_validates_bounds(api):
     for limit in (0, 51):
         assert client.get(path+f'?limit={limit}', headers={'Authorization': 'Bearer test-jwt'}).status_code == 422
     assert len(state['requests']) == count
+
+
+def test_identity_review_state_history_and_mutation_use_current_user_scope(api):
+    client, state = api
+    intake = '70000000-0000-4000-8000-000000000001'
+    target = '20000000-0000-4000-8000-000000000001'
+    base = f'/api/acquisition/workspaces/{W}/intakes/{intake}'
+    headers = {'Authorization': 'Bearer test-jwt'}
+    assert client.get(base+'/identity-state', headers=headers).status_code == 200
+    assert json.loads(state['requests'][-1].content)['p_target'] is None
+    assert client.get(base+'/identity-state?target='+target, headers=headers).status_code == 200
+    assert json.loads(state['requests'][-1].content)['p_target'] == target
+    body = {'id': intake, 'expected_sequence': 0, 'preparation_hash': 'a'*64, 'action': 'repeat_inquiry',
+            'target_lead_id': target, 'target_hash': 'b'*64, 'property_basis': 'parcel_document',
+            'property_evidence_ref': 'parcel-review-42', 'seller_evidence_ref': 'seller-review-42',
+            'review_note': 'Reviewer verified the independent identity evidence.'}
+    assert client.post(base+'/identity-reviews', headers=headers, json=body).status_code == 200
+    request = state['requests'][-1]
+    assert request.url.path.endswith('/rpc/review_acquisition_intake_identity')
+    assert request.headers['authorization'] == 'Bearer test-jwt'
+    forwarded = json.loads(request.content)
+    assert forwarded['p_target'] == target and forwarded['p_intake'] == intake
+    assert forwarded['p_workspace'] == W and forwarded['p_preparation_hash'] == 'a'*64
+    count = len(state['requests'])
+    assert client.post(base+'/identity-reviews', headers=headers, json={**body, 'actor_id': U}).status_code == 422
+    assert client.post(base+'/identity-reviews', headers=headers, json={**body, 'property_basis': 'phone_match'}).status_code == 422
+    assert len(state['requests']) == count
+    assert client.get(base+'/identity-reviews?before=8&limit=3', headers=headers).status_code == 200
+    params = state['requests'][-1].url.params
+    assert params['workspace_id'] == 'eq.'+W and params['intake_id'] == 'eq.'+intake
+    assert params['sequence'] == 'lt.8' and params['order'] == 'sequence.desc' and params['limit'] == '3'
