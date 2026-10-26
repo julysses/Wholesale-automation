@@ -1423,17 +1423,8 @@ def _schedule_hot_lead_automation(
 
 def _get_supabase() -> Optional[Any]:
     """Return a Supabase client or None if not configured."""
-    url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL", "")
-    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY", "")
-    if not (url and key):
-        logger.warning("[webhook] Supabase not configured")
-        return None
-    try:
-        from supabase import create_client  # type: ignore[import]
-        return create_client(url, key)
-    except Exception as exc:
-        logger.error(f"[webhook] Supabase client init failed: {exc}")
-        return None
+    from tools.crm import get_supabase_client
+    return get_supabase_client()
 
 
 def _audit(

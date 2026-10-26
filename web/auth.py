@@ -5,6 +5,7 @@ import logging
 from fastapi import HTTPException, Request
 
 from tools.crm import get_supabase_client
+from tools.database_identity import identity
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,8 @@ def require_operator(request: Request) -> None:
         raise HTTPException(503, "Unable to verify account access")
     if not rows or rows[0].get("status") != "approved":
         raise HTTPException(403, "Your account requires administrator approval")
+    if identity.get() is not None and (path == '/v1' or path.startswith('/v1/') or path == '/api/leads/rescore'):
+        raise HTTPException(409, "This local-CRM workflow requires a workspace-aware replacement")
     if rows[0].get("acquisition_only") is True and not (
         path.startswith('/api/acquisition/') or path == '/internal/outreach/eligibility/evaluate'
     ):

@@ -35,21 +35,27 @@ from schemas.buyer import BuyerProfile, BuyerQualification
 from schemas.compliance import AuditLogEntry, OptOutRecord
 from schemas.deal import Deal, UnderwritingReport
 from schemas.property import PropertyLead
+from tools.database_identity import database_credentials, identity
 
 logger = logging.getLogger(__name__)
 
 
 def get_supabase_client() -> Optional[Any]:
-    """Return a Supabase client using service role key, or None if not configured."""
+    """Use request JWT/RLS in scoped mode, server identity only outside that boundary."""
     url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL", "")
-    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY", "")
-    if not (url and key):
+    key, bearer = database_credentials()
+    if not (url and key and bearer):
         return None
     try:
-        from supabase import create_client
+        from supabase import create_client, ClientOptions
+        if identity.get() is not None:
+            return create_client(url, key, options=ClientOptions(
+                headers={'Authorization': 'Bearer '+bearer}, persist_session=False,
+                auto_refresh_token=False, postgrest_client_timeout=15,
+            ))
         return create_client(url, key)
-    except Exception as exc:
-        logger.error(f"[CRM] Supabase init failed: {exc}")
+    except Exception:
+        logger.error("[CRM] Supabase client initialization failed")
         return None
 
 
@@ -130,10 +136,22 @@ class CRMStore:
     """Thin persistence layer for all agency data."""
 
     def __init__(self, database_url: Optional[str] = None) -> None:
+        self._check_request_scope()
         url = database_url or settings.database_url
-        self._engine: Engine = create_engine(url, echo=False)
+        self.__engine: Engine = create_engine(url, echo=False)
         metadata.create_all(self._engine)
         logger.info(f"[CRM] Database initialized at {url}")
+
+    @staticmethod
+    def _check_request_scope():
+        if identity.get() is not None:
+            raise PermissionError('Local CRM is unavailable in workspace-scoped requests')
+
+    @property
+    def _engine(self):
+        # Also protects an instance cached before the request began.
+        self._check_request_scope()
+        return self.__engine
 
     # ── Leads ─────────────────────────────────────────────────────────────────
 

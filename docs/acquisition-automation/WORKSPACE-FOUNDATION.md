@@ -1,5 +1,19 @@
 # Workspace foundation implementation
 
+## Follow-on: request identity and related-record isolation
+
+When ACQUISITION_ENABLED is true, DatabaseIdentityMiddleware supplies request-local caller credentials to protected API, internal and legacy paths. The shared CRM client factory uses a public Supabase key with the caller's Authorization token and disables session persistence/refresh. Buyer and webhook factories delegate to it; protected monitoring HTTP uses the same identity. Missing/duplicate/malformed auth never falls back to service role. Async context resets after each request and propagates into supported Starlette threadpool operations.
+
+Explicit public form/config/readiness endpoints and signed provider/worker endpoints keep their existing server workflow. Those handlers remain responsible for signature/secret/input verification. Startup settings loading is not a request data surface. No provider callback or worker was exercised live.
+
+Cached SQLite CRM instances are also blocked during scoped requests. `/v1` and the local rescore route return 409 in this mode until replaced with workspace-aware workflows. Legacy behavior with the flag disabled remains unchanged. Do not treat disabled-mode compatibility tests as proof that every old service-only write RPC works in scoped mode; many intentionally reject authenticated execution until adapted.
+
+Migration `20261026030633_acquisition_related_record_isolation.sql` derives read permissions for existing tables carrying UUID lead_id, deal_id or property_id references. Scope is resolved through canonical workspace_leads, deals and county properties. Conflicting parent workspaces hide the row; owner/admin/operator membership permits the appropriate read. Raw authenticated writes to bound children remain denied. It adds no broad grants and does not copy or reparent records. A county property trigger prevents changing the lead link once its identity is bound.
+
+Validation now includes 25 real PostgreSQL cases and the full offline backend suite: 1,214 passed, 10 local-database-dependent tests skipped. Twenty-five identity tests cover threadpool/parallel isolation, malformed/duplicate tokens, exceptions, public/server boundaries, SDK credential construction and the real application's auth-to-reader wiring. Actual SDK header behavior was inspected locally without network access. Full PostgREST/103-table upgrade acceptance is still pending.
+
+Remaining release work: coordinate database RPC activation with the application flag; replace necessary legacy write RPCs/local workflows; scope buyers/campaigns and JSON-linked/orphan historical evidence; complete full upgrade and UI acceptance. Until then, do not apply the candidate to production or enable the feature. Compensation is to leave the feature disabled and preserve added metadata/audit history; never restore service-role fallback within scoped requests to work around a denied RPC.
+
 ## Follow-on: account containment and canonical lead binding
 
 Migration `20261026025259_acquisition_legacy_access_boundary.sql` adds acquisition_only to profiles and a workspace_leads relation to existing canonical leads and optional verified county properties. Binding is explicit, audited and immutable through application table grants; it does not copy property or owner records. An existing property must already reference the selected lead. A shared phone never establishes identity.

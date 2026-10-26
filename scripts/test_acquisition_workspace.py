@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / 'frontend/supabase/migrations/20261026024157_acquisition_workspace_foundation.sql'
 BOUNDARY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026025259_acquisition_legacy_access_boundary.sql'
+RELATED_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026030633_acquisition_related_record_isolation.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -67,7 +68,9 @@ class WorkspaceTests(unittest.TestCase):
         catalog = json.loads(CATALOG.read_text())
         # Recreate exact inspected column types/defaults for touched legacy tables.
         for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'),
-                              ('wholesale_ingest','properties'), ('public','campaigns')):
+                              ('wholesale_ingest','properties'), ('public','campaigns'),
+                              ('public','buyer_import_log'), ('public','buyers'), ('public','deals'), ('public','deal_matches'),
+                              ('wholesale_ingest','property_aliases')):
             columns = []
             for c in catalog['columns']:
                 if c['table_schema'] == schema and c['table_name'] == table:
@@ -83,7 +86,7 @@ class WorkspaceTests(unittest.TestCase):
                     if table=='leads' and c['contype']=='f':
                         continue
                     self.sql(f'ALTER TABLE {schema}.{table} ADD CONSTRAINT '+identifier(c['conname'])+' '+c['definition'])
-            if table in ('leads','properties','campaigns'):
+            if table not in ('profiles','audit_logs'):
                 self.sql(f'ALTER TABLE {schema}.{table} ENABLE ROW LEVEL SECURITY; '
                          f'GRANT SELECT,INSERT,UPDATE,DELETE ON {schema}.{table} TO authenticated; '
                          f'CREATE POLICY legacy_approved ON {schema}.{table} TO authenticated USING (true) WITH CHECK (true);')
@@ -99,6 +102,7 @@ class WorkspaceTests(unittest.TestCase):
             self.create(ADMIN, WORKSPACE)
             self.member()
         self.sql(BOUNDARY_MIGRATION.read_text())
+        self.sql(RELATED_MIGRATION.read_text())
         self.create(ADMIN, WORKSPACE)
         self.create(OTHER, WORKSPACE_B)
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
@@ -175,6 +179,31 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"SELECT public.assign_acquisition_lead('{WORKSPACE}','{LEAD}','{OTHER}');", user=ADMIN, fail=True)
         self.member(target=CALLER, role='acquisition_caller', status='revoked')
         self.queue(fail=True)
+
+    def test_related_property_and_deal_records_follow_workspace(self):
+        self.bind()
+        self.member()
+        self.sql(f"INSERT INTO wholesale_ingest.property_aliases(alias_key,property_id) VALUES('fixture-alias','{PROPERTY}'); "
+                 f"INSERT INTO deals(id,lead_id,deal_name) VALUES('{LEAD}','{LEAD}','fixture-deal'); "
+                 f"INSERT INTO buyers(id,first_name,last_name) VALUES('{OTHER}','Fixture','Buyer'); "
+                 f"INSERT INTO deal_matches(deal_id,buyer_id) VALUES('{LEAD}','{OTHER}');")
+        for table in ('wholesale_ingest.properties','wholesale_ingest.property_aliases','deals','deal_matches'):
+            self.assertEqual(self.sql(f'SELECT count(*) FROM {table};',user=OTHER),'0')
+            self.assertEqual(self.sql(f'SELECT count(*) FROM {table};',user=OPERATOR),'1')
+            self.sql(f'DELETE FROM {table};',user=OPERATOR)
+            self.assertEqual(self.sql(f'SELECT count(*) FROM {table};'),'1')
+
+    def test_bound_property_identity_cannot_drift(self):
+        self.bind()
+        self.sql(f"UPDATE wholesale_ingest.properties SET lead_id='{LEAD_B}' WHERE id='{PROPERTY}';", fail=True)
+        self.assertEqual(self.sql(f"SELECT lead_id FROM wholesale_ingest.properties WHERE id='{PROPERTY}';"),LEAD)
+
+    def test_mixed_workspace_parent_references_are_not_visible(self):
+        self.bind()
+        self.bind(actor=OTHER,workspace=WORKSPACE_B,lead=LEAD_B,property_id=None)
+        self.sql(f"INSERT INTO deals(id,lead_id,deal_name) VALUES('{LEAD_B}','{LEAD_B}','other-deal');")
+        self.assertEqual(self.sql(f"SELECT private.acquisition_record_access('{LEAD}','{LEAD_B}',NULL,false);",user=ADMIN),'f')
+        self.assertEqual(self.sql(f"SELECT private.acquisition_record_access('{LEAD}','{LEAD_B}',NULL,false);",user=OTHER),'f')
 
     def test_workspace_and_membership_isolation(self):
         self.assertEqual(self.sql('SELECT count(*) FROM workspaces;', user=ADMIN), '1')

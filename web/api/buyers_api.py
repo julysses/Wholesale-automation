@@ -82,16 +82,8 @@ class ClassifyRequest(BaseModel):
 # ── Supabase helper ───────────────────────────────────────────────────────────
 
 def _get_supabase() -> Optional[Any]:
-    url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL", "")
-    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY", "")
-    if not (url and key):
-        return None
-    try:
-        from supabase import create_client
-        return create_client(url, key)
-    except Exception as exc:
-        logger.error(f"[buyers_api] Supabase init failed: {exc}")
-        return None
+    from tools.crm import get_supabase_client
+    return get_supabase_client()
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────

@@ -3,6 +3,20 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — request identity and related records
+
+- Pulled clean branch at `ae45d2c`. Previous goal turn was progress (account containment and canonical binding committed, pushed and tested).
+- Added ASGI request-local database identity when `ACQUISITION_ENABLED=true`. Protected API/internal/legacy requests use the caller JWT plus public key, including sync threadpool handlers. Missing, malformed or duplicate Authorization headers never select service-role credentials. Context resets after completion/error and parallel requests cannot borrow another token.
+- Centralized buyer and webhook client factories through the same identity boundary; raw monitoring HTTP now follows protected request identity. Public form submissions, read-only public availability/config and signed provider/worker routes retain their validated server workflows. Startup settings loading remains server-owned.
+- Protected cached and newly created SQLite CRM stores from scoped requests; old local-CRM HTTP workflows return 409 in scoped mode rather than bypassing RLS. With the feature flag off, legacy behavior remains unchanged.
+- Added CLI-generated `20261026030633_acquisition_related_record_isolation.sql`. Existing UUID lead/deal/property-linked tables derive scope from canonical bindings. Raw authenticated writes to bound child records are denied; unrelated workspace reads and mixed-workspace parent combinations are denied. Bound county property-to-lead identity cannot drift.
+- Validation: **25 real PostgreSQL tests pass**. Expanded fixture covers deals, buyers/import references, deal matches and county aliases. Initial fixture failures (missing buyer_import_log and required buyer last_name) were corrected; final suite passes. **Full offline backend: 1,214 passed, 10 skipped, 367 existing deprecation warnings.** Identity-specific suite: 25 passed. Real installed SDK was inspected locally and confirmed to retain the user Authorization header and public apikey. `git diff --check` passes.
+- Commands: `python3 scripts/test_acquisition_workspace.py`; existing secret-free offline runner plus prior installed Python runtime, `-m pytest tests -q`. The 10 skipped local-journey cases require their separate database harness and are not claimed as passed. No production database, flag, provider, schedule or migration was changed.
+
+**Cutover remains gated:** security is enforced in acquisition mode, but several old service-only RPCs will correctly reject user credentials until replaced/adapted. Local SQLite workflows are intentionally unavailable in scoped mode. Do not enable the feature or bind production records until functional replacements and a coordinated database/application activation gate are complete. Campaign/buyer ownership, orphan/JSON-linked historical evidence and full-schema upgrade acceptance also remain open. This is not a claim that MIG-002 or all legacy compatibility is complete.
+
+Next: implement canonical contacts and immutable permissions/eligibility, plus workspace-aware write RPCs for acquisition workflows; add coordinated activation guards so direct PostgREST RPCs cannot create scoped production data before the matching application controls are approved. Continue toward durable Facebook ingestion and later sequential phases.
+
 ## Implementation checkpoint — acquisition account and lead boundaries
 
 - Pulled `codex/acquisition-foundation` at `0442725`; worktree was clean. Previous goal turn is classified as progress (committed/pushed foundation and verified tests), not a wait or blocker.
@@ -12,7 +26,7 @@ Status: implementation in progress on `codex/acquisition-foundation`; production
 - Binding requires both a legacy platform administrator and workspace owner. County property association must already match the selected canonical lead. One lead/property cannot be adopted into two workspaces. Assignment requires a current member of the same workspace. Caller/agency queue projection requires MFA and explicit lead assignment, exposes no contact numbers, and caps pages at 50.
 - Validation: **22 disposable PostgreSQL tests pass**, including preserved canonical property/lead data, same-phone nonmerging, preexisting membership upgrade, cross-workspace/raw-write denial, sticky revocation and assigned caller access. **121 targeted backend tests pass**, with 24 preexisting datetime warnings. `git diff --check` passes. Same isolated commands/runtime as the prior checkpoint; no provider connections or production writes.
 
-**Remaining security gate:** acquisition-only identities are contained, but existing legacy service-role handlers can still bypass RLS when used by a legacy account. They must be scoped/bridged or denied access to newly bound resources before production binding/activation. Related child records (contracts, offers, etc.) still need workspace ownership propagation. This slice does not claim complete multi-tenant isolation. No production account was enrolled or lead bound.
+**Security gate at this earlier checkpoint:** acquisition-only identities were contained but legacy service-role handlers still bypassed RLS. The newer checkpoint above adds request identity and derived parent scope; functional write replacements and coordinated activation remain required. No production account was enrolled or lead bound.
 
 Next: finish legacy service-path isolation, then add canonical contact/evidence links, immutable per-channel permission and eligibility decisions, and durable Facebook receipts/processing. Full production-shaped upgrade rehearsal and later phase implementation remain open. Goal stays active.
 
@@ -70,6 +84,7 @@ This inventory checkpoint is historical; the implementation checkpoint above sup
 - [x] Start isolated implementation branch from deployed production revision.
 - [x] Implement/test workspace membership, administration API and scoped audit foundation.
 - [x] Implement/test acquisition-only legacy-access containment, canonical lead/property binding and assigned-lead projection.
+- [x] Route protected acquisition-mode requests through user JWT/RLS and isolate UUID lead/deal/property-linked records.
 - [ ] Scope legacy service-role handlers and propagate workspace ownership to related records.
 - [ ] Build/test shared foundation on a disposable database.
 - [ ] Implement and pass Facebook acceptance with approved test leads.

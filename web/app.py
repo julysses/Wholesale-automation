@@ -74,6 +74,8 @@ app = FastAPI(
     redoc_url=None,
     dependencies=[Depends(require_operator)],
 )
+from tools.database_identity import DatabaseIdentityMiddleware
+app.add_middleware(DatabaseIdentityMiddleware)
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
 # By default the API is open (allow_origins=["*"]) so embedded /api/forms/* widgets

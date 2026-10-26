@@ -1,17 +1,20 @@
 """Bounded server-only launch monitoring. Never dispatch seller outreach."""
 import os
 import httpx
+from tools.database_identity import database_credentials, identity
 
 
 def _request(path: str, *, params=None, rpc=False):
     base = (os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL", "")).rstrip("/")
-    secret = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-    if not base.startswith("https://") or not secret:
+    key, bearer = database_credentials()
+    if identity.get() is None:
+        key = bearer = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')
+    if not base.startswith("https://") or not key or not bearer:
         raise RuntimeError("Monitoring database is not configured")
     # No SDK default 120-second timeout and no transport retry after a write.
     with httpx.Client(timeout=5) as client:
         response = client.request("POST" if rpc else "GET", f"{base}/rest/v1/{path}",
-            headers={"apikey": secret, "Authorization": f"Bearer {secret}"},
+            headers={"apikey": key, "Authorization": f"Bearer {bearer}"},
             params=params, json={} if rpc else None)
         response.raise_for_status()
         return response.json()
