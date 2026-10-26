@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — reviewed Facebook campaign links
+
+- Previous turn made progress: `7513e25` added/pushed the campaign draft dashboard. Pulled the branch and inspected receipt, integration, intake and campaign constraints before extending attribution. Read-only production preflight confirmed the proposed relation is absent and the migration ledger remains 95 entries/latest `20261023221455`. Existing catalog evidence remains the baseline; no production SQL mutation occurred.
+- CLI-generated `20261026214412_acquisition_campaign_links.sql` adds an immutable, RLS-protected review ledger over existing campaigns/integrations/intakes, with composite workspace foreign keys. Reviewed Page scope and external campaign identity derive from stored intake/receipt evidence. Ad-account ID and independent ownership evidence must be explicitly reviewed; the Page ID is never treated as an ad account.
+- Owner/admin plus MFA and live session/membership checks gate writes. Serialized identity/request locks and expected sequence/hash enforce one exact review; unreconciled competing external-campaign claims across Pages are denied. Corrections require revocation first, with all history/audit retained. Revocation remains available when activation/integration is held. Current-link state checks integration approval/gates and reviewer membership generation; stale reviewer authority does not become current again merely through re-enrollment.
+- Added authenticated state/review APIs; no client override of Page/integration/external campaign/actor is accepted. Links do not change legacy external_campaign_id or leads.ad_campaign_id, publish campaigns, grant spending authority or execute outreach.
+- Validation: **45 API tests passed**, **all 12 integrated real-SQL journeys passed**, and **five focused PostgreSQL cases passed**, verifying concurrent idempotence, immutable/service-role denial, correction/history, MFA/roles, competing Page claims and invalidated authority. The five cases include missing-evidence/tenant-target denial and the prior service-role/child-association campaign guards. Initial second-Page test used the old first-Page claim helper; corrected the fixture to claim its actual integration. Sandbox shared-memory denial was resolved by running the disposable local cluster with the approved permission.
+
+Next: expose reviewed links/history in the dashboard and persist immutable multi-touch source associations against exact review versions; then ingest coverage-aware cost data and report the funnel. The existing metadata projection still intentionally has no automatically inferred internal campaign association. Complete production-schema upgrade/PostgREST/live provider acceptance and all later sequential phases remain open. Goal active.
+
 ## Implementation checkpoint — campaign draft dashboard
 
 - Continued from pushed `1773ddd` and pulled the current branch. Added the campaign draft panel to the existing default-off acquisition review page. Owner/admin membership permits entry; operators can inspect drafts. Existing database authorization remains authoritative. Channel choices are planning metadata and confer no phase activation.

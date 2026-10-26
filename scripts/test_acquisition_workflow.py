@@ -27,6 +27,8 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_campaign_link_state':['p_workspace','p_intake'],
+ 'review_acquisition_campaign_link':['p_id','p_workspace','p_intake','p_expected_sequence','p_preparation_hash','p_action','p_campaign','p_ad_account','p_evidence_ref','p_note'],
  'create_acquisition_campaign':['p_id','p_workspace','p_name','p_channel','p_budget_cents','p_currency'],
  'recover_acquisition_inquiry': ['p_id','p_workspace','p_receipt','p_expected_updated_at','p_expected_reason','p_note','p_evidence_ref'],
  'reserve_acquisition_intake_analysis': ['p_id','p_workspace','p_intake','p_evidence_hash','p_inputs'],
@@ -120,7 +122,7 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target'}
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign'}
                       else 'timestamptz' if key=='p_expected_updated_at' else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
@@ -354,6 +356,35 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments'),'1')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'1')
         self.assertEqual(self.sql(f"SELECT (property_id IS NULL)::text FROM workspace_leads WHERE lead_id='{source_lead}'"),'true')
+
+    def test_campaign_link_http_review_revoke_and_no_provider_action(self):
+        self.configure_facebook(); self.provider_metadata={'campaign_id':'300'}
+        self.assertEqual(self.facebook_delivery().status_code,200)
+        self.assertEqual(self.facebook_worker().status_code,200)
+        intake=self.sql('SELECT id FROM seller_intakes')
+        campaign='cf000000-0000-4000-8000-000000000001'
+        created=self.client.post(self.base+'/campaigns',headers=self.headers,json={'id':campaign,'name':'Reviewed campaign','channel':'facebook','budget_cents':50000,'currency':'USD'})
+        self.assertEqual(created.status_code,200,created.text)
+        path=self.base+'/intakes/'+intake
+        state=self.client.get(path+'/campaign-link-state',headers=self.headers)
+        self.assertEqual(state.status_code,200,state.text)
+        self.assertEqual(state.json()['page_id'],'100')
+        body={'id':'cf000000-0000-4000-8000-000000000002','expected_sequence':0,'preparation_hash':state.json()['preparation_hash'],
+              'action':'link','campaign_id':campaign,'ad_account_id':'999','evidence_ref':'Synthetic ownership document','review_note':'Reviewed Page, ad account and campaign ownership.'}
+        self.lose_facebook_reply='review_acquisition_campaign_link'
+        self.assertEqual(self.client.post(path+'/campaign-link-reviews',headers=self.headers,json=body).status_code,503)
+        replay=self.client.post(path+'/campaign-link-reviews',headers=self.headers,json=body)
+        self.assertEqual(replay.status_code,200,replay.text); self.assertTrue(replay.json()['duplicate'])
+        linked=self.client.get(path+'/campaign-link-state',headers=self.headers).json()
+        self.assertTrue(linked['link_current']); self.assertFalse(linked['execution_authorized'])
+        self.assertEqual(linked['internal_campaign_id'],campaign)
+        self.assertEqual(self.client.get(path+'/campaign-link-state',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
+        revoke={**body,'id':'cf000000-0000-4000-8000-000000000003','expected_sequence':1,'action':'revoke','campaign_id':None,'ad_account_id':None}
+        self.assertEqual(self.client.post(path+'/campaign-link-reviews',headers=self.headers,json=revoke).status_code,200)
+        self.assertFalse(self.client.get(path+'/campaign-link-state',headers=self.headers).json()['link_current'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_campaign_links'),'2')
+        self.assertEqual(self.sql('SELECT count(*) FROM leads WHERE ad_campaign_id IS NOT NULL'),'0')
+        self.assertEqual(sum(path.startswith('/v26.0/') for path,token in self.requests),1)
 
     def test_campaign_draft_http_is_idempotent_scoped_and_non_executing(self):
         path=self.base+'/campaigns'

@@ -156,6 +156,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(QUALIFICATION_MIGRATION.read_text())
         self.sql(HANDOFF_MIGRATION.read_text())
         self.sql(CAMPAIGN_MIGRATION.read_text())
+        self.sql((ROOT/"frontend/supabase/migrations/20261026214412_acquisition_campaign_links.sql").read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -191,6 +192,89 @@ class WorkspaceTests(unittest.TestCase):
     def campaign_draft(self, identity='91000000-0000-4000-8000-000000000001',actor=ADMIN,workspace=WORKSPACE,fail=False):
         value=self.sql(f"SELECT public.create_acquisition_campaign('{identity}','{workspace}','Draft campaign','facebook',50000,'USD')",user=actor,fail=fail)
         return value if fail else json.loads(value)
+
+    def campaign_link_fixture(self, external='987654', account='fixture-page', workspace=WORKSPACE):
+        self.inbox_config(account=account,workspace=workspace); self.inbox_accept(account=account)
+        prepared=self.prepared_intake()
+        prepared['provider_evidence']['campaign_id']=external
+        prepared['provider_evidence_hash']=hashlib.sha256(json.dumps(prepared['provider_evidence'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        integration=self.sql(f"SELECT id FROM private.acquisition_integrations WHERE account_id={literal(account)}")
+        claim=json.loads(self.sql(f"SELECT public.claim_acquisition_events('{integration}',1,120)",user=ADMIN,role='service_role'))[0]
+        intake=self.complete_intake(claim,prepared)
+        return intake['intake_id']
+
+    def campaign_link_state(self, intake, user=ADMIN, workspace=WORKSPACE, fail=False):
+        result=self.sql(f"SELECT public.acquisition_campaign_link_state('{workspace}','{intake}')",user=user,fail=fail)
+        return result if fail else json.loads(result)
+
+    def campaign_link_review(self, intake, state, user=ADMIN, fail=False, aal='aal2', **overrides):
+        args=dict(p_id='cf000000-0000-4000-8000-000000000001',p_workspace=WORKSPACE,p_intake=intake,
+                  p_expected_sequence=state['sequence'],p_preparation_hash=state['preparation_hash'],p_action='link',
+                  p_campaign=self.link_campaign,p_ad_account='123456',p_evidence_ref='Synthetic account ownership evidence',
+                  p_note='Reviewed Page and ad account ownership with campaign identity.')
+        args.update(overrides)
+        sqlargs=','.join(k+'=>'+('NULL' if v is None else str(v) if isinstance(v,int) else literal(v)) for k,v in args.items())
+        result=self.sql('SELECT public.review_acquisition_campaign_link('+sqlargs+')',user=user,fail=fail,aal=aal)
+        return result if fail else json.loads(result)
+
+    def test_campaign_link_concurrent_review_scope_and_legacy_unchanged(self):
+        self.link_campaign=self.campaign_draft()['id']; intake=self.campaign_link_fixture(); state=self.campaign_link_state(intake)
+        self.assertFalse(state['link_current']); self.assertEqual(state['page_id'],'fixture-page')
+        with ThreadPoolExecutor(max_workers=3) as pool: results=list(pool.map(lambda _:self.campaign_link_review(intake,state),range(3)))
+        self.assertEqual(sum(not row['duplicate'] for row in results),1)
+        current=self.campaign_link_state(intake); self.assertTrue(current['link_current']); self.assertEqual(current['internal_campaign_id'],self.link_campaign)
+        self.assertFalse(current['execution_authorized'])
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_campaign_link'"),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_campaign_links',user=OTHER),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM leads WHERE ad_campaign_id IS NOT NULL'),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns WHERE external_campaign_id IS NOT NULL'),'0')
+        self.campaign_link_state(intake,user=OTHER,workspace=WORKSPACE_B,fail=True)
+        for role in ('authenticated','service_role'):
+            for query in ('DELETE FROM acquisition_campaign_links','TRUNCATE acquisition_campaign_links',"UPDATE acquisition_campaign_links SET ad_account_id='9'",'INSERT INTO acquisition_campaign_links SELECT * FROM acquisition_campaign_links'):
+                self.sql(query,user=ADMIN,role=role,fail=True)
+        self.sql("UPDATE acquisition_campaign_links SET ad_account_id='9'",fail=True)
+
+    def test_campaign_link_revocation_correction_and_stale_rejection(self):
+        self.link_campaign=self.campaign_draft()['id']; intake=self.campaign_link_fixture(); state=self.campaign_link_state(intake)
+        self.campaign_link_review(intake,state,p_preparation_hash='f'*64,fail=True)
+        self.campaign_link_review(intake,state); current=self.campaign_link_state(intake)
+        self.campaign_link_review(intake,current,p_id='cf000000-0000-4000-8000-000000000002',fail=True)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false; UPDATE private.acquisition_integrations SET enabled=false')
+        self.assertFalse(self.campaign_link_state(intake)['link_current'])
+        revoke=dict(p_id='cf000000-0000-4000-8000-000000000002',p_action='revoke',p_campaign=None,p_ad_account=None)
+        self.campaign_link_review(intake,current,**revoke)
+        self.assertTrue(self.campaign_link_review(intake,current,**revoke)['duplicate'])
+        self.activate(); self.sql('UPDATE private.acquisition_integrations SET enabled=true')
+        fresh=self.campaign_link_state(intake); self.assertFalse(fresh['link_current'])
+        self.campaign_link_review(intake,fresh,p_id='cf000000-0000-4000-8000-000000000003',p_ad_account='654321')
+        self.assertEqual(self.campaign_link_state(intake)['latest_review']['ad_account_id'],'654321')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_campaign_links'),'3')
+
+    def test_campaign_link_rejects_missing_evidence_and_cross_workspace_target(self):
+        self.link_campaign=self.campaign_draft()['id']
+        missing=self.campaign_link_fixture(external=None)
+        self.campaign_link_state(missing,fail=True)
+        intake=self.campaign_link_fixture(account='valid-page'); state=self.campaign_link_state(intake)
+        other=self.campaign_draft(identity='cf000000-0000-4000-8000-000000000099',actor=OTHER,workspace=WORKSPACE_B)['id']
+        self.campaign_link_review(intake,state,p_campaign=other,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_campaign_links'),'0')
+
+    def test_campaign_link_mfa_roles_authority_and_account_conflicts(self):
+        self.link_campaign=self.campaign_draft()['id']; intake=self.campaign_link_fixture(); state=self.campaign_link_state(intake)
+        self.member(target=OPERATOR,role='operator')
+        self.campaign_link_review(intake,state,user=OPERATOR,fail=True)
+        self.campaign_link_review(intake,state,aal='aal1',fail=True)
+        self.campaign_link_review(intake,state,p_ad_account='act_123',fail=True)
+        self.campaign_link_review(intake,state,p_campaign='cf000000-0000-4000-8000-000000000099',fail=True)
+        self.campaign_link_review(intake,state)
+        other_intake=self.campaign_link_fixture(account='another-page')
+        other_state=self.campaign_link_state(other_intake)
+        self.campaign_link_review(other_intake,other_state,p_id='cf000000-0000-4000-8000-000000000002',fail=True)
+        self.sql(f"UPDATE workspace_memberships SET updated_at=clock_timestamp() WHERE workspace_id='{WORKSPACE}' AND user_id='{ADMIN}'")
+        self.assertFalse(self.campaign_link_state(intake)['link_current'])
+        self.campaign_link_review(other_intake,other_state,p_id='cf000000-0000-4000-8000-000000000002',fail=True)
+        self.sql(f"DELETE FROM auth.sessions WHERE id='{ADMIN}'")
+        self.campaign_link_review(intake,state,fail=True)
 
     def test_campaign_draft_scope_idempotence_and_unknown_spend(self):
         with ThreadPoolExecutor(max_workers=3) as pool: results=list(pool.map(lambda _:self.campaign_draft(),range(3)))

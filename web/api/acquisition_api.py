@@ -610,3 +610,33 @@ async def workspace_campaigns(workspace_id: UUID, after: UUID | None = None,
         params['id'] = 'gt.'+str(after)
     rows = await store.request('GET', 'ad_campaigns', params=params)
     return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}
+
+
+class AcquisitionCampaignLinkReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    expected_sequence: int = Field(strict=True, ge=0)
+    preparation_hash: str = Field(pattern=r'^[a-f0-9]{64}$')
+    action: Literal['link', 'revoke']
+    campaign_id: UUID | None = None
+    ad_account_id: str | None = Field(default=None, pattern=r'^[0-9]{1,200}$')
+    evidence_ref: str = Field(min_length=10, max_length=500)
+    review_note: str = Field(min_length=20, max_length=2000)
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}/campaign-link-state')
+async def campaign_link_state(workspace_id: UUID, intake_id: UUID, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/acquisition_campaign_link_state', body={
+        'p_workspace': str(workspace_id), 'p_intake': str(intake_id)})
+
+
+@router.post('/workspaces/{workspace_id}/intakes/{intake_id}/campaign-link-reviews')
+async def review_campaign_link(workspace_id: UUID, intake_id: UUID, body: AcquisitionCampaignLinkReview, store=Depends(acquisition_store)):
+    if (body.action == 'link' and (body.campaign_id is None or body.ad_account_id is None)) or (
+            body.action == 'revoke' and (body.campaign_id is not None or body.ad_account_id is not None)):
+        raise HTTPException(422, 'Link requires a campaign and ad account; revocation cannot assert either.')
+    return await store.request('POST', 'rpc/review_acquisition_campaign_link', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_intake': str(intake_id),
+        'p_expected_sequence': body.expected_sequence, 'p_preparation_hash': body.preparation_hash,
+        'p_action': body.action, 'p_campaign': str(body.campaign_id) if body.campaign_id else None,
+        'p_ad_account': body.ad_account_id, 'p_evidence_ref': body.evidence_ref, 'p_note': body.review_note})

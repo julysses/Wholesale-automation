@@ -521,3 +521,27 @@ def test_campaign_draft_uses_controlled_rpc_and_scoped_list(api):
     assert response.json()=={'items':[{'id':U}],'next_after':U}
     params=state['requests'][-1].url.params
     assert params['workspace_id']=='eq.'+W and params['id']=='gt.'+U and params['limit']=='2'
+
+
+def test_campaign_link_review_binds_scope_identity_and_rejects_authority_overrides(api):
+    client,state=api
+    base=f'/api/acquisition/workspaces/{W}/intakes/{U}'
+    state['body']={'sequence':0,'link_current':False,'execution_authorized':False}
+    response=client.get(base+'/campaign-link-state',headers={'Authorization':'Bearer user-token'})
+    assert response.status_code==200
+    assert json.loads(state['requests'][-1].content)=={'p_workspace':W,'p_intake':U}
+    body={'id':U,'expected_sequence':0,'preparation_hash':'a'*64,'action':'link','campaign_id':W,
+          'ad_account_id':'123','evidence_ref':'Reviewed account evidence','review_note':'Reviewed account and campaign ownership.'}
+    state['body']={'review_id':U,'sequence':1,'duplicate':False,'execution_authorized':False}
+    assert client.post(base+'/campaign-link-reviews',headers={'Authorization':'Bearer user-token'},json=body).status_code==200
+    request=state['requests'][-1]
+    assert request.headers['authorization']=='Bearer user-token'
+    sent=json.loads(request.content)
+    assert sent['p_workspace']==W and sent['p_intake']==U and sent['p_ad_account']=='123'
+    assert 'actor_id' not in sent
+    count=len(state['requests'])
+    for changes in ({'actor_id':U},{'integration_id':U},{'external_campaign_id':'123'},{'expected_sequence':True},
+                    {'action':'revoke'},{'campaign_id':None},{'ad_account_id':None},{'ad_account_id':'act_123'}):
+        assert client.post(base+'/campaign-link-reviews',headers={'Authorization':'Bearer user-token'},json={**body,**changes}).status_code==422
+    assert len(state['requests'])==count
+    assert client.post(base+'/campaign-link-reviews',headers={'Authorization':'Bearer user-token'},json={**body,'action':'revoke','campaign_id':None,'ad_account_id':None}).status_code==200
