@@ -1863,7 +1863,10 @@ async def facebook_lead_webhook(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    entries = adapter.parse_lead_webhook(payload)
+    try:
+        entries = adapter.parse_lead_webhook(payload)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid Facebook event envelope")
     if not entries:
         return {"received": True, "leads": 0}
 

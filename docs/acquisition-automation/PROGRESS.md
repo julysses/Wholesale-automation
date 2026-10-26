@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — Facebook webhook boundary
+
+- Pulled `2fb4395` successfully after retrying sandbox DNS failure through approved Git network access. Inspected existing adapter, HTTP receiver, generic queue, campaign/entity mapping and receipt uniqueness.
+- Hardened the reusable adapter against blank signing/verification credentials, malformed/non-ASCII signature headers, and empty challenges. Existing HTTP credential checks remain. Signature comparison uses the exact raw body; malformed signed event envelopes now return 400 before any processing rather than throwing or inventing a `None` lead identity.
+- Added 25 offline boundary regressions; focused security suite **38 passed**, full backend **1,294 passed, 10 skipped, 368 existing warnings**. No provider calls, migrations, configuration or deployment changes.
+- Durable ingestion is still pending: current Facebook handler processes inline; generic queue insertion returns false on storage failure and legacy callers can acknowledge anyway. Existing `webhook_jobs` has service-only RLS but no tenant/provider-event identity or lease. Existing native receipts have globally unique leadgen ID and unique lead ID; repeat inquiry semantics must preserve SMS receipt foreign keys. Do not route the new acquisition pipeline through the legacy drain until a separately isolated inbox/claim path exists.
+
+Next: extend webhook_jobs with acquisition workspace/integration/event identity and immutable receipt controls after full constraint/policy inspection; isolate legacy drain, add atomic idempotent acceptance and lease/reconciliation, require persistence before acknowledgment. Then implement authorized Page routing, lead retrieval/credential alerts, canonical identity/intake and attribution. Current API version, subscription permissions and provider contract still require official-document verification before new integration deployment. Goal active; production and paused SMS unchanged.
+
 ## Implementation checkpoint — API/calculator/database workflow acceptance
 
 - Pulled clean `6403a01`; prior turn implemented/tested/pushed operator underwriting and proposal entry (progress). Inspected current engine fixtures, API/store/worker boundaries and isolated database harness.

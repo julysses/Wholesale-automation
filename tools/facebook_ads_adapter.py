@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -73,7 +74,12 @@ class FacebookAdsAdapter:
         Called on GET /webhooks/facebook/lead.
         Returns the challenge string if the verify token matches, None otherwise.
         """
-        if hub_mode == "subscribe" and hub_verify_token == self._verify_token:
+        if (
+            self._verify_token.strip()
+            and hub_mode == "subscribe"
+            and hmac.compare_digest(hub_verify_token.encode(), self._verify_token.encode())
+            and hub_challenge
+        ):
             return hub_challenge
         logger.warning("Facebook webhook challenge failed — token mismatch")
         return None
@@ -86,13 +92,15 @@ class FacebookAdsAdapter:
         Uses app_secret as the HMAC key.
         Returns True if valid.
         """
-        if not signature_header or not signature_header.startswith("sha256="):
+        if not self._app_secret.strip() or not re.fullmatch(
+            r"sha256=[0-9a-fA-F]{64}", signature_header
+        ):
             return False
         expected_hex = signature_header[len("sha256="):]
         computed = hmac.new(
             self._app_secret.encode(), payload_bytes, hashlib.sha256
         ).hexdigest()
-        return hmac.compare_digest(computed, expected_hex)
+        return hmac.compare_digest(computed, expected_hex.lower())
 
     def parse_lead_webhook(self, payload: dict) -> list[FacebookLeadEntry]:
         """
@@ -100,12 +108,27 @@ class FacebookAdsAdapter:
         Returns a list of FacebookLeadEntry objects.
         """
         entries: list[FacebookLeadEntry] = []
+        if not isinstance(payload, dict) or not isinstance(payload.get("entry", []), list):
+            raise ValueError("Invalid Facebook event envelope")
         for entry in payload.get("entry", []):
+            if not isinstance(entry, dict) or not isinstance(entry.get("changes", []), list):
+                raise ValueError("Invalid Facebook event entry")
             page_id = entry.get("id", "")
             for change in entry.get("changes", []):
+                if not isinstance(change, dict):
+                    raise ValueError("Invalid Facebook event change")
                 if change.get("field") != "leadgen":
                     continue
                 val = change.get("value", {})
+                if not isinstance(val, dict):
+                    raise ValueError("Invalid Facebook lead event")
+                lead_id = val.get("leadgen_id")
+                if (
+                    isinstance(lead_id, bool)
+                    or not isinstance(lead_id, (str, int))
+                    or not str(lead_id).strip()
+                ):
+                    raise ValueError("Missing Facebook lead identity")
                 entries.append(
                     FacebookLeadEntry(
                         leadgen_id=str(val.get("leadgen_id", "")),
