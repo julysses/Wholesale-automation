@@ -456,3 +456,30 @@ def test_intake_underwriting_uses_server_canonical_identity_and_fresh_context(ap
     assert state['requests'][1].url.params['lead_id'] == 'eq.'+canonical
     assert all(request.headers['authorization'] == 'Bearer user-token' for request in state['requests'])
     assert client.post(path, headers={'Authorization': 'Bearer user-token'}, json={**body, 'target_lead_id': canonical}).status_code == 422
+
+
+def test_saved_analysis_provenance_is_user_scoped_and_preserves_stale_evidence(api):
+    client, state = api
+    context = {'analysis_id': U, 'intake_id': W, 'assessment_id': U, 'has_intake': True, 'qualification_current': False}
+    state['responses'] = [context, [{'analysis_id': U, 'intake_id': W, 'assessment_id': U, 'evidence_hash': 'a'*64}]]
+    response = client.get(f'/api/acquisition/workspaces/{W}/underwriting/scenarios/{U}/intake-context', headers={'Authorization': 'Bearer user-token'})
+    assert response.status_code == 200 and response.json() == {**context, 'evidence_hash': 'a'*64}
+    assert state['requests'][1].url.params['workspace_id'] == 'eq.'+W
+    assert state['requests'][1].url.params['analysis_id'] == 'eq.'+U
+    assert all(r.headers['authorization'] == 'Bearer user-token' for r in state['requests'])
+
+
+@pytest.mark.parametrize('row', [[], [{'analysis_id': W, 'intake_id': W, 'assessment_id': U, 'evidence_hash': 'a'*64}],
+                               [{'analysis_id': U, 'intake_id': W, 'assessment_id': U, 'evidence_hash': 'invalid'}]])
+def test_saved_analysis_provenance_rejects_missing_or_mismatched_source(api, row):
+    client, state = api
+    state['responses'] = [{'analysis_id': U, 'intake_id': W, 'assessment_id': U, 'has_intake': True, 'qualification_current': True}, row]
+    assert client.get(f'/api/acquisition/workspaces/{W}/underwriting/scenarios/{U}/intake-context', headers={'Authorization': 'Bearer user-token'}).status_code == 503
+
+
+def test_manual_analysis_provenance_needs_no_intake_read(api):
+    client, state = api
+    state['body'] = {'analysis_id': U, 'has_intake': False, 'intake_id': None, 'assessment_id': None, 'qualification_current': True}
+    response = client.get(f'/api/acquisition/workspaces/{W}/underwriting/scenarios/{U}/intake-context', headers={'Authorization': 'Bearer user-token'})
+    assert response.status_code == 200 and response.json()['evidence_hash'] is None
+    assert len(state['requests']) == 1

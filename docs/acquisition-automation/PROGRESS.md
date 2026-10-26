@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — saved scenario provenance and resumption
+
+- Previous turn was progress: `e684cd9` implemented/tested/pushed intake dashboard handoff. Pulled the branch and added an authenticated saved-scenario provenance endpoint backed by the existing current-state RPC and user-scoped immutable provenance table read.
+- Saved scenario review displays intake/assessment references and current versus stale qualification. Unavailable/malformed source data fails closed. Pending intake calculations refresh source context immediately before resuming with the original evidence hash and dedicated intake endpoint; manual scenarios keep their existing route. Database source controls remain authoritative for proposals and approvals.
+- Validation: **42 API tests**, **222 frontend tests across 51 files**, and **all 9 integrated real-SQL journeys passed**. Feature-enabled build passed; lint has no new findings (147 existing). Integrated coverage verifies current evidence, cross-workspace denial and preserved historical hash after identity revocation. The final focused UI run adds a qualification-change-before-resume case.
+- An initial component test clicked before the new source query finished; corrected it to await visible source status. An initial integration fixture supplied a raw user UUID instead of its registered synthetic bearer token; corrected the fixture and reran all nine journeys successfully. No production changes, schema migration, provider calls or outreach were performed. New panel behavior has component/build coverage; live PostgREST and rendered browser acceptance remain outstanding for this increment.
+
+Next: direct saved-scenario navigation, campaign attribution/reporting and sequential channel implementation. Full-schema/PostgREST/provider acceptance, mobile QA and release approvals remain open. Goal active.
+
 ## Implementation checkpoint — qualified intake underwriting dashboard
 
 - Previous turn was progress: `a00dea8` implemented/tested/pushed the backend handoff. Pulled the current branch and connected qualified intake screening to the shared explicit-input underwriting editor and dedicated intake reservation endpoint.

@@ -41,7 +41,7 @@ function PropertyWorkspace({base,lead,userId,onProposed}:{base:string;lead:Lead;
     <button className={button} disabled={history.isFetching} onClick={()=>{setSelected(null);void history.refetch();}}>Refresh saved scenarios</button>
     {history.isFetching?<p role="status">Loading saved scenarios…</p>:history.isError?<p role="alert">{errors(history.error)}</p>:<div className="flex flex-wrap gap-2">{history.data?.map(a=><button className={button} key={a.id} onClick={()=>setSelected(a)}>Revision {a.acquisition_revision} · {a.acquisition_strategy.replaceAll('_',' ')} · {a.acquisition_status}</button>)}</div>}
     <div className="flex gap-2"><button className={button} disabled={!revisionAfter||history.isFetching} onClick={()=>{setSelected(null);setRevisionAfter(0);}}>First revision page</button><button className={button} disabled={history.data?.length!==20||history.isFetching||history.isError} onClick={()=>{setSelected(null);setRevisionAfter(history.data![19].acquisition_revision);}}>More revisions</button></div>
-    {selected && !history.isError && <ProposalEditor key={selected.id} path={path} onRecalculated={()=>{void history.refetch();setSelected(null);}} base={base} analysis={selected} bound={!!lead.property_id} onProposed={onProposed}/>}
+    {selected && !history.isError && <ProposalEditor key={selected.id} userId={userId} path={path} onRecalculated={()=>{void history.refetch();setSelected(null);}} base={base} analysis={selected} bound={!!lead.property_id} onProposed={onProposed}/>}
   </section>;
 }
 
@@ -102,26 +102,45 @@ export function ScenarioEditor({path,onSaved,intake,disabled=false,onPending}:{p
   </details>;
 }
 
-function ProposalEditor({base,path,onRecalculated,analysis,bound,onProposed}:{base:string;path:string;onRecalculated:()=>void;analysis:Analysis;bound:boolean;onProposed:()=>void}) {
+type AnalysisContext={analysis_id:string;has_intake:boolean;intake_id:string|null;assessment_id:string|null;qualification_current:boolean;evidence_hash:string|null};
+async function loadAnalysisContext(path:string,id:string,signal?:AbortSignal):Promise<AnalysisContext>{
+  const data=await get<AnalysisContext>(path,signal);
+  const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+  if(!data||data.analysis_id!==id||typeof data.has_intake!=='boolean'||typeof data.qualification_current!=='boolean'
+    ||(data.has_intake?(!uuid.test(data.intake_id??'')||!uuid.test(data.assessment_id??'')||!/^[a-f0-9]{64}$/.test(data.evidence_hash??''))
+      :(data.intake_id!==null||data.assessment_id!==null||data.evidence_hash!==null)))throw new Error('Invalid scenario provenance');
+  return data;
+}
+
+function ProposalEditor({base,path,onRecalculated,analysis,bound,onProposed,userId}:{userId:string;base:string;path:string;onRecalculated:()=>void;analysis:Analysis;bound:boolean;onProposed:()=>void}) {
   const [caseName,setCaseName]=useState('base');const [amount,setAmount]=useState('');const [note,setNote]=useState('');const [busy,setBusy]=useState(false);const lock=useRef(false);
   const [request,setRequest]=useState<{id:string;analysis_id:string;case:string;amount:string;note:string}|null>(null);const [done,setDone]=useState(false);const [feedback,setFeedback]=useState('');
+  const contextPath=`${base}/underwriting/scenarios/${analysis.id}/intake-context`;
+  const source=useQuery({queryKey:['acquisition-analysis-intake',userId,base,analysis.id],queryFn:({signal})=>loadAnalysisContext(contextPath,analysis.id,signal),retry:false,gcTime:0,staleTime:0});
+  const sourceReady=!source.isFetching&&!source.isError&&!!source.data&&(!source.data.has_intake||source.data.qualification_current);
   const range=analysis.acquisition_outputs?.cases?.[caseName]?.proposed_offer_range;
-  async function propose(){if(lock.current)return;lock.current=true;setBusy(true);let attempt=request;
+  async function propose(){if(lock.current||(!request&&!sourceReady))return;lock.current=true;setBusy(true);let attempt=request;
     try {if(!attempt){if(!/^\d+(\.\d{1,2})?$/.test(amount)||Number(amount)<=0||!note.trim())throw new Error('Enter a positive dollar amount and proposal rationale.');attempt={id:crypto.randomUUID(),analysis_id:analysis.id,case:caseName,amount,note:note.trim()};setRequest(attempt);}
       const result=await post<{id:string}>(`${base}/offers`,attempt);if(result.id!==attempt.id)throw new Error('Proposal result unconfirmed');setRequest(null);setDone(true);setFeedback('Proposal saved for review. No offer was sent.');onProposed();
     }catch(error){if(definite(error))setRequest(null);setFeedback(attempt&&!definite(error)?'Proposal outcome unconfirmed. Retry the same proposal reference.':errors(error));}finally{lock.current=false;setBusy(false);}}
-  async function resume(){if(lock.current)return;lock.current=true;setBusy(true);
-    try{const response=await post<{analysis:Analysis}>(`${path}/scenarios`,{id:analysis.id,inputs:analysis.acquisition_inputs});
+  async function resume(){if(lock.current||!sourceReady)return;lock.current=true;setBusy(true);
+    try{const fresh=await loadAnalysisContext(contextPath,analysis.id);
+      if(fresh.has_intake&&!fresh.qualification_current)throw new Error('Intake qualification changed. Review the source before resuming.');
+      const response=await post<{analysis:Analysis;intake_context?:AnalysisContext}>(fresh.has_intake?`${base}/intakes/${fresh.intake_id}/underwriting/scenarios`:`${path}/scenarios`,
+        {id:analysis.id,inputs:analysis.acquisition_inputs,...(fresh.has_intake?{evidence_hash:fresh.evidence_hash}:{})});
+      if(fresh.has_intake&&(response.intake_context?.analysis_id!==analysis.id||response.intake_context?.intake_id!==fresh.intake_id||response.intake_context?.assessment_id!==fresh.assessment_id))throw new Error('Source reconciliation unconfirmed');
       if(response.analysis?.id!==analysis.id)throw new Error('Calculation result unconfirmed');
       if(response.analysis.acquisition_status==='pending')setFeedback('Calculation remains pending. This request has not created another revision.');
       else onRecalculated();
-    }catch(error){setFeedback(errors(error));}finally{lock.current=false;setBusy(false);}}
+    }catch(error){setFeedback(errors(error));}finally{void source.refetch();lock.current=false;setBusy(false);}}
   return <section className="border rounded p-3 space-y-3"><h4 className="font-semibold">Propose from revision {analysis.acquisition_revision}</h4><p>Status: {analysis.acquisition_status}. The server checks that this remains the latest calculated revision.</p>
+    {source.isFetching?<p role="status">Checking scenario source…</p>:source.isError?<p role="alert">Scenario source unavailable. Refresh before continuing.</p>:source.data?.has_intake?<div className="rounded border p-3 text-sm"><p>Source intake: {source.data.intake_id}</p><p>Assessment: {source.data.assessment_id}</p><p>{source.data.qualification_current?'Intake qualification is current. The server rechecks it before further actions.':'Intake qualification changed. This scenario is historical; reassess the intake before preparing a new version.'}</p></div>:<p className="text-sm">Manually entered scenario; no intake assessment is attached.</p>}
+    <button className={button} disabled={busy||!!request||source.isFetching} onClick={()=>void source.refetch()}>Refresh scenario source</button>
     {analysis.acquisition_outputs && <ScenarioSummary output={analysis.acquisition_outputs}/>}
-    {analysis.acquisition_status==='pending' && analysis.acquisition_inputs != null && <button className={button} disabled={busy} onClick={()=>void resume()}>Resume saved calculation</button>}
-    <fieldset disabled={busy||!!request||done||!bound||analysis.acquisition_status!=='calculated'} className="space-y-3"><label>Offer case<select className={input} value={caseName} onChange={e=>setCaseName(e.target.value)}>{caseNames.map(name=><option key={name}>{name}</option>)}</select></label>
+    {analysis.acquisition_status==='pending' && analysis.acquisition_inputs != null && <button className={button} disabled={busy||!sourceReady} onClick={()=>void resume()}>Resume saved calculation</button>}
+    <fieldset disabled={busy||!!request||done||!sourceReady||!bound||analysis.acquisition_status!=='calculated'} className="space-y-3"><label>Offer case<select className={input} value={caseName} onChange={e=>setCaseName(e.target.value)}>{caseNames.map(name=><option key={name}>{name}</option>)}</select></label>
       <p>Calculated range: {range?`$${range.low} to $${range.high}`:'Unavailable'}</p><label>Proposed amount (USD)<input className={input} inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)}/></label><label>Proposal rationale<textarea className={input} maxLength={4000} value={note} onChange={e=>setNote(e.target.value)}/></label></fieldset>
-    <button className={button} disabled={busy||done||(!request&&(!bound||analysis.acquisition_status!=='calculated'||!range||!amount||!note.trim()))} onClick={()=>void propose()}>{request?'Retry same proposal':'Create proposal for review'}</button>
+    <button className={button} disabled={busy||done||(!request&&(!sourceReady||!bound||analysis.acquisition_status!=='calculated'||!range||!amount||!note.trim()))} onClick={()=>void propose()}>{request?'Retry same proposal':'Create proposal for review'}</button>
     {feedback&&<p role="status">{feedback}</p>}
   </section>;
 }

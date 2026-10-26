@@ -544,3 +544,28 @@ async def save_intake_scenario(workspace_id: UUID, intake_id: UUID, body: Intake
             or not isinstance(context.get('qualification_current'), bool)):
         raise HTTPException(503, 'Intake analysis state is unconfirmed')
     return {**result, 'intake_context': context}
+
+
+@router.get('/workspaces/{workspace_id}/underwriting/scenarios/{analysis_id}/intake-context')
+async def saved_analysis_intake_context(workspace_id: UUID, analysis_id: UUID, store=Depends(acquisition_store)):
+    """Read current source validity and immutable retry evidence through the user's RLS."""
+    context = await store.request('POST', 'rpc/acquisition_intake_analysis_state', body={
+        'p_workspace': str(workspace_id), 'p_analysis': str(analysis_id),
+    })
+    if (not isinstance(context, dict) or context.get('analysis_id') != str(analysis_id)
+            or not isinstance(context.get('has_intake'), bool)
+            or not isinstance(context.get('qualification_current'), bool)):
+        raise HTTPException(503, 'Analysis provenance unavailable')
+    if not context['has_intake']:
+        return {**context, 'evidence_hash': None}
+    rows = await store.request('GET', 'acquisition_analysis_intakes', params={
+        'select': 'analysis_id,intake_id,assessment_id,evidence_hash',
+        'workspace_id': 'eq.'+str(workspace_id), 'analysis_id': 'eq.'+str(analysis_id), 'limit': '1',
+    })
+    if (not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict)
+            or any(rows[0].get(key) != context.get(key) for key in ('analysis_id', 'intake_id', 'assessment_id'))
+            or not isinstance(rows[0].get('evidence_hash'), str)
+            or len(rows[0]['evidence_hash']) != 64
+            or any(c not in '0123456789abcdef' for c in rows[0]['evidence_hash'])):
+        raise HTTPException(503, 'Analysis provenance unavailable')
+    return {**context, 'evidence_hash': rows[0]['evidence_hash']}

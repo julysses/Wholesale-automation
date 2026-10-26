@@ -124,6 +124,16 @@ class WorkflowTests(WorkspaceTests):
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
+        elif request.url.path=='/rest/v1/acquisition_analysis_intakes':
+            self.assertEqual(request.method,'GET')
+            self.assertEqual(request.url.params['select'],'analysis_id,intake_id,assessment_id,evidence_hash')
+            self.assertEqual(set(request.url.params),{'select','workspace_id','analysis_id','limit'})
+            self.assertEqual(request.url.params['limit'],'1')
+            filters=[]
+            for key in ('workspace_id','analysis_id'):
+                op,value=request.url.params[key].split('.',1);self.assertEqual(op,'eq')
+                filters.append(f'{key}={literal(value)}::uuid')
+            query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT analysis_id,intake_id,assessment_id,evidence_hash FROM public.acquisition_analysis_intakes WHERE {' AND '.join(filters)} LIMIT 1) row;"
         elif request.url.path=='/rest/v1/seller_intakes':
             self.assertEqual(request.method,'GET')
             allowed={'id','lead_id','classification','created_at','prepared_answers','preparation_hash','normalization_notes'}
@@ -298,6 +308,12 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(response.json()['analysis']['acquisition_status'],'calculated')
         self.assertTrue(response.json()['intake_context']['qualification_current'])
         self.assertFalse(response.json()['binding_offer'])
+        provenance_path=f'{self.base}/underwriting/scenarios/{ANALYSIS}/intake-context'
+        provenance=self.client.get(provenance_path,headers=self.headers)
+        self.assertEqual(provenance.status_code,200,provenance.text)
+        self.assertEqual(provenance.json()['evidence_hash'],body['evidence_hash'])
+        self.assertTrue(provenance.json()['qualification_current'])
+        self.assertEqual(self.client.get(provenance_path,headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_assessments'),'1')
         self.assertEqual(self.proposal().status_code,200)
         self.assertEqual(self.client.post(path,headers=self.headers,json=body).status_code,200)
@@ -307,6 +323,10 @@ class WorkflowTests(WorkspaceTests):
         replay=self.client.post(path,headers=self.headers,json=body)
         self.assertEqual(replay.status_code,200,replay.text)
         self.assertFalse(replay.json()['intake_context']['qualification_current'])
+        historical=self.client.get(provenance_path,headers=self.headers)
+        self.assertEqual(historical.status_code,200,historical.text)
+        self.assertFalse(historical.json()['qualification_current'])
+        self.assertEqual(historical.json()['evidence_hash'],body['evidence_hash'])
         offer=self.client.get(f'{self.base}/offers/{OFFER}/state',headers=self.headers).json()
         self.assertIn('INTAKE_QUALIFICATION_CHANGED',offer['amount_review_blockers'])
         self.assertNotIn('amount_approved',offer['available_review_actions'])
