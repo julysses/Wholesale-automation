@@ -1,9 +1,11 @@
-"""API -> real calculator -> real SQL workflow, with only PostgREST transport adapted.
+"""Application workflows against real SQL; PostgREST adapted and Meta simulated.
 
 Run with installed backend test dependencies through scripts/run_offline_tests.py.
 The inherited runner creates an inert socket-only PostgreSQL cluster. This does
 not claim real JWT signature, PostgREST, auth middleware or full-schema acceptance.
 """
+import hashlib
+import hmac
 import copy
 import json
 import os
@@ -19,11 +21,16 @@ import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from web.api.acquisition_api import router
+from web.api.acquisition_webhooks import router as facebook_router
 
 ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'accept_facebook_acquisition_batch': ['p_events','p_raw_body'],
+ 'claim_acquisition_events': ['p_integration','p_limit','p_lease_seconds'],
+ 'defer_acquisition_event': ['p_receipt','p_lease','p_outcome','p_reason'],
+ 'complete_facebook_acquisition_intake': ['p_receipt','p_lease','p_prepared'],
  'reserve_acquisition_analysis': ['p_id','p_workspace','p_lead','p_inputs'],
  'read_acquisition_calculation': ['p_id','p_workspace'],
  'complete_acquisition_calculation': ['p_id','p_workspace','p_input_hash','p_outputs'],
@@ -51,6 +58,10 @@ class WorkflowTests(WorkspaceTests):
         self.bind()
         self.requests=[]
         self.lose_completion_once=False
+        self.lose_facebook_reply=None
+        self.provider_error=None
+        self.provider_form="200"
+        self.disable_during_retrieval=False
         self.environment=patch.dict(os.environ,{
             'ACQUISITION_ENABLED':'true','ACQUISITION_CALCULATOR_ENABLED':'true',
             'ACQUISITION_CALCULATOR_SERVICE_KEY':'synthetic-worker-key',
@@ -61,7 +72,7 @@ class WorkflowTests(WorkspaceTests):
         original=httpx.AsyncClient
         self.transport=patch('httpx.AsyncClient',lambda **kwargs:original(transport=httpx.MockTransport(self.handle),**kwargs))
         self.transport.start();self.addCleanup(self.transport.stop)
-        app=FastAPI();app.include_router(router)
+        app=FastAPI();app.include_router(router);app.include_router(facebook_router)
         self.client=TestClient(app)
         self.addCleanup(self.client.close)
         self.headers={'Authorization':'Bearer synthetic-admin-session'}
@@ -69,13 +80,28 @@ class WorkflowTests(WorkspaceTests):
 
     def handle(self, request):
         self.requests.append((request.url.path,request.headers.get('authorization')))
+        if request.url.host=='graph.facebook.com':
+            self.assertEqual(request.method,'GET')
+            self.assertEqual(request.headers['authorization'],'Bearer synthetic-page-key')
+            self.assertNotIn('apikey',request.headers)
+            self.assertEqual(request.url.params['fields'].split(',')[0],'id')
+            if self.disable_during_retrieval:
+                self.sql("UPDATE private.acquisition_integrations SET enabled=false WHERE account_id='100';")
+            if self.provider_error:
+                return httpx.Response(400,json={'error':{'code':self.provider_error,'message':'Synthetic private provider detail'}})
+            return httpx.Response(200,json={'id':request.url.path.split('/')[-1],'form_id':self.provider_form,
+                'created_time':'2026-10-26T12:00:00Z',
+                'field_data':[{'name':'phone_number','values':['2145550101']}],
+                'custom_disclaimer_responses':[{'checkbox_key':'sms','is_checked':False}]})
         self.assertEqual(request.url.host,'workflow.example.test')
         identity,role={
             'Bearer synthetic-admin-session':(ADMIN,'authenticated'),
             'Bearer synthetic-other-session':(OTHER,'authenticated'),
             'Bearer synthetic-worker-key':(ADMIN,'service_role'),
+            'Bearer synthetic-ingestion-key':(ADMIN,'service_role'),
+            'Bearer synthetic-facebook-worker-key':(ADMIN,'service_role'),
         }[request.headers['authorization']]
-        self.assertEqual(request.headers['apikey'],'synthetic-worker-key' if role=='service_role' else 'synthetic-public-key')
+        self.assertEqual(request.headers['apikey'],request.headers['authorization'].removeprefix('Bearer ') if role=='service_role' else 'synthetic-public-key')
         if request.url.path.startswith('/rest/v1/rpc/'):
             name=request.url.path.rsplit('/',1)[-1]
             self.assertIn(name,RPC_ARGS)
@@ -84,8 +110,8 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer'}
-                      else 'integer' if key=='p_expected_sequence' else 'numeric' if key=='p_amount' else 'text')
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease'}
+                      else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
@@ -113,7 +139,102 @@ class WorkflowTests(WorkspaceTests):
         if request.url.path.endswith('complete_acquisition_calculation') and self.lose_completion_once:
             self.lose_completion_once=False
             raise httpx.ReadTimeout('Synthetic lost response after real commit',request=request)
+        if request.url.path.endswith('/'+str(self.lose_facebook_reply)):
+            self.lose_facebook_reply=None
+            raise httpx.ReadTimeout('Synthetic lost Facebook reply after real commit',request=request)
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
+
+    def configure_facebook(self):
+        self.inbox_config(account='100')
+        integration=self.sql("SELECT id FROM private.acquisition_integrations WHERE account_id='100';")
+        os.environ.update({
+            'FACEBOOK_ACQUISITION_INGESTION_ENABLED':'true',
+            'ACQUISITION_INGESTION_SERVICE_KEY':'synthetic-ingestion-key',
+            'ACQUISITION_FACEBOOK_APP_SECRET':'synthetic-app-secret',
+            'ACQUISITION_FACEBOOK_VERIFY_TOKEN':'synthetic-verify',
+            'ACQUISITION_FACEBOOK_WORKER_ENABLED':'true',
+            'ACQUISITION_FACEBOOK_WORKER_TRIGGER_SECRET':'synthetic-trigger',
+            'ACQUISITION_FACEBOOK_WORKER_SERVICE_KEY':'synthetic-facebook-worker-key',
+            'ACQUISITION_FACEBOOK_PAGE_TOKEN':'synthetic-page-key',
+            'ACQUISITION_FACEBOOK_PAGE_ID':'100',
+            'ACQUISITION_FACEBOOK_INTEGRATION_ID':integration,
+            'ACQUISITION_FACEBOOK_GRAPH_VERSION':'v26.0',
+        })
+
+    def facebook_delivery(self, ids=('1',), tamper=False):
+        body=json.dumps({'object':'page','entry':[{'id':'100','changes':[
+            {'field':'leadgen','value':{'leadgen_id':identity,'form_id':'200'}} for identity in ids]}]}).encode()
+        signature='sha256='+hmac.new(b'synthetic-app-secret',body,hashlib.sha256).hexdigest()
+        return self.client.post('/webhooks/facebook/acquisition',content=body+(b' ' if tamper else b''),
+                                headers={'X-Hub-Signature-256':signature})
+
+    def facebook_worker(self):
+        return self.client.post('/webhooks/facebook/acquisition/worker',headers={'Authorization':'Bearer synthetic-trigger'})
+
+    def test_facebook_http_to_real_intake_and_evidence_isolated(self):
+        self.configure_facebook()
+        self.assertEqual(self.facebook_delivery(('1','2')).status_code,200)
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='facebook_acquisition'"),'0')
+        for _ in range(2):
+            response=self.facebook_worker()
+            self.assertEqual(response.status_code,200,response.text)
+            self.assertEqual(response.json()['classification'],'incomplete')
+        self.assertEqual(self.facebook_worker().json(),{'status':'idle'})
+        self.assertEqual(self.sql('SELECT count(DISTINCT lead_id) FROM seller_intakes'),'2')
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='facebook_acquisition' AND owner_phone_1='+12145550101' AND sms_sequence_active=false AND email_sequence_active=false AND ai_calling_paused=true"),'2')
+        self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes WHERE prepared_answers->'provider_evidence'->'custom_disclaimer_responses'->0->'is_checked'='false'::jsonb"),'2')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes',user=OTHER),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes',user=ADMIN),'2')
+        self.assertEqual(self.facebook_delivery(('1','2')).status_code,200)
+        self.assertEqual(self.facebook_worker().json(),{'status':'idle'})
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake'"),'2')
+        self.assertEqual(self.sql("SELECT count(*) FROM webhook_jobs WHERE status='pending'"),'1') # Legacy sentinel only.
+
+    def test_facebook_unknown_receipt_and_completion_replies_reconcile(self):
+        self.configure_facebook()
+        self.lose_facebook_reply='accept_facebook_acquisition_batch'
+        self.assertEqual(self.facebook_delivery().status_code,503)
+        self.assertEqual(self.facebook_delivery().status_code,200)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_inbox_processing'),'1')
+        self.lose_facebook_reply='complete_facebook_acquisition_intake'
+        response=self.facebook_worker()
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertTrue(response.json()['duplicate'])
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake'"),'1')
+        self.assertEqual(sum(path.startswith('/v26.0/') for path,token in self.requests),1)
+
+    def test_facebook_expired_credentials_hold_real_job_without_crm_write(self):
+        self.configure_facebook();self.provider_error=190
+        self.assertEqual(self.facebook_delivery().status_code,200)
+        response=self.facebook_worker()
+        self.assertEqual(response.json(),{'status':'review','reason_code':'CREDENTIALS_INVALID'})
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        self.assertEqual(self.sql("SELECT state||':'||reason_code FROM private.acquisition_inbox_processing"),'review:CREDENTIALS_INVALID')
+        self.assertEqual(self.facebook_worker().json(),{'status':'idle'})
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='processing_deferred'"),'1')
+
+    def test_facebook_signature_and_form_mismatch_do_not_create_leads(self):
+        self.configure_facebook()
+        self.assertEqual(self.facebook_delivery(tamper=True).status_code,403)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_inbox_processing'),'0')
+        self.assertEqual(self.facebook_delivery().status_code,200)
+        self.provider_form='999'
+        self.assertEqual(self.facebook_worker().json(),{'status':'review','reason_code':'IDENTITY_CONFLICT'})
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='facebook_acquisition'"),'0')
+
+    def test_facebook_disable_during_retrieval_blocks_completion(self):
+        self.configure_facebook()
+        self.assertEqual(self.facebook_delivery().status_code,200)
+        self.disable_during_retrieval=True
+        response=self.facebook_worker()
+        self.assertEqual(response.status_code,503)
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='facebook_acquisition'"),'0')
+        self.assertEqual(self.sql("SELECT state FROM private.acquisition_inbox_processing"),'leased')
+        self.assertEqual(sum(path.startswith('/v26.0/') for path,token in self.requests),1)
+        self.assertEqual(self.facebook_worker().status_code,503) # No claim after disable.
+        self.assertEqual(sum(path.startswith('/v26.0/') for path,token in self.requests),1)
 
     def save(self, body=None):
         response=self.client.post(f'{self.base}/leads/{LEAD}/underwriting/scenarios',headers=self.headers,

@@ -65,3 +65,7 @@ Returned disclaimer evidence is deep-copied with missing/empty/false distinction
 Field verification source: [Meta's maintained Python Business SDK Lead model](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/lead.py) includes the requested lead, form, field data, disclaimer responses and attribution fields (reviewed October 26, 2026). This supports field selection; it does not prove the account has permissions or that any particular API version is enabled. The main developer-documentation pages previously returned rate limits.
 
 Validation uses fake HTTP provider/PostgREST transports and separate real SQL intake tests, not real Meta credentials. No campaign, subscription, outbound message, production migration or deployment was activated.
+
+## Combined local acceptance follow-up
+
+The integrated workflow harness now runs the real signed receiver and worker against real SQL through the strict PostgREST adapter, with Meta responses simulated. Five Facebook journeys pass, including lost responses after actual commits and integration disable during retrieval. See WORKFLOW-ACCEPTANCE.md for evidence and exclusions. This closes the previously noted combined local worker/database test gap, not the live provider/PostgREST release gates.

@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — integrated Facebook ingestion acceptance
+
+- Previous turn was progress: `e857148` implemented/tested/pushed the leased retrieval worker and evidence snapshot. Pulled clean branch and inspected the existing API/calculator/SQL harness plus dedicated CI invocation.
+- Extended the same strict PostgREST-to-real-SQL adapter with allowlisted Facebook batch/claim/deferral/completion RPCs and their typed parameters. Added the actual webhook/worker router, dedicated synthetic credentials and bounded synthetic Meta responses. All receipt, lease, lead, intake and audit results come from real disposable PostgreSQL, not mocked persistence.
+- Five new journeys cover signed two-event ingestion with no CRM writes before processing; same-phone non-merging and cross-workspace denial; preserved declined consent/disabled sending; receipt and completion replies lost after real commits with exact idempotent recovery; credential holds; signature/form mismatches; and integration disable during retrieval preventing completion/further fetching.
+- Validation: **all 8 integrated journeys passed** (5 Facebook plus 3 underwriting/offer), under the offline network guard and socket-only disposable database. `git diff --check` passed. Existing CI job automatically includes the new methods; remote CI completion is not claimed. No runtime/schema/provider/production changes in this checkpoint.
+- Updated WORKFLOW-ACCEPTANCE.md with the concrete evidence and boundaries. Real Meta permissions/subscriptions, actual PostgREST/JWT middleware, full production-schema rehearsal, browser workflow and operator alerts remain unproved. A verified credential hold is not a delivered alert or launch approval.
+
+Next: held-inquiry workspace review queue, actionable credential/processing alerts and explicitly reviewed recovery; then canonical identity/property resolution, repeat inquiries, campaign attribution and remaining sequential capabilities. Goal active.
+
 ## Implementation checkpoint — leased Facebook retrieval worker and evidence
 
 - Previous turn was progress: `cd19d8a` implemented/tested/pushed durable HTTP acceptance. Pulled clean branch. Verified requested lead/form/field/disclaimer/attribution fields against Meta's maintained Python Business SDK; main documentation permissions/version acceptance remains a release requirement.
