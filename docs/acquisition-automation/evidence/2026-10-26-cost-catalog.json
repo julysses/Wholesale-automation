@@ -1,0 +1,827 @@
+{
+  "grants": [
+    {
+      "grantee": "anon",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_ad_sets",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaign_performance",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaigns",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaigns",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaigns",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaigns",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaigns",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaigns",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "fb_campaigns",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaigns",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaigns",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaigns",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaigns",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaigns",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaigns",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "fb_campaigns",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaigns",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaigns",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaigns",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaigns",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaigns",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaigns",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "fb_campaigns",
+      "privilege_type": "TRIGGER"
+    }
+  ],
+  "columns": [
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "fb_ad_sets",
+      "column_name": "id"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "fb_ad_sets",
+      "column_name": "created_at"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "campaign_id"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "segment"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'custom'::text",
+      "table_name": "fb_ad_sets",
+      "column_name": "audience_type"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "0",
+      "table_name": "fb_ad_sets",
+      "column_name": "audience_size"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "headline"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "copy_version_a"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "copy_version_b"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "copy_version_c"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'A'::text",
+      "table_name": "fb_ad_sets",
+      "column_name": "active_copy_version"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "true",
+      "table_name": "fb_ad_sets",
+      "column_name": "placement_feed"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "true",
+      "table_name": "fb_ad_sets",
+      "column_name": "placement_marketplace"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "true",
+      "table_name": "fb_ad_sets",
+      "column_name": "placement_instagram"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "false",
+      "table_name": "fb_ad_sets",
+      "column_name": "placement_audience_network"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(10,2)",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "daily_budget"
+    },
+    {
+      "not_null": false,
+      "data_type": "text[]",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "tier1_signals"
+    },
+    {
+      "not_null": false,
+      "data_type": "text[]",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "tier2_signals"
+    },
+    {
+      "not_null": false,
+      "data_type": "text[]",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "tier3_signals"
+    },
+    {
+      "not_null": false,
+      "data_type": "text[]",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_ad_sets",
+      "column_name": "county"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "fb_campaign_performance",
+      "column_name": "id"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_campaign_performance",
+      "column_name": "campaign_id"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_campaign_performance",
+      "column_name": "ad_set_id"
+    },
+    {
+      "not_null": true,
+      "data_type": "date",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_campaign_performance",
+      "column_name": "date"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(10,2)",
+      "generated": "",
+      "expression": "0",
+      "table_name": "fb_campaign_performance",
+      "column_name": "spend"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "0",
+      "table_name": "fb_campaign_performance",
+      "column_name": "leads"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(10,2)",
+      "generated": "s",
+      "expression": "\nCASE\n    WHEN (leads > 0) THEN (spend / (leads)::numeric)\n    ELSE NULL::numeric\nEND",
+      "table_name": "fb_campaign_performance",
+      "column_name": "cpl"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(5,2)",
+      "generated": "",
+      "expression": "0",
+      "table_name": "fb_campaign_performance",
+      "column_name": "contact_rate"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(5,2)",
+      "generated": "",
+      "expression": "0",
+      "table_name": "fb_campaign_performance",
+      "column_name": "appt_rate"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(5,2)",
+      "generated": "",
+      "expression": "0",
+      "table_name": "fb_campaign_performance",
+      "column_name": "frequency"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "fb_campaigns",
+      "column_name": "id"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "fb_campaigns",
+      "column_name": "created_at"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "fb_campaigns",
+      "column_name": "updated_at"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_campaigns",
+      "column_name": "name"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'draft'::text",
+      "table_name": "fb_campaigns",
+      "column_name": "status"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'LEAD_GENERATION'::text",
+      "table_name": "fb_campaigns",
+      "column_name": "objective"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "true",
+      "table_name": "fb_campaigns",
+      "column_name": "special_ad_category"
+    },
+    {
+      "not_null": false,
+      "data_type": "boolean",
+      "generated": "",
+      "expression": "true",
+      "table_name": "fb_campaigns",
+      "column_name": "ab_test_enabled"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(10,2)",
+      "generated": "",
+      "expression": "25.00",
+      "table_name": "fb_campaigns",
+      "column_name": "daily_budget"
+    },
+    {
+      "not_null": false,
+      "data_type": "date",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_campaigns",
+      "column_name": "start_date"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(5,2)",
+      "generated": "",
+      "expression": null,
+      "table_name": "fb_campaigns",
+      "column_name": "battle_plan_score"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "1",
+      "table_name": "fb_campaigns",
+      "column_name": "wizard_step"
+    },
+    {
+      "not_null": false,
+      "data_type": "jsonb",
+      "generated": "",
+      "expression": "'{}'::jsonb",
+      "table_name": "fb_campaigns",
+      "column_name": "wizard_state"
+    }
+  ],
+  "indexes": [
+    {
+      "indexdef": "CREATE UNIQUE INDEX fb_ad_sets_pkey ON public.fb_ad_sets USING btree (id)",
+      "indexname": "fb_ad_sets_pkey",
+      "tablename": "fb_ad_sets"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_fb_ad_sets_campaign ON public.fb_ad_sets USING btree (campaign_id)",
+      "indexname": "idx_fb_ad_sets_campaign",
+      "tablename": "fb_ad_sets"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX fb_campaign_performance_pkey ON public.fb_campaign_performance USING btree (id)",
+      "indexname": "fb_campaign_performance_pkey",
+      "tablename": "fb_campaign_performance"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX fb_campaign_performance_campaign_id_ad_set_id_date_key ON public.fb_campaign_performance USING btree (campaign_id, ad_set_id, date)",
+      "indexname": "fb_campaign_performance_campaign_id_ad_set_id_date_key",
+      "tablename": "fb_campaign_performance"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_fb_perf_campaign ON public.fb_campaign_performance USING btree (campaign_id, date DESC)",
+      "indexname": "idx_fb_perf_campaign",
+      "tablename": "fb_campaign_performance"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX fb_campaigns_pkey ON public.fb_campaigns USING btree (id)",
+      "indexname": "fb_campaigns_pkey",
+      "tablename": "fb_campaigns"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fb_ad_sets",
+      "permissive": "PERMISSIVE",
+      "policyname": "auth_fb_ad_sets",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fb_ad_sets",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fb_campaign_performance",
+      "permissive": "PERMISSIVE",
+      "policyname": "auth_fb_perf",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fb_campaign_performance",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fb_campaigns",
+      "permissive": "PERMISSIVE",
+      "policyname": "auth_fb_campaigns",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fb_campaigns",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    }
+  ],
+  "triggers": [
+    {
+      "definition": "CREATE TRIGGER update_fb_campaigns_updated_at BEFORE UPDATE ON public.fb_campaigns FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "table_name": "fb_campaigns"
+    }
+  ],
+  "constraints": [
+    {
+      "conname": "fb_campaigns_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "fb_campaigns"
+    },
+    {
+      "conname": "fb_ad_sets_campaign_id_fkey",
+      "definition": "FOREIGN KEY (campaign_id) REFERENCES fb_campaigns(id) ON DELETE CASCADE",
+      "table_name": "fb_ad_sets"
+    },
+    {
+      "conname": "fb_ad_sets_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "fb_ad_sets"
+    },
+    {
+      "conname": "fb_campaign_performance_ad_set_id_fkey",
+      "definition": "FOREIGN KEY (ad_set_id) REFERENCES fb_ad_sets(id)",
+      "table_name": "fb_campaign_performance"
+    },
+    {
+      "conname": "fb_campaign_performance_campaign_id_ad_set_id_date_key",
+      "definition": "UNIQUE (campaign_id, ad_set_id, date)",
+      "table_name": "fb_campaign_performance"
+    },
+    {
+      "conname": "fb_campaign_performance_campaign_id_fkey",
+      "definition": "FOREIGN KEY (campaign_id) REFERENCES fb_campaigns(id) ON DELETE CASCADE",
+      "table_name": "fb_campaign_performance"
+    },
+    {
+      "conname": "fb_campaign_performance_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "fb_campaign_performance"
+    }
+  ],
+  "migration_count": 95,
+  "latest_migration": "20261023221455",
+  "rls": [
+    {
+      "relname": "fb_campaigns",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "fb_ad_sets",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "fb_campaign_performance",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    }
+  ]
+}

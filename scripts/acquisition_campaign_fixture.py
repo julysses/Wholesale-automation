@@ -8,7 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT/'docs/acquisition-automation/evidence/2026-10-26-campaign-catalog.json'
-TABLES = ('ad_campaigns', 'ad_creatives', 'lead_form_configs')
+TABLES = ('ad_campaigns', 'ad_creatives', 'lead_form_configs', 'fb_campaigns', 'fb_ad_sets', 'fb_campaign_performance')
+COST_CATALOG = ROOT/'docs/acquisition-automation/evidence/2026-10-26-cost-catalog.json'
 
 
 def quote(value):
@@ -17,6 +18,9 @@ def quote(value):
 
 def install_campaign_fixture(sql):
     catalog = json.loads(CATALOG.read_text())
+    costs = json.loads(COST_CATALOG.read_text())
+    for key in ('columns','constraints','policies','grants','triggers'):
+        catalog[key].extend(costs[key])
     sql("CREATE FUNCTION public.is_approved() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER "
         "SET search_path TO public,pg_temp AS $$ SELECT EXISTS(SELECT 1 FROM profiles WHERE id=auth.uid() AND status='approved') $$; "
         "CREATE FUNCTION public.update_updated_at_column() RETURNS trigger LANGUAGE plpgsql "
@@ -28,6 +32,8 @@ def install_campaign_fixture(sql):
             if column['table_name']!=table:
                 continue
             expression=column['expression']
+            if expression:
+                expression=expression.replace('\\n', '\n')
             suffix=(f' GENERATED ALWAYS AS ({expression}) STORED' if column['generated']=='s'
                     else ' DEFAULT '+expression if expression else '')
             columns.append(quote(column['column_name'])+' '+column['data_type']+suffix+(' NOT NULL' if column['not_null'] else ''))
@@ -56,3 +62,8 @@ def install_campaign_fixture(sql):
     for trigger in catalog['triggers']:
         if trigger['table_name'] in TABLES:
             sql(trigger['definition']+';')
+
+    # Constraint indexes already exist; restore additional inspected indexes.
+    for index in costs['indexes']:
+        if index['indexname'] not in {row['conname'] for row in costs['constraints']}:
+            sql(index['indexdef']+';')

@@ -169,6 +169,37 @@ class WorkspaceTests(unittest.TestCase):
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
 
+    def test_cost_fixture_restores_generated_metrics_and_parent_edges(self):
+        campaign='92000000-0000-4000-8000-000000000001'
+        adset='92000000-0000-4000-8000-000000000002'
+        self.sql(f"INSERT INTO fb_campaigns(id,name) VALUES('{campaign}','Synthetic legacy performance'); "
+                 f"INSERT INTO fb_ad_sets(id,campaign_id) VALUES('{adset}','{campaign}'); "
+                 f"INSERT INTO fb_campaign_performance(campaign_id,ad_set_id,date,spend,leads) VALUES('{campaign}','{adset}','2026-10-24',100,4)")
+        self.assertEqual(self.sql('SELECT cpl::text FROM fb_campaign_performance'),'25.00')
+        self.sql('UPDATE fb_campaign_performance SET cpl=1',fail=True)
+        self.sql(f"INSERT INTO fb_campaign_performance(campaign_id,ad_set_id,date) VALUES('{campaign}','{adset}','2026-10-24')",fail=True)
+        self.sql(f"DELETE FROM fb_ad_sets WHERE id='{adset}'",fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE tablename IN ('fb_campaigns','fb_ad_sets','fb_campaign_performance')"),'6')
+        self.sql('UPDATE fb_campaign_performance SET ad_set_id=NULL')
+        self.sql(f"DELETE FROM fb_campaigns WHERE id='{campaign}'")
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance'),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_ad_sets'),'0')
+
+    def test_cost_fixture_exposes_legacy_access_and_zero_defaults(self):
+        self.sql("INSERT INTO fb_campaign_performance(date) VALUES('2026-10-24')")
+        self.assertEqual(self.sql('SELECT spend::text FROM fb_campaign_performance'),'0.00')
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance WHERE cpl IS NULL'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance',user=ADMIN),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance',user=OTHER),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance',user=OTHER,role='anon'),'0')
+        self.member(target=OPERATOR,role='operator')
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance',user=OPERATOR),'0')
+        self.sql('UPDATE fb_campaign_performance SET spend=10',user=ADMIN)
+        self.assertEqual(self.sql('SELECT spend::text FROM fb_campaign_performance'),'10.00')
+        # This captured baseline grant must be removed by the cost extension;
+        # RLS does not protect TRUNCATE and service-role access bypasses RLS.
+        self.assertEqual(self.sql("SELECT has_table_privilege('anon','fb_campaign_performance','TRUNCATE')::text"),'true')
+
     def test_campaign_fixture_preserves_generated_cost_and_parent_constraints(self):
         campaign='90000000-0000-4000-8000-000000000001'
         creative='90000000-0000-4000-8000-000000000002'

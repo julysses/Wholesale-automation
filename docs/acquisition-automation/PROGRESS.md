@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — inspected cost persistence target and database fixture
+
+- Prior goal turn made progress: pushed `cd2847c` with tested cost projection. Pulled unchanged branch; inspected live metadata before SQL design and rechecked Supabase RLS/grant documentation.
+- Found existing `fb_campaign_performance`; this is the daily cost/performance equivalent to extend, not replace. Its campaign FK points to the legacy fb_campaigns master, while acquisition campaigns use ad_campaigns. Default-zero spend/leads and generated CPL lack evidence coverage/currency/revision provenance. Documented this mapping correction and the required additive isolation approach in SCHEMA-MAPPING.md and CAMPAIGN-COSTS.md.
+- Saved metadata-only catalog for fb_campaigns/fb_ad_sets/fb_campaign_performance: 43 columns, 7 constraints, 6 policies, 6 indexes, 1 trigger, 63 grants; all three have RLS. Ledger still 95/latest 20261023221455. No production rows, writes or migration runs.
+- Expanded the disposable fixture with exact types, generated columns, keys, policies/grants, trigger and non-constraint indexes before acquisition boundary migrations. Tests expose baseline mutable legacy metrics and TRUNCATE access instead of silently assuming immutability. Cost migration must close that access for evidence while preserving legacy behavior where required.
+- Validation: **three focused PostgreSQL cases passed**, the default-closed activation case passed, and **all 12 integrated real-SQL journeys passed** with the expanded fixture. Existing campaign CPL/parent constraints remain valid. No provider, runtime, production or paused-SMS change.
+
+Next: CLI-generate the additive fb_campaign_performance extension, enforce acquisition evidence/legacy namespace separation and immutable audited revisions, then connect scoped coverage API to the tested calculator. Persistence/API implementation remains outstanding; full PRD goal active.
+
 ## Implementation checkpoint — campaign cost coverage calculation
 
 - Previous turn made progress: pushed `64e187b` with verified browser evidence. Pulled unchanged branch before this increment (approved escalation resolved sandbox DNS).

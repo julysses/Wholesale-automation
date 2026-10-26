@@ -105,3 +105,12 @@ The lead_sources logical entity is now represented by additive `acquisition_lead
 ### Canonical source reporting update (October 26)
 
 `acquisition_property_source_touches` derives canonical property associations from existing source and current identity-review records; it creates no additional property, owner or lead table. A partial workspace/target/intake index supports bounded candidate retrieval. Current campaign snapshots are evaluated independently of historical captures. This read-only endpoint does not supply unique-owner, conversion or spend totals. See ATTRIBUTION.md for pagination, access and compensation details.
+
+
+### Cost evidence catalog correction (October 26)
+
+Live metadata inspection identifies `public.fb_campaign_performance` as the existing daily performance equivalent. Extend this relation rather than adding a parallel daily-cost table. Its `campaign_id` points to `fb_campaigns`, not the chosen acquisition campaign master `ad_campaigns`; `ad_set_id` points to `fb_ad_sets`. Both are nullable. The existing unique key `(campaign_id, ad_set_id, date)` is not revision identity and permits null-key duplicates. `spend` is numeric(10,2), defaults to zero, and `cpl` is generated from legacy spend/leads. These fields cannot be silently treated as complete, currency-verified acquisition costs.
+
+The implementation must preserve legacy IDs/defaults/history while adding explicit workspace/acquisition-campaign identity, immutable evidence revision metadata, currency/account timezone, observed time, coverage and amount minor units. Acquisition rows must not populate default-zero legacy metrics or enter the existing command-center aggregates. Existing mutable legacy rows have no acquisition evidence provenance and must remain outside new coverage totals. Review both direct browser reads in ActiveCampaignsDashboard/PerformanceTracker and service-role paths when designing the boundary.
+
+Metadata evidence: `evidence/2026-10-26-cost-catalog.json` contains 43 columns, 7 constraints, 6 policies, 6 indexes, 1 trigger and 63 role grants across fb_campaigns, fb_ad_sets and fb_campaign_performance. All three currently enable RLS. Approved-user policies are broad; service-role bypass and TRUNCATE/TRIGGER grants require explicit controls. Ledger remains 95 migrations/latest 20261023221455. Only catalog metadata was read; no production records or schema were changed.

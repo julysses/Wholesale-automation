@@ -25,3 +25,12 @@ CPL and qualified CPL remain null with `denominator_status=NOT_RECONCILED`. Befo
 Inventory current cost/insight equivalents and deployed catalog before additive SQL. Extend existing equivalents where possible. Persist immutable observations and revisions with composite workspace constraints, RLS, controlled writes, audit events, provider-event idempotency and private evidence retention. Keep provider collection disabled until approved account identity and credentials are validated. Resolve current campaign review authority when reporting; a stale campaign link cannot silently authorize costs against another campaign. Add authenticated coverage read APIs and unavailable/partial/complete UI, followed by reconciled funnel metrics. No production migration without approval.
 
 Tests cover exact amounts, unknown versus zero, partial coverage, superseding withdrawals, replay/conflicts, scope/unit mismatch, bounds, malformed evidence, local-midnight/DST boundaries and report cutoffs. No database or provider transport is used by these tests.
+
+
+## Verified persistence target and fixture
+
+The October 26 catalog refresh found existing `fb_campaign_performance`; the planned daily evidence persistence will extend it. See SCHEMA-MAPPING.md for campaign-master conflicts, generated CPL/default-zero semantics and legacy access paths. `scripts/acquisition_campaign_fixture.py` now restores this table and its fb_campaigns/fb_ad_sets parents before boundary migrations, using metadata captured from production. It preserves actual types, generated expressions, parent keys, grants, policies, triggers and non-constraint indexes. This is disposable test setup, not a production migration.
+
+Focused tests demonstrate legacy CPL calculation, duplicate-key rejection, child FK denial, parent cascades, mutable legacy spend, default zero, separate acquisition-only access denial and the baseline TRUNCATE grant. These tests deliberately preserve the observed old behavior so the upcoming extension must explicitly enforce new-row isolation and immutability without claiming old data already has reviewed cost provenance. The source catalog has three parent tables only; unrelated Facebook audience/lead tables and full production-schema upgrade remain separate coverage.
+
+RLS/grant implementation reference checked during this inventory: https://supabase.com/docs/guides/database/postgres/row-level-security . Policies do not remove table grants, and mutation protections must include non-row operations where applicable.
