@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { SourceAttribution } from './SourceAttribution';
 import { ApiError, apiFetch } from '@/lib/api';
 
 type Decision = { id: string; expected_sequence: number; preparation_hash: string; action: 'link' | 'revoke'; campaign_id: string | null; ad_account_id: string | null; evidence_ref: string; review_note: string };
@@ -53,7 +54,9 @@ export function CampaignLinkReview({ userId, workspace, intake, locked, onPendin
   const [note, setNote] = useState(initial.request?.review_note ?? '');
   const [ack, setAck] = useState(false); const [busy, setBusy] = useState(false); const inFlight = useRef(false);
   const [feedback, setFeedback] = useState(''); const [after, setAfter] = useState<string | null>(null); const [before, setBefore] = useState<number | null>(null);
-  useEffect(() => { onPending(!!pending || busy || initial.invalid); }, [pending, busy, initial.invalid, onPending]);
+  const [sourcePending, setSourcePending] = useState(false);
+  const [sourceRevision, setSourceRevision] = useState(0);
+  useEffect(() => { onPending(sourcePending || !!pending || busy || initial.invalid); }, [sourcePending, pending, busy, initial.invalid, onPending]);
   const state = useQuery({ ...options, queryKey: ['campaign-link-state', userId, workspace, intake], queryFn: ({ signal }) => readState(statePath, workspace, intake, signal) });
   const access = useQuery({ ...options, queryKey: ['campaign-link-access', userId, workspace], queryFn: async ({ signal }) => {
     const rows = await read(`${base}/memberships`, signal);
@@ -72,12 +75,12 @@ export function CampaignLinkReview({ userId, workspace, intake, locked, onPendin
         && (!before || row.sequence < before) && (index === 0 || rows[index - 1].sequence > row.sequence))) throw new Error('Campaign history unavailable');
       return rows;
     } });
-  const available = !locked && !initial.invalid && access.data === true && !access.isFetching && !access.isError && !!state.data && !state.isFetching && !state.isError && !!history.data && !history.isFetching && !history.isError;
+  const available = !sourcePending && !locked && !initial.invalid && access.data === true && !access.isFetching && !access.isError && !!state.data && !state.isFetching && !state.isError && !!history.data && !history.isFetching && !history.isError;
   const targetValid = action === 'revoke' ? state.data?.latest_review?.action === 'link' : state.data?.latest_review?.action !== 'link'
     && !campaigns.isFetching && !campaigns.isError && campaigns.data?.items.some(row => row.id === campaign && row.acquisition_channel === 'facebook') && numeric.test(account);
   const valid = available && targetValid && ack && evidence.trim().length >= 10 && note.trim().length >= 20;
   async function save() {
-    if (inFlight.current || locked || initial.invalid || (!pending && !valid)) return;
+    if (inFlight.current || sourcePending || locked || initial.invalid || (!pending && !valid)) return;
     inFlight.current = true; setBusy(true); setFeedback(''); let request = pending; const retrying = !!pending; let sent = false;
     try {
       if (!request) {
@@ -90,7 +93,7 @@ export function CampaignLinkReview({ userId, workspace, intake, locked, onPendin
       const result = await (await apiFetch(`${path}/campaign-link-reviews`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) })).json();
       if (result?.review_id !== request.id || result.sequence !== request.expected_sequence + 1 || typeof result.duplicate !== 'boolean' || result.execution_authorized !== false) throw new Error('Unconfirmed reply');
       sessionStorage.removeItem(storageKey); setPending(null); setAck(false); setNote(''); setEvidence(''); setBefore(null);
-      setFeedback('Campaign review recorded. No advertising or outreach was authorized.'); void state.refetch(); void history.refetch();
+      setSourceRevision(value => value + 1); setFeedback('Campaign review recorded. No advertising or outreach was authorized.'); void state.refetch(); void history.refetch();
     } catch (error) {
       const rejected = !retrying && error instanceof ApiError && [400, 401, 403, 404, 409, 422].includes(error.status);
       if (rejected) { try { sessionStorage.removeItem(storageKey); setPending(null); } catch { /* Keep the exact request. */ } }
@@ -115,10 +118,11 @@ export function CampaignLinkReview({ userId, workspace, intake, locked, onPendin
       <label>Campaign review note<textarea className={input} maxLength={2000} value={note} onChange={event => { setNote(event.target.value); setAck(false); }} /></label>
       <label className="flex gap-2 text-sm"><input type="checkbox" checked={ack} onChange={event => setAck(event.target.checked)} />I reviewed this Page, external campaign, account ownership and the evidence for this decision.</label>
     </fieldset>
-    <div className="flex flex-wrap gap-2"><button className={button} disabled={busy || locked || initial.invalid || (!pending && !valid)} onClick={() => { void save(); }}>{busy ? 'Recording campaign review…' : pending ? 'Retry exact campaign review' : 'Record campaign review'}</button><button className={button} disabled={busy} onClick={() => { setAck(false); void state.refetch(); void history.refetch(); void access.refetch(); void campaigns.refetch(); }}>Refresh campaign evidence</button></div>
+    <div className="flex flex-wrap gap-2"><button className={button} disabled={sourcePending || busy || locked || initial.invalid || (!pending && !valid)} onClick={() => { void save(); }}>{busy ? 'Recording campaign review…' : pending ? 'Retry exact campaign review' : 'Record campaign review'}</button><button className={button} disabled={busy} onClick={() => { setAck(false); setSourceRevision(value => value + 1); void state.refetch(); void history.refetch(); void access.refetch(); void campaigns.refetch(); }}>Refresh campaign evidence</button></div>
     {pending && <p className="text-xs break-all">Pending campaign review: {pending.id}</p>}{feedback && <p role="status">{feedback}</p>}
     <details><summary>Campaign link history</summary>{history.isError ? <p role="alert">Campaign history unavailable.</p> : history.isFetching ? <p>Loading campaign history…</p> : <ol>{history.data?.map(row => <li key={row.id} className="text-sm border-b py-2 break-words"><strong>{row.sequence}. {row.action}</strong><p>{row.review_note}</p><p>Evidence: {row.evidence_ref}</p>{row.campaign_id && <p>Campaign: {row.campaign_id} · Ad account: {row.ad_account_id}</p>}</li>)}</ol>}
       <button className={button} disabled={history.isFetching || before === null} onClick={() => setBefore(null)}>Latest campaign reviews</button><button className={button} disabled={history.isFetching || history.isError || history.data?.length !== 20} onClick={() => setBefore(history.data!.at(-1)!.sequence)}>Older campaign reviews</button>
     </details>
+    <SourceAttribution userId={userId} workspace={workspace} intake={intake} revision={sourceRevision} locked={locked || busy || !!pending || initial.invalid} onPending={setSourcePending} />
   </section>;
 }

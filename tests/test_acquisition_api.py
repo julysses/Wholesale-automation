@@ -573,9 +573,22 @@ def test_source_capture_and_read_are_scoped_versioned_and_non_executing(api):
     assert response.json()['next_after']==U
     params=state['requests'][-1].url.params
     assert params['workspace_id']=='eq.'+W and params['lead_id']=='eq.'+U and params['id']=='gt.'+U
-    state['responses']=[[{'id':U,'link_review_id':W}],{'latest_review':{'id':W},'link_current':True}]
+    state['responses']=[[{'id':U,'link_review_id':W}],{'latest_review':{'id':W},'link_current':True,'preparation_hash':'a'*64,'internal_campaign_id':W},[{'id':U,'link_review_id':W}]]
     response=client.get(path,headers={'Authorization':'Bearer user-token'})
     assert response.json()['items'][0]['attribution_current'] is True and response.json()['execution_authorized'] is False
-    assert state['requests'][-2].url.params['source_id']=='eq.'+U
-    state['responses']=[[{'id':U,'link_review_id':W}],{'latest_review':{'id':W},'link_current':False}]
+    assert state['requests'][-1].url.params['source_id']=='eq.'+U
+    assert state['requests'][-1].url.params['link_review_id']=='eq.'+W
+    assert response.json()['current_capture']['id']==U
+    state['responses']=[[{'id':U,'link_review_id':W}],{'latest_review':{'id':W},'link_current':False,'preparation_hash':'a'*64}]
     assert client.get(path,headers={'Authorization':'Bearer user-token'}).json()['items'][0]['attribution_current'] is False
+
+
+def test_current_source_snapshot_lookup_is_independent_of_history_cursor(api):
+    client,state=api
+    state['responses']=[[],{'latest_review':{'id':W},'link_current':True,'preparation_hash':'a'*64,'internal_campaign_id':W},[{'id':U,'link_review_id':W}]]
+    response=client.get(f'/api/acquisition/workspaces/{W}/intakes/{U}/source-campaign-reviews?after={W}',headers={'Authorization':'Bearer user-token'})
+    assert response.status_code==200
+    assert response.json()['items']==[] and response.json()['current_capture']['id']==U
+    assert state['requests'][0].url.params['id']=='gt.'+W
+    assert 'id' not in state['requests'][-1].url.params
+    assert state['requests'][-1].url.params['link_review_id']=='eq.'+W

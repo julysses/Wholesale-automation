@@ -44,3 +44,7 @@ For the qualified-intake handoff fixture, append `?qualified=1` to `acquisition-
 Campaign draft checks:
 
 Select the local QA workspace, enter a campaign name and USD budget, and save. Verify a draft card with exact budget and unavailable observed spend. The adapter keeps synthetic campaign rows in memory and cannot publish or fund anything. The real component preserves uncertain requests in tab session storage; completed saves clear them. Reload resets the fixture database, so this fixture is not persistence/reconciliation acceptance. Component tests separately exercise lost responses, reload recovery, permission changes and tenant denial.
+
+Campaign attribution and source snapshot checks:
+
+Create a synthetic Facebook draft, open the fixture intake, and choose Review campaign attribution. Select the draft, enter an illustrative numeric ad-account ID, ownership evidence reference and review note, then acknowledge and record. Capture current attribution; verify one current snapshot and a disabled repeated-capture button. Revoke the campaign link with a correction reference/note and acknowledgment. Verify no current reviewed link, preserved Historical attribution, and disabled capture. The mock adapter stores all changes in memory and performs no database or provider action. These checks were rendered in the local browser on October 26; see the source-history screenshot in docs/acquisition-automation/evidence. They do not prove live account ownership, MFA/RLS or provider acceptance.

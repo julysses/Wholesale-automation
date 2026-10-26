@@ -11,6 +11,13 @@ const offer = {
 const events: { id: string; sequence: number; status: string; note: string; review_notes: Record<string, string> }[] = [];
 const replies = new Map<string, unknown>();
 const campaigns: { id: string; workspace_id: string; name: string; status: string; acquisition_channel: string; acquisition_budget_cents: number; acquisition_currency: string }[] = [];
+const campaignLinks: { id: string; workspace_id: string; integration_id: string; external_campaign_id: string; sequence: number; action: string; campaign_id: string | null; ad_account_id: string | null; evidence_ref: string; review_note: string; created_at: string }[] = [];
+const sourceCaptures: { id: string; workspace_id: string; source_id: string; link_review_id: string; campaign_id: string; preparation_hash: string; created_at: string }[] = [];
+const campaignLinkState = () => {
+  const latest = campaignLinks.at(-1) ?? null;
+  return { workspace_id: 'fixture-workspace', intake_id: 'fixture-intake', integration_id: '30000000-0000-4000-8000-000000000001', page_id: '100', external_campaign_id: '300', preparation_hash: 'a'.repeat(64),
+    sequence: latest?.sequence ?? 0, latest_review: latest, link_current: latest?.action === 'link', internal_campaign_id: latest?.action === 'link' ? latest.campaign_id : null, execution_authorized: false };
+};
 const held = { receipt_id: 'fixture-receipt', provider: 'facebook', state: 'review', attempts: 1, reason_code: 'CREDENTIALS_INVALID', blockers: ['CREDENTIALS_INVALID'], updated_at: '2026-10-26T12:00:00.123456+00:00', guidance: 'Ask the integration administrator to verify the Page credential.', next_attempt_at: null, lease_expires_at: null };
 const recoveries: unknown[] = [];
 const intake = { id: 'fixture-intake', lead_id: 'fixture-source', classification: 'incomplete', created_at: '2026-10-26T12:00:00Z',
@@ -72,6 +79,20 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       held.state = 'ready'; held.reason_code = ''; held.blockers = []; held.guidance = 'Awaiting the configured worker; runtime is not independently verified.';
       value = { recovery_id: body.id, receipt_id: held.receipt_id, cycle: 1, duplicate: false, outreach_authorized: false }; replies.set(body.id, value);
     }
+  } else if (init?.method === 'POST' && path.endsWith('/campaign-link-reviews')) {
+    const body = JSON.parse(String(init.body)); const existing = campaignLinks.find(row => row.id === body.id);
+    if (!existing) {
+      if (body.expected_sequence !== campaignLinks.length || (body.action === 'link' && !campaigns.some(row => row.id === body.campaign_id))) throw new ApiError('Fixture review changed');
+      campaignLinks.push({ ...body, workspace_id: 'fixture-workspace', integration_id: '30000000-0000-4000-8000-000000000001', external_campaign_id: '300', sequence: campaignLinks.length + 1, created_at: new Date().toISOString() });
+    }
+    value = { review_id: body.id, sequence: existing?.sequence ?? campaignLinks.length, duplicate: !!existing, execution_authorized: false };
+  } else if (init?.method === 'POST' && path.endsWith('/source-campaign-reviews')) {
+    const body = JSON.parse(String(init.body)); const existing = sourceCaptures.find(row => row.id === body.id); const state = campaignLinkState();
+    if (!existing) {
+      if (!state.link_current || state.latest_review?.id !== body.link_review_id || !state.internal_campaign_id) throw new ApiError('Fixture attribution changed');
+      sourceCaptures.push({ id: body.id, workspace_id: 'fixture-workspace', source_id: 'fixture-intake', link_review_id: body.link_review_id, campaign_id: state.internal_campaign_id, preparation_hash: state.preparation_hash, created_at: new Date().toISOString() });
+    }
+    value = { ...(existing ?? sourceCaptures.at(-1)), duplicate: !!existing, execution_authorized: false };
   } else if (init?.method === 'POST' && path.endsWith('/campaigns')) {
     const body = JSON.parse(String(init.body));
     const saved = campaigns.find(row => row.id === body.id);
@@ -91,6 +112,19 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     }
   } else if (path.endsWith('/workspaces')) value = [{ id: 'fixture-workspace', name: 'Hilltop — local QA' }];
   else if (path.endsWith('/memberships')) value = [{ workspace_id: 'fixture-workspace', user_id: 'fixture-reviewer', role: 'owner', status: 'active' }];
+  else if (path.endsWith('/campaign-link-state')) value = campaignLinkState();
+  else if (path.includes('/campaign-link-reviews?')) {
+    const before = Number(new URL(path, 'http://fixture.invalid').searchParams.get('before'));
+    value = [...campaignLinks].reverse().filter(row => !before || row.sequence < before).slice(0, 20);
+  }
+  else if (path.includes('/source-campaign-reviews?')) {
+    const state = campaignLinkState(); const current = state.link_current ? state.latest_review!.id : null;
+    const after = new URL(path, 'http://fixture.invalid').searchParams.get('after');
+    const all = sourceCaptures.map(row => ({ ...row, attribution_current: row.link_review_id === current }));
+    const rows = all.filter(row => !after || row.id > after).sort((a, b) => a.id.localeCompare(b.id));
+    value = { workspace_id: 'fixture-workspace', source_id: 'fixture-intake', preparation_hash: state.preparation_hash, current_link_review_id: current, current_campaign_id: state.internal_campaign_id,
+      current_capture: all.find(row => row.attribution_current) ?? null, items: rows.slice(0, 20), next_after: rows.length > 20 ? rows[19].id : null, execution_authorized: false };
+  }
   else if (path.includes('/campaigns?')) {
     const after = new URL(path, 'http://fixture.invalid').searchParams.get('after');
     const rows = campaigns.filter(row => !after || row.id > after).sort((a, b) => a.id.localeCompare(b.id));

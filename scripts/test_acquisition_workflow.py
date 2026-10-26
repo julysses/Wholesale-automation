@@ -135,13 +135,16 @@ class WorkflowTests(WorkspaceTests):
                     if table=='acquisition_lead_sources' else 'id,workspace_id,source_id,link_review_id,campaign_id,preparation_hash,created_at')
             self.assertEqual(request.url.params['select'],fields)
             relation='lead_id' if table=='acquisition_lead_sources' else 'source_id'
-            self.assertTrue(set(request.url.params)<={'select','workspace_id',relation,'order','limit','id'})
+            self.assertTrue(set(request.url.params)<={'select','workspace_id',relation,'order','limit','id','link_review_id'})
             self.assertEqual(request.url.params['order'],'id')
             filters=[]
             for key in ('workspace_id',relation):
                 op,value=request.url.params[key].split('.',1); self.assertEqual(op,'eq'); filters.append(f'{key}={literal(value)}::uuid')
             if 'id' in request.url.params:
                 op,value=request.url.params['id'].split('.',1); self.assertEqual(op,'gt'); filters.append(f'id>{literal(value)}::uuid')
+            if 'link_review_id' in request.url.params:
+                self.assertEqual(table,'acquisition_source_campaign_reviews')
+                op,value=request.url.params['link_review_id'].split('.',1); self.assertEqual(op,'eq'); filters.append(f'link_review_id={literal(value)}::uuid')
             limit=int(request.url.params['limit']); self.assertTrue(1<=limit<=51)
             query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {fields} FROM public.{table} WHERE {' AND '.join(filters)} ORDER BY id LIMIT {limit}) row;"
         elif request.url.path=='/rest/v1/acquisition_campaign_links':
@@ -420,13 +423,13 @@ class WorkflowTests(WorkspaceTests):
         captured=self.client.post(path+'/source-campaign-reviews',headers=self.headers,json=capture)
         self.assertEqual(captured.status_code,200,captured.text); self.assertTrue(captured.json()['duplicate'])
         current=self.client.get(path+'/source-campaign-reviews',headers=self.headers)
-        self.assertEqual(current.status_code,200,current.text); self.assertTrue(current.json()['items'][0]['attribution_current'])
+        self.assertEqual(current.status_code,200,current.text); self.assertTrue(current.json()['items'][0]['attribution_current']); self.assertEqual(current.json()['current_capture']['id'],capture['id'])
         revoke={**body,'id':'cf000000-0000-4000-8000-000000000003','expected_sequence':1,'action':'revoke','campaign_id':None,'ad_account_id':None}
         self.assertEqual(self.client.post(path+'/campaign-link-reviews',headers=self.headers,json=revoke).status_code,200)
         self.assertFalse(self.client.get(path+'/campaign-link-state',headers=self.headers).json()['link_current'])
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_campaign_links'),'2')
         historical=self.client.get(path+'/source-campaign-reviews',headers=self.headers)
-        self.assertEqual(historical.status_code,200,historical.text); self.assertFalse(historical.json()['items'][0]['attribution_current'])
+        self.assertEqual(historical.status_code,200,historical.text); self.assertFalse(historical.json()['items'][0]['attribution_current']); self.assertIsNone(historical.json()['current_capture'])
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_source_campaign_reviews'),'1')
         self.assertEqual(self.client.get(self.base+'/leads/'+lead+'/sources',headers={'Authorization':'Bearer synthetic-other-session'}).json()['items'],[])
         history=self.client.get(path+'/campaign-link-reviews?limit=1',headers=self.headers)

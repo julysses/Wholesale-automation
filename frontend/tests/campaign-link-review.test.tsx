@@ -74,3 +74,11 @@ it('rejects an authorized execution response and preserves the same request',asy
   mock.post.mockImplementation(async(init:RequestInit)=>{const body=JSON.parse(init.body as string);return {review_id:body.id,sequence:1,duplicate:false,execution_authorized:true};});
   view(); await fill(); fireEvent.click(screen.getByRole('button',{name:'Record campaign review'})); await screen.findByText(/Result unconfirmed/); expect(sessionStorage.getItem(storageKey)).not.toBeNull();
 });
+it('locks campaign decisions while a source capture is being reconciled',async()=>{
+  const key=`source-attribution:v1:user:${w}:${intake}`;
+  sessionStorage.setItem(key,JSON.stringify({id:'50000000-0000-4000-8000-000000000001',link_review_id:'60000000-0000-4000-8000-000000000001',campaign_id:campaign,preparation_hash:'a'.repeat(64)}));
+  const pending=vi.fn(); view(pending);
+  await waitFor(()=>expect(pending).toHaveBeenLastCalledWith(true));
+  expect(screen.getByLabelText('Campaign decision')).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Retry exact attribution capture'})).toBeEnabled();
+});

@@ -691,5 +691,14 @@ async def source_campaign_reviews(workspace_id: UUID, intake_id: UUID, after: UU
     state = await store.request('POST', 'rpc/acquisition_campaign_link_state', body={
         'p_workspace': str(workspace_id), 'p_intake': str(intake_id)})
     current_review = (state.get('latest_review') or {}).get('id') if state.get('link_current') is True else None
-    return {'items': [{**row, 'attribution_current': current_review is not None and row['link_review_id'] == current_review} for row in rows[:limit]],
+    current_capture = None
+    if current_review is not None:
+        matches = await store.request('GET', 'acquisition_source_campaign_reviews', params={
+            'select': params['select'], 'workspace_id': params['workspace_id'], 'source_id': params['source_id'],
+            'link_review_id': 'eq.'+current_review, 'order': 'id', 'limit': '1'})
+        current_capture = {**matches[0], 'attribution_current': True} if matches else None
+    return {'workspace_id': str(workspace_id), 'source_id': str(intake_id), 'preparation_hash': state['preparation_hash'],
+            'current_link_review_id': current_review, 'current_campaign_id': state.get('internal_campaign_id') if current_review else None,
+            'current_capture': current_capture,
+            'items': [{**row, 'attribution_current': current_review is not None and row['link_review_id'] == current_review} for row in rows[:limit]],
             'next_after': rows[limit-1]['id'] if len(rows)>limit else None, 'execution_authorized': False}

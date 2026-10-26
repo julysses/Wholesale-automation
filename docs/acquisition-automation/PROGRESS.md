@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — source attribution capture dashboard and rendered QA
+
+- Previous turn made progress: `8d8c72a` added immutable source touches/snapshots and APIs. Pulled the branch and added a Source attribution snapshots panel inside campaign review, with user/workspace/intake scope, current versus historical status and bounded history pages.
+- The read API now returns current review/campaign/preparation context and independently looks up its existing capture regardless of the history cursor. A current capture on another page therefore prevents a redundant new request. The panel permits owner/admin/operator capture of an already reviewed association; it does not grant campaign-review authority to operators.
+- Before capture, the UI rechecks exact current review, campaign, preparation and absence of an existing snapshot. Uncertain captures persist their exact request plus expected response identity in tab session storage. Rejected retries retain earlier uncertainty. Parent campaign/identity/qualification controls lock during reconciliation; current versus historical state is refreshed separately after success.
+- Validation: **266 frontend tests across 54 files**, **48 API tests**, and **all 12 real-SQL integrated journeys passed**. Feature-enabled build passed; lint has no new findings (147 existing). Tests include snapshot lookup independent of pagination, stale preflight, denied roles, wrong-tenant/malformed replies, lost reply/reload/retry and historical attribution after revocation.
+- Extended the isolated browser adapter and rendered draft creation -> ownership review -> source capture -> revocation. Verified disabled duplicate capture, retained Historical attribution and no browser console errors. Evidence: `evidence/2026-10-26-source-attribution-browser.jpg`. A documentation hot reload initially reset the page before screenshot capture; inspected the saved file, repeated the flow and replaced it with verified history evidence. Corrected a relative fixture-edit path and used native browser accessibility controls after the label locator failed. Temporary tab/server were closed/stopped.
+- No schema changes, provider calls, runtime activation or production deployment. Synthetic browser proof is not live Supabase/Meta acceptance; full-schema/PostgREST/mobile release evidence remains open.
+
+Next: canonical multi-touch rollups through current reviewed identity associations, then cost coverage/currency and conversion reporting. Campaign events, later sequential phases and required approvals remain open. Goal active.
+
 ## Implementation checkpoint — immutable source touches and campaign snapshots
 
 - Previous turn made progress: `5531f88` connected campaign review/history to intake UI. Pulled the branch and rechecked production catalog: no lead_sources/acquisition_lead_sources/proposed source-review relation exists; migration ledger remains 95 entries/latest `20261023221455`. CLI created `20261026221434_acquisition_lead_sources.sql`; production remains untouched.
