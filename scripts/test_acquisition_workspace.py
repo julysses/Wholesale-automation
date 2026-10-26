@@ -24,6 +24,7 @@ OWNER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033010_acquisitio
 PERMISSION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033554_acquisition_permission_evidence.sql'
 ANALYSIS_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026040321_acquisition_analysis_versions.sql'
 OFFER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041236_acquisition_offer_review.sql'
+OFFER_STATE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026041845_acquisition_offer_review_state.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -128,6 +129,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(ANALYSIS_MIGRATION.read_text())
         self.sql('GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE ON offer_recommendations TO service_role;')
         self.sql(OFFER_MIGRATION.read_text())
+        self.sql(OFFER_STATE_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -294,6 +296,60 @@ class WorkspaceTests(unittest.TestCase):
         with ThreadPoolExecutor(max_workers=2) as pool: results=list(pool.map(run,['amount_approved','rejected']))
         self.assertEqual(results.count('conflict'),1)
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_offer_events'),'2')
+
+    def offer_state(self, actor=ADMIN, workspace=WORKSPACE, fail=False):
+        value=self.sql(f"SELECT public.acquisition_offer_review_state('{workspace}','c0000000-0000-4000-8000-000000000001');",user=actor,fail=fail)
+        return value if fail else json.loads(value)
+
+    def test_effective_offer_review_rechecks_latest_scenario_and_never_authorizes_delivery(self):
+        self.ready_offer();self.propose_offer()
+        pending=self.offer_state()
+        self.assertFalse(pending['amount_approval_current'])
+        self.assertEqual(set(pending['available_review_actions']),{'withdrawn','rejected','amount_approved'})
+        self.review_offer()
+        current=self.offer_state()
+        self.assertTrue(current['amount_approval_current'])
+        self.assertFalse(current['transmission_authorized'])
+        self.assertIsNone(current['execution_authorization'])
+        self.assertEqual(current['available_review_actions'],['approval_revoked'])
+        self.reserve_analysis(identity='b0000000-0000-4000-8000-000000000002')
+        changed=self.offer_state()
+        self.assertFalse(changed['amount_approval_current'])
+        self.assertEqual(changed['historical_status'],'amount_approved')
+        self.assertEqual(changed['latest_analysis_revision'],2)
+        self.assertIn('UNDERWRITING_CHANGED_OR_UNAVAILABLE',changed['amount_review_blockers'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_offer_events'),'2')
+
+    def test_effective_offer_review_does_not_resurrect_after_membership_reenrollment(self):
+        self.ready_offer();self.propose_offer()
+        self.member(target=OPERATOR,role='admin')
+        self.review_offer(actor=OPERATOR)
+        self.assertTrue(self.offer_state()['amount_approval_current'])
+        self.member(target=OPERATOR,role='admin',status='revoked')
+        self.assertIn('APPROVER_AUTHORITY_CHANGED',self.offer_state()['amount_review_blockers'])
+        self.member(target=OPERATOR,role='admin')
+        self.assertFalse(self.offer_state()['amount_approval_current'])
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        state=self.offer_state()
+        self.assertIn('ACQUISITION_ACTIVATION_DISABLED',state['amount_review_blockers'])
+        self.assertEqual(state['available_review_actions'],['approval_revoked'])
+
+    def test_offer_review_queue_bounds_and_scope(self):
+        self.ready_offer();self.propose_offer()
+        query=f"SELECT public.acquisition_offer_review_queue('{WORKSPACE}',NULL,1);"
+        page=json.loads(self.sql(query,user=ADMIN))
+        self.assertEqual(len(page['items']),1)
+        next_id=page['next_after']
+        last=json.loads(self.sql(f"SELECT public.acquisition_offer_review_queue('{WORKSPACE}','{next_id}',1);",user=ADMIN))
+        self.assertEqual(last['items'],[])
+        self.assertIsNone(last['next_after'])
+        self.sql(query,user=OTHER,fail=True)
+        self.offer_state(actor=OTHER,fail=True)
+        self.offer_state(workspace=WORKSPACE_B,fail=True)
+        self.sql(query,user=ADMIN,role='service_role',fail=True)
+        self.member(target=CALLER,role='acquisition_caller')
+        self.sql(query,user=CALLER,fail=True)
+        self.sql(f"SELECT public.acquisition_offer_review_queue('{WORKSPACE}',NULL,51);",user=ADMIN,fail=True)
 
     def permission_receipt(self, source='website', accepted=True, disclosure='Synthetic SMS checkbox disclosure', when='2020-01-01T12:00:00Z', phone='+12145550101'):
         receipt = '90000000-0000-4000-8000-000000000001'

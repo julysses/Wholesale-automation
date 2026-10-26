@@ -332,3 +332,18 @@ async def offer_reviews(workspace_id: UUID, offer_id: UUID, after: int = Query(0
         'select':'id,sequence,status,actor_id,note,review_notes,created_at','workspace_id':'eq.'+str(workspace_id),
         'offer_id':'eq.'+str(offer_id),'sequence':'gt.'+str(after),'order':'sequence','limit':str(limit),
     })
+
+
+@router.get('/workspaces/{workspace_id}/offers/{offer_id}/state')
+async def current_offer_review(workspace_id: UUID, offer_id: UUID, store=Depends(acquisition_store)):
+    return await store.request('POST','rpc/acquisition_offer_review_state',body={
+        'p_workspace':str(workspace_id),'p_offer':str(offer_id),
+    })
+
+
+@router.get('/workspaces/{workspace_id}/offers')
+async def offer_review_queue(workspace_id: UUID, after: UUID | None = None,
+                             limit: int = Query(20,ge=1,le=50), store=Depends(acquisition_store)):
+    return await store.request('POST','rpc/acquisition_offer_review_queue',body={
+        'p_workspace':str(workspace_id),'p_after':str(after) if after is not None else None,'p_limit':limit,
+    })

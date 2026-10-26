@@ -3,6 +3,16 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — current approval state and review queue
+
+- Pulled clean `1fbbd72`; prior turn implemented/tested/pushed proposal/amount-review lifecycle (progress). Rechecked current membership timestamp semantics, offer-event schema and role helpers before adding forward-only read projections.
+- Added `20261026041845_acquisition_offer_review_state.sql`: current state separates historical approval from current internal amount review. Newer or incomplete underwriting, disabled acquisition activation and changed approver authority invalidate the current indicator without changing history. Membership re-enrollment does not resurrect old approval.
+- Added a bounded workspace review queue, exact latest event/sequence and role-appropriate review actions. User-token API routes expose state and queue; no service-role fallback or approval mutation occurs during reads. Every response unconditionally denies transmission and supplies no execution authorization. Mutation RPCs still enforce fresh checks independently of the displayed actions.
+- Documented point-in-time semantics, UUID pagination, revocation availability and remaining profile-history/document/expiry rules. The internal amount indicator is not a delivery gate; the frontend and final written-offer approval remain unfinished.
+- Validation: **65 disposable PostgreSQL tests passed; full offline backend 1,268 passed, 10 skipped, 368 existing deprecation warnings.** `git diff --check` passes. No production migration or runtime/provider changes.
+
+Next: build the workspace review screen, connect exact proposal/scenario evidence and deliberate human decisions, then current-scenario selection and final-document workflow. Continue full-schema upgrade acceptance, policy execution, Facebook intake and all remaining ordered phases. Goal active.
+
 ## Implementation checkpoint — proposal and amount-review lifecycle
 
 - Pulled clean `fdd426e`; prior turn implemented/tested/pushed immutable scenario persistence (progress). Inspected the current catalog columns, FKs, RLS/ACLs, indexes, reportable view and migration history for `offer_recommendations` before generating the additive migration with Supabase CLI.

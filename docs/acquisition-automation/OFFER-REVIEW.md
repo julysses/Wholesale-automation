@@ -40,3 +40,18 @@ Before any delivery, revalidate current analysis, membership/approval authority,
 Focused local PostgreSQL tests exercise duplicate IDs, immutable history/audit, amount ceilings, cross-workspace reads, limited roles, stale underwriting, concurrency, disabled activation and revocation. The fixture preserves inspected legacy columns/constraints but omits the unrelated qualification/transcript foreign-key chain; full-schema upgrade acceptance is separate. Python tests check user-token transport, input bounds and server-owned actor/status fields.
 
 For compensation, disable new proposals/approvals through activation, withdraw proposals or revoke approved amounts with new immutable events, and retain all prior evidence. Do not delete approval history, relabel old proposals, or drop the migration to undo a decision. No production rollback is currently needed because this migration is local only.
+
+## Current review state and dashboard queue
+
+Migration `20261026041845_acquisition_offer_review_state.sql` adds authenticated read-only projections:
+
+- GET `/api/acquisition/workspaces/{workspace_id}/offers/{offer_id}/state`.
+- GET `/api/acquisition/workspaces/{workspace_id}/offers?after={offer_id}&limit=20`.
+
+The current-state response distinguishes `historical_status` from `amount_approval_current`. An amount approval is current only when its last event is approval, its analysis is still the latest calculated property-bound revision, acquisition activation is enabled, and the reviewer remains an approved active owner/admin whose membership has not changed since review. Membership revocation followed by re-enrollment does not resurrect earlier approvals. A newer pending analysis also marks the older approval stale, rather than silently continuing to rely on it. No historical event is rewritten.
+
+The response includes the exact event/sequence, scenario revision versus latest revision, amount, rationale, current blockers and role-appropriate review actions. Those actions are UI affordances; the mutation RPC independently rechecks every transition. A blocked approval may still be revoked. All callers require a current approved operator-or-higher session; callers/agencies and service-role API calls cannot use these projections. The queue is bounded to 50 and uses UUID keyset pagination within one workspace. It includes historical/terminal proposals for review, not only pending items. A full page may return a cursor whose next page is empty.
+
+These are point-in-time dashboard reads, not reusable permission or a lock on future state. `transmission_authorized=false` and `execution_authorization=null` are unconditional. Final document approval, a reviewed freshness/expiry policy and fresh outreach authorization remain required. Profile approval is checked at read time; historical profile suspension/reapproval and document-specific approval invalidation require the later delivery policy. An internal amount indicator must not be relabeled as a send-ready offer. The frontend review screen and current-scenario selection are still pending.
+
+The migration adds read functions and a workspace/ID index only. Compensation is to stop exposing the projections while retaining immutable history; no data backfill or state rewrite is needed.

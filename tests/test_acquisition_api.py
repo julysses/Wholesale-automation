@@ -272,3 +272,21 @@ def test_offer_proposals_and_reviews_use_user_identity_and_bounded_contract(api)
     assert client.get(path+f'/{U}/reviews?limit=51',headers=headers).status_code==422
     assert client.get(path+f'/{U}/reviews',headers=headers).status_code==200
     assert state['requests'][-1].url.params['workspace_id']=='eq.'+W
+
+
+def test_current_offer_review_and_queue_use_scoped_read_rpcs(api):
+    client,state=api
+    headers={'Authorization':'Bearer user-token'}
+    path=f'/api/acquisition/workspaces/{W}/offers'
+    state['body']={'items':[],'next_after':None,'transmission_authorized':False}
+    response=client.get(path+f'?after={U}&limit=10',headers=headers)
+    assert response.status_code==200
+    request=state['requests'][-1]
+    assert request.url.path.endswith('/rpc/acquisition_offer_review_queue')
+    assert request.headers['Authorization']=='Bearer user-token'
+    assert json.loads(request.content)=={'p_workspace':W,'p_after':U,'p_limit':10}
+    assert client.get(path+'?limit=51',headers=headers).status_code==422
+    state['body']={'historical_status':'amount_approved','amount_approval_current':False,'transmission_authorized':False}
+    response=client.get(path+f'/{U}/state',headers=headers)
+    assert response.status_code==200 and response.json()['amount_approval_current'] is False
+    assert json.loads(state['requests'][-1].content)=={'p_workspace':W,'p_offer':U}
