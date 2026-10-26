@@ -1,5 +1,21 @@
 # Workspace foundation implementation
 
+## Follow-on: account containment and canonical lead binding
+
+Migration `20261026025259_acquisition_legacy_access_boundary.sql` adds acquisition_only to profiles and a workspace_leads relation to existing canonical leads and optional verified county properties. Binding is explicit, audited and immutable through application table grants; it does not copy property or owner records. An existing property must already reference the selected lead. A shared phone never establishes identity.
+
+Non-owner memberships trigger sticky acquisition-only access. Revoking a membership does not reopen legacy access. Existing non-owner memberships are restricted during upgrade, and preexisting platform-admin caller/agency memberships abort the upgrade for review. Full administrator identities must not serve as limited caller accounts.
+
+Restrictive RLS blocks acquisition-only users from existing public/ingestion tables except explicitly scoped surfaces. Scoped leads can be read directly by workspace owner/admin/operator roles, but cannot be directly inserted, updated or deleted through authenticated table access. Callers/agency users receive assigned lead summaries through a bounded private RPC, with no phone/email projection and no raw-table access. Revoked memberships, suspended profiles/workspaces, missing sessions and caller MFA failures deny access.
+
+Additional endpoints: POST `/api/acquisition/workspaces/{id}/leads` binds `{lead_id, property_id?}`; PUT `/api/acquisition/workspaces/{id}/leads/{lead_id}/assignment` accepts `{user_id}` (null clears assignment); GET `/api/acquisition/workspaces/{id}/leads?after=<uuid>&limit=20` returns a keyset page (maximum 50). All use user-scoped PostgREST RPCs. Binding requires both legacy platform-admin and workspace-owner authority; assigning requires workspace owner/admin.
+
+Legacy HTTP routes now deny acquisition-only profiles before reaching service-backed handlers, while schema-compatible profile reads permit code to run before the new column exists. Public inquiry/config routes and signed provider callbacks keep their existing boundaries.
+
+**Still a release blocker:** a legacy user's existing service-role handler can bypass the new RLS boundaries. Do not bind production resources until those handlers/RPCs are scoped, and workspace ownership has propagated to related business records. Database RLS tests alone do not close that API-level gap. Contact permissions, eligibility, agency cohorts, provider acceptance and the full-schema upgrade rehearsal remain pending.
+
+Current validation: 22 real PostgreSQL cases and 121 combined targeted backend cases pass. The fixture now reconstructs inspected profiles, audit_logs, leads, county properties and campaigns; unrelated lead FK targets are intentionally omitted, so this remains a focused migration test. Compensation: keep features off, retain binding/audit history, revoke incorrect assignments/memberships through audited functions; never clear acquisition_only automatically during revocation or replay a backfill. Returning an account to legacy access needs explicit privileged review.
+
 Candidate branch: `codex/acquisition-foundation`, from deployed `c8673c170368bc8c44974fd304fac5af3fcf6e8c`. The acquisition routes default to 404 unless `ACQUISITION_ENABLED=true`. No setting is enabled by this commit.
 
 ## Database contract

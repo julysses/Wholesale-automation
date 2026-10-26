@@ -23,7 +23,7 @@ def require_operator(request: Request) -> None:
     # Provider webhooks and the worker enforce their own signatures/secrets.
     if path.startswith("/webhooks/") and path != "/webhooks/launch_control/csv-queue":
         return
-    if not (path.startswith("/api/") or path == "/v1" or path.startswith("/v1/")
+    if not (path.startswith("/api/") or path.startswith("/internal/") or path == "/v1" or path.startswith("/v1/")
             or path == "/webhooks/launch_control/csv-queue"):
         return
 
@@ -40,12 +40,18 @@ def require_operator(request: Request) -> None:
     if not user or not user.id:
         raise HTTPException(401, "Session is invalid or expired")
     try:
-        rows = client.table("profiles").select("role,status").eq("id", str(user.id)).limit(1).execute().data
+        # '*' permits a code-first rollout before the additive acquisition_only
+        # column exists. Only the fields below affect authorization.
+        rows = client.table("profiles").select("*").eq("id", str(user.id)).limit(1).execute().data
     except Exception:
         logger.exception("Could not verify operator approval")
         raise HTTPException(503, "Unable to verify account access")
     if not rows or rows[0].get("status") != "approved":
         raise HTTPException(403, "Your account requires administrator approval")
+    if rows[0].get("acquisition_only") is True and not (
+        path.startswith('/api/acquisition/') or path == '/internal/outreach/eligibility/evaluate'
+    ):
+        raise HTTPException(403, "Use your assigned acquisition workspace")
     if (path == "/api/ai/test-key" or path.startswith(("/api/email/", "/api/calls/", "/api/operations/", "/api/nurture/"))) and rows[0].get("role") != "admin":
         raise HTTPException(403, "Administrator access required")
     request.state.user_id = str(user.id)

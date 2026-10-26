@@ -2,7 +2,7 @@
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from tools.acquisition_store import acquisition_store
@@ -20,6 +20,17 @@ class MembershipChange(BaseModel):
     model_config = ConfigDict(extra='forbid')
     role: Literal['owner','admin','operator','acquisition_caller','agency_manager']
     status: Literal['active','revoked']
+
+
+class LeadBinding(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    lead_id: UUID
+    property_id: UUID | None = None
+
+
+class LeadAssignment(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    user_id: UUID | None
 
 
 @router.get('/workspaces')
@@ -49,4 +60,29 @@ async def set_membership(workspace_id: UUID, user_id: UUID, body: MembershipChan
     return await store.request('POST', 'rpc/set_acquisition_membership', body={
         'p_workspace': str(workspace_id), 'p_user': str(user_id),
         'p_role': body.role, 'p_status': body.status,
+    })
+
+
+@router.post('/workspaces/{workspace_id}/leads')
+async def bind_lead(workspace_id: UUID, body: LeadBinding, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/bind_acquisition_lead', body={
+        'p_workspace': str(workspace_id), 'p_lead': str(body.lead_id),
+        'p_property': str(body.property_id) if body.property_id else None,
+    })
+
+
+@router.put('/workspaces/{workspace_id}/leads/{lead_id}/assignment')
+async def assign_lead(workspace_id: UUID, lead_id: UUID, body: LeadAssignment,
+                      store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/assign_acquisition_lead', body={
+        'p_workspace': str(workspace_id), 'p_lead': str(lead_id),
+        'p_user': str(body.user_id) if body.user_id else None,
+    })
+
+
+@router.get('/workspaces/{workspace_id}/leads')
+async def list_leads(workspace_id: UUID, after: UUID | None = None,
+                     limit: int = Query(20, ge=1, le=50), store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/list_acquisition_leads', body={
+        'p_workspace': str(workspace_id), 'p_after': str(after) if after else None, 'p_limit': limit,
     })

@@ -3,6 +3,19 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — acquisition account and lead boundaries
+
+- Pulled `codex/acquisition-foundation` at `0442725`; worktree was clean. Previous goal turn is classified as progress (committed/pushed foundation and verified tests), not a wait or blocker.
+- Added CLI-generated migration `20261026025259_acquisition_legacy_access_boundary.sql`: sticky acquisition-only profile flag; restrictive shared-table policies; a workspace-to-canonical-lead/property binding; audited binding/assignment functions; bounded assigned-lead projection. No duplicate lead/property data or automatic ownership backfill.
+- Non-owner membership enrollment sets acquisition_only; revocation never restores shared legacy access. Existing non-owner memberships are covered when upgrading. Platform admin identities cannot be enrolled as limited caller/agency accounts. Existing account approval remains required.
+- Legacy API authentication reads the optional new profile field compatibly with the prior schema and denies acquisition-only identities outside acquisition routes/the explicit eligibility endpoint. Internal routes now also require authentication. Raw scoped-lead mutation is denied to authenticated clients; mutations go through reviewed RPCs.
+- Binding requires both a legacy platform administrator and workspace owner. County property association must already match the selected canonical lead. One lead/property cannot be adopted into two workspaces. Assignment requires a current member of the same workspace. Caller/agency queue projection requires MFA and explicit lead assignment, exposes no contact numbers, and caps pages at 50.
+- Validation: **22 disposable PostgreSQL tests pass**, including preserved canonical property/lead data, same-phone nonmerging, preexisting membership upgrade, cross-workspace/raw-write denial, sticky revocation and assigned caller access. **121 targeted backend tests pass**, with 24 preexisting datetime warnings. `git diff --check` passes. Same isolated commands/runtime as the prior checkpoint; no provider connections or production writes.
+
+**Remaining security gate:** acquisition-only identities are contained, but existing legacy service-role handlers can still bypass RLS when used by a legacy account. They must be scoped/bridged or denied access to newly bound resources before production binding/activation. Related child records (contracts, offers, etc.) still need workspace ownership propagation. This slice does not claim complete multi-tenant isolation. No production account was enrolled or lead bound.
+
+Next: finish legacy service-path isolation, then add canonical contact/evidence links, immutable per-channel permission and eligibility decisions, and durable Facebook receipts/processing. Full production-shaped upgrade rehearsal and later phase implementation remain open. Goal stays active.
+
 ## Implementation checkpoint — workspace foundation
 
 - Refreshed Vercel production identity: still `c8673c170368bc8c44974fd304fac5af3fcf6e8c` / `dpl_3VmD6PS8eWxGYPh5qzVCZ9ouWW5d`.
@@ -15,7 +28,7 @@ Status: implementation in progress on `codex/acquisition-foundation`; production
 - Test commands: `python3 scripts/test_acquisition_workspace.py`; existing offline runner with the previously installed Python runtime at `/Users/juliodominguez/Documents/Codex/2026-10-21/let-s-prep-the-wholesale-os/app/.venv/bin/python` against `tests/test_acquisition_api.py`, `test_api_auth.py`, `test_facebook_consent.py`, `test_facebook_request_security.py`, `test_facebook_sms_handoff.py`, `test_facebook_receipt_race.py`, `test_retell_webhook_security.py`. External runtime was used read-only; no old checkout changed.
 - Sandbox shared-memory restriction required approval for the disposable PostgreSQL runner; it completed and destroyed its own test cluster.
 
-**Not complete:** existing CRM/county tables and old service-role endpoints still use legacy shared access. Do not provision real caller/agency users or enable acquisition until scoped record bindings, legacy-access restrictions, cohort controls and full upgrade acceptance pass. This migration alone does not make the entire application multi-tenant. No production migration, feature flag, provider configuration or schedule changed.
+**Not complete at this earlier checkpoint:** existing CRM/county tables and old service-role endpoints still use legacy shared access. The newer checkpoint above adds caller containment/bindings but retains the service-role bridge gate. Do not enable acquisition until all boundaries and full upgrade acceptance pass. No production migration, feature flag, provider configuration or schedule changed.
 
 Next implementation slice: add workspace-bound lead/property/contact relationships and server-side authorization for legacy-resource bridges; preserve county property IDs and existing receipts. Then implement immutable channel permission/eligibility records and durable Facebook inbox. Keep the goal active through remaining PRD slices and acceptance gates.
 
@@ -56,6 +69,8 @@ This inventory checkpoint is historical; the implementation checkpoint above sup
 - [x] Document forward-only migration sequence, compensation and planned disposable tests.
 - [x] Start isolated implementation branch from deployed production revision.
 - [x] Implement/test workspace membership, administration API and scoped audit foundation.
+- [x] Implement/test acquisition-only legacy-access containment, canonical lead/property binding and assigned-lead projection.
+- [ ] Scope legacy service-role handlers and propagate workspace ownership to related records.
 - [ ] Build/test shared foundation on a disposable database.
 - [ ] Implement and pass Facebook acceptance with approved test leads.
 - [ ] Obtain any required production migration/activation approvals.

@@ -102,3 +102,26 @@ def test_service_key_cannot_replace_missing_public_key(api, monkeypatch):
         monkeypatch.delenv(name, raising=False)
     assert client.get('/api/acquisition/workspaces', headers={'Authorization': 'Bearer user-token'}).status_code == 503
     assert not state['requests']
+
+
+def test_lead_queue_is_bounded_and_workspace_scoped(api):
+    client, state = api
+    response = client.get(f'/api/acquisition/workspaces/{W}/leads?limit=25&after={U}',
+                          headers={'Authorization':'Bearer user-token'})
+    assert response.status_code == 200
+    assert json.loads(state['requests'][0].content) == {'p_workspace': W, 'p_after': U, 'p_limit': 25}
+    assert client.get(f'/api/acquisition/workspaces/{W}/leads?limit=500',
+                      headers={'Authorization':'Bearer user-token'}).status_code == 422
+    assert len(state['requests']) == 1
+
+
+def test_lead_binding_rejects_client_supplied_owner_and_requires_uuid(api):
+    client, state = api
+    response = client.post(f'/api/acquisition/workspaces/{W}/leads',
+                           headers={'Authorization':'Bearer user-token'},json={'lead_id':U})
+    assert response.status_code == 200
+    assert json.loads(state['requests'][0].content) == {'p_workspace':W,'p_lead':U,'p_property':None}
+    assert client.post(f'/api/acquisition/workspaces/{W}/leads',
+                       headers={'Authorization':'Bearer user-token'},
+                       json={'lead_id':U,'bound_by':U}).status_code == 422
+    assert len(state['requests']) == 1

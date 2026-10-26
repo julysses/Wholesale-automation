@@ -97,3 +97,24 @@ def test_readiness_route_is_public_but_dependency_failure_is_not_healthy(monkeyp
     monkeypatch.setattr(launch_monitor,'snapshot',lambda: {'database':True,'intake':False,'owner':True,'aged':{}})
     response=TestClient(app).get('/api/readiness')
     assert response.status_code==503 and response.json()=={'status':'unavailable'}
+
+
+@pytest.mark.parametrize('method,path', [
+    ('get','/v1/leads'), ('post','/api/ai/qualify-lead'), ('post','/api/deals'),
+    ('post','/api/buyers/outreach/sms'), ('get','/api/lead-gen/forms'),
+    ('get','/webhooks/launch_control/csv-queue'), ('post','/api/calls/retell'),
+])
+def test_acquisition_only_identity_cannot_use_legacy_service_routes(identity, method, path):
+    identity.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {'status':'approved','role':'user','acquisition_only':True}]
+    response = getattr(TestClient(app),method)(path,headers={'Authorization':'Bearer valid'})
+    assert response.status_code == 403
+    assert response.json()['detail'] == 'Use your assigned acquisition workspace'
+
+
+def test_acquisition_only_identity_can_reach_disabled_workspace_boundary(identity, monkeypatch):
+    monkeypatch.delenv('ACQUISITION_ENABLED', raising=False)
+    identity.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {'status':'approved','role':'user','acquisition_only':True}]
+    response = TestClient(app).get('/api/acquisition/workspaces',headers={'Authorization':'Bearer valid'})
+    assert response.status_code == 404

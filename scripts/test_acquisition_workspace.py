@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / 'frontend/supabase/migrations/20261026024157_acquisition_workspace_foundation.sql'
+BOUNDARY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026025259_acquisition_legacy_access_boundary.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -22,6 +23,9 @@ CALLER = '00000000-0000-4000-8000-000000000003'
 OPERATOR = '00000000-0000-4000-8000-000000000004'
 WORKSPACE = '10000000-0000-4000-8000-000000000001'
 WORKSPACE_B = '10000000-0000-4000-8000-000000000002'
+LEAD = '20000000-0000-4000-8000-000000000001'
+LEAD_B = '20000000-0000-4000-8000-000000000002'
+PROPERTY = '30000000-0000-4000-8000-000000000001'
 
 
 def literal(value):
@@ -52,26 +56,37 @@ class WorkspaceTests(unittest.TestCase):
         return result.stdout.strip()
 
     def setUp(self):
-        self.sql('DROP SCHEMA IF EXISTS public CASCADE; DROP SCHEMA IF EXISTS private CASCADE; '
+        self.sql('DROP SCHEMA IF EXISTS wholesale_ingest CASCADE; DROP SCHEMA IF EXISTS public CASCADE; DROP SCHEMA IF EXISTS private CASCADE; '
                  'DROP SCHEMA IF EXISTS auth CASCADE; CREATE SCHEMA public; CREATE SCHEMA private; '
-                 'CREATE SCHEMA auth; GRANT USAGE ON SCHEMA public,private,auth TO authenticated,service_role; '
+                 'CREATE SCHEMA auth; CREATE SCHEMA wholesale_ingest; CREATE EXTENSION "uuid-ossp"; '
+                 'GRANT USAGE ON SCHEMA public,private,auth,wholesale_ingest TO authenticated,service_role; '
                  'CREATE TABLE auth.users(id uuid PRIMARY KEY); '
                  'CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id),not_after timestamptz); '
                  "CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$; "
                  "CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT (auth.jwt()->>'sub')::uuid $$;")
         catalog = json.loads(CATALOG.read_text())
         # Recreate exact inspected column types/defaults for touched legacy tables.
-        for table in ('profiles', 'audit_logs'):
+        for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'),
+                              ('wholesale_ingest','properties'), ('public','campaigns')):
             columns = []
             for c in catalog['columns']:
-                if c['table_schema'] == 'public' and c['table_name'] == table:
-                    columns.append(identifier(c['column_name'])+' '+c['udt_name']+
+                if c['table_schema'] == schema and c['table_name'] == table:
+                    dtype = c['udt_name'][1:]+'[]' if c['udt_name'].startswith('_') else c['udt_name']
+                    columns.append(identifier(c['column_name'])+' '+dtype+
                                    (' DEFAULT '+c['column_default'] if c['column_default'] else '')+
                                    (' NOT NULL' if c['is_nullable']=='NO' else ''))
-            self.sql(f'CREATE TABLE public.{table}('+','.join(columns)+');')
+            self.sql(f'CREATE TABLE {schema}.{table}('+','.join(columns)+');')
             for c in catalog['constraints']:
-                if c['schema']=='public' and c['table_name']==table:
-                    self.sql(f'ALTER TABLE public.{table} ADD CONSTRAINT '+identifier(c['conname'])+' '+c['definition'])
+                if c['schema']==schema and c['table_name']==table:
+                    # Leads' unrelated campaign/form/list FK targets are outside
+                    # this focused fixture. Full production upgrade remains separate.
+                    if table=='leads' and c['contype']=='f':
+                        continue
+                    self.sql(f'ALTER TABLE {schema}.{table} ADD CONSTRAINT '+identifier(c['conname'])+' '+c['definition'])
+            if table in ('leads','properties','campaigns'):
+                self.sql(f'ALTER TABLE {schema}.{table} ENABLE ROW LEVEL SECURITY; '
+                         f'GRANT SELECT,INSERT,UPDATE,DELETE ON {schema}.{table} TO authenticated; '
+                         f'CREATE POLICY legacy_approved ON {schema}.{table} TO authenticated USING (true) WITH CHECK (true);')
         self.sql("ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY; "
                  "GRANT SELECT ON public.audit_logs TO authenticated; GRANT ALL ON public.audit_logs TO service_role; "
                  "CREATE POLICY approved_read_audit_logs ON public.audit_logs FOR SELECT TO authenticated USING (true); "
@@ -80,14 +95,86 @@ class WorkspaceTests(unittest.TestCase):
             self.sql(f"INSERT INTO auth.users VALUES('{user}'); INSERT INTO auth.sessions VALUES('{user}','{user}',NULL); "
                      f"INSERT INTO profiles(id,email,role,status) VALUES('{user}','{user}@example.test','{role}','approved');")
         self.sql(MIGRATION.read_text())
+        if self._testMethodName == 'test_migration_scopes_preexisting_memberships':
+            self.create(ADMIN, WORKSPACE)
+            self.member()
+        self.sql(BOUNDARY_MIGRATION.read_text())
         self.create(ADMIN, WORKSPACE)
         self.create(OTHER, WORKSPACE_B)
+        self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
+                 f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
+                 "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
 
     def create(self, actor, workspace):
         return self.sql(f"SELECT public.create_acquisition_workspace('{workspace}','Hilltop test');", user=actor)
 
     def member(self, target=OPERATOR, role='operator', status='active', actor=ADMIN, fail=False):
         return self.sql(f"SELECT public.set_acquisition_membership('{WORKSPACE}','{target}','{role}','{status}');", user=actor, fail=fail)
+
+    def bind(self, actor=ADMIN, workspace=WORKSPACE, lead=LEAD, property_id=PROPERTY, fail=False):
+        prop = literal(property_id) if property_id else 'NULL'
+        return self.sql(f"SELECT public.bind_acquisition_lead('{workspace}','{lead}',{prop});", user=actor, fail=fail)
+
+    def queue(self, actor=CALLER, workspace=WORKSPACE, aal='aal2', fail=False):
+        data = self.sql(f"SELECT public.list_acquisition_leads('{workspace}');", user=actor, aal=aal, fail=fail)
+        return data if fail else json.loads(data)
+
+    def test_restricted_account_cannot_inherit_legacy_table_access(self):
+        self.member(target=CALLER, role='acquisition_caller')
+        self.assertEqual(self.sql('SELECT count(*) FROM campaigns;', user=CALLER), '0')
+        self.assertEqual(self.sql('SELECT count(*) FROM leads;', user=CALLER), '0')
+        self.assertEqual(self.sql('SELECT count(*) FROM campaigns;', user=ADMIN), '1')
+        self.member(target=CALLER, role='acquisition_caller', status='revoked')
+        self.assertEqual(self.sql('SELECT count(*) FROM campaigns;', user=CALLER), '0')
+        self.assertEqual(self.sql(f"SELECT acquisition_only FROM profiles WHERE id='{CALLER}';"), 't')
+
+    def test_migration_scopes_preexisting_memberships(self):
+        self.assertEqual(self.sql(f"SELECT acquisition_only FROM profiles WHERE id='{OPERATOR}';"), 't')
+        self.assertEqual(self.sql('SELECT count(*) FROM campaigns;', user=OPERATOR), '0')
+
+    def test_platform_admin_cannot_be_enrolled_as_limited_caller(self):
+        self.member(target=OTHER, role='acquisition_caller', fail=True)
+        self.assertEqual(self.sql(f"SELECT acquisition_only FROM profiles WHERE id='{OTHER}';"), 'f')
+
+    def test_binding_preserves_canonical_property_and_does_not_merge_phone_matches(self):
+        before = self.sql(f"SELECT row_to_json(p) FROM wholesale_ingest.properties p WHERE id='{PROPERTY}';")
+        self.bind()
+        self.bind()
+        self.assertEqual(self.sql(f"SELECT row_to_json(p) FROM wholesale_ingest.properties p WHERE id='{PROPERTY}';"), before)
+        self.assertEqual(self.sql('SELECT count(*) FROM leads;'), '2')
+        self.assertEqual(self.sql('SELECT count(*) FROM workspace_leads;'), '1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='bound';"), '1')
+
+    def test_binding_requires_authority_and_matching_property(self):
+        self.member()
+        self.bind(actor=OPERATOR, fail=True)
+        self.bind(lead=LEAD_B, fail=True)
+        self.bind()
+        self.bind(actor=OTHER, workspace=WORKSPACE_B, fail=True)
+
+    def test_cross_workspace_and_unbound_read_boundaries(self):
+        self.bind()
+        self.member()
+        self.assertEqual(self.sql('SELECT count(*) FROM leads;', user=OPERATOR), '1')
+        self.assertEqual(self.sql(f"SELECT count(*) FROM leads WHERE id='{LEAD}';", user=OTHER), '0')
+        self.assertEqual(self.sql(f"SELECT count(*) FROM leads WHERE id='{LEAD_B}';", user=OPERATOR), '0')
+        self.sql(f"UPDATE leads SET property_address='changed' WHERE id='{LEAD}'; DELETE FROM leads WHERE id='{LEAD}';", user=OPERATOR)
+        self.assertEqual(self.sql(f"SELECT property_address FROM leads WHERE id='{LEAD}';"), '1 Fixture St')
+
+    def test_assignment_queue_has_no_unassigned_contacts_or_cross_workspace_access(self):
+        self.bind()
+        self.member(target=CALLER, role='acquisition_caller')
+        self.assertEqual(self.queue(), [])
+        self.sql(f"SELECT public.assign_acquisition_lead('{WORKSPACE}','{LEAD}','{CALLER}');", user=ADMIN)
+        result = self.queue()
+        self.assertEqual([r['lead_id'] for r in result], [LEAD])
+        self.assertNotIn('owner_phone_1', result[0])
+        self.assertEqual(self.sql('SELECT count(*) FROM leads;', user=CALLER), '0')
+        self.queue(workspace=WORKSPACE_B, fail=True)
+        self.queue(aal='aal1', fail=True)
+        self.sql(f"SELECT public.assign_acquisition_lead('{WORKSPACE}','{LEAD}','{OTHER}');", user=ADMIN, fail=True)
+        self.member(target=CALLER, role='acquisition_caller', status='revoked')
+        self.queue(fail=True)
 
     def test_workspace_and_membership_isolation(self):
         self.assertEqual(self.sql('SELECT count(*) FROM workspaces;', user=ADMIN), '1')
