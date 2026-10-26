@@ -3,6 +3,17 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — shared underwriting calculations
+
+- Pulled clean `7bc438f`; prior turn implemented/tested/pushed legacy transport fences (progress). Inspected existing manual-analysis API, legacy ratio-based analyzer, `deal_analyses` columns/constraints and the schema-mapping persistence plan. Existing workflows remain unchanged.
+- Added explicit provenance-bearing Decimal input schemas and `acquisition-underwriting-v1` calculation engine for flip, rental, development and wholesale. Explicit base/downside/upside cases share one strategy. Missing/null required data produces incomplete outputs, not zero; invalid numbers/rates and unsupported fields are rejected. Estimated/source-reported input never becomes independently verified property fact.
+- Costs separate acquisition closing/liens, repair or construction categories, contingency, pre-exit/stabilization holding, simple financing interest, points/fees and selling costs. Debt principal is never double-counted as an expense. Rental NOI, reserves, debt service, cash flow and three price ceilings are separated. Assignment gross/net proceeds require independently supported end buyer economics.
+- Added conservative offer-ceiling rounding, negative-MAO visibility, unknown/zero distinction, nonpositive-equity holds, case-label ordering checks and explicit fixed-debt/peak-funding limits. No market data is fetched or invented. Initial development test expectation had an arithmetic error (costs sum to 670,000, not 770,000); independently summed the categories and corrected expected MAO/profit.
+- Added operator-only scoped preview endpoint using existing workspace binding RLS. It reads canonical property ID, rejects inaccessible leads and writes no analysis/MAO/offer. Returns `persisted=false`, nonbinding status and approval requirement. See `UNDERWRITING-V1.md` for precise formulas and limits.
+- Validation: **48 focused underwriting/API tests passed** before adding the final case-order check. **Full offline backend: 1,259 passed, 10 environment-dependent tests skipped, 368 existing deprecation warnings.** `git diff --check` passes. No SQL migration, production configuration, provider or transaction changed.
+
+Next: persist versioned cases by extending existing deal_analyses and protecting its legacy lead-sync trigger; add scenario/offer review lifecycle. Continue policy execution, owner assertion invalidation, durable Facebook intake/attribution, and all later ordered phases. Pure preview is not claimed as completed UW persistence or a production release. Goal active.
+
 ## Implementation checkpoint — legacy provider execution fence
 
 - Pulled clean `d8d266a`; previous turn implemented/tested/pushed structured permission evidence (progress). Traced actual provider calls separately from LLM `messages.create` calls; no LLM generation methods were treated as outreach.

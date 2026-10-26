@@ -2,7 +2,7 @@
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from tools.acquisition_store import acquisition_store
@@ -215,3 +215,22 @@ async def list_permissions(workspace_id: UUID, lead_id: UUID, after: UUID | None
     if after is not None:
         params['id'] = 'gt.'+str(after)
     return await store.request('GET', 'acquisition_permission_status', params=params)
+
+
+from schemas.acquisition_underwriting import UnderwritingPreview
+from tools.acquisition_underwriting import calculate_preview
+
+
+@router.post('/workspaces/{workspace_id}/leads/{lead_id}/underwriting/preview')
+async def underwriting_preview(workspace_id: UUID, lead_id: UUID, body: UnderwritingPreview,
+                                store=Depends(acquisition_store)):
+    # Existing binding RLS permits only owner/admin/operator, never caller roles.
+    rows = await store.request('GET','workspace_leads',params={
+        'select':'workspace_id,lead_id,property_id','workspace_id':'eq.'+str(workspace_id),
+        'lead_id':'eq.'+str(lead_id),'limit':'1',
+    })
+    if (not isinstance(rows,list) or len(rows)!=1 or rows[0].get('workspace_id')!=str(workspace_id)
+            or rows[0].get('lead_id')!=str(lead_id)):
+        raise HTTPException(403,'Workspace underwriting access is not authorized')
+    return {**calculate_preview(body),'workspace_id':str(workspace_id),'lead_id':str(lead_id),
+            'property_id':rows[0].get('property_id')}

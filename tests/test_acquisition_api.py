@@ -216,3 +216,21 @@ def test_permission_revocation_and_status_routes_are_scoped(api):
     assert state['requests'][1].url.params['workspace_id'] == 'eq.'+W
     assert state['requests'][1].url.params['lead_id'] == 'eq.'+U
     assert client.get(path+'?limit=51',headers={'Authorization':'Bearer user-token'}).status_code == 422
+
+
+def test_underwriting_preview_checks_scoped_binding_and_does_not_write(api):
+    client,state=api
+    path=f'/api/acquisition/workspaces/{W}/leads/{U}/underwriting/preview'
+    payload={'cases':{name:{'strategy':'fix_and_flip'} for name in ['base','downside','upside']}}
+    state['body']=[]
+    assert client.post(path,headers={'Authorization':'Bearer user-token'},json=payload).status_code==403
+    state['body']=[{'workspace_id':W,'lead_id':U,'property_id':None}]
+    response=client.post(path,headers={'Authorization':'Bearer user-token'},json=payload)
+    assert response.status_code==200
+    result=response.json()
+    assert result['persisted'] is False and result['binding_offer'] is False
+    assert result['cases']['base']['mao'] is None
+    assert result['status']=='incomplete'
+    assert result['property_id'] is None
+    assert all(request.method=='GET' for request in state['requests'])
+    assert all(request.url.params['workspace_id']=='eq.'+W for request in state['requests'])
