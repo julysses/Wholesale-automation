@@ -31,6 +31,7 @@ INTAKE_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026162924_acquisiti
 BATCH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026163900_acquisition_facebook_batch_acceptance.sql'
 HEALTH_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026165322_acquisition_inquiry_health.sql'
 RECOVERY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026170113_acquisition_inquiry_recovery.sql'
+CANDIDATES_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026171817_acquisition_intake_candidates.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -144,6 +145,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(BATCH_MIGRATION.read_text())
         self.sql(HEALTH_MIGRATION.read_text())
         self.sql(RECOVERY_MIGRATION.read_text())
+        self.sql(CANDIDATES_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -318,6 +320,67 @@ class WorkspaceTests(unittest.TestCase):
         value=self.sql(f"SELECT public.complete_facebook_acquisition_intake('{claim['receipt_id']}','{claim['lease_token']}',"
                        f"{literal(json.dumps(prepared))}::jsonb);",user=ADMIN,role=role,fail=fail)
         return value if fail else json.loads(value)
+
+    def candidate_fixture(self, **answers):
+        self.bind(); self.member()
+        self.sql(f"UPDATE leads SET state='TX' WHERE id='{LEAD}';")
+        self.inbox_config(); self.inbox_accept(); claim=self.inbox_claim()[0]
+        return self.complete_intake(claim,self.prepared_intake(**answers))
+
+    def candidates(self, intake, user=ADMIN, workspace=WORKSPACE, limit=20, fail=False, **kwargs):
+        value=self.sql(f"SELECT public.acquisition_intake_candidates('{workspace}','{intake}',{limit});",
+                       user=user,fail=fail,**kwargs)
+        return value if fail else json.loads(value)
+
+    def test_intake_candidates_distinguish_contact_from_property(self):
+        saved=self.candidate_fixture(property_address='1 Fixture St',city=' Dallas ',state='texas')
+        result=self.candidates(saved['intake_id'],user=OPERATOR)
+        self.assertEqual(len(result['items']),1)
+        match=result['items'][0]
+        self.assertEqual(match['lead_id'],LEAD)
+        self.assertEqual(match['property_id'],PROPERTY)
+        self.assertTrue(match['address_match']); self.assertTrue(match['phone_match'])
+        self.assertEqual(match['match_basis'],'EXACT_ADDRESS_TEXT')
+        self.assertFalse(result['merge_authorized']); self.assertFalse(result['outreach_authorized'])
+        self.assertNotIn('owner_phone_1',json.dumps(result))
+        self.assertEqual(self.candidates(saved['intake_id'])['candidate_hash'],result['candidate_hash'])
+        self.sql(f"UPDATE leads SET property_address='1 Fixture St Unit B' WHERE id='{LEAD}';")
+        changed=self.candidates(saved['intake_id'])
+        self.assertFalse(changed['items'][0]['address_match'])
+        self.assertEqual(changed['items'][0]['match_basis'],'CONTACT_ONLY')
+        self.assertNotEqual(changed['candidate_hash'],result['candidate_hash'])
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes;'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM leads;'),'3')
+
+    def test_intake_candidates_scope_role_session_and_no_global_search(self):
+        saved=self.candidate_fixture()
+        self.bind(actor=OTHER,workspace=WORKSPACE_B,lead=LEAD_B,property_id=None)
+        self.assertEqual([row['lead_id'] for row in self.candidates(saved['intake_id'])['items']],[LEAD])
+        self.candidates(saved['intake_id'],user=OTHER,fail=True)
+        self.candidates(saved['intake_id'],user=OTHER,workspace=WORKSPACE_B,fail=True)
+        self.member(target=CALLER,role='acquisition_caller')
+        self.candidates(saved['intake_id'],user=CALLER,fail=True)
+        self.candidates(saved['intake_id'],session=False,fail=True)
+        self.candidates(saved['intake_id'],role='service_role',fail=True)
+        self.candidates(saved['intake_id'],limit=0,fail=True)
+        self.candidates(saved['intake_id'],limit=51,fail=True)
+
+    def test_intake_candidates_missing_fields_and_ambiguous_contacts_never_match(self):
+        saved=self.candidate_fixture(property_address='',city='',state='',phone='2145550101 ext 9',email='invalid')
+        result=self.candidates(saved['intake_id'])
+        self.assertEqual(result['items'],[])
+        self.assertEqual(result['classification'],'incomplete')
+        self.assertFalse(result['truncated'])
+        self.assertEqual(self.sql(f"SELECT count(*) FROM workspace_leads WHERE lead_id='{saved['lead_id']}' AND property_id IS NULL;"),'1')
+
+    def test_intake_candidates_bounded_and_deterministic(self):
+        saved=self.candidate_fixture()
+        self.bind(lead=LEAD_B,property_id=None)
+        result=self.candidates(saved['intake_id'],limit=1)
+        self.assertEqual(len(result['items']),1); self.assertTrue(result['truncated'])
+        self.assertEqual(result['items'][0]['lead_id'],LEAD)
+        all_rows=self.candidates(saved['intake_id'],limit=2)
+        self.assertEqual(len(all_rows['items']),2); self.assertFalse(all_rows['truncated'])
 
     def test_intake_atomic_idempotent_and_workspace_scoped(self):
         # Exercise the inspected production retention trigger, not just a stub.

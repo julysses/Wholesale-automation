@@ -401,3 +401,11 @@ async def inquiry_recovery_history(workspace_id: UUID, receipt_id: UUID, store=D
         'select': 'id,receipt_id,cycle,actor_id,reason_code,review_note,evidence_ref,previous_attempts,created_at',
         'workspace_id': 'eq.'+str(workspace_id), 'receipt_id': 'eq.'+str(receipt_id), 'order': 'cycle', 'limit': '3',
     })
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}/candidates')
+async def intake_identity_candidates(workspace_id: UUID, intake_id: UUID,
+                                     limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/acquisition_intake_candidates', body={
+        'p_workspace': str(workspace_id), 'p_intake': str(intake_id), 'p_limit': limit,
+    })

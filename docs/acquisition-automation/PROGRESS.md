@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — workspace intake identity candidates
+
+- Previous turn was progress: recovery UI `3e1ffc1` was tested and pushed. Pulled current branch and inspected intake immutability, canonical property binding uniqueness, owner assertions, contact normalization, catalog fields and RLS before creating SQL.
+- Added CLI-generated `20261026171817_acquisition_intake_candidates.sql` and a scoped authenticated API. Candidate discovery compares original intake evidence with existing workspace-bound leads, distinguishes exact address text from contact-only signals, exposes bound county parcel/unit evidence and previous-intake signals, and returns bounded deterministic results with snapshot hashes. It writes no classifications, links, permissions or merges.
+- Validation: **4 focused real PostgreSQL tests passed** for matching, unit mismatch, ambiguous/missing contact data, tenant/session/role isolation and truncation. **33 API contract tests passed**. Integrated Facebook journey now reads candidates through the real SQL adapter and proves two same-phone inquiries remain distinct. **All 8 integrated journeys passed**. `git diff --check` passed.
+- First SQL execution found ambiguous city/state variable names; corrected to prefixed local variables and reran successfully. Sandbox blocked Git DNS, CLI runtime and disposable PostgreSQL shared memory; approved escalated retries succeeded. No production migration/configuration/deployment, outreach, mail or spending.
+
+Next: immutable reviewed identity resolution and repeat-inquiry linking, then reviewer interface/canonical qualification and attribution. Large-workspace performance, county enrollment, real PostgREST acceptance and remaining sequential phases remain open. Goal active.
+
 ## Implementation checkpoint — inquiry recovery review screen
 
 - Pulled clean `codex/acquisition-foundation` at `d26bdbd`. Added a scoped recovery review form to inquiry health with exact hold timestamp/reason, recovery history, MFA guidance, owner/admin affordance, correction evidence and explicit acknowledgment. Server-side authority remains decisive.

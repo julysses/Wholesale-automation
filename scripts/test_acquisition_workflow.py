@@ -28,6 +28,7 @@ OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
  'recover_acquisition_inquiry': ['p_id','p_workspace','p_receipt','p_expected_updated_at','p_expected_reason','p_note','p_evidence_ref'],
+ 'acquisition_intake_candidates': ['p_workspace','p_intake','p_limit'],
  'acquisition_inquiry_health': ['p_workspace','p_after','p_limit'],
  'accept_facebook_acquisition_batch': ['p_events','p_raw_body'],
  'claim_acquisition_events': ['p_integration','p_limit','p_lease_seconds'],
@@ -112,7 +113,7 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after'}
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake'}
                       else 'timestamptz' if key=='p_expected_updated_at' else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
@@ -187,6 +188,16 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes WHERE prepared_answers->'provider_evidence'->'custom_disclaimer_responses'->0->'is_checked'='false'::jsonb"),'2')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes',user=OTHER),'0')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes',user=ADMIN),'2')
+        intake=self.sql('SELECT id FROM seller_intakes ORDER BY id LIMIT 1')
+        response=self.client.get(f'{self.base}/intakes/{intake}/candidates',headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        candidates=response.json()['items']
+        self.assertEqual(len(candidates),2) # Existing scoped lead plus the other native inquiry.
+        self.assertTrue(all(row['match_basis']=='CONTACT_ONLY' and not row['merge_authorized'] for row in candidates))
+        self.assertEqual(sum(row['previous_intake'] for row in candidates),1)
+        self.assertEqual(self.client.get(f'{self.base}/intakes/{intake}/candidates',
+            headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
+
         self.assertEqual(self.facebook_delivery(('1','2')).status_code,200)
         self.assertEqual(self.facebook_worker().json(),{'status':'idle'})
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake'"),'2')

@@ -1,6 +1,6 @@
 # Seller intake preparation
 
-`tools/acquisition_intake.py` implements a pure, versioned preparation step for an authorized native Facebook lead retrieval. It is not yet connected to ingestion or persistence. It has no provider, CRM, offer, contact or outreach side effects.
+`tools/acquisition_intake.py` implements a pure, versioned preparation step for an authorized native Facebook lead retrieval. The acquisition worker now calls it before atomic intake persistence. The pure preparation function itself has no provider, CRM, offer, contact or outreach side effects.
 
 The response lead ID must match the expected receipt identity. Field aliases are normalized while every original field/value occurrence is retained. Conflicting aliases, duplicate answers and multi-select values cannot silently overwrite one another. Bounds apply to names, values, field counts and total UTF-8 answer size. Original provider payload storage and provider authenticity remain the receiver/worker's responsibility.
 
@@ -28,10 +28,22 @@ Canonical workspace binding now has exactly one origin: an existing human `bound
 
 Missing address/city are empty source values, not invented facts; missing state and price remain null. Invalid phone/email values stay in intake evidence with normalization warnings; canonical contact columns receive only normalized values. No contact permission is created. SMS/email sequences are false, AI calling is paused, and the new source has a retention-review hold rather than legacy unattended cleanup. The final-order retention trigger is tested alongside the inspected legacy retention function. CRM/intake evidence retention is still a policy/workflow requirement before release; the inbox's raw-body expiry does not purge these separate business records.
 
-This first writer creates one lead per distinct native event. Cross-inquiry canonical owner/property resolution, repeat-inquiry linking, qualified/duplicate transitions, campaigns/multi-touch attribution and the operator intake interface remain incomplete. The source is `facebook_acquisition`; channel is `facebook_lead_ad`. No fabricated call ID, HOT notification, property match or ownership verification is generated. No HTTP/provider worker wiring is live.
+This first writer creates one lead per distinct native event. Cross-inquiry canonical owner/property resolution, repeat-inquiry linking, qualified/duplicate transitions, campaigns/multi-touch attribution and the operator intake interface remain incomplete. The source is `facebook_acquisition`; channel is `facebook_lead_ad`. No fabricated call ID, HOT notification, property match or ownership verification is generated. The HTTP receiver and retrieval worker are implemented behind disabled-by-default gates; no production wiring is activated.
 
 Compensation: disable the integration/worker and keep stored evidence. Do not delete intakes or reverse the additive migration. Release remains blocked pending canonical identity workflow, retention policy, full-schema rehearsal and actual end-to-end ingestion acceptance.
 
 ### Retrieved consent evidence
 
 The preparer now preserves selected provider response fields in `provider_evidence`, including full field-data and custom-disclaimer arrays, with a deterministic JSON hash. Missing, empty and declined disclaimer responses are distinct and remain unreviewed. A deep copy prevents later mutation of the source dictionary from rewriting the prepared snapshot. Both response and prepared snapshot sizes are bounded before persistence. This does not replace form-language version review or create contact_permissions records.
+
+## Workspace identity candidate lookup
+
+`20261026171817_acquisition_intake_candidates.sql` and GET `/api/acquisition/workspaces/{workspace}/intakes/{intake}/candidates?limit=20` add a read-only comparison step over the original immutable intake answers and existing workspace-bound CRM leads. Actual owner/admin/operator role and current session are required. Unscoped legacy records and other workspaces are not searched; caller, service-role and unrelated users cannot use the function. County property metadata is returned only through an existing workspace property/lead binding.
+
+The returned candidates distinguish `EXACT_ADDRESS_TEXT` (address, city and state all match after case/whitespace normalization, with Texas/TX equivalence) from `CONTACT_ONLY`. Phone and email signals reuse the strict contact normalizer; extensions and ambiguous numbers do not match. Punctuation, street abbreviations, unit differences, missing fields and seller assertions are not guessed into verified identity. Contact-only results can identify possible repeat inquiries but never authorize merging properties or owners. Original phone/email values are not returned in candidate results.
+
+Results have deterministic address-first ordering, an explicit truncation flag, a maximum of 50 candidates and a candidate snapshot hash. The hash is comparison evidence, not an authorization token; a later write must reread current evidence and authority. Existing intake classification, CRM rows, permissions, bindings and audit history are unchanged by discovery. The original intake hash is returned alongside the candidate hash. No qualified/duplicate determination has been implemented yet.
+
+Next: append-only reviewed resolution, canonical property verification, repeat-inquiry associations, correction/revocation history and a reviewer interface. A result outside the initial Dallas/Collin territory must remain subject to explicit territory review. County-wide/unbound search requires its own authorized enrollment workflow; no global directory access is introduced here. Large-workspace performance and search indexes remain to be measured before scale-up.
+
+Compensation: disable the candidate API feature with the existing acquisition application gate. Keep the additive functions and all historical records; no data rollback is required because discovery writes nothing. Tests cover exact-address versus same-phone/unit mismatch, missing fields, malformed contacts, cross-tenant/session/role denial, bounded ordering, and an actual Facebook intake-to-candidate journey on disposable PostgreSQL. Real PostgREST/provider acceptance is still separate.

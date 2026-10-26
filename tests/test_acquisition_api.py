@@ -339,3 +339,19 @@ def test_recovery_requires_exact_review_and_forwards_no_actor_override(api):
     assert client.post(path,headers=header,json={**body,'expected_updated_at':'2026-10-26T12:00:00'}).status_code==422
     assert client.post(path,headers=header,json={**body,'expected_reason':'PAYLOAD_EXPIRED'}).status_code==422
     assert len(state['requests'])==count
+
+
+def test_intake_candidates_forwards_user_scope_and_validates_bounds(api):
+    client, state = api
+    intake = '70000000-0000-4000-8000-000000000001'
+    path = f'/api/acquisition/workspaces/{W}/intakes/{intake}/candidates'
+    response = client.get(path+'?limit=12', headers={'Authorization': 'Bearer test-jwt'})
+    assert response.status_code == 200
+    request = state['requests'][-1]
+    assert request.url.path.endswith('/rpc/acquisition_intake_candidates')
+    assert request.headers['authorization'] == 'Bearer test-jwt'
+    assert json.loads(request.content) == {'p_workspace': W, 'p_intake': intake, 'p_limit': 12}
+    count = len(state['requests'])
+    for limit in (0, 51):
+        assert client.get(path+f'?limit={limit}', headers={'Authorization': 'Bearer test-jwt'}).status_code == 422
+    assert len(state['requests']) == count
