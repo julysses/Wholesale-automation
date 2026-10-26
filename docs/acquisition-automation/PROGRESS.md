@@ -3,6 +3,17 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — database activation gate
+
+- Pulled `b6b9c43`; previous goal turn verified the completed push (progress evidence).
+- Added CLI-generated `20261026031751_acquisition_activation_gate.sql`. Installation starts disabled. Workspace creation, membership enrollment/reactivation, lead binding and assignment require a private database activation record. Neither authenticated nor service-role clients can change it, including through direct PostgREST access.
+- Activation requires a nonempty approval reference, exact application Git revision and verification timestamp. Database administration records transitions in a private append-only event table. These fields document operator attestation; they do not automatically verify a deployed application or supply approval.
+- Activation checks hold a shared row lock until transaction end; disabling serializes against in-flight gated changes. Membership revocation and workspace suspension remain available. Existing scoped data and sticky restrictions persist when disabled; this is an enrollment/binding cutover guard, not an outreach authorization or universal runtime kill switch.
+- SQL testing initially caught an absent `status` field on workspace_leads in the shared trigger; corrected using shape-independent JSON extraction. The membership RPC uses an upsert, so revoked states must also pass its INSERT trigger; that case was corrected and verified. Final validation: **27 real PostgreSQL tests and 17 offline acquisition API tests pass**; `git diff --check` passes.
+- Production activation remains prohibited pending complete legacy functional replacements, full upgrade acceptance and explicit approval. No production migration or setting changed.
+
+Next: canonical contacts/evidence and immutable channel eligibility, workspace-aware writes, then durable Facebook ingestion. The complete PRD goal remains active.
+
 ## Implementation checkpoint — request identity and related records
 
 - Pulled clean branch at `ae45d2c`. Previous goal turn was progress (account containment and canonical binding committed, pushed and tested).

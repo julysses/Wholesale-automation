@@ -62,3 +62,11 @@ The test runner restores the exact inspected profiles/audit column and constrain
 ## Compensation
 
 Before apply: no recovery operation needed; revise and rehearse the candidate. After an approved apply: disable ACQUISITION_ENABLED and retain workspaces, memberships and audit history. Restore the prior application version only after compatibility verification. Do not drop membership/audit evidence, reopen broad scoped-audit reads or remove the last-owner guard. Misassigned memberships should be revoked through the audited owner operation. Existing legacy rows have no workspace backfill to undo.
+
+## Coordinated activation guard
+
+The activation migration adds a private, disabled singleton and immutable transition history. No application-role grants or public activation RPC exist. A separately authorized database operator must record the approval reference, verified 40-character application revision and timestamp before enabling enrollment and binding. Confirm the actual deployed revision, `ACQUISITION_ENABLED=true`, user-JWT database routing, functional legacy replacements and acceptance evidence before that separate change. A supplied revision string is an attestation, not an automatic deployment check.
+
+Apply the complete reviewed migration bundle under a maintenance boundary before exposing acquisition RPCs; do not expose the earlier foundation migrations alone while the final guard is absent. No production apply is authorized by this document. The current implementation branch remains deployment-disabled.
+
+Compensation: an authorized database operator sets `private.acquisition_activation.enabled=false`. This serializes with enrollment/binding transactions and prevents new workspaces, enrollments, bindings and assignments. It preserves data, existing RLS and acquisition-only account flags. Revocation/suspension remain possible. Do not revert the application to legacy service-role operation while scoped data exists. Disabling this gate does not stop existing reads, signed server workflows or future providers; those require their own fresh eligibility and phase controls. Never delete history or unbind records as rollback.

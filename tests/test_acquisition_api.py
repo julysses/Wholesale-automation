@@ -77,7 +77,7 @@ def test_membership_routing_uses_validated_ids_and_database_auth(api):
 
 
 @pytest.mark.parametrize('status,code,expected', [(401,'PGRST301',401), (403,'42501',403),
-                                                 (400,'22023',409), (409,'23505',409), (500,'XX000',503)])
+                                                 (400,'55000',409), (400,'22023',409), (409,'23505',409), (500,'XX000',503)])
 def test_database_failures_are_fail_closed_and_sanitized(api, status, code, expected):
     client, state = api
     state.update(status=status, body={'code': code, 'message': 'secret upstream details'})

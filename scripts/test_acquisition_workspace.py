@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / 'frontend/supabase/migrations/20261026024157_acquisition_workspace_foundation.sql'
 BOUNDARY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026025259_acquisition_legacy_access_boundary.sql'
 RELATED_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026030633_acquisition_related_record_isolation.sql'
+ACTIVATION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026031751_acquisition_activation_gate.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -103,11 +104,43 @@ class WorkspaceTests(unittest.TestCase):
             self.member()
         self.sql(BOUNDARY_MIGRATION.read_text())
         self.sql(RELATED_MIGRATION.read_text())
-        self.create(ADMIN, WORKSPACE)
-        self.create(OTHER, WORKSPACE_B)
+        self.sql(ACTIVATION_MIGRATION.read_text())
+        if self._testMethodName != 'test_activation_defaults_closed':
+            self.activate()
+        if self._testMethodName != 'test_activation_defaults_closed':
+            self.create(ADMIN, WORKSPACE)
+            self.create(OTHER, WORKSPACE_B)
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def activate(self):
+        self.sql("UPDATE private.acquisition_activation SET enabled=true, approval_ref='isolated-test-approval', "
+                 "application_revision=repeat('a',40),verified_at=now();")
+
+    def test_activation_defaults_closed(self):
+        error = self.sql(f"SELECT public.create_acquisition_workspace('{WORKSPACE}','test');", user=ADMIN, fail=True)
+        self.assertIn('activation approval required', error)
+        self.assertEqual(self.sql('SELECT count(*) FROM workspaces'), '0')
+        self.sql('UPDATE private.acquisition_activation SET enabled=true;', fail=True)
+        for role in ('authenticated', 'service_role'):
+            self.sql('UPDATE private.acquisition_activation SET enabled=true;', user=ADMIN, role=role, fail=True)
+        self.activate()
+        self.create(ADMIN, WORKSPACE)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_activation_events'), '1')
+        self.sql('DELETE FROM private.acquisition_activation_events;', fail=True)
+        self.sql('DELETE FROM private.acquisition_activation;', fail=True)
+
+    def test_disabling_blocks_enrollment_binding_but_allows_revocation(self):
+        self.member()
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        self.assertIn('activation approval required', self.bind(fail=True))
+        self.member(target=CALLER, role='acquisition_caller', fail=True)
+        self.member(status='revoked')
+        self.assertEqual(self.sql(f"SELECT status FROM workspace_memberships WHERE user_id='{OPERATOR}'"), 'revoked')
+        self.assertEqual(self.sql(f"SELECT acquisition_only FROM profiles WHERE id='{CALLER}'"), 'f')
+        self.assertEqual(self.sql('SELECT count(*) FROM workspace_leads'), '0')
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_activation_events'), '2')
 
     def create(self, actor, workspace):
         return self.sql(f"SELECT public.create_acquisition_workspace('{workspace}','Hilltop test');", user=actor)
