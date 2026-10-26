@@ -455,3 +455,25 @@ async def intake_identity_history(workspace_id: UUID, intake_id: UUID,
     if before is not None:
         params['sequence'] = 'lt.'+str(before)
     return await store.request('GET', 'acquisition_intake_identity_reviews', params=params)
+
+
+@router.get('/workspaces/{workspace_id}/intakes')
+async def acquisition_intakes(workspace_id: UUID, after: UUID | None = None,
+                              limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select': 'id,lead_id,classification,created_at', 'workspace_id': 'eq.'+str(workspace_id),
+              'order': 'id', 'limit': str(limit+1)}
+    if after is not None:
+        params['id'] = 'gt.'+str(after)
+    rows = await store.request('GET', 'seller_intakes', params=params)
+    return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}
+
+
+@router.get('/workspaces/{workspace_id}/intakes/{intake_id}')
+async def acquisition_intake_detail(workspace_id: UUID, intake_id: UUID, store=Depends(acquisition_store)):
+    rows = await store.request('GET', 'seller_intakes', params={
+        'select': 'id,lead_id,classification,created_at,prepared_answers,preparation_hash,normalization_notes',
+        'workspace_id': 'eq.'+str(workspace_id), 'id': 'eq.'+str(intake_id), 'limit': '1',
+    })
+    if not rows:
+        raise HTTPException(status_code=404, detail='Intake unavailable')
+    return rows[0]

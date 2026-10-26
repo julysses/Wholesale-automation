@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — seller intake identity review interface
+
+- Previous turn was progress: `b6b7897` implemented/tested/pushed reviewed identity links. Pulled current branch, inspected dashboard/API patterns, and added scoped paginated intake list/detail APIs using existing seller-intake RLS.
+- Added an on-demand intake panel with submitted evidence, missing fields, candidate distinctions, canonical parcel/unit evidence, exact target snapshots, current-link state, separate repeat-inquiry seller evidence and paginated immutable review history. Owner/admin affordance plus explicit acknowledgment and fresh sequence/hash checks precede initial recording. Server MFA/authority remains decisive.
+- Unknown replies retain the exact request, freeze edits and survive queue refresh. Workspace switches discard selected evidence. Revocation sends no target assertion, preserves history and shows current validity after saving. The isolated browser fixture confirmed link then revocation, both history entries and no console errors; screenshot `evidence/2026-10-26-intake-review-browser.png`.
+- Validation: **205 frontend tests passed across 49 files**, **35 API contract tests passed**, feature-enabled build passed and lint reported no new findings (147 existing). Seven new component cases cover independent evidence, repeat-seller evidence, stale hashes, exact retry across refresh, operator denial, scope reset and revocation. **All 8 integrated journeys passed**, including intake cursor pages and cross-tenant detail denial. Final **10 focused UI tests** and rebuilt TypeScript/Vite bundle passed after the heading accessibility adjustment. `git diff --check` passed. First npm test command ran from repo root and was corrected to frontend. No production/schema/configuration/provider/activation/outreach/fulfillment actions.
+
+Next: canonical qualification and fresh reviewed-link consumption in underwriting, territory/diligence and duplicate/qualified transitions, then campaign attribution. Real PostgREST/browser acceptance, mobile QA and remaining sequential phases remain open. Goal active.
+
 ## Implementation checkpoint — immutable reviewed intake identity links
 
 - Previous turn was progress: `edcf741` added/tested/pushed tenant-scoped identity candidates. Pulled current branch and inspected candidate snapshots, canonical binding constraints and recovery authority-lock patterns before writing the next additive migration.

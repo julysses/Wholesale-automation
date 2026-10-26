@@ -27,3 +27,10 @@ Inquiry recovery checks:
 2. Enter a correction note of at least 20 characters and an evidence reference, then acknowledge the specific hold.
 3. Approve the synthetic cycle. Verify the recorded history, confirmation, disabled repeat approval and Awaiting worker count of one. No worker runs in this fixture.
 4. Reload resets the synthetic hold. Component tests separately cover unknown responses, exact-request retries, stale gates, roles and exhausted recovery budgets.
+
+Intake identity checks:
+
+1. Open Seller intake identity review and select Review intake. Confirm seller assertions and missing fields remain distinct from canonical candidate evidence.
+2. Select the synthetic property, choose Parcel document, enter a property evidence reference and a review note, and acknowledge the displayed evidence. Recording must remain disabled before these requirements are met.
+3. Record the link, then verify the current-link indicator and history entry. Select Revoke prior link, document a correction, acknowledge it and record. Verify sequence two, no current valid link, and both historical decisions.
+4. Component tests separately exercise repeat-inquiry seller evidence, lost replies with exact retries across queue refresh, stale hashes, operator restrictions and workspace switching. These synthetic actions never call a provider or database.

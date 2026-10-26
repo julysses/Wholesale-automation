@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
 import { AcquisitionUnderwriting } from '@/pages/AcquisitionUnderwriting';
+import { IntakeReview } from '@/components/acquisition/IntakeReview';
 import { InquiryHealth } from '@/components/acquisition/InquiryHealth';
 import { ScenarioSummary } from '@/components/acquisition/ScenarioSummary';
 
@@ -50,6 +51,7 @@ function WorkspaceReview({ userId, workspace }: { userId: string; workspace: str
     queryFn: ({ signal }) => read<Page>(`${base}/offers?limit=20${after ? `&after=${after}` : ''}`, signal), retry: false, gcTime: 0, staleTime: 0 });
   return <section className="space-y-4">
     <InquiryHealth userId={userId} workspace={workspace} />
+    <IntakeReview userId={userId} workspace={workspace} />
     <AcquisitionUnderwriting userId={userId} workspace={workspace} onProposed={() => { void queue.refetch(); }} />
     <div className="flex justify-between items-center"><h2 className="text-lg font-semibold">Proposals and review history</h2>
       <button className={button} disabled={queue.isFetching} onClick={() => { setSelected(null); void queue.refetch(); }}>Refresh queue</button></div>

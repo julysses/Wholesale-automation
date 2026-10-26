@@ -386,3 +386,24 @@ def test_identity_review_state_history_and_mutation_use_current_user_scope(api):
     params = state['requests'][-1].url.params
     assert params['workspace_id'] == 'eq.'+W and params['intake_id'] == 'eq.'+intake
     assert params['sequence'] == 'lt.8' and params['order'] == 'sequence.desc' and params['limit'] == '3'
+
+
+def test_intake_queue_and_detail_are_scoped_and_bounded(api):
+    client, state = api
+    intake = '70000000-0000-4000-8000-000000000001'
+    other = '70000000-0000-4000-8000-000000000002'
+    base = f'/api/acquisition/workspaces/{W}/intakes'
+    headers = {'Authorization': 'Bearer test-jwt'}
+    state['body'] = [{'id': intake}, {'id': other}]
+    result = client.get(base+'?limit=1', headers=headers)
+    assert result.json() == {'items': [{'id': intake}], 'next_after': intake}
+    params = state['requests'][-1].url.params
+    assert params['workspace_id'] == 'eq.'+W and params['limit'] == '2' and params['order'] == 'id'
+    state['body'] = []
+    assert client.get(base+'?after='+intake, headers=headers).json()['next_after'] is None
+    assert state['requests'][-1].url.params['id'] == 'gt.'+intake
+    assert client.get(base+'/'+intake, headers=headers).status_code == 404
+    state['body'] = [{'id': intake, 'prepared_answers': {'answers': {}}}]
+    assert client.get(base+'/'+intake, headers=headers).json()['id'] == intake
+    params = state['requests'][-1].url.params
+    assert params['id'] == 'eq.'+intake and params['workspace_id'] == 'eq.'+W and params['limit'] == '1'

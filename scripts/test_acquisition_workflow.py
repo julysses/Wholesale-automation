@@ -120,6 +120,19 @@ class WorkflowTests(WorkspaceTests):
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
+        elif request.url.path=='/rest/v1/seller_intakes':
+            self.assertEqual(request.method,'GET')
+            allowed={'id','lead_id','classification','created_at','prepared_answers','preparation_hash','normalization_notes'}
+            fields=request.url.params['select'].split(',');self.assertTrue(set(fields)<=allowed)
+            self.assertTrue(set(request.url.params)<={'select','workspace_id','id','limit','order'})
+            op,workspace=request.url.params['workspace_id'].split('.',1);self.assertEqual(op,'eq')
+            filters=[f'workspace_id={literal(workspace)}::uuid']
+            if 'id' in request.url.params:
+                op,value=request.url.params['id'].split('.',1);self.assertIn(op,('eq','gt'))
+                filters.append(f"id{'=' if op=='eq' else '>'}{literal(value)}::uuid")
+            if 'order' in request.url.params:self.assertEqual(request.url.params['order'],'id')
+            limit=int(request.url.params['limit']);self.assertTrue(1<=limit<=51)
+            query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {','.join(fields)} FROM public.seller_intakes WHERE {' AND '.join(filters)} ORDER BY id LIMIT {limit}) row;"
         else:
             self.assertEqual(request.method,'GET')
             self.assertEqual(request.url.path,'/rest/v1/deal_analyses')
@@ -190,7 +203,18 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes WHERE prepared_answers->'provider_evidence'->'custom_disclaimer_responses'->0->'is_checked'='false'::jsonb"),'2')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes',user=OTHER),'0')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes',user=ADMIN),'2')
-        intake=self.sql('SELECT id FROM seller_intakes ORDER BY id LIMIT 1')
+        first_page=self.client.get(self.base+'/intakes?limit=1',headers=self.headers)
+        self.assertEqual(first_page.status_code,200,first_page.text)
+        intake=first_page.json()['items'][0]['id']
+        self.assertEqual(first_page.json()['next_after'],intake)
+        next_page=self.client.get(self.base+f'/intakes?limit=1&after={intake}',headers=self.headers).json()
+        self.assertEqual(len(next_page['items']),1); self.assertIsNone(next_page['next_after'])
+        self.assertNotEqual(next_page['items'][0]['id'],intake)
+        detail=self.client.get(self.base+f'/intakes/{intake}',headers=self.headers)
+        self.assertEqual(detail.status_code,200,detail.text)
+        self.assertEqual(detail.json()['prepared_answers']['answers']['phone'],'2145550101')
+        self.assertEqual(self.client.get(self.base+f'/intakes/{intake}',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,404)
+
         response=self.client.get(f'{self.base}/intakes/{intake}/candidates',headers=self.headers)
         self.assertEqual(response.status_code,200,response.text)
         candidates=response.json()['items']
