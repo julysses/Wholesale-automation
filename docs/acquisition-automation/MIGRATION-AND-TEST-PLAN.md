@@ -1,0 +1,43 @@
+# Additive migration and disposable acceptance plan
+
+Status: proposed sequence following live catalog inventory; no executable migration SQL generated, no database writes or production rollout performed. Read SCHEMA-MAPPING.md first. Migration names below are work-package labels, not invented migration filenames.
+
+## Forward-only sequence and compensation
+
+| Step | Change boundary | Required precondition | Compensation / recovery |
+| --- | --- | --- | --- |
+| 0 | Establish isolated implementation branch from refreshed deployed SHA; reconcile catalog and migration bodies | Exact published source and live ledger, retained old function definitions, dependency graph and isolated test environment | No production changes. Discard/revise local candidate; retain evidence. Never replay historical migration directories. |
+| 1 | Workspaces, memberships, roles and restricted private helper functions | Reviewed legacy Hilltop ownership/membership mapping; explicit server-side authorization design | Keep new routes disabled. Retain new tables/data; correct membership through audited admin operations. Do not drop historical records or restore broad access. |
+| 2 | Add workspace links, indexes, compatibility functions and property/owner/contact crosswalks | All affected old/new readers and writers mapped; ambiguity handling; RLS policy matrix | Pause new writes and route verified legacy workload through its compatibility adapter. Retain crosswalk and before-state; compensate incorrect links via audited corrections, never bulk reparent silently. |
+| 3 | Immutable permissions/suppressions/eligibility/audit extensions | Counsel policy remains pending; legacy suppressions cannot be bypassed; protected receipt dependencies mapped | Keep execution fail-closed. Revoke new service execute privileges if defective; preserve decisions/evidence. New policy versions supersede prior policy; do not overwrite history. |
+| 4 | Durable provider inbox and multi-touch attribution | Provider identity definitions, existing Facebook/Retell exact-receipt constraints and writer compatibility verified | Pause the new consumer while retaining receipts for reconciliation. Do not blindly replay sends or fall back to two active consumers. Unknown provider outcomes remain review. |
+| 5 | Intake, versioned scenarios, offer lifecycle and contract/disposition controls | Tenant/role foundation passes; old stage/MAO synchronization behavior reviewed | Disable new workflows and preserve historical versions. Compensating audit events reverse proposals; binding/executed states require authorized business/legal handling. |
+| 6 | Mail jobs, caller/cohort/agency controls for later phases | Earlier activation gates remain closed until separately accepted | Pause dispatch/cohort access, revoke sessions and preserve fulfillment/attempt records. Do not cancel external transactions without appropriate authorization. |
+
+Before generating any migration, inspect the relevant function bodies, grants, triggers and dependencies against production; choose narrowly scoped changes; document the old and new contract. Use the Supabase CLI's discovered migration command to create filenames. Use an inert disposable environment with synthetic representative records, no production secrets, no active cron/net queue execution, and no real provider adapters. Do not use the existing hosted restore project merely because its name says rehearsal; verify isolation and ownership first.
+
+Backfill in bounded, restartable batches with preflight ambiguity counts, stable mapping IDs, checksums/counts and postflight invariants. Plan NOT VALID foreign keys followed by validation where appropriate; design index build/locking separately. Stage code compatibility before enforcing non-null/strict RLS on legacy writers. Production apply still requires approval of the exact migration list, tested commit, affected objects, recovery procedure and validation evidence.
+
+## Required disposable test matrix
+
+| Area | Representative setup | Assertions / evidence |
+| --- | --- | --- |
+| Existing data | County property+alias/contact, website lead+immutable receipt, native Meta receipt+exact SMS FK, paused held/expired SMS jobs, deals/offers, buyers, tasks and notifications | Historical IDs, protected content and task state unchanged; no duplicate owners/properties inferred from phone; legacy UI/API paths still operate; no provider call occurs |
+| Membership RLS | Two workspaces, active/revoked members, admin/operator/caller/agency users, anon and approved nonmember | SELECT/INSERT/UPDATE/DELETE and RPC deny cross-workspace access; foreign keys reject cross-workspace references; membership revocation effective; caller sees assigned cohort only |
+| Service APIs | Valid JWT with forged workspace/contact/lead/campaign IDs; service-role database connection | Every endpoint validates authority and matching workspace server-side; /internal endpoint has explicit auth; service-role bypass cannot create client-authorized calls/offers |
+| Role/session controls | Global approved user without membership; suspended profile; stale claim; revoked MFA-required caller session | Global approval is insufficient; current membership/profile/session requirements enforced; no caller export, policy edit, offer approval or unassigned record access |
+| Consent and suppression | Missing, conflicting, expired/revoked evidence; form-language versions; same phone on multiple lead IDs; unknown form | REVIEW/BLOCK on missing policy/evidence; form/channel assertions remain distinct; normalized opt-out blocks every prohibited matched identity; SMS consent does not imply AI voice permission |
+| Execution freshness | Previously ALLOW then STOP/revocation; expired decision; queued attempt after policy change; policy service failure | Recheck immediately before execution; no send on BLOCK/REVIEW/failure; decision inputs, policy and exact result immutable |
+| Provider idempotency | Same webhook concurrent, retry after timeout, crash before/after receipt, crash after provider acknowledgement, out-of-order callbacks | Exactly one durable event and intended business effect; stable scoped idempotency keys; ambiguous sends go to reconciliation; no duplicate lead, mail piece, offer or call |
+| Facebook | Valid signed synthetic envelope, invalid signature, missing address, known/unknown form, credential-expiry simulator | Durable receipt before prompt acknowledgement; asynchronous processing; one intake classified correctly; actionable credential alert; immutable consent and complete ad/form attribution |
+| Underwriting | Known reference scenarios; missing ARV/rent; itemized financing/holding/selling; base/down/upside and legacy MAO | No missing→zero coercion; no double-counting; versions/provenance retained; new scenario history cannot silently overwrite selected lead MAO; AI estimates labeled |
+| Offers/contracts | Caller attempts approval; approved offer edited after approval; invalid state transition; unexecuted/unreviewed assignment | Approval binds exact version and amount; edits require reapproval; state machine enforced server-side; no marketing before contract/title/disclosure review; no legal-title misrepresentation |
+| Audit/storage | Service-role UPDATE/DELETE/TRUNCATE attempts; unauthorized receipt access; retention boundary | Audit is append-only for application roles; payloads inaccessible without scope; controlled retention does not erase required evidence or mutate protected receipts |
+| Mail | Same property across two leads; retry; concurrent batches; uncertain vendor response | Property frequency cap and budget checked atomically; approval tied to version; one fulfillment identity; sandbox/proof only |
+| Upgrade/compensation | Representative old schema snapshot; apply only new migrations; old/new API versions; interrupted backfill; compensating step | Existing records and paused controls preserved; restartable mapping; no broad historical replay; documented compatible rollback/compensation |
+
+Record actual commands, fixture revision, run counts, failures and artifacts only after execution. These are planned tests, not passed results. Production live Meta/inbound/handset/mail acceptance remains a later gated activity with approved fresh test identities and explicit campaign activation authority.
+
+## Next implementation slice
+
+Start with a production-based isolated checkout and a schema/function dependency review, then build the workspace membership design and inert disposable harness. Do not attempt to ship all phases together. Keep eligibility blocked by default and focus the first usable release on durable Facebook intake plus attribution after foundation tests pass.

@@ -112,3 +112,8 @@ jobs:
         env:
           PG_BIN: /usr/lib/postgresql/16/bin
         run: python3 pipeline/integration/run_sms_transport.py pipeline/integration/retell-generation-recovery.mjs
+
+      - name: Acquisition workspace isolation and concurrent administration
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: python3 scripts/test_acquisition_workspace.py

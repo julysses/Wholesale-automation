@@ -1,0 +1,1062 @@
+{
+  "production_commit": "c8673c170368bc8c44974fd304fac5af3fcf6e8c",
+  "planning_base": "ad70c7c29d618efe3aad848a386ca1779f0e7b8f",
+  "live_count": 95,
+  "production_file_count": 107,
+  "planning_file_count": 49,
+  "production_files_absent_from_planning": [
+    {
+      "path": "frontend/supabase/migrations/20261012174408_daily_list_ingestion.sql",
+      "version": "20261012174408",
+      "name": "daily_list_ingestion"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012174446_list_operations.sql",
+      "version": "20261012174446",
+      "name": "list_operations"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012201949_list_review_batch_guard.sql",
+      "version": "20261012201949",
+      "name": "list_review_batch_guard"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012205453_list_monitor_receipts.sql",
+      "version": "20261012205453",
+      "name": "list_monitor_receipts"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012210944_list_digest_delivery.sql",
+      "version": "20261012210944",
+      "name": "list_digest_delivery"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012224412_list_trace_budget.sql",
+      "version": "20261012224412",
+      "name": "list_trace_budget"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012225103_list_trace_contacts.sql",
+      "version": "20261012225103",
+      "name": "list_trace_contacts"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012225802_list_trace_operations.sql",
+      "version": "20261012225802",
+      "name": "list_trace_operations"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012231220_list_scoring_receipts.sql",
+      "version": "20261012231220",
+      "name": "list_scoring_receipts"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012232054_list_scoring_jobs.sql",
+      "version": "20261012232054",
+      "name": "list_scoring_jobs"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012232711_list_scoring_monitor.sql",
+      "version": "20261012232711",
+      "name": "list_scoring_monitor"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012233212_list_scoring_admin.sql",
+      "version": "20261012233212",
+      "name": "list_scoring_admin"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012234031_list_scoring_worker.sql",
+      "version": "20261012234031",
+      "name": "list_scoring_worker"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261012235046_list_scoring_inspection.sql",
+      "version": "20261012235046",
+      "name": "list_scoring_inspection"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261013154257_dallas_foreclosure_public_search.sql",
+      "version": "20261013154257",
+      "name": "dallas_foreclosure_public_search"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261013164454_list_trace_total_cap.sql",
+      "version": "20261013164454",
+      "name": "list_trace_total_cap"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261013173054_list_reviewed_identity.sql",
+      "version": "20261013173054",
+      "name": "list_reviewed_identity"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261013195311_foreclosure_daily_actions.sql",
+      "version": "20261013195311",
+      "name": "foreclosure_daily_actions"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261013202034_propstream_operator_handoff.sql",
+      "version": "20261013202034",
+      "name": "propstream_operator_handoff"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261013202958_collin_appraisal_evidence_host.sql",
+      "version": "20261013202958",
+      "name": "collin_appraisal_evidence_host"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261013204007_foreclosure_status_review.sql",
+      "version": "20261013204007",
+      "name": "foreclosure_status_review"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261013204244_propstream_bulk_actions.sql",
+      "version": "20261013204244",
+      "name": "propstream_bulk_actions"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261014011940_foreclosure_capture_receipts.sql",
+      "version": "20261014011940",
+      "name": "foreclosure_capture_receipts"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261014021657_foreclosure_extraction_receipts.sql",
+      "version": "20261014021657",
+      "name": "foreclosure_extraction_receipts"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261014150607_foreclosure_trustee_status_evidence.sql",
+      "version": "20261014150607",
+      "name": "foreclosure_trustee_status_evidence"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261014153604_foreclosure_batch_receipts.sql",
+      "version": "20261014153604",
+      "name": "foreclosure_batch_receipts"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261014161013_foreclosure_appraisal_index_receipts.sql",
+      "version": "20261014161013",
+      "name": "foreclosure_appraisal_index_receipts"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261014174808_propstream_external_submission_recovery.sql",
+      "version": "20261014174808",
+      "name": "propstream_external_submission_recovery"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261014200149_scheduled_bulk_supervision.sql",
+      "version": "20261014200149",
+      "name": "scheduled_bulk_supervision"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261015022555_county_property_notifications.sql",
+      "version": "20261015022555",
+      "name": "county_property_notifications"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261015023121_weekly_tax_monitoring.sql",
+      "version": "20261015023121",
+      "name": "weekly_tax_monitoring"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261015192903_retell_form_sms_production.sql",
+      "version": "20261015192903",
+      "name": "retell_form_sms_production"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261015203155_reviewed_sms_resubscription.sql",
+      "version": "20261015203155",
+      "name": "reviewed_sms_resubscription"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261015203524_preserve_unclassified_dnc.sql",
+      "version": "20261015203524",
+      "name": "preserve_unclassified_dnc"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016191327_monitor_retell_sms_outcomes.sql",
+      "version": "20261016191327",
+      "name": "monitor_retell_sms_outcomes"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016193454_county_intake_assignment.sql",
+      "version": "20261016193454",
+      "name": "county_intake_assignment"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016195408_onboarding_promotion_receipts.sql",
+      "version": "20261016195408",
+      "name": "onboarding_promotion_receipts"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016205323_reconcile_retell_intake_handoffs.sql",
+      "version": "20261016205323",
+      "name": "reconcile_retell_intake_handoffs"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016210016_retell_next_contact_window_handoff.sql",
+      "version": "20261016210016",
+      "name": "retell_next_contact_window_handoff"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016210114_restricted_collector_login.sql",
+      "version": "20261016210114",
+      "name": "restricted_collector_login"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016214853_list_review_source_filters.sql",
+      "version": "20261016214853",
+      "name": "list_review_source_filters"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016222239_tax_review_evidence_context.sql",
+      "version": "20261016222239",
+      "name": "tax_review_evidence_context"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016223736_confirmed_suppression_handoff.sql",
+      "version": "20261016223736",
+      "name": "confirmed_suppression_handoff"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016230511_protect_website_inquiry_retention.sql",
+      "version": "20261016230511",
+      "name": "protect_website_inquiry_retention"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261016233842_foreclosure_case_reference_formats.sql",
+      "version": "20261016233842",
+      "name": "foreclosure_case_reference_formats"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261017000257_scope_retell_sms_claims.sql",
+      "version": "20261017000257",
+      "name": "scope_retell_sms_claims"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261017011633_foreclosure_address_suffix_triage.sql",
+      "version": "20261017011633",
+      "name": "foreclosure_address_suffix_triage"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261017012707_retell_app_transport_ownership.sql",
+      "version": "20261017012707",
+      "name": "retell_app_transport_ownership"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261017013643_retell_app_twilio_outbox.sql",
+      "version": "20261017013643",
+      "name": "retell_app_twilio_outbox"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261017015318_retell_app_recovery_monitoring.sql",
+      "version": "20261017015318",
+      "name": "retell_app_recovery_monitoring"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261017020821_retell_app_automatic_queue.sql",
+      "version": "20261017020821",
+      "name": "retell_app_automatic_queue"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261017022551_retell_app_intake_handoff.sql",
+      "version": "20261017022551",
+      "name": "retell_app_intake_handoff"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261019195020_sms_reply_notification_handoff.sql",
+      "version": "20261019195020",
+      "name": "sms_reply_notification_handoff"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261019213545_retell_empty_session_reconciliation.sql",
+      "version": "20261019213545",
+      "name": "retell_empty_session_reconciliation"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261020184154_facebook_inquiry_sms_receipts.sql",
+      "version": "20261020184154",
+      "name": "facebook_inquiry_sms_receipts"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261023213112_retell_owner_retest_authorization.sql",
+      "version": "20261023213112",
+      "name": "retell_owner_retest_authorization"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261023214643_retell_verified_generation_recovery.sql",
+      "version": "20261023214643",
+      "name": "retell_verified_generation_recovery"
+    },
+    {
+      "path": "frontend/supabase/migrations/20261023221455_retell_recovery_production_guard.sql",
+      "version": "20261023221455",
+      "name": "retell_recovery_production_guard"
+    }
+  ],
+  "ledger_comparison": [
+    {
+      "version": "20260706164602",
+      "name": "priority_rank_recompute",
+      "production_paths_same_name": [],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260824014738",
+      "name": "hilltop_home_co_form",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/016_hilltop_home_co_form.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260908201056",
+      "name": "approval_access_repair",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260908200130_approval_access_repair.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260908213000",
+      "name": "development_command_center",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260908213000_development_command_center.sql"
+      ],
+      "exact_version_files": [
+        "frontend/supabase/migrations/20260908213000_development_command_center.sql"
+      ]
+    },
+    {
+      "version": "20260929014526",
+      "name": "launch_consent_and_function_paths",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260929014311_launch_consent_and_function_paths.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929014852",
+      "name": "protect_public_intake",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260909023229_protect_public_intake.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929015342",
+      "name": "durable_form_finalization",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260929015037_durable_form_finalization.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929015419",
+      "name": "grant_server_settings_read",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260929015408_grant_server_settings_read.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929020229",
+      "name": "normalized_contact_suppression",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260929020010_normalized_contact_suppression.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929151736",
+      "name": "lead_lists_and_buyer_import_tracking",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260929030000_lead_lists_and_buyer_import_tracking.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929154956",
+      "name": "lead_street_key",
+      "production_paths_same_name": [],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929155030",
+      "name": "score_leads_rules",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260929040000_score_leads_rules.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929165030",
+      "name": "lead_cleanup_rules",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260929050000_lead_cleanup_rules.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929170212",
+      "name": "lead_retention",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20260929060000_lead_retention.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20260929171623",
+      "name": "lead_lists_grants",
+      "production_paths_same_name": [],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261006202705",
+      "name": "twilio_message_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261006202439_twilio_message_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261007163014",
+      "name": "sendgrid_delivery_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261007162642_sendgrid_delivery_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261007165402",
+      "name": "lock_launch_function_paths",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261007165337_lock_launch_function_paths.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261007204336",
+      "name": "jays_website_intake",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261007204053_jays_website_intake.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008182415",
+      "name": "retell_call_requests",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008181234_retell_call_requests.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008184051",
+      "name": "enable_notification_realtime",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008183712_enable_notification_realtime.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008201605",
+      "name": "durable_sms_nurture",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008200756_durable_sms_nurture.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008204521",
+      "name": "retell_call_batches",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008202609_retell_call_batches.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008205409",
+      "name": "protect_sms_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008204644_protect_sms_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008205411",
+      "name": "protect_consent_evidence",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008205313_protect_consent_evidence.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008214850",
+      "name": "durable_appointment_workflow",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008210113_durable_appointment_workflow.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008221715",
+      "name": "launch_monitoring",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008220647_launch_monitoring.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008221717",
+      "name": "reopen_monitor_incidents",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008221221_reopen_monitor_incidents.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008221719",
+      "name": "monitor_delivery_evidence",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008221402_monitor_delivery_evidence.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008223443",
+      "name": "durable_manual_analysis",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008223010_durable_manual_analysis.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008223445",
+      "name": "repair_analysis_lead_sync",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008223315_repair_analysis_lead_sync.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008231637",
+      "name": "durable_deal_handoff",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008225951_durable_deal_handoff.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008231639",
+      "name": "deal_stage_conflict_guards",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008230538_deal_stage_conflict_guards.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008233903",
+      "name": "exclude_internal_qa_from_business_reporting",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008233129_exclude_internal_qa_from_business_reporting.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008233905",
+      "name": "classify_confirmed_launch_test_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008233743_classify_confirmed_launch_test_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008234537",
+      "name": "align_legacy_funnel_with_business_reporting",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008234456_align_legacy_funnel_with_business_reporting.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261008235905",
+      "name": "durable_public_intake_reference",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261008235729_durable_public_intake_reference.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261010020730",
+      "name": "atomic_intake_alert_delivery",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261009004526_atomic_intake_alert_delivery.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261015192942",
+      "name": "retell_form_sms_production",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261015192903_retell_form_sms_production.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261015203220",
+      "name": "reviewed_sms_resubscription",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261015203155_reviewed_sms_resubscription.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261015203533",
+      "name": "preserve_unclassified_dnc",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261015203524_preserve_unclassified_dnc.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016191354",
+      "name": "monitor_retell_sms_outcomes",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016191327_monitor_retell_sms_outcomes.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193644",
+      "name": "daily_list_ingestion",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012174408_daily_list_ingestion.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193656",
+      "name": "list_operations",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012174446_list_operations.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193658",
+      "name": "list_review_batch_guard",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012201949_list_review_batch_guard.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193702",
+      "name": "list_monitor_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012205453_list_monitor_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193704",
+      "name": "list_digest_delivery",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012210944_list_digest_delivery.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193711",
+      "name": "list_trace_budget",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012224412_list_trace_budget.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193713",
+      "name": "list_trace_contacts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012225103_list_trace_contacts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193715",
+      "name": "list_trace_operations",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012225802_list_trace_operations.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193717",
+      "name": "list_scoring_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012231220_list_scoring_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193719",
+      "name": "list_scoring_jobs",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012232054_list_scoring_jobs.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193722",
+      "name": "list_scoring_monitor",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012232711_list_scoring_monitor.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193724",
+      "name": "list_scoring_admin",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012233212_list_scoring_admin.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193726",
+      "name": "list_scoring_worker",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012234031_list_scoring_worker.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193728",
+      "name": "list_scoring_inspection",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261012235046_list_scoring_inspection.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193730",
+      "name": "dallas_foreclosure_public_search",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261013154257_dallas_foreclosure_public_search.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193738",
+      "name": "list_trace_total_cap",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261013164454_list_trace_total_cap.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193740",
+      "name": "list_reviewed_identity",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261013173054_list_reviewed_identity.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193742",
+      "name": "foreclosure_daily_actions",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261013195311_foreclosure_daily_actions.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193745",
+      "name": "propstream_operator_handoff",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261013202034_propstream_operator_handoff.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193747",
+      "name": "collin_appraisal_evidence_host",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261013202958_collin_appraisal_evidence_host.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193749",
+      "name": "foreclosure_status_review",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261013204007_foreclosure_status_review.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193751",
+      "name": "propstream_bulk_actions",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261013204244_propstream_bulk_actions.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193753",
+      "name": "foreclosure_capture_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261014011940_foreclosure_capture_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193755",
+      "name": "foreclosure_extraction_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261014021657_foreclosure_extraction_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193757",
+      "name": "foreclosure_trustee_status_evidence",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261014150607_foreclosure_trustee_status_evidence.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193759",
+      "name": "foreclosure_batch_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261014153604_foreclosure_batch_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193802",
+      "name": "foreclosure_appraisal_index_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261014161013_foreclosure_appraisal_index_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193804",
+      "name": "propstream_external_submission_recovery",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261014174808_propstream_external_submission_recovery.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193806",
+      "name": "scheduled_bulk_supervision",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261014200149_scheduled_bulk_supervision.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016193808",
+      "name": "county_property_notifications",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261015022555_county_property_notifications.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016194506",
+      "name": "county_intake_assignment",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016193454_county_intake_assignment.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016194531",
+      "name": "weekly_tax_monitoring",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261015023121_weekly_tax_monitoring.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016200155",
+      "name": "onboarding_promotion_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016195408_onboarding_promotion_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016205558",
+      "name": "reconcile_retell_intake_handoffs",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016205323_reconcile_retell_intake_handoffs.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016210249",
+      "name": "retell_next_contact_window_handoff",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016210016_retell_next_contact_window_handoff.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016210251",
+      "name": "restricted_collector_login",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016210114_restricted_collector_login.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016215112",
+      "name": "list_review_source_filters",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016214853_list_review_source_filters.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016222707",
+      "name": "tax_review_evidence_context",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016222239_tax_review_evidence_context.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016224417",
+      "name": "confirmed_suppression_handoff",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016223736_confirmed_suppression_handoff.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016231306",
+      "name": "protect_website_inquiry_retention",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016230511_protect_website_inquiry_retention.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261016234054",
+      "name": "foreclosure_case_reference_formats",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261016233842_foreclosure_case_reference_formats.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261017000513",
+      "name": "scope_retell_sms_claims",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261017000257_scope_retell_sms_claims.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261017012042",
+      "name": "foreclosure_address_suffix_triage",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261017011633_foreclosure_address_suffix_triage.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261017020136",
+      "name": "retell_app_transport_ownership",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261017012707_retell_app_transport_ownership.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261017020143",
+      "name": "retell_app_twilio_outbox",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261017013643_retell_app_twilio_outbox.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261017020150",
+      "name": "retell_app_recovery_monitoring",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261017015318_retell_app_recovery_monitoring.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261017021928",
+      "name": "retell_app_automatic_queue",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261017020821_retell_app_automatic_queue.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261017023006",
+      "name": "retell_app_intake_handoff",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261017022551_retell_app_intake_handoff.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261019195321",
+      "name": "sms_reply_notification_handoff",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261019195020_sms_reply_notification_handoff.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261020192531",
+      "name": "facebook_inquiry_sms_receipts",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261020184154_facebook_inquiry_sms_receipts.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261023213254",
+      "name": "retell_owner_retest_authorization",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261023213112_retell_owner_retest_authorization.sql"
+      ],
+      "exact_version_files": []
+    },
+    {
+      "version": "20261023214643",
+      "name": "retell_verified_generation_recovery",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261023214643_retell_verified_generation_recovery.sql"
+      ],
+      "exact_version_files": [
+        "frontend/supabase/migrations/20261023214643_retell_verified_generation_recovery.sql"
+      ]
+    },
+    {
+      "version": "20261023221455",
+      "name": "retell_recovery_production_guard",
+      "production_paths_same_name": [
+        "frontend/supabase/migrations/20261023221455_retell_recovery_production_guard.sql"
+      ],
+      "exact_version_files": [
+        "frontend/supabase/migrations/20261023221455_retell_recovery_production_guard.sql"
+      ]
+    }
+  ],
+  "warning": "Name correspondence is not body equivalence. Never replay files based on filename-only ledger differences."
+}
