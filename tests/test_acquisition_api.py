@@ -190,3 +190,29 @@ def test_owner_relationship_references_derive_property_server_side(api):
     assert json.loads(state['requests'][0].content)['p_relationship'] == 'reported_owner'
     assert client.post(path,headers={'Authorization':'Bearer user-token'},
                        json={**payload,'property_id':U}).status_code == 422
+
+
+def test_permission_import_derives_evidence_from_receipt_not_client_fields(api):
+    client, state = api
+    path = f'/api/acquisition/workspaces/{W}/leads/{U}/contacts/{U}/permissions/import'
+    payload = {'source_kind':'facebook','source_id':U,'channel':'sms'}
+    assert client.post(path,headers={'Authorization':'Bearer user-token'},json=payload).status_code == 200
+    assert json.loads(state['requests'][0].content) == {
+        'p_workspace':W,'p_lead':U,'p_contact':U,'p_source_kind':'facebook','p_source':U,'p_channel':'sms',
+    }
+    for field in ({'accepted':True},{'expires_at':'2099-01-01'},{'review_status':'approved'}):
+        assert client.post(path,headers={'Authorization':'Bearer user-token'},json={**payload,**field}).status_code == 422
+    assert len(state['requests']) == 1
+
+
+def test_permission_revocation_and_status_routes_are_scoped(api):
+    client, state = api
+    path = f'/api/acquisition/workspaces/{W}/permissions/{U}/revocations'
+    assert client.post(path,headers={'Authorization':'Bearer user-token'},
+                       json={'id':U,'reason':'seller_revoked'}).status_code == 200
+    assert json.loads(state['requests'][0].content) == {'p_id':U,'p_workspace':W,'p_permission':U,'p_reason':'seller_revoked'}
+    path = f'/api/acquisition/workspaces/{W}/leads/{U}/permissions'
+    assert client.get(path,headers={'Authorization':'Bearer user-token'}).status_code == 200
+    assert state['requests'][1].url.params['workspace_id'] == 'eq.'+W
+    assert state['requests'][1].url.params['lead_id'] == 'eq.'+U
+    assert client.get(path+'?limit=51',headers={'Authorization':'Bearer user-token'}).status_code == 422

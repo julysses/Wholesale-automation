@@ -4,6 +4,7 @@ Uses only stdlib + local PostgreSQL binaries, no inherited credentials, dotenv,
 TCP listener, provider SDK, cron, pg_net, or production database connection.
 This verifies the migration's touched dependencies; full upgrade QA is separate.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -20,6 +21,7 @@ ACTIVATION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026031751_acqui
 CONTACT_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032050_acquisition_contact_crosswalk.sql'
 ELIGIBILITY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032519_acquisition_eligibility_ledger.sql'
 OWNER_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033010_acquisition_owner_relationships.sql'
+PERMISSION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026033554_acquisition_permission_evidence.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -74,7 +76,7 @@ class WorkspaceTests(unittest.TestCase):
         for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'),
                               ('wholesale_ingest','properties'), ('public','campaigns'),
                               ('public','buyer_import_log'), ('public','buyers'), ('public','deals'), ('public','deal_matches'),
-                              ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts'), ('public','dnc_registry'), ('public','email_suppressions')):
+                              ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts'), ('public','dnc_registry'), ('public','email_suppressions'), ('public','lead_form_submissions'), ('public','facebook_lead_submissions')):
             columns = []
             for c in catalog['columns']:
                 if c['table_schema'] == schema and c['table_name'] == table:
@@ -87,6 +89,8 @@ class WorkspaceTests(unittest.TestCase):
                 if c['schema']==schema and c['table_name']==table:
                     # Leads' unrelated campaign/form/list FK targets are outside
                     # this focused fixture. Full production upgrade remains separate.
+                    if table=='lead_form_submissions' and 'lead_form_configs' in c['definition']:
+                        continue  # Source form configuration is outside this focused fixture.
                     if table=='contacts' and 'skip_trace_requests' in c['definition']:
                         continue  # Provider job storage is outside this focused fixture.
                     if table=='leads' and c['contype']=='f':
@@ -113,6 +117,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(CONTACT_MIGRATION.read_text())
         self.sql(ELIGIBILITY_MIGRATION.read_text())
         self.sql(OWNER_MIGRATION.read_text())
+        self.sql(PERMISSION_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -121,6 +126,121 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def permission_receipt(self, source='website', accepted=True, disclosure='Synthetic SMS checkbox disclosure', when='2020-01-01T12:00:00Z', phone='+12145550101'):
+        receipt = '90000000-0000-4000-8000-000000000001'
+        form = '90000000-0000-4000-8000-000000000002'
+        if source == 'website':
+            answers = {'phone':phone, '_sms_consent':{'accepted':accepted,'rendered_disclosure_matches':True,
+                'form_id':form,'disclosure':disclosure,'disclosure_sha256':hashlib.sha256(disclosure.encode()).hexdigest()}}
+            self.sql(f"INSERT INTO lead_form_submissions(id,lead_id,form_id,created_at,raw_answers) VALUES('{receipt}','{LEAD}','{form}',{literal(when)},{literal(json.dumps(answers))}::jsonb);")
+        else:
+            key=disclosure.lower().replace(' ','_')
+            ai='Synthetic separate AI voice checkbox disclosure'
+            ai_key=ai.lower().replace(' ','_')
+            consent={'source':'facebook_native_form','recognized_form':True,'form_id':form,'submitted_at':when,'phone':phone,
+                     'sms':{'accepted':accepted,'disclosure':disclosure,'checkbox_key':key},
+                     'ai_calls':{'accepted':False,'disclosure':ai,'checkbox_key':ai_key},
+                     'raw_responses':[{'checkbox_key':key,'is_checked':accepted},{'checkbox_key':ai_key,'is_checked':False}]}
+            self.sql(f"INSERT INTO facebook_lead_submissions(id,lead_id,leadgen_id,form_id,submitted_at,phone_number,raw_answers) "
+                     f"VALUES('{receipt}','{LEAD}','fixture-meta-lead','{form}',{literal(when)},{literal(phone)},{literal(json.dumps({'_facebook_consent':consent}))}::jsonb);")
+        return receipt
+
+    def permission(self, point, source='website', channel='sms', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, fail=False):
+        result=self.sql(f"SELECT public.import_acquisition_permission('{workspace}','{lead}','{point}',{literal(source)},"
+                        f"'90000000-0000-4000-8000-000000000001',{literal(channel)});", user=actor, fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_permission_evidence_is_versioned_unreviewed_and_never_authorizes(self):
+        self.bind()
+        point=self.import_contact()['contact_point_id']
+        self.permission_receipt()
+        first=self.permission(point)
+        self.assertEqual(first,self.permission(point))
+        self.assertEqual(first['selection'],'affirmative')
+        self.assertEqual(first['review_status'],'unreviewed')
+        self.assertEqual(first['scope'],'property_inquiry')
+        self.assertEqual(first['expiry_basis'],'not_reviewed')
+        self.assertTrue(first['disclosure_version'].startswith('sha256:'))
+        self.assertEqual(self.evaluate(point,channel='sms')['decision'],'REVIEW')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='evidence_imported'"),'1')
+        self.sql('DELETE FROM acquisition_contact_permissions;',fail=True)
+        self.permission(point,channel='ai_voice',fail=True)
+
+    def test_native_channels_are_independent_and_false_is_preserved(self):
+        self.bind()
+        point=self.import_contact()['contact_point_id']
+        self.permission_receipt(source='facebook')
+        sms=self.permission(point,source='facebook')
+        ai=self.permission(point,source='facebook',channel='ai_voice')
+        self.assertEqual(sms['selection'],'affirmative')
+        self.assertEqual(ai['selection'],'declined')
+        self.assertNotEqual(sms['id'],ai['id'])
+        self.assertNotEqual(sms['disclosure_version'],ai['disclosure_version'])
+
+    def test_permission_unknown_or_inconsistent_evidence_never_becomes_affirmative(self):
+        self.bind()
+        point=self.import_contact()['contact_point_id']
+        self.permission_receipt(source='facebook',when='2020-01-01')
+        self.assertEqual(self.permission(point,source='facebook')['selection'],'unknown')
+        self.sql("UPDATE facebook_lead_submissions SET submitted_at='2020-01-01T12:00:00Z';")
+        self.assertEqual(self.permission(point,source='facebook')['selection'],'unknown')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_permissions'),'2')
+
+    def test_duplicate_native_checkbox_and_future_timestamp_remain_unknown(self):
+        self.bind()
+        point=self.import_contact()['contact_point_id']
+        self.permission_receipt(source='facebook',when='2999-01-01T12:00:00Z')
+        self.assertEqual(self.permission(point,source='facebook')['selection'],'unknown')
+        self.sql("UPDATE facebook_lead_submissions SET submitted_at='2020-01-01T12:00:00Z',raw_answers=jsonb_set(raw_answers,'{_facebook_consent,submitted_at}',to_jsonb('2020-01-01T12:00:00Z'::text));")
+        self.sql("UPDATE facebook_lead_submissions SET raw_answers=jsonb_set(raw_answers,'{_facebook_consent,raw_responses}',"
+                 "(raw_answers#>'{_facebook_consent,raw_responses}')||jsonb_build_array(raw_answers#>'{_facebook_consent,raw_responses,0}'));")
+        self.assertEqual(self.permission(point,source='facebook')['selection'],'unknown')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_permissions'),'2')
+
+    def test_revocation_collision_rolls_back_entire_transaction(self):
+        self.bind()
+        point=self.import_contact()['contact_point_id']
+        self.permission_receipt()
+        permission=self.permission(point)['id']
+        self.suppress(point)  # Existing ID targets all channels, not the SMS-only revocation.
+        self.sql(f"SELECT public.revoke_acquisition_permission('50000000-0000-4000-8000-000000000001','{WORKSPACE}',"
+                 f"'{permission}','seller_revoked');",user=ADMIN,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_permission_revocations'),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='revoked' AND entity_type='contact_permission'"),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_suppressions'),'1')
+
+    def test_permission_requires_matching_receipt_contact_and_workspace(self):
+        self.bind()
+        point=self.import_contact()['contact_point_id']
+        self.permission_receipt(phone='+12145550102')
+        self.permission(point,fail=True)
+        self.permission(point,actor=OTHER,fail=True)
+        self.permission(point,lead=LEAD_B,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_permissions'),'0')
+
+    def test_permission_revocation_atomically_suppresses_channel_and_keeps_evidence(self):
+        self.bind()
+        point=self.import_contact()['contact_point_id']
+        self.permission_receipt()
+        permission=self.permission(point)['id']
+        self.member(target=CALLER,role='acquisition_caller')
+        query=(f"SELECT public.revoke_acquisition_permission('a0000000-0000-4000-8000-000000000001','{WORKSPACE}',"
+               f"'{permission}','seller_revoked');")
+        self.sql(query,user=CALLER,fail=True)
+        self.sql(f"SELECT public.assign_acquisition_lead('{WORKSPACE}','{LEAD}','{CALLER}');",user=ADMIN)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        first=self.sql(query,user=CALLER)
+        self.assertEqual(first,self.sql(query,user=CALLER))
+        self.assertTrue(self.permission(point)['revoked'])
+        self.assertEqual(self.evaluate(point,channel='sms')['decision'],'BLOCK')
+        self.assertEqual(self.evaluate(point,channel='ai_voice',actor_type='ai')['decision'],'REVIEW')
+        self.assertEqual(self.sql('SELECT effective_status FROM acquisition_permission_status',user=ADMIN),'revoked')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_permission_status',user=OTHER),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_permission_status',user=CALLER),'0')
+        self.sql('DELETE FROM acquisition_permission_revocations;',fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_permissions'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_suppressions'),'1')
 
     def owner(self, owner_id='60000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE, lead=LEAD, fail=False):
         result = self.sql(f"SELECT public.create_acquisition_owner('{owner_id}','{workspace}','{lead}');", user=actor, fail=fail)

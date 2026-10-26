@@ -76,3 +76,7 @@ The production-based implementation adds `acquisition_contact_points` and `acqui
 ## Owner identity implementation follow-up
 
 `acquisition_owners`, `acquisition_owner_properties`, and `acquisition_owner_contacts` implement explicit workspace-local identity and relationship assertions over canonical lead/property/contact IDs. This is an additive entity because inventory found no owner table. Source owner names come from `public.leads`, not `wholesale_ingest.properties` (which has no owner-name column). All assertions remain unverified; no fuzzy match or phone match creates shared ownership. Verification/correction/revocation workflows remain open.
+
+## Permission evidence implementation follow-up
+
+`acquisition_contact_permissions` structures and snapshots existing website/native consent receipts without replacing them. `acquisition_permission_revocations` is immutable and atomically creates a corresponding contact suppression; an invoker-security status view exposes revoked status under workspace RLS. Affirmative selection remains unreviewed and cannot authorize outreach. Source adapters currently support website SMS and native SMS/AI voice; policy-specific scope/expiry, additional sources/channels and effective-evidence selection remain open.

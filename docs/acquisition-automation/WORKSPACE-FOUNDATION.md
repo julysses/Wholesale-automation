@@ -104,3 +104,17 @@ All identities and assertions are explicitly unverified; operator assertions are
 Routes under `/api/acquisition/workspaces/{workspace_id}`: POST/GET `/owners`, POST `/owners/{owner_id}/properties`, and POST `/owner-relationships/{relationship_id}/contacts`. Creation takes `id` and `source_lead_id`; property association takes `id`, `lead_id`, `relationship`, and `review_note`; contact association takes `id`, `contact_point_id`, and `review_note`. No route accepts a verified-status override or arbitrary property ID.
 
 Compensation: keep activation disabled and preserve assertions/audit history. Do not delete or relabel unverified source history as verified facts. Add explicit correction/revocation events before exposing a live identity-review workflow.
+
+## Structured permission evidence and revocation
+
+`acquisition_contact_permissions` stores immutable evidence imported from existing website or Facebook receipts, with exact lead/contact linkage, source/form IDs, channel, source timestamp, disclosure text and SHA-256 version, original consent object and affirmative/declined/unknown selection. It preserves facts about the recorded selection, not a legal conclusion. All records remain unreviewed. The intended scope is property inquiry; a reviewed policy must still establish whether the disclosure covers the proposed purpose/actor/channel. Generic submission never becomes unrestricted consent.
+
+Website source supports SMS only. The native source separates SMS and AI voice and requires exactly one matching raw checkbox with a matching disclosure key/selection. Missing/inconsistent/duplicate evidence and invalid, ambiguous or future source timestamps cannot yield affirmative evidence. Original timestamps and consent payloads are retained for review. Stored source evidence can be stale and must not substitute for fresh execution authorization.
+
+No expiry is invented: null expiry plus `not_reviewed` means undetermined, not perpetual permission. There is no approval RPC and no ALLOW path in the current evaluator. Future policy review must define valid disclosure versions, scope, expiry, revocation priority and latest relevant evidence handling. The importer must never be used as a sender authorization endpoint.
+
+Revocation uses an immutable child event, with current status exposed by `acquisition_permission_status` using invoker security/RLS. Revoking permission and recording the channel suppression are one transaction; a conflict rolls both back. Current assigned callers with MFA can revoke but cannot export raw permission data. Disabled enrollment does not prevent revocation. Reimporting the same evidence returns the same evidence identity plus current revoked status, never clears suppression, and never edits prior evidence.
+
+Routes under `/api/acquisition/workspaces/{workspace_id}`: POST `/leads/{lead_id}/contacts/{contact_id}/permissions/import` with source kind/id and channel; GET `/leads/{lead_id}/permissions` with bounded keyset pagination; POST `/permissions/{permission_id}/revocations` with request ID and bounded reason. All actor identity derives from the authenticated session. Source imports cannot be supplied acceptance, expiry or approved status by clients.
+
+Compensation: leave activation/senders disabled and retain evidence/revocation history. Correct source claims with future audited review/version workflows, never by deleting consent or STOP records. Evidence retention/redaction, other channel/source adapters, policy approval and fresh sender enforcement remain release gates.

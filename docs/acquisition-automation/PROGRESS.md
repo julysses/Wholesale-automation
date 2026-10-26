@@ -3,6 +3,18 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — structured permission evidence and revocation
+
+- Pulled clean branch at `9d8558b`; previous turn implemented/tested/pushed owner associations (progress). Inspected existing website receipt capture, native checkbox parser, SMS consent checks and native immutable-receipt migration. Source receipts and held SMS recovery records remain unchanged.
+- Added CLI-generated `20261026033554_acquisition_permission_evidence.sql`. Server-side imports reference an existing receipt on the same bound lead and exact normalized endpoint. Structured records preserve channel, intended property-inquiry scope, source/form identifiers, raw consent evidence, affirmative/declined/unknown selection, disclosure text/hash version, source timestamp and import actor/time. There is no client-provided acceptance, approval or expiry override.
+- Website SMS imports require matching disclosure hash/form metadata. Native SMS and AI-call imports independently reconcile the saved selection against exactly one matching raw checkbox and its disclosure. Missing/inconsistent evidence, ambiguous timestamps and future dates never become affirmative evidence. Valid affirmative selection remains **unreviewed**, never outreach permission.
+- Expiry remains explicitly undetermined (`expires_at=null`, `expiry_basis=not_reviewed`), not unlimited consent. General policy review, expiry rules, scope interpretation and additional channels remain to be implemented and approved. The pending eligibility evaluator still has no ALLOW path.
+- Added immutable revocations and a security-invoker status view. Assigned callers with MFA can revoke an accessible permission; the transaction also writes the matching channel suppression and audit. Revocation remains available while enrollment is disabled. Idempotent retries preserve evidence; no unsuppression or deletion path exists.
+- Added import, bounded status-list and revocation API routes. Raw evidence/status rows stay operator-only. Revoked imports report their current revoked flag without modifying original selection. Test fixtures reconstruct receipt shapes; selected tests mutate only isolated synthetic receipts to exercise inconsistent evidence, not production immutability.
+- Validation: **24 acquisition API tests pass**. Final expanded suite: **51 disposable PostgreSQL tests pass**, including duplicate/future evidence and atomic rollback on revocation/suppression identity conflict. `git diff --check` passes. No production migration, sender, provider, campaign or schedule changed.
+
+Next: policy review/version model and effective permission selection/expiry; explicit owner-assertion invalidation; execution-time guards on all adapters. Then complete durable Facebook capture, intake/attribution and sequential remaining phases. Existing source adapters cover website SMS and native SMS/AI voice only; other permission sources/channels and full-schema upgrade rehearsal remain open. Goal active.
+
 ## Implementation checkpoint — explicit owner associations
 
 - Pulled clean branch at `a8503a2`; previous turn implemented/tested/pushed pending-policy eligibility (progress). Rechecked live catalog evidence: county properties contain parcel/address identity but no owner name; CRM leads hold owner first/last name. No existing owner entity is duplicated.

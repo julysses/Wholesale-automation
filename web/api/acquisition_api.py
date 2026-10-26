@@ -174,3 +174,44 @@ async def associate_owner_contact(workspace_id: UUID, relationship_id: UUID,
         'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_relationship': str(relationship_id),
         'p_contact': str(body.contact_point_id), 'p_note': body.review_note,
     })
+
+
+class PermissionImport(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    source_kind: Literal['website','facebook']
+    source_id: UUID
+    channel: Literal['sms','ai_voice']
+
+
+class PermissionRevocation(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    reason: Literal['seller_revoked','invalid_evidence','wrong_identity']
+
+
+@router.post('/workspaces/{workspace_id}/leads/{lead_id}/contacts/{contact_id}/permissions/import')
+async def import_permission(workspace_id: UUID, lead_id: UUID, contact_id: UUID,
+                            body: PermissionImport, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/import_acquisition_permission', body={
+        'p_workspace': str(workspace_id), 'p_lead': str(lead_id), 'p_contact': str(contact_id),
+        'p_source_kind': body.source_kind, 'p_source': str(body.source_id), 'p_channel': body.channel,
+    })
+
+
+@router.post('/workspaces/{workspace_id}/permissions/{permission_id}/revocations')
+async def revoke_permission(workspace_id: UUID, permission_id: UUID,
+                            body: PermissionRevocation, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/revoke_acquisition_permission', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id),
+        'p_permission': str(permission_id), 'p_reason': body.reason,
+    })
+
+
+@router.get('/workspaces/{workspace_id}/leads/{lead_id}/permissions')
+async def list_permissions(workspace_id: UUID, lead_id: UUID, after: UUID | None = None,
+                           limit: int = Query(20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select':'id,contact_point_id,channel,scope,selection,disclosure_version,asserted_at,expires_at,expiry_basis,effective_status,revoked_at',
+              'workspace_id':'eq.'+str(workspace_id),'lead_id':'eq.'+str(lead_id),'order':'id','limit':str(limit)}
+    if after is not None:
+        params['id'] = 'gt.'+str(after)
+    return await store.request('GET', 'acquisition_permission_status', params=params)
