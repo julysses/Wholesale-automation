@@ -144,7 +144,17 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   else if (path.endsWith('/intakes/fixture-intake')) value = intake;
   else if (path.endsWith('/state')) value = offer;
   else if (path.endsWith('/summary')) value = { id: offer.lead_id, property_id: offer.property_id, property_address: '123 Fixture Lane', city: 'Dallas' };
-  else if (path.includes('/leads?')) value = []; // Review-only fixture; scenario entry has separate component tests.
+  else if (path.includes('/leads?')) value = [{ lead_id: '20000000-0000-4000-8000-000000000001', property_id: '30000000-0000-4000-8000-000000000001', property_address: '123 Fixture Lane', city: 'Dallas' }];
+  else if (path.includes('/source-touches?')) {
+    const after = new URL(path, 'http://fixture.invalid').searchParams.get('after');
+    value = { workspace_id: 'fixture-workspace', canonical_lead_id: '20000000-0000-4000-8000-000000000001', property_id: '30000000-0000-4000-8000-000000000001',
+      items: after ? [{ source_id: '50000000-0000-4000-8000-000000000001', original_lead_id: '60000000-0000-4000-8000-000000000001', association: 'reviewed_repeat_inquiry', identity_review_id: '70000000-0000-4000-8000-000000000001',
+        attribution_status: 'campaign_review_not_current', attribution_current: false, current_campaign_id: null,
+        captured_attribution: { id: '80000000-0000-4000-8000-000000000001', campaign_id: '90000000-0000-4000-8000-000000000001', link_review_id: 'a0000000-0000-4000-8000-000000000001', created_at: '2026-10-26T12:00:00Z' } }] : [],
+      next_after: after ? null : '40000000-0000-4000-8000-000000000001', scanned_count: after ? 1 : 20, excluded_count: after ? 0 : 20,
+      checked_at: new Date().toISOString(), count_scope: 'bounded_candidate_page', totals_available: false, ownership_verified: false, contact_permission_granted: false, execution_authorized: false };
+  }
+  else if (path.includes('/underwriting/scenarios?')) value = [];
   else if (path.includes('/underwriting/')) value = [{ id: offer.analysis_id, calculation_version: 'acquisition-underwriting-v1',
     acquisition_inputs: { source: 'Synthetic browser fixture; not market data', asking_price: { value: '175000', basis: 'estimate', confidence: 'low' } },
     acquisition_outputs: { cases: Object.fromEntries(['downside', 'base', 'upside'].map((name, i) => [name, { mao: [125000, 150000, 175000][i],

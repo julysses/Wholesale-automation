@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — property-source rendered QA
+
+- Prior goal turn made progress: pushed `5c81082` with the dashboard and 280 passing frontend tests. Pulled unchanged branch before QA; Git DNS and local-server sandbox restrictions resolved with approved escalation. Corrected an initial fixture path before editing.
+- Extended the isolated API adapter with a bound property, empty saved scenarios, 20 excluded source candidates on the first page, and a historical reviewed repeat inquiry on the next. The fixture has no network/provider/database transport.
+- Rendered the real dashboard: selected workspace/property, opened sources, verified empty-page continuation, historical attribution, original inquiry identity and expanded identity-review reference. Refresh returned to the first empty page with continuation restored. Browser console errors: none.
+- Verified 375px layout: identifiers wrap and navigation stacks without clipping. Saved actual inspected screenshot `evidence/2026-10-26-property-sources-mobile.jpg`. Reset viewport, closed temporary tab and stopped localhost QA server. Browser proof is synthetic and does not replace live PostgREST/provider acceptance.
+
+Next: implement campaign cost evidence with explicit currency, reporting-window coverage, revision provenance and unavailable-cost semantics before adding CPL/funnel totals. Full production-schema upgrade, channel acceptance and later PRD phases remain open. Goal active.
+
 ## Implementation checkpoint — property-source dashboard
 
 - Previous goal turn made progress: pushed `bddf062` with canonical-property source SQL/API and complete focused/integrated validation. Pulled before this increment; sandbox DNS failure resolved through approved Git escalation, with no remote changes.
