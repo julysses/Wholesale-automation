@@ -3,6 +3,19 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — pending-policy eligibility and suppressions
+
+- Pulled clean `026fdf6`; previous turn implemented/tested/pushed contact crosswalk (progress). Inspected latest legacy DNC and reviewed SMS resubscription functions before adding separate acquisition evaluation.
+- Added CLI-generated `20261026032519_acquisition_eligibility_ledger.sql`: immutable channel-specific suppression records, immutable decision inputs/evaluated facts/results, workspace FK/RLS, live membership and explicit caller-assignment checks, generic cross-identity restriction results and existing audit integration.
+- Added exact PRD route `POST /internal/outreach/eligibility/evaluate` using caller JWT plus public key. No client-supplied decision/policy/actor identity accepted. Each evaluation creates a fresh decision; no cached decision is an execution token. Pending policy always returns REVIEW or BLOCK, null expiry and empty permitted actions. SQL constraints prohibit ALLOW at this implementation stage.
+- Suppression endpoint supports idempotent request IDs and assigned callers with MFA. Opt-out capture remains possible when enrollment activation is disabled. Suppressions cannot be deleted/replaced through application roles; no unsuppression flow is introduced.
+- Acquisition checks compare matching normalized endpoints across workspaces privately, plus legacy lead DNC, dnc_registry, email suppressions, current listed skip-trace contacts and retained listed observations. Returned results contain no other workspace records/identifiers. Existing SMS exception functions and production provider paths are unchanged. Pending acquisition policy conservatively retains restrictions even where a legacy SMS-only review exists; no exception is extended to other channels.
+- Validation: **39 real PostgreSQL tests pass** including cross-workspace/channel suppression, audit immutability, fresh decisions, caller MFA/assignment/revocation, source-retention DNC preservation and legacy formatted numbers. **83 focused HTTP/auth/identity tests passed** before adding an extra real-app internal-route boundary check; **full offline backend: 1,219 passed, 10 environment-dependent local-journey tests skipped, 367 existing deprecation warnings**. `git diff --check` passes. No production effect.
+
+**Remaining enforcement work:** this is a persisted fail-closed evaluator, not finished legal policy or integration into every legacy sender. Permission/revocation evidence, calling hours/time zone, approved exceptions, workspace campaign resolution, address/direct-mail endpoints and execution-time transaction guards remain open. A supplied campaign adds CAMPAIGN_SCOPE_NOT_VERIFIED and never permits contact. Provider activation remains prohibited. Owner evidence relationships, workspace-aware legacy writes and durable Facebook ingestion also remain ahead.
+
+Next: owner/property and permission evidence associations, policy version/review model, then fresh execution guards at every outreach adapter. Continue all PRD phases; goal remains active.
+
 ## Implementation checkpoint — canonical contact crosswalk
 
 - Pulled clean branch at `2a42ee1`; previous goal turn implemented, tested and pushed the database activation guard (progress).

@@ -30,6 +30,8 @@ def api(monkeypatch):
                         lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
     app = FastAPI()
     app.include_router(router)
+    from web.api.outreach_eligibility_api import router as eligibility_router
+    app.include_router(eligibility_router)
     with TestClient(app) as client:
         yield client, state
 
@@ -140,3 +142,29 @@ def test_contact_import_uses_source_reference_not_client_claims(api):
         assert client.post(path, headers={'Authorization':'Bearer user-token'},
                            json={'source_field':'owner_phone_1', **extra}).status_code == 422
     assert len(state['requests']) == 1
+
+
+def test_eligibility_request_is_forwarded_without_client_authority(api):
+    client, state = api
+    payload = {'workspace_id':W, 'lead_id':U, 'contact_point_id':U, 'channel':'human_voice',
+               'purpose':'principal_property_acquisition', 'actor_type':'human'}
+    path = '/internal/outreach/eligibility/evaluate'
+    state['body'] = {'decision':'REVIEW', 'permitted_actions':[]}
+    assert client.post(path, headers={'Authorization':'Bearer user-token'}, json=payload).json() == state['body']
+    assert json.loads(state['requests'][0].content) == {
+        'p_workspace':W, 'p_lead':U, 'p_contact':U, 'p_channel':'human_voice',
+        'p_purpose':'principal_property_acquisition', 'p_actor_type':'human', 'p_campaign':None,
+    }
+    assert client.post(path, headers={'Authorization':'Bearer user-token'},
+                       json={**payload,'decision':'ALLOW'}).status_code == 422
+    assert len(state['requests']) == 1
+
+
+def test_suppression_request_rejects_client_actor(api):
+    client, state = api
+    path = f'/api/acquisition/workspaces/{W}/leads/{U}/contacts/{U}/suppressions'
+    payload = {'id':U, 'channel':'all', 'reason':'seller_opt_out'}
+    assert client.post(path, headers={'Authorization':'Bearer user-token'}, json=payload).status_code == 200
+    assert json.loads(state['requests'][0].content)['p_reason'] == 'seller_opt_out'
+    assert client.post(path, headers={'Authorization':'Bearer user-token'},
+                       json={**payload,'actor_id':U}).status_code == 422

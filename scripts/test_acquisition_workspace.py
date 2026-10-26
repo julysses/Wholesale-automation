@@ -18,6 +18,7 @@ BOUNDARY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026025259_acquisi
 RELATED_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026030633_acquisition_related_record_isolation.sql'
 ACTIVATION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026031751_acquisition_activation_gate.sql'
 CONTACT_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032050_acquisition_contact_crosswalk.sql'
+ELIGIBILITY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032519_acquisition_eligibility_ledger.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -72,7 +73,7 @@ class WorkspaceTests(unittest.TestCase):
         for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'),
                               ('wholesale_ingest','properties'), ('public','campaigns'),
                               ('public','buyer_import_log'), ('public','buyers'), ('public','deals'), ('public','deal_matches'),
-                              ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts')):
+                              ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts'), ('public','dnc_registry'), ('public','email_suppressions')):
             columns = []
             for c in catalog['columns']:
                 if c['table_schema'] == schema and c['table_name'] == table:
@@ -109,6 +110,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(RELATED_MIGRATION.read_text())
         self.sql(ACTIVATION_MIGRATION.read_text())
         self.sql(CONTACT_MIGRATION.read_text())
+        self.sql(ELIGIBILITY_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -117,6 +119,98 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def evaluate(self, contact, actor=ADMIN, workspace=WORKSPACE, lead=LEAD, channel='human_voice', actor_type='human', campaign=None, fail=False, aal='aal2'):
+        result = self.sql(f"SELECT public.evaluate_acquisition_eligibility('{workspace}','{lead}','{contact}',"
+                          f"{literal(channel)},'principal_property_acquisition',{literal(actor_type)},"
+                          f"{literal(campaign) if campaign else 'NULL'});", user=actor, fail=fail, aal=aal)
+        return result if fail else json.loads(result)
+
+    def suppress(self, contact, actor=ADMIN, workspace=WORKSPACE, lead=LEAD, channel='all', fail=False):
+        result = self.sql(f"SELECT public.record_acquisition_suppression('50000000-0000-4000-8000-000000000001',"
+                          f"'{workspace}','{lead}','{contact}',{literal(channel)},'seller_opt_out');", user=actor, fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_pending_eligibility_records_fresh_immutable_nonpermissions(self):
+        self.bind()
+        point = self.import_contact()['contact_point_id']
+        first = self.evaluate(point)
+        second = self.evaluate(point)
+        self.assertNotEqual(first['decision_id'], second['decision_id'])
+        self.assertEqual(first['decision'], 'REVIEW')
+        self.assertEqual(first['reason_codes'], ['LEGAL_POLICY_NOT_APPROVED'])
+        self.assertEqual(first['permitted_actions'], [])
+        self.assertIsNone(first['expires_at'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_eligibility_decisions'), '2')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='eligibility_decision'"), '2')
+        self.assertEqual(self.sql("SELECT inputs->>'actor_type' FROM acquisition_eligibility_decisions LIMIT 1"), 'human')
+        self.sql("UPDATE acquisition_eligibility_decisions SET decision='ALLOW';", fail=True)
+        self.sql('DELETE FROM acquisition_eligibility_decisions;', fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_eligibility_decisions', user=OTHER), '0')
+
+    def test_suppression_matches_other_workspace_without_disclosing_identity(self):
+        self.bind()
+        self.bind(actor=OTHER, workspace=WORKSPACE_B, lead=LEAD_B, property_id=None)
+        point = self.import_contact()['contact_point_id']
+        other = self.import_contact(actor=OTHER, workspace=WORKSPACE_B, lead=LEAD_B)['contact_point_id']
+        first = self.suppress(other, actor=OTHER, workspace=WORKSPACE_B, lead=LEAD_B, channel='sms')
+        self.assertEqual(first, self.suppress(other, actor=OTHER, workspace=WORKSPACE_B, lead=LEAD_B, channel='sms'))
+        self.assertEqual(self.evaluate(point, channel='sms')['decision'], 'BLOCK')
+        self.assertEqual(self.evaluate(point)['decision'], 'REVIEW')
+        result = self.evaluate(point, channel='sms')
+        self.assertNotIn(WORKSPACE_B, json.dumps(result))
+        self.assertNotIn(other, json.dumps(result))
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_suppressions', user=ADMIN), '0')
+        self.sql('DELETE FROM acquisition_contact_suppressions;', fail=True)
+        self.suppress(point, fail=True)  # Same request UUID cannot replace another tenant's event.
+
+    def test_assigned_caller_can_record_opt_out_and_evaluate_without_contact_export(self):
+        self.bind()
+        point = self.import_contact()['contact_point_id']
+        self.member(target=CALLER, role='acquisition_caller')
+        self.evaluate(point, actor=CALLER, fail=True)
+        self.sql(f"SELECT public.assign_acquisition_lead('{WORKSPACE}','{LEAD}','{CALLER}');", user=ADMIN)
+        self.evaluate(point, actor=CALLER, aal='aal1', fail=True)
+        self.assertEqual(self.evaluate(point, actor=CALLER)['decision'], 'REVIEW')
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        self.suppress(point, actor=CALLER)
+        self.assertEqual(self.evaluate(point, actor=CALLER)['decision'], 'BLOCK')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_points', user=CALLER), '0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_eligibility_decisions', user=CALLER), '0')
+        self.member(target=CALLER, role='acquisition_caller', status='revoked')
+        self.evaluate(point, actor=CALLER, fail=True)
+
+    def test_legacy_formatted_dnc_matches_across_leads(self):
+        self.bind()
+        point = self.import_contact()['contact_point_id']
+        self.sql(f"INSERT INTO dnc_registry(lead_id,phone_number,reason) VALUES('{LEAD_B}','(214) 555-0101','opt_out');")
+        self.assertEqual(self.evaluate(point)['decision'], 'BLOCK')
+        self.sql('DELETE FROM dnc_registry;')
+        self.sql(f"UPDATE leads SET dnc=true WHERE id='{LEAD_B}';")
+        self.assertEqual(self.evaluate(point,channel='ai_voice',actor_type='ai')['decision'], 'BLOCK')
+
+    def test_email_and_retained_skiptrace_restrictions(self):
+        self.sql(f"UPDATE leads SET owner_email='seller@example.test' WHERE id='{LEAD}';")
+        self.bind()
+        email = self.import_contact(field='owner_email')['contact_point_id']
+        self.sql("INSERT INTO email_suppressions(email,reason) VALUES('seller@example.test','bounce');")
+        self.assertEqual(self.evaluate(email, channel='email')['decision'], 'BLOCK')
+        source = '40000000-0000-4000-8000-000000000001'
+        self.sql(f"INSERT INTO wholesale_ingest.contacts(id,lead_id,provider,traced_at,expires_at,phone,dnc_status) "
+                 f"VALUES('{source}','{LEAD}','fixture',now(),now()+interval '1 day','+12145550101','listed');")
+        phone = self.import_contact(source=source, field='phone')['contact_point_id']
+        self.sql('DELETE FROM wholesale_ingest.contacts;')
+        self.assertEqual(self.evaluate(phone)['decision'], 'BLOCK')
+
+    def test_eligibility_rejects_mismatched_lead_and_invalid_actor(self):
+        self.bind()
+        point = self.import_contact()['contact_point_id']
+        self.evaluate(point, lead=LEAD_B, fail=True)
+        self.evaluate(point, actor=OTHER, fail=True)
+        self.evaluate(point, channel='human_voice', actor_type='ai', fail=True)
+        self.assertEqual(self.evaluate(point, channel='email')['decision'], 'BLOCK')
+        self.assertIn('CAMPAIGN_SCOPE_NOT_VERIFIED', self.evaluate(point, campaign=OTHER)['reason_codes'])
+        self.assertEqual(self.evaluate(point, channel='direct_mail')['permitted_actions'], [])
 
     def import_contact(self, actor=ADMIN, workspace=WORKSPACE, lead=LEAD, source=None, field='owner_phone_1', fail=False):
         value = self.sql(f"SELECT public.import_acquisition_contact('{workspace}','{lead}',"

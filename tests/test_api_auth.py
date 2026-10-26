@@ -118,3 +118,17 @@ def test_acquisition_only_identity_can_reach_disabled_workspace_boundary(identit
         {'status':'approved','role':'user','acquisition_only':True}]
     response = TestClient(app).get('/api/acquisition/workspaces',headers={'Authorization':'Bearer valid'})
     assert response.status_code == 404
+
+
+def test_internal_eligibility_is_authenticated_and_feature_gated(identity, monkeypatch):
+    path = '/internal/outreach/eligibility/evaluate'
+    monkeypatch.delenv('ACQUISITION_ENABLED', raising=False)
+    client = TestClient(app)
+    assert client.post(path, json={}).status_code == 401
+    identity.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {'status':'approved','role':'user','acquisition_only':True}]
+    payload = {'workspace_id':'10000000-0000-4000-8000-000000000001',
+               'lead_id':'20000000-0000-4000-8000-000000000001',
+               'contact_point_id':'30000000-0000-4000-8000-000000000001',
+               'channel':'human_voice','actor_type':'human','purpose':'principal_property_acquisition'}
+    assert client.post(path, headers={'Authorization':'Bearer valid'}, json=payload).status_code == 404

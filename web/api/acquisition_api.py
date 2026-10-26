@@ -102,3 +102,19 @@ async def import_contact(workspace_id: UUID, lead_id: UUID, body: ContactImport,
         'p_source_contact': str(body.source_contact_id) if body.source_contact_id else None,
         'p_field': body.source_field,
     })
+
+
+class ContactSuppression(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    channel: Literal['all','human_voice','ai_voice','prerecorded','sms','email','direct_mail']
+    reason: Literal['seller_opt_out','wrong_number','legal_restriction','deceased','contact_preference']
+
+
+@router.post('/workspaces/{workspace_id}/leads/{lead_id}/contacts/{contact_id}/suppressions')
+async def suppress_contact(workspace_id: UUID, lead_id: UUID, contact_id: UUID, body: ContactSuppression,
+                           store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/record_acquisition_suppression', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_lead': str(lead_id),
+        'p_contact': str(contact_id), 'p_channel': body.channel, 'p_reason': body.reason,
+    })
