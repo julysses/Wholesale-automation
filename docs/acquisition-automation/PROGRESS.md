@@ -3,6 +3,15 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — native seller-intake preparation
+
+- Previous turn was progress: `d4570aa` implemented/tested/pushed recoverable inbox leases. Pulled the clean branch and inspected catalog qualification/lead columns and constraints, canonical binding requirements, and legacy qualification notification triggers before attempting the atomic writer.
+- Found two concrete integration requirements: qualification_results is call-specific with mandatory call_id/HOT notification behavior; workspace_leads requires a human bound_by profile. A provider writer must introduce explicit channel-neutral intake and integration binding provenance rather than fabricating a call/user or exposing temporarily unbound leads.
+- Added pure versioned Facebook intake preparation that checks expected provider identity, bounds input, preserves every field occurrence, detects conflicting aliases/multi-selects, keeps missing/ambiguous prices unknown, preserves explicit zero, and classifies incomplete/unqualified/review cases. Complete free-text answers require canonical property review. Consent fields remain evidence and never become permission or offer authority.
+- Added 23 focused offline tests (passed); full backend suite **1,317 passed, 10 skipped, 368 existing warnings**. `git diff --check` passed. This is a pre-persistence building block, not a replacement for atomic CRM completion or the final qualified/duplicate classifier. Detailed inspection and next schema steps are in SELLER-INTAKE.md. No schema, runtime route, production, provider or scheduler changed.
+
+Next: add the thin channel-neutral intake relation over canonical receipts and explicit system binding provenance; implement atomic current-lease CRM completion, canonical property/owner resolution, attribution and qualified/duplicate transitions. Connect Facebook HTTP acceptance/retrieval after these transaction boundaries pass database tests. Goal active.
+
 ## Implementation checkpoint — recoverable acquisition processing leases
 
 - Previous goal turn was progress: `7dc4730` added/tested/pushed isolated durable receipts. Pulled that clean branch and re-inspected receipt gates, retention/immutability and the disposable database harness.
