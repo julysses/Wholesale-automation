@@ -265,6 +265,10 @@ async def save_scenario(workspace_id: UUID, lead_id: UUID, body: AnalysisReserva
     if (not isinstance(rows,list) or len(rows)!=1 or rows[0].get('id')!=str(body.id)
             or rows[0].get('workspace_id')!=str(workspace_id) or rows[0].get('lead_id')!=str(lead_id)):
         raise HTTPException(403,'Workspace analysis access is not authorized')
+    if calculation.get('status') == 'pending' and rows[0].get('acquisition_status') in {'calculated','incomplete','invalid'}:
+        # A lost worker reply does not undo a committed result. This fresh,
+        # user-authorized read confirms the outcome without another mutation.
+        calculation={'status':rows[0]['acquisition_status'],'reason':'RECONCILED_FROM_SAVED_SCENARIO'}
     return {'analysis':rows[0],'calculation':calculation,'binding_offer':False}
 
 

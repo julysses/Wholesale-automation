@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — API/calculator/database workflow acceptance
+
+- Pulled clean `6403a01`; prior turn implemented/tested/pushed operator underwriting and proposal entry (progress). Inspected current engine fixtures, API/store/worker boundaries and isolated database harness.
+- Added a repeatable workflow harness that runs the real FastAPI router, schemas, scoped store, calculator and SQL/RLS/audit functions against the disposable database. Only the PostgREST HTTP hop is adapted to local SQL with explicit synthetic identities. No calculated output is fabricated. Offline runner clears secrets/dotenv and blocks Python networking; cluster is socket-only and destroyed after tests.
+- Three journeys pass: sourced calculation through internal offer review with cross-tenant denial/idempotency; missing downside market data remains incomplete and cannot create an offer; a lost completion response reconciles the already-committed revision without another calculation write.
+- The last journey identified/fixed contradictory API metadata: a confirmed final scenario no longer returns pending calculation status after a lost worker reply. The fresh user-authorized database read now reports the reconciled terminal outcome.
+- Added a dedicated CI workflow job. Root collection inspection proved it was collecting standalone runner classes without their cluster setup; ordinary pytest now excludes only those two runner files, retains other backend/county tests, and runs under the offline boundary. Database suites retain dedicated jobs.
+- Validation: **3 real-calculation/SQL API journeys passed**. Existing backend-only suite: **1,269 passed, 10 skipped**. Broader repository suite using the revised CI collection: **1,306 passed, 10 skipped, 6 subtests passed, 368 existing warnings**. `git diff --check` passes. Remote CI completion not yet claimed. Details/limits: WORKFLOW-ACCEPTANCE.md.
+
+Next: actual PostgREST/auth and browser/database acceptance, remaining strategy persistence journeys and full-schema upgrade rehearsal; current-scenario/final-document controls; policy execution and durable Facebook intake before later channel activation. No production migration, deployment, configuration, provider or transaction changed. Goal active.
+
 ## Implementation checkpoint — underwriting entry and proposal creation
 
 - Pulled clean `1fad9ca`; previous turn browser-tested review and pushed financial formatting (progress). Rechecked current input models, workspace lead listing and saved scenario/proposal API contracts.

@@ -960,7 +960,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql("INSERT INTO audit_logs(entity_type,entity_id,action,actor) VALUES('legacy','new-sentinel','appended','system');", user=ADMIN, role='service_role')
 
 
-def main():
+def main(test_case=WorkspaceTests, test_names=None):
     for executable in ('initdb','pg_ctl','createdb','psql'):
         if not (PG/executable).is_file():
             raise SystemExit('Set PG_BIN to a local PostgreSQL bin directory')
@@ -980,7 +980,8 @@ def main():
             WorkspaceTests.env, WorkspaceTests.socket = env, folder
             check = WorkspaceTests()
             check.sql('CREATE ROLE authenticated NOLOGIN; CREATE ROLE anon NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;')
-            suite = unittest.defaultTestLoader.loadTestsFromTestCase(WorkspaceTests)
+            suite = (unittest.TestSuite(test_case(name) for name in test_names) if test_names is not None
+                     else unittest.defaultTestLoader.loadTestsFromTestCase(test_case))
             result = unittest.TextTestRunner(verbosity=2).run(suite)
             return 0 if result.wasSuccessful() else 1
         finally:

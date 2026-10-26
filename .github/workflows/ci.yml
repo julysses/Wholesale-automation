@@ -25,7 +25,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
       - name: Run tests
-        run: python -m pytest -q
+        run: python scripts/run_offline_tests.py python -m pytest -q --ignore=scripts/test_acquisition_workspace.py --ignore=scripts/test_acquisition_workflow.py
 
   frontend:
     name: Frontend (typecheck, build, lint)
@@ -121,3 +121,24 @@ jobs:
         env:
           PG_BIN: /usr/lib/postgresql/16/bin
         run: python3 scripts/test_acquisition_workspace.py
+
+
+  acquisition-workflow:
+    name: Acquisition API, calculator and PostgreSQL workflow
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend dependencies and isolated database runtime
+        run: |
+          python -m pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16
+      - name: Run real acquisition workflow with external networking blocked
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: python scripts/run_offline_tests.py --acquisition-workflow
