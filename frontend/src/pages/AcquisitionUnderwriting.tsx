@@ -1,12 +1,14 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
 import { ScenarioSummary } from '@/components/acquisition/ScenarioSummary';
 import { buildInputs, caseNames, emptyDraft, emptyEntry, fieldLabel, fieldUnit, inputPaths, strategyNames } from '@/lib/acquisitionInputs';
 import type { Draft, Entry, Strategy } from '@/lib/acquisitionInputs';
 
+import { loadQualification } from '@/lib/intakeQualification';
+
 type Lead = { lead_id:string; property_id:string|null; property_address:string; city:string };
-type Analysis = { id:string; acquisition_revision:number; acquisition_status:string; acquisition_strategy:string; acquisition_inputs?:unknown; acquisition_outputs: { cases?:Record<string,{proposed_offer_range?:{low:string;high:string}|null;missing_inputs?:string[]}> } | null };
+export type Analysis = { id:string; acquisition_revision:number; acquisition_status:string; acquisition_strategy:string; acquisition_inputs?:unknown; acquisition_outputs: { cases?:Record<string,{proposed_offer_range?:{low:string;high:string}|null;missing_inputs?:string[]}> } | null };
 const button = 'border rounded-lg px-3 py-2 text-sm disabled:opacity-40';
 const input = 'border border-gray-300 rounded p-2 w-full bg-white';
 const errors = (error:unknown) => error instanceof Error ? error.message : 'Request unavailable';
@@ -43,27 +45,39 @@ function PropertyWorkspace({base,lead,userId,onProposed}:{base:string;lead:Lead;
   </section>;
 }
 
-function ScenarioEditor({path,onSaved}:{path:string;onSaved:(analysis:Analysis)=>void}) {
+export function ScenarioEditor({path,onSaved,intake,disabled=false,onPending}:{path:string;onSaved:(analysis:Analysis,current?:boolean)=>void;
+  intake?:{path:string;id:string;evidenceHash:string};disabled?:boolean;onPending?:(value:boolean)=>void}) {
   const [strategy,setStrategy]=useState<Strategy>('fix_and_flip'); const [buyer,setBuyer]=useState<Exclude<Strategy,'wholesale'>>('fix_and_flip');
   const [draft,setDraft]=useState<Draft>(emptyDraft); const [uncertainties,setUncertainties]=useState(['title','liens','occupancy','valuation','repairs','ownership','zoning','financing']);
-  const [request,setRequest]=useState<{id:string;inputs:ReturnType<typeof buildInputs>}|null>(null);
+  const [request,setRequest]=useState<{id:string;inputs:ReturnType<typeof buildInputs>;evidence_hash?:string}|null>(null);
   const [saved,setSaved]=useState(false); const [busy,setBusy]=useState(false); const lock=useRef(false); const [feedback,setFeedback]=useState('');
   const [preview,setPreview]=useState<Record<string,unknown>|null>(null);
   const populated=Object.values(draft).some(c=>Object.values(c).some(e=>e.value||e.source));
-  const locked=busy||!!request||saved;
+  const locked=disabled||busy||!!request||saved;
+  useEffect(()=>{onPending?.(busy||!!request);},[busy,request,onPending]);
   function update(name:typeof caseNames[number],key:string,patch:Partial<Entry>) { setDraft(d=>({...d,[name]:{...d[name],[key]:{...(d[name][key]??emptyEntry()),...patch}}}));setPreview(null); }
   async function run(save:boolean) {
-    if(lock.current)return;lock.current=true;setBusy(true);setFeedback('');
+    if(lock.current||disabled)return;lock.current=true;setBusy(true);setFeedback('');
     let attempt=request;
     try {
       const inputs=attempt?.inputs??buildInputs(strategy,buyer,draft,uncertainties);
       if(!save) {setPreview(await post(`${path}/preview`,inputs));setFeedback('Preview calculated. It has not been saved.');return;}
-      if(!attempt){attempt={id:crypto.randomUUID(),inputs};setRequest(attempt);}
-      const response=await post<{analysis:Analysis;calculation:{status:string}}>(`${path}/scenarios`,attempt);
+      if(!attempt){
+        let evidence_hash:string|undefined;
+        if(intake){const fresh=await loadQualification(`${intake.path}/qualification-state`);
+          if(fresh.evidence_hash!==intake.evidenceHash||fresh.assessment.classification!=='qualified'||!fresh.assessment.identity_link_current)
+            throw new Error('Qualification changed. Close this draft and refresh the intake before starting another scenario.');
+          evidence_hash=fresh.evidence_hash;
+        }
+        attempt={id:crypto.randomUUID(),inputs,...(evidence_hash?{evidence_hash}:{})};setRequest(attempt);
+      }
+      const response=await post<{analysis:Analysis;calculation:{status:string};binding_offer?:boolean;intake_context?:{analysis_id:string;has_intake:boolean;intake_id:string;assessment_id:string;qualification_current:boolean}}>(`${intake?`${intake.path}/underwriting`:path}/scenarios`,attempt);
       if(response.analysis?.id!==attempt.id)throw new Error('Save result is unconfirmed');
-      onSaved(response.analysis);
+      if(intake && (response.binding_offer!==false||response.intake_context?.analysis_id!==attempt.id||response.intake_context?.intake_id!==intake.id
+        ||response.intake_context?.assessment_id!==attempt.id||response.intake_context?.has_intake!==true||typeof response.intake_context?.qualification_current!=='boolean'))throw new Error('Intake provenance result is unconfirmed');
+      onSaved(response.analysis,response.intake_context?.qualification_current);
       if(response.analysis.acquisition_status==='pending')setFeedback('Inputs saved; calculation is pending. Retry this same scenario when the calculator is available.');
-      else {setRequest(null);setSaved(true);setFeedback(`Saved revision ${response.analysis.acquisition_revision}: ${response.analysis.acquisition_status}. Select it below to review or propose an amount.`);}
+      else {setRequest(null);setSaved(true);setFeedback(`Saved revision ${response.analysis.acquisition_revision}: ${response.analysis.acquisition_status}. ${intake?'Review the saved scenario details below.':'Select it below to review or propose an amount.'}`);}
     } catch(error) {if(definite(error))setRequest(null);setFeedback(attempt&&!definite(error)?'Save outcome unconfirmed. Retry the same scenario reference.':errors(error));}
     finally{setBusy(false);lock.current=false;}
   }
@@ -80,8 +94,8 @@ function ScenarioEditor({path,onSaved}:{path:string;onSaved:(analysis:Analysis)=
       </fieldset>;})}</div></details>)}
       <fieldset><legend>Unresolved diligence</legend><div className="flex flex-wrap gap-3">{['title','liens','occupancy','valuation','repairs','ownership','zoning','financing'].map(key=><label key={key}><input type="checkbox" checked={uncertainties.includes(key)} onChange={e=>{setUncertainties(v=>e.target.checked?[...v,key]:v.filter(k=>k!==key));setPreview(null);}}/> {key}</label>)}</div></fieldset>
     </fieldset>
-    <div className="flex flex-wrap gap-2 mt-4"><button className={button} disabled={locked} onClick={()=>void run(false)}>Calculate preview</button><button className={button} disabled={busy||saved} onClick={()=>void run(true)}>{request?'Retry same scenario':'Save scenario'}</button>
-      <button className={button} disabled={busy||!!request} onClick={()=>{setDraft(emptyDraft());setSaved(false);setPreview(null);setFeedback('');}}>Discard draft / start new scenario</button></div>
+    <div className="flex flex-wrap gap-2 mt-4"><button className={button} disabled={locked} onClick={()=>void run(false)}>Calculate preview</button><button className={button} disabled={disabled||busy||saved} onClick={()=>void run(true)}>{request?'Retry same scenario':'Save scenario'}</button>
+      <button className={button} disabled={disabled||busy||!!request} onClick={()=>{setDraft(emptyDraft());setSaved(false);setPreview(null);setFeedback('');}}>Discard draft / start new scenario</button></div>
     {feedback&&<p role="status" className="my-2">{feedback}</p>}
     {preview&&<ScenarioSummary output={preview}/>}
     {preview&&<details><summary>Preview results and missing inputs</summary><pre className="whitespace-pre-wrap break-words text-xs max-h-96 overflow-auto">{JSON.stringify(preview,null,2)}</pre></details>}

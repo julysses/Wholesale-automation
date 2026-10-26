@@ -15,7 +15,15 @@ const intake = { id: 'fixture-intake', lead_id: 'fixture-source', classification
   prepared_answers: { answers: { property_address: '123 Fixture Lane', city: 'Dallas', state: 'TX', authority: 'yes', phone: '2145550101' }, missing_fields: ['condition', 'timeline'], reason_codes: ['MISSING_REQUIRED_ANSWERS'] }, normalization_notes: [] };
 const identityEvents: { id: string; sequence: number; action: string; review_note: string; created_at: string }[] = [];
 const candidate = { lead_id: 'fixture-lead', property_id: 'fixture-property', property_address: '123 Fixture Lane', city: 'Dallas', state: 'TX', county: 'Dallas', parcel_id: 'fixture-parcel', county_unit: null, match_basis: 'EXACT_ADDRESS_TEXT' };
+const qualifiedFixture = new URLSearchParams(window.location.search).has('qualified');
+if (qualifiedFixture) {
+  Object.assign(intake.prepared_answers.answers, { condition: 'Needs repairs', timeline: 'Within 90 days', asking_price: '175000' });
+  intake.prepared_answers.missing_fields = []; intake.prepared_answers.reason_codes = [];
+  candidate.lead_id = '20000000-0000-0000-0000-000000000001';
+  identityEvents.push({ id: 'fixture-reviewed-link', sequence: 1, action: 'link_property', review_note: 'Synthetic independently reviewed canonical property', created_at: '2026-10-26T12:30:00Z' });
+}
 function screening() {
+  if (qualifiedFixture) return { classification: 'qualified', policy_version: 'intake-qualification-v1', reason_codes: ['COMPLETE_INTAKE_WITH_REVIEWED_IN_TERRITORY_PROPERTY'], missing_fields: [], canonical_county: 'Dallas', canonical_state: 'TX', identity_link_current: true, target_lead_id: '20000000-0000-0000-0000-000000000001', ownership_verified: false, outreach_authorized: false, binding_offer: false, contact_permission_granted: false };
   const repeat = identityEvents.at(-1)?.action === 'repeat_inquiry';
   return { classification: repeat ? 'duplicate' : 'incomplete', policy_version: 'intake-qualification-v1',
     reason_codes: [repeat ? 'REVIEWED_REPEAT_INQUIRY' : 'MISSING_REQUIRED_ANSWERS'], missing_fields: ['condition', 'timeline'],
@@ -27,7 +35,16 @@ const assessmentHash = () => identityEvents.length.toString(16).padStart(64, '0'
 const assessmentEvents: { id: string; sequence: number; classification: string; evidence_hash: string; assessment: ReturnType<typeof screening>; created_at: string }[] = [];
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   let value: unknown;
-  if (init?.method === 'POST' && path.endsWith('/assessments')) {
+  if (init?.method === 'POST' && path.endsWith('/intakes/fixture-intake/underwriting/scenarios')) {
+    const body = JSON.parse(String(init.body));
+    if (replies.has(body.id)) value = replies.get(body.id);
+    else {
+      if (!qualifiedFixture || body.evidence_hash !== assessmentHash()) throw new ApiError('Qualification changed');
+      assessmentEvents.push({ id: body.id, sequence: assessmentEvents.length + 1, classification: 'qualified', evidence_hash: body.evidence_hash, assessment: screening(), created_at: new Date().toISOString() });
+      value = { binding_offer: false, analysis: { id: body.id, acquisition_revision: 1, acquisition_status: 'incomplete', acquisition_strategy: 'fix_and_flip', acquisition_inputs: body.inputs, acquisition_outputs: null }, calculation: { status: 'incomplete' },
+        intake_context: { analysis_id: body.id, intake_id: 'fixture-intake', assessment_id: body.id, has_intake: true, qualification_current: true } }; replies.set(body.id, value);
+    }
+  } else if (init?.method === 'POST' && path.endsWith('/assessments')) {
     const body = JSON.parse(String(init.body));
     if (replies.has(body.id)) value = replies.get(body.id);
     else {

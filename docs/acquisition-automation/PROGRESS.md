@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — qualified intake underwriting dashboard
+
+- Previous turn was progress: `a00dea8` implemented/tested/pushed the backend handoff. Pulled the current branch and connected qualified intake screening to the shared explicit-input underwriting editor and dedicated intake reservation endpoint.
+- Initial saves refresh the qualification hash and require current qualified identity. Pending requests retain their exact UUID, evidence and inputs, block assessment/identity edits and closing, and survive qualification refresh. Reconciliation validates returned intake/analysis/assessment provenance and preserves a false current-qualification result rather than treating historical evidence as current.
+- The dashboard displays saved status and directs reviewers to existing canonical-property scenario/offer review. Missing market inputs remain incomplete; no contact, offer transmission or contract authority is added. Extracted shared qualification validation for both screening and scenario entry.
+- Validation: **219 frontend tests across 51 files passed**, including seven new handoff/parent-lock cases. Feature-enabled TypeScript/Vite build passed; lint reports no new findings (147 existing). Synthetic browser verified qualified intake -> save incomplete scenario -> automatic assessment history, with no console errors. Evidence: `evidence/2026-10-26-intake-underwriting-browser.png`. Final browser wording corrected a reference to the manual scenario list. The first focused npm command ran at repo root and was corrected to frontend before successful tests.
+- No backend/schema/configuration/provider changes or production actions. Browser proof uses a named local synthetic fixture, not live Supabase/Meta acceptance.
+
+Next: improve direct saved-scenario/proposal navigation and persistent provenance display, campaign attribution and remaining sequential phases. Full-schema/PostgREST/provider acceptance, mobile QA and release approvals remain open. Goal active.
+
 ## Implementation checkpoint — qualified intake underwriting handoff
 
 - Pulled `codex/acquisition-foundation` at `4db34c9`. Added CLI-generated `20261026184848_acquisition_intake_underwriting_handoff.sql` and a dedicated intake underwriting API. A fresh qualified assessment and scenario reservation commit atomically against the server-resolved canonical property; the original inquiry lead remains separate.
