@@ -17,6 +17,7 @@ MIGRATION = ROOT / 'frontend/supabase/migrations/20261026024157_acquisition_work
 BOUNDARY_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026025259_acquisition_legacy_access_boundary.sql'
 RELATED_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026030633_acquisition_related_record_isolation.sql'
 ACTIVATION_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026031751_acquisition_activation_gate.sql'
+CONTACT_MIGRATION = ROOT / 'frontend/supabase/migrations/20261026032050_acquisition_contact_crosswalk.sql'
 CATALOG = ROOT / 'docs/acquisition-automation/evidence/2026-10-25-catalog.json'
 PG = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))
 ADMIN = '00000000-0000-4000-8000-000000000001'
@@ -71,7 +72,7 @@ class WorkspaceTests(unittest.TestCase):
         for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'),
                               ('wholesale_ingest','properties'), ('public','campaigns'),
                               ('public','buyer_import_log'), ('public','buyers'), ('public','deals'), ('public','deal_matches'),
-                              ('wholesale_ingest','property_aliases')):
+                              ('wholesale_ingest','property_aliases'), ('wholesale_ingest','contacts')):
             columns = []
             for c in catalog['columns']:
                 if c['table_schema'] == schema and c['table_name'] == table:
@@ -84,6 +85,8 @@ class WorkspaceTests(unittest.TestCase):
                 if c['schema']==schema and c['table_name']==table:
                     # Leads' unrelated campaign/form/list FK targets are outside
                     # this focused fixture. Full production upgrade remains separate.
+                    if table=='contacts' and 'skip_trace_requests' in c['definition']:
+                        continue  # Provider job storage is outside this focused fixture.
                     if table=='leads' and c['contype']=='f':
                         continue
                     self.sql(f'ALTER TABLE {schema}.{table} ADD CONSTRAINT '+identifier(c['conname'])+' '+c['definition'])
@@ -105,6 +108,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(BOUNDARY_MIGRATION.read_text())
         self.sql(RELATED_MIGRATION.read_text())
         self.sql(ACTIVATION_MIGRATION.read_text())
+        self.sql(CONTACT_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -113,6 +117,93 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def import_contact(self, actor=ADMIN, workspace=WORKSPACE, lead=LEAD, source=None, field='owner_phone_1', fail=False):
+        value = self.sql(f"SELECT public.import_acquisition_contact('{workspace}','{lead}',"
+                         f"{literal(source) if source else 'NULL'},{literal(field)});", user=actor, fail=fail)
+        return value if fail else json.loads(value)
+
+    def test_contact_crosswalk_is_idempotent_and_does_not_merge_leads(self):
+        self.bind()
+        self.bind(lead=LEAD_B, property_id=None)
+        first = self.import_contact()
+        self.assertEqual(first, self.import_contact())
+        second = self.import_contact(lead=LEAD_B)
+        self.assertEqual(first['contact_point_id'], second['contact_point_id'])
+        self.assertNotEqual(first['observation_id'], second['observation_id'])
+        self.assertEqual(first['verification_status'], 'unverified')
+        self.assertEqual(self.sql('SELECT count(*) FROM leads'), '2')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_observations'), '2')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='source_imported'"), '2')
+        self.sql('UPDATE acquisition_contact_points SET normalized_value=normalized_value;', fail=True)
+        self.sql('DELETE FROM acquisition_contact_observations;', fail=True)
+
+    def test_same_endpoint_in_other_workspace_is_separate_and_updates_append(self):
+        self.bind()
+        self.bind(actor=OTHER, workspace=WORKSPACE_B, lead=LEAD_B, property_id=None)
+        first = self.import_contact()
+        other = self.import_contact(actor=OTHER, workspace=WORKSPACE_B, lead=LEAD_B)
+        self.assertNotEqual(first['contact_point_id'], other['contact_point_id'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_points', user=ADMIN), '1')
+        self.sql(f"UPDATE leads SET owner_phone_1='+12145550109' WHERE id='{LEAD}';")
+        changed = self.import_contact()
+        self.assertNotEqual(first['contact_point_id'], changed['contact_point_id'])
+        self.assertEqual(self.sql(f"SELECT count(*) FROM acquisition_contact_observations WHERE lead_id='{LEAD}'"), '2')
+        self.assertEqual(self.sql("SELECT count(*) FROM acquisition_contact_points WHERE normalized_value='+12145550101'"), '2')
+
+    def test_contact_import_is_workspace_scoped_and_operator_only(self):
+        self.bind()
+        self.member(target=CALLER, role='acquisition_caller')
+        self.import_contact(actor=OTHER, fail=True)
+        self.import_contact(actor=CALLER, fail=True)
+        self.import_contact(workspace=WORKSPACE_B, fail=True)
+        self.member()
+        value = self.import_contact(actor=OPERATOR)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_points', user=OPERATOR), '1')
+        for actor in (OTHER,CALLER):
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_points', user=actor), '0')
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_observations', user=actor), '0')
+        self.sql(f"INSERT INTO acquisition_contact_points(workspace_id,type,normalized_value,created_by) "
+                 f"VALUES('{WORKSPACE}','phone','+12145550102','{ADMIN}');", user=ADMIN, fail=True)
+        self.assertTrue(value['contact_point_id'])
+
+    def test_phone_normalization_rejects_ambiguous_extensions_and_preserves_original(self):
+        self.sql(f"UPDATE leads SET owner_phone_1='(214) 555-0101',owner_phone_2='2145550101 ext 3',"
+                 f"owner_email=' Owner@Example.test ' WHERE id='{LEAD}';")
+        self.bind()
+        self.import_contact()
+        self.import_contact(field='owner_phone_2', fail=True)
+        email = self.import_contact(field='owner_email')
+        self.assertEqual(email['type'], 'email')
+        self.assertEqual(self.sql("SELECT normalized_value FROM acquisition_contact_points WHERE type='phone'"), '+12145550101')
+        self.assertEqual(self.sql("SELECT evidence->>'raw_value' FROM acquisition_contact_observations WHERE source_field='owner_phone_1'"), '(214) 555-0101')
+        self.assertEqual(self.sql("SELECT normalized_value FROM acquisition_contact_points WHERE type='email'"), 'owner@example.test')
+        self.import_contact(field='property_address', fail=True)
+
+    def test_skiptrace_crosswalk_preserves_expiry_and_survives_source_retention(self):
+        source = '40000000-0000-4000-8000-000000000001'
+        self.sql(f"INSERT INTO wholesale_ingest.contacts(id,lead_id,provider,traced_at,expires_at,phone,email,dnc_status) "
+                 f"VALUES('{source}','{LEAD}','fixture',now()-interval '2 days',now()-interval '1 day','+12145550101','seller@example.test','unknown');")
+        self.bind()
+        phone = self.import_contact(source=source, field='phone')
+        email = self.import_contact(source=source, field='email')
+        self.assertNotEqual(phone['contact_point_id'],email['contact_point_id'])
+        self.bind(lead=LEAD_B, property_id=None)
+        self.import_contact(lead=LEAD_B, source=source, field='phone', fail=True)
+        self.sql(f"DELETE FROM wholesale_ingest.contacts WHERE id='{source}';")
+        self.assertEqual(self.sql("SELECT count(*) FROM acquisition_contact_observations WHERE (evidence->>'expires_at')::timestamptz<now()"), '2')
+        self.import_contact(source=source, field='phone', fail=True)
+
+    def test_contact_creation_requires_activation_and_parallel_import_deduplicates(self):
+        self.bind()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            values = list(pool.map(lambda _: self.import_contact(), range(2)))
+        self.assertEqual(values[0], values[1])
+        self.sql('UPDATE private.acquisition_activation SET enabled=false;')
+        self.bind(lead=LEAD_B, property_id=None, fail=True)
+        self.sql(f"UPDATE leads SET owner_phone_2='+12145550103' WHERE id='{LEAD}';")
+        self.import_contact(field='owner_phone_2', fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_points'), '1')
 
     def activate(self):
         self.sql("UPDATE private.acquisition_activation SET enabled=true, approval_ref='isolated-test-approval', "

@@ -125,3 +125,18 @@ def test_lead_binding_rejects_client_supplied_owner_and_requires_uuid(api):
                        headers={'Authorization':'Bearer user-token'},
                        json={'lead_id':U,'bound_by':U}).status_code == 422
     assert len(state['requests']) == 1
+
+
+def test_contact_import_uses_source_reference_not_client_claims(api):
+    client, state = api
+    path = f'/api/acquisition/workspaces/{W}/leads/{U}/contacts/import'
+    response = client.post(path, headers={'Authorization':'Bearer user-token'},
+                           json={'source_field':'owner_phone_1'})
+    assert response.status_code == 200
+    assert json.loads(state['requests'][0].content) == {
+        'p_workspace':W, 'p_lead':U, 'p_source_contact':None, 'p_field':'owner_phone_1',
+    }
+    for extra in ({'normalized_value':'+12145550101'}, {'verified':True}, {'consent':True}):
+        assert client.post(path, headers={'Authorization':'Bearer user-token'},
+                           json={'source_field':'owner_phone_1', **extra}).status_code == 422
+    assert len(state['requests']) == 1

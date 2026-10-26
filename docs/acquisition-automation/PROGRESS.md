@@ -3,6 +3,18 @@
 Checkpoint date: October 25, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — canonical contact crosswalk
+
+- Pulled clean branch at `2a42ee1`; previous goal turn implemented, tested and pushed the database activation guard (progress).
+- Re-inspected catalog and source definitions for `wholesale_ingest.contacts`, `dnc_registry`, email suppressions and existing normalization guards. Existing skip-trace contacts combine phone/email and have expiring retention, so the new typed endpoint/observation crosswalk preserves source IDs and evidence without replacing or modifying provider storage.
+- Added CLI-generated `20261026032050_acquisition_contact_crosswalk.sql`: workspace-local normalized phone/email endpoints, immutable source observations, composite workspace FKs, operator-only RLS, audited import RPC, activation checks and concurrent retry deduplication. Imports select canonical lead or skip-trace fields server-side. The API does not accept supplied normalized values, verification or consent claims.
+- Phone parsing accepts explicit international codes and unambiguous US local formats, rejects letters/extensions instead of silently changing the number. Email normalization preserves the original in evidence. All imported endpoints remain **unverified**; expired observations preserve expiry and do not become current contact authorization.
+- Same number on different leads shares only an endpoint inside a workspace, never an owner/property identity. Different workspaces get different endpoint IDs. Changed source values append history. Skip-trace retention can delete the source while provenance remains.
+- Initial SQL tests found a variable qualification issue in the crosswalk lookup; renamed local variables and reran successfully. API tests: **18 passed**. Final expanded disposable PostgreSQL suite: **33 passed**, including cross-workspace endpoint separation and changed-source history. `git diff --check` passes.
+- No production migrations, backfill, provider calls, schedules or outreach changed. Owner identity relationships, structured permission/revocation, suppression evaluation, general eligibility, contact verification and approved evidence-retention/redaction procedures remain outstanding; this slice does not satisfy all of MIG-003 by itself.
+
+Next: implement owner/property evidence associations and per-channel permission/suppression/decision ledgers on these endpoints; preserve existing DNC semantics while keeping unapproved legal policy at REVIEW. Continue workspace-aware writes and durable Facebook ingestion, then subsequent ordered phases. Goal remains active.
+
 ## Implementation checkpoint — database activation gate
 
 - Pulled `b6b9c43`; previous goal turn verified the completed push (progress evidence).

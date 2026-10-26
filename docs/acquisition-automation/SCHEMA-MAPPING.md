@@ -1,6 +1,6 @@
 # Acquisition automation — verified schema mapping
 
-Observed October 25, 2026, America/Chicago (catalog checkpoint 2026-10-26 02:31:52 UTC). Status: inventory and proposed design; no migration written or applied.
+Observed October 25, 2026, America/Chicago (catalog checkpoint 2026-10-26 02:31:52 UTC). Status: historical inventory with additive implementation tracked in PROGRESS.md; no production migrations applied.
 
 ## Evidence and baseline
 
@@ -68,3 +68,7 @@ All proposed workspace-owned entities require membership/role RLS, server-side a
 ## Remaining verification limits
 
 Catalog presence is verified; existing user membership intent, record counts/data preservation, all function bodies, provider credentials, exposed-schema configuration, current Vercel flags/cron, storage buckets, legal policy and live end-to-end acceptance are not. Function inventory includes signatures/security/search paths, with full definitions only for the two authorization helpers. Further function/body dependency inspection is required before SQL. No backup/restore or RLS execution test is claimed.
+
+## Contact crosswalk implementation follow-up
+
+The production-based implementation adds `acquisition_contact_points` and `acquisition_contact_observations` as the typed source-ID crosswalk proposed above. Existing `wholesale_ingest.contacts` remains the provider observation store and `leads` remains the CRM source. Neither supports one normalized typed endpoint with multiple immutable source/lead links, which justifies these additions. No owner identity or permission is inferred. See PROGRESS.md for test evidence and remaining identity/retention work.

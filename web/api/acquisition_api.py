@@ -86,3 +86,19 @@ async def list_leads(workspace_id: UUID, after: UUID | None = None,
     return await store.request('POST', 'rpc/list_acquisition_leads', body={
         'p_workspace': str(workspace_id), 'p_after': str(after) if after else None, 'p_limit': limit,
     })
+
+
+class ContactImport(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    source_contact_id: UUID | None = None
+    source_field: Literal['owner_phone_1','owner_phone_2','owner_phone_3','owner_email','phone','email']
+
+
+@router.post('/workspaces/{workspace_id}/leads/{lead_id}/contacts/import')
+async def import_contact(workspace_id: UUID, lead_id: UUID, body: ContactImport,
+                         store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/import_acquisition_contact', body={
+        'p_workspace': str(workspace_id), 'p_lead': str(lead_id),
+        'p_source_contact': str(body.source_contact_id) if body.source_contact_id else None,
+        'p_field': body.source_field,
+    })
