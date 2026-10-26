@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — campaign cost coverage calculation
+
+- Previous turn made progress: pushed `64e187b` with verified browser evidence. Pulled unchanged branch before this increment (approved escalation resolved sandbox DNS).
+- Implemented pure, versioned `campaign_cost_coverage` over scoped daily evidence revisions. Explicit USD minor units, account timezone, bounded date window and observation cutoff prevent implicit currency/time assumptions. Unsupported currencies and invalid/mixed evidence reject the projection.
+- Latest ledger revision wins; exact replays deduplicate, conflicts fail, and partial/withdrawn revisions do not reuse superseded complete amounts. Missing dates remain unknown. Complete totals require complete daily coverage; observed partial amounts stay separately labeled. Output monetary strings preserve integer precision in JavaScript. Evidence references are not exposed.
+- Validation: **45 cost/attribution tests passed**, including invalid scope/units, unknown versus zero, revision conflicts, withdrawal/partial supersession, local-midnight/DST handling and report cutoffs. No external transport or database mutation. Implementation contract and remaining boundaries saved in CAMPAIGN-COSTS.md.
+- This module is not yet wired to persisted cost observations or a reporting endpoint. It does not authenticate caller evidence; the future repository adapter must do so. CPL remains null until its denominator is reconciled. No spend, campaign activation, production or paused-SMS changes.
+
+Next: inventory live cost/insights equivalents and implement audited, tenant-isolated daily cost observation persistence and authenticated coverage reads; then connect reporting UI and reconciled conversion metrics. Full PRD goal remains active.
+
 ## Implementation checkpoint — property-source rendered QA
 
 - Prior goal turn made progress: pushed `5c81082` with the dashboard and 280 passing frontend tests. Pulled unchanged branch before QA; Git DNS and local-server sandbox restrictions resolved with approved escalation. Corrected an initial fixture path before editing.

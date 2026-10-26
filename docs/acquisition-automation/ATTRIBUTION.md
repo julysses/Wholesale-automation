@@ -74,3 +74,6 @@ Component tests cover lazy loading, historical/current display, empty-page conti
 
 
 Rendered browser verification (October 26): the isolated real-component fixture passed empty-candidate continuation, reviewed repeat-inquiry display, historical campaign labeling, identity-review expansion and reset to the first source page. At 375px, identifiers wrap and navigation stacks without clipping. No console errors were reported. Screenshot: `evidence/2026-10-26-property-sources-mobile.jpg`. This verifies synthetic presentation; live API persistence, PostgREST authorization and provider acceptance remain separate release gates.
+
+
+The deterministic cost coverage calculator is now specified in CAMPAIGN-COSTS.md. Persistence, provider ingestion, scoped reporting APIs and reconciled CPL/funnel denominators remain open.
