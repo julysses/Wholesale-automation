@@ -746,3 +746,38 @@ def test_lead_source_reads_include_call_revision_origin(api):
     params=state['requests'][-1].url.params
     assert params['workspace_id']=='eq.'+W and params['lead_id']=='eq.'+U
     assert {'source_type','external_lead_id','integration_id','inbound_event_id','inbound_revision'} <= set(params['select'].split(','))
+
+
+def test_inbound_request_read_forwards_only_user_scope(api):
+    client, state = api
+    path = f'/api/acquisition/workspaces/{W}/inbound/integrations/{U}/calls/call_test/requests'
+    response = client.get(path+f'?after={U}&limit=5', headers={'Authorization': 'Bearer user-token'})
+    assert response.status_code == 200
+    request = state['requests'][0]
+    assert request.url.path == '/rest/v1/rpc/acquisition_inbound_requests'
+    assert request.headers['authorization'] == 'Bearer user-token'
+    assert request.headers['apikey'] == 'public-test-key'
+    assert json.loads(request.content) == {'p_workspace': W, 'p_integration': U, 'p_call': 'call_test', 'p_after': U, 'p_limit': 5}
+
+
+@pytest.mark.parametrize('suffix', ['?limit=0', '?limit=51', '?after=bad'])
+def test_inbound_request_read_rejects_invalid_bounds(api, suffix):
+    client, state = api
+    response = client.get(f'/api/acquisition/workspaces/{W}/inbound/integrations/{U}/calls/call_test/requests'+suffix, headers={'Authorization': 'Bearer user-token'})
+    assert response.status_code == 422
+    assert not state['requests']
+
+
+def test_inbound_request_read_rejects_call_injection(api):
+    client, state = api
+    response = client.get(f'/api/acquisition/workspaces/{W}/inbound/integrations/{U}/calls/call.bad/requests', headers={'Authorization': 'Bearer user-token'})
+    assert response.status_code == 422
+    assert not state['requests']
+
+
+def test_inbound_request_read_denial_is_sanitized(api):
+    client, state = api
+    state.update(status=403, body={'code': '42501', 'message': 'private SQL details'})
+    response = client.get(f'/api/acquisition/workspaces/{W}/inbound/integrations/{U}/calls/call_test/requests', headers={'Authorization': 'Bearer user-token'})
+    assert response.status_code == 403
+    assert 'private SQL' not in response.text

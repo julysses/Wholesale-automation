@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — call-specific callback and escalation history
+
+- Continued from pushed `b6b055b`; pulled unchanged branch after sandbox DNS retry. Exposed the existing bounded `acquisition_inbound_requests` RPC through a validated user-token GET API. No service-role substitution; exact workspace/integration/call and UUID cursor forwarded, invalid bounds/call IDs rejected, SQL denials sanitized.
+- Added an on-demand request history in inbound intake detail, omitted for Facebook intakes. It validates response scope, immutable request shape, revisions, cursor ordering and no-execution flag; shows callback time as requested/not scheduled and normalized phone as unverified. Human requests distinguish caller requests from assistant escalations. No calling, transferring, scheduling or completion mutations.
+- Added synthetic fixture examples and automated coverage for malformed/scope-swapped/authority-bearing responses, denied-refresh clearing, pagination, API forwarding and validation. Applied React guidance: bounded on-demand query, scoped cache keys, abort signal, semantic controls and no unnecessary effects/provider dependencies.
+- Validation: **377 frontend tests / 60 files passed**, **111 API tests passed**, acquisition-enabled build passed, lint passed with **147 existing/no new findings**. Two focused real-PostgreSQL cases passed for request history, cross-workspace/caller denial, read bounds and membership revocation. **All 17 integrated SQL workflows passed**, including the new call-history HTTP read of two persisted requests, bounded cursor traversal, foreign-workspace denial and unchanged task count. The first workflow launch was blocked by sandbox shared memory; the approved isolated rerun passed. Browser verified both request types and denied-refresh clearing, with no console warnings/errors; capture: `evidence/2026-10-26-inbound-requests.jpg`. Browser tab closed and local QA server stopped.
+- This is a call-specific history, not the completed operator queue. Requests without a seller intake are not yet discoverable in the UI. Workspace queue, independent immutable review/assignment/completion events, current-state derivation and live privacy/provider acceptance remain required. No SQL migrations, production changes, outreach, transfers, spend or paused-SMS changes.
+
+Next: build the workspace-wide inbound request queue (including calls with no intake) and audited review-state workflow; then privacy-safe property lookup. Keep review completion distinct from contact permission and execution. Full PRD goal remains active.
+
 ## Implementation checkpoint — inbound browser QA and coordinated refresh
 
 - Continued from pushed `c046945`; pulled unchanged branch. Added a standalone synthetic browser fixture using the actual intake and property-source components, fixed local records, no environment loading, no database/provider connection and rejected writes.

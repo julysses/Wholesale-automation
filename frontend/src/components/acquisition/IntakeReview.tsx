@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '@/lib/api';
 import { CampaignLinkReview } from './CampaignLinkReview';
+import { InboundRequests } from './InboundRequests';
 import { IntakeQualification } from './IntakeQualification';
 import { type IntakeOrigin, validIntakeOrigin, intakeOriginLabel } from '@/lib/intakeOrigin';
 
@@ -166,6 +167,7 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
       <button className={button} disabled={campaignPending || assessmentPending || busy || !!pending} onClick={onClose}>Close intake review</button></div>
     {feedback && <p role="status">{feedback}</p>}
     {!detail.isError && !detail.isFetching && detail.data?.source_type === 'facebook_native_form' && (!campaignOpen ? <button className={button} onClick={() => setCampaignOpen(true)}>Review campaign attribution</button> : <CampaignLinkReview userId={userId} workspace={workspace} intake={intake} locked={busy || !!pending || assessmentPending} onPending={setCampaignPending} />)}
+    {!detail.isError && !detail.isFetching && detail.data?.source_type === 'retell_inbound' && <InboundRequests key={`${workspace}:${detail.data.inbound_integration_id}:${detail.data.inbound_call_id}`} userId={userId} workspace={workspace} intake={intake} integration={detail.data.inbound_integration_id!} call={detail.data.inbound_call_id!} />}
     <IntakeQualification userId={userId} workspace={workspace} intake={intake} revision={assessmentRevision} locked={campaignPending || busy || !!pending} onPending={setAssessmentPending} />
     <h4 className="font-medium">Identity review history</h4>
     {history.isFetching ? <p>Loading review history…</p> : history.isError ? <p role="alert">Review history unavailable.</p> : <>

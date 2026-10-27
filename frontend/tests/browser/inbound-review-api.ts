@@ -11,6 +11,7 @@ export async function apiFetch(path:string,init?:RequestInit):Promise<Response>{
   let value:unknown;
   if(path.includes('/intakes?'))value={items:[intake],next_after:null};
   else if(path.endsWith('/memberships'))value=[{workspace_id:scope.workspace,user_id:scope.user,status:'active',role:'operator'}];
+  else if(path.includes('/calls/call_synthetic_intake/requests?'))value={workspace_id:scope.workspace,integration_id:scope.integration,call_id:origin.inbound_call_id,execution_authorized:false,items:[{id:'98000000-0000-4000-8000-000000000001',acquisition_revision:1,acquisition_request_kind:'request_callback',acquisition_evidence:{phone:'2145550101',preferred_time:'Tomorrow afternoon',purpose:'Discuss the submitted property condition',requested_by_caller:true},acquisition_phone:'+12145550101',acquisition_request_hash:'c'.repeat(64),created_at:'2026-10-26T18:00:00Z'},{id:'98000000-0000-4000-8000-000000000002',acquisition_revision:1,acquisition_request_kind:'request_human',acquisition_evidence:{reason:'caller_requested',details:'Caller asked to speak with Hilltop',requested_by_caller:true},acquisition_phone:null,acquisition_request_hash:'d'.repeat(64),created_at:'2026-10-26T18:01:00Z'}]};
   else if(path.includes('/candidates?'))value={items:[],truncated:false};
   else if(path.includes('/identity-state'))value={sequence:0,preparation_hash:'a'.repeat(64),target_hash:null,target_snapshot:null,latest_review:null,link_current:false};
   else if(path.includes('/identity-reviews?') || path.includes('/assessments?'))value=[];

@@ -840,3 +840,16 @@ async def record_acquisition_cost(workspace_id: UUID, body: AcquisitionCostImpor
         # another request; callers retain the original UUID/body to reconcile.
         raise HTTPException(status_code=502, detail='Cost import result is unconfirmed; reconcile the exact request') from None
     return {key: result[key] for key in ('id','campaign_id','revision','duplicate','execution_authorized')}
+
+
+@router.get('/workspaces/{workspace_id}/inbound/integrations/{integration_id}/calls/{call_id}/requests')
+async def inbound_call_requests(workspace_id: UUID, integration_id: UUID, call_id: str,
+                                after: UUID | None = None,
+                                limit: int = Query(default=20, ge=1, le=50),
+                                store=Depends(acquisition_store)):
+    if not re.fullmatch(r'[A-Za-z0-9_-]{1,200}', call_id):
+        raise HTTPException(status_code=422, detail='Invalid call identifier')
+    return await store.request('POST', 'rpc/acquisition_inbound_requests', body={
+        'p_workspace': str(workspace_id), 'p_integration': str(integration_id),
+        'p_call': call_id, 'p_after': str(after) if after else None, 'p_limit': limit,
+    })

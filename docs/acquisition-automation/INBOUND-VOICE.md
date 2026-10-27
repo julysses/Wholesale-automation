@@ -164,3 +164,11 @@ This completes local signed intake persistence wiring, not RET-003 or Phase 2 li
 The actual intake and source components can be exercised without provider/database access using `frontend/tests/browser/inbound-review.vite.config.ts` and `/tests/browser/inbound-review.html` on localhost:5180. Run Vite from frontend. The adapter rejects all writes and offers a simulated read-access revocation checkbox.
 
 Verified call revision labels, shared original lead across source revisions, hidden Facebook controls, operator restrictions, responsive wrapping and read-error clearing. Refresh intakes now also refreshes the selected intake evidence/qualification/access queries while retaining exact pending identity requests. Desktop/mobile screenshots are in the evidence directory. This is synthetic UI validation, not a live authentication/provider or Phase 2 acceptance result.
+
+## Operator request history from an intake
+
+The inbound intake detail now provides an on-demand, bounded history of callback and human-assistance requests for its exact workspace, integration and call. `GET /api/acquisition/workspaces/{workspace}/inbound/integrations/{integration}/calls/{call}/requests` uses the existing user-token store and `acquisition_inbound_requests` RPC; it never substitutes the service key. UUID cursors and 1–50 page bounds are validated. Database membership remains authoritative (owner/admin/operator only).
+
+The UI shows request kind, independent request revision, caller-provided evidence, unverified normalized phone candidate and evidence fingerprint. Historical rows are not asserted to be the latest, completed or scheduled. It validates response scope, no-execution authority, strict evidence shapes, UUID ordering and bounded pages. Denied refreshes remove displayed evidence. No calling, transfer, completion or scheduling controls are implemented in this read surface. The synthetic browser fixture includes both request kinds.
+
+Still required: a workspace-wide queue that discovers requests even when no seller intake exists, immutable audited completion/assignment events, current-state derivation and provider/privacy acceptance. This intake history is not the completed operator workflow or a live release gate.

@@ -29,6 +29,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_inbound_requests':['p_workspace','p_integration','p_call','p_after','p_limit'],
  'record_acquisition_inbound_intake':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision','p_prepared'],
  'record_acquisition_inbound_request':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision','p_kind','p_evidence'],
  'accept_acquisition_inbound_event':['p_integration','p_number','p_data'],
@@ -312,6 +313,17 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(deliver().status_code,503)
         self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'2')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        path=f'{self.base}/inbound/integrations/{integration}/calls/call_test/requests'
+        response=self.client.get(path+'?limit=1',headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        first=response.json();self.assertEqual(len(first['items']),1);self.assertFalse(first['execution_authorized'])
+        response=self.client.get(path+'?limit=1&after='+first['items'][0]['id'],headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        second=response.json();self.assertEqual(len(second['items']),1)
+        self.assertNotEqual(first['items'][0]['id'],second['items'][0]['id'])
+        self.assertEqual({first['items'][0]['acquisition_request_kind'],second['items'][0]['acquisition_request_kind']},{'request_callback','request_human'})
+        self.assertEqual(self.client.get(path,headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'2')
 
     def test_signed_intake_creates_one_crm_lead_and_preserves_revision_history(self):
         integration,event=self.configure_inbound()

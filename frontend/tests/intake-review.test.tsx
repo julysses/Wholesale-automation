@@ -37,6 +37,7 @@ function fill() {
 }
 it('labels contact-only evidence and requires independent evidence before saving', async () => {
   await open(); expect(screen.getByText(/Contact-only match/)).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'View inbound requests' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Record identity review' })).toBeDisabled(); fill();
   fireEvent.click(screen.getByRole('button', { name: 'Record identity review' }));
   await screen.findByText(/Identity review recorded/);
@@ -104,6 +105,7 @@ it('labels inbound revisions and omits Facebook campaign controls', async () => 
   await screen.findByText('Seller asserted address');
   expect(screen.queryByRole('button', { name: 'Review campaign attribution' })).not.toBeInTheDocument();
   expect(screen.getByText(/not a claim that this is the latest revision/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'View inbound requests' })).toBeVisible();
   expect(mock.fetch.mock.calls.some(([path]) => String(path).includes('campaign-link'))).toBe(false);
 });
 
