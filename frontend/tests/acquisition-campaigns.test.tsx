@@ -26,8 +26,8 @@ async function fill(budget = '123.45') {
   fireEvent.change(screen.getByLabelText('Campaign name'), { target: { value: draft.name } });
   fireEvent.change(screen.getByLabelText('Planned budget (USD)'), { target: { value: budget } });
 }
-it('saves exact cents with no authority fields and shows unknown observed spend', async () => {
-  view(); await fill(); expect(await screen.findByText('Observed spend: unavailable')).toBeVisible();
+it('saves exact cents with no authority fields and separates planned budget from reviewed costs', async () => {
+  view(); await fill(); expect(await screen.findByText('Actual spend requires reviewed cost evidence.')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Save campaign draft' })); await screen.findByText(/Campaign draft saved/);
   const body = JSON.parse(mock.post.mock.calls[0][0].body);
   expect(body.budget_cents).toBe(12345); expect(body.currency).toBe('USD'); expect(body.workspace_id).toBeUndefined(); expect(body.execution_authorized).toBeUndefined(); expect(sessionStorage.getItem(key)).toBeNull();

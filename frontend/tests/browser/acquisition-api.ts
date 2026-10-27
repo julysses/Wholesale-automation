@@ -11,6 +11,8 @@ const offer = {
 const events: { id: string; sequence: number; status: string; note: string; review_notes: Record<string, string> }[] = [];
 const replies = new Map<string, unknown>();
 const campaigns: { id: string; workspace_id: string; name: string; status: string; acquisition_channel: string; acquisition_budget_cents: number; acquisition_currency: string }[] = [];
+const costFixture = new URLSearchParams(window.location.search).get('costs');
+if (costFixture) campaigns.push({ id: '91000000-0000-4000-8000-000000000001', workspace_id: 'fixture-workspace', name: 'Synthetic cost evidence', status: 'draft', acquisition_channel: 'facebook', acquisition_budget_cents: 50000, acquisition_currency: 'USD' });
 const campaignLinks: { id: string; workspace_id: string; integration_id: string; external_campaign_id: string; sequence: number; action: string; campaign_id: string | null; ad_account_id: string | null; evidence_ref: string; review_note: string; created_at: string }[] = [];
 const sourceCaptures: { id: string; workspace_id: string; source_id: string; link_review_id: string; campaign_id: string; preparation_hash: string; created_at: string }[] = [];
 const campaignLinkState = () => {
@@ -124,6 +126,19 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     const rows = all.filter(row => !after || row.id > after).sort((a, b) => a.id.localeCompare(b.id));
     value = { workspace_id: 'fixture-workspace', source_id: 'fixture-intake', preparation_hash: state.preparation_hash, current_link_review_id: current, current_campaign_id: state.internal_campaign_id,
       current_capture: all.find(row => row.attribution_current) ?? null, items: rows.slice(0, 20), next_after: rows.length > 20 ? rows[19].id : null, execution_authorized: false };
+  }
+  else if (path.includes('/cost-coverage?') && costFixture) {
+    const params = new URL(path, 'http://fixture.invalid').searchParams;
+    const start = params.get('start_date')!, end = params.get('end_date')!;
+    const count = (Date.parse(end) - Date.parse(start)) / 86400000 + 1;
+    const stale = costFixture === 'historical';
+    const days = Array.from({ length: count }, (_, index) => ({ date: new Date(Date.parse(start) + index * 86400000).toISOString().slice(0, 10),
+      coverage: index ? 'missing' : 'complete', amount_minor: index ? null : '12550', revision_id: index ? null : '93000000-0000-4000-8000-000000000001', revision: index ? null : 1,
+      evidence_hash: index ? null : 'a'.repeat(64), observed_at: index ? null : '2026-10-25T06:00:00Z', attribution_current: index ? null : !stale, link_review_id: index ? null : 'cf000000-0000-4000-8000-000000000001' }));
+    value = { workspace_id: 'fixture-workspace', campaign_id: '91000000-0000-4000-8000-000000000001', start_date: start, end_date: end, as_of: new Date().toISOString(), currency: 'USD', reporting_timezone: 'America/Chicago',
+      status: stale ? 'requires_review' : count === 1 ? 'complete' : 'incomplete', reason_codes: [...(stale ? ['COST_ATTRIBUTION_NOT_CURRENT'] : []), ...(count > 1 ? ['COST_MISSING'] : [])],
+      total_cost_minor: !stale && count === 1 ? '12550' : null, observed_cost_minor: stale ? null : '12550', days, complete_days: 1, requested_days: count,
+      execution_authorized: false, cost_per_lead_minor: null, qualified_cost_per_lead_minor: null, denominator_status: 'NOT_RECONCILED', projection_version: 'acquisition-cost-coverage-v1', evidence_basis: 'reviewed_import', minor_unit_exponent: 2, attribution_checked_at: new Date().toISOString() };
   }
   else if (path.includes('/campaigns?')) {
     const after = new URL(path, 'http://fixture.invalid').searchParams.get('after');

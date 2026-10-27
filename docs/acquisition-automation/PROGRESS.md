@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — campaign cost coverage dashboard
+
+- Continued from pushed `6875f78`; branch pull confirms no remote divergence. Added on-demand Facebook campaign cost coverage with an explicit 1–366 day reporting window. Planned budget remains separate from evidence-backed costs.
+- Client validates workspace/campaign/window identity, reporting timezone, projection version, daily revision evidence, cutoff, attribution state, counts, reason codes and exact integer totals before rendering. USD formatting uses BigInt, preserving amounts beyond JavaScript safe integers. Missing, withdrawn, partial and historical evidence remain distinct; changed attribution hides both summary amounts. CPL remains unavailable.
+- User/workspace/campaign/window query keys isolate cached results; editing the window hides the previous report. Refresh failures and in-flight refreshes hide stale data. There is no write or provider action in this panel.
+- Validation: **301 frontend tests across 56 files passed**, acquisition-enabled build passed, and lint baseline passed with 147 existing findings and no new findings. Browser QA verified historical daily $125.50, missing next-day evidence, unavailable totals and CPL, and readable 375px mobile layout. No browser console errors. Native calendar segment entry was needed because automated date fill did not update React state; normal keyboard entry worked. Saved inspected evidence at `evidence/2026-10-26-campaign-costs-mobile.jpg`.
+- Synthetic fixture uses `?costs=historical` for revoked attribution or `?costs=current` for current attribution. It is in-memory display QA, not production/provider acceptance. No SQL migration or backend change this increment. Production and paused SMS remain unchanged.
+
+Next: reviewed cost entry UI with exact-request recovery, current account-link evidence and correction/withdrawal handling; then provider collection and reconciled funnel denominators. Full PRD goal remains active.
+
 ## Implementation checkpoint — authenticated reviewed cost-import contract
 
 - Previous goal turn made progress: pushed `fad4dfb` with cost ledger/read API and SQL acceptance. Pulled unchanged branch; approved Git escalation resolved sandbox DNS. No migration changes this increment.
