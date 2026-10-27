@@ -54,3 +54,10 @@ Property source checks (October 26): select the local workspace, expand Underwri
 
 
 Campaign cost checks: append `?costs=historical` (or `?costs=current`) to the fixture URL. Select the local workspace and View campaign costs. Set October 24–25, 2026, then Load cost coverage and expand daily evidence. Historical mode must show unavailable totals, a marked historical $125.50 day and a missing day. Current mode shows incomplete coverage with observed $125.50 and no complete total. Dates are account-calendar dates; native keyboard/date-picker actions commit React input state. This adapter is synthetic/in-memory and has no provider transport. Browser inspection on October 26 confirmed historical mode at 375px width without console errors.
+
+
+Reviewed cost-entry fixture:
+
+Run `./node_modules/.bin/vite --config tests/browser/cost-entry.vite.config.ts`, then open `/tests/browser/cost-entry.html`. Use only one fixture server at a time on port 5179. This dedicated adapter has canonical synthetic UUIDs, an in-memory ledger and no network/database/provider calls. Reload resets the ledger, so do not use reload as persistence acceptance; component and real-SQL tests cover that separately.
+
+Choose Save then lose response, open entry and enter a past reporting date, partial USD cost, America/Chicago timezone, explicit observed timestamp, synthetic evidence reference and 64-character lowercase hash. Prepare, review the exact derived revision/account and acknowledge. After recording, verify one revision, locked input and exact retry. Retry must clear the lock without increasing the revision count. Then choose Confirmed rejection, prepare the next revision and record: verify no new revision, editable inputs, no retained preview and disabled save until re-preparation. October 26 browser QA completed this path with $125.50 on October 24 and inspected the final rejection at 375px; no console errors. Screenshot: `docs/acquisition-automation/evidence/2026-10-26-cost-entry-mobile.jpg`.

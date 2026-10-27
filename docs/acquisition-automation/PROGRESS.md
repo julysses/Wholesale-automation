@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — cost-entry browser acceptance
+
+- Previous goal turn pushed `07f0528`; pulled unchanged branch after approved network retry. Added a dedicated local cost-entry fixture with canonical synthetic scope IDs, current reviewed account link, in-memory daily revision ledger, coverage projection and one-shot confirmed-rejection/lost-response simulation. It imports the actual entry/coverage components and has no fetch, credentials, database or provider transport.
+- Browser actions entered October 24 partial evidence for $125.50, account timezone America/Chicago, explicit observation timestamp and synthetic artifact/hash. Prepare displayed revision 1 with the exact reviewed account/campaign/request. Simulated save committed one fixture revision but lost its response: inputs disabled, pending lock became active and exact retry was offered. Retry confirmed success, cleared the lock and retained exactly one revision.
+- Prepared revision 2 and simulated a confirmed rejection. No second revision was recorded; the form cleared the preview/acknowledgment, restored editable inputs, disabled recording until a new preview, and displayed the rejection guidance. This verifies the rendered recovery flow, not real PostgREST/MFA or production acceptance.
+- At 375px width the form stacked correctly, with readable feedback/actions and no horizontal page overflow. An initial screenshot during viewport transition was resampled after checking DOM width (369px), viewport (375px), text size (20px heading) and scale (1). Saved the inspected final view to `evidence/2026-10-26-cost-entry-mobile.jpg`. Browser console had no errors. Temporary viewport was reset, tab closed and local server stopped.
+- No production source, SQL, provider, spend or paused-SMS changes. The prior 104 API / 351 frontend / 14 real-SQL tests remain the functional baseline; this increment adds rendered evidence and an isolated fixture. Acquisition-enabled build passed; lint baseline passed with 147 existing findings and no new findings after exporting the fixture component to satisfy the Fast Refresh rule.
+
+Next: reconcile remaining cost integration gaps (private evidence artifact storage/retention and authenticated provider collection), then source-aware funnel denominators. Real PostgREST/MFA and approved Meta lead acceptance remain release gates; full PRD goal remains active.
+
 ## Implementation checkpoint — confirmed cost rejection recovery
 
 - Previous goal turn pushed `a93515e`; pulled unchanged branch after approved network escalation. Closed the fresh rejected-save dead end without relaxing uncertain retry handling.

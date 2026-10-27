@@ -86,3 +86,8 @@ Pending requests lock adjacent attribution and intake mutations. A scoped per-in
 ## Confirmed rejection recovery
 
 The cost endpoint emits `X-Acquisition-Cost-Rejected: true` only for mapped 401/403/409 errors from its transactional persistence call. The client accepts this marker only on the matching POST route and status. A first attempted request may be released only when its saved payload still exactly matches. Any prior uncertain attempt makes a later rejection insufficient to clear it. Network failures, malformed replies, generic error codes and changed storage remain pending. Fresh confirmed rejection resets preview/acknowledgment so the reviewer must prepare from current evidence again. Validation/dependency errors without this marker remain conservative; no blanket discard action exists.
+
+
+## Rendered recovery verification
+
+October 26 local browser QA used the dedicated synthetic cost-entry fixture to verify prepare/acknowledge, lost-response lock, exact retry with one retained revision, and rejection of a proposed second revision with inputs restored. The 375px view was inspected and saved at `evidence/2026-10-26-cost-entry-mobile.jpg`; no browser errors appeared. This supplements component/API/SQL tests but does not establish production, real authentication or provider acceptance.
