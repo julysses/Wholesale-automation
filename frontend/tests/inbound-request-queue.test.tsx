@@ -59,3 +59,14 @@ it('rejects stale decisions that retain a current assignee',async()=>{
  mock.fetch.mockResolvedValue({json:async()=>({...page,items:[{...row,review_status:'requires_review',review_sequence:1,review_current:false,assigned_user_id:'00000000-0000-4000-8000-000000000001'}]})});
  await open();await screen.findByRole('alert');
 });
+
+it('shows withdrawn callbacks only through the explicit withdrawn filter',async()=>{
+ mock.fetch.mockResolvedValueOnce({json:async()=>({...page,items:[]})});await open();await screen.findByText('No requests on this page.');
+ mock.fetch.mockResolvedValueOnce({json:async()=>({...page,items:[{...row,review_status:'withdrawn'}],filters:{status:'withdrawn',assignment:'all'}})});
+ fireEvent.change(screen.getByLabelText('Review status'),{target:{value:'withdrawn'}});
+ await screen.findByText('Status: Withdrawn by caller · review 0');
+ expect(mock.fetch.mock.calls.at(-1)?.[0]).toContain('status=withdrawn&assignment=all');
+});
+it('rejects withdrawn callbacks incorrectly returned in the open queue',async()=>{
+ mock.fetch.mockResolvedValue({json:async()=>({...page,items:[{...row,review_status:'withdrawn'}]})});await open();await screen.findByRole('alert');
+});

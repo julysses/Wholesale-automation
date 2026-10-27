@@ -858,7 +858,7 @@ async def inbound_call_requests(workspace_id: UUID, integration_id: UUID, call_i
 @router.get('/workspaces/{workspace_id}/inbound/requests')
 async def inbound_request_queue(workspace_id: UUID, after: UUID | None = None,
                                 limit: int = Query(default=20, ge=1, le=50),
-                                status: Literal['all','open','pending_review','assigned','on_hold','review_complete','requires_review','unassigned'] = 'all',
+                                status: Literal['all','open','pending_review','assigned','on_hold','review_complete','requires_review','unassigned','withdrawn'] = 'all',
                                 assignment: Literal['all','mine','unassigned'] = 'all',
                                 store=Depends(acquisition_store)):
     return await store.request('POST', 'rpc/acquisition_inbound_request_queue_v2', body={

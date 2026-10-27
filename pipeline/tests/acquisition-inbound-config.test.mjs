@@ -15,7 +15,7 @@ for (const scenario of cases) {
   });
 }
 test('review draft has no real target, extra capability, provider credentials or automatic retry', () => {
-  assert.deepEqual(tools.map(t => t.name).sort(), ['lookup_property', 'request_callback', 'request_human', 'submit_seller_intake']);
+  assert.deepEqual(tools.map(t => t.name).sort(), ['lookup_property', 'record_contact_restriction', 'request_callback', 'request_human', 'submit_seller_intake']);
   for (const tool of tools) {
     assert.equal(tool.type, 'custom');
     assert.equal(new URL(tool.url).hostname, 'acquisition.example.invalid');

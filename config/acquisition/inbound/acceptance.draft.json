@@ -78,7 +78,7 @@
       "requirement": "RET-003",
       "id": "opt_out",
       "exercise": "Withdraw a callback or say do not contact after a saved request.",
-      "expected": "Fresh suppressions block all matching identities/channels as required; cancellation and review are visible. Current draft lacks this path: release blocked.",
+      "expected": "A confirmed restriction records exact requested channel scope and blocks matching identities. Withdrawal/all or human-voice opt-out disables callback review/reopening. SMS-only preserves human callback review. Test no-intake, late hangup delivery, unknown response retry and private-data boundaries; postal-address enforcement remains a mail release gate.",
       "result": "not_run",
       "evidence_ref": null,
       "reviewed_by": null

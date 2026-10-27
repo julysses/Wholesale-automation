@@ -44,3 +44,16 @@ it('does not send when durable pending storage fails',async()=>{
  view();await fill();const storage=vi.spyOn(Storage.prototype,'setItem').mockImplementation(()=>{throw new Error('Storage unavailable');});
  try{fireEvent.click(screen.getByRole('button',{name:'Save request review'}));await screen.findByText(/Review was not recorded/);expect(mock.post).not.toHaveBeenCalled();}finally{storage.mockRestore();}
 });
+
+it('shows a caller withdrawal and disables reopening',async()=>{
+ mock.state={...base,request_current:false,status:'withdrawn'};view();
+ await screen.findByText('Current status: withdrawn');
+ expect(screen.getByText(/The caller withdrew this callback/)).toBeVisible();
+ expect(screen.getByRole('button',{name:'Save request review'})).toBeDisabled();
+ expect(screen.getByLabelText('Review action')).toBeDisabled();expect(mock.post).not.toHaveBeenCalled();
+});
+it('rejects a withdrawal that arrives between editing and fresh server confirmation',async()=>{
+ view();await fill();mock.state={...base,request_current:false,status:'withdrawn'};
+ fireEvent.click(screen.getByRole('button',{name:'Save request review'}));await screen.findByText(/Review was not recorded/);
+ expect(mock.post).not.toHaveBeenCalled();expect(sessionStorage.getItem(key)).toBeNull();
+});

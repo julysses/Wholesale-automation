@@ -164,5 +164,88 @@
       "requested_by_caller": false
     },
     "valid": false
+  },
+  {
+    "id": "all_contact_optout",
+    "name": "record_contact_restriction",
+    "args": {
+      "request_id": "50000000-0000-4000-8000-000000000001",
+      "kind": "do_not_contact",
+      "channels": [
+        "all"
+      ],
+      "requested_by_caller": true,
+      "details": "Caller explicitly requests no further contact."
+    },
+    "valid": true
+  },
+  {
+    "id": "sms_only_optout",
+    "name": "record_contact_restriction",
+    "args": {
+      "request_id": "50000000-0000-4000-8000-000000000001",
+      "kind": "do_not_contact",
+      "channels": [
+        "sms"
+      ],
+      "requested_by_caller": true,
+      "details": "Caller explicitly requests no further contact."
+    },
+    "valid": true
+  },
+  {
+    "id": "callback_withdrawal",
+    "name": "record_contact_restriction",
+    "args": {
+      "request_id": "50000000-0000-4000-8000-000000000001",
+      "kind": "cancel_callback",
+      "channels": [],
+      "requested_by_caller": true,
+      "details": "Caller explicitly requests no further contact."
+    },
+    "valid": true
+  },
+  {
+    "id": "restriction_not_requested",
+    "name": "record_contact_restriction",
+    "args": {
+      "request_id": "50000000-0000-4000-8000-000000000001",
+      "kind": "do_not_contact",
+      "channels": [
+        "all"
+      ],
+      "requested_by_caller": false,
+      "details": "Caller explicitly requests no further contact."
+    },
+    "valid": false
+  },
+  {
+    "id": "restriction_arbitrary_phone",
+    "name": "record_contact_restriction",
+    "args": {
+      "request_id": "50000000-0000-4000-8000-000000000001",
+      "kind": "do_not_contact",
+      "channels": [
+        "all"
+      ],
+      "requested_by_caller": true,
+      "details": "Caller explicitly requests no further contact.",
+      "phone": "2145550199"
+    },
+    "valid": false
+  },
+  {
+    "id": "restriction_invalid_channel",
+    "name": "record_contact_restriction",
+    "args": {
+      "request_id": "50000000-0000-4000-8000-000000000001",
+      "kind": "do_not_contact",
+      "channels": [
+        "unknown"
+      ],
+      "requested_by_caller": true,
+      "details": "Caller explicitly requests no further contact."
+    },
+    "valid": false
   }
 ]

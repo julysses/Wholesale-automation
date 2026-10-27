@@ -169,3 +169,33 @@ async def lookup_inbound_property(config, intent):
         return result['status']
     except (httpx.HTTPError, ValueError, TypeError, KeyError, AttributeError):
         raise InboundUnavailable('Inbound lookup unavailable') from None
+
+
+async def record_inbound_restriction(config, intent):
+    """Persist a caller restriction without inventing a human actor/contact link."""
+    if (any(intent.get(key) != getattr(config, key) for key in
+            ('workspace_id', 'integration_id', 'agent_id', 'agent_version'))
+            or intent.get('name') != 'record_contact_restriction'
+            or intent.get('execution_authorized') is not False):
+        raise InboundUnavailable('Inbound restriction scope mismatch')
+    try:
+        async with httpx.AsyncClient(base_url=config.database_url + '/rest/v1/', timeout=10.0,
+                follow_redirects=False, headers={'apikey': config.service_key,
+                'Authorization': 'Bearer ' + config.service_key}) as client:
+            response = await client.post('rpc/record_acquisition_inbound_restriction', json={
+                'p_integration': config.integration_id, 'p_number': config.acquisition_number,
+                'p_agent': config.agent_id, 'p_agent_version': config.agent_version,
+                'p_call': intent['call_id'], 'p_request': intent['request_id'],
+                'p_kind': intent['kind'], 'p_evidence': intent['evidence']})
+        if response.status_code != 200:
+            raise InboundUnavailable('Inbound restriction unconfirmed')
+        result = response.json()
+        if (not isinstance(result, dict) or set(result) != {'id', 'workspace_id', 'kind', 'channels', 'duplicate', 'execution_authorized'}
+                or result['id'] != intent['request_id'] or result['workspace_id'] != config.workspace_id
+                or result['kind'] != intent['kind'] or result['channels'] != intent['evidence']['channels']
+                or type(result['duplicate']) is not bool
+                or result['execution_authorized'] is not False):
+            raise InboundUnavailable('Inbound restriction unconfirmed')
+        return result
+    except (httpx.HTTPError, ValueError, TypeError, KeyError, AttributeError):
+        raise InboundUnavailable('Inbound restriction unconfirmed') from None

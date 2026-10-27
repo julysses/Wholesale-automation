@@ -8,7 +8,8 @@ from starlette.requests import ClientDisconnect
 from tools.acquisition_inbound_events import project_inbound_event
 from tools.acquisition_inbound_tools import prepare_inbound_tool
 from tools.acquisition_inbound_webhook import (
-    InboundUnavailable, accept_inbound_event, record_inbound_request, lookup_inbound_property, load_config, verify_signature,
+    InboundUnavailable, accept_inbound_event, record_inbound_request, lookup_inbound_property,
+    record_inbound_restriction, load_config, verify_signature,
 )
 
 router = APIRouter(prefix='/webhooks/retell/acquisition', tags=['acquisition-webhooks'])
@@ -77,6 +78,18 @@ async def receive_tool(request: Request):
         intent = prepare_inbound_tool(payload, **config.routing)
     except (ValueError, TypeError, RecursionError):
         raise HTTPException(400, 'Invalid inbound tool request') from None
+    if intent['name'] == 'record_contact_restriction':
+        if os.getenv('ACQUISITION_INBOUND_RESTRICTIONS_ENABLED', '').lower() != 'true':
+            raise HTTPException(503, 'Inbound restrictions unavailable')
+        try:
+            result = await record_inbound_restriction(config, intent)
+        except InboundUnavailable:
+            raise HTTPException(503, 'Restriction save unconfirmed; retry the same request') from None
+        return {'status': 'restriction_recorded', 'request_id': intent['request_id'],
+                'kind': result['kind'], 'channels': result['channels'], 'duplicate': result['duplicate'], 'execution_authorized': False,
+                'message': ('Your do-not-contact request has been recorded for this inquiry.'
+                            if result['kind'] == 'do_not_contact' else
+                            'The callback request for this inquiry has been withdrawn.')}
     if intent['name'] == 'lookup_property':
         if os.getenv('ACQUISITION_INBOUND_LOOKUP_ENABLED', '').lower() != 'true':
             raise HTTPException(503, 'Inbound lookup unavailable')

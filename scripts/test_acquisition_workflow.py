@@ -29,6 +29,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'record_acquisition_inbound_restriction':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_kind','p_evidence'],
  'acquisition_inbound_property_lookup':['p_integration','p_number','p_agent','p_agent_version','p_call','p_intake_revision'],
  'acquisition_inbound_request_queue_v2':['p_workspace','p_after','p_limit','p_status','p_assignment'],
  'acquisition_inbound_request_state':['p_workspace','p_task'],
@@ -365,6 +366,31 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_request_review'"),'2')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
         self.assertEqual(self.sql("SELECT count(*) FROM tasks WHERE completed_at IS NOT NULL OR due_date IS NOT NULL OR assigned_to IS NOT NULL OR status<>'acquisition_review_required'"),'0')
+
+    def test_signed_optout_commits_once_withdraws_callback_and_blocks_matching_contact(self):
+        integration,event=self.configure_inbound();self.inbound_accept();task=self.inbound_request()['id']
+        point=self.import_contact()['contact_point_id']
+        os.environ.update({'ACQUISITION_INBOUND_TOOLS_ENABLED':'true','ACQUISITION_INBOUND_RESTRICTIONS_ENABLED':'true'})
+        payload={'name':'record_contact_restriction','call':event['call'],'args':{'request_id':'50000000-0000-4000-8000-000000000001',
+          'kind':'do_not_contact','channels':['all'],'requested_by_caller':True,'details':'Caller explicitly requests no future contact.'}}
+        def deliver():
+            raw=json.dumps(payload).encode();stamp=str(int(time.time()*1000))
+            signature='v='+stamp+',d='+hmac.new(b'synthetic-inbound-secret',raw+stamp.encode(),hashlib.sha256).hexdigest()
+            return self.client.post('/webhooks/retell/acquisition/tools',content=raw,headers={'X-Retell-Signature':signature})
+        self.lose_facebook_reply='record_acquisition_inbound_restriction'
+        self.assertEqual(deliver().status_code,503)
+        self.assertEqual(self.evaluate(point)['decision'],'BLOCK')
+        response=deliver();self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()['status'],'restriction_recorded');self.assertTrue(response.json()['duplicate'])
+        for private in ['workspace_id','214555','PRIVATE','actor_id']:self.assertNotIn(private,response.text)
+        state=self.client.get(f'{self.base}/inbound/requests/{task}/state',headers=self.headers)
+        self.assertEqual(state.json()['status'],'withdrawn')
+        page=self.client.get(f'{self.base}/inbound/requests?status=withdrawn',headers=self.headers)
+        self.assertEqual(page.status_code,200,page.text);self.assertEqual(page.json()['items'][0]['id'],task)
+        self.assertEqual(self.client.get(f'{self.base}/inbound/requests?status=open',headers=self.headers).json()['items'],[])
+        self.inbound_accept(self.inbound_data('call_ended'))
+        self.assertTrue(deliver().json()['duplicate'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_suppressions'),'1')
 
     def test_signed_property_lookup_uses_current_intake_and_hides_private_records(self):
         integration,event=self.configure_inbound()

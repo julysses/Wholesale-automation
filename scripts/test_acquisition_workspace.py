@@ -185,6 +185,8 @@ class WorkspaceTests(unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261027015624_acquisition_inbound_intakes.sql').read_text())
             self.sql((ROOT/'frontend/supabase/migrations/20261027020314_acquisition_inbound_read_metadata.sql').read_text())
             self.sql((ROOT/'frontend/supabase/migrations/20261027031552_acquisition_inbound_property_lookup.sql').read_text())
+            if self._testMethodName != 'test_inbound_restriction_migration_preserves_operator_ledger':
+                self.sql((ROOT/'frontend/supabase/migrations/20261027140038_acquisition_inbound_contact_restrictions.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -193,6 +195,112 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def inbound_restriction(self, *, request='50000000-0000-4000-8000-000000000001',kind='do_not_contact',details='Caller explicitly requested no further contact.',channels=None,role='service_role',call='call_test',fail=False):
+        evidence={'requested_by_caller':True,'details':details,'channels':channels if channels is not None else (['all'] if kind=='do_not_contact' else [])}
+        value=self.sql(f"SELECT public.record_acquisition_inbound_restriction('96000000-0000-4000-8000-000000000001','+12145550100','agent_test',3,{literal(call)},'{request}',{literal(kind)},{literal(json.dumps(evidence))}::jsonb)",user=ADMIN,role=role,fail=fail)
+        return value if fail else json.loads(value)
+
+    def test_inbound_restriction_migration_preserves_operator_ledger(self):
+        self.bind();point=self.import_contact()['contact_point_id'];self.suppress(point)
+        before=self.sql('SELECT jsonb_strip_nulls(to_jsonb(s)) FROM acquisition_contact_suppressions s')
+        self.sql((ROOT/'frontend/supabase/migrations/20261027140038_acquisition_inbound_contact_restrictions.sql').read_text())
+        self.assertEqual(self.sql('SELECT jsonb_strip_nulls(to_jsonb(s)) FROM acquisition_contact_suppressions s'),before)
+        self.assertEqual(self.evaluate(point)['decision'],'BLOCK')
+        self.sql('UPDATE acquisition_contact_suppressions SET actor_id=NULL',fail=True)
+        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','acquisition_contact_suppressions','INSERT') OR has_table_privilege('service_role','acquisition_contact_suppressions','UPDATE')"),'f')
+
+    def test_inbound_restriction_before_intake_idempotency_scope_and_immutability(self):
+        self.inbound_fixture();self.inbound_restriction(fail=True);self.inbound_accept()
+        first=self.inbound_restriction();self.assertFalse(first['duplicate'])
+        self.assertTrue(self.inbound_restriction()['duplicate'])
+        self.inbound_restriction(kind='cancel_callback',fail=True)
+        self.inbound_restriction(details='Changed request evidence',fail=True)
+        for role in ('anon','authenticated'):self.inbound_restriction(role=role,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_suppressions WHERE actor_id IS NULL AND lead_id IS NULL AND contact_point_id IS NULL AND channel IS NULL'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_suppressions',user=OTHER),'0')
+        self.sql("UPDATE acquisition_contact_suppressions SET inbound_kind='cancel_callback'",fail=True)
+        self.sql('DELETE FROM acquisition_contact_suppressions',fail=True)
+        self.inbound_accept(self.inbound_data('call_ended'))
+        self.assertTrue(self.inbound_restriction()['duplicate'])
+        self.inbound_restriction(request='50000000-0000-4000-8000-000000000002')  # Late restrictive request survives hangup.
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE action='inbound_recorded'"),'2')
+        self.sql('UPDATE private.acquisition_inbound_routes SET enabled=false')
+        self.inbound_restriction(fail=True)
+
+    def test_inbound_optout_matches_current_future_and_other_workspace_endpoints(self):
+        self.inbound_fixture();self.inbound_accept();self.bind()
+        self.bind(actor=OTHER,workspace=WORKSPACE_B,lead=LEAD_B,property_id=None)
+        point=self.import_contact()['contact_point_id']
+        other=self.import_contact(actor=OTHER,workspace=WORKSPACE_B,lead=LEAD_B)['contact_point_id']
+        self.inbound_restriction()
+        self.assertEqual(self.evaluate(point)['decision'],'REVIEW')  # No contact asserted on the call yet.
+        self.inbound_intake()
+        for channel,actor_type in [('human_voice','human'),('ai_voice','ai'),('prerecorded','prerecorded'),('sms','system')]:
+            self.assertEqual(self.evaluate(point,channel=channel,actor_type=actor_type)['decision'],'BLOCK')
+        result=self.evaluate(other,actor=OTHER,workspace=WORKSPACE_B,lead=LEAD_B)
+        self.assertEqual(result['decision'],'BLOCK');self.assertNotIn(WORKSPACE,json.dumps(result))
+        self.inbound_intake(request='99000000-0000-4000-8000-000000000002',revision=1,answers={'phone':'2145550199','email':'seller@example.test'})
+        self.sql(f"UPDATE leads SET owner_phone_1='2145550199',owner_email='seller@example.test' WHERE id='{LEAD}'")
+        new=self.import_contact()['contact_point_id'];email=self.import_contact(field='owner_email')['contact_point_id']
+        self.assertEqual(self.evaluate(new)['decision'],'BLOCK')
+        self.assertEqual(self.evaluate(email,channel='email',actor_type='system')['decision'],'BLOCK')
+        self.assertEqual(self.evaluate(point)['decision'],'BLOCK')  # Historical endpoint stays suppressed.
+        self.suppress(point,fail=True)  # Human RPC cannot reuse inbound UUID with NULL origin fields.
+        self.inbound_request(fail=True)
+
+    def test_inbound_callback_withdrawal_invalidates_review_without_global_optout(self):
+        self.inbound_fixture();self.inbound_accept();self.bind();self.member()
+        point=self.import_contact()['contact_point_id'];task=self.inbound_request()['id'];self.inbound_review(task)
+        before=self.sql(f"SELECT to_jsonb(t) FROM tasks t WHERE id='{task}'")
+        self.inbound_restriction(kind='cancel_callback')
+        state=self.inbound_review_state(task)
+        self.assertEqual(state['status'],'withdrawn');self.assertFalse(state['request_current']);self.assertFalse(state['review_current'])
+        self.assertIsNone(state['assigned_user_id'])
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000002',sequence=1,fail=True)
+        self.inbound_request(fail=True)  # Even old callback confirmations cannot present a withdrawn request as current.
+        self.inbound_request(request='98000000-0000-4000-8000-000000000002',revision=1,fail=True)
+        query=f"SELECT public.acquisition_inbound_request_queue_v2('{WORKSPACE}',NULL,20,"
+        self.assertEqual(json.loads(self.sql(query+"'open','all')",user=ADMIN))['items'],[])
+        self.assertEqual(json.loads(self.sql(query+"'withdrawn','all')",user=ADMIN))['items'][0]['id'],task)
+        self.assertEqual(self.evaluate(point)['decision'],'REVIEW')  # Withdrawal is not a global endpoint opt-out.
+        self.assertEqual(self.sql(f"SELECT to_jsonb(t) FROM tasks t WHERE id='{task}'"),before)
+        self.inbound_request(request='98000000-0000-4000-8000-000000000003',kind='request_human')
+        self.inbound_restriction(request='50000000-0000-4000-8000-000000000002')
+        self.assertEqual(self.evaluate(point)['decision'],'BLOCK')  # Prior callback phone matches DNC without an intake.
+
+    def test_inbound_restriction_preserves_channel_scope_and_human_callback(self):
+        self.inbound_fixture();self.inbound_accept();self.bind();self.inbound_intake()
+        task=self.inbound_request()['id'];point=self.import_contact()['contact_point_id']
+        self.inbound_restriction(channels=['sms'])
+        self.assertEqual(self.evaluate(point,channel='sms',actor_type='system')['decision'],'BLOCK')
+        self.assertEqual(self.evaluate(point)['decision'],'REVIEW')
+        self.assertTrue(self.inbound_review_state(task)['request_current'])
+        self.inbound_request(request='98000000-0000-4000-8000-000000000002',revision=1)
+        for channels in ([],['all','sms'],['sms','sms'],['unknown'],[True]):
+            self.inbound_restriction(request='50000000-0000-4000-8000-000000000002',channels=channels,fail=True)
+        self.inbound_restriction(request='50000000-0000-4000-8000-000000000002',kind='cancel_callback',channels=['sms'],fail=True)
+
+    def test_inbound_restriction_concurrent_replay_and_callback_race(self):
+        self.inbound_fixture();self.inbound_accept()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(lambda _:self.inbound_restriction(),range(2)))
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contact_suppressions'),'1')
+        self.inbound_request(fail=True)
+        self.inbound_accept(self.inbound_data(call_id='race_call'))
+        def callback():
+            try:return self.inbound_request(call='race_call',request='98000000-0000-4000-8000-000000000004')
+            except AssertionError as error:
+                if 'Callback withdrawn by caller' not in str(error):raise
+                return None
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            pending=pool.submit(callback)
+            restriction=pool.submit(lambda:self.inbound_restriction(call='race_call',request='50000000-0000-4000-8000-000000000003'))
+            result=pending.result();restriction.result()
+        if result:self.assertEqual(self.inbound_review_state(result['id'])['status'],'withdrawn')
+        self.inbound_request(call='race_call',request='98000000-0000-4000-8000-000000000005',fail=True)
 
     def inbound_lookup(self, revision=1, role='service_role', fail=False, call='call_test'):
         result=self.sql(f"SELECT public.acquisition_inbound_property_lookup('96000000-0000-4000-8000-000000000001','+12145550100','agent_test',3,{literal(call)},{revision})",user=ADMIN,role=role,fail=fail)

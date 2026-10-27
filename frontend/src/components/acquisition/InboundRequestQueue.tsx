@@ -7,7 +7,7 @@ import { InboundRequests } from './InboundRequests';
 type Item = { id: string; integration_id: string; call_id: string; request_kind: 'request_callback' | 'request_human'; revision: number; created_at: string; review_status: string; review_sequence: number; review_current: boolean; assigned_user_id: string | null };
 type Page = { workspace_id: string; items: Item[]; next_after: string | null; checked_at: string; revision_scope: string; review_status_available: true; filters: {status: string; assignment: string}; execution_authorized: false };
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(v);
-const statusLabels: Record<string,string> = {all:'All reviews',open:'Open reviews',pending_review:'Pending review',assigned:'Assigned',on_hold:'On hold',review_complete:'Review complete',requires_review:'Needs fresh review',unassigned:'Released assignment'};
+const statusLabels: Record<string,string> = {all:'All reviews',open:'Open reviews',pending_review:'Pending review',assigned:'Assigned',on_hold:'On hold',review_complete:'Review complete',requires_review:'Needs fresh review',unassigned:'Released assignment',withdrawn:'Withdrawn by caller'};
 const button = 'rounded border px-3 py-2 text-sm disabled:opacity-40';
 const ignorePending = () => {};
 export function InboundRequestQueue({ userId, workspace, onPending = ignorePending }: { userId: string; workspace: string; onPending?: (pending: boolean) => void }) {
@@ -33,8 +33,8 @@ export function InboundRequestQueue({ userId, workspace, onPending = ignorePendi
         || !Array.isArray(value.items) || value.items.length > 20
         || !value.items.every(r=>r && uuid(r.id) && uuid(r.integration_id) && /^[A-Za-z0-9_-]{1,200}$/.test(r.call_id)
           && Number.isInteger(r.review_sequence) && r.review_sequence>=0 && typeof r.review_current==='boolean'
-          && (r.review_current ? r.review_sequence>0 && ['assigned','on_hold','review_complete','unassigned'].includes(r.review_status) && (r.review_status==='unassigned'?r.assigned_user_id===null:uuid(r.assigned_user_id)) : r.assigned_user_id===null && r.review_status===(r.review_sequence===0?'pending_review':'requires_review'))
-          && (statusFilter==='all' || statusFilter==='open' && r.review_status!=='review_complete' || r.review_status===statusFilter)
+          && (r.review_current ? r.review_sequence>0 && ['assigned','on_hold','review_complete','unassigned'].includes(r.review_status) && (r.review_status==='unassigned'?r.assigned_user_id===null:uuid(r.assigned_user_id)) : r.assigned_user_id===null && (r.review_status==='withdrawn' && r.request_kind==='request_callback' || r.review_status===(r.review_sequence===0?'pending_review':'requires_review')))
+          && (statusFilter==='all' || statusFilter==='open' && !['review_complete','withdrawn'].includes(r.review_status) || r.review_status===statusFilter)
           && (assignmentFilter==='all' || assignmentFilter==='mine' && r.assigned_user_id===userId || assignmentFilter==='unassigned' && r.assigned_user_id===null)
           && ['request_callback','request_human'].includes(r.request_kind) && Number.isInteger(r.revision) && r.revision>0 && r.revision<=1e9 && Number.isFinite(Date.parse(r.created_at)))
         || value.items.some((r,i)=>(after !== null && r.id<=after) || (i>0 && r.id<=value.items[i-1].id))

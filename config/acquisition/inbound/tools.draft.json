@@ -289,5 +289,74 @@
     "execution_message_type": "static_text",
     "execution_message_description": "One moment while I check that information.",
     "response_variables": {}
+  },
+  {
+    "type": "custom",
+    "name": "record_contact_restriction",
+    "description": "Record an explicit caller opt-out for specified channels or withdraw this inquiry callback. This only restricts contact. Does not grant permission or reopen a callback. Retry an uncertain save with exactly the same UUID and arguments.",
+    "url": "https://acquisition.example.invalid/webhooks/retell/acquisition/tools",
+    "method": "POST",
+    "args_at_root": false,
+    "parameter_type": "json",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "New UUID for an intentional save; keep the same ID and exact arguments on an uncertain retry."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "do_not_contact",
+            "cancel_callback"
+          ]
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "all",
+              "human_voice",
+              "ai_voice",
+              "prerecorded",
+              "sms",
+              "email",
+              "direct_mail"
+            ]
+          },
+          "uniqueItems": true,
+          "maxItems": 7,
+          "description": "For do_not_contact use only requested channels, nonempty; all must be alone. No calls means human_voice, ai_voice and prerecorded. For cancel_callback use an empty array."
+        },
+        "requested_by_caller": {
+          "type": "boolean",
+          "const": true
+        },
+        "details": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Minimal factual statement of the caller request and channel scope. No transcript or sensitive identifiers."
+        }
+      },
+      "required": [
+        "request_id",
+        "kind",
+        "channels",
+        "requested_by_caller",
+        "details"
+      ],
+      "additionalProperties": false
+    },
+    "timeout_ms": 15000,
+    "max_retry": 0,
+    "speak_during_execution": true,
+    "speak_after_execution": true,
+    "execution_message_type": "static_text",
+    "execution_message_description": "One moment while I try to record that contact preference.",
+    "response_variables": {}
   }
 ]

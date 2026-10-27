@@ -5,7 +5,7 @@ import { ApiError, apiFetch } from '@/lib/api';
 type Status = 'unassigned' | 'assigned' | 'on_hold' | 'review_complete';
 type Decision = { id: string; expected_sequence: number; request_hash: string; status: Status; assigned_user_id: string | null; review_note: string };
 type Review = { id: string; workspace_id: string; task_id: string; sequence: number; request_hash: string; status: Status; assigned_user_id: string | null; review_note: string; actor_id: string; created_at: string };
-type State = { workspace_id: string; task_id: string; sequence: number; request_hash: string; latest_review: Review | null; request_current: boolean; review_current: boolean; status: Status | 'pending_review' | 'requires_review' | 'superseded'; assigned_user_id: string | null; execution_authorized: false; contact_permission_granted: false; checked_at: string };
+type State = { workspace_id: string; task_id: string; sequence: number; request_hash: string; latest_review: Review | null; request_current: boolean; review_current: boolean; status: Status | 'pending_review' | 'requires_review' | 'superseded' | 'withdrawn'; assigned_user_id: string | null; execution_authorized: false; contact_permission_granted: false; checked_at: string };
 type Member = {workspace_id: string; user_id: string; role: string; status: string};
 const statuses: Record<Status,string> = {unassigned:'Release assignment',assigned:'Assign or reopen review',on_hold:'Place review on hold',review_complete:'Complete review'};
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v);
@@ -31,7 +31,7 @@ async function readState(path: string,w: string,t: string,signal?:AbortSignal):P
   || !Number.isFinite(Date.parse(v.checked_at)) || (v.assigned_user_id!==null && !uuid(v.assigned_user_id))
   || (v.sequence===0 ? v.latest_review!==null : !validReview(v.latest_review!,w,t) || v.latest_review!.sequence!==v.sequence || v.latest_review!.request_hash!==v.request_hash)
   || (v.review_current ? !v.request_current || !v.latest_review || v.status!==v.latest_review.status || v.assigned_user_id!==v.latest_review.assigned_user_id
-    : v.assigned_user_id!==null || v.status!==(!v.request_current?'superseded':v.latest_review?'requires_review':'pending_review'))) throw new Error('Invalid review state');
+    : v.assigned_user_id!==null || (!v.request_current ? !['superseded','withdrawn'].includes(v.status) : v.status!==(v.latest_review?'requires_review':'pending_review')))) throw new Error('Invalid review state');
  return v;
 }
 const ignoreSaved = () => {};
@@ -82,7 +82,7 @@ export function InboundRequestReview({userId,workspace,task,onPending,onClose,on
  return <section aria-label="Inbound request review" className="border rounded-lg p-4 space-y-3">
   <h3 className="font-semibold">Assign and review request</h3><p className="text-xs break-all">Request record: {task}</p><p className="text-sm">Completing review records your decision, not a completed call or transfer. Seller contact still requires fresh eligibility approval. MFA is required to save.</p>
   {initial.invalid && <p role="alert">Pending review could not be recovered. Reconcile saved review history before changing this browser session.</p>}
-  {state.isFetching?<p role="status">Checking current review…</p>:state.isError?<p role="alert">Current review unavailable. Refresh and verify access.</p>:state.data && <><p>Current status: {state.data.status.replaceAll('_',' ')}</p><p>Review sequence: {state.data.sequence}</p><p className="break-all">Current assignee: {state.data.assigned_user_id??'None'}</p>{!state.data.request_current && <p>This request has been superseded. Review the newer request in the queue.</p>}</>}
+  {state.isFetching?<p role="status">Checking current review…</p>:state.isError?<p role="alert">Current review unavailable. Refresh and verify access.</p>:state.data && <><p>Current status: {state.data.status.replaceAll('_',' ')}</p><p>Review sequence: {state.data.sequence}</p><p className="break-all">Current assignee: {state.data.assigned_user_id??'None'}</p>{!state.data.request_current && <p>{state.data.status==='withdrawn'?'The caller withdrew this callback or requested no contact. It cannot be reopened here.':'This request has been superseded. Review the newer request in the queue.'}</p>}</>}
   {members.isError && <p role="alert">Reviewer membership unavailable.</p>}
   {available && !outcomeValid && <p role="status">Assign this request first. Hold or completion must use the same current assignee.</p>}
   {available && operator && state.data?.assigned_user_id && state.data.assigned_user_id!==userId && <p role="status">This request is assigned to another reviewer. An administrator can reassign it.</p>}

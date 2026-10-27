@@ -12,7 +12,7 @@ from tools.acquisition_intake import FIELDS, normalize_seller_fields
 from tools.facebook_consent import normalize_us_phone
 
 VERSION = 'acquisition-inbound-tools-v1'
-NAMES = {'submit_seller_intake', 'request_callback', 'request_human', 'lookup_property'}
+NAMES = {'submit_seller_intake', 'request_callback', 'request_human', 'lookup_property', 'record_contact_restriction'}
 
 
 def _text(value, maximum):
@@ -41,6 +41,26 @@ def prepare_inbound_tool(payload, **routing):
         raise ValueError('CALL_NOT_ONGOING')
     context = project_inbound_event({'event': 'call_started', 'call': call}, **routing)
     args = payload['args']
+    if name == 'record_contact_restriction':
+        if (not isinstance(args, dict) or set(args) != {'request_id', 'kind', 'requested_by_caller', 'details', 'channels'}
+                or args['requested_by_caller'] is not True
+                or args['kind'] not in ('do_not_contact', 'cancel_callback')
+                or not isinstance(args['request_id'], str)
+                or str(UUID(args['request_id'])) != args['request_id']):
+            raise ValueError('INVALID_RESTRICTION_ARGUMENTS')
+        channels = args['channels']
+        allowed = {'all', 'human_voice', 'ai_voice', 'prerecorded', 'sms', 'email', 'direct_mail'}
+        if (not isinstance(channels, list) or any(not isinstance(c, str) or c not in allowed for c in channels)
+                or len(channels) != len(set(channels))
+                or (args['kind'] == 'cancel_callback' and channels)
+                or (args['kind'] == 'do_not_contact' and (not channels or len(channels) > 7
+                    or ('all' in channels and channels != ['all'])))):
+            raise ValueError('INVALID_RESTRICTION_CHANNELS')
+        evidence = {'requested_by_caller': True, 'details': _text(args['details'], 1000), 'channels': channels}
+        return {key: context[key] for key in ('workspace_id', 'integration_id', 'call_id',
+                    'agent_id', 'agent_version')} | {
+            'name': name, 'request_id': args['request_id'], 'kind': args['kind'],
+            'evidence': evidence, 'execution_authorized': False}
     if name == 'lookup_property':
         # Read only the current saved intake for this signed call. Model input
         # cannot select a workspace, owner, property ID or arbitrary address.
