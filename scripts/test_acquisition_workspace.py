@@ -178,6 +178,8 @@ class WorkspaceTests(unittest.TestCase):
             self.sql("INSERT INTO tasks(title,description,priority,status) VALUES('Sentinel legacy task','Preserve history','high','pending')")
             self.legacy_task_before=self.sql('SELECT jsonb_strip_nulls(to_jsonb(t)) FROM tasks t')
         self.sql((ROOT/'frontend/supabase/migrations/20261027013724_acquisition_inbound_review_tasks.sql').read_text())
+        if self._testMethodName not in ('test_source_migration_backfills_without_changing_intakes','test_inbound_intake_migration_preserves_populated_facebook'):
+            self.sql((ROOT/'frontend/supabase/migrations/20261027015624_acquisition_inbound_intakes.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -186,6 +188,79 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def inbound_intake(self, *, request='99000000-0000-4000-8000-000000000001',revision=0,call='call_test',answers=None,prepared=None,role='service_role',fail=False):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('shared_intake',ROOT/'tools/acquisition_intake.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        values=answers or {'property_address':'123 Main St','city':'Dallas','state':'TX','authority':'yes','condition':'needs repairs','timeline':'30 days','motivation':'moving','asking_price':'150000','phone':'2145550101'}
+        data=prepared or {'version':'seller-intake-v1',**module.normalize_seller_fields([{'name':k,'values':[v]} for k,v in sorted(values.items())])}
+        result=self.sql(f"SELECT public.record_acquisition_inbound_intake('96000000-0000-4000-8000-000000000001','+12145550100','agent_test',3,{literal(call)},'{request}',{revision},{literal(json.dumps(data))}::jsonb)",user=ADMIN,role=role,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_inbound_intake_migration_preserves_populated_facebook(self):
+        intake=self.campaign_link_fixture()
+        before=self.sql(f"SELECT jsonb_strip_nulls(to_jsonb(i)) FROM seller_intakes i WHERE id='{intake}'")
+        source=self.sql(f"SELECT jsonb_strip_nulls(to_jsonb(s)) FROM acquisition_lead_sources s WHERE id='{intake}'")
+        self.sql((ROOT/'frontend/supabase/migrations/20261027015624_acquisition_inbound_intakes.sql').read_text())
+        self.assertEqual(self.sql(f"SELECT jsonb_strip_nulls(to_jsonb(i)) FROM seller_intakes i WHERE id='{intake}'"),before)
+        self.assertEqual(self.sql(f"SELECT jsonb_strip_nulls(to_jsonb(s)) FROM acquisition_lead_sources s WHERE id='{intake}'"),source)
+        self.inbound_fixture();self.inbound_accept();self.inbound_intake()
+        self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes WHERE source_type='facebook_native_form' AND receipt_id IS NOT NULL"),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM acquisition_lead_sources WHERE source_type='retell_inbound' AND external_campaign_id IS NULL"),'1')
+
+    def test_inbound_intake_revisions_keep_one_lead_and_supersede_qualification(self):
+        self.inbound_fixture();self.inbound_accept();first=self.inbound_intake()
+        self.assertTrue(self.inbound_intake()['duplicate'])
+        self.assertFalse(first['execution_authorized'])
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='retell_inbound_acquisition'"),'1')
+        original=self.sql(f"SELECT to_jsonb(l) FROM leads l WHERE id='{first['lead_id']}'")
+        self.bind()
+        self.identity_review(first['id'],self.identity_state(first['id']))
+        qualified=self.qualification_state(first['id'])
+        self.assertEqual(qualified['assessment']['classification'],'qualified')
+        self.record_assessment(first['id'],qualified)
+        self.assertTrue(self.qualification_state(first['id'])['assessment_current'])
+        second=self.inbound_intake(request='99000000-0000-4000-8000-000000000002',revision=1,answers={'property_address':'456 Changed St','city':'Dallas','asking_price':'150k'})
+        self.assertEqual(second['lead_id'],first['lead_id']);self.assertEqual(second['revision'],2)
+        self.assertEqual(self.sql(f"SELECT to_jsonb(l) FROM leads l WHERE id='{first['lead_id']}'"),original)
+        old=json.loads(self.sql(f"SELECT public.acquisition_intake_qualification_state('{WORKSPACE}','{first['id']}')",user=ADMIN))
+        self.assertEqual(old['assessment']['reason_codes'],['SUPERSEDED_INBOUND_INTAKE'])
+        self.assertFalse(old['assessment_current'])
+        self.assertEqual(old['latest_assessment']['classification'],'qualified')
+        self.assertFalse(old['assessment']['binding_offer'])
+        self.assertEqual(self.sql(f"SELECT prepared_answers->>'asking_price' IS NULL FROM seller_intakes WHERE id='{second['id']}'"),'t')
+        self.assertEqual(self.sql("SELECT count(*) FROM acquisition_lead_sources WHERE source_type='retell_inbound' AND receipt_id IS NULL AND external_campaign_id IS NULL"),'2')
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='retell_inbound_acquisition' AND (sms_sequence_active OR email_sequence_active OR NOT ai_calling_paused OR retention_deletable)"),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes',user=OTHER),'0')
+        self.sql(f"UPDATE seller_intakes SET classification='unqualified' WHERE id='{first['id']}'",fail=True)
+
+    def test_inbound_intake_gate_replay_and_no_phone_merge(self):
+        self.inbound_fixture();self.inbound_intake(fail=True)
+        self.inbound_accept();self.inbound_intake(role='authenticated',fail=True)
+        first=self.inbound_intake()
+        self.assertNotEqual(first['lead_id'],LEAD)  # Same supplied phone, unrelated identity.
+        self.inbound_intake(answers={'property_address':'Changed'},fail=True)
+        self.inbound_intake(request='99000000-0000-4000-8000-000000000002',fail=True)
+        self.inbound_accept(self.inbound_data('call_ended'))
+        self.assertTrue(self.inbound_intake()['duplicate'])
+        self.inbound_intake(request='99000000-0000-4000-8000-000000000002',revision=1,fail=True)
+        self.sql('UPDATE private.acquisition_inbound_routes SET enabled=false')
+        self.inbound_intake(fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'1')
+
+    def test_inbound_intake_concurrent_replay_and_invalid_authority(self):
+        self.inbound_fixture();self.inbound_accept()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.inbound_intake(),range(3)))
+        self.assertEqual(len({r['id'] for r in results}),1)
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='seller_intake' AND action='created'"),'1')
+        data=json.loads(self.sql('SELECT prepared_answers FROM seller_intakes'))
+        for field in ['binding_offer','outreach_authorized','property_verified','contact_permission_granted']:
+            invalid={**data,field:True};self.inbound_intake(prepared=invalid,fail=True)
+        self.inbound_intake(prepared={**data,'classification':'qualified'},fail=True)
+        self.inbound_intake(prepared={**data,'transcript':'private'},fail=True)
 
     def inbound_request(self, *, request='98000000-0000-4000-8000-000000000001', revision=0,
                         kind='request_callback', evidence=None, call='call_test', role='service_role', fail=False,
@@ -2121,7 +2196,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.sql("SELECT has_table_privilege('service_role','call_events','TRIGGER');"),'f')
         self.sql("INSERT INTO call_events(disposition,lead_id) VALUES('unknown','ffffffff-ffff-4fff-8fff-ffffffffffff');",fail=True)
         self.sql("INSERT INTO call_events(dialer) VALUES('retell');",fail=True)
-        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE tablename='call_events';"),'5')
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE tablename='call_events';"),'6')
 
     def test_restricted_account_cannot_inherit_legacy_table_access(self):
         self.member(target=CALLER, role='acquisition_caller')

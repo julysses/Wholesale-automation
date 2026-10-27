@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — immutable inbound seller-intake persistence
+
+- Continued from pushed `e0a55e6`; pulled unchanged branch with approved network retry. Inspected existing source trigger, intake qualification and property-source reporting dependencies before SQL. CLI generated local `20261027015624_acquisition_inbound_intakes.sql`; production remains unapplied.
+- Extended existing seller_intakes and acquisition_lead_sources with source-specific inbound call/event origin and immutable request/revision identity while preserving required Facebook receipts for Facebook rows. Source trigger records Retell evidence with null Facebook form/ad/campaign metadata. Each source row identifies an intake revision, not an independently acquired lead; revision grouping and inbound UI support remain required before activation.
+- Service-only controlled intake RPC validates current route/agent/version/number, activation/workspace, strict prepared-answer shape and no authority flags; uses request/call locks, ongoing ledger and expected revision. First intake creates one existing CRM lead with disabled sequences and retention protection; subsequent immutable snapshots reuse it without rewriting initial CRM assertions or merging by phone/address. Intake/source/audit history and canonical identity remain separate from caller assertions.
+- Qualification now marks older inbound snapshots SUPERSEDED_INBOUND_INTAKE. A targeted test starts with a qualified saved assessment, appends a new revision, proves the prior assessment is no longer current and preserves its historical qualified result.
+- Validation: **four distinct new PostgreSQL cases passed**, including populated Facebook preservation, concurrent replay, changed/stale retry, terminal/revoked-route denial, no phone merge, immutable history and rejected authority flags; the existing call-index fixture regression also passed. All **16 integrated SQL workflows passed**. Diff checks passed. No provider action, deployed migration, production change or paused-SMS change.
+- INBOUND-VOICE.md documents prepared-input trust, source-revision semantics, initial CRM assertion preservation, safe compensation and remaining limits. Signed submit_seller_intake is still rejected until wiring and revision-aware read/UI acceptance. Full production/county-dependent upgrade, actual PostgREST and live privacy/provider gates remain open.
+
+Next: add channel/revision-aware intake/source read handling, then wire submit_seller_intake through the signed tool endpoint and test actual HTTP-to-SQL revision/recovery flow. Do not treat revision rows as multiple leads or independent marketing touches. Full PRD goal remains active.
+
 ## Implementation checkpoint — signed callback and escalation HTTP tools
 
 - Continued from pushed `d66b476`; pulled unchanged branch after approved network retry. Previous turn delivered the tested local persistence migration. Added `/webhooks/retell/acquisition/tools` to the existing dedicated inbound router, gated by ACQUISITION_INBOUND_TOOLS_ENABLED plus the existing acquisition/inbound gates and dedicated routing configuration.
