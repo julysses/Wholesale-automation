@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — reviewed cost-entry form
+
+- Previous goal turn pushed `e249438`; pulled unchanged branch after approved network retry. Connected `CostEntry` to the existing campaign attribution review. Current campaign/account/external IDs come from validated review state, not editable cost-form inputs. Owner/admin access controls new entry; SQL remains authoritative for fresh membership, MFA and review validity.
+- The form accepts reporting day, complete/partial/withdrawn coverage, exact USD amount, account timezone, observed timestamp and private evidence reference/hash. Prepare fetches scoped daily coverage and derives the next revision, enforces the established timezone, and displays all proposed evidence for explicit review. Changes discard the preview. Save rereads campaign review and daily revision before submission; changed evidence requires a new preview.
+- Pending imports lock campaign attribution/source captures and parent intake/qualification actions. A per-intake pointer restores the user/workspace/campaign-scoped exact request after remount, including after link revocation. Other inquiries sharing the campaign discover the same pending request instead of overwriting it. The pointer contains no private evidence; the exact payload stays in the existing scoped tab-storage record. Successful save leaves only an inert pointer to an absent pending record.
+- Validation: **341 frontend tests across 58 files passed**; acquisition-enabled build passed; lint baseline passed with 147 existing findings and no new findings. Ten new form tests cover review acknowledgment, derived revision/account, changed review/revision, timezone conflict, withdrawal, operator denial, corrupt storage, cross-intake recovery and lost-response retry after revocation. Existing campaign review tests remain green.
+- Browser rendering and real PostgREST/MFA acceptance for this new form remain unverified. Rejected-first-attempt reconciliation still needs an explicit recovery path; current conservative behavior retains requests after every attempted submission, so a user cannot silently replace an uncertain write. Private artifact ingestion, provider collection and denominator reconciliation remain open. No database migration, provider action, spend, production activation or paused-SMS change.
+
+Next: distinguish definitive first-attempt rejection from uncertain prior execution without losing retry safety; add browser fixture/QA for the form, then continue provider cost collection and funnel reconciliation. Full PRD goal remains active.
+
 ## Implementation checkpoint — reviewed cost request recovery layer
 
 - Previous goal turn pushed `e35abdc`; pulled unchanged branch with approved network escalation. Added the client import contract and durable exact-request submission helper in `frontend/src/lib/costImport.ts`.

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { CostEntry, type CostLink } from './CostEntry';
 import { SourceAttribution } from './SourceAttribution';
 import { ApiError, apiFetch } from '@/lib/api';
 
@@ -55,8 +56,9 @@ export function CampaignLinkReview({ userId, workspace, intake, locked, onPendin
   const [ack, setAck] = useState(false); const [busy, setBusy] = useState(false); const inFlight = useRef(false);
   const [feedback, setFeedback] = useState(''); const [after, setAfter] = useState<string | null>(null); const [before, setBefore] = useState<number | null>(null);
   const [sourcePending, setSourcePending] = useState(false);
+  const [costPending, setCostPending] = useState(false);
   const [sourceRevision, setSourceRevision] = useState(0);
-  useEffect(() => { onPending(sourcePending || !!pending || busy || initial.invalid); }, [sourcePending, pending, busy, initial.invalid, onPending]);
+  useEffect(() => { onPending(costPending || sourcePending || !!pending || busy || initial.invalid); }, [costPending, sourcePending, pending, busy, initial.invalid, onPending]);
   const state = useQuery({ ...options, queryKey: ['campaign-link-state', userId, workspace, intake], queryFn: ({ signal }) => readState(statePath, workspace, intake, signal) });
   const access = useQuery({ ...options, queryKey: ['campaign-link-access', userId, workspace], queryFn: async ({ signal }) => {
     const rows = await read(`${base}/memberships`, signal);
@@ -75,12 +77,12 @@ export function CampaignLinkReview({ userId, workspace, intake, locked, onPendin
         && (!before || row.sequence < before) && (index === 0 || rows[index - 1].sequence > row.sequence))) throw new Error('Campaign history unavailable');
       return rows;
     } });
-  const available = !sourcePending && !locked && !initial.invalid && access.data === true && !access.isFetching && !access.isError && !!state.data && !state.isFetching && !state.isError && !!history.data && !history.isFetching && !history.isError;
+  const available = !costPending && !sourcePending && !locked && !initial.invalid && access.data === true && !access.isFetching && !access.isError && !!state.data && !state.isFetching && !state.isError && !!history.data && !history.isFetching && !history.isError;
   const targetValid = action === 'revoke' ? state.data?.latest_review?.action === 'link' : state.data?.latest_review?.action !== 'link'
     && !campaigns.isFetching && !campaigns.isError && campaigns.data?.items.some(row => row.id === campaign && row.acquisition_channel === 'facebook') && numeric.test(account);
   const valid = available && targetValid && ack && evidence.trim().length >= 10 && note.trim().length >= 20;
   async function save() {
-    if (inFlight.current || sourcePending || locked || initial.invalid || (!pending && !valid)) return;
+    if (inFlight.current || costPending || sourcePending || locked || initial.invalid || (!pending && !valid)) return;
     inFlight.current = true; setBusy(true); setFeedback(''); let request = pending; const retrying = !!pending; let sent = false;
     try {
       if (!request) {
@@ -100,6 +102,8 @@ export function CampaignLinkReview({ userId, workspace, intake, locked, onPendin
       setFeedback(rejected ? 'Review rejected. Refresh the evidence and verify MFA and workspace access.' : sent || retrying ? 'Result unconfirmed. Retry the exact campaign review; it is retained in this browser tab.' : 'Review evidence changed or browser storage is unavailable. No review was sent. Refresh before reviewing again.');
     } finally { inFlight.current = false; setBusy(false); }
   }
+  const costLink = (value: State | undefined): CostLink | null => value?.link_current && value.latest_review?.action === 'link'
+    ? { campaign:value.internal_campaign_id!, review:value.latest_review.id, external:value.external_campaign_id, account:value.latest_review.ad_account_id! } : null;
   return <section aria-label="Campaign attribution review" className="rounded border p-4 space-y-3">
     <h4 className="font-semibold">Campaign attribution review</h4>
     <p className="text-sm">An owner or administrator with MFA must review Page, advertising-account and campaign ownership. Recorded evidence is a human review, not provider verification.</p>
@@ -118,11 +122,15 @@ export function CampaignLinkReview({ userId, workspace, intake, locked, onPendin
       <label>Campaign review note<textarea className={input} maxLength={2000} value={note} onChange={event => { setNote(event.target.value); setAck(false); }} /></label>
       <label className="flex gap-2 text-sm"><input type="checkbox" checked={ack} onChange={event => setAck(event.target.checked)} />I reviewed this Page, external campaign, account ownership and the evidence for this decision.</label>
     </fieldset>
-    <div className="flex flex-wrap gap-2"><button className={button} disabled={sourcePending || busy || locked || initial.invalid || (!pending && !valid)} onClick={() => { void save(); }}>{busy ? 'Recording campaign review…' : pending ? 'Retry exact campaign review' : 'Record campaign review'}</button><button className={button} disabled={busy} onClick={() => { setAck(false); setSourceRevision(value => value + 1); void state.refetch(); void history.refetch(); void access.refetch(); void campaigns.refetch(); }}>Refresh campaign evidence</button></div>
+    <div className="flex flex-wrap gap-2"><button className={button} disabled={costPending || sourcePending || busy || locked || initial.invalid || (!pending && !valid)} onClick={() => { void save(); }}>{busy ? 'Recording campaign review…' : pending ? 'Retry exact campaign review' : 'Record campaign review'}</button><button className={button} disabled={busy} onClick={() => { setAck(false); setSourceRevision(value => value + 1); void state.refetch(); void history.refetch(); void access.refetch(); void campaigns.refetch(); }}>Refresh campaign evidence</button></div>
     {pending && <p className="text-xs break-all">Pending campaign review: {pending.id}</p>}{feedback && <p role="status">{feedback}</p>}
     <details><summary>Campaign link history</summary>{history.isError ? <p role="alert">Campaign history unavailable.</p> : history.isFetching ? <p>Loading campaign history…</p> : <ol>{history.data?.map(row => <li key={row.id} className="text-sm border-b py-2 break-words"><strong>{row.sequence}. {row.action}</strong><p>{row.review_note}</p><p>Evidence: {row.evidence_ref}</p>{row.campaign_id && <p>Campaign: {row.campaign_id} · Ad account: {row.ad_account_id}</p>}</li>)}</ol>}
       <button className={button} disabled={history.isFetching || before === null} onClick={() => setBefore(null)}>Latest campaign reviews</button><button className={button} disabled={history.isFetching || history.isError || history.data?.length !== 20} onClick={() => setBefore(history.data!.at(-1)!.sequence)}>Older campaign reviews</button>
     </details>
-    <SourceAttribution userId={userId} workspace={workspace} intake={intake} revision={sourceRevision} locked={locked || busy || !!pending || initial.invalid} onPending={setSourcePending} />
+    <CostEntry userId={userId} workspace={workspace} intake={intake}
+      link={state.isError || state.isFetching ? null : costLink(state.data)} allowed={access.data === true && !access.isError && !access.isFetching}
+      locked={locked || sourcePending || busy || !!pending || initial.invalid} onPending={setCostPending}
+      refreshLink={async () => costLink(await readState(statePath,workspace,intake))} />
+    <SourceAttribution userId={userId} workspace={workspace} intake={intake} revision={sourceRevision} locked={locked || costPending || busy || !!pending || initial.invalid} onPending={setSourcePending} />
   </section>;
 }
