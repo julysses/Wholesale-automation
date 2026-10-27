@@ -73,6 +73,20 @@ def prepare_facebook_intake(*, leadgen_id: str, provider_data: dict[str, Any]) -
     if 'custom_disclaimer_responses' in provider_data and not isinstance(disclaimers, list):
         raise ValueError('Invalid provider disclaimer evidence')
     raw_fields = provider_data.get('field_data')
+    normalized = normalize_seller_fields(raw_fields)
+    return {
+        'version': VERSION, 'source_type': 'facebook_native_form',
+        'external_lead_id': leadgen_id,
+        'provider_form_id': str(provider_data.get('form_id') or ''),
+        'submitted_at': provider_data.get('created_time'),
+        'provider_evidence': provider_evidence,
+        'provider_evidence_hash': hashlib.sha256(encoded).hexdigest(),
+        **normalized,
+    }
+
+
+def normalize_seller_fields(raw_fields):
+    """Shared seller assertions; no source identity, permission or canonical match."""
     if not isinstance(raw_fields, list) or len(raw_fields) > 100:
         raise ValueError('Invalid native field data')
     answers: dict[str, str] = {}
@@ -148,13 +162,7 @@ def prepare_facebook_intake(*, leadgen_id: str, provider_data: dict[str, Any]) -
     if classification == 'requires_human_review' and not missing:
         reasons.append('CANONICAL_PROPERTY_REVIEW_REQUIRED')
     return {
-        'version': VERSION, 'source_type': 'facebook_native_form',
-        'external_lead_id': leadgen_id,
-        'provider_form_id': str(provider_data.get('form_id') or ''),
-        'submitted_at': provider_data.get('created_time'),
         'answers': answers, 'field_evidence': evidence,
-        'provider_evidence': provider_evidence,
-        'provider_evidence_hash': hashlib.sha256(encoded).hexdigest(),
         'asking_price': price, 'authority_asserted': authority,
         'classification': classification, 'reason_codes': reasons,
         'missing_fields': missing, 'conflicting_fields': sorted(conflicts),

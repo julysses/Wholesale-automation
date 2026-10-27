@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — shared structured inbound tool intents
+
+- Continued from pushed `9308960`; pulled unchanged branch after sandbox DNS retry. Previous turn completed a tested, pushed receiver increment. Reviewed actual seller_intakes constraints and current Retell custom-function documentation: wrapped call context includes sensitive content, requests may retry, and caller interruption does not cancel processing.
+- Extracted source-neutral seller-answer normalization from the Facebook preparer, preserving its output and qualification safeguards. Added pure, strict preparation for submit_seller_intake, request_callback and request_human, with trusted route/call context, ongoing-state requirement, canonical retry UUID, expected revision and deterministic scoped request hash. No model-supplied tenant/lead/approval fields, transcript extraction or caller-ID fallback.
+- Callback preserves explicit caller assertions, normalizes supplied US phone when possible, and records review gaps without consent or scheduling. Escalation distinguishes caller requests from agent-detected issues without claiming transfer. Intake preserves ambiguity/missing values and cannot qualify ownership/property on its own.
+- Validation: **156 focused tests passed**, including shared Facebook behavior, inbound boundary/lifecycle tests and new intent tests. All **15 real-SQL workflows passed** after the shared normalization refactor. Diff checks passed. No SQL, live endpoint/tool registration, provider action, production migration or paused-SMS change.
+- INBOUND-VOICE.md describes strict argument limits, retry/revision semantics and required transaction checks. These are preparation functions only, not authenticated persistence or completed RET-003. Existing seller_intakes remains Facebook-receipt-only; the next additive extension must reuse it and inspect existing task equivalents rather than introduce a parallel CRM.
+
+Next: inspect intake/task dependencies and extend existing entities with call-scoped immutable intake revisions and non-executing callback/escalation requests; recheck current route/nonterminal call and revisions within service-only audited transactions before wiring signed tool HTTP. Phase 1 and all live activation/privacy approvals remain open. Full goal active.
+
 ## Implementation checkpoint — signed inbound metadata receiver
 
 - Continued from pushed `6c17925`; pulled unchanged branch with approved network retry. Added a separate `/webhooks/retell/acquisition` receiver to the actual application; legacy voice and paused-SMS handlers remain unchanged.
