@@ -7,7 +7,7 @@ vi.mock('@/lib/api',()=>({apiFetch:mock.fetch}));
 const w='10000000-0000-4000-8000-000000000001';
 const row={id:'98000000-0000-4000-8000-000000000001',integration_id:'96000000-0000-4000-8000-000000000001',call_id:'call_no_intake',request_kind:'request_callback',revision:2,created_at:'2026-10-26T18:00:00Z'};
 const page={workspace_id:w,items:[row],next_after:null,checked_at:'2026-10-26T19:00:00Z',revision_scope:'latest_per_call_and_kind_at_read',review_status_available:false,execution_authorized:false};
-beforeEach(()=>{mock.fetch.mockReset();mock.fetch.mockResolvedValue({json:async()=>page});});
+beforeEach(()=>{sessionStorage.clear();mock.fetch.mockReset();mock.fetch.mockResolvedValue({json:async()=>page});});
 function view(){render(<QueryClientProvider client={new QueryClient()}><InboundRequestQueue userId="user" workspace={w}/></QueryClientProvider>);}
 async function open(){view();expect(mock.fetch).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Inbound callback and assistance requests'}));}
 it('discovers a call without an intake and opens its independently scoped history',async()=>{
@@ -29,4 +29,15 @@ it('follows bounded cursors and refreshes back to the first page',async()=>{
  mock.fetch.mockResolvedValueOnce({json:async()=>({...page,items,next_after:items[19].id})}).mockResolvedValueOnce({json:async()=>({...page,items:[]})}).mockResolvedValue({json:async()=>page});
  await open();await screen.findAllByText('Callback requested · revision 2');fireEvent.click(screen.getByRole('button',{name:'More request pages'}));await screen.findByText('No requests on this page.');
  expect(mock.fetch.mock.calls[1][0]).toContain('&after='+items[19].id);fireEvent.click(screen.getByRole('button',{name:'Refresh request queue'}));await screen.findByText('Callback requested · revision 2');expect(mock.fetch.mock.calls.at(-1)?.[0]).not.toContain('after=');
+});
+
+it('restores an unconfirmed selected review even if the request has left the queue',async()=>{
+ const task=row.id;
+ sessionStorage.setItem(`inbound-review-selection:v1:user:${w}`,task);
+ sessionStorage.setItem(`inbound-request-review:v1:user:${w}:${task}`,JSON.stringify({id:'a1000000-0000-4000-8000-000000000001',expected_sequence:0,request_hash:'a'.repeat(64),status:'assigned',assigned_user_id:'00000000-0000-4000-8000-000000000001',review_note:'Saved unknown request must remain recoverable.'}));
+ mock.fetch.mockResolvedValue({json:async()=>({...page,items:[]})});
+ view();await screen.findByRole('button',{name:'Retry exact request review'});
+ await screen.findByText('No requests on this page.');
+ expect(screen.getByRole('button',{name:'Refresh request queue'})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Inbound callback and assistance requests'})).toBeDisabled();
 });

@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { InboundRequestReview } from './InboundRequestReview';
 import { InboundRequests } from './InboundRequests';
 
 type Item = { id: string; integration_id: string; call_id: string; request_kind: 'request_callback' | 'request_human'; revision: number; created_at: string };
 type Page = { workspace_id: string; items: Item[]; next_after: string | null; checked_at: string; revision_scope: string; review_status_available: false; execution_authorized: false };
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(v);
 const button = 'rounded border px-3 py-2 text-sm disabled:opacity-40';
-export function InboundRequestQueue({ userId, workspace }: { userId: string; workspace: string }) {
-  const [open, setOpen] = useState(false);
+const ignorePending = () => {};
+export function InboundRequestQueue({ userId, workspace, onPending = ignorePending }: { userId: string; workspace: string; onPending?: (pending: boolean) => void }) {
+  const selectionKey = `inbound-review-selection:v1:${userId}:${workspace}`;
+  const [initial] = useState(() => { try { const value=sessionStorage.getItem(selectionKey); return {task:uuid(value)?value:null,invalid:value!==null && !uuid(value)}; } catch { return {task:null,invalid:true}; } });
+  const [reviewTask,setReviewTask] = useState<string|null>(initial.task);
+  const [reviewPending,setReviewPending] = useState(false);
+  const [selectionError,setSelectionError] = useState(initial.invalid);
+  const [open, setOpen] = useState(!!initial.task);
+  useEffect(()=>{onPending(reviewPending || selectionError);},[reviewPending,selectionError,onPending]);
+  function selectReview(task: string) { try { sessionStorage.setItem(selectionKey,task);setReviewTask(task);setSelectionError(false); } catch { setSelectionError(true); } }
+  function closeReview() { try { sessionStorage.removeItem(selectionKey);setReviewTask(null);setReviewPending(false);setSelectionError(false); } catch { setSelectionError(true); } }
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [selected, setSelected] = useState<Item | null>(null);
   const after = cursors.at(-1) ?? null;
@@ -25,23 +35,26 @@ export function InboundRequestQueue({ userId, workspace }: { userId: string; wor
       return value;
     }});
   return <section className="rounded-xl border bg-white p-4 space-y-3" aria-label="Inbound request queue">
-    <h2 className="font-semibold text-lg"><button aria-expanded={open} onClick={()=>{setOpen(v=>!v);setSelected(null);}}>Inbound callback and assistance requests</button></h2>
-    {open && <><p className="text-sm">Includes calls without a completed intake. Each row is the latest request of its kind for that call when this page was read. Refresh to check for new revisions. Review completion is not yet tracked here; no callback or transfer is scheduled.</p>
-      <button className={button} disabled={page.isFetching} onClick={()=>{setSelected(null);if(after)setCursors([null]);else void page.refetch();}}>Refresh request queue</button>
+    <h2 className="font-semibold text-lg"><button disabled={reviewPending || selectionError} aria-expanded={open} onClick={()=>{setOpen(v=>!v);setSelected(null);}}>Inbound callback and assistance requests</button></h2>
+    {open && <><p className="text-sm">Includes calls without a completed intake. Each row is the latest request of its kind for that call when this page was read. Refresh to check for new revisions. Open request review to check its current assignment and decision. These summaries are not completion totals; no callback or transfer is scheduled.</p>
+      <button className={button} disabled={page.isFetching || reviewPending || selectionError} onClick={()=>{setSelected(null);if(after)setCursors([null]);else void page.refetch();}}>Refresh request queue</button>
       {page.isFetching ? <p role="status">Checking inbound request queue…</p> : page.isError ? <p role="alert">Inbound queue unavailable. Verify workspace access and refresh.</p> : page.data && <>
         <p className="text-xs">Checked: {page.data.checked_at}</p>
         {!page.data.items.length && <p>No requests on this page.</p>}
         <ol className="space-y-3">{page.data.items.map(row=><li key={row.id} className="border rounded p-3 text-sm break-all">
           <h3 className="font-semibold">{row.request_kind==='request_callback'?'Callback requested':'Human assistance requested'} · revision {row.revision}</h3>
           <p>Call: {row.call_id}</p><p>Integration: {row.integration_id}</p><p>Saved: {row.created_at}</p>
-          <button className={button} onClick={()=>setSelected(row)}>View call request history</button>
+          <button className={button} disabled={reviewPending || selectionError} onClick={()=>setSelected(row)}>View call request history</button>
+          <button className={button} disabled={reviewPending || selectionError} onClick={()=>selectReview(row.id)}>Review request</button>
         </li>)}</ol>
         {selected && page.data.items.some(r=>r.id===selected.id) && <InboundRequests initiallyOpen key={`${workspace}:${selected.integration_id}:${selected.call_id}`} userId={userId} workspace={workspace} contextId={selected.id} integration={selected.integration_id} call={selected.call_id} />}
       </>}
       <nav aria-label="Inbound queue pages" className="flex flex-wrap gap-2">
-        <button className={button} disabled={page.isFetching || cursors.length===1} onClick={()=>{setSelected(null);setCursors(v=>v.slice(0,-1));}}>Previous request page</button>
-        <button className={button} disabled={page.isFetching || page.isError || !page.data?.next_after} onClick={()=>{if(page.data?.next_after){setSelected(null);setCursors(v=>[...v,page.data!.next_after]);}}}>More request pages</button>
+        <button className={button} disabled={page.isFetching || reviewPending || selectionError || cursors.length===1} onClick={()=>{setSelected(null);setCursors(v=>v.slice(0,-1));}}>Previous request page</button>
+        <button className={button} disabled={page.isFetching || reviewPending || selectionError || page.isError || !page.data?.next_after} onClick={()=>{if(page.data?.next_after){setSelected(null);setCursors(v=>[...v,page.data!.next_after]);}}}>More request pages</button>
       </nav>
     </>}
+    {selectionError && <p role="alert">Saved review selection is unavailable. Reconcile the browser session before starting another review.</p>}
+    {reviewTask && <InboundRequestReview key={`${userId}:${workspace}:${reviewTask}`} userId={userId} workspace={workspace} task={reviewTask} onPending={setReviewPending} onClose={closeReview} />}
   </section>;
 }

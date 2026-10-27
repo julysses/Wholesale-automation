@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — inbound operator review controls
+
+- Continued from pushed `98de1db`; pulled unchanged branch. Added the request-review panel to the workspace queue: validated current state and bounded history, assignment/action/note/acknowledgement controls, role-limited assignee choices and explicit separation from seller contact. Hold/completion requires the same current assignee. A fresh state read precedes new decisions; SQL remains authoritative for access/MFA and races.
+- Scoped durable pending requests are written before HTTP transmission. Unknown outcomes and malformed receipts preserve exact retries across remounts. A user/workspace selected-request pointer restores a pending review even if superseded evidence has left the queue. Fresh definite rejections clear only the new request; retry rejection retains previously unknown work. Storage failures block sends and corrupt recovery state fails closed. Pending reconciliation locks queue changes and workspace switching.
+- Validation: **401 frontend tests across 62 files passed**, followed by **26 focused tests** after final completion/storage tests and explanatory copy (403 total tests now present; full suite not repeated for these final additions). Acquisition-enabled build and lint checked; **147 existing/no new lint findings**. No SQL or API changes this increment, so prior 123 API / 18 SQL workflow results remain prior evidence, not reruns.
+- Browser verified enabled assignment only after acknowledgement, completion blocked before assignment with explanation, and denied refresh hiding current status/history and disabling controls. A label selector missed the native select; inspected DOM and used its observed combobox role successfully. No mutation was submitted in the read-only synthetic fixture. No console errors/warnings; captured `evidence/2026-10-26-inbound-review-controls.jpg`. Temporary browser tab/server closed.
+- Inbound docs describe recovery semantics. No production migration/deployment, live calls/transfers, outreach, spend, contracts or paused-SMS changes. Queue summaries still intentionally omit status until a fresh server-derived status projection/filter is implemented.
+
+Next: current review status/assignee projection and filters in the inbound queue, with invalidation for membership and superseded requests; then privacy-safe property lookup and the remaining PRD phases. Full goal remains active.
+
 ## Implementation checkpoint — audited inbound request review backend
 
 - Continued from pushed `dd5399a`; pulled unchanged branch. Rechecked deployed migration/catalog metadata (95 applied, latest 20261023221455; no equivalent inbound review ledger), inspected current local task/audit/membership/immutable review patterns and used the CLI to create `20261027024045_acquisition_inbound_request_reviews.sql`. No production SQL writes.

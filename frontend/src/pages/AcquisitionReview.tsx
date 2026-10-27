@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
 import { AcquisitionUnderwriting } from '@/pages/AcquisitionUnderwriting';
@@ -46,6 +46,9 @@ export function AcquisitionReview({ userId }: { userId: string }) {
 }
 
 function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: string; workspace: string; onCampaignPending: (pending: boolean) => void }) {
+  const [inboundPending,setInboundPending] = useState(false);
+  const [draftPending,setDraftPending] = useState(false);
+  useEffect(()=>{onCampaignPending(inboundPending || draftPending);},[inboundPending,draftPending,onCampaignPending]);
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [selected, setSelected] = useState<Offer | null>(null);
   const after = cursors[cursors.length - 1];
@@ -53,9 +56,9 @@ function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: str
   const queue = useQuery({ queryKey: ['acquisition-review', userId, workspace, 'queue', after],
     queryFn: ({ signal }) => read<Page>(`${base}/offers?limit=20${after ? `&after=${after}` : ''}`, signal), retry: false, gcTime: 0, staleTime: 0 });
   return <section className="space-y-4">
-    <CampaignDrafts userId={userId} workspace={workspace} onPending={onCampaignPending} />
+    <CampaignDrafts userId={userId} workspace={workspace} onPending={setDraftPending} />
     <InquiryHealth userId={userId} workspace={workspace} />
-    <InboundRequestQueue key={`${userId}:${workspace}`} userId={userId} workspace={workspace} />
+    <InboundRequestQueue key={`${userId}:${workspace}`} userId={userId} workspace={workspace} onPending={setInboundPending} />
     <IntakeReview userId={userId} workspace={workspace} />
     <AcquisitionUnderwriting userId={userId} workspace={workspace} onProposed={() => { void queue.refetch(); }} />
     <div className="flex justify-between items-center"><h2 className="text-lg font-semibold">Proposals and review history</h2>
