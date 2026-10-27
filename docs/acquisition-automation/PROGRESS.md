@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — signed callback and escalation HTTP tools
+
+- Continued from pushed `d66b476`; pulled unchanged branch after approved network retry. Previous turn delivered the tested local persistence migration. Added `/webhooks/retell/acquisition/tools` to the existing dedicated inbound router, gated by ACQUISITION_INBOUND_TOOLS_ENABLED plus the existing acquisition/inbound gates and dedicated routing configuration.
+- Shared bounded raw-byte authentication and strict JSON decoding with the lifecycle receiver; retained its behavior. Accepts only validated request_callback/request_human wrappers. Model scope overrides, unknown fields/tools, bad signatures and wrong call context cannot reach the RPC. submit_seller_intake is explicitly unsupported until its transaction is implemented.
+- Dedicated client forwards configured route plus validated call/request/revision/kind/evidence only. It validates the exact durable response shape, same workspace and next revision; errors/unknown outcomes return sanitized 503 with no internal retry. Minimal success response exposes review status and caller request identity, not internal task/workspace IDs or seller evidence, and grants no scheduling/transfer authority.
+- Validation: **177 focused tests passed**, covering new actual-app tool HTTP tests, existing pure intent/lifecycle/authentication tests and Retell security regressions. All **16 real-SQL workflows passed**, including the new signed-tool journey proving missing ledger denial, commit-before-response loss, exact retry, changed conflict, human-review creation, terminal-state and route-revocation denial. Diff checks passed.
+- No migration/provider/production change in this increment; no live tool registration, callback or transfer. INBOUND-VOICE.md documents flags, request/reply semantics, safe retry and outstanding gates. PostgreSQL test suite used the approved disposable shared-memory execution path.
+
+Next: extend seller_intakes for immutable inbound call-scoped revisions and canonical lead creation without telephone-only merging; test attribution/identity/qualification compatibility before wiring submit_seller_intake. Operator review UI, actual PostgREST/provider/privacy acceptance and full production upgrade remain open. Full PRD goal active.
+
 ## Implementation checkpoint — call-scoped callback and escalation persistence
 
 - Continued from pushed `674f28b`; pulled unchanged branch with approved network retry. Used the previously inspected task/call catalogs and checked current Supabase function security documentation. CLI generated local migration `20261027013724_acquisition_inbound_review_tasks.sql`; CLI help/create required escalation for its telemetry file. No production SQL applied.

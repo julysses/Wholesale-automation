@@ -29,6 +29,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'record_acquisition_inbound_request':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision','p_kind','p_evidence'],
  'accept_acquisition_inbound_event':['p_integration','p_number','p_data'],
  'record_acquisition_cost':['p_id','p_workspace','p_link_review','p_data'],
  'acquisition_cost_evidence':['p_workspace','p_campaign','p_start','p_end','p_as_of'],
@@ -130,8 +131,8 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review'}
-                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request'}
+                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
@@ -232,7 +233,7 @@ class WorkflowTests(WorkspaceTests):
             raise httpx.ReadTimeout('Synthetic lost Facebook reply after real commit',request=request)
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
 
-    def test_signed_inbound_durable_metadata_retry_and_revocation(self):
+    def configure_inbound(self):
         integration=self.inbound_fixture()
         os.environ.update({'ACQUISITION_INBOUND_WEBHOOK_ENABLED':'true',
             'ACQUISITION_INBOUND_SECRET':'synthetic-inbound-secret',
@@ -245,6 +246,10 @@ class WorkflowTests(WorkspaceTests):
             'agent_version':3,'direction':'inbound','call_type':'phone_call','to_number':'+12145550100',
             'call_status':'ongoing','start_timestamp':1000,'transcript':'SYNTHETIC PRIVATE CONTENT',
             'recording_url':'https://private.example.test','from_number':'+12145550101'}}
+        return integration,payload
+
+    def test_signed_inbound_durable_metadata_retry_and_revocation(self):
+        integration,payload=self.configure_inbound()
         def deliver():
             raw=json.dumps(payload).encode(); stamp=str(int(time.time()*1000))
             signature='v='+stamp+',d='+hmac.new(b'synthetic-inbound-secret',raw+stamp.encode(),hashlib.sha256).hexdigest()
@@ -265,6 +270,47 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(deliver().status_code,503)
         self.assertEqual(self.sql("SELECT count(*) FROM call_events WHERE acquisition_call_id='call_test'"),'1')
         self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes"),'0')
+
+    def test_signed_inbound_tools_real_task_commit_retry_terminal_and_revocation(self):
+        integration,event=self.configure_inbound()
+        os.environ['ACQUISITION_INBOUND_TOOLS_ENABLED']='true'
+        payload={'name':'request_callback','call':event['call'],'args':{
+            'request_id':'98000000-0000-4000-8000-000000000001','expected_revision':0,
+            'phone':'2145550101','preferred_time':'Tomorrow afternoon','purpose':'Discuss property','requested_by_caller':True}}
+        def deliver():
+            raw=json.dumps(payload).encode();stamp=str(int(time.time()*1000))
+            signature='v='+stamp+',d='+hmac.new(b'synthetic-inbound-secret',raw+stamp.encode(),hashlib.sha256).hexdigest()
+            return self.client.post('/webhooks/retell/acquisition/tools',content=raw,headers={'X-Retell-Signature':signature})
+        self.assertEqual(deliver().status_code,503)  # No durable ongoing call yet.
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'0')
+        self.inbound_accept()
+        self.lose_facebook_reply='record_acquisition_inbound_request'
+        self.assertEqual(deliver().status_code,503)
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'1')
+        response=deliver();self.assertEqual(response.status_code,200,response.text)
+        self.assertTrue(response.json()['duplicate']);self.assertFalse(response.json()['execution_authorized'])
+        self.assertNotIn('2145550101',response.text)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_request'"),'1')
+        task=self.sql('SELECT to_jsonb(t) FROM tasks t')
+        self.assertNotIn('SYNTHETIC PRIVATE CONTENT',task)
+        self.assertNotIn('private.example.test',task)
+        payload['args']['purpose']='Changed retry'
+        self.assertEqual(deliver().status_code,503)
+        payload['name']='request_human'
+        payload['args']={'request_id':'98000000-0000-4000-8000-000000000002','expected_revision':0,
+            'reason':'caller_requested','details':'Please connect a human','requested_by_caller':True}
+        self.assertEqual(deliver().status_code,200)
+        self.inbound_accept(self.inbound_data('call_ended'))
+        self.assertTrue(deliver().json()['duplicate'])
+        payload['args']['request_id']='98000000-0000-4000-8000-000000000003'
+        payload['args']['expected_revision']=1
+        self.assertEqual(deliver().status_code,503)
+        self.sql(f"UPDATE private.acquisition_inbound_routes SET enabled=false WHERE integration_id='{integration}'")
+        payload['args']['request_id']='98000000-0000-4000-8000-000000000002'
+        payload['args']['expected_revision']=0
+        self.assertEqual(deliver().status_code,503)
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'2')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
 
     def configure_facebook(self):
         self.inbox_config(account='100')
