@@ -800,3 +800,35 @@ def test_inbound_queue_invalid_bounds_do_not_query_database(api, query):
     response = client.get(f'/api/acquisition/workspaces/{W}/inbound/requests?'+query, headers={'Authorization': 'Bearer user-token'})
     assert response.status_code == 422
     assert not state['requests']
+
+
+def test_inbound_review_api_scopes_state_history_and_write(api):
+    client, state = api
+    path = f'/api/acquisition/workspaces/{W}/inbound/requests/{U}'
+    headers = {'Authorization': 'Bearer user-token'}
+    assert client.get(path+'/state', headers=headers).status_code == 200
+    assert json.loads(state['requests'][-1].content) == {'p_workspace': W, 'p_task': U}
+    assert client.get(path+'/reviews?before=4&limit=5', headers=headers).status_code == 200
+    params = state['requests'][-1].url.params
+    assert params['workspace_id'] == 'eq.'+W and params['task_id'] == 'eq.'+U
+    assert params['sequence'] == 'lt.4' and params['limit'] == '5'
+    body = {'id': U, 'expected_sequence': 0, 'request_hash': 'a'*64, 'status': 'assigned',
+            'assigned_user_id': U, 'review_note': 'Reviewed caller evidence and assigned follow-up.'}
+    assert client.post(path+'/reviews', headers=headers, json=body).status_code == 200
+    request = state['requests'][-1]
+    assert request.url.path == '/rest/v1/rpc/review_acquisition_inbound_request'
+    assert request.headers['authorization'] == 'Bearer user-token'
+    assert json.loads(request.content) == {'p_id': U, 'p_workspace': W, 'p_task': U, 'p_expected_sequence': 0,
+            'p_request_hash': 'a'*64, 'p_status': 'assigned', 'p_assignee': U, 'p_note': body['review_note']}
+
+
+@pytest.mark.parametrize('change', [{'status':'call_completed'}, {'assigned_user_id':None}, {'status':'unassigned'},
+    {'expected_sequence':-1}, {'request_hash':'invalid'}, {'actor_id':U}, {'review_note':'short'}])
+def test_inbound_review_invalid_input_never_reaches_database(api, change):
+    client, state = api
+    body = {'id':U, 'expected_sequence':0, 'request_hash':'a'*64, 'status':'assigned', 'assigned_user_id':U,
+            'review_note':'Reviewed caller evidence and assigned follow-up.'}
+    body.update(change)
+    response = client.post(f'/api/acquisition/workspaces/{W}/inbound/requests/{U}/reviews', headers={'Authorization':'Bearer user-token'}, json=body)
+    assert response.status_code == 422
+    assert not state['requests']

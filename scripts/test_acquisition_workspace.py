@@ -179,6 +179,7 @@ class WorkspaceTests(unittest.TestCase):
             self.legacy_task_before=self.sql('SELECT jsonb_strip_nulls(to_jsonb(t)) FROM tasks t')
         self.sql((ROOT/'frontend/supabase/migrations/20261027013724_acquisition_inbound_review_tasks.sql').read_text())
         self.sql((ROOT/'frontend/supabase/migrations/20261027023450_acquisition_inbound_request_queue.sql').read_text())
+        self.sql((ROOT/'frontend/supabase/migrations/20261027024045_acquisition_inbound_request_reviews.sql').read_text())
         if self._testMethodName not in ('test_source_migration_backfills_without_changing_intakes','test_inbound_intake_migration_preserves_populated_facebook'):
             self.sql((ROOT/'frontend/supabase/migrations/20261027015624_acquisition_inbound_intakes.sql').read_text())
             self.sql((ROOT/'frontend/supabase/migrations/20261027020314_acquisition_inbound_read_metadata.sql').read_text())
@@ -343,6 +344,90 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"SELECT public.acquisition_inbound_request_queue('{WORKSPACE}')",role='service_role',fail=True)
         self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'4')
 
+    def inbound_review(self, task, *, id='a1000000-0000-4000-8000-000000000001',sequence=0,status='assigned',assignee=OPERATOR,user=ADMIN,hash=None,note='Reviewed this caller request and assigned accountable follow-up.',fail=False,aal='aal2'):
+        fingerprint=hash or self.sql(f"SELECT acquisition_request_hash FROM tasks WHERE id='{task}'")
+        assigned=literal(assignee)+'::uuid' if assignee else 'NULL'
+        query=f"SELECT public.review_acquisition_inbound_request('{id}','{WORKSPACE}','{task}',{sequence},{literal(fingerprint)},{literal(status)},{assigned},{literal(note)})"
+        value=self.sql(query,user=user,fail=fail,aal=aal)
+        return None if fail else json.loads(value)
+
+    def inbound_review_state(self,task,user=ADMIN,fail=False):
+        value=self.sql(f"SELECT public.acquisition_inbound_request_state('{WORKSPACE}','{task}')",user=user,fail=fail)
+        return None if fail else json.loads(value)
+
+    def test_inbound_review_assignment_outcome_replay_and_new_revision(self):
+        self.inbound_fixture();self.inbound_accept();self.member(OPERATOR,'operator')
+        task=self.inbound_request()['id'];before=self.sql(f"SELECT to_jsonb(t) FROM tasks t WHERE id='{task}'")
+        self.assertEqual(self.inbound_review_state(task)['status'],'pending_review')
+        first=self.inbound_review(task);self.assertFalse(first['duplicate']);self.assertTrue(self.inbound_review(task)['duplicate'])
+        self.inbound_review(task,note='Changed idempotency payload must conflict.',fail=True)
+        state=self.inbound_review_state(task);self.assertEqual(state['status'],'assigned');self.assertTrue(state['review_current'])
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000002',sequence=0,fail=True)
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000002',sequence=1,status='on_hold',user=OPERATOR)
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000003',sequence=2,status='review_complete',user=OPERATOR)
+        self.assertEqual(self.inbound_review_state(task)['status'],'review_complete')
+        newer=self.inbound_request(request='98000000-0000-4000-8000-000000000002',revision=1)['id']
+        state=self.inbound_review_state(task);self.assertFalse(state['review_current']);self.assertFalse(state['request_current']);self.assertEqual(state['status'],'superseded')
+        self.assertEqual(self.inbound_review_state(newer)['status'],'pending_review')
+        self.assertTrue(self.inbound_review(task)['duplicate'])
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000004',sequence=3,fail=True)
+        self.assertEqual(self.sql(f"SELECT to_jsonb(t) FROM tasks t WHERE id='{task}'"),before)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_request_review'"),'3')
+        self.assertFalse(state['execution_authorized']);self.assertFalse(state['contact_permission_granted'])
+
+    def test_inbound_review_membership_mfa_ownership_and_immutability(self):
+        self.inbound_fixture();self.inbound_accept();self.member(OPERATOR,'operator');self.member(CALLER,'operator')
+        task=self.inbound_request()['id']
+        self.inbound_review(task,aal='aal1',fail=True)
+        self.inbound_review(task,user=OTHER,fail=True)
+        self.inbound_review(task,status='review_complete',fail=True)
+        self.inbound_review(task,user=OPERATOR,assignee=CALLER,fail=True)
+        self.inbound_review(task,user=OPERATOR,assignee=OPERATOR)
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000002',sequence=1,user=CALLER,assignee=CALLER,fail=True)
+        self.sql(f"UPDATE workspace_memberships SET status='revoked' WHERE workspace_id='{WORKSPACE}' AND user_id='{OPERATOR}'")
+        state=self.inbound_review_state(task);self.assertEqual(state['status'],'requires_review');self.assertIsNone(state['assigned_user_id'])
+        self.inbound_review(task,user=OPERATOR,fail=True)
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000002',sequence=1,assignee=ADMIN)
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000003',sequence=2,status='unassigned',assignee=None)
+        self.assertEqual(self.inbound_review_state(task)['status'],'unassigned')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inbound_request_reviews',user=OTHER),'0')
+        self.member(CALLER,'agency_manager');self.inbound_review_state(task,user=CALLER,fail=True)
+        for sql in ("UPDATE acquisition_inbound_request_reviews SET review_note='Change immutable evidence'",'DELETE FROM acquisition_inbound_request_reviews','TRUNCATE acquisition_inbound_request_reviews'):
+            self.sql(sql,user=ADMIN,fail=True)
+            self.sql(sql,user=ADMIN,role='service_role',fail=True)
+        self.sql("UPDATE acquisition_inbound_request_reviews SET review_note='Change immutable evidence'",fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inbound_request_reviews'),'3')
+
+    def test_inbound_review_concurrent_retry_and_disabled_state(self):
+        self.inbound_fixture();self.inbound_accept();self.member(OPERATOR,'operator')
+        task=self.inbound_request()['id']
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.inbound_review(task),range(3)))
+        self.assertEqual(sum(not row['duplicate'] for row in results),1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inbound_request_reviews'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_request_review'"),'1')
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.assertFalse(self.inbound_review_state(task)['review_current'])
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000002',sequence=1,fail=True)
+        self.sql(f"SELECT public.review_acquisition_inbound_request('a1000000-0000-4000-8000-000000000002','{WORKSPACE}','{task}',1,repeat('a',64),'assigned','{OPERATOR}','Prohibited service mutation request')",user=ADMIN,role='service_role',fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inbound_request_reviews'),'1')
+
+    def test_inbound_review_concurrent_distinct_decisions_reject_stale_sequence(self):
+        self.inbound_fixture();self.inbound_accept();self.member(OPERATOR,'operator')
+        task=self.inbound_request()['id']
+        def attempt(number):
+            try:
+                self.inbound_review(task,id=f'a1000000-0000-4000-8000-{number:012d}')
+                return True
+            except AssertionError as error:
+                self.assertIn('Request review changed',str(error))
+                return False
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(attempt,(1,2)))
+        self.assertEqual(sum(results),1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inbound_request_reviews'),'1')
+        self.assertEqual(self.inbound_review_state(task)['sequence'],1)
+
     def test_inbound_request_requires_ongoing_call_and_current_route(self):
         self.inbound_fixture();self.inbound_request(fail=True)
         self.inbound_accept();self.inbound_request(role='authenticated',fail=True)
@@ -401,7 +486,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.sql(f"SELECT description FROM tasks WHERE id='{identity}'",user=OTHER),'Still editable')
         self.sql("INSERT INTO tasks(description) VALUES('Missing title')",user=ADMIN,fail=True)
         self.sql("INSERT INTO tasks(title,lead_id) VALUES('Invalid parent','99999999-0000-4000-8000-000000000001')",user=ADMIN,fail=True)
-        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND tablename='tasks'"),'6')
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND tablename='tasks'"),'7')
 
     def test_inspected_tasks_fixture_bound_lead_isolation(self):
         self.bind()

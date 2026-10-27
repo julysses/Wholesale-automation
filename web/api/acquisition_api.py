@@ -862,3 +862,47 @@ async def inbound_request_queue(workspace_id: UUID, after: UUID | None = None,
     return await store.request('POST', 'rpc/acquisition_inbound_request_queue', body={
         'p_workspace': str(workspace_id), 'p_after': str(after) if after else None, 'p_limit': limit,
     })
+
+
+class InboundRequestReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    expected_sequence: int = Field(ge=0, le=999999999)
+    request_hash: str = Field(pattern=r'^[a-f0-9]{64}$')
+    status: Literal['unassigned','assigned','on_hold','review_complete']
+    assigned_user_id: UUID | None
+    review_note: str = Field(min_length=20, max_length=2000)
+
+    @model_validator(mode='after')
+    def assignment_shape(self):
+        if (self.status == 'unassigned') != (self.assigned_user_id is None):
+            raise ValueError('Assignment must match review status')
+        return self
+
+
+@router.get('/workspaces/{workspace_id}/inbound/requests/{task_id}/state')
+async def inbound_request_review_state(workspace_id: UUID, task_id: UUID, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/acquisition_inbound_request_state', body={
+        'p_workspace': str(workspace_id), 'p_task': str(task_id),
+    })
+
+
+@router.post('/workspaces/{workspace_id}/inbound/requests/{task_id}/reviews')
+async def record_inbound_request_review(workspace_id: UUID, task_id: UUID, body: InboundRequestReview, store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/review_acquisition_inbound_request', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_task': str(task_id),
+        'p_expected_sequence': body.expected_sequence, 'p_request_hash': body.request_hash,
+        'p_status': body.status, 'p_assignee': str(body.assigned_user_id) if body.assigned_user_id else None,
+        'p_note': body.review_note,
+    })
+
+
+@router.get('/workspaces/{workspace_id}/inbound/requests/{task_id}/reviews')
+async def inbound_request_review_history(workspace_id: UUID, task_id: UUID,
+                                        before: int | None = Query(default=None, ge=1),
+                                        limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select': '*', 'workspace_id': 'eq.'+str(workspace_id), 'task_id': 'eq.'+str(task_id),
+              'order': 'sequence.desc', 'limit': str(limit)}
+    if before is not None:
+        params['sequence'] = 'lt.'+str(before)
+    return await store.request('GET', 'acquisition_inbound_request_reviews', params=params)

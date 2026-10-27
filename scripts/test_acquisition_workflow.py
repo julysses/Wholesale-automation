@@ -29,6 +29,8 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_inbound_request_state':['p_workspace','p_task'],
+ 'review_acquisition_inbound_request':['p_id','p_workspace','p_task','p_expected_sequence','p_request_hash','p_status','p_assignee','p_note'],
  'acquisition_inbound_request_queue':['p_workspace','p_after','p_limit'],
  'acquisition_inbound_requests':['p_workspace','p_integration','p_call','p_after','p_limit'],
  'record_acquisition_inbound_intake':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision','p_prepared'],
@@ -134,7 +136,7 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request'}
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee'}
                       else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
@@ -331,6 +333,33 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual({first['items'][0]['acquisition_request_kind'],second['items'][0]['acquisition_request_kind']},{'request_callback','request_human'})
         self.assertEqual(self.client.get(path,headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
         self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'2')
+
+    def test_inbound_review_http_lost_reply_supersession_and_no_execution(self):
+        self.configure_inbound();self.inbound_accept()
+        task=self.inbound_request()['id']
+        path=f'{self.base}/inbound/requests/{task}'
+        response=self.client.get(path+'/state',headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        state=response.json();self.assertEqual(state['status'],'pending_review')
+        body={'id':'a2000000-0000-4000-8000-000000000001','expected_sequence':0,'request_hash':state['request_hash'],
+              'status':'assigned','assigned_user_id':ADMIN,'review_note':'Reviewed callback request and assigned accountable follow-up.'}
+        self.lose_facebook_reply='review_acquisition_inbound_request'
+        self.assertEqual(self.client.post(path+'/reviews',headers=self.headers,json=body).status_code,503)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inbound_request_reviews'),'1')
+        replay=self.client.post(path+'/reviews',headers=self.headers,json=body)
+        self.assertEqual(replay.status_code,200,replay.text);self.assertTrue(replay.json()['duplicate'])
+        self.assertFalse(replay.json()['execution_authorized'])
+        body.update(id='a2000000-0000-4000-8000-000000000002',expected_sequence=1,status='review_complete')
+        response=self.client.post(path+'/reviews',headers=self.headers,json=body)
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(self.client.get(path+'/state',headers=self.headers).json()['status'],'review_complete')
+        self.inbound_request(request='98000000-0000-4000-8000-000000000002',revision=1)
+        state=self.client.get(path+'/state',headers=self.headers).json()
+        self.assertEqual(state['status'],'superseded');self.assertFalse(state['review_current'])
+        self.assertEqual(self.client.get(path+'/state',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_request_review'"),'2')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM tasks WHERE completed_at IS NOT NULL OR due_date IS NOT NULL OR assigned_to IS NOT NULL OR status<>'acquisition_review_required'"),'0')
 
     def test_signed_intake_creates_one_crm_lead_and_preserves_revision_history(self):
         integration,event=self.configure_inbound()

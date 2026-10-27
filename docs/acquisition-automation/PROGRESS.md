@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — audited inbound request review backend
+
+- Continued from pushed `dd5399a`; pulled unchanged branch. Rechecked deployed migration/catalog metadata (95 applied, latest 20261023221455; no equivalent inbound review ledger), inspected current local task/audit/membership/immutable review patterns and used the CLI to create `20261027024045_acquisition_inbound_request_reviews.sql`. No production SQL writes.
+- Added append-only review snapshots against existing immutable task IDs, composite workspace FK, RLS SELECT and no direct application/service mutations. Private definer/public invoker RPCs enforce MFA, active session/workspace/reviewer and assignee membership, request hash, optimistic sequence and the shared per-call lock. Operators manage their own assignments; owner/admin can assign eligible reviewers. Hold/completion requires a current assignment. Minimal audit event and decision commit atomically.
+- State distinguishes pending, assigned, held, review-complete, unassigned, stale and superseded. New request revisions do not inherit earlier completion. Changed actor/assignee membership or disabled activation invalidates current status. Exact historical retries reconcile without authorizing execution; conflicting reuse and stale updates fail. Original caller evidence and legacy task fields remain unchanged.
+- Added scoped state/write/history HTTP APIs, strict status/assignment/body validation and user-token persistence. **123 API tests passed**. **Six focused real-SQL cases passed** for review lifecycle/replay/supersession, MFA/ownership/revocation/immutability, concurrent exact retry/disabled state and legacy schema/data. The distinct-decision race confirms only one concurrent decision can commit against the same expected sequence. **All 18 integrated SQL workflows passed**, including lost committed response recovery, review completion, later supersession, workspace denial and no scheduling/contact changes. No frontend code changed in this increment.
+- Schema mapping and inbound workflow docs describe access, locking, current-state semantics and forward compensation. Queue summaries/UI remain discovery-only and truthfully state completion is not yet tracked there. Migration unapplied; no production deployment, live provider activity, calls, transfers, spend, binding actions or paused-SMS changes.
+
+Next: wire review state, assignment/status controls, history and exact pending-request reconciliation into the operator queue; add current-state filters and freshness handling. Then continue privacy-safe property lookup and the remaining full PRD gates. Goal remains active.
+
 ## Implementation checkpoint — workspace-wide inbound request queue
 
 - Continued from pushed `2f0ffd7`; pulled unchanged branch after sandbox DNS retry. Used the Supabase skill and current function-security documentation. Read-only deployed catalog confirms **95 migrations, latest 20261023221455**, unchanged legacy tasks columns/constraints/indexes/policies. No production rows or mutations.

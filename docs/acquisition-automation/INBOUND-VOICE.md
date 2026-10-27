@@ -178,3 +178,11 @@ Still required: a workspace-wide queue that discovers requests even when no sell
 The acquisition dashboard now includes an independent callback/assistance request queue. It reads `GET /api/acquisition/workspaces/{workspace}/inbound/requests` through the authenticated queue RPC and does not require an intake or CRM lead. Latest revisions are selected per call and request kind at each read; earlier revisions remain in the full call history. One click opens that history. No phone/evidence details are returned in queue summaries.
 
 The queue supports bounded UUID pagination, refresh from the first page and clearing selected evidence on refresh/error. It is a discovery surface, not a completion ledger: review status, assignment and completed/held states remain to be implemented as immutable audited events. Calls/transfers remain unavailable. Synthetic browser verification is captured in `evidence/2026-10-26-inbound-queue.jpg`.
+
+## Audited request review backend
+
+State, append-only review and history APIs now exist under `/api/acquisition/workspaces/{workspace}/inbound/requests/{task}/state` and `/reviews`. Records carry request fingerprint, review sequence, assigned reviewer, actor and membership versions, note and timestamp. Allowed stored states are unassigned, assigned, on_hold and review_complete. Current derived states also include pending_review, requires_review and superseded.
+
+MFA is required for decisions. Owner/admin can assign authorized workspace reviewers. Operators can claim an unassigned request for themselves and manage their own assignment; they cannot take another current assignee's work or assign another person. Hold/completion requires an existing current assignment to the same person. Reopening uses a new assigned decision. Revoked or changed reviewer/assignee membership invalidates the prior current decision. A new caller request revision requires new review and does not inherit completion. Historical records stay available.
+
+Review completion means an operator finished reviewing that request; it never means a call, transfer or contact has occurred or is authorized. Original task evidence, legacy due/completed fields, permissions and execution remain unchanged. Queue status projection, filters and UI controls are still pending; current UI continues to disclose that completion tracking is unavailable there.
