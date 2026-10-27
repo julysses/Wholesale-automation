@@ -715,3 +715,22 @@ def test_cost_import_cannot_override_server_scope_or_authority(api,extra):
     client,state=api
     assert client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=cost_import_body()|extra).status_code==422
     assert not state['requests']
+
+@pytest.mark.parametrize('status,code,expected', [(401,'PGRST301',401),(403,'42501',403),(400,'55000',409),(409,'40001',409),(409,'23505',409)])
+def test_cost_import_marks_only_confirmed_rpc_rejection(api,status,code,expected):
+    client,state=api
+    state.update(status=status,body={'code':code})
+    response=client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=cost_import_body())
+    assert response.status_code==expected
+    assert response.headers.get('X-Acquisition-Cost-Rejected')=='true'
+    assert len(state['requests'])==1
+
+@pytest.mark.parametrize('failure',['timeout','upstream','malformed'])
+def test_cost_import_unknown_outcomes_never_claim_rejection(api,failure):
+    client,state=api
+    if failure=='timeout': state['timeout']=True
+    elif failure=='upstream': state.update(status=500,body={'code':'XX000'})
+    else: state['body']={'id':'unexpected'}
+    response=client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=cost_import_body())
+    assert response.status_code in {502,503}
+    assert 'X-Acquisition-Cost-Rejected' not in response.headers

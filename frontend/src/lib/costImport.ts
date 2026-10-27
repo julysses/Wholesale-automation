@@ -1,5 +1,7 @@
-import { apiFetch } from '@/lib/api';
+import { ApiError, apiFetch } from '@/lib/api';
 import { costWindow } from '@/lib/costCoverage';
+
+export class CostImportRejected extends Error {}
 
 export type CostImportData = {
   date: string; amount_minor: number | null; coverage: 'complete' | 'partial' | 'withdrawn'; currency: 'USD';
@@ -64,7 +66,7 @@ export function restoreCostImport(storage: Pick<Storage,'getItem'>, user: string
   return pending as PendingCostImport;
 }
 
-/** Persist before sending. Any failure retains the exact request, including rejected retries. */
+/** Persist before sending. Unknown results and all rejected retries retain exact evidence. */
 export async function submitCostImport(storage: Pick<Storage,'getItem'|'setItem'|'removeItem'>, pending: PendingCostImport) {
   const { user, workspace, campaign, request } = pending; const key = costImportKey(user,workspace,campaign);
   if (!validCostRequest(request)) throw new Error('Invalid cost request');
@@ -72,9 +74,21 @@ export async function submitCostImport(storage: Pick<Storage,'getItem'|'setItem'
   if (saved && JSON.stringify(saved) !== JSON.stringify(pending)) throw new Error('Reconcile the pending cost request before changing evidence');
   if (!saved) validateNewCostRequest(request);
   storage.setItem(key, JSON.stringify(pending));
-  const result = await (await apiFetch(`/api/acquisition/workspaces/${workspace}/cost-evidence`, {
-    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(request),
-  })).json();
+  let result;
+  try {
+    result = await (await apiFetch(`/api/acquisition/workspaces/${workspace}/cost-evidence`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(request),
+    })).json();
+  } catch (error) {
+    if (!saved && error instanceof ApiError && error.rejectedCost === true && [401,403,409].includes(error.status)) {
+      const current = restoreCostImport(storage,user,workspace,campaign);
+      if (current && JSON.stringify(current) === JSON.stringify(pending)) {
+        storage.removeItem(key);
+        throw new CostImportRejected('Cost request rejected without recording this revision. Refresh access and evidence, then prepare again');
+      }
+    }
+    throw error;
+  }
   if (result?.id !== request.id || result.campaign_id !== campaign || result.revision !== request.data.expected_revision + 1
     || typeof result.duplicate !== 'boolean' || result.execution_authorized !== false) throw new Error('Cost result unconfirmed; reconcile the exact request');
   // Never delete a different pending request written while this response was in flight.

@@ -3,8 +3,9 @@ import { supabase } from '@/lib/supabase';
 export class ApiError extends Error {
   status: number;
   rejectedCreate: boolean;
-  constructor(message: string, status: number, rejectedCreate = false) {
-    super(message); this.status = status; this.rejectedCreate = rejectedCreate;
+  rejectedCost: boolean;
+  constructor(message: string, status: number, rejectedCreate = false, rejectedCost = false) {
+    super(message); this.status = status; this.rejectedCreate = rejectedCreate; this.rejectedCost = rejectedCost;
   }
 }
 
@@ -21,7 +22,9 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new ApiError(typeof body?.detail === 'string' ? body.detail : `Request failed (${response.status})`, response.status,
-      response.headers.get('X-Deal-Create-Rejected') === 'true');
+      response.headers.get('X-Deal-Create-Rejected') === 'true',
+      init?.method === 'POST' && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/cost-evidence$/.test(path)
+        && [401, 403, 409].includes(response.status) && response.headers.get('X-Acquisition-Cost-Rejected') === 'true');
   }
   return response;
 }

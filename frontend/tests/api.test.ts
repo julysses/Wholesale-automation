@@ -32,3 +32,15 @@ describe('authenticated API requests', () => {
     await expect(apiFetch('/api/buyers/score')).rejects.toThrow('Database unavailable');
   });
 });
+
+it.each([
+  ['/api/acquisition/workspaces/20000000-0000-4000-8000-000000000001/cost-evidence','POST',409,'true',true],
+  ['/api/acquisition/workspaces/20000000-0000-4000-8000-000000000001/cost-evidence','POST',503,'true',false],
+  ['/api/acquisition/workspaces/20000000-0000-4000-8000-000000000001/cost-evidence','POST',409,'false',false],
+  ['/api/acquisition/workspaces/20000000-0000-4000-8000-000000000001/cost-evidence','GET',409,'true',false],
+  ['/api/buyers/import','POST',409,'true',false],
+])('scopes confirmed cost rejection to its write contract %s %s %s',async(path,method,status,header,rejected)=>{
+  getSession.mockResolvedValue({data:{session:{access_token:'test-token'}}});
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('{"detail":"rejected"}',{status:Number(status),headers:{'X-Acquisition-Cost-Rejected':String(header)}})));
+  await expect(apiFetch(String(path),{method:String(method)})).rejects.toMatchObject({rejectedCost:rejected});
+});

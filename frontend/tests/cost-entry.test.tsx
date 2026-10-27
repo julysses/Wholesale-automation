@@ -1,9 +1,10 @@
+import { ApiError } from '@/lib/api';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CostEntry, type CostLink } from '../src/components/acquisition/CostEntry';
 import { costImportKey } from '../src/lib/costImport';
 const mock=vi.hoisted(()=>({fetch:vi.fn(),coverage:vi.fn()}));
-vi.mock('@/lib/api',()=>({apiFetch:mock.fetch}));
+vi.mock('@/lib/api',()=>({apiFetch:mock.fetch,ApiError:class extends Error { constructor(message:string,public status:number,public rejectedCreate=false,public rejectedCost=false){super(message);} }}));
 vi.mock('@/lib/costCoverage',async original=>({...await original<object>(),readCostCoverage:mock.coverage}));
 const user='10000000-0000-4000-8000-000000000001',workspace='20000000-0000-4000-8000-000000000001',campaign='30000000-0000-4000-8000-000000000001',intake='40000000-0000-4000-8000-000000000001';
 const link:CostLink={campaign,review:'50000000-0000-4000-8000-000000000001',external:'123',account:'456'};
@@ -23,3 +24,4 @@ it('restores another intake pending request for the same campaign instead of ove
 it('allows explicit withdrawal without inventing a zero',async()=>{view();fill();fireEvent.change(screen.getByLabelText('Evidence coverage'),{target:{value:'withdrawn'}});fireEvent.click(screen.getByRole('button',{name:'Prepare cost revision'}));await screen.findByText('Review proposed cost revision');expect(screen.getByText('2026-01-01 · withdrawn · Unavailable')).toBeInTheDocument();save();await screen.findByText(/Cost evidence recorded/);expect(JSON.parse(mock.fetch.mock.calls[0][1].body).data.amount_minor).toBeNull();});
 it('denies new writes for operator access',()=>{view(false);fireEvent.click(screen.getByRole('button',{name:'Enter reviewed campaign costs'}));expect(screen.getByRole('button',{name:'Prepare cost revision'})).toBeDisabled();expect(mock.coverage).not.toHaveBeenCalled();});
 it('holds corrupt pending evidence rather than allowing replacement',async()=>{sessionStorage.setItem(`cost-entry:v1:${user}:${workspace}:${intake}`,campaign);sessionStorage.setItem(costImportKey(user,workspace,campaign),'invalid');view();await screen.findByRole('alert');expect(screen.getByRole('button',{name:'Record reviewed cost'})).toBeDisabled();await waitFor(()=>expect(onPending).toHaveBeenLastCalledWith(true));});
+it('unlocks fresh entry after explicit rejection and requires a new preview',async()=>{view();await prepare();mock.fetch.mockRejectedValue(new ApiError('revision changed',409,false,true));save();await screen.findByText(/rejected without recording/);expect(screen.queryByRole('button',{name:'Retry exact cost request'})).not.toBeInTheDocument();expect(screen.getByLabelText('Recorded cost (USD)')).toBeEnabled();expect(screen.getByRole('button',{name:'Record reviewed cost'})).toBeDisabled();await waitFor(()=>expect(onPending).toHaveBeenLastCalledWith(false));});

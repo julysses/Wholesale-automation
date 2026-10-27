@@ -1,6 +1,7 @@
+import { ApiError } from '@/lib/api';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { costMinorUnits, validCostRequest, validateNewCostRequest, costImportKey, restoreCostImport, submitCostImport, type PendingCostImport } from '../src/lib/costImport';
-const mock=vi.hoisted(()=>({fetch:vi.fn()})); vi.mock('@/lib/api',()=>({apiFetch:mock.fetch}));
+const mock=vi.hoisted(()=>({fetch:vi.fn()})); vi.mock('@/lib/api',()=>({apiFetch:mock.fetch,ApiError:class extends Error { constructor(message:string,public status:number,public rejectedCreate=false,public rejectedCost=false){super(message);} }}));
 const user='10000000-0000-4000-8000-000000000001', workspace='20000000-0000-4000-8000-000000000001', campaign='30000000-0000-4000-8000-000000000001';
 let pending: PendingCostImport;
 const restore=()=>restoreCostImport(sessionStorage,user,workspace,campaign);
@@ -17,3 +18,7 @@ it('does not send when storage fails',async()=>{await expect(submitCostImport({g
 it('rejects corrupt or transplanted evidence without deleting it',()=>{const key=costImportKey(user,workspace,campaign);sessionStorage.setItem(key,JSON.stringify({...pending,workspace:user}));expect(restore).toThrow();expect(sessionStorage.getItem(key)).not.toBeNull();expect(restoreCostImport(sessionStorage,workspace,workspace,campaign)).toBeNull();});
 it('does not delete a newer request after a delayed reply',async()=>{mock.fetch.mockImplementation(async()=>{sessionStorage.setItem(costImportKey(user,workspace,campaign),JSON.stringify({...pending,request:{...pending.request,id:workspace}}));return {json:async()=>result()};});await expect(submitCostImport(sessionStorage,pending)).rejects.toThrow(/changed/);expect(restore()?.request.id).toBe(workspace);});
 it('accepts an explicit null withdrawal',()=>{pending.request.data.coverage='withdrawn';pending.request.data.amount_minor=null;expect(validCostRequest(pending.request)).toBe(true);});
+it('releases a confirmed rejection only on the first attempted submission',async()=>{mock.fetch.mockRejectedValue(new ApiError('revision changed',409,false,true));await expect(submitCostImport(sessionStorage,pending)).rejects.toThrow(/rejected without recording/);expect(restore()).toBeNull();});
+it('retains an earlier uncertain result even when the retry is explicitly rejected',async()=>{mock.fetch.mockRejectedValueOnce(new Error('lost')).mockRejectedValueOnce(new ApiError('access revoked',403,false,true));await expect(submitCostImport(sessionStorage,pending)).rejects.toThrow();await expect(submitCostImport(sessionStorage,pending)).rejects.toThrow('access revoked');expect(restore()).toEqual(pending);});
+it('does not infer rejection from an HTTP code alone',async()=>{mock.fetch.mockRejectedValue(new ApiError('conflict',409));await expect(submitCostImport(sessionStorage,pending)).rejects.toThrow();expect(restore()).toEqual(pending);});
+it('preserves a changed stored request when an older request is rejected',async()=>{mock.fetch.mockImplementation(async()=>{sessionStorage.setItem(costImportKey(user,workspace,campaign),JSON.stringify({...pending,request:{...pending.request,id:workspace}}));throw new ApiError('conflict',409,false,true);});await expect(submitCostImport(sessionStorage,pending)).rejects.toThrow();expect(restore()?.request.id).toBe(workspace);});

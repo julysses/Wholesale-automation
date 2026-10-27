@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — confirmed cost rejection recovery
+
+- Previous goal turn pushed `a93515e`; pulled unchanged branch after approved network escalation. Closed the fresh rejected-save dead end without relaxing uncertain retry handling.
+- Cost import API marks mapped transactional RPC rejections (401/403/409) with `X-Acquisition-Cost-Rejected: true`. The marker only describes this invocation; it does not claim an earlier UUID invocation did not commit. Timeouts, upstream failures and malformed success responses remain unconfirmed and receive no marker.
+- Authenticated frontend API recognizes that signal only for POST to the scoped cost-evidence route and the allowed error codes. Cost submission clears only an identical, newly attempted pending request after this explicit rejection. HTTP code alone, a restored/retried request, storage failure or a changed pending payload cannot clear uncertain evidence. The form then unlocks fresh rejected entry, clears acknowledgment/preview and requires evidence preparation again.
+- Validation: **104 API tests passed**, **351 frontend tests across 58 files passed**, acquisition-enabled build passed, and lint baseline passed with 147 existing findings and no new findings. Added tests cover confirmed/unknown API outcomes, marker route/method/status restrictions, fresh rejection recovery, rejected retry retention and changed-storage races. All **14 disposable real-SQL workflow journeys passed**, including cost lost-response retry, conflicts and revoked attribution.
+- No SQL/schema/provider/production or paused-SMS change. Validation/dependency failures without an explicit marker remain conservatively pending; broader server-backed reconciliation and browser QA are still outstanding.
+
+Next: finish local browser fixture/QA for reviewed entry and recovery; then continue private artifact handling, provider cost collection and reconciled funnel metrics. Full PRD goal remains active.
+
 ## Implementation checkpoint — reviewed cost-entry form
 
 - Previous goal turn pushed `e249438`; pulled unchanged branch after approved network retry. Connected `CostEntry` to the existing campaign attribution review. Current campaign/account/external IDs come from validated review state, not editable cost-form inputs. Owner/admin access controls new entry; SQL remains authoritative for fresh membership, MFA and review validity.

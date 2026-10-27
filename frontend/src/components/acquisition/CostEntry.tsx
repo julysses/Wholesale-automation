@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { costMinorUnits, restoreCostImport, submitCostImport, validateNewCostRequest, type PendingCostImport } from '@/lib/costImport';
+import { CostImportRejected, costMinorUnits, restoreCostImport, submitCostImport, validateNewCostRequest, type PendingCostImport } from '@/lib/costImport';
 import { readCostCoverage, usdMinor } from '@/lib/costCoverage';
 export type CostLink = { campaign: string; review: string; external: string; account: string };
 const button = 'rounded border px-3 py-2 text-sm disabled:opacity-40';
@@ -62,7 +62,7 @@ export function CostEntry({ userId, workspace, intake, link, allowed, locked, re
     } catch(error) {
       try {setPending(restoreCostImport(sessionStorage,userId,workspace,request.campaign));} catch {setPending(request);}
       setPreview(null);setAck(false);
-      setFeedback(`${error instanceof Error?error.message:'Cost result unconfirmed'}. Any retained request must be reconciled exactly before entering different evidence.`);
+      setFeedback(error instanceof CostImportRejected ? error.message : `${error instanceof Error?error.message:'Cost result unconfirmed'}. Any retained request must be reconciled exactly before entering different evidence.`);
     } finally {flight.current=false;setBusy(false);}
   }
   const shown=pending ?? preview;

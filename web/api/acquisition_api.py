@@ -817,9 +817,18 @@ class AcquisitionCostImport(BaseModel):
 
 @router.post('/workspaces/{workspace_id}/cost-evidence')
 async def record_acquisition_cost(workspace_id: UUID, body: AcquisitionCostImport, store=Depends(acquisition_store)):
-    result = await store.request('POST', 'rpc/record_acquisition_cost', body={
-        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_link_review': str(body.link_review_id),
-        'p_data': body.data.model_dump(mode='json')})
+    try:
+        result = await store.request('POST', 'rpc/record_acquisition_cost', body={
+            'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_link_review': str(body.link_review_id),
+            'p_data': body.data.model_dump(mode='json')})
+    except HTTPException as exc:
+        # This single transactional RPC has no provider side effects. These
+        # mapped PostgREST errors confirm this invocation was rejected. They do
+        # not prove that an earlier invocation of the same UUID did not commit.
+        if exc.status_code in {401, 403, 409}:
+            raise HTTPException(exc.status_code, exc.detail,
+                                headers={'X-Acquisition-Cost-Rejected': 'true'}) from None
+        raise
     try:
         if (not isinstance(result, dict) or result.get('id') != str(body.id)
             or type(result.get('revision')) is not int or result['revision'] != body.data.expected_revision + 1
