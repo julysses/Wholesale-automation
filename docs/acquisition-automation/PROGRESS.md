@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — inspected task dependencies and fixture
+
+- Continued from pushed `7b49c68`; pulled unchanged branch with approved network retry. The previous turn made concrete tested implementation progress. Per migration requirements, inspected current production task/intake metadata read-only before designing persistence changes; no seller data or secrets retrieved.
+- Saved `evidence/2026-10-26-inbound-task-catalog.json`: tasks has 13 columns, 4 constraints, 2 indexes, 2 policies, no application triggers, 28 grants and seven incoming county-ingestion FKs. Production migration ledger is unchanged at 95/latest 20261023221455; seller_intakes remains local-only.
+- Restored actual tasks in the disposable harness before acquisition boundary scans, sharing the inspected-table fixture loader with call_events. Existing nullable parent FKs, mandatory title, defaults, policies and broad grants now participate in tests. County incoming FK definitions are recorded; full dependent-table restoration remains outstanding.
+- **Three focused PostgreSQL tests passed** for legacy compatibility, parent integrity, bound workspace isolation and the call-only/grant gaps. Initial sandbox shared-memory failure required escalation; corrected a new test's role label from caller to acquisition_caller after the database correctly rejected it. All **15 integrated real-SQL workflows passed** with expanded fixture. Diff checks passed.
+- Documented reuse of tasks for review-only callback/escalation and seller_intakes for immutable intake snapshots. Explicit scoped namespaces and controlled writes are required because unbound tasks are still broadly visible under legacy policies and TRUNCATE/TRIGGER grants remain. No production DDL, provider action, task writes or paused-SMS changes.
+
+Next: CLI-generate additive call-scoped request/intake/task persistence, enforce route and nonterminal ledger state plus expected revision under shared call locks, keep legacy defaults/history, add immutable audit and idempotency tests, then wire signed tool HTTP. Full PRD goal remains active; this checkpoint verifies prerequisites, not completed inbound tools.
+
 ## Implementation checkpoint — shared structured inbound tool intents
 
 - Continued from pushed `9308960`; pulled unchanged branch after sandbox DNS retry. Previous turn completed a tested, pushed receiver increment. Reviewed actual seller_intakes constraints and current Retell custom-function documentation: wrapped call context includes sensitive content, requests may retry, and caller interruption does not cancel processing.

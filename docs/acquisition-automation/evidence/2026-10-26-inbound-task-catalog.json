@@ -1,0 +1,339 @@
+{
+  "grants": [
+    {
+      "grantee": "postgres",
+      "table_name": "tasks",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "tasks",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "tasks",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "tasks",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "tasks",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "tasks",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "tasks",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "tasks",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "tasks",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "tasks",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "tasks",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "tasks",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "tasks",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "tasks",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "tasks",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "tasks",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "tasks",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "tasks",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "tasks",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "tasks",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "tasks",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "tasks",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "tasks",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "tasks",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "tasks",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "tasks",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "tasks",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "tasks",
+      "privilege_type": "TRIGGER"
+    }
+  ],
+  "tables": [
+    {
+      "rls": true,
+      "name": "tasks"
+    }
+  ],
+  "columns": [
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "expression": "uuid_generate_v4()",
+      "table_name": "tasks",
+      "column_name": "id"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "expression": "now()",
+      "table_name": "tasks",
+      "column_name": "created_at"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "expression": null,
+      "table_name": "tasks",
+      "column_name": "due_date"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "expression": null,
+      "table_name": "tasks",
+      "column_name": "completed_at"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "expression": null,
+      "table_name": "tasks",
+      "column_name": "title"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "expression": null,
+      "table_name": "tasks",
+      "column_name": "description"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "expression": "'medium'::text",
+      "table_name": "tasks",
+      "column_name": "priority"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "expression": "'pending'::text",
+      "table_name": "tasks",
+      "column_name": "status"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "expression": null,
+      "table_name": "tasks",
+      "column_name": "type"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "expression": null,
+      "table_name": "tasks",
+      "column_name": "lead_id"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "expression": null,
+      "table_name": "tasks",
+      "column_name": "deal_id"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "expression": null,
+      "table_name": "tasks",
+      "column_name": "buyer_id"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "expression": null,
+      "table_name": "tasks",
+      "column_name": "assigned_to"
+    }
+  ],
+  "indexes": [
+    {
+      "definition": "CREATE UNIQUE INDEX tasks_pkey ON public.tasks USING btree (id)",
+      "index_name": "tasks_pkey",
+      "table_name": "tasks"
+    },
+    {
+      "definition": "CREATE INDEX idx_tasks_due_date ON public.tasks USING btree (due_date)",
+      "index_name": "idx_tasks_due_date",
+      "table_name": "tasks"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "ALL",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "tasks",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_full_access",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "tasks",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    }
+  ],
+  "triggers": [],
+  "migrations": {
+    "count": 95,
+    "latest": "20261023221455"
+  },
+  "captured_at": "2026-10-27T01:33:52.569619+00:00",
+  "constraints": [
+    {
+      "conname": "tasks_buyer_id_fkey",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE SET NULL",
+      "table_name": "tasks"
+    },
+    {
+      "conname": "tasks_deal_id_fkey",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL",
+      "table_name": "tasks"
+    },
+    {
+      "conname": "tasks_lead_id_fkey",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL",
+      "table_name": "tasks"
+    },
+    {
+      "conname": "tasks_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "tasks"
+    }
+  ],
+  "incoming_fks": [
+    {
+      "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)",
+      "table_name": "wholesale_ingest.monitor_incidents"
+    },
+    {
+      "definition": "FOREIGN KEY (alert_task_id) REFERENCES tasks(id)",
+      "table_name": "wholesale_ingest.expected_runs"
+    },
+    {
+      "definition": "FOREIGN KEY (alert_task_id) REFERENCES tasks(id)",
+      "table_name": "wholesale_ingest.daily_digests"
+    },
+    {
+      "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)",
+      "table_name": "wholesale_ingest.scoring_incidents"
+    },
+    {
+      "definition": "FOREIGN KEY (follow_up_task_id) REFERENCES tasks(id)",
+      "table_name": "wholesale_ingest.propstream_handoffs"
+    },
+    {
+      "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)",
+      "table_name": "wholesale_ingest.bulk_supervision"
+    },
+    {
+      "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)",
+      "table_name": "wholesale_ingest.property_alert_days"
+    }
+  ]
+}

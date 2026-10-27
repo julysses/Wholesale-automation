@@ -14,6 +14,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from acquisition_campaign_fixture import install_campaign_fixture
 from acquisition_call_fixture import install_call_fixture
+from acquisition_task_fixture import install_task_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / 'frontend/supabase/migrations/20261026024157_acquisition_workspace_foundation.sql'
@@ -121,6 +122,7 @@ class WorkspaceTests(unittest.TestCase):
                          f'CREATE POLICY legacy_approved ON {schema}.{table} TO authenticated USING (true) WITH CHECK (true);')
         install_campaign_fixture(self.sql)
         install_call_fixture(self.sql)
+        install_task_fixture(self.sql)
         self.sql("ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY; "
                  "GRANT SELECT ON public.audit_logs TO authenticated; GRANT ALL ON public.audit_logs TO service_role; "
                  "CREATE POLICY approved_read_audit_logs ON public.audit_logs FOR SELECT TO authenticated USING (true); "
@@ -180,6 +182,36 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def test_inspected_tasks_fixture_defaults_and_legacy_compatibility(self):
+        identity=self.sql("INSERT INTO tasks(title,description) VALUES('Legacy task','Preserved text') RETURNING id",user=ADMIN)
+        self.assertEqual(self.sql(f"SELECT priority||':'||status FROM tasks WHERE id='{identity}'",user=OTHER),'medium:pending')
+        self.sql(f"UPDATE tasks SET description='Still editable' WHERE id='{identity}'",user=ADMIN)
+        self.assertEqual(self.sql(f"SELECT description FROM tasks WHERE id='{identity}'",user=OTHER),'Still editable')
+        self.sql("INSERT INTO tasks(description) VALUES('Missing title')",user=ADMIN,fail=True)
+        self.sql("INSERT INTO tasks(title,lead_id) VALUES('Invalid parent','99999999-0000-4000-8000-000000000001')",user=ADMIN,fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND tablename='tasks'"),'2')
+
+    def test_inspected_tasks_fixture_bound_lead_isolation(self):
+        self.bind()
+        identity=self.sql(f"INSERT INTO tasks(title,lead_id) VALUES('Bound task','{LEAD}') RETURNING id")
+        self.assertEqual(self.sql(f"SELECT count(*) FROM tasks WHERE id='{identity}'",user=ADMIN),'1')
+        self.assertEqual(self.sql(f"SELECT count(*) FROM tasks WHERE id='{identity}'",user=OTHER),'0')
+        self.member(CALLER, 'acquisition_caller')
+        self.assertEqual(self.sql(f"SELECT count(*) FROM tasks WHERE id='{identity}'",user=CALLER),'0')
+        self.sql(f"INSERT INTO tasks(title,lead_id) VALUES('Direct prohibited','{LEAD}')",user=ADMIN,fail=True)
+        self.assertEqual(self.sql(f"WITH changed AS (UPDATE tasks SET title='Changed' WHERE id='{identity}' RETURNING id) SELECT count(*) FROM changed",user=ADMIN),'0')
+        self.assertEqual(self.sql(f"WITH removed AS (DELETE FROM tasks WHERE id='{identity}' RETURNING id) SELECT count(*) FROM removed",user=ADMIN),'0')
+
+    def test_inspected_tasks_fixture_call_only_gaps_and_dependency_edges(self):
+        # Baseline evidence: an unbound task is visible to approved legacy users.
+        # The forthcoming scoped extension must close this path for call requests.
+        self.sql("INSERT INTO tasks(title,type) VALUES('Synthetic inbound request','acquisition_callback_review')")
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks',user=OTHER),'1')
+        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','tasks','TRUNCATE') AND has_table_privilege('service_role','tasks','TRIGGER')"),'t')
+        catalog=json.loads((ROOT/'docs/acquisition-automation/evidence/2026-10-26-inbound-task-catalog.json').read_text())
+        self.assertEqual(len(catalog['incoming_fks']),7)
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_constraint WHERE conrelid='tasks'::regclass AND contype='f'"),'3')
 
     def test_inbound_migration_preserves_populated_legacy_events(self):
         self.assertEqual(self.sql("SELECT jsonb_strip_nulls(to_jsonb(c)) FROM call_events c"),self.legacy_call_before)

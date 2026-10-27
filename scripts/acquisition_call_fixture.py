@@ -12,7 +12,11 @@ CATALOG = Path(__file__).resolve().parents[1]/'docs/acquisition-automation/evide
 
 def install_call_fixture(sql):
     catalog = json.loads(CATALOG.read_text())
-    table = 'call_events'
+    install_inspected_table_fixture(sql, catalog, 'call_events')
+
+
+def install_inspected_table_fixture(sql, catalog, table):
+    target = 'public.' + quote(table)
     columns = []
     for row in catalog['columns']:
         if row['table_name'] != table:
@@ -20,20 +24,20 @@ def install_call_fixture(sql):
         expression = row['expression']
         suffix = ' DEFAULT '+expression if expression else ''
         columns.append(quote(row['column_name'])+' '+row['data_type']+suffix+(' NOT NULL' if row['not_null'] else ''))
-    sql('CREATE TABLE public.call_events('+','.join(columns)+'); ALTER TABLE public.call_events ENABLE ROW LEVEL SECURITY;')
+    sql('CREATE TABLE '+target+'('+','.join(columns)+'); ALTER TABLE '+target+' ENABLE ROW LEVEL SECURITY;')
     for row in catalog['constraints']:
         if row['table_name'] == table:
-            sql('ALTER TABLE public.call_events ADD CONSTRAINT '+quote(row['conname'])+' '+row['definition']+';')
+            sql('ALTER TABLE '+target+' ADD CONSTRAINT '+quote(row['conname'])+' '+row['definition']+';')
     for row in catalog['policies']:
         if row['tablename'] != table:
             continue
-        statement='CREATE POLICY '+quote(row['policyname'])+' ON public.call_events AS '+row['permissive']+' FOR '+row['cmd']+' TO '+','.join(quote(role) for role in row['roles'])
+        statement='CREATE POLICY '+quote(row['policyname'])+' ON '+target+' AS '+row['permissive']+' FOR '+row['cmd']+' TO '+','.join(quote(role) for role in row['roles'])
         if row['qual']:statement+=' USING ('+row['qual']+')'
         if row['with_check']:statement+=' WITH CHECK ('+row['with_check']+')'
         sql(statement+';')
     for row in catalog['grants']:
         if row['table_name']==table and row['grantee'] in ('anon','authenticated','service_role'):
-            sql('GRANT '+row['privilege_type']+' ON public.call_events TO '+quote(row['grantee'])+';')
+            sql('GRANT '+row['privilege_type']+' ON '+target+' TO '+quote(row['grantee'])+';')
     constraint_names={row['conname'] for row in catalog['constraints']}
     for row in catalog['indexes']:
         if row['table_name']==table and row['index_name'] not in constraint_names:

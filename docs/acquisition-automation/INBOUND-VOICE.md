@@ -94,3 +94,7 @@ Every intent requires a canonical `request_id` and nonnegative `expected_revisio
 - Human escalation records a bounded reason/details and distinguishes caller-requested help from agent-detected unsupported language, failed transfer, sensitive situation or inability to finish. It does not claim a completed transfer or authorize one.
 
 Existing seller_intakes requires a Facebook receipt and source type; it cannot accept these intents without a reviewed additive extension. Next work must map call-scoped revisions into the existing intake/task entities, add immutable evidence and atomic audit, authorize server-only writes against current call state, and implement minimal safe tool responses. No parallel CRM, live tool registration, database changes or follow-up action was added by this parser increment.
+
+## Task dependency acceptance checkpoint
+
+The inspected existing `tasks` relation is now restored in the disposable database before acquisition boundary migrations. Focused tests cover mandatory title, genuine defaults, outgoing parent FKs, legacy edit/read compatibility, workspace-bound read/write restrictions and the remaining call-only/TRUNCATE/TRIGGER gaps. The catalog also identifies seven county-ingestion FK dependents that must be preserved in full production upgrade testing. See SCHEMA-MAPPING.md for mapping and fixture limits. No production DDL or task records were changed.
