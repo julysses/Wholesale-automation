@@ -29,6 +29,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_inbound_request_queue_v2':['p_workspace','p_after','p_limit','p_status','p_assignment'],
  'acquisition_inbound_request_state':['p_workspace','p_task'],
  'review_acquisition_inbound_request':['p_id','p_workspace','p_task','p_expected_sequence','p_request_hash','p_status','p_assignee','p_note'],
  'acquisition_inbound_request_queue':['p_workspace','p_after','p_limit'],
@@ -353,6 +354,9 @@ class WorkflowTests(WorkspaceTests):
         response=self.client.post(path+'/reviews',headers=self.headers,json=body)
         self.assertEqual(response.status_code,200,response.text)
         self.assertEqual(self.client.get(path+'/state',headers=self.headers).json()['status'],'review_complete')
+        completed=self.client.get(f'{self.base}/inbound/requests?status=review_complete&assignment=mine',headers=self.headers)
+        self.assertEqual(completed.status_code,200,completed.text);self.assertEqual([r['id'] for r in completed.json()['items']],[task])
+        self.assertEqual(self.client.get(f'{self.base}/inbound/requests?status=open',headers=self.headers).json()['items'],[])
         self.inbound_request(request='98000000-0000-4000-8000-000000000002',revision=1)
         state=self.client.get(path+'/state',headers=self.headers).json()
         self.assertEqual(state['status'],'superseded');self.assertFalse(state['review_current'])

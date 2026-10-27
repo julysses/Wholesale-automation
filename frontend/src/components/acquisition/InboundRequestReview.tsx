@@ -34,7 +34,8 @@ async function readState(path: string,w: string,t: string,signal?:AbortSignal):P
     : v.assigned_user_id!==null || v.status!==(!v.request_current?'superseded':v.latest_review?'requires_review':'pending_review'))) throw new Error('Invalid review state');
  return v;
 }
-export function InboundRequestReview({userId,workspace,task,onPending,onClose}:{userId:string;workspace:string;task:string;onPending:(value:boolean)=>void;onClose:()=>void}){
+const ignoreSaved = () => {};
+export function InboundRequestReview({userId,workspace,task,onPending,onClose,onSaved=ignoreSaved}:{userId:string;workspace:string;task:string;onPending:(value:boolean)=>void;onClose:()=>void;onSaved?:()=>void}){
  const path=`/api/acquisition/workspaces/${workspace}/inbound/requests/${task}`;
  const key=`inbound-request-review:v1:${userId}:${workspace}:${task}`;
  const [initial]=useState(()=>{try{const raw=sessionStorage.getItem(key);if(raw===null)return {request:null,invalid:false};const v=JSON.parse(raw) as Decision;if(!validDecision(v))throw new Error('Invalid pending request');return {request:v,invalid:false};}catch{return {request:null,invalid:true};}});
@@ -71,7 +72,7 @@ export function InboundRequestReview({userId,workspace,task,onPending,onClose}:{
    sessionStorage.setItem(key,JSON.stringify(request));setPending(request);sent=true;
    const result=await (await apiFetch(path+'/reviews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)})).json();
    if(result?.review_id!==request.id || result.sequence!==request.expected_sequence+1 || typeof result.duplicate!=='boolean' || result.execution_authorized!==false)throw new Error('Unconfirmed receipt');
-   sessionStorage.removeItem(key);setPending(null);setNote('');setAck(false);setBefore(null);setFeedback('Review decision recorded. No callback, transfer or seller contact was authorized.');void state.refetch();void history.refetch();
+   sessionStorage.removeItem(key);setPending(null);setNote('');setAck(false);setBefore(null);setFeedback('Review decision recorded. No callback, transfer or seller contact was authorized.');void state.refetch();void history.refetch();onSaved();
   }catch(error){
    const rejected=!retrying && sent && error instanceof ApiError && [400,401,403,404,409,422].includes(error.status);
    if(rejected){try{sessionStorage.removeItem(key);setPending(null);}catch{/* Preserve reconciliation lock if storage cannot be cleared. */}}

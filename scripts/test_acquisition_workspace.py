@@ -180,6 +180,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql((ROOT/'frontend/supabase/migrations/20261027013724_acquisition_inbound_review_tasks.sql').read_text())
         self.sql((ROOT/'frontend/supabase/migrations/20261027023450_acquisition_inbound_request_queue.sql').read_text())
         self.sql((ROOT/'frontend/supabase/migrations/20261027024045_acquisition_inbound_request_reviews.sql').read_text())
+        self.sql((ROOT/'frontend/supabase/migrations/20261027025554_acquisition_inbound_queue_review_status.sql').read_text())
         if self._testMethodName not in ('test_source_migration_backfills_without_changing_intakes','test_inbound_intake_migration_preserves_populated_facebook'):
             self.sql((ROOT/'frontend/supabase/migrations/20261027015624_acquisition_inbound_intakes.sql').read_text())
             self.sql((ROOT/'frontend/supabase/migrations/20261027020314_acquisition_inbound_read_metadata.sql').read_text())
@@ -427,6 +428,31 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(sum(results),1)
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inbound_request_reviews'),'1')
         self.assertEqual(self.inbound_review_state(task)['sequence'],1)
+
+    def test_inbound_queue_status_filters_track_review_freshness(self):
+        self.inbound_fixture();self.inbound_accept();self.member(OPERATOR,'operator')
+        task=self.inbound_request()['id'];human=self.inbound_request(request='98000000-0000-4000-8000-000000000002',kind='request_human')['id']
+        def queue(status='all',assignment='all',user=ADMIN,after=None,limit=20,fail=False):
+            cursor=literal(after)+'::uuid' if after else 'NULL'
+            data=self.sql(f"SELECT public.acquisition_inbound_request_queue_v2('{WORKSPACE}',{cursor},{limit},{literal(status)},{literal(assignment)})",user=user,fail=fail)
+            return None if fail else json.loads(data)
+        self.assertEqual(len(queue('pending_review')['items']),2)
+        self.inbound_review(task)
+        mine=queue(assignment='mine',user=OPERATOR);self.assertEqual([r['id'] for r in mine['items']],[task]);self.assertEqual(mine['items'][0]['review_status'],'assigned')
+        self.assertEqual(len(queue(assignment='mine')['items']),0)
+        self.inbound_review(task,id='a1000000-0000-4000-8000-000000000002',sequence=1,status='review_complete',user=OPERATOR)
+        self.assertEqual([r['id'] for r in queue('open')['items']],[human])
+        self.assertEqual([r['id'] for r in queue('review_complete')['items']],[task])
+        self.sql(f"UPDATE workspace_memberships SET status='revoked' WHERE workspace_id='{WORKSPACE}' AND user_id='{OPERATOR}'")
+        stale=queue('requires_review')['items'];self.assertEqual([r['id'] for r in stale],[task]);self.assertIsNone(stale[0]['assigned_user_id']);self.assertFalse(stale[0]['review_current'])
+        self.assertEqual(len(queue('review_complete')['items']),0)
+        self.assertEqual(len(queue(assignment='unassigned')['items']),2)
+        page=queue(limit=1);self.assertIsNotNone(page['next_after']);self.assertEqual(len(queue(after=page['next_after'],limit=1)['items']),1)
+        self.inbound_request(request='98000000-0000-4000-8000-000000000003',revision=1)
+        self.assertEqual(len(queue('requires_review')['items']),0)
+        self.assertEqual(len(queue('pending_review')['items']),2)
+        queue(user=OTHER,fail=True);queue(status='call_completed',fail=True);queue(assignment='someone_else',fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_inbound_request_reviews'),'2')
 
     def test_inbound_request_requires_ongoing_call_and_current_route(self):
         self.inbound_fixture();self.inbound_request(fail=True)

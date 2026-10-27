@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — current inbound queue status and filters
+
+- Continued from pushed `6de37eb`; pulled unchanged branch. Rechecked deployed migration history (95 / latest 20261023221455) and local task/review access, indexes and functions. CLI created local `20261027025554_acquisition_inbound_queue_review_status.sql`; private/public v2 read RPC preserves v1 and reuses the authoritative request-state derivation.
+- Queue summaries now include current status, sequence and assignee. Server-side status filters and all/mine/no-current-assignee filters execute before pagination; mine uses auth.uid(). Open reviews is the UI default. Membership invalidation removes stale assignee/completion; newer caller requests return pending. No raw request evidence/phone or additional permissions are exposed in summaries.
+- UI validates filter echoes and status/currentness/assignee consistency, resets paging/history selection on filter changes and refreshes after confirmed review saves while keeping the reconciliation panel mounted. Sparse-filter scans are documented without claiming large-volume latency acceptance.
+- Validation: **406 frontend tests / 62 files passed**, **126 API tests passed**, acquisition-enabled build passed and lint has **147 existing/no new findings**. Focused real-SQL case passed for pending/assigned/complete/open/personal/unassigned filters, revoked membership, supersession, pagination and invalid access/inputs. **All 18 integrated SQL workflows passed**, including HTTP completion filtering with the signed-in assignee and removal from the open queue. Browser verified current labels, default open, completed and personal filter behavior, with no console errors/warnings. Saved `evidence/2026-10-26-inbound-queue-filters.jpg`; temporary tab/server closed.
+- Schema/inbound docs cover currentness, compensation and refresh limits. Migration remains local/unapplied; production deployment, live outreach, calls/transfers, spend, contracts and paused SMS unchanged.
+
+Next: privacy-safe authenticated inbound property lookup, then inbound prompt/tool configuration and disclosure/privacy/bilingual acceptance planning, followed by remaining direct-mail/portal/caller/disposition requirements. Full PRD goal and sequential release gates remain active.
+
 ## Implementation checkpoint — inbound operator review controls
 
 - Continued from pushed `98de1db`; pulled unchanged branch. Added the request-review panel to the workspace queue: validated current state and bounded history, assignment/action/note/acknowledgement controls, role-limited assignee choices and explicit separation from seller contact. Hold/completion requires the same current assignee. A fresh state read precedes new decisions; SQL remains authoritative for access/MFA and races.

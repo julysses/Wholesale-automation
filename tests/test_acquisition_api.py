@@ -788,10 +788,10 @@ def test_inbound_queue_read_uses_scoped_rpc(api):
     response = client.get(f'/api/acquisition/workspaces/{W}/inbound/requests?limit=10&after={U}', headers={'Authorization': 'Bearer user-token'})
     assert response.status_code == 200
     request = state['requests'][0]
-    assert request.url.path == '/rest/v1/rpc/acquisition_inbound_request_queue'
+    assert request.url.path == '/rest/v1/rpc/acquisition_inbound_request_queue_v2'
     assert request.headers['authorization'] == 'Bearer user-token'
     assert request.headers['apikey'] == 'public-test-key'
-    assert json.loads(request.content) == {'p_workspace': W, 'p_after': U, 'p_limit': 10}
+    assert json.loads(request.content) == {'p_workspace': W, 'p_after': U, 'p_limit': 10, 'p_status': 'all', 'p_assignment': 'all'}
 
 
 @pytest.mark.parametrize('query', ['limit=0', 'limit=51', 'after=invalid'])
@@ -832,3 +832,18 @@ def test_inbound_review_invalid_input_never_reaches_database(api, change):
     response = client.post(f'/api/acquisition/workspaces/{W}/inbound/requests/{U}/reviews', headers={'Authorization':'Bearer user-token'}, json=body)
     assert response.status_code == 422
     assert not state['requests']
+
+
+@pytest.mark.parametrize('query', ['status=sent', 'assignment=other-user'])
+def test_inbound_queue_rejects_unrecognized_filters(api, query):
+    client, state = api
+    response=client.get(f'/api/acquisition/workspaces/{W}/inbound/requests?'+query,headers={'Authorization':'Bearer user-token'})
+    assert response.status_code==422
+    assert not state['requests']
+
+
+def test_inbound_queue_forwards_personal_filter_without_client_actor(api):
+    client, state = api
+    response=client.get(f'/api/acquisition/workspaces/{W}/inbound/requests?status=on_hold&assignment=mine',headers={'Authorization':'Bearer user-token'})
+    assert response.status_code==200
+    assert json.loads(state['requests'][0].content)=={'p_workspace':W,'p_after':None,'p_limit':20,'p_status':'on_hold','p_assignment':'mine'}

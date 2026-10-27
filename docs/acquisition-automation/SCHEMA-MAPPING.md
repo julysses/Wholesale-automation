@@ -174,3 +174,11 @@ CLI-created local `20261027024045_acquisition_inbound_request_reviews.sql` adds 
 Mutation locks activation, workspace, reviewer session/profile/membership and target assignee eligibility through commit. It shares the call lock with inbound request submission, uses request fingerprints and optimistic review sequence, and records minimal immutable audit metadata. Exact retries return the historical receipt; changed ID reuse conflicts. Current state separately evaluates request supersession, activation and actor/assignee membership timestamps and approval.
 
 Compensation: disable the acquisition surface and revoke authenticated EXECUTE on the two review RPC pairs through a separately reviewed forward migration; preserve decision/task/audit evidence. No destructive rollback or production migration is authorized. The pre-existing queue remains a discovery-only surface until its status projection and UI are wired in a subsequent migration.
+
+## Reviewed queue projection and filters
+
+Read-only migration ledger recheck remains 95 applied / latest `20261023221455`. Local task/review dependencies, membership checks, indexes and v1 queue were inspected before CLI creation of `20261027025554_acquisition_inbound_queue_review_status.sql`. It adds a private/public v2 read RPC pair, with no table, grant widening or data rewrite. Existing v1 remains callable for unchanged clients.
+
+The v2 query reuses `acquisition_inbound_request_state` rather than duplicating stale-review logic. It exposes only current derived status, review sequence/currentness and assignee alongside the existing minimal request summary. Server filters support open/all/specific status and all/mine/no-current-assignee. `mine` derives auth.uid(); clients cannot choose another actor. Filtering occurs before page limit and next-cursor lookahead. A lateral barrier avoids repeated evaluation of state fields for the same candidate. Sparse filters may inspect more candidates than the returned page; no large-volume latency claim is made.
+
+Compensation: route the application back to its prior compatible release and revoke authenticated execute on the v2 function pair in a reviewed forward migration. Keep v1 and all evidence. Current API/UI require v2 and must not silently fall back to stale or unfiltered status. No production migration is authorized.
