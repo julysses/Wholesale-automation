@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — additive inbound metadata ledger
+
+- Previous goal turn pushed `bba3849`; pulled unchanged branch after approved Git retry. Rechecked current Supabase RLS/grants documentation. CLI generated local migration `20261027010558_acquisition_inbound_event_ledger.sql` after the inspected call catalog; production remains unapplied.
+- Extended existing call_events with exact scoped integration/call/event metadata, composite routing FK, unique replay identity and read index. Legacy rows remain unchanged. New records have no phone, lead, recording, notes or raw payload content. Private route configuration defaults disabled and requires documented privacy/disclosure/Phase 1 references; identity is immutable and application roles cannot configure it.
+- Service-only controlled receipt validates enabled activation/integration/route/workspace, exact configured number/agent/version, strict 15-field metadata shape, lifecycle/time consistency and Python-compatible identity/projection hashes. Scoped event insert and one audit are atomic; concurrent replay returns the same record, while changed retry conflicts. Updates/deletes and direct service insertion are blocked; truncate/trigger grants removed. Read RPC requires live owner/admin/operator membership and exact workspace/integration/call scope with bounded pages.
+- Validation: **six distinct focused PostgreSQL cases passed**, including concurrent replay, changed conflict, role/tenant/route denial, malformed projection, immutable data, scoped reads and populated legacy preservation. Existing legacy-bound access cases remain green with reduced grants. All **14 integrated real-SQL journeys passed** with the new local migration. Initial shared-memory sandbox error was retried with approved escalation. Corrected a draft field-count typo before execution and tightened exact integration read filtering after review.
+- No HTTP/provider/routing activation, raw webhook persistence, CRM intake, production migration or paused-SMS change. The minimal ledger is distinct from an approved raw archive; existing inbox raw-body requirements cannot be reused blindly. Route/version rotation and disabled-route reconciliation remain open. INBOUND-VOICE.md documents contracts and non-destructive compensation.
+
+Next: authenticated, bounded, default-disabled inbound webhook adapter with trusted routing resolution and metadata-only durable acceptance; test real SQL handoff and unknown outcomes. Privacy controls, Phase 1 acceptance and all live activation approvals remain required. Full PRD goal remains active.
+
 ## Implementation checkpoint — inspected inbound persistence dependencies
 
 - Previous goal turn pushed `009d125`; pulled unchanged branch with approved network retry. Used the Supabase skill guidance and a bounded metadata-only production query before SQL design. No seller records or secrets were retrieved, and no migrations or provider settings were changed.

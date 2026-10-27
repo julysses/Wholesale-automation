@@ -168,6 +168,10 @@ class WorkspaceTests(unittest.TestCase):
             self.legacy_cost_before=self.sql("SELECT jsonb_build_object('id',id,'date',date,'spend',spend,'leads',leads,'cpl',cpl)::text FROM fb_campaign_performance")
         if self._testMethodName != 'test_source_migration_backfills_without_changing_intakes':
             self.sql((ROOT/'frontend/supabase/migrations/20261026234504_acquisition_cost_evidence.sql').read_text())
+        if self._testMethodName == 'test_inbound_migration_preserves_populated_legacy_events':
+            self.sql("INSERT INTO call_events(id,disposition,notes,raw_payload) VALUES('97000000-0000-4000-8000-000000000001','no_answer','historical legacy note','{\"sentinel\":true}')")
+            self.legacy_call_before=self.sql("SELECT jsonb_strip_nulls(to_jsonb(c)) FROM call_events c")
+        self.sql((ROOT/'frontend/supabase/migrations/20261027010558_acquisition_inbound_event_ledger.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -176,6 +180,76 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def test_inbound_migration_preserves_populated_legacy_events(self):
+        self.assertEqual(self.sql("SELECT jsonb_strip_nulls(to_jsonb(c)) FROM call_events c"),self.legacy_call_before)
+        self.sql("UPDATE call_events SET notes='legacy still writable'",user=ADMIN)
+        self.assertEqual(self.sql('SELECT notes FROM call_events',user=OTHER),'legacy still writable')
+        self.assertEqual(self.sql("SELECT has_table_privilege('anon','call_events','TRUNCATE') OR has_table_privilege('authenticated','call_events','TRIGGER')"),'f')
+
+    def inbound_fixture(self, enabled=True):
+        integration='96000000-0000-4000-8000-000000000001'
+        self.sql(f"INSERT INTO private.acquisition_integrations(id,workspace_id,provider,account_id,enabled,approval_ref) VALUES('{integration}','{WORKSPACE}','retell','synthetic-retell-account',true,'fixture approval'); "
+                 f"INSERT INTO private.acquisition_inbound_routes(integration_id,workspace_id,agent_id,agent_version,acquisition_number,enabled,privacy_approval_ref,disclosure_approval_ref,phase_one_acceptance_ref) "
+                 f"VALUES('{integration}','{WORKSPACE}','agent_test',3,'+12145550100',{str(enabled).lower()},'synthetic privacy approval','synthetic disclosure approval','synthetic phase one acceptance');")
+        return integration
+
+    def inbound_data(self, event='call_started', **patch):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('inbound_projection',ROOT/'tools/acquisition_inbound_events.py')
+        module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        call=dict(call_id='call_test',agent_id='agent_test',agent_version=3,direction='inbound',call_type='phone_call',to_number='+12145550100',call_status='ongoing' if event=='call_started' else 'ended',start_timestamp=1000)
+        if event!='call_started':call['end_timestamp']=5000
+        call.update(patch)
+        return module.project_inbound_event({'event':event,'call':call},workspace_id=WORKSPACE,integration_id='96000000-0000-4000-8000-000000000001',agent_id='agent_test',agent_version=3,acquisition_number='+12145550100')
+
+    def inbound_accept(self,data=None,role='service_role',number='+12145550100',fail=False):
+        result=self.sql(f"SELECT public.accept_acquisition_inbound_event('96000000-0000-4000-8000-000000000001',{literal(number)},{literal(json.dumps(data or self.inbound_data()))}::jsonb)",user=ADMIN,role=role,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_inbound_ledger_idempotency_privacy_and_immutability(self):
+        self.inbound_fixture(); first=self.inbound_accept(); second=self.inbound_accept()
+        self.assertEqual(first['id'],second['id']); self.assertTrue(second['duplicate'])
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_event'"),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM call_events',user=ADMIN),'0')
+        rows=json.loads(self.sql(f"SELECT public.acquisition_inbound_events('{WORKSPACE}','96000000-0000-4000-8000-000000000001','call_test')",user=ADMIN))
+        self.assertEqual(len(rows['items']),1)
+        self.assertEqual(json.loads(self.sql(f"SELECT public.acquisition_inbound_events('{WORKSPACE}','96000000-0000-4000-8000-000000000002','call_test')",user=ADMIN))['items'],[])
+        self.assertFalse(rows['execution_authorized'])
+        self.sql(f"SELECT public.acquisition_inbound_events('{WORKSPACE}','96000000-0000-4000-8000-000000000001','call_test')",user=OTHER,fail=True)
+        self.member(target=CALLER,role='acquisition_caller')
+        self.sql(f"SELECT public.acquisition_inbound_events('{WORKSPACE}','96000000-0000-4000-8000-000000000001','call_test')",user=CALLER,fail=True)
+        for sql in ["UPDATE call_events SET notes='changed'",'DELETE FROM call_events']:
+            self.assertIn('immutable',self.sql(sql,user=ADMIN,role='service_role',fail=True))
+        direct="INSERT INTO call_events(dialer,disposition,raw_payload,workspace_id,acquisition_integration_id,acquisition_call_id,acquisition_event_type,acquisition_projection) SELECT dialer,disposition,raw_payload,workspace_id,acquisition_integration_id,'call_other',acquisition_event_type,acquisition_projection FROM call_events"
+        self.assertIn('controlled inbound receipt',self.sql(direct,user=ADMIN,role='service_role',fail=True))
+        self.assertEqual(self.sql("SELECT count(*) FROM call_events WHERE phone_number IS NOT NULL OR recording_url IS NOT NULL OR notes IS NOT NULL OR raw_payload<>'{}'"),'0')
+
+    def test_inbound_ledger_requires_enabled_trusted_route_and_strict_projection(self):
+        self.inbound_fixture(enabled=False); self.inbound_accept(fail=True)
+        self.sql('UPDATE private.acquisition_inbound_routes SET enabled=true')
+        self.inbound_accept(number='+12145550999',fail=True)
+        self.inbound_accept(role='authenticated',fail=True)
+        for patch in [{'workspace_id':WORKSPACE_B},{'agent_id':'other'},{'transcript':'private'},{'projection_hash':'bad'},{'sensitive_content_present':'false'}]:
+            self.inbound_accept(self.inbound_data()|patch,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM call_events'),'0')
+        self.inbound_accept()
+        self.sql('UPDATE private.acquisition_inbound_routes SET enabled=false')
+        self.inbound_accept(fail=True)
+        self.sql('UPDATE private.acquisition_inbound_routes SET enabled=true; UPDATE private.acquisition_integrations SET enabled=false')
+        self.inbound_accept(fail=True)
+
+    def test_inbound_ledger_concurrent_replay_and_changed_retry(self):
+        self.inbound_fixture()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.inbound_accept(),range(3)))
+        self.assertEqual(len({row['id'] for row in results}),1)
+        self.assertEqual(sum(not row['duplicate'] for row in results),1)
+        self.inbound_accept(self.inbound_data(start_timestamp=2000),fail=True)
+        self.inbound_accept(self.inbound_data('call_analyzed'))
+        self.inbound_accept(self.inbound_data('call_ended'))
+        self.assertEqual(self.sql('SELECT count(*) FROM call_events'),'3')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_event'"),'3')
 
     def cost_record(self, review, data=None, request='93000000-0000-4000-8000-000000000001', user=ADMIN, fail=False, **kwargs):
         payload={'date':'2026-10-24','amount_minor':12550,'coverage':'complete','currency':'USD','reporting_timezone':'America/Chicago',
@@ -1920,11 +1994,11 @@ class WorkspaceTests(unittest.TestCase):
     def test_inspected_call_event_fixture_exposes_gaps_for_inbound_extension(self):
         self.sql("INSERT INTO call_events(disposition) VALUES('unknown');",user=ADMIN)
         self.assertEqual(self.sql('SELECT count(*) FROM call_events;',user=OTHER),'1')
-        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','call_events','TRUNCATE');"),'t')
-        self.assertEqual(self.sql("SELECT has_table_privilege('service_role','call_events','TRIGGER');"),'t')
+        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','call_events','TRUNCATE');"),'f')
+        self.assertEqual(self.sql("SELECT has_table_privilege('service_role','call_events','TRIGGER');"),'f')
         self.sql("INSERT INTO call_events(disposition,lead_id) VALUES('unknown','ffffffff-ffff-4fff-8fff-ffffffffffff');",fail=True)
         self.sql("INSERT INTO call_events(dialer) VALUES('retell');",fail=True)
-        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE tablename='call_events';"),'3')
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE tablename='call_events';"),'5')
 
     def test_restricted_account_cannot_inherit_legacy_table_access(self):
         self.member(target=CALLER, role='acquisition_caller')
