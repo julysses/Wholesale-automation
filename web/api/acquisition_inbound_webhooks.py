@@ -75,10 +75,10 @@ async def receive_tool(request: Request):
     config, payload = await _authenticated_payload(request)
     try:
         intent = prepare_inbound_tool(payload, **config.routing)
-        if intent['name'] not in {'request_callback', 'request_human'}:
-            raise ValueError('Unsupported persisted tool')
     except (ValueError, TypeError, RecursionError):
         raise HTTPException(400, 'Invalid inbound tool request') from None
+    if intent['name'] == 'submit_seller_intake' and os.getenv('ACQUISITION_INBOUND_INTAKE_ENABLED', '').lower() != 'true':
+        raise HTTPException(503, 'Inbound intake unavailable')
     try:
         result = await record_inbound_request(config, intent)
     except InboundUnavailable:
@@ -88,4 +88,6 @@ async def receive_tool(request: Request):
     return {'status': 'recorded_for_review', 'request_id': intent['request_id'],
             'revision': result['revision'], 'duplicate': result['duplicate'],
             'execution_authorized': False,
-            'message': 'The request is saved for review. Saving it does not schedule a callback or initiate a transfer.'}
+            'message': ('Property information is saved for review. An offer has not been approved.'
+                        if intent['name'] == 'submit_seller_intake' else
+                        'The request is saved for review. Saving it does not schedule a callback or initiate a transfer.')}

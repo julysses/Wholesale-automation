@@ -24,20 +24,22 @@ def deliver(data=None, *, raw=None, signature=None, offset=0):
 
 @pytest.fixture
 def transport(monkeypatch):
-    for key,value in {**CONFIG,'ACQUISITION_INBOUND_TOOLS_ENABLED':'true'}.items():monkeypatch.setenv(key,value)
+    for key,value in {**CONFIG,'ACQUISITION_INBOUND_TOOLS_ENABLED':'true','ACQUISITION_INBOUND_INTAKE_ENABLED':'true'}.items():monkeypatch.setenv(key,value)
     state={'requests':[],'saved':{}}
     def handler(request):
         state['requests'].append(request)
-        assert request.url.path=='/rest/v1/rpc/record_acquisition_inbound_request'
+        intake=request.url.path=='/rest/v1/rpc/record_acquisition_inbound_intake'
+        assert intake or request.url.path=='/rest/v1/rpc/record_acquisition_inbound_request'
         assert request.headers['authorization']=='Bearer dedicated-key'
         data=json.loads(request.content)
-        assert set(data)=={'p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision','p_kind','p_evidence'}
+        assert set(data)=={'p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision'} | ({'p_prepared'} if intake else {'p_kind','p_evidence'})
         if state.get('status'):return httpx.Response(state['status'],json={'error':'PRIVATE ERROR'})
         duplicate=data['p_request'] in state['saved']
         state['saved'].setdefault(data['p_request'],data)
         if state.pop('lose_reply',False):raise httpx.ReadTimeout('PRIVATE ERROR',request=request)
         result={'id':'30000000-0000-4000-8000-000000000001','workspace_id':WORKSPACE,
             'revision':data['p_expected_revision']+1,'duplicate':duplicate,'execution_authorized':False}
+        if intake: result['lead_id']='40000000-0000-4000-8000-000000000001'
         result.update(state.get('patch',{}))
         return httpx.Response(200,json=result)
     original=httpx.AsyncClient
@@ -107,8 +109,47 @@ def test_oversize_body_and_wrong_call_scope(transport):
     assert deliver(data).status_code==400 and transport['requests']==[]
 
 
-def test_unimplemented_intake_and_authority_overrides_rejected(transport):
-    assert deliver(payload('submit_seller_intake')).status_code==400
+def test_unknown_tool_and_authority_overrides_rejected(transport):
+    data=payload('submit_seller_intake');data['name']='execute_offer'
+    assert deliver(data).status_code==400
     data=payload('request_callback');data['args']['workspace_id']=WORKSPACE
     assert deliver(data).status_code==400
     assert transport['requests']==[]
+
+
+def test_signed_intake_persists_normalized_evidence_without_disclosing_seller_data(transport):
+    response=deliver(payload('submit_seller_intake'))
+    assert response.status_code==200 and response.json()['execution_authorized'] is False
+    assert 'offer has not been approved' in response.json()['message']
+    sent=json.loads(transport['requests'][0].content)['p_prepared']
+    assert sent['version']=='seller-intake-v1' and sent['asking_price']=='150000.00'
+    assert sent['classification']=='requires_human_review'
+    assert not sent['property_verified'] and not sent['contact_permission_granted']
+    for value in ['PRIVATE TRANSCRIPT','+12145550999','untrusted']:
+        assert value not in str(sent)
+    for value in ['150000','123 Main','lead_id','workspace_id','classification']:
+        assert value not in response.text
+    transport['lose_reply']=True
+    assert deliver(payload('submit_seller_intake')).status_code==503
+    assert deliver(payload('submit_seller_intake')).json()['duplicate'] is True
+    assert len(transport['saved'])==1
+
+
+def test_intake_requires_its_own_default_off_gate(transport,monkeypatch):
+    monkeypatch.delenv('ACQUISITION_INBOUND_INTAKE_ENABLED')
+    assert deliver(payload('submit_seller_intake')).status_code==503
+    assert transport['requests']==[]
+    assert deliver(payload('request_human')).status_code==200
+
+
+@pytest.mark.parametrize('patch',[{'lead_id':None},{'lead_id':'invalid'},{'lead_id':10},{'revision':2},{'execution_authorized':True}])
+def test_intake_malformed_confirmation_never_acknowledged(transport,patch):
+    transport['patch']=patch
+    assert deliver(payload('submit_seller_intake')).status_code==503
+
+
+def test_intake_missing_market_answers_stay_missing(transport):
+    data=payload('submit_seller_intake');data['args']['answers']={'property_address':'123 Main St'}
+    assert deliver(data).status_code==200
+    sent=json.loads(transport['requests'][0].content)['p_prepared']
+    assert sent['asking_price'] is None and sent['classification']=='incomplete'

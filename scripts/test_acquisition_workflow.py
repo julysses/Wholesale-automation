@@ -29,6 +29,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'record_acquisition_inbound_intake':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision','p_prepared'],
  'record_acquisition_inbound_request':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision','p_kind','p_evidence'],
  'accept_acquisition_inbound_event':['p_integration','p_number','p_data'],
  'record_acquisition_cost':['p_id','p_workspace','p_link_review','p_data'],
@@ -311,6 +312,52 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(deliver().status_code,503)
         self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'2')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+
+    def test_signed_intake_creates_one_crm_lead_and_preserves_revision_history(self):
+        integration,event=self.configure_inbound()
+        os.environ.update({'ACQUISITION_INBOUND_TOOLS_ENABLED':'true','ACQUISITION_INBOUND_INTAKE_ENABLED':'true'})
+        self.inbound_accept()
+        payload={'name':'submit_seller_intake','call':event['call'],'args':{
+            'request_id':'99000000-0000-4000-8000-000000000001','expected_revision':0,
+            'answers':{'property_address':'123 Main St','city':'Dallas','state':'TX','authority':'yes',
+                'condition':'needs repairs','timeline':'30 days','motivation':'moving','asking_price':'150000','phone':'2145550101'}}}
+        def deliver():
+            raw=json.dumps(payload).encode();stamp=str(int(time.time()*1000))
+            signature='v='+stamp+',d='+hmac.new(b'synthetic-inbound-secret',raw+stamp.encode(),hashlib.sha256).hexdigest()
+            return self.client.post('/webhooks/retell/acquisition/tools',content=raw,headers={'X-Retell-Signature':signature})
+        self.lose_facebook_reply='record_acquisition_inbound_intake'
+        self.assertEqual(deliver().status_code,503)
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='retell_inbound_acquisition'"),'1')
+        response=deliver();self.assertEqual(response.status_code,200,response.text)
+        self.assertTrue(response.json()['duplicate']);self.assertNotIn('150000',response.text)
+        self.assertNotIn('lead_id',response.json());self.assertFalse(response.json()['execution_authorized'])
+        first=json.loads(self.sql('SELECT to_jsonb(i) FROM seller_intakes i'))
+        self.assertNotEqual(first['lead_id'],LEAD)
+        self.assertNotIn('SYNTHETIC PRIVATE CONTENT',str(first));self.assertNotIn('private.example.test',str(first))
+        self.identity_review(first['id'],self.identity_state(first['id']))
+        qualified=self.qualification_state(first['id']);self.assertEqual(qualified['assessment']['classification'],'qualified')
+        self.record_assessment(first['id'],qualified)
+        payload['args']['answers']['asking_price']='175000'
+        self.assertEqual(deliver().status_code,503)  # Changed retry is not a new revision.
+        payload['args']['request_id']='99000000-0000-4000-8000-000000000002'
+        payload['args']['expected_revision']=1
+        self.assertEqual(deliver().json()['revision'],2)
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='retell_inbound_acquisition'"),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'2')
+        self.assertFalse(self.qualification_state(first['id'])['assessment_current'])
+        detail=self.client.get(self.base+'/intakes/'+first['id'],headers=self.headers)
+        self.assertEqual(detail.status_code,200,detail.text)
+        self.assertEqual(detail.json()['source_type'],'retell_inbound');self.assertEqual(detail.json()['inbound_revision'],1)
+        sources=self.client.get(self.base+'/leads/'+first['lead_id']+'/sources',headers=self.headers)
+        self.assertEqual(sources.status_code,200,sources.text)
+        self.assertEqual({row['inbound_revision'] for row in sources.json()['items']},{1,2})
+        self.assertTrue(all(row['external_campaign_id'] is None for row in sources.json()['items']))
+        self.inbound_accept(self.inbound_data('call_ended'))
+        self.assertTrue(deliver().json()['duplicate'])
+        payload['args']['request_id']='99000000-0000-4000-8000-000000000003';payload['args']['expected_revision']=2
+        self.assertEqual(deliver().status_code,503)
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='retell_inbound_acquisition' AND (sms_sequence_active OR email_sequence_active OR NOT ai_calling_paused)"),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'0')
 
     def configure_facebook(self):
         self.inbox_config(account='100')

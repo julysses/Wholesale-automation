@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — signed seller-intake submission
+
+- Continued from pushed `40e8fdb`; pulled unchanged branch after approved network retry. Previous turn delivered tested channel/revision-aware reads. Wired submit_seller_intake through the existing signed tool receiver and dedicated persistence client; added an independent default-off ACQUISITION_INBOUND_INTAKE_ENABLED gate on top of existing acquisition/inbound/tool gates.
+- Server-normalized complete snapshots, fixed preparation version and configured routing reach the intake RPC. No raw call context, inferred permission, caller-selected scope or fake Facebook receipt. The response validator requires exact intake receipt shape, matching workspace, canonical intake/lead IDs, expected revision, replay boolean and no execution authority. Provider-facing reply contains no seller answers or internal IDs and confirms review only.
+- Preserved single-attempt transport and exact retry semantics; malformed/unknown outcomes return sanitized 503. Callback/escalation retain their own RPC and independent revisions. Missing market answers remain missing, and intake cannot trigger tasks, calling, transfers or offers.
+- Validation: **185 focused tests passed** across actual-app signed tools, pure intents/lifecycle, inbound webhooks and Retell security. All **17 integrated real-SQL workflows passed**. New journey proves first-commit response loss, duplicate recovery, changed-retry conflict, one CRM lead across revisions, no same-phone merge, source/read revision metadata, invalidated qualified assessment, terminal-state denial and disabled CRM sequences. Diff checks passed.
+- INBOUND-VOICE.md documents the new flag, exact snapshot/retry semantics and current implementation superseding earlier unwired checkpoints. No SQL/provider/production/paused-SMS changes in this increment; all local migrations and live activation remain approval-gated.
+
+Next: browser QA for inbound revision labels, then the shared operator view for pending callback/escalation requests and privacy-safe property lookup. Real PostgREST/provider/disclosure/recording/bilingual acceptance, Phase 1 release evidence and remaining channels remain open. Full PRD goal stays active.
+
 ## Implementation checkpoint — channel-aware intake and source review
 
 - Continued from pushed `362b565`; pulled unchanged branch after approved network retry. Reviewed actual intake/source API and React read dependencies and applied React skill guidance. CLI generated local `20261027020314_acquisition_inbound_read_metadata.sql` to expose call revision/event metadata through the existing bounded property-source RPC; no production migration.
