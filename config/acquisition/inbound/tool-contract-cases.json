@@ -1,0 +1,168 @@
+[
+  {
+    "id": "incomplete_intake",
+    "name": "submit_seller_intake",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "answers": {
+        "property_address": "123 Main St"
+      }
+    },
+    "valid": true
+  },
+  {
+    "id": "ambiguous_price_preserved",
+    "name": "submit_seller_intake",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "answers": {
+        "asking_price": "150k"
+      }
+    },
+    "valid": true
+  },
+  {
+    "id": "explicit_callback",
+    "name": "request_callback",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "phone": "2145550101",
+      "preferred_time": "tomorrow afternoon",
+      "purpose": "discuss the property",
+      "requested_by_caller": true
+    },
+    "valid": true
+  },
+  {
+    "id": "requested_human",
+    "name": "request_human",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "reason": "caller_requested",
+      "details": "Caller asks for a person",
+      "requested_by_caller": true
+    },
+    "valid": true
+  },
+  {
+    "id": "unsupported_language",
+    "name": "request_human",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "reason": "unsupported_language",
+      "details": "Assistant cannot reliably understand the language",
+      "requested_by_caller": false
+    },
+    "valid": true
+  },
+  {
+    "id": "saved_intake_lookup",
+    "name": "lookup_property",
+    "args": {
+      "intake_revision": 1
+    },
+    "valid": true
+  },
+  {
+    "id": "lookup_arbitrary_address",
+    "name": "lookup_property",
+    "args": {
+      "intake_revision": 1,
+      "property_address": "2 Main St"
+    },
+    "valid": false
+  },
+  {
+    "id": "lookup_tenant_selector",
+    "name": "lookup_property",
+    "args": {
+      "intake_revision": 1,
+      "workspace_id": "other"
+    },
+    "valid": false
+  },
+  {
+    "id": "lookup_without_save",
+    "name": "lookup_property",
+    "args": {
+      "intake_revision": 0
+    },
+    "valid": false
+  },
+  {
+    "id": "empty_intake",
+    "name": "submit_seller_intake",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "answers": {}
+    },
+    "valid": false
+  },
+  {
+    "id": "fabricated_authority",
+    "name": "submit_seller_intake",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "answers": {
+        "property_verified": "true"
+      }
+    },
+    "valid": false
+  },
+  {
+    "id": "numeric_answer",
+    "name": "submit_seller_intake",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "answers": {
+        "asking_price": 150000
+      }
+    },
+    "valid": false
+  },
+  {
+    "id": "oversize_answer",
+    "name": "submit_seller_intake",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "answers": {
+        "property_address": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "valid": false
+  },
+  {
+    "id": "bad_request_identity",
+    "name": "submit_seller_intake",
+    "args": {
+      "request_id": "not-a-uuid",
+      "expected_revision": 0,
+      "answers": {
+        "city": "Dallas"
+      }
+    },
+    "valid": false
+  },
+  {
+    "id": "callback_not_requested",
+    "name": "request_callback",
+    "args": {
+      "request_id": "20000000-0000-4000-8000-000000000001",
+      "expected_revision": 0,
+      "phone": "2145550101",
+      "preferred_time": "tomorrow",
+      "purpose": "property",
+      "requested_by_caller": false
+    },
+    "valid": false
+  }
+]

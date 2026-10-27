@@ -1,7 +1,17 @@
 # Acquisition automation — progress and resume checkpoint
 
-Checkpoint date: October 26, 2026 (America/Chicago).
+Checkpoint date: October 27, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
+
+## Implementation checkpoint — inbound agent review package
+
+- Verified all five jobs green on exact lookup commit `1fab34198355eb076072ede0e3162b53f39ae5b6`, GitHub run https://github.com/julysses/Wholesale-automation/actions/runs/40513914133. Pulled unchanged branch before this increment.
+- Added `config/acquisition/inbound/` with a proposed English prompt, four Retell custom-tool schemas using an intentionally non-routable .invalid URL, shared tool-contract fixtures, configuration instructions and 17 pending acceptance scenarios. Reviewed current official Retell function documentation and generated API types. No agent, model, phone, routing, credential or paid provider session was created/configured.
+- Prompt distinguishes saved review requests from contact execution, ownership verification and binding offers. Covers full intake snapshots, per-kind counters, exact uncertain retries, interruptions, missing information, human requests, silence, language limits and private-data boundaries. Schemas expose no arbitrary lookup selectors; server validation remains authoritative. The package is not an importable whole-agent payload or live acceptance claim.
+- Validation: **16 Node/Ajv schema/guardrail tests passed** in an isolated temporary copy using the previously clean-installed pipeline dependencies; the workspace's legacy node_modules symlink lacks Ajv and was not changed. **132 focused Python tests passed**, including the same 15 schema fixtures through actual server preparation. No SQL, runtime provider code or frontend changes this increment. Provider schema import, selected-model behavior, request-ID/counter reliability and all audio/privacy/bilingual scenarios remain unrun. GitHub CI for this increment must be observed after push.
+- Release gaps surfaced explicitly: durable opt-out/callback-revocation suppression, approved end-call and human-transfer handling, provider recording/transcription controls, actual model/voice selection and bilingual QA. Draft explicitly cannot claim suppression from a general escalation. All 17 acceptance rows remain not_run; no implied approvals or fabricated evidence.
+
+Next: implement the call-scoped opt-out/revocation path against the existing suppression/eligibility service, then complete inbound runtime acceptance controls and the remaining direct-mail, portal, human-caller and disposition work. Full PRD goal remains active; production, paused SMS, providers and spending unchanged.
 
 ## Implementation checkpoint — signed inbound property lookup
 
