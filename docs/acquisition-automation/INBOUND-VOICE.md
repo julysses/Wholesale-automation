@@ -1,6 +1,6 @@
 # Inbound seller intake — implementation and release gates
 
-Status: offline lifecycle foundation only. Phase 2 is not activated. Facebook and shared-foundation gates remain prerequisites for activation.
+Status: local lifecycle ledger and disabled signed receiver implemented; live acceptance pending. Phase 2 is not activated. Facebook and shared-foundation gates remain prerequisites for activation.
 
 ## Existing application boundary
 
@@ -16,7 +16,7 @@ Official documentation reviewed October 26, 2026:
 
 ## Implemented offline parser
 
-`tools/acquisition_inbound_events.py` accepts a decoded lifecycle event plus independently resolved workspace/integration, exact agent ID/version and acquisition number. Those arguments must eventually come from trusted server configuration; webhook metadata cannot establish them. It accepts only phone calls explicitly marked inbound and matching the configured destination and agent version. Invalid types, interval conflicts and mismatched routes reject with fixed codes.
+`tools/acquisition_inbound_events.py` accepts a decoded lifecycle event plus independently resolved workspace/integration, exact agent ID/version and acquisition number. The dedicated receiver supplies these arguments from trusted server configuration; webhook metadata cannot establish them. It accepts only phone calls explicitly marked inbound and matching the configured destination and agent version. Invalid types, interval conflicts and mismatched routes reject with fixed codes.
 
 The output is an explicit metadata allowlist: scoped call/event identity, configured agent/version, provider status, timestamps and a boolean noting known sensitive-content fields. It never copies caller number, destination number, metadata, dynamic variables, transcript, recording links, analysis or seller answers. Unknown fields are discarded. The presence boolean is diagnostic, not proof that all sensitive content was detected or recording was disabled. Its hash is an integrity checksum, not authentication.
 
@@ -26,9 +26,9 @@ Transcript/chat/transfer events and legacy aliases are deliberately unsupported 
 
 ## Next implementation and acceptance
 
-1. Inspect live metadata and fixture coverage for existing `ai_call_records`, `call_events`, `call_transcripts`, `webhook_jobs`, intake and integration tables before additive SQL. Reuse equivalents and enforce actual workspace membership and composite tenant references.
-2. Add a dedicated default-disabled inbound route with bounded raw-body verification and trusted integration/agent/number routing. Decide privacy-safe durable receipt storage and retention before accepting payloads; never log or store raw content through the ordinary metadata ledger.
-3. Persist receipt/event identities transactionally, compare changed retries, and reconcile through the tested parser. Acknowledge only durable acceptance. Add concurrent and unknown-commit acceptance tests.
+1. Completed locally: read-only catalog inspection, scoped call_events ledger, immutable audit, concurrent replay tests and populated legacy fixture preservation. Full production upgrade remains outstanding.
+2. Completed locally: dedicated default-disabled receiver, bounded raw-byte verification, fixed server routing and metadata-only durable acknowledgment. No raw archive is implemented or authorized.
+3. Completed locally: changed-retry rejection and unknown-commit HTTP-to-SQL handoff test. Actual PostgREST/JWT and approved provider delivery acceptance remain outstanding.
 4. Implement authenticated property lookup, structured intake updates, callback request and human escalation tools. Caller ID alone must not establish ownership or merge properties. Callback requests still require fresh channel eligibility before execution.
 5. Verify provider/Twilio controls for recording/transcription before live routing, approved Hilltop AI disclosure, no binding-offer/contract tools, interruption/silence/human-request/failed-transfer handling and bilingual QA before Spanish support.
 6. Preserve sequential activation and require separate approved inbound acceptance. This document and offline parser do not satisfy the Phase 2 release gate.
@@ -54,3 +54,29 @@ A trigger forbids update/delete of scoped events and direct service-role inserti
 This ledger is durable minimal receipt evidence, not a raw webhook archive. It intentionally does not use the existing inbox raw-body requirement until an approved inbound storage/retention policy is designed. No HTTP listener, provider registration, call routing, CRM intake or callbacks are enabled by this migration.
 
 Compensation: keep inbound routes and integration disabled and stop the future ingestion adapter; preserve event/audit history. Revoke service execute on the public/private accept functions if an emergency write stop is required through the authorized database operator. Do not drop columns, replay earlier migrations, delete ledger rows or regrant truncate/trigger as rollback. Existing legacy event reads/writes remain compatible. No production migration has run; full populated production-schema and actual PostgREST/JWT acceptance remain required.
+
+
+## Signed receiver (local implementation, default disabled)
+
+`POST /webhooks/retell/acquisition` is registered separately from the legacy `/webhooks/retell` and `/webhooks/retell/call` handlers. It does not use their transports, settings fallbacks, transcript storage or downstream processing. Both `ACQUISITION_ENABLED` and `ACQUISITION_INBOUND_WEBHOOK_ENABLED` must be exactly true (case-insensitive); absence disables receipt handling. Database activation, integration, route and approval-reference checks remain independently enforced on every acceptance.
+
+Required server configuration:
+
+| Variable | Purpose |
+| --- | --- |
+| `ACQUISITION_INBOUND_SECRET` | Retell API key with webhook badge, supplied through approved secret management |
+| `ACQUISITION_INBOUND_SERVICE_KEY` | Dedicated configured server ingestion credential; no generic-key fallback |
+| `SUPABASE_URL` | Fixed HTTPS database origin without credentials/path/query/fragment |
+| `ACQUISITION_INBOUND_WORKSPACE_ID` | Canonical workspace UUID |
+| `ACQUISITION_INBOUND_INTEGRATION_ID` | Canonical reviewed Retell integration UUID |
+| `ACQUISITION_INBOUND_AGENT_ID` | Exact configured agent |
+| `ACQUISITION_INBOUND_AGENT_VERSION` | Nonnegative PostgreSQL integer version |
+| `ACQUISITION_INBOUND_ACQUISITION_NUMBER` | Exact E.164 receiving number |
+
+This first endpoint supports one configured route per deployment. It does not accept tenant IDs or route overrides from metadata, query parameters or caller input. The dedicated environment name does not itself narrow Supabase service-role privileges; use server-only secret controls, and do not expose the credential to browsers.
+
+The [current Retell signature contract](https://docs.retellai.com/features/secure-webhook) uses `X-Retell-Signature: v={milliseconds},d={hex}` with HMAC-SHA256 of original body bytes followed by the decimal timestamp. The receiver uses constant-time digest comparison and a five-minute past/future window, rejects duplicate signature headers, caps streamed bodies at 1 MiB and rejects duplicate JSON keys, non-finite constants, invalid UTF-8 and invalid lifecycle/routing shapes. No raw request body, transcript or caller number is written or logged by this adapter. Infrastructure request-body logging must also remain disabled before live use.
+
+Only the allowlisted projection and configured integration/receiving number reach the service RPC. HTTP 204 is returned only after a strict receipt response proves a canonical record ID, matching workspace, boolean replay status and no execution authority. Persistence errors, timeouts, wrong-scope or malformed success responses yield sanitized retryable 503; the adapter performs no internal retry. Provider redelivery reconciles the original transaction through ledger identity. Changed retry or route revocation remains unacknowledged and requires operational review. Oversize events return 413; unsupported or malformed events return 400; invalid signatures return 403.
+
+Validation covers the actual application registration/middleware with simulated database responses, plus a disposable real-SQL workflow with commit-before-response loss, exact replay, changed retry and route revocation. This is not live provider acceptance or real PostgREST verification. Lifecycle receipt alone creates no seller intake or callback and cannot satisfy the Phase 2 gate. Sensitive-content detection is diagnostic only; approved provider recording/transcription controls, disclosure behavior and structured authenticated tools remain required.

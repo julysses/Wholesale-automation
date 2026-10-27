@@ -12,6 +12,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -22,11 +23,13 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from web.api.acquisition_api import router
 from web.api.acquisition_webhooks import router as facebook_router
+from web.api.acquisition_inbound_webhooks import router as inbound_router
 
 ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'accept_acquisition_inbound_event':['p_integration','p_number','p_data'],
  'record_acquisition_cost':['p_id','p_workspace','p_link_review','p_data'],
  'acquisition_cost_evidence':['p_workspace','p_campaign','p_start','p_end','p_as_of'],
  'acquisition_property_source_touches':['p_workspace','p_lead','p_after','p_limit'],
@@ -88,7 +91,7 @@ class WorkflowTests(WorkspaceTests):
         original=httpx.AsyncClient
         self.transport=patch('httpx.AsyncClient',lambda **kwargs:original(transport=httpx.MockTransport(self.handle),**kwargs))
         self.transport.start();self.addCleanup(self.transport.stop)
-        app=FastAPI();app.include_router(router);app.include_router(facebook_router)
+        app=FastAPI();app.include_router(router);app.include_router(facebook_router);app.include_router(inbound_router)
         self.client=TestClient(app)
         self.addCleanup(self.client.close)
         self.headers={'Authorization':'Bearer synthetic-admin-session'}
@@ -115,6 +118,7 @@ class WorkflowTests(WorkspaceTests):
             'Bearer synthetic-other-session':(OTHER,'authenticated'),
             'Bearer synthetic-worker-key':(ADMIN,'service_role'),
             'Bearer synthetic-ingestion-key':(ADMIN,'service_role'),
+            'Bearer synthetic-inbound-key':(ADMIN,'service_role'),
             'Bearer synthetic-facebook-worker-key':(ADMIN,'service_role'),
         }[request.headers['authorization']]
         self.assertEqual(request.headers['apikey'],request.headers['authorization'].removeprefix('Bearer ') if role=='service_role' else 'synthetic-public-key')
@@ -227,6 +231,40 @@ class WorkflowTests(WorkspaceTests):
             self.lose_facebook_reply=None
             raise httpx.ReadTimeout('Synthetic lost Facebook reply after real commit',request=request)
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
+
+    def test_signed_inbound_durable_metadata_retry_and_revocation(self):
+        integration=self.inbound_fixture()
+        os.environ.update({'ACQUISITION_INBOUND_WEBHOOK_ENABLED':'true',
+            'ACQUISITION_INBOUND_SECRET':'synthetic-inbound-secret',
+            'ACQUISITION_INBOUND_SERVICE_KEY':'synthetic-inbound-key',
+            'ACQUISITION_INBOUND_WORKSPACE_ID':WORKSPACE,
+            'ACQUISITION_INBOUND_INTEGRATION_ID':integration,
+            'ACQUISITION_INBOUND_AGENT_ID':'agent_test','ACQUISITION_INBOUND_AGENT_VERSION':'3',
+            'ACQUISITION_INBOUND_ACQUISITION_NUMBER':'+12145550100'})
+        payload={'event':'call_started','call':{'call_id':'call_test','agent_id':'agent_test',
+            'agent_version':3,'direction':'inbound','call_type':'phone_call','to_number':'+12145550100',
+            'call_status':'ongoing','start_timestamp':1000,'transcript':'SYNTHETIC PRIVATE CONTENT',
+            'recording_url':'https://private.example.test','from_number':'+12145550101'}}
+        def deliver():
+            raw=json.dumps(payload).encode(); stamp=str(int(time.time()*1000))
+            signature='v='+stamp+',d='+hmac.new(b'synthetic-inbound-secret',raw+stamp.encode(),hashlib.sha256).hexdigest()
+            return self.client.post('/webhooks/retell/acquisition',content=raw,headers={'X-Retell-Signature':signature})
+        self.lose_facebook_reply='accept_acquisition_inbound_event'
+        self.assertEqual(deliver().status_code,503)
+        self.assertEqual(len(self.requests),1)
+        self.assertEqual(self.sql("SELECT count(*) FROM call_events WHERE acquisition_call_id='call_test'"),'1')
+        self.assertEqual(deliver().status_code,204)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_event' AND action='received'"),'1')
+        saved=self.sql("SELECT to_jsonb(e) FROM call_events e WHERE acquisition_call_id='call_test'")
+        for secret in ['SYNTHETIC PRIVATE CONTENT','private.example.test','+12145550101']:
+            self.assertNotIn(secret,saved)
+        payload['call']['start_timestamp']=2000
+        self.assertEqual(deliver().status_code,503)  # Changed retry cannot overwrite.
+        payload['call']['start_timestamp']=1000
+        self.sql(f"UPDATE private.acquisition_inbound_routes SET enabled=false WHERE integration_id='{integration}'")
+        self.assertEqual(deliver().status_code,503)
+        self.assertEqual(self.sql("SELECT count(*) FROM call_events WHERE acquisition_call_id='call_test'"),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM seller_intakes"),'0')
 
     def configure_facebook(self):
         self.inbox_config(account='100')

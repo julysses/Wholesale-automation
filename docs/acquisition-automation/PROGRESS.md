@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — signed inbound metadata receiver
+
+- Continued from pushed `6c17925`; pulled unchanged branch with approved network retry. Added a separate `/webhooks/retell/acquisition` receiver to the actual application; legacy voice and paused-SMS handlers remain unchanged.
+- Both acquisition and inbound flags default disabled. Dedicated secret/service configuration and exact workspace/integration/agent/version/receiving number are mandatory; no fallback credentials or caller-supplied routing. The database independently checks activation and reviewed route state on every receipt.
+- Raw-byte HMAC verification follows the current Retell timestamped contract with a five-minute window. The receiver bounds bodies, rejects duplicate signature headers/JSON keys and non-finite/invalid JSON, validates inbound lifecycle/routing and strips caller/content fields before RPC. It acknowledges 204 only after a strict same-workspace durable receipt; unknown/error responses return sanitized 503 without internal retries.
+- Validation: **122 focused tests passed**, including new actual-app webhook boundary tests and existing inbound projection, Facebook and Retell security regressions. All **15 real-SQL workflows passed**, including commit-before-response loss, one-event/one-audit retry, private-content exclusion, changed retry and route revocation. PostgreSQL shared-memory sandbox failure was retried with approved escalation. Diff whitespace checks passed.
+- INBOUND-VOICE.md records exact configuration, response semantics, current limits and approval gates. No SQL migration, provider configuration, live traffic, production change or paused-SMS change in this increment. One route per deployment is supported; actual PostgREST/JWT, live provider acceptance, privacy controls and approved structured intake tools remain outstanding.
+
+Next: build authenticated structured inbound intake/callback/escalation tools with call-scoped authorization and privacy-safe identity handling; preserve independent eligibility before any callback execution. Also complete remaining Phase 1 source/artifact/provider/funnel acceptance before channel activation. Full PRD goal remains active.
+
 ## Implementation checkpoint — additive inbound metadata ledger
 
 - Previous goal turn pushed `bba3849`; pulled unchanged branch after approved Git retry. Rechecked current Supabase RLS/grants documentation. CLI generated local migration `20261027010558_acquisition_inbound_event_ledger.sql` after the inspected call catalog; production remains unapplied.

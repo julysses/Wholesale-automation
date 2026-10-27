@@ -53,6 +53,7 @@ from web.api.monitoring_api import router as monitoring_router
 from web.api.operations_api import router as operations_router
 from web.api.nurture_api import router as nurture_router
 from web.api.acquisition_webhooks import router as acquisition_webhook_router
+from web.api.acquisition_inbound_webhooks import router as acquisition_inbound_webhook_router
 from web.api.webhooks import router as webhook_router  # noqa: E402
 from web.api.lead_forms_api import router as lead_forms_router  # noqa: E402
 from web.api.buyers_api import router as buyers_router  # noqa: E402
@@ -123,6 +124,7 @@ app.include_router(list_pipeline_router)
 app.include_router(monitoring_router)
 app.include_router(nurture_router)
 app.include_router(acquisition_webhook_router)
+app.include_router(acquisition_inbound_webhook_router)
 app.include_router(webhook_router)     # POST /webhooks/* — dialer + SMS inbound events
 app.include_router(lead_forms_router)  # GET/POST /api/forms/*, /api/lead-gen/*, /api/ai/lead-gen/*
 app.include_router(buyers_router)      # POST/GET /api/buyers/*
