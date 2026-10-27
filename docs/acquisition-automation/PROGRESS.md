@@ -3,6 +3,13 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## CI incident — repeated GitHub failure notifications
+
+- User reported repeated failed-run emails. Stopped feature work and inspected GitHub Actions, not just local checks. Run `40439731392` fails specifically at pipeline `npm audit --audit-level=moderate`; latest pre-fix `40441776579` has the same failed step. Pipeline tests/collector tests had passed; later Edge checks were skipped after audit failure. This was a missed CI verification step in preceding checkpoints, not evidence that the full remote workflow passed.
+- Root cause: transitive Ajv dependency fast-uri locked to 3.1.8, covered by moderate URI normalization/spoofing advisories (GHSA-w74x-v6f9-j3xg, GHSA-xhq7-xmqj-769h, GHSA-wjr9-j795-jxcr, GHSA-333x-w4r6-6crp). Updated only pipeline/package-lock.json to compatible 3.1.9; package manifest and audit enforcement unchanged.
+- Verified in a clean temporary Git archive with npm ci --ignore-scripts: npm audit --audit-level=moderate reports zero vulnerabilities; pipeline npm test passed. Existing workspace dependency symlink was not used as evidence for the patched package.
+- Push this fix once, then wait for all five GitHub CI jobs on its exact commit. Do not resume feature pushes or claim remote CI success until the run completes successfully; investigate additional failures if surfaced. No production deploy, migration, provider activity, or notification-setting change.
+
 ## Implementation checkpoint — current inbound queue status and filters
 
 - Continued from pushed `6de37eb`; pulled unchanged branch. Rechecked deployed migration history (95 / latest 20261023221455) and local task/review access, indexes and functions. CLI created local `20261027025554_acquisition_inbound_queue_review_status.sql`; private/public v2 read RPC preserves v1 and reuses the authoritative request-state derivation.
