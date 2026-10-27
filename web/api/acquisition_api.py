@@ -1,10 +1,12 @@
 """Acquisition workspace administration; unavailable until explicitly enabled."""
 from datetime import date, datetime, timezone
 from typing import Literal
+import re
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, HTTPException
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from tools.acquisition_store import acquisition_store
 
@@ -758,3 +760,74 @@ async def acquisition_cost_coverage(workspace_id: UUID, campaign_id: UUID, start
         return result
     except (ValueError, TypeError, KeyError, AttributeError, OverflowError):
         raise HTTPException(status_code=502, detail='Cost evidence could not be verified') from None
+
+
+class AcquisitionCostData(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    date: str = Field(pattern=r'^\d{4}-\d{2}-\d{2}$', min_length=10, max_length=10, strict=True)
+    amount_minor: int | None = Field(ge=0, le=100_000_000_000_000, strict=True)
+    coverage: Literal['complete', 'partial', 'withdrawn']
+    currency: Literal['USD']
+    reporting_timezone: str = Field(min_length=1, max_length=100, strict=True)
+    observed_at: AwareDatetime
+    external_campaign_id: str = Field(pattern=r'^[0-9]{1,200}$', strict=True)
+    ad_account_id: str = Field(pattern=r'^[0-9]{1,200}$', strict=True)
+    evidence_ref: str = Field(min_length=10, max_length=1000, strict=True)
+    evidence_hash: str = Field(pattern=r'^[a-f0-9]{64}$', strict=True)
+    expected_revision: int = Field(ge=0, le=999_999_999, strict=True)
+
+    @field_validator('observed_at', mode='before')
+    @classmethod
+    def explicit_observation_timestamp(cls, value):
+        if not isinstance(value, str) or len(value) > 64 or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})', value):
+            raise ValueError('Use an explicit timestamp with timezone')
+        return value
+
+    @model_validator(mode='after')
+    def consistent_daily_evidence(self):
+        day = date.fromisoformat(self.date)
+        try:
+            zone = ZoneInfo(self.reporting_timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise ValueError('Use a supported account reporting timezone') from None
+        if len(self.evidence_ref.strip()) < 10:
+            raise ValueError('Reviewed evidence reference required')
+        if self.observed_at > datetime.now(timezone.utc):
+            raise ValueError('Observation cannot be in the future')
+        if (self.coverage == 'withdrawn') != (self.amount_minor is None):
+            raise ValueError('Withdrawn cost requires null; other coverage requires exact minor units')
+        if self.coverage == 'complete' and self.observed_at.astimezone(zone).date() <= day:
+            raise ValueError('Complete cost requires a closed local reporting day')
+        return self
+
+
+class AcquisitionCostImport(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    link_review_id: UUID
+    reviewed: bool = Field(strict=True)
+    data: AcquisitionCostData
+
+    @model_validator(mode='after')
+    def evidence_review_required(self):
+        if not self.reviewed:
+            raise ValueError('Confirm review of the source evidence')
+        return self
+
+
+@router.post('/workspaces/{workspace_id}/cost-evidence')
+async def record_acquisition_cost(workspace_id: UUID, body: AcquisitionCostImport, store=Depends(acquisition_store)):
+    result = await store.request('POST', 'rpc/record_acquisition_cost', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_link_review': str(body.link_review_id),
+        'p_data': body.data.model_dump(mode='json')})
+    try:
+        if (not isinstance(result, dict) or result.get('id') != str(body.id)
+            or type(result.get('revision')) is not int or result['revision'] != body.data.expected_revision + 1
+            or type(result.get('duplicate')) is not bool or result.get('execution_authorized') is not False
+            or str(UUID(result['campaign_id'])) != result['campaign_id']):
+            raise ValueError('Unconfirmed cost result')
+    except (ValueError, TypeError, KeyError, AttributeError):
+        # A malformed reply may follow a committed write. Do not retry or invent
+        # another request; callers retain the original UUID/body to reconcile.
+        raise HTTPException(status_code=502, detail='Cost import result is unconfirmed; reconcile the exact request') from None
+    return {key: result[key] for key in ('id','campaign_id','revision','duplicate','execution_authorized')}

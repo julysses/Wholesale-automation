@@ -645,3 +645,73 @@ def test_stale_attribution_suppresses_totals_and_empty_timezone_stays_unknown(ap
     state['body']=cost_envelope()|{'items':[],'reporting_timezone':None}
     value=client.get(cost_path(),headers={'Authorization':'Bearer user-token'}).json()
     assert value['status']=='unavailable' and value['reporting_timezone'] is None
+
+
+def cost_import_body():
+    return {'id':U,'link_review_id':U,'reviewed':True,'data':{
+        'date':'2026-10-24','amount_minor':12550,'coverage':'complete','currency':'USD',
+        'reporting_timezone':'America/Chicago','observed_at':'2026-10-25T06:00:00Z',
+        'external_campaign_id':'987654','ad_account_id':'123456','evidence_ref':'private-reviewed-artifact',
+        'evidence_hash':'a'*64,'expected_revision':0}}
+
+
+def test_cost_import_uses_user_jwt_and_exact_reviewed_payload(api):
+    client,state=api; state['body']={'id':U,'campaign_id':W,'revision':1,'duplicate':False,'execution_authorized':False}
+    body=cost_import_body()
+    response=client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=body)
+    assert response.status_code==200 and response.json()==state['body']
+    request=state['requests'][-1]; payload=json.loads(request.content)
+    assert request.headers['authorization']=='Bearer user-token'
+    assert payload=={'p_id':U,'p_workspace':W,'p_link_review':U,'p_data':body['data']}
+    assert 'actor_id' not in payload
+
+
+@pytest.mark.parametrize('patch',[
+    {'amount_minor':True},{'amount_minor':'12550'},{'amount_minor':1.5},{'amount_minor':-1},{'amount_minor':10**15},
+    {'amount_minor':None},{'coverage':'withdrawn'},{'currency':'CAD'}, {'expected_revision':True},
+    {'expected_revision':-1},{'expected_revision':10**9},{'reporting_timezone':'invalid/zone'},
+    {'observed_at':1792908000},{'observed_at':'2026-10-25T06:00:00'}, {'observed_at':'2026-10-24T06:00:00Z'},
+    {'observed_at':'2999-01-01T00:00:00Z'},{'date':'2026-02-30'}, {'date':1792886400},
+    {'external_campaign_id':123},{'ad_account_id':True},{'evidence_ref':' '*20},{'evidence_hash':'broken'}, {'actor_id':U}])
+def test_cost_import_invalid_evidence_never_reaches_database(api,patch):
+    client,state=api; body=cost_import_body(); body['data'].update(patch)
+    assert client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=body).status_code==422
+    assert state['requests']==[]
+
+
+@pytest.mark.parametrize('reviewed',[False,1,'true',None])
+def test_cost_import_requires_explicit_boolean_review(api,reviewed):
+    client,state=api; body=cost_import_body(); body['reviewed']=reviewed
+    assert client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=body).status_code==422
+    assert not state['requests']
+
+
+@pytest.mark.parametrize('patch',[{'id':W},{'revision':2},{'revision':True},{'campaign_id':'bad'},{'duplicate':1},{'execution_authorized':True}])
+def test_unconfirmed_cost_reply_is_not_retried_or_reported_saved(api,patch):
+    client,state=api; state['body']={'id':U,'campaign_id':W,'revision':1,'duplicate':False,'execution_authorized':False}|patch
+    response=client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=cost_import_body())
+    assert response.status_code==502 and len(state['requests'])==1
+
+
+def test_cost_import_withdrawal_and_exact_retry_preserve_request(api):
+    client,state=api; body=cost_import_body(); body['data'].update(coverage='withdrawn',amount_minor=None,expected_revision=2)
+    state['body']={'id':U,'campaign_id':W,'revision':3,'duplicate':True,'execution_authorized':False}
+    for _ in range(2):
+        response=client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=body)
+        assert response.status_code==200 and response.json()['duplicate'] is True
+    assert state['requests'][0].content==state['requests'][1].content
+
+
+def test_cost_import_disabled_or_unsigned_has_no_database_effect(api,monkeypatch):
+    client,state=api; path=f'/api/acquisition/workspaces/{W}/cost-evidence'
+    assert client.post(path,json=cost_import_body()).status_code==401
+    monkeypatch.setenv('ACQUISITION_ENABLED','false')
+    assert client.post(path,headers={'Authorization':'Bearer user-token'},json=cost_import_body()).status_code==404
+    assert not state['requests']
+
+
+@pytest.mark.parametrize('extra',[{'workspace_id':U},{'campaign_id':W},{'actor_id':U},{'execution_authorized':True}])
+def test_cost_import_cannot_override_server_scope_or_authority(api,extra):
+    client,state=api
+    assert client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=cost_import_body()|extra).status_code==422
+    assert not state['requests']

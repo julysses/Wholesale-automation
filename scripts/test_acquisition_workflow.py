@@ -27,6 +27,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'record_acquisition_cost':['p_id','p_workspace','p_link_review','p_data'],
  'acquisition_cost_evidence':['p_workspace','p_campaign','p_start','p_end','p_as_of'],
  'acquisition_property_source_touches':['p_workspace','p_lead','p_after','p_limit'],
  'capture_acquisition_source_campaign':['p_id','p_workspace','p_source','p_link_review'],
@@ -125,7 +126,7 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review'}
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review'}
                       else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
@@ -452,6 +453,32 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.client.get(path+'/campaign-link-reviews',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
         self.assertEqual(self.sql('SELECT count(*) FROM leads WHERE ad_campaign_id IS NOT NULL'),'0')
         self.assertEqual(sum(path.startswith('/v26.0/') for path,token in self.requests),1)
+
+    def test_cost_import_http_lost_reply_retry_revocation_and_conflicts(self):
+        intake,review=self.cost_fixture()
+        path=self.base+'/cost-evidence'
+        body={'id':'93000000-0000-4000-8000-000000000001','link_review_id':review,'reviewed':True,'data':{
+            'date':'2026-10-24','amount_minor':12550,'coverage':'complete','currency':'USD',
+            'reporting_timezone':'America/Chicago','observed_at':'2026-10-25T06:00:00Z',
+            'external_campaign_id':'987654','ad_account_id':'123456','evidence_ref':'private-reviewed-artifact',
+            'evidence_hash':'a'*64,'expected_revision':0}}
+        self.assertEqual(self.client.post(path,headers={'Authorization':'Bearer synthetic-other-session'},json=body).status_code,403)
+        self.lose_facebook_reply='record_acquisition_cost'
+        first=self.client.post(path,headers=self.headers,json=body)
+        self.assertEqual(first.status_code,503,first.text)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_cost'"),'1')
+        changed=copy.deepcopy(body); changed['data']['amount_minor']=999
+        self.assertEqual(self.client.post(path,headers=self.headers,json=changed).status_code,409)
+        retry=self.client.post(path,headers=self.headers,json=body)
+        self.assertEqual(retry.status_code,200,retry.text); self.assertTrue(retry.json()['duplicate'])
+        self.assertEqual(retry.json()['campaign_id'],self.link_campaign)
+        self.campaign_link_review(intake,self.campaign_link_state(intake),p_id='cf000000-0000-4000-8000-000000000002',p_action='revoke',p_campaign=None,p_ad_account=None)
+        historical=self.client.post(path,headers=self.headers,json=body)
+        self.assertEqual(historical.status_code,200,historical.text); self.assertTrue(historical.json()['duplicate'])
+        next_body=copy.deepcopy(body); next_body['id']='93000000-0000-4000-8000-000000000002'; next_body['data']['expected_revision']=1
+        self.assertEqual(self.client.post(path,headers=self.headers,json=next_body).status_code,409)
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance WHERE workspace_id IS NOT NULL'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_cost'"),'1')
 
     def test_reviewed_cost_coverage_http_preserves_gaps_and_revoked_attribution(self):
         intake,review=self.cost_fixture()

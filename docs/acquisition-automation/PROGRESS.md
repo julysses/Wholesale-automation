@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — authenticated reviewed cost-import contract
+
+- Previous goal turn made progress: pushed `fad4dfb` with cost ledger/read API and SQL acceptance. Pulled unchanged branch; approved Git escalation resolved sandbox DNS. No migration changes this increment.
+- Added POST `/workspaces/{workspace}/cost-evidence` over the controlled SQL function. Strict nested models reject scope/actor overrides, extra fields, floats/booleans for minor units or revision, unsupported currency/timezone, invalid calendar dates, naive/numeric/future timestamps and inconsistent withdrawal/complete coverage. Explicit boolean source-review acknowledgment is required.
+- The request preserves exact UUID/link/evidence and forwards the user JWT. Internal campaign/reviewer remain database-derived with existing owner/admin/MFA/live-session controls. Responses must confirm exact request ID, next revision, campaign UUID, duplicate boolean and no execution authority; invalid replies are unconfirmed and never automatically retried.
+- Validation: **96 API tests passed** and **all 14 integrated real-SQL journeys passed**. New journey simulates a lost response after commit, verifies altered retry conflict, reconciles exact retry, revokes attribution, confirms historical retry, rejects a new stale-link write and retains exactly one cost revision/audit. Feature-disabled and unsigned requests have no database effect; client scope/authority overrides fail validation.
+- Human-reviewed import is not automatically authenticated Meta retrieval. Provider collection, private artifact upload/retention workflow, dashboard and reconciled cost-per-lead denominators remain open. Full-schema/PostgREST/provider acceptance remains required. Production, spending and paused SMS unchanged.
+
+Next: expose coverage and reviewed cost entry in the campaign dashboard with unavailable/partial/historical states and durable exact-request reconciliation. Continue provider cost collection and funnel metrics after the shared controls. Full PRD goal active.
+
 ## Implementation checkpoint — reviewed cost persistence and coverage API
 
 - Previous turn made progress: pushed `cae734f` with live cost catalog and expanded fixture. Pulled unchanged branch. CLI created `20261026234504_acquisition_cost_evidence.sql`; initial CLI telemetry sandbox failure resolved through approved escalation. Production migration remains unapplied.
