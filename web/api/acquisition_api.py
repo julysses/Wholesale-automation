@@ -467,7 +467,7 @@ async def intake_identity_history(workspace_id: UUID, intake_id: UUID,
 @router.get('/workspaces/{workspace_id}/intakes')
 async def acquisition_intakes(workspace_id: UUID, after: UUID | None = None,
                               limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
-    params = {'select': 'id,lead_id,classification,created_at', 'workspace_id': 'eq.'+str(workspace_id),
+    params = {'select': 'id,lead_id,classification,created_at,source_type,inbound_integration_id,inbound_call_id,inbound_revision', 'workspace_id': 'eq.'+str(workspace_id),
               'order': 'id', 'limit': str(limit+1)}
     if after is not None:
         params['id'] = 'gt.'+str(after)
@@ -478,7 +478,7 @@ async def acquisition_intakes(workspace_id: UUID, after: UUID | None = None,
 @router.get('/workspaces/{workspace_id}/intakes/{intake_id}')
 async def acquisition_intake_detail(workspace_id: UUID, intake_id: UUID, store=Depends(acquisition_store)):
     rows = await store.request('GET', 'seller_intakes', params={
-        'select': 'id,lead_id,classification,created_at,prepared_answers,preparation_hash,normalization_notes',
+        'select': 'id,lead_id,classification,created_at,source_type,inbound_integration_id,inbound_call_id,inbound_revision,prepared_answers,preparation_hash,normalization_notes',
         'workspace_id': 'eq.'+str(workspace_id), 'id': 'eq.'+str(intake_id), 'limit': '1',
     })
     if not rows:
@@ -673,7 +673,7 @@ async def capture_source_campaign(workspace_id: UUID, intake_id: UUID, body: Acq
 @router.get('/workspaces/{workspace_id}/leads/{lead_id}/sources')
 async def acquisition_lead_sources(workspace_id: UUID, lead_id: UUID, after: UUID | None = None,
                                    limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
-    params = {'select': 'id,workspace_id,lead_id,receipt_id,integration_id,source_type,preparation_hash,external_lead_id,form_id,external_campaign_id,adset_id,ad_id,submitted_at_raw,utm_data,projection_version,recorded_at',
+    params = {'select': 'id,workspace_id,lead_id,receipt_id,integration_id,source_type,preparation_hash,external_lead_id,form_id,external_campaign_id,adset_id,ad_id,submitted_at_raw,utm_data,projection_version,recorded_at,inbound_event_id,inbound_revision',
               'workspace_id': 'eq.'+str(workspace_id), 'lead_id': 'eq.'+str(lead_id), 'order': 'id', 'limit': str(limit+1)}
     if after is not None:
         params['id'] = 'gt.'+str(after)

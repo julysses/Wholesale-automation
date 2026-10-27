@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — channel-aware intake and source review
+
+- Continued from pushed `362b565`; pulled unchanged branch after approved network retry. Reviewed actual intake/source API and React read dependencies and applied React skill guidance. CLI generated local `20261027020314_acquisition_inbound_read_metadata.sql` to expose call revision/event metadata through the existing bounded property-source RPC; no production migration.
+- Intake list/detail now expose channel, integration/call and revision. Shared strict origin validation distinguishes Facebook from inbound data; queue/detail labels identify saved call revisions, explicitly avoid a latest-version claim and omit Facebook campaign controls for inbound intakes. Property source rows label call evidence/revisions and do not present rows as unique lead or conversion totals. Lead-source API includes event/revision metadata as well.
+- Updated synthetic browser fixtures and tests. An initial edit command used the frontend working directory with root-relative paths and made no edits; reran from the repository root. No product behavior was inferred from that failed command.
+- Validation: **363 frontend tests across 59 files passed**, acquisition-enabled build passed, and lint passed with 147 existing findings/no new findings. **105 API tests passed** after adding explicit read-projection assertions. A focused real-SQL case proves two revisions share call identity with separate revision/event evidence and no campaign attribution, plus tenant denial. All **16 integrated SQL workflows passed** for the updated intake/property-source projection; the final additive lead-source select fields have focused API coverage. Diff checks passed.
+- Read/UI support is local and default-disabled. No provider, production, spend, outreach or paused-SMS changes. New-label browser visual QA and latest-only grouped queue/funnel aggregation remain open; nothing claims these are independent acquired leads.
+
+Next: wire submit_seller_intake through the signed tool endpoint to the existing revision RPC, validate minimal responses and commit-loss recovery through real SQL, then complete browser QA and operator follow-up review. Full PRD goal active; all migration/activation/privacy gates remain required.
+
 ## Implementation checkpoint — immutable inbound seller-intake persistence
 
 - Continued from pushed `e0a55e6`; pulled unchanged branch with approved network retry. Inspected existing source trigger, intake qualification and property-source reporting dependencies before SQL. CLI generated local `20261027015624_acquisition_inbound_intakes.sql`; production remains unapplied.

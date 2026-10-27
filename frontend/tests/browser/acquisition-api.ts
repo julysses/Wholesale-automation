@@ -22,7 +22,7 @@ const campaignLinkState = () => {
 };
 const held = { receipt_id: 'fixture-receipt', provider: 'facebook', state: 'review', attempts: 1, reason_code: 'CREDENTIALS_INVALID', blockers: ['CREDENTIALS_INVALID'], updated_at: '2026-10-26T12:00:00.123456+00:00', guidance: 'Ask the integration administrator to verify the Page credential.', next_attempt_at: null, lease_expires_at: null };
 const recoveries: unknown[] = [];
-const intake = { id: 'fixture-intake', lead_id: 'fixture-source', classification: 'incomplete', created_at: '2026-10-26T12:00:00Z',
+const intake = { source_type: 'facebook_native_form', inbound_integration_id: null, inbound_call_id: null, inbound_revision: null, id: 'fixture-intake', lead_id: 'fixture-source', classification: 'incomplete', created_at: '2026-10-26T12:00:00Z',
   prepared_answers: { answers: { property_address: '123 Fixture Lane', city: 'Dallas', state: 'TX', authority: 'yes', phone: '2145550101' }, missing_fields: ['condition', 'timeline'], reason_codes: ['MISSING_REQUIRED_ANSWERS'] }, normalization_notes: [] };
 const identityEvents: { id: string; sequence: number; action: string; review_note: string; created_at: string }[] = [];
 const candidate = { lead_id: 'fixture-lead', property_id: 'fixture-property', property_address: '123 Fixture Lane', city: 'Dallas', state: 'TX', county: 'Dallas', parcel_id: 'fixture-parcel', county_unit: null, match_basis: 'EXACT_ADDRESS_TEXT' };
@@ -163,7 +163,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   else if (path.includes('/source-touches?')) {
     const after = new URL(path, 'http://fixture.invalid').searchParams.get('after');
     value = { workspace_id: 'fixture-workspace', canonical_lead_id: '20000000-0000-4000-8000-000000000001', property_id: '30000000-0000-4000-8000-000000000001',
-      items: after ? [{ source_id: '50000000-0000-4000-8000-000000000001', original_lead_id: '60000000-0000-4000-8000-000000000001', association: 'reviewed_repeat_inquiry', identity_review_id: '70000000-0000-4000-8000-000000000001',
+      items: after ? [{ source_type: 'facebook_native_form', inbound_revision: null, inbound_event_id: null, integration_id: '96000000-0000-4000-8000-000000000001', external_lead_id: '123', source_id: '50000000-0000-4000-8000-000000000001', original_lead_id: '60000000-0000-4000-8000-000000000001', association: 'reviewed_repeat_inquiry', identity_review_id: '70000000-0000-4000-8000-000000000001',
         attribution_status: 'campaign_review_not_current', attribution_current: false, current_campaign_id: null,
         captured_attribution: { id: '80000000-0000-4000-8000-000000000001', campaign_id: '90000000-0000-4000-8000-000000000001', link_review_id: 'a0000000-0000-4000-8000-000000000001', created_at: '2026-10-26T12:00:00Z' } }] : [],
       next_after: after ? null : '40000000-0000-4000-8000-000000000001', scanned_count: after ? 1 : 20, excluded_count: after ? 0 : 20,

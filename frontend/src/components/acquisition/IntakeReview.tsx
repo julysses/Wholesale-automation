@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '@/lib/api';
 import { CampaignLinkReview } from './CampaignLinkReview';
 import { IntakeQualification } from './IntakeQualification';
+import { type IntakeOrigin, validIntakeOrigin, intakeOriginLabel } from '@/lib/intakeOrigin';
 
-type Intake = { id: string; lead_id: string; classification: string; created_at: string };
+type Intake = IntakeOrigin & { id: string; lead_id: string; classification: string; created_at: string };
 type Detail = Intake & { prepared_answers: { answers: Record<string, string>; missing_fields: string[]; reason_codes: string[] }; normalization_notes: string[] };
 type Target = { lead_id: string; property_id: string | null; property_address: string; city: string; state: string; county: string | null; parcel_id: string | null; county_unit: string | null; match_basis: string };
 type Review = { id: string; sequence: number; action: string; review_note: string; property_evidence_ref: string | null; seller_evidence_ref: string | null; created_at: string };
@@ -36,16 +37,18 @@ function IntakeQueue({ userId, workspace }: { userId: string; workspace: string 
   const [selected, setSelected] = useState<string | null>(null);
   const queue = useQuery({ ...options, queryKey: ['intake-queue', userId, workspace, after], queryFn: async ({ signal }) => {
     const data = await read<{ items: Intake[]; next_after: string | null }>(`${base}?limit=20${after ? `&after=${encodeURIComponent(after)}` : ''}`, signal);
-    if (!Array.isArray(data?.items) || !data.items.every(row => typeof row.id === 'string' && typeof row.classification === 'string')
+    if (!Array.isArray(data?.items) || !data.items.every(row => typeof row.id === 'string' && typeof row.classification === 'string' && validIntakeOrigin(row))
       || (data.next_after !== null && typeof data.next_after !== 'string')) throw new Error('Invalid intake queue');
     return data;
   } });
   return <div className="space-y-4">
-    <p className="text-sm">Original classifications are retained. Identity review does not verify title, grant contact permission or send an offer.</p>
+    <p className="text-sm">Each row is an immutable intake snapshot. Call revisions are not additional leads. Original classifications are retained. Identity review does not verify title, grant contact permission or send an offer.</p>
     <button className={button} disabled={queue.isFetching} onClick={() => { void queue.refetch(); }}>Refresh intakes</button>
     {queue.isFetching ? <p role="status">Loading intakes…</p> : queue.isError ? <p role="alert">Intakes unavailable. Check workspace access.</p> : <>
       {!queue.data?.items.length && <p>No seller intakes on this page.</p>}
       <ul className="space-y-2">{queue.data?.items.map(row => <li key={row.id} className="border rounded p-3">
+        <p className="text-sm font-medium">{intakeOriginLabel(row)}</p>
+        {row.source_type === 'retell_inbound' && <p className="text-xs break-all">Call: {row.inbound_call_id} · Integration: {row.inbound_integration_id}</p>}
         <p className="text-sm break-all">{row.id} · {row.classification.replaceAll('_', ' ')} · {row.created_at}</p>
         <button className={button} disabled={!!selected} onClick={() => setSelected(row.id)}>Review intake</button>
       </li>)}</ul></>}
@@ -69,7 +72,7 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
   const [assessmentRevision, setAssessmentRevision] = useState(0);
   const detail = useQuery({ ...options, queryKey: ['intake-detail', userId, workspace, intake], queryFn: async ({ signal }) => {
     const value = await read<Detail>(path, signal);
-    if (!value?.prepared_answers?.answers || !Array.isArray(value.prepared_answers.missing_fields) || !Array.isArray(value.prepared_answers.reason_codes) || !Array.isArray(value.normalization_notes)) throw new Error('Invalid intake evidence');
+    if (!validIntakeOrigin(value) || !value?.prepared_answers?.answers || !Array.isArray(value.prepared_answers.missing_fields) || !Array.isArray(value.prepared_answers.reason_codes) || !Array.isArray(value.normalization_notes)) throw new Error('Invalid intake evidence');
     return value;
   } });
   const candidates = useQuery({ ...options, queryKey: ['intake-candidates', userId, workspace, intake], queryFn: async ({ signal }) => {
@@ -121,6 +124,8 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
     <h3 className="font-semibold">Review seller identity and property</h3>
     <p className="text-sm">Owner/admin MFA is required to record a decision. Phone matches alone do not establish property or seller identity.</p>
     {detail.isError ? <p role="alert">Seller evidence unavailable.</p> : detail.data && <div>
+      <p className="text-sm font-medium">{intakeOriginLabel(detail.data)}</p>
+      {detail.data.source_type === 'retell_inbound' && <p className="text-sm">Call: {detail.data.inbound_call_id}. This is saved evidence, not a claim that this is the latest revision. Refresh qualification before acting.</p>}
       <h4 className="font-medium">Seller-submitted answers</h4><dl className="grid sm:grid-cols-2 gap-2 text-sm">{Object.entries(detail.data.prepared_answers.answers).map(([key, value]) => <div key={key} className="break-words"><dt className="text-gray-500">{key.replaceAll('_', ' ')}</dt><dd>{value || 'Missing'}</dd></div>)}</dl>
       <p className="text-sm mt-2">Missing: {detail.data.prepared_answers.missing_fields.join(', ') || 'None reported'}</p>
       <p className="text-sm">Review flags: {[...detail.data.prepared_answers.reason_codes, ...detail.data.normalization_notes].join(', ') || 'None reported'}</p>
@@ -154,7 +159,7 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
       <button className={button} disabled={campaignPending || assessmentPending || busy || !!pending} onClick={() => { setAck(false); void detail.refetch(); void candidates.refetch(); void state.refetch(); void access.refetch(); void history.refetch(); setAssessmentRevision(value => value + 1); }}>Refresh identity evidence</button>
       <button className={button} disabled={campaignPending || assessmentPending || busy || !!pending} onClick={onClose}>Close intake review</button></div>
     {feedback && <p role="status">{feedback}</p>}
-    {!campaignOpen ? <button className={button} onClick={() => setCampaignOpen(true)}>Review campaign attribution</button> : <CampaignLinkReview userId={userId} workspace={workspace} intake={intake} locked={busy || !!pending || assessmentPending} onPending={setCampaignPending} />}
+    {!detail.isError && !detail.isFetching && detail.data?.source_type === 'facebook_native_form' && (!campaignOpen ? <button className={button} onClick={() => setCampaignOpen(true)}>Review campaign attribution</button> : <CampaignLinkReview userId={userId} workspace={workspace} intake={intake} locked={busy || !!pending || assessmentPending} onPending={setCampaignPending} />)}
     <IntakeQualification userId={userId} workspace={workspace} intake={intake} revision={assessmentRevision} locked={campaignPending || busy || !!pending} onPending={setAssessmentPending} />
     <h4 className="font-medium">Identity review history</h4>
     {history.isFetching ? <p>Loading review history…</p> : history.isError ? <p role="alert">Review history unavailable.</p> : <>

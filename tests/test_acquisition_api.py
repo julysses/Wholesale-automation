@@ -399,6 +399,7 @@ def test_intake_queue_and_detail_are_scoped_and_bounded(api):
     assert result.json() == {'items': [{'id': intake}], 'next_after': intake}
     params = state['requests'][-1].url.params
     assert params['workspace_id'] == 'eq.'+W and params['limit'] == '2' and params['order'] == 'id'
+    assert {'source_type','inbound_integration_id','inbound_call_id','inbound_revision'} <= set(params['select'].split(','))
     state['body'] = []
     assert client.get(base+'?after='+intake, headers=headers).json()['next_after'] is None
     assert state['requests'][-1].url.params['id'] == 'gt.'+intake
@@ -407,6 +408,7 @@ def test_intake_queue_and_detail_are_scoped_and_bounded(api):
     assert client.get(base+'/'+intake, headers=headers).json()['id'] == intake
     params = state['requests'][-1].url.params
     assert params['id'] == 'eq.'+intake and params['workspace_id'] == 'eq.'+W and params['limit'] == '1'
+    assert {'source_type','inbound_integration_id','inbound_call_id','inbound_revision'} <= set(params['select'].split(','))
 
 
 def test_intake_assessment_is_server_derived_and_scoped(api):
@@ -734,3 +736,13 @@ def test_cost_import_unknown_outcomes_never_claim_rejection(api,failure):
     response=client.post(f'/api/acquisition/workspaces/{W}/cost-evidence',headers={'Authorization':'Bearer user-token'},json=cost_import_body())
     assert response.status_code in {502,503}
     assert 'X-Acquisition-Cost-Rejected' not in response.headers
+
+
+def test_lead_source_reads_include_call_revision_origin(api):
+    client,state=api
+    state['body']=[]
+    response=client.get(f'/api/acquisition/workspaces/{W}/leads/{U}/sources',headers={'Authorization':'Bearer user-token'})
+    assert response.status_code==200
+    params=state['requests'][-1].url.params
+    assert params['workspace_id']=='eq.'+W and params['lead_id']=='eq.'+U
+    assert {'source_type','external_lead_id','integration_id','inbound_event_id','inbound_revision'} <= set(params['select'].split(','))

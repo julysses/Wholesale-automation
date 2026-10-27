@@ -180,6 +180,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql((ROOT/'frontend/supabase/migrations/20261027013724_acquisition_inbound_review_tasks.sql').read_text())
         if self._testMethodName not in ('test_source_migration_backfills_without_changing_intakes','test_inbound_intake_migration_preserves_populated_facebook'):
             self.sql((ROOT/'frontend/supabase/migrations/20261027015624_acquisition_inbound_intakes.sql').read_text())
+            self.sql((ROOT/'frontend/supabase/migrations/20261027020314_acquisition_inbound_read_metadata.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -197,6 +198,22 @@ class WorkspaceTests(unittest.TestCase):
         data=prepared or {'version':'seller-intake-v1',**module.normalize_seller_fields([{'name':k,'values':[v]} for k,v in sorted(values.items())])}
         result=self.sql(f"SELECT public.record_acquisition_inbound_intake('96000000-0000-4000-8000-000000000001','+12145550100','agent_test',3,{literal(call)},'{request}',{revision},{literal(json.dumps(data))}::jsonb)",user=ADMIN,role=role,fail=fail)
         return result if fail else json.loads(result)
+
+    def test_inbound_property_sources_report_call_revisions_without_campaign(self):
+        integration=self.inbound_fixture();self.inbound_accept();self.bind()
+        first=self.inbound_intake();self.identity_review(first['id'],self.identity_state(first['id']))
+        second=self.inbound_intake(request='99000000-0000-4000-8000-000000000002',revision=1)
+        self.identity_review(second['id'],self.identity_state(second['id']),request='71000000-0000-4000-8000-000000000002')
+        page=self.property_sources()
+        self.assertEqual(len(page['items']),2)
+        self.assertEqual({row['inbound_revision'] for row in page['items']},{1,2})
+        self.assertEqual({row['external_lead_id'] for row in page['items']},{'call_test'})
+        self.assertEqual({row['integration_id'] for row in page['items']},{integration})
+        for row in page['items']:
+            self.assertEqual(row['source_type'],'retell_inbound')
+            self.assertIsNone(row['receipt_id']);self.assertIsNotNone(row['inbound_event_id'])
+            self.assertIsNone(row['external_campaign_id']);self.assertFalse(row['attribution_current'])
+        self.assertFalse(page['totals_available']);self.property_sources(user=OTHER,fail=True)
 
     def test_inbound_intake_migration_preserves_populated_facebook(self):
         intake=self.campaign_link_fixture()

@@ -2,20 +2,21 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { IntakeReview } from '../src/components/acquisition/IntakeReview';
-const mock = vi.hoisted(() => ({ fetch: vi.fn(), post: vi.fn(), role: 'owner', sequence: 0, changed: false }));
+const mock = vi.hoisted(() => ({ fetch: vi.fn(), post: vi.fn(), role: 'owner', sequence: 0, changed: false, inbound: false }));
 vi.mock('@/lib/api', () => ({ apiFetch: mock.fetch, ApiError: class extends Error { status = 409; } }));
 const state = { sequence: 0, preparation_hash: 'a'.repeat(64), target_hash: 'b'.repeat(64), target_snapshot: { parcel_id: 'parcel-42', county: 'Dallas' }, latest_review: null, link_current: false };
 beforeEach(() => {
-  mock.fetch.mockReset(); mock.post.mockReset(); mock.role = 'owner'; mock.sequence = 0; mock.changed = false;
+  mock.fetch.mockReset(); mock.post.mockReset(); mock.role = 'owner'; mock.sequence = 0; mock.changed = false; mock.inbound = false;
   mock.post.mockImplementation(async (init: RequestInit) => { const body = JSON.parse(init.body as string); return { review_id: body.id, sequence: body.expected_sequence + 1, duplicate: false, outreach_authorized: false }; });
+  const origin = () => mock.inbound ? { source_type: 'retell_inbound', inbound_integration_id: '96000000-0000-4000-8000-000000000001', inbound_call_id: 'call_test', inbound_revision: 2 } : { source_type: 'facebook_native_form', inbound_integration_id: null, inbound_call_id: null, inbound_revision: null };
   mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => ({ json: async () => {
     if (init?.method === 'POST') return mock.post(init);
-    if (path.includes('/intakes?')) return { items: [{ id: 'intake', lead_id: 'source', classification: 'incomplete', created_at: '2026-10-26' }], next_after: null };
+    if (path.includes('/intakes?')) return { items: [{ ...origin(), id: 'intake', lead_id: 'source', classification: 'incomplete', created_at: '2026-10-26' }], next_after: null };
     if (path.endsWith('/memberships')) return [{ user_id: 'user', workspace_id: 'w', status: 'active', role: mock.role }];
     if (path.includes('/candidates?')) return { items: [{ lead_id: 'canonical', property_id: 'property', property_address: '1 Fixture St', city: 'Dallas', state: 'TX', county: 'Dallas', parcel_id: 'parcel-42', county_unit: null, match_basis: 'CONTACT_ONLY' }], truncated: false };
     if (path.includes('/identity-state')) return { ...state, sequence: mock.sequence, latest_review: mock.sequence ? { id: 'prior', sequence: mock.sequence, action: 'link_property', review_note: 'Previous documented review', created_at: '2026-10-26' } : null, target_hash: mock.changed ? 'c'.repeat(64) : path.includes('?target=') ? state.target_hash : null };
     if (path.includes('/identity-reviews?')) return [];
-    return { id: 'intake', classification: 'incomplete', prepared_answers: { answers: { property_address: 'Seller asserted address' }, missing_fields: ['condition'], reason_codes: ['MISSING_REQUIRED_ANSWERS'] }, normalization_notes: [] };
+    return { ...origin(), id: 'intake', classification: 'incomplete', prepared_answers: { answers: { property_address: 'Seller asserted address' }, missing_fields: ['condition'], reason_codes: ['MISSING_REQUIRED_ANSWERS'] }, normalization_notes: [] };
   } }));
 });
 function view(workspace = 'w', client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
@@ -93,4 +94,15 @@ it('locks intake editing and closing while campaign review reconciliation is pen
   await waitFor(()=>expect(screen.getByRole('button',{name:'Close intake review'})).toBeDisabled());
   expect(screen.getByLabelText('Identity decision')).toBeDisabled(); expect(screen.getByRole('button',{name:'Retry exact campaign review'})).toBeEnabled();
   sessionStorage.removeItem(key);
+});
+
+it('labels inbound revisions and omits Facebook campaign controls', async () => {
+  mock.inbound = true;
+  render(view().node); fireEvent.click(screen.getByRole('button', { name: 'Seller intake identity review' }));
+  await screen.findByText('Inbound call · revision 2');
+  fireEvent.click(await screen.findByRole('button', { name: 'Review intake' }));
+  await screen.findByText('Seller asserted address');
+  expect(screen.queryByRole('button', { name: 'Review campaign attribution' })).not.toBeInTheDocument();
+  expect(screen.getByText(/not a claim that this is the latest revision/)).toBeInTheDocument();
+  expect(mock.fetch.mock.calls.some(([path]) => String(path).includes('campaign-link'))).toBe(false);
 });

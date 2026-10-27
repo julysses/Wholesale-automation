@@ -139,7 +139,7 @@ class WorkflowTests(WorkspaceTests):
         elif request.url.path in ('/rest/v1/acquisition_lead_sources','/rest/v1/acquisition_source_campaign_reviews'):
             self.assertEqual(request.method,'GET')
             table=request.url.path.rsplit('/',1)[-1]
-            fields=('id,workspace_id,lead_id,receipt_id,integration_id,source_type,preparation_hash,external_lead_id,form_id,external_campaign_id,adset_id,ad_id,submitted_at_raw,utm_data,projection_version,recorded_at'
+            fields=('id,workspace_id,lead_id,receipt_id,integration_id,source_type,preparation_hash,external_lead_id,form_id,external_campaign_id,adset_id,ad_id,submitted_at_raw,utm_data,projection_version,recorded_at,inbound_event_id,inbound_revision'
                     if table=='acquisition_lead_sources' else 'id,workspace_id,source_id,link_review_id,campaign_id,preparation_hash,created_at')
             self.assertEqual(request.url.params['select'],fields)
             relation='lead_id' if table=='acquisition_lead_sources' else 'source_id'
@@ -193,7 +193,7 @@ class WorkflowTests(WorkspaceTests):
             query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT analysis_id,intake_id,assessment_id,evidence_hash FROM public.acquisition_analysis_intakes WHERE {' AND '.join(filters)} LIMIT 1) row;"
         elif request.url.path=='/rest/v1/seller_intakes':
             self.assertEqual(request.method,'GET')
-            allowed={'id','lead_id','classification','created_at','prepared_answers','preparation_hash','normalization_notes'}
+            allowed={'id','lead_id','classification','created_at','source_type','inbound_integration_id','inbound_call_id','inbound_revision','prepared_answers','preparation_hash','normalization_notes'}
             fields=request.url.params['select'].split(',');self.assertTrue(set(fields)<=allowed)
             self.assertTrue(set(request.url.params)<={'select','workspace_id','id','limit','order'})
             op,workspace=request.url.params['workspace_id'].split('.',1);self.assertEqual(op,'eq')
