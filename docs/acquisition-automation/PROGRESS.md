@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — reviewed cost request recovery layer
+
+- Previous goal turn pushed `e35abdc`; pulled unchanged branch with approved network escalation. Added the client import contract and durable exact-request submission helper in `frontend/src/lib/costImport.ts`.
+- Exact decimal parsing avoids floating-point rounding. Reviewed payload validation rejects extra authority fields, invalid scope, unsupported units/timezone, inconsistent withdrawal amounts and invalid revisions/evidence. New complete evidence must follow the account-local reporting day, including daylight-saving boundaries.
+- Requests are isolated by user/workspace/campaign in tab session storage before network transmission. Uncertain results retain the original UUID and full evidence; changed retries are refused. Exact retries preserve original timestamps and revisions. Response identity/campaign/revision/duplicate/no-execution checks precede cleanup; an in-flight response cannot delete a changed stored request. Storage failures prevent transmission.
+- **30 focused tests passed**, acquisition-enabled build passed, and lint baseline passed with 147 existing findings and no new findings. Tests cover lost response, malformed replies, rejected retries, corrupt/transplanted storage, delayed replies, exact decimal limits, withdrawal and local day closure. Initial test-file command used the wrong relative directory and created no file; corrected location and executed the suite successfully.
+- This is the request/recovery layer, not a completed entry UI. It deliberately retains rejected attempts pending explicit reconciliation; a UI must distinguish confirmed rejection from uncertain earlier execution and provide controlled recovery. Server SQL remains authoritative for membership/MFA, current campaign ownership and daily revision concurrency. No production migration, activation or provider operation.
+
+Next: connect a reviewed cost-entry form to current campaign-link evidence, fetch the latest daily revision, expose correction/withdrawal with preview and confirmation, and wire this exact-request recovery layer into locked UI state. Full PRD goal remains active.
+
 ## Implementation checkpoint — campaign cost coverage dashboard
 
 - Continued from pushed `6875f78`; branch pull confirms no remote divergence. Added on-demand Facebook campaign cost coverage with an explicit 1–366 day reporting window. Planned budget remains separate from evidence-backed costs.

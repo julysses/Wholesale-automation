@@ -67,3 +67,10 @@ Owner/admin, MFA, active workspace and live session/role checks remain database-
 Facebook draft cards expose an on-demand cost panel. A user selects an inclusive 1–366 day account-calendar window; the panel uses the scoped coverage endpoint and validates the full projection before displaying amounts. BigInt formatting preserves exact USD minor units. Unknown reporting timezone stays unavailable, missing/withdrawn days remain unavailable, partial observed totals are labeled, and revoked attribution suppresses totals while retaining clearly historical daily evidence. CPL stays unavailable pending denominator reconciliation. Editing dates or failed refresh hides previous results.
 
 Coverage view is read-only. Reviewed import entry, artifact upload/retention, provider-authenticated collection and conversion reconciliation remain separate work. Frontend validation is presentation defense; database membership and immutable evidence rules remain authoritative. Synthetic browser evidence is in `evidence/2026-10-26-campaign-costs-mobile.jpg`.
+
+
+## Client import recovery contract
+
+`frontend/src/lib/costImport.ts` validates exact reviewed payloads, parses decimal USD without floating-point arithmetic and saves the complete request in user/workspace/campaign-scoped session storage before sending. Unknown outcomes, malformed replies and rejected retries retain that payload. A different payload cannot replace it through the helper. Confirmed matching responses clear only the identical stored request. This is tab recovery, not server persistence or proof of evidence authenticity. New submissions also validate future timestamps and complete account-local reporting days; the server rechecks all authority and revision constraints.
+
+The entry UI is not connected yet. It must derive campaign/account/review from current reviewed attribution, fetch the daily revision rather than ask the user to invent it, keep pending requests immutable, and offer reconciliation for rejected and uncertain outcomes without silently discarding evidence.
