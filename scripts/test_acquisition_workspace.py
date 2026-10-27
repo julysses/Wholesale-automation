@@ -13,6 +13,7 @@ import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from acquisition_campaign_fixture import install_campaign_fixture
+from acquisition_call_fixture import install_call_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / 'frontend/supabase/migrations/20261026024157_acquisition_workspace_foundation.sql'
@@ -64,7 +65,7 @@ class WorkspaceTests(unittest.TestCase):
 
     def sql(self, query, *, user=None, role='authenticated', aal='aal2', session=True, fail=False):
         if user:
-            claims = {'sub': user, 'aal': aal}
+            claims = {'sub': user, 'aal': aal, 'role': role}
             if session:
                 claims['session_id'] = user  # Synthetic session IDs only.
             query = (f'SET ROLE {identifier(role)}; SET request.jwt.claims={literal(json.dumps(claims))}; ' + query)
@@ -85,7 +86,8 @@ class WorkspaceTests(unittest.TestCase):
                  'CREATE TABLE auth.users(id uuid PRIMARY KEY); '
                  'CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id),not_after timestamptz); '
                  "CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$; "
-                 "CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT (auth.jwt()->>'sub')::uuid $$;")
+                 "CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT (auth.jwt()->>'sub')::uuid $$; "
+                 "CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT auth.jwt()->>'role' $$;")
         catalog = json.loads(CATALOG.read_text())
         # Recreate exact inspected column types/defaults for touched legacy tables.
         for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'), ('public','webhook_jobs'),
@@ -118,6 +120,7 @@ class WorkspaceTests(unittest.TestCase):
                          f'GRANT SELECT,INSERT,UPDATE,DELETE ON {schema}.{table} TO authenticated; '
                          f'CREATE POLICY legacy_approved ON {schema}.{table} TO authenticated USING (true) WITH CHECK (true);')
         install_campaign_fixture(self.sql)
+        install_call_fixture(self.sql)
         self.sql("ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY; "
                  "GRANT SELECT ON public.audit_logs TO authenticated; GRANT ALL ON public.audit_logs TO service_role; "
                  "CREATE POLICY approved_read_audit_logs ON public.audit_logs FOR SELECT TO authenticated USING (true); "
@@ -1898,6 +1901,30 @@ class WorkspaceTests(unittest.TestCase):
     def queue(self, actor=CALLER, workspace=WORKSPACE, aal='aal2', fail=False):
         data = self.sql(f"SELECT public.list_acquisition_leads('{workspace}');", user=actor, aal=aal, fail=fail)
         return data if fail else json.loads(data)
+
+    def test_inspected_call_event_fixture_preserves_legacy_and_scopes_bound_leads(self):
+        event='91000000-0000-4000-8000-000000000001'
+        self.sql(f"INSERT INTO call_events(id,lead_id,disposition) VALUES('{event}','{LEAD}','no_answer');",user=ADMIN)
+        self.assertEqual(self.sql(f"SELECT dialer||':'||raw_payload::text FROM call_events WHERE id='{event}';",user=ADMIN),'batchdialer:{}')
+        self.sql(f"UPDATE call_events SET notes='legacy edit' WHERE id='{event}';",user=OTHER)
+        self.assertEqual(self.sql(f"SELECT notes FROM call_events WHERE id='{event}';",user=ADMIN),'legacy edit')
+        self.bind()
+        self.assertEqual(self.sql('SELECT count(*) FROM call_events;',user=OTHER),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM call_events;',user=ADMIN),'1')
+        self.sql(f"UPDATE call_events SET notes='blocked' WHERE id='{event}';",user=ADMIN)
+        self.assertEqual(self.sql(f"SELECT notes FROM call_events WHERE id='{event}';"),'legacy edit')
+        self.sql(f"INSERT INTO call_events(lead_id,disposition) VALUES('{LEAD}','unknown');",user=ADMIN,fail=True)
+        self.member(target=CALLER,role='acquisition_caller')
+        self.assertEqual(self.sql('SELECT count(*) FROM call_events;',user=CALLER),'0')
+
+    def test_inspected_call_event_fixture_exposes_gaps_for_inbound_extension(self):
+        self.sql("INSERT INTO call_events(disposition) VALUES('unknown');",user=ADMIN)
+        self.assertEqual(self.sql('SELECT count(*) FROM call_events;',user=OTHER),'1')
+        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','call_events','TRUNCATE');"),'t')
+        self.assertEqual(self.sql("SELECT has_table_privilege('service_role','call_events','TRIGGER');"),'t')
+        self.sql("INSERT INTO call_events(disposition,lead_id) VALUES('unknown','ffffffff-ffff-4fff-8fff-ffffffffffff');",fail=True)
+        self.sql("INSERT INTO call_events(dialer) VALUES('retell');",fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE tablename='call_events';"),'3')
 
     def test_restricted_account_cannot_inherit_legacy_table_access(self):
         self.member(target=CALLER, role='acquisition_caller')

@@ -119,3 +119,19 @@ Metadata evidence: `evidence/2026-10-26-cost-catalog.json` contains 43 columns, 
 ### Cost evidence extension implementation
 
 `20261026234504_acquisition_cost_evidence.sql` now adds the reviewed acquisition evidence namespace to existing fb_campaign_performance. No parallel cost or campaign master is created. Existing legacy metrics remain unchanged and are isolated from new evidence rows. New composite workspace FKs reference ad_campaigns and acquisition_campaign_links; read/write RPCs enforce current membership and reviewed account scope. See CAMPAIGN-COSTS.md for immutable revisions, null legacy metrics, read coverage and forward compensation.
+
+## Inbound call catalog — October 26
+
+Read-only production metadata is saved in `evidence/2026-10-26-inbound-call-catalog.json` (capture 2026-10-27 01:00:50 UTC / October 26 America/Chicago). It includes 5 existing tables, 61 columns, 20 constraints including inbound FKs, 18 indexes, 6 policies, 1 trigger and 122 grants. All 5 tables have RLS enabled. Migration ledger remains 95/latest `20261023221455`; feature `seller_intakes` does not yet exist in production. No production records or credentials were retrieved.
+
+| Logical function | Existing equivalent | Compatibility and proposed extension |
+| --- | --- | --- |
+| Durable provider receipt | `webhook_jobs` | Reuse the existing acquisition receipt extension; add a distinct inbound integration/receipt contract. Persist only approved minimal data under the inbound privacy gate, never copy the full Retell call object into ordinary payload storage. |
+| Inbound lifecycle ledger | `call_events` | Preferred extension: nullable lead/phone permits metadata-only receipt before identity review. Add explicit workspace/integration/call/event identity, projection version/hash and immutable audited controlled writes. Preserve required legacy disposition semantics with an explicit lifecycle category, not a fabricated seller outcome. Scope direct/legacy reads and close truncate/trigger escape paths. |
+| Legacy AI call summary | `ai_call_records` | Requires phone_number and unique call_id globally; contains raw_payload, transcript, recording and qualification fields. Do not create fake phone values or reuse outbound qualification logic to force an inbound metadata receipt. Any later summary extension requires scoped privacy/identity rules and qualification/appointment FK fixture coverage. |
+| Transcripts | `call_transcripts` | Contains raw/formatted text, globally unique call_id and generated word_count; do not populate for initial inbound deployment. Existing qualification_results FK chain must be covered before changing it. |
+| Outbound call reservation | `retell_call_requests` | Requires lead, requesting user and phone; partial unique index prevents multiple unresolved requests per phone. It is not the inbound receipt or callback-request authority. Preserve it unchanged. |
+
+Observed call_events policies permit authenticated access with an approved-operator restriction, not workspace membership. ai_call_records and call_transcripts similarly use approved-user SELECT/INSERT policies. webhook_jobs and retell_call_requests have RLS without exposed policies in this catalog; service-role privileges still require controlled server handling. Several tables grant TRUNCATE/TRIGGER to application roles, which row policies do not make safe for immutable inbound evidence.
+
+The disposable fixture now restores call_events exactly (12 columns, PK/lead FK, 3 indexes, policies and grants) before acquisition boundary scans. It adds the JWT role claim/auth.role function needed by the observed policy. Tests prove legacy default/mutation behavior, preservation after lead binding, owner vs unrelated/caller reads, bound write denial, mandatory disposition/FK enforcement and the remaining unbound/grant gaps. This is not a claim that every inspected call table or the full production schema is restored.

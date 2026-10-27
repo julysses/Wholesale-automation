@@ -1,0 +1,1411 @@
+{
+  "grants": [
+    {
+      "grantee": "postgres",
+      "table_name": "retell_call_requests",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "retell_call_requests",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "retell_call_requests",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "retell_call_requests",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "retell_call_requests",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "retell_call_requests",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "retell_call_requests",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "retell_call_requests",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "retell_call_requests",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "retell_call_requests",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_events",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_events",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_events",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_events",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_events",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_events",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_events",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_events",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_events",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_events",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_events",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_events",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_events",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_events",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_events",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_events",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_events",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_events",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_events",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_events",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_events",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_events",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_events",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_events",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_events",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_events",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_events",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_events",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ai_call_records",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ai_call_records",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ai_call_records",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ai_call_records",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ai_call_records",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ai_call_records",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "ai_call_records",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ai_call_records",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ai_call_records",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ai_call_records",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ai_call_records",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ai_call_records",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ai_call_records",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "ai_call_records",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ai_call_records",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ai_call_records",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ai_call_records",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ai_call_records",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ai_call_records",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ai_call_records",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "ai_call_records",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ai_call_records",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ai_call_records",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ai_call_records",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ai_call_records",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ai_call_records",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ai_call_records",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "ai_call_records",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_transcripts",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_transcripts",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_transcripts",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_transcripts",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_transcripts",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_transcripts",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "call_transcripts",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_transcripts",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_transcripts",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_transcripts",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_transcripts",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_transcripts",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_transcripts",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "call_transcripts",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_transcripts",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_transcripts",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_transcripts",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_transcripts",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_transcripts",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_transcripts",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "call_transcripts",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_transcripts",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_transcripts",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_transcripts",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_transcripts",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_transcripts",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_transcripts",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "call_transcripts",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "webhook_jobs",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "webhook_jobs",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "webhook_jobs",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "webhook_jobs",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "webhook_jobs",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "webhook_jobs",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "postgres",
+      "table_name": "webhook_jobs",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "webhook_jobs",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "webhook_jobs",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "webhook_jobs",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "webhook_jobs",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "webhook_jobs",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "webhook_jobs",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "table_name": "webhook_jobs",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "webhook_jobs",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "webhook_jobs",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "webhook_jobs",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "webhook_jobs",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "webhook_jobs",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "webhook_jobs",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "authenticated",
+      "table_name": "webhook_jobs",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "webhook_jobs",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "webhook_jobs",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "webhook_jobs",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "webhook_jobs",
+      "privilege_type": "DELETE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "webhook_jobs",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "webhook_jobs",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "table_name": "webhook_jobs",
+      "privilege_type": "TRIGGER"
+    }
+  ],
+  "tables": [
+    {
+      "rls": true,
+      "force_rls": false,
+      "table_name": "ai_call_records"
+    },
+    {
+      "rls": true,
+      "force_rls": false,
+      "table_name": "call_events"
+    },
+    {
+      "rls": true,
+      "force_rls": false,
+      "table_name": "call_transcripts"
+    },
+    {
+      "rls": true,
+      "force_rls": false,
+      "table_name": "retell_call_requests"
+    },
+    {
+      "rls": true,
+      "force_rls": false,
+      "table_name": "webhook_jobs"
+    }
+  ],
+  "columns": [
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "ai_call_records",
+      "column_name": "id"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "lead_id"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "provider"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "call_id"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "phone_number"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'initiated'::text",
+      "table_name": "ai_call_records",
+      "column_name": "status"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "disposition"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "duration_sec"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "recording_url"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "transcript"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "timeline_to_sell"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "property_condition"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "occupancy"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(12,2)",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "mortgage_balance"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(12,2)",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "asking_price"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "call_notes"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "campaign_id"
+    },
+    {
+      "not_null": false,
+      "data_type": "jsonb",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "raw_payload"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "ai_call_records",
+      "column_name": "created_at"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "ai_call_records",
+      "column_name": "updated_at"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "qual_score"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "classification"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "qual_result_id"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "sentiment"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(12,2)",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "offer_range_low"
+    },
+    {
+      "not_null": false,
+      "data_type": "numeric(12,2)",
+      "generated": "",
+      "expression": null,
+      "table_name": "ai_call_records",
+      "column_name": "offer_range_high"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "uuid_generate_v4()",
+      "table_name": "call_events",
+      "column_name": "id"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "call_events",
+      "column_name": "created_at"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_events",
+      "column_name": "lead_id"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'batchdialer'::text",
+      "table_name": "call_events",
+      "column_name": "dialer"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_events",
+      "column_name": "agent_id"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_events",
+      "column_name": "phone_number"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_events",
+      "column_name": "disposition"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_events",
+      "column_name": "duration_sec"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_events",
+      "column_name": "recording_url"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_events",
+      "column_name": "notes"
+    },
+    {
+      "not_null": false,
+      "data_type": "jsonb",
+      "generated": "",
+      "expression": "'{}'::jsonb",
+      "table_name": "call_events",
+      "column_name": "raw_payload"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "call_events",
+      "column_name": "occurred_at"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "call_transcripts",
+      "column_name": "id"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_transcripts",
+      "column_name": "call_id"
+    },
+    {
+      "not_null": false,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_transcripts",
+      "column_name": "lead_id"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'retell'::text",
+      "table_name": "call_transcripts",
+      "column_name": "provider"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_transcripts",
+      "column_name": "raw_transcript"
+    },
+    {
+      "not_null": false,
+      "data_type": "jsonb",
+      "generated": "",
+      "expression": null,
+      "table_name": "call_transcripts",
+      "column_name": "formatted"
+    },
+    {
+      "not_null": false,
+      "data_type": "integer",
+      "generated": "s",
+      "expression": "\nCASE\n    WHEN (raw_transcript IS NOT NULL) THEN array_length(string_to_array(TRIM(BOTH FROM raw_transcript), ' '::text), 1)\n    ELSE 0\nEND",
+      "table_name": "call_transcripts",
+      "column_name": "word_count"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "call_transcripts",
+      "column_name": "created_at"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "retell_call_requests",
+      "column_name": "id"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "retell_call_requests",
+      "column_name": "lead_id"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": null,
+      "table_name": "retell_call_requests",
+      "column_name": "requested_by"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "retell_call_requests",
+      "column_name": "phone_number"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "retell_call_requests",
+      "column_name": "status"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "retell_call_requests",
+      "column_name": "provider_call_id"
+    },
+    {
+      "not_null": true,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "retell_call_requests",
+      "column_name": "created_at"
+    },
+    {
+      "not_null": true,
+      "data_type": "uuid",
+      "generated": "",
+      "expression": "gen_random_uuid()",
+      "table_name": "webhook_jobs",
+      "column_name": "id"
+    },
+    {
+      "not_null": true,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": "now()",
+      "table_name": "webhook_jobs",
+      "column_name": "created_at"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "webhook_jobs",
+      "column_name": "source"
+    },
+    {
+      "not_null": true,
+      "data_type": "jsonb",
+      "generated": "",
+      "expression": null,
+      "table_name": "webhook_jobs",
+      "column_name": "payload"
+    },
+    {
+      "not_null": true,
+      "data_type": "text",
+      "generated": "",
+      "expression": "'pending'::text",
+      "table_name": "webhook_jobs",
+      "column_name": "status"
+    },
+    {
+      "not_null": true,
+      "data_type": "integer",
+      "generated": "",
+      "expression": "0",
+      "table_name": "webhook_jobs",
+      "column_name": "attempts"
+    },
+    {
+      "not_null": false,
+      "data_type": "text",
+      "generated": "",
+      "expression": null,
+      "table_name": "webhook_jobs",
+      "column_name": "last_error"
+    },
+    {
+      "not_null": false,
+      "data_type": "timestamp with time zone",
+      "generated": "",
+      "expression": null,
+      "table_name": "webhook_jobs",
+      "column_name": "processed_at"
+    }
+  ],
+  "indexes": [
+    {
+      "definition": "CREATE UNIQUE INDEX retell_call_requests_pkey ON public.retell_call_requests USING btree (id)",
+      "index_name": "retell_call_requests_pkey",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX retell_call_requests_provider_call_id_key ON public.retell_call_requests USING btree (provider_call_id)",
+      "index_name": "retell_call_requests_provider_call_id_key",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX retell_call_requests_unresolved_phone ON public.retell_call_requests USING btree (phone_number) WHERE (status <> 'completed'::text)",
+      "index_name": "retell_call_requests_unresolved_phone",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "definition": "CREATE INDEX retell_call_requests_lead ON public.retell_call_requests USING btree (lead_id)",
+      "index_name": "retell_call_requests_lead",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "definition": "CREATE INDEX retell_call_requests_operator ON public.retell_call_requests USING btree (requested_by)",
+      "index_name": "retell_call_requests_operator",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX ai_call_records_pkey ON public.ai_call_records USING btree (id)",
+      "index_name": "ai_call_records_pkey",
+      "table_name": "ai_call_records"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX ai_call_records_call_id_key ON public.ai_call_records USING btree (call_id)",
+      "index_name": "ai_call_records_call_id_key",
+      "table_name": "ai_call_records"
+    },
+    {
+      "definition": "CREATE INDEX ai_call_records_lead_id_idx ON public.ai_call_records USING btree (lead_id)",
+      "index_name": "ai_call_records_lead_id_idx",
+      "table_name": "ai_call_records"
+    },
+    {
+      "definition": "CREATE INDEX ai_call_records_disposition_idx ON public.ai_call_records USING btree (disposition)",
+      "index_name": "ai_call_records_disposition_idx",
+      "table_name": "ai_call_records"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX call_transcripts_pkey ON public.call_transcripts USING btree (id)",
+      "index_name": "call_transcripts_pkey",
+      "table_name": "call_transcripts"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX call_transcripts_call_id_key ON public.call_transcripts USING btree (call_id)",
+      "index_name": "call_transcripts_call_id_key",
+      "table_name": "call_transcripts"
+    },
+    {
+      "definition": "CREATE INDEX call_transcripts_call_id_idx ON public.call_transcripts USING btree (call_id)",
+      "index_name": "call_transcripts_call_id_idx",
+      "table_name": "call_transcripts"
+    },
+    {
+      "definition": "CREATE INDEX call_transcripts_lead_id_idx ON public.call_transcripts USING btree (lead_id)",
+      "index_name": "call_transcripts_lead_id_idx",
+      "table_name": "call_transcripts"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX webhook_jobs_pkey ON public.webhook_jobs USING btree (id)",
+      "index_name": "webhook_jobs_pkey",
+      "table_name": "webhook_jobs"
+    },
+    {
+      "definition": "CREATE INDEX idx_webhook_jobs_status_created ON public.webhook_jobs USING btree (status, created_at)",
+      "index_name": "idx_webhook_jobs_status_created",
+      "table_name": "webhook_jobs"
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX call_events_pkey ON public.call_events USING btree (id)",
+      "index_name": "call_events_pkey",
+      "table_name": "call_events"
+    },
+    {
+      "definition": "CREATE INDEX idx_call_events_lead ON public.call_events USING btree (lead_id)",
+      "index_name": "idx_call_events_lead",
+      "table_name": "call_events"
+    },
+    {
+      "definition": "CREATE INDEX idx_call_events_disposition ON public.call_events USING btree (disposition)",
+      "index_name": "idx_call_events_disposition",
+      "table_name": "call_events"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "qual": "is_approved()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ai_call_records",
+      "permissive": "PERMISSIVE",
+      "policyname": "approved_read_ai_calls",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ai_call_records",
+      "permissive": "PERMISSIVE",
+      "policyname": "approved_write_ai_calls",
+      "schemaname": "public",
+      "with_check": "is_approved()"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_approved()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "call_transcripts",
+      "permissive": "PERMISSIVE",
+      "policyname": "approved_read_transcripts",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "call_transcripts",
+      "permissive": "PERMISSIVE",
+      "policyname": "approved_write_transcripts",
+      "schemaname": "public",
+      "with_check": "is_approved()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "call_events",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_full_access",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "call_events",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    }
+  ],
+  "triggers": [
+    {
+      "function": "update_updated_at_column()",
+      "definition": "CREATE TRIGGER ai_call_records_updated_at BEFORE UPDATE ON public.ai_call_records FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "table_name": "ai_call_records"
+    }
+  ],
+  "captured_at": "2026-10-27T01:00:50.097346+00:00",
+  "constraints": [
+    {
+      "conname": "appointments_ai_call_id_fkey",
+      "definition": "FOREIGN KEY (ai_call_id) REFERENCES ai_call_records(id) ON DELETE SET NULL",
+      "table_name": "appointments"
+    },
+    {
+      "conname": "call_transcripts_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "call_transcripts"
+    },
+    {
+      "conname": "call_transcripts_call_id_key",
+      "definition": "UNIQUE (call_id)",
+      "table_name": "call_transcripts"
+    },
+    {
+      "conname": "call_transcripts_lead_id_fkey",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL",
+      "table_name": "call_transcripts"
+    },
+    {
+      "conname": "call_events_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "call_events"
+    },
+    {
+      "conname": "call_events_lead_id_fkey",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL",
+      "table_name": "call_events"
+    },
+    {
+      "conname": "ai_call_records_provider_check",
+      "definition": "CHECK ((provider = ANY (ARRAY['retell'::text, 'air_ai'::text])))",
+      "table_name": "ai_call_records"
+    },
+    {
+      "conname": "ai_call_records_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "ai_call_records"
+    },
+    {
+      "conname": "ai_call_records_call_id_key",
+      "definition": "UNIQUE (call_id)",
+      "table_name": "ai_call_records"
+    },
+    {
+      "conname": "ai_call_records_lead_id_fkey",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL",
+      "table_name": "ai_call_records"
+    },
+    {
+      "conname": "qualification_results_transcript_id_fkey",
+      "definition": "FOREIGN KEY (transcript_id) REFERENCES call_transcripts(id) ON DELETE SET NULL",
+      "table_name": "qualification_results"
+    },
+    {
+      "conname": "ai_call_records_classification_check",
+      "definition": "CHECK ((classification = ANY (ARRAY['HOT'::text, 'WARM'::text, 'COLD'::text])))",
+      "table_name": "ai_call_records"
+    },
+    {
+      "conname": "ai_call_records_qual_result_id_fkey",
+      "definition": "FOREIGN KEY (qual_result_id) REFERENCES qualification_results(id) ON DELETE SET NULL",
+      "table_name": "ai_call_records"
+    },
+    {
+      "conname": "webhook_jobs_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "webhook_jobs"
+    },
+    {
+      "conname": "retell_call_requests_phone_number_check",
+      "definition": "CHECK ((phone_number ~ '^\\+1[2-9][0-9]{9}$'::text))",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "conname": "retell_call_requests_status_check",
+      "definition": "CHECK ((status = ANY (ARRAY['submitting'::text, 'accepted'::text, 'unknown'::text, 'completed'::text])))",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "conname": "retell_call_requests_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "conname": "retell_call_requests_provider_call_id_key",
+      "definition": "UNIQUE (provider_call_id)",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "conname": "retell_call_requests_lead_id_fkey",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id)",
+      "table_name": "retell_call_requests"
+    },
+    {
+      "conname": "retell_call_requests_requested_by_fkey",
+      "definition": "FOREIGN KEY (requested_by) REFERENCES profiles(id)",
+      "table_name": "retell_call_requests"
+    }
+  ],
+  "migration_ledger": {
+    "count": 95,
+    "latest": "20261023221455"
+  }
+}

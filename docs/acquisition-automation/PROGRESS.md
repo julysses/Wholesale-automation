@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — inspected inbound persistence dependencies
+
+- Previous goal turn pushed `009d125`; pulled unchanged branch with approved network retry. Used the Supabase skill guidance and a bounded metadata-only production query before SQL design. No seller records or secrets were retrieved, and no migrations or provider settings were changed.
+- Saved `evidence/2026-10-26-inbound-call-catalog.json`: 5 tables, 61 columns, 20 constraints, 18 indexes, 6 policies, 1 trigger, 122 grants; all tables have RLS. Migration ledger remains 95/latest 20261023221455. Production seller_intakes is absent because acquisition migrations remain unapplied.
+- Selected existing call_events as the proposed metadata lifecycle extension; existing webhook_jobs remains the receipt target. ai_call_records requires phone and carries transcript/qualification/appointment dependencies; retell_call_requests is an outbound reservation, not an inbound identity. Documented namespace, required-disposition, legacy exposure, global uniqueness and privacy conflicts in SCHEMA-MAPPING.md and INBOUND-VOICE.md.
+- Restored exact call_events shape, indexes, policies and grants in the disposable fixture before boundary migrations. Added authentic JWT role claim handling for its observed auth.role policy. Two focused PostgreSQL tests pass: legacy default/write preservation, bound lead isolation, blocked caller/unrelated reads, write restrictions, FK/mandatory disposition and remaining unbound/TRUNCATE/TRIGGER gaps. Initial sandbox shared-memory failure resolved through approved escalation.
+- All **14 integrated real-SQL workflow journeys passed** with the expanded fixture. This increment has no schema migration or production/legacy transport/SMS change. Full call-table dependency restoration and full production upgrade remain separate requirements.
+
+Next: CLI-generate the additive call_events inbound ledger and trusted integration routing, enforce immutable scoped receipts/audits and test replay/conflict/tenant behavior. Recording/transcription controls and sequential activation remain mandatory gates; full PRD goal stays active.
+
 ## Implementation checkpoint — inbound lifecycle and privacy foundation
 
 - Previous goal turn pushed `cd32e63`; pulled unchanged branch after approved network retry. Reviewed remaining plan and existing Retell adapter/webhook paths: they are outbound/legacy voice and shared paused-SMS paths, so acquisition inbound will use a separate default-disabled integration. No existing transport was changed.

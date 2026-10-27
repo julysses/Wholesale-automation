@@ -32,3 +32,9 @@ Transcript/chat/transfer events and legacy aliases are deliberately unsupported 
 4. Implement authenticated property lookup, structured intake updates, callback request and human escalation tools. Caller ID alone must not establish ownership or merge properties. Callback requests still require fresh channel eligibility before execution.
 5. Verify provider/Twilio controls for recording/transcription before live routing, approved Hilltop AI disclosure, no binding-offer/contract tools, interruption/silence/human-request/failed-transfer handling and bilingual QA before Spanish support.
 6. Preserve sequential activation and require separate approved inbound acceptance. This document and offline parser do not satisfy the Phase 2 release gate.
+
+## Persistence mapping checkpoint
+
+Fresh read-only catalog inspection found existing call_events suitable for the lifecycle ledger extension: lead and phone are nullable, so no fabricated owner/contact is needed for a metadata-only event. Its required disposition needs a distinct lifecycle category and exclusion from legacy seller-outcome reporting. ai_call_records requires phone and has global call identity plus transcript/qualification dependencies; it is not the initial receipt target. Existing webhook_jobs remains the receipt equivalent. See SCHEMA-MAPPING.md and the saved catalog for exact constraints and access gaps.
+
+Before any inbound ledger SQL, the isolated harness now includes actual call_events columns, constraints, indexes, policies and grants. Approved legacy users can still read unbound events and possess broad truncate/trigger privileges. The new scoped extension must explicitly close those paths for acquisition evidence while retaining legacy behavior where required. No inbound SQL or production schema change has been made at this checkpoint.
