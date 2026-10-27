@@ -184,6 +184,7 @@ class WorkspaceTests(unittest.TestCase):
         if self._testMethodName not in ('test_source_migration_backfills_without_changing_intakes','test_inbound_intake_migration_preserves_populated_facebook'):
             self.sql((ROOT/'frontend/supabase/migrations/20261027015624_acquisition_inbound_intakes.sql').read_text())
             self.sql((ROOT/'frontend/supabase/migrations/20261027020314_acquisition_inbound_read_metadata.sql').read_text())
+            self.sql((ROOT/'frontend/supabase/migrations/20261027031552_acquisition_inbound_property_lookup.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -192,6 +193,45 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def inbound_lookup(self, revision=1, role='service_role', fail=False, call='call_test'):
+        result=self.sql(f"SELECT public.acquisition_inbound_property_lookup('96000000-0000-4000-8000-000000000001','+12145550100','agent_test',3,{literal(call)},{revision})",user=ADMIN,role=role,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_inbound_lookup_scoped_candidates_and_no_private_disclosure(self):
+        self.inbound_fixture();self.inbound_accept();self.inbound_intake()
+        self.sql(f"UPDATE wholesale_ingest.properties SET address_std='123 Main St',city='Dallas' WHERE id='{PROPERTY}'")
+        self.assertEqual(self.inbound_lookup()['status'],'no_address_candidate')  # Unenrolled county row.
+        self.bind()
+        result=self.inbound_lookup()
+        self.assertEqual(result['status'],'address_candidate')
+        self.assertEqual(set(result),{'workspace_id','integration_id','call_id','intake_revision','status','policy_version','review_required','property_verified','ownership_verified','execution_authorized'})
+        self.assertFalse(result['property_verified']);self.assertFalse(result['ownership_verified'])
+        self.sql(f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,address_std,city,lead_id) VALUES('30000000-0000-4000-8000-000000000002','TX','Dallas','second-parcel','123 Main St','Dallas','{LEAD_B}')")
+        self.bind(actor=OTHER,workspace=WORKSPACE_B,lead=LEAD_B,property_id='30000000-0000-4000-8000-000000000002')
+        self.assertEqual(self.inbound_lookup()['status'],'address_candidate')  # Other workspace excluded.
+        self.sql(f"INSERT INTO leads(id,property_address,city) VALUES('20000000-0000-4000-8000-000000000003','123 Main St','Dallas'); INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,address_std,city,unit,lead_id) VALUES('30000000-0000-4000-8000-000000000003','TX','Dallas','third-parcel','123 Main St','Dallas','2','20000000-0000-4000-8000-000000000003')")
+        self.bind(lead='20000000-0000-4000-8000-000000000003',property_id='30000000-0000-4000-8000-000000000003')
+        self.assertEqual(self.inbound_lookup()['status'],'multiple_address_candidates')
+        self.inbound_intake(request='99000000-0000-4000-8000-000000000002',revision=1,answers={'property_address':'123 Main St'})
+        self.assertEqual(self.inbound_lookup(revision=2)['status'],'incomplete_address')
+        self.inbound_lookup(revision=1,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'2')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_intake_identity_reviews'),'0')
+
+    def test_inbound_lookup_lifecycle_route_and_privilege_gates(self):
+        self.inbound_fixture();self.inbound_lookup(fail=True)
+        self.inbound_accept();self.inbound_lookup(fail=True)
+        self.inbound_intake();self.inbound_lookup()
+        for role in ('anon','authenticated'):
+            self.inbound_lookup(role=role,fail=True)
+        self.inbound_lookup(call='other_call',fail=True)
+        self.inbound_lookup(revision=0,fail=True)
+        self.sql('UPDATE private.acquisition_inbound_routes SET enabled=false')
+        self.inbound_lookup(fail=True)
+        self.sql('UPDATE private.acquisition_inbound_routes SET enabled=true')
+        self.inbound_accept(self.inbound_data('call_ended'))
+        self.inbound_lookup(fail=True)
 
     def inbound_intake(self, *, request='99000000-0000-4000-8000-000000000001',revision=0,call='call_test',answers=None,prepared=None,role='service_role',fail=False):
         import importlib.util

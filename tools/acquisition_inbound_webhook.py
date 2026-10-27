@@ -136,3 +136,36 @@ async def record_inbound_request(config, intent):
         return result
     except (httpx.HTTPError, ValueError, TypeError, KeyError, AttributeError):
         raise InboundUnavailable('Inbound request unconfirmed') from None
+
+
+async def lookup_inbound_property(config, intent):
+    """Read-only address candidate status; private data is never agent output."""
+    if (any(intent.get(key) != getattr(config, key) for key in
+            ('workspace_id', 'integration_id', 'agent_id', 'agent_version'))
+            or intent.get('name') != 'lookup_property'
+            or intent.get('execution_authorized') is not False):
+        raise InboundUnavailable('Inbound lookup scope mismatch')
+    try:
+        async with httpx.AsyncClient(base_url=config.database_url + '/rest/v1/', timeout=10.0,
+                follow_redirects=False, headers={'apikey': config.service_key,
+                'Authorization': 'Bearer ' + config.service_key}) as client:
+            response = await client.post('rpc/acquisition_inbound_property_lookup', json={
+                'p_integration': config.integration_id, 'p_number': config.acquisition_number,
+                'p_agent': config.agent_id, 'p_agent_version': config.agent_version,
+                'p_call': intent['call_id'], 'p_intake_revision': intent['intake_revision']})
+        if response.status_code != 200:
+            raise InboundUnavailable('Inbound lookup unavailable')
+        result = response.json()
+        expected = {'workspace_id': config.workspace_id, 'integration_id': config.integration_id,
+                    'call_id': intent['call_id'], 'intake_revision': intent['intake_revision'],
+                    'policy_version': 'inbound-property-lookup-v1', 'review_required': True,
+                    'property_verified': False, 'ownership_verified': False, 'execution_authorized': False}
+        if (not isinstance(result, dict) or set(result) != set(expected) | {'status'}
+                or any(type(result[key]) is not type(value) or result[key] != value
+                       for key, value in expected.items())
+                or result['status'] not in ('incomplete_address', 'no_address_candidate',
+                                           'address_candidate', 'multiple_address_candidates')):
+            raise InboundUnavailable('Inbound lookup unavailable')
+        return result['status']
+    except (httpx.HTTPError, ValueError, TypeError, KeyError, AttributeError):
+        raise InboundUnavailable('Inbound lookup unavailable') from None

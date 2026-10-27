@@ -12,7 +12,7 @@ from tools.acquisition_intake import FIELDS, normalize_seller_fields
 from tools.facebook_consent import normalize_us_phone
 
 VERSION = 'acquisition-inbound-tools-v1'
-NAMES = {'submit_seller_intake', 'request_callback', 'request_human'}
+NAMES = {'submit_seller_intake', 'request_callback', 'request_human', 'lookup_property'}
 
 
 def _text(value, maximum):
@@ -41,6 +41,16 @@ def prepare_inbound_tool(payload, **routing):
         raise ValueError('CALL_NOT_ONGOING')
     context = project_inbound_event({'event': 'call_started', 'call': call}, **routing)
     args = payload['args']
+    if name == 'lookup_property':
+        # Read only the current saved intake for this signed call. Model input
+        # cannot select a workspace, owner, property ID or arbitrary address.
+        if (not isinstance(args, dict) or set(args) != {'intake_revision'}
+                or type(args['intake_revision']) is not int
+                or not 1 <= args['intake_revision'] <= 1000000000):
+            raise ValueError('INVALID_LOOKUP_ARGUMENTS')
+        return {key: context[key] for key in ('workspace_id', 'integration_id', 'call_id',
+                    'agent_id', 'agent_version')} | {
+            'name': name, 'intake_revision': args['intake_revision'], 'execution_authorized': False}
     fields = {'submit_seller_intake': {'answers'},
               'request_callback': {'phone', 'preferred_time', 'purpose', 'requested_by_caller'},
               'request_human': {'reason', 'details', 'requested_by_caller'}}[name]

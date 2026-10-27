@@ -3,12 +3,22 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — signed inbound property lookup
+
+- Continued from `e2e7abd` after all five GitHub jobs passed; pulled unchanged branch. Rechecked production migration history (95/latest 20261023221455) and county property columns/indexes/policy. CLI created additive local `20261027031552_acquisition_inbound_property_lookup.sql`; no production SQL writes.
+- Added `lookup_property` to the signed tool endpoint with an independent default-off lookup gate. It takes only the current confirmed intake revision, derives route/call/workspace from trusted configuration and signed call context, and uses the durable ongoing-call ledger plus shared lifecycle lock. It cannot take arbitrary owner/contact/property selectors. Stale intake and terminal call fail closed.
+- Service-only RPC checks existing enrolled canonical county properties with conservative address text comparisons. Returns only incomplete/no/single/multiple address-candidate status, never private owner/contact/parcel/valuation or internal property data. Server validates exact receipt scope and authority flags; provider gets fixed explanatory copy with identity/ownership explicitly unverified. No association, audit mutation, scheduling or provider execution occurs.
+- Validation: **116 focused Python tests passed**, **2 focused real-PostgreSQL cases passed**, **all 19 integrated SQL/application workflows passed**. Initial tests caught SQL variable ambiguity and a missing integer mapping in the simulated PostgREST adapter; both corrected and rerun. Real PostgREST/JWT, full populated production upgrade and high-volume lookup latency remain separate acceptance work. No frontend code changed. GitHub CI on this new increment must be verified after push before further feature work.
+- Updated inbound and schema docs with tool contract, data boundaries, compensation, and limits. Migration remains local/unapplied; all activation flags, production, SMS recovery, provider configuration, calls/transfers, outreach, spend and contracts unchanged.
+
+Next: inbound prompt/tool configuration and disclosure/privacy/bilingual acceptance package, then remaining mail, portal, caller and disposition phases. Full PRD goal and sequential release gates remain active.
+
 ## CI incident — repeated GitHub failure notifications
 
 - User reported repeated failed-run emails. Stopped feature work and inspected GitHub Actions, not just local checks. Run `40439731392` fails specifically at pipeline `npm audit --audit-level=moderate`; latest pre-fix `40441776579` has the same failed step. Pipeline tests/collector tests had passed; later Edge checks were skipped after audit failure. This was a missed CI verification step in preceding checkpoints, not evidence that the full remote workflow passed.
 - Root cause: transitive Ajv dependency fast-uri locked to 3.1.8, covered by moderate URI normalization/spoofing advisories (GHSA-w74x-v6f9-j3xg, GHSA-xhq7-xmqj-769h, GHSA-wjr9-j795-jxcr, GHSA-333x-w4r6-6crp). Updated only pipeline/package-lock.json to compatible 3.1.9; package manifest and audit enforcement unchanged.
 - Verified in a clean temporary Git archive with npm ci --ignore-scripts: npm audit --audit-level=moderate reports zero vulnerabilities; pipeline npm test passed. Existing workspace dependency symlink was not used as evidence for the patched package.
-- Push this fix once, then wait for all five GitHub CI jobs on its exact commit. Do not resume feature pushes or claim remote CI success until the run completes successfully; investigate additional failures if surfaced. No production deploy, migration, provider activity, or notification-setting change.
+- Fix committed/pushed as `e2e7abdbaeb4cdf219255d687b5cbbd60960ca39`. GitHub run https://github.com/julysses/Wholesale-automation/actions/runs/40442047528 completed successfully with all five jobs green, including the full PostgreSQL workspace suite. Verified before resuming feature work. No production deploy, migration, provider activity, or notification-setting change. Future pushes must also be checked through terminal CI completion.
 
 ## Implementation checkpoint — current inbound queue status and filters
 

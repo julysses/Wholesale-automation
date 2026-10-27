@@ -8,7 +8,7 @@ from starlette.requests import ClientDisconnect
 from tools.acquisition_inbound_events import project_inbound_event
 from tools.acquisition_inbound_tools import prepare_inbound_tool
 from tools.acquisition_inbound_webhook import (
-    InboundUnavailable, accept_inbound_event, record_inbound_request, load_config, verify_signature,
+    InboundUnavailable, accept_inbound_event, record_inbound_request, lookup_inbound_property, load_config, verify_signature,
 )
 
 router = APIRouter(prefix='/webhooks/retell/acquisition', tags=['acquisition-webhooks'])
@@ -77,6 +77,22 @@ async def receive_tool(request: Request):
         intent = prepare_inbound_tool(payload, **config.routing)
     except (ValueError, TypeError, RecursionError):
         raise HTTPException(400, 'Invalid inbound tool request') from None
+    if intent['name'] == 'lookup_property':
+        if os.getenv('ACQUISITION_INBOUND_LOOKUP_ENABLED', '').lower() != 'true':
+            raise HTTPException(503, 'Inbound lookup unavailable')
+        try:
+            status = await lookup_inbound_property(config, intent)
+        except InboundUnavailable:
+            raise HTTPException(503, 'Property lookup unavailable; continue collecting seller information') from None
+        messages = {
+            'incomplete_address': 'Please provide the full property street address, city and state.',
+            'no_address_candidate': 'The address could not be matched in this lookup. Hilltop can still review the submitted information.',
+            'address_candidate': 'There is a possible address match. Hilltop must review it; property identity and ownership are not verified.',
+            'multiple_address_candidates': 'The address needs further review. Please confirm the complete address, including any unit.',
+        }
+        return {'status': status, 'intake_revision': intent['intake_revision'], 'review_required': True,
+                'property_verified': False, 'ownership_verified': False, 'execution_authorized': False,
+                'message': messages[status]}
     if intent['name'] == 'submit_seller_intake' and os.getenv('ACQUISITION_INBOUND_INTAKE_ENABLED', '').lower() != 'true':
         raise HTTPException(503, 'Inbound intake unavailable')
     try:

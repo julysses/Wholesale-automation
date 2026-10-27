@@ -29,6 +29,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_inbound_property_lookup':['p_integration','p_number','p_agent','p_agent_version','p_call','p_intake_revision'],
  'acquisition_inbound_request_queue_v2':['p_workspace','p_after','p_limit','p_status','p_assignment'],
  'acquisition_inbound_request_state':['p_workspace','p_task'],
  'review_acquisition_inbound_request':['p_id','p_workspace','p_task','p_expected_sequence','p_request_hash','p_status','p_assignee','p_note'],
@@ -138,7 +139,7 @@ class WorkflowTests(WorkspaceTests):
             for key in RPC_ARGS[name]:
                 value=body[key]
                 kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee'}
-                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
+                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
@@ -364,6 +365,32 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_request_review'"),'2')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
         self.assertEqual(self.sql("SELECT count(*) FROM tasks WHERE completed_at IS NOT NULL OR due_date IS NOT NULL OR assigned_to IS NOT NULL OR status<>'acquisition_review_required'"),'0')
+
+    def test_signed_property_lookup_uses_current_intake_and_hides_private_records(self):
+        integration,event=self.configure_inbound()
+        os.environ.update({'ACQUISITION_INBOUND_TOOLS_ENABLED':'true','ACQUISITION_INBOUND_LOOKUP_ENABLED':'true'})
+        self.inbound_accept();self.inbound_intake()
+        self.sql("UPDATE wholesale_ingest.properties SET address_std='123 Main St',city='Dallas'")
+        payload={'name':'lookup_property','call':event['call'],'args':{'intake_revision':1}}
+        def deliver():
+            raw=json.dumps(payload).encode();stamp=str(int(time.time()*1000))
+            signature='v='+stamp+',d='+hmac.new(b'synthetic-inbound-secret',raw+stamp.encode(),hashlib.sha256).hexdigest()
+            return self.client.post('/webhooks/retell/acquisition/tools',content=raw,headers={'X-Retell-Signature':signature})
+        response=deliver();self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()['status'],'address_candidate')
+        for private in ['workspace_id','integration_id','call_id','123 Main St','parcel_id']:
+            self.assertNotIn(private,response.text)
+        self.assertFalse(response.json()['ownership_verified'])
+        payload['args']['property_address']='2 Fixture St'
+        self.assertEqual(deliver().status_code,400)
+        del payload['args']['property_address']
+        self.inbound_intake(request='99000000-0000-4000-8000-000000000002',revision=1)
+        self.assertEqual(deliver().status_code,503)
+        payload['args']['intake_revision']=2
+        self.assertEqual(deliver().status_code,200)
+        self.inbound_accept(self.inbound_data('call_ended'))
+        self.assertEqual(deliver().status_code,503)
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'2')
 
     def test_signed_intake_creates_one_crm_lead_and_preserves_revision_history(self):
         integration,event=self.configure_inbound()
