@@ -174,6 +174,10 @@ class WorkspaceTests(unittest.TestCase):
             self.sql("INSERT INTO call_events(id,disposition,notes,raw_payload) VALUES('97000000-0000-4000-8000-000000000001','no_answer','historical legacy note','{\"sentinel\":true}')")
             self.legacy_call_before=self.sql("SELECT jsonb_strip_nulls(to_jsonb(c)) FROM call_events c")
         self.sql((ROOT/'frontend/supabase/migrations/20261027010558_acquisition_inbound_event_ledger.sql').read_text())
+        if self._testMethodName == 'test_inbound_task_migration_preserves_legacy':
+            self.sql("INSERT INTO tasks(title,description,priority,status) VALUES('Sentinel legacy task','Preserve history','high','pending')")
+            self.legacy_task_before=self.sql('SELECT jsonb_strip_nulls(to_jsonb(t)) FROM tasks t')
+        self.sql((ROOT/'frontend/supabase/migrations/20261027013724_acquisition_inbound_review_tasks.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -183,6 +187,93 @@ class WorkspaceTests(unittest.TestCase):
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
 
+    def inbound_request(self, *, request='98000000-0000-4000-8000-000000000001', revision=0,
+                        kind='request_callback', evidence=None, call='call_test', role='service_role', fail=False,
+                        number='+12145550100', agent='agent_test', agent_version=3):
+        if evidence is None:
+            evidence=({'phone':'(214) 555-0101','preferred_time':'Tomorrow afternoon','purpose':'Discuss property','requested_by_caller':True}
+                if kind=='request_callback' else {'reason':'unsupported_language','details':'Needs a human interpreter','requested_by_caller':False})
+        result=self.sql(f"SELECT public.record_acquisition_inbound_request('96000000-0000-4000-8000-000000000001',{literal(number)},{literal(agent)},{agent_version},{literal(call)},'{request}',{revision},{literal(kind)},{literal(json.dumps(evidence))}::jsonb)",user=ADMIN,role=role,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_inbound_task_migration_preserves_legacy(self):
+        self.assertEqual(self.sql('SELECT jsonb_strip_nulls(to_jsonb(t)) FROM tasks t'),self.legacy_task_before)
+        self.sql("UPDATE tasks SET description='Still editable'",user=ADMIN)
+        self.assertEqual(self.sql('SELECT description FROM tasks',user=OTHER),'Still editable')
+        self.assertEqual(self.sql("SELECT has_table_privilege('anon','tasks','TRUNCATE') OR has_table_privilege('service_role','tasks','TRIGGER')"),'f')
+
+    def test_inbound_request_atomic_replay_revision_and_read_scope(self):
+        integration=self.inbound_fixture();self.inbound_accept()
+        first=self.inbound_request();self.assertEqual(first['revision'],1);self.assertFalse(first['execution_authorized'])
+        self.assertTrue(self.inbound_request()['duplicate'])
+        self.inbound_request(evidence={'phone':'2145550102','preferred_time':'Tomorrow','purpose':'Discuss','requested_by_caller':True},fail=True)
+        self.inbound_request(request='98000000-0000-4000-8000-000000000002',fail=True)
+        second=self.inbound_request(request='98000000-0000-4000-8000-000000000002',revision=1)
+        self.assertEqual(second['revision'],2)
+        human=self.inbound_request(request='98000000-0000-4000-8000-000000000003',kind='request_human')
+        self.assertEqual(human['revision'],1)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_request'"),'3')
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks',user=ADMIN),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks',user=OTHER),'0')
+        query=f"SELECT public.acquisition_inbound_requests('{WORKSPACE}','{integration}','call_test')"
+        rows=json.loads(self.sql(query,user=ADMIN));self.assertEqual(len(rows['items']),3)
+        self.assertFalse(rows['execution_authorized'])
+        self.assertEqual(self.sql(f"SELECT acquisition_phone FROM tasks WHERE id='{first['id']}'"),'+12145550101')
+        self.sql(query,user=OTHER,fail=True)
+        self.member(CALLER,'acquisition_caller');self.sql(query,user=CALLER,fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM tasks WHERE due_date IS NOT NULL OR completed_at IS NOT NULL OR assigned_to IS NOT NULL OR status<>'acquisition_review_required'"),'0')
+
+    def test_inbound_request_requires_ongoing_call_and_current_route(self):
+        self.inbound_fixture();self.inbound_request(fail=True)
+        self.inbound_accept();self.inbound_request(role='authenticated',fail=True)
+        self.inbound_request(number='+12145550199',fail=True);self.inbound_request(agent_version=4,fail=True)
+        first=self.inbound_request()
+        self.inbound_accept(self.inbound_data('call_ended'))
+        self.assertEqual(self.inbound_request()['id'],first['id'])  # confirmation only
+        self.inbound_request(request='98000000-0000-4000-8000-000000000002',revision=1,fail=True)
+        self.sql('UPDATE private.acquisition_inbound_routes SET enabled=false')
+        self.inbound_request(fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'1')
+
+    def test_inbound_request_strict_evidence_and_immutable_namespace(self):
+        self.inbound_fixture();self.inbound_accept()
+        for evidence in [{},{'phone':'2145550101','preferred_time':'Tomorrow','purpose':'Discuss','requested_by_caller':'true'},
+            {'phone':'2145550101','preferred_time':'Tomorrow','purpose':'Discuss','requested_by_caller':True,'approved':True},
+            {'phone':None,'preferred_time':'Tomorrow','purpose':'Discuss','requested_by_caller':True}]:
+            self.inbound_request(evidence=evidence,fail=True)
+        self.inbound_request(kind='request_human',evidence={'reason':'caller_requested','details':'Help','requested_by_caller':False},fail=True)
+        first=self.inbound_request(evidence={'phone':'unknown number','preferred_time':'Unknown','purpose':'Discuss','requested_by_caller':True})
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks WHERE acquisition_phone IS NULL'),'1')
+        self.sql(f"UPDATE tasks SET status='completed' WHERE id='{first['id']}'",fail=True)
+        self.sql(f"DELETE FROM tasks WHERE id='{first['id']}'",fail=True)
+        self.sql(f"UPDATE tasks SET workspace_id=NULL WHERE id='{first['id']}'",user=ADMIN,role='service_role',fail=True)
+        columns='title,priority,status,type,workspace_id,acquisition_integration_id,acquisition_call_id,acquisition_request_id,acquisition_revision,acquisition_request_kind,acquisition_evidence,acquisition_request_hash,acquisition_phone'
+        error=self.sql(f'INSERT INTO tasks({columns}) SELECT {columns} FROM tasks',user=ADMIN,role='service_role',fail=True)
+        self.assertIn('Use controlled inbound task receipt',error)
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'1')
+
+    def test_inbound_request_read_limits_and_membership_revocation(self):
+        integration=self.inbound_fixture();self.inbound_accept();self.inbound_request();self.member()
+        query=f"SELECT public.acquisition_inbound_requests('{WORKSPACE}','{integration}','call_test')"
+        self.assertEqual(len(json.loads(self.sql(query,user=OPERATOR))['items']),1)
+        other=f"SELECT public.acquisition_inbound_requests('{WORKSPACE}','99000000-0000-4000-8000-000000000001','call_test')"
+        self.assertEqual(json.loads(self.sql(other,user=ADMIN))['items'],[])
+        for bound in [0,51]:
+            self.sql(f"SELECT public.acquisition_inbound_requests('{WORKSPACE}','{integration}','call_test',NULL,{bound})",user=ADMIN,fail=True)
+        self.member(status='revoked');self.sql(query,user=OPERATOR,fail=True)
+        self.sql('UPDATE private.acquisition_integrations SET enabled=false')
+        self.inbound_request(fail=True)
+        # Historical evidence remains readable after provider disablement.
+        self.assertEqual(len(json.loads(self.sql(query,user=ADMIN))['items']),1)
+
+    def test_inbound_request_concurrent_replay(self):
+        self.inbound_fixture();self.inbound_accept()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.inbound_request(),range(3)))
+        self.assertEqual(len({row['id'] for row in results}),1)
+        self.assertEqual(sum(not row['duplicate'] for row in results),1)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_request'"),'1')
+
     def test_inspected_tasks_fixture_defaults_and_legacy_compatibility(self):
         identity=self.sql("INSERT INTO tasks(title,description) VALUES('Legacy task','Preserved text') RETURNING id",user=ADMIN)
         self.assertEqual(self.sql(f"SELECT priority||':'||status FROM tasks WHERE id='{identity}'",user=OTHER),'medium:pending')
@@ -190,7 +281,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.sql(f"SELECT description FROM tasks WHERE id='{identity}'",user=OTHER),'Still editable')
         self.sql("INSERT INTO tasks(description) VALUES('Missing title')",user=ADMIN,fail=True)
         self.sql("INSERT INTO tasks(title,lead_id) VALUES('Invalid parent','99999999-0000-4000-8000-000000000001')",user=ADMIN,fail=True)
-        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND tablename='tasks'"),'2')
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND tablename='tasks'"),'5')
 
     def test_inspected_tasks_fixture_bound_lead_isolation(self):
         self.bind()
@@ -208,10 +299,10 @@ class WorkspaceTests(unittest.TestCase):
         # The forthcoming scoped extension must close this path for call requests.
         self.sql("INSERT INTO tasks(title,type) VALUES('Synthetic inbound request','acquisition_callback_review')")
         self.assertEqual(self.sql('SELECT count(*) FROM tasks',user=OTHER),'1')
-        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','tasks','TRUNCATE') AND has_table_privilege('service_role','tasks','TRIGGER')"),'t')
+        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','tasks','TRUNCATE') AND has_table_privilege('service_role','tasks','TRIGGER')"),'f')
         catalog=json.loads((ROOT/'docs/acquisition-automation/evidence/2026-10-26-inbound-task-catalog.json').read_text())
         self.assertEqual(len(catalog['incoming_fks']),7)
-        self.assertEqual(self.sql("SELECT count(*) FROM pg_constraint WHERE conrelid='tasks'::regclass AND contype='f'"),'3')
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_constraint WHERE conrelid='tasks'::regclass AND contype='f'"),'5')
 
     def test_inbound_migration_preserves_populated_legacy_events(self):
         self.assertEqual(self.sql("SELECT jsonb_strip_nulls(to_jsonb(c)) FROM call_events c"),self.legacy_call_before)

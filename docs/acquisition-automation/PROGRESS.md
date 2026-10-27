@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — call-scoped callback and escalation persistence
+
+- Continued from pushed `674f28b`; pulled unchanged branch with approved network retry. Used the previously inspected task/call catalogs and checked current Supabase function security documentation. CLI generated local migration `20261027013724_acquisition_inbound_review_tasks.sql`; CLI help/create required escalation for its telemetry file. No production SQL applied.
+- Extended existing tasks with scoped call/request identity, per-kind revision, immutable evidence/hash and optional normalized callback phone. Scoped rows have fixed review-only status/type and no due date, assignee, completion, CRM parent or dialing authority. Legacy task IDs/defaults/history remain intact; no parallel task table.
+- Service-only record RPC validates approved route/agent/version/number, active integration/workspace/activation and strict evidence. Request and shared lifecycle call locks serialize replay/revision/terminal-state checks. New requests require an ongoing ledger and no terminal event; identical retries confirm the original record after completion, changed retries conflict, and route revocation denies further confirmation. Task and minimal audit commit atomically.
+- Added restricted namespace and immutable/direct-service-write guard, removed application/service truncate/trigger grants, and added exact-scope bounded read RPC requiring current owner/admin/operator membership. Callback normalization remains unverified; no permission, scheduling or execution is inferred.
+- Validation: **six distinct new PostgreSQL cases passed**, plus **three existing task fixture cases**, covering populated legacy preservation, exact/concurrent replay, revision conflict, terminal/revocation gates, strict evidence, immutable writes, direct-service rejection, read bounds and tenant/member denial. Corrected two test expectations (membership status revoked; five total outgoing task FKs) and reran them successfully. All **15 integrated SQL workflows passed**. Diff checks passed; initial sandbox PostgreSQL shared-memory failure was retried with escalation.
+- INBOUND-VOICE.md records RPC contracts, read/history limits, normalization differences, and non-destructive compensation. Seller-intake persistence and signed-tool HTTP are still pending. No provider configuration, live task registration, production deployment/migration or paused-SMS change. Full county-dependent populated upgrade remains a separate gate.
+
+Next: wire the default-disabled signed callback/escalation tool endpoint to this RPC with unknown-commit recovery and minimal responses; then extend seller_intakes for immutable call-scoped revisions and canonical lead creation without telephone-only merging. Operator review and all live activation/privacy gates remain open. Full PRD goal stays active.
+
 ## Implementation checkpoint — inspected task dependencies and fixture
 
 - Continued from pushed `7b49c68`; pulled unchanged branch with approved network retry. The previous turn made concrete tested implementation progress. Per migration requirements, inspected current production task/intake metadata read-only before designing persistence changes; no seller data or secrets retrieved.
