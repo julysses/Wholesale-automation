@@ -1,0 +1,22 @@
+export class ApiError extends Error { status = 403; }
+export const scope = { workspace:'10000000-0000-4000-8000-000000000001', user:'10000000-0000-4000-8000-000000000002', lead:'20000000-0000-4000-8000-000000000001', property:'30000000-0000-4000-8000-000000000001', integration:'96000000-0000-4000-8000-000000000001' };
+let denied=false;
+export function setDenied(value:boolean){denied=value;}
+const origin={source_type:'retell_inbound',inbound_integration_id:scope.integration,inbound_call_id:'call_synthetic_intake',inbound_revision:2};
+const intake={...origin,id:'40000000-0000-4000-8000-000000000002',lead_id:scope.lead,classification:'incomplete',created_at:'2026-10-26T18:00:00Z',prepared_answers:{answers:{property_address:'123 Synthetic Lane',city:'Dallas',state:'TX',asking_price:'150k',condition:'Seller reports roof repairs'},missing_fields:['authority','timeline','motivation','contact'],reason_codes:['AMBIGUOUS_ANSWERS']},normalization_notes:['CRM_INITIAL_ASSERTIONS_PRESERVED']};
+export async function apiFetch(path:string,init?:RequestInit):Promise<Response>{
+  if(init?.signal?.aborted)throw new DOMException('Aborted','AbortError');
+  if(init?.method && init.method!=='GET')throw new Error('Read-only synthetic fixture');
+  if(denied)throw new ApiError('Synthetic access revoked');
+  let value:unknown;
+  if(path.includes('/intakes?'))value={items:[intake],next_after:null};
+  else if(path.endsWith('/memberships'))value=[{workspace_id:scope.workspace,user_id:scope.user,status:'active',role:'operator'}];
+  else if(path.includes('/candidates?'))value={items:[],truncated:false};
+  else if(path.includes('/identity-state'))value={sequence:0,preparation_hash:'a'.repeat(64),target_hash:null,target_snapshot:null,latest_review:null,link_current:false};
+  else if(path.includes('/identity-reviews?') || path.includes('/assessments?'))value=[];
+  else if(path.endsWith('/qualification-state'))value={assessment:{classification:'requires_human_review',policy_version:'intake-qualification-v1',reason_codes:['AMBIGUOUS_OR_CONFLICTING_ANSWERS'],missing_fields:['valid_contact'],canonical_county:null,canonical_state:null,identity_link_current:false,ownership_verified:false,outreach_authorized:false,binding_offer:false,contact_permission_granted:false},evidence_hash:'b'.repeat(64),sequence:0,latest_assessment:null,assessment_current:false};
+  else if(path.includes('/source-touches?'))value={workspace_id:scope.workspace,canonical_lead_id:scope.lead,property_id:scope.property,items:[1,2].map(revision=>({source_id:`40000000-0000-4000-8000-00000000000${revision}`,original_lead_id:scope.lead,source_type:'retell_inbound',integration_id:scope.integration,external_lead_id:origin.inbound_call_id,inbound_revision:revision,inbound_event_id:'50000000-0000-4000-8000-000000000001',association:'original_lead',identity_review_id:null,attribution_status:'campaign_evidence_unavailable',attribution_current:false,current_campaign_id:null,captured_attribution:null})),next_after:null,scanned_count:2,excluded_count:0,checked_at:'2026-10-26T19:00:00Z',count_scope:'bounded_candidate_page',totals_available:false,ownership_verified:false,contact_permission_granted:false,execution_authorized:false};
+  else if(path.endsWith('/intakes/'+intake.id))value=intake;
+  else throw new Error('Unknown fixture path');
+  return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});
+}

@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — inbound browser QA and coordinated refresh
+
+- Continued from pushed `c046945`; pulled unchanged branch. Added a standalone synthetic browser fixture using the actual intake and property-source components, fixed local records, no environment loading, no database/provider connection and rejected writes.
+- Browser verified revision 2 labels, saved-evidence/latest-version distinction, no Facebook campaign controls, restricted operator identity decisions, and two source revisions sharing one original lead. At a 390px viewport the document had equal 384px client/scroll widths; source identifiers wrap without horizontal overflow. Desktop and mobile captures are in `evidence/2026-10-26-inbound-review-{desktop,mobile}.jpg`.
+- QA found that Refresh intakes refreshed only the queue while selected evidence stayed on the prior read. The action now also refetches active selected-intake and workspace access queries. It preserves mounted mutation state; an unconfirmed identity save keeps the exact request for reconciliation. Browser recheck proved a single denied queue refresh removes seller/candidate/identity/qualification/history evidence and disables assessment saving. The independent property-source refresh also clears denied source evidence.
+- Validation: full frontend suite **364 tests / 59 files passed**, then the final added unknown-outcome recovery regression passed in the **11-test intake-review suite** (365 total tests now present; full suite not repeated after this test-only addition). Acquisition-enabled build passed; lint reports **147 existing findings and no new findings**. Browser console had no errors/warnings during the inspected flow. Initial test invocation from repository root found no test script and was corrected to frontend; it made no product changes.
+- Local QA only: no SQL migration, external records, outreach, deployment, production or paused-SMS changes. Browser viewport reset, temporary tab closed and local QA server stopped. Full PRD remains in progress.
+
+Next: implement the shared operator view for pending inbound callback/escalation requests and reviewed completion, followed by privacy-safe property lookup. Preserve immutable request evidence and distinguish review from contact authorization. Live provider/privacy/bilingual acceptance, Phase 1 release gate and later channels remain outstanding.
+
 ## Implementation checkpoint — signed seller-intake submission
 
 - Continued from pushed `40e8fdb`; pulled unchanged branch after approved network retry. Previous turn delivered tested channel/revision-aware reads. Wired submit_seller_intake through the existing signed tool receiver and dedicated persistence client; added an independent default-off ACQUISITION_INBOUND_INTAKE_ENABLED gate on top of existing acquisition/inbound/tool gates.

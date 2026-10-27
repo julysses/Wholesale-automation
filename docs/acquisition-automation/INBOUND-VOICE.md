@@ -158,3 +158,9 @@ A database response must have the exact intake receipt fields, matching workspac
 The HTTP-to-real-SQL journey now covers lost response after first commit, one lead across exact retry and new revision, no merge with an existing same-phone lead, immutable source revision reads, and invalidation of a saved qualified assessment after changed answers. A later terminal call permits confirmation of an existing commit but rejects new snapshots. CRM sequences stay disabled and no callback task, offer or provider operation is created by intake submission.
 
 This completes local signed intake persistence wiring, not RET-003 or Phase 2 live acceptance. Property lookup with privacy-safe results, operator review queue, interruption/human-transfer behavior, provider configuration, approved recording/transcription controls, bilingual QA, real PostgREST/JWT and sequential Phase 1 acceptance remain outstanding. Earlier sections describing rejected/unwired intake refer to their implementation checkpoints; this section describes the current local code.
+
+## Local browser QA checkpoint (October 26, 2026)
+
+The actual intake and source components can be exercised without provider/database access using `frontend/tests/browser/inbound-review.vite.config.ts` and `/tests/browser/inbound-review.html` on localhost:5180. Run Vite from frontend. The adapter rejects all writes and offers a simulated read-access revocation checkbox.
+
+Verified call revision labels, shared original lead across source revisions, hidden Facebook controls, operator restrictions, responsive wrapping and read-error clearing. Refresh intakes now also refreshes the selected intake evidence/qualification/access queries while retaining exact pending identity requests. Desktop/mobile screenshots are in the evidence directory. This is synthetic UI validation, not a live authentication/provider or Phase 2 acceptance result.

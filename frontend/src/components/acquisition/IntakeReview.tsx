@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '@/lib/api';
 import { CampaignLinkReview } from './CampaignLinkReview';
 import { IntakeQualification } from './IntakeQualification';
@@ -32,6 +32,7 @@ export function IntakeReview({ userId, workspace }: { userId: string; workspace:
   </section>;
 }
 function IntakeQueue({ userId, workspace }: { userId: string; workspace: string }) {
+  const client = useQueryClient();
   const base = `/api/acquisition/workspaces/${workspace}/intakes`;
   const [cursors, setCursors] = useState<(string | null)[]>([null]); const after = cursors.at(-1);
   const [selected, setSelected] = useState<string | null>(null);
@@ -43,7 +44,12 @@ function IntakeQueue({ userId, workspace }: { userId: string; workspace: string 
   } });
   return <div className="space-y-4">
     <p className="text-sm">Each row is an immutable intake snapshot. Call revisions are not additional leads. Original classifications are retained. Identity review does not verify title, grant contact permission or send an offer.</p>
-    <button className={button} disabled={queue.isFetching} onClick={() => { void queue.refetch(); }}>Refresh intakes</button>
+    <button className={button} disabled={queue.isFetching} onClick={() => {
+      void queue.refetch();
+      if (selected) void client.refetchQueries({ type: 'active', predicate: ({ queryKey }) =>
+        queryKey[1] === userId && queryKey[2] === workspace &&
+        (queryKey[0] === 'intake-access' || (typeof queryKey[0] === 'string' && queryKey[0].startsWith('intake-') && queryKey[3] === selected)) });
+    }}>Refresh intakes</button>
     {queue.isFetching ? <p role="status">Loading intakes…</p> : queue.isError ? <p role="alert">Intakes unavailable. Check workspace access.</p> : <>
       {!queue.data?.items.length && <p>No seller intakes on this page.</p>}
       <ul className="space-y-2">{queue.data?.items.map(row => <li key={row.id} className="border rounded p-3">

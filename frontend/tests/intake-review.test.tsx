@@ -106,3 +106,33 @@ it('labels inbound revisions and omits Facebook campaign controls', async () => 
   expect(screen.getByText(/not a claim that this is the latest revision/)).toBeInTheDocument();
   expect(mock.fetch.mock.calls.some(([path]) => String(path).includes('campaign-link'))).toBe(false);
 });
+
+it('queue refresh clears selected evidence when access is revoked without sending a mutation', async () => {
+  await open();
+  mock.fetch.mockRejectedValue(new Error('Access revoked'));
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh intakes' }));
+  await screen.findByText('Intakes unavailable. Check workspace access.');
+  await screen.findByText('Seller evidence unavailable.');
+  await screen.findByText('Current qualification unavailable. Saved results must not be treated as current.');
+  expect(screen.queryByText('Seller asserted address')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Record identity review' })).toBeDisabled();
+  expect(mock.post).not.toHaveBeenCalled();
+});
+
+it('preserves an unconfirmed identity request across a denied queue refresh and recovery', async () => {
+  mock.post.mockRejectedValueOnce(new Error('lost response'));
+  await open(); fill();
+  fireEvent.click(screen.getByRole('button', { name: 'Record identity review' }));
+  await screen.findByRole('button', { name: 'Retry exact identity request' });
+  const original = mock.fetch.getMockImplementation()!;
+  mock.fetch.mockRejectedValue(new Error('Access revoked'));
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh intakes' }));
+  await screen.findByText('Seller evidence unavailable.');
+  mock.fetch.mockImplementation(original);
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh intakes' }));
+  await screen.findByText('Seller asserted address');
+  fireEvent.click(screen.getByRole('button', { name: 'Retry exact identity request' }));
+  await screen.findByText(/Identity review recorded/);
+  expect(mock.post).toHaveBeenCalledTimes(2);
+  expect(mock.post.mock.calls[0][0].body).toBe(mock.post.mock.calls[1][0].body);
+});
