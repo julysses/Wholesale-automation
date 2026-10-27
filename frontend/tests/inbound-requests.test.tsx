@@ -8,7 +8,7 @@ const w = '10000000-0000-4000-8000-000000000001', integration = '96000000-0000-4
 const row = { id: '98000000-0000-4000-8000-000000000001', acquisition_revision: 2, acquisition_request_kind: 'request_callback', acquisition_evidence: {phone:'2145550101',preferred_time:'Tomorrow afternoon',purpose:'Discuss repairs',requested_by_caller:true}, acquisition_phone:'+12145550101',acquisition_request_hash:'a'.repeat(64),created_at:'2026-10-26T18:00:00Z' };
 const page = {workspace_id:w,integration_id:integration,call_id:'call_test',items:[row],execution_authorized:false};
 beforeEach(() => { mock.fetch.mockReset(); mock.fetch.mockResolvedValue({json:async()=>page}); });
-function view() {render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><InboundRequests userId="user" workspace={w} intake="intake" integration={integration} call="call_test" /></QueryClientProvider>);}
+function view() {render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><InboundRequests userId="user" workspace={w} contextId="intake" integration={integration} call="call_test" /></QueryClientProvider>);}
 async function open(){view(); expect(mock.fetch).not.toHaveBeenCalled(); fireEvent.click(screen.getByRole('button',{name:'View inbound requests'}));}
 it('reads only on demand and labels callback evidence without scheduling or execution', async()=>{
   await open(); await screen.findByText('Callback requested · revision 2');

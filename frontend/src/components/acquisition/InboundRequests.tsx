@@ -20,11 +20,11 @@ function valid(row: Request) {
     && (e.reason !== 'caller_requested' || e.requested_by_caller === true);
 }
 const button = 'rounded border px-3 py-2 text-sm disabled:opacity-40';
-export function InboundRequests({ userId, workspace, intake, integration, call }: { userId: string; workspace: string; intake: string; integration: string; call: string }) {
-  const [open, setOpen] = useState(false);
+export function InboundRequests({ userId, workspace, contextId, integration, call, initiallyOpen = false }: { userId: string; workspace: string; contextId: string; integration: string; call: string; initiallyOpen?: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen);
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const after = cursors.at(-1) ?? null;
-  const page = useQuery({ queryKey: ['intake-inbound-requests', userId, workspace, intake, integration, call, after], enabled: open,
+  const page = useQuery({ queryKey: ['intake-inbound-requests', userId, workspace, contextId, integration, call, after], enabled: open,
     retry: false, gcTime: 0, staleTime: 0, refetchOnWindowFocus: false,
     queryFn: async ({ signal }): Promise<Page> => {
       const value = await (await apiFetch(`/api/acquisition/workspaces/${workspace}/inbound/integrations/${integration}/calls/${encodeURIComponent(call)}/requests?limit=20${after ? `&after=${after}` : ''}`, { signal })).json() as Page;

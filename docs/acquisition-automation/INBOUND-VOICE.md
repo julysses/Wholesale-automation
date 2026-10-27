@@ -172,3 +172,9 @@ The inbound intake detail now provides an on-demand, bounded history of callback
 The UI shows request kind, independent request revision, caller-provided evidence, unverified normalized phone candidate and evidence fingerprint. Historical rows are not asserted to be the latest, completed or scheduled. It validates response scope, no-execution authority, strict evidence shapes, UUID ordering and bounded pages. Denied refreshes remove displayed evidence. No calling, transfer, completion or scheduling controls are implemented in this read surface. The synthetic browser fixture includes both request kinds.
 
 Still required: a workspace-wide queue that discovers requests even when no seller intake exists, immutable audited completion/assignment events, current-state derivation and provider/privacy acceptance. This intake history is not the completed operator workflow or a live release gate.
+
+## Workspace-wide request discovery
+
+The acquisition dashboard now includes an independent callback/assistance request queue. It reads `GET /api/acquisition/workspaces/{workspace}/inbound/requests` through the authenticated queue RPC and does not require an intake or CRM lead. Latest revisions are selected per call and request kind at each read; earlier revisions remain in the full call history. One click opens that history. No phone/evidence details are returned in queue summaries.
+
+The queue supports bounded UUID pagination, refresh from the first page and clearing selected evidence on refresh/error. It is a discovery surface, not a completion ledger: review status, assignment and completed/held states remain to be implemented as immutable audited events. Calls/transfers remain unavailable. Synthetic browser verification is captured in `evidence/2026-10-26-inbound-queue.jpg`.

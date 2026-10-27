@@ -178,6 +178,7 @@ class WorkspaceTests(unittest.TestCase):
             self.sql("INSERT INTO tasks(title,description,priority,status) VALUES('Sentinel legacy task','Preserve history','high','pending')")
             self.legacy_task_before=self.sql('SELECT jsonb_strip_nulls(to_jsonb(t)) FROM tasks t')
         self.sql((ROOT/'frontend/supabase/migrations/20261027013724_acquisition_inbound_review_tasks.sql').read_text())
+        self.sql((ROOT/'frontend/supabase/migrations/20261027023450_acquisition_inbound_request_queue.sql').read_text())
         if self._testMethodName not in ('test_source_migration_backfills_without_changing_intakes','test_inbound_intake_migration_preserves_populated_facebook'):
             self.sql((ROOT/'frontend/supabase/migrations/20261027015624_acquisition_inbound_intakes.sql').read_text())
             self.sql((ROOT/'frontend/supabase/migrations/20261027020314_acquisition_inbound_read_metadata.sql').read_text())
@@ -315,6 +316,33 @@ class WorkspaceTests(unittest.TestCase):
         self.member(CALLER,'acquisition_caller');self.sql(query,user=CALLER,fail=True)
         self.assertEqual(self.sql("SELECT count(*) FROM tasks WHERE due_date IS NOT NULL OR completed_at IS NOT NULL OR assigned_to IS NOT NULL OR status<>'acquisition_review_required'"),'0')
 
+    def test_inbound_queue_latest_no_intake_pagination_and_roles(self):
+        integration=self.inbound_fixture();self.inbound_accept()
+        old=self.inbound_request()
+        latest=self.inbound_request(request='98000000-0000-4000-8000-000000000002',revision=1)
+        human=self.inbound_request(request='98000000-0000-4000-8000-000000000003',kind='request_human')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        self.sql("INSERT INTO tasks(title) VALUES('Legacy sentinel')")
+        def queue(user=ADMIN,after=None,limit=1,fail=False):
+            cursor=literal(after)+'::uuid' if after else 'NULL'
+            value=self.sql(f"SELECT public.acquisition_inbound_request_queue('{WORKSPACE}',{cursor},{limit})",user=user,fail=fail)
+            return None if fail else json.loads(value)
+        first=queue();self.assertEqual(len(first['items']),1);self.assertIsNotNone(first['next_after'])
+        second=queue(after=first['next_after']);self.assertIsNone(second['next_after'])
+        rows=first['items']+second['items'];self.assertEqual({r['id'] for r in rows},{latest['id'],human['id']})
+        self.assertNotIn(old['id'],{r['id'] for r in rows});self.assertFalse(first['execution_authorized'])
+        self.assertFalse(first['review_status_available']);self.assertEqual(first['revision_scope'],'latest_per_call_and_kind_at_read')
+        self.assertTrue(all(r['integration_id']==integration and r['call_id']=='call_test' for r in rows))
+        self.assertTrue(all('acquisition_evidence' not in r and 'acquisition_phone' not in r for r in rows))
+        self.member(OPERATOR,'operator');self.assertEqual(len(queue(user=OPERATOR,limit=50)['items']),2)
+        queue(user=OTHER,fail=True);self.member(CALLER,'acquisition_caller');queue(user=CALLER,fail=True)
+        self.member(CALLER,'agency_manager');queue(user=CALLER,fail=True)
+        self.sql(f"UPDATE workspace_memberships SET status='revoked' WHERE workspace_id='{WORKSPACE}' AND user_id='{OPERATOR}'")
+        queue(user=OPERATOR,fail=True)
+        for limit in (0,51):queue(limit=limit,fail=True)
+        self.sql(f"SELECT public.acquisition_inbound_request_queue('{WORKSPACE}')",role='service_role',fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'4')
+
     def test_inbound_request_requires_ongoing_call_and_current_route(self):
         self.inbound_fixture();self.inbound_request(fail=True)
         self.inbound_accept();self.inbound_request(role='authenticated',fail=True)
@@ -373,7 +401,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.sql(f"SELECT description FROM tasks WHERE id='{identity}'",user=OTHER),'Still editable')
         self.sql("INSERT INTO tasks(description) VALUES('Missing title')",user=ADMIN,fail=True)
         self.sql("INSERT INTO tasks(title,lead_id) VALUES('Invalid parent','99999999-0000-4000-8000-000000000001')",user=ADMIN,fail=True)
-        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND tablename='tasks'"),'5')
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND tablename='tasks'"),'6')
 
     def test_inspected_tasks_fixture_bound_lead_isolation(self):
         self.bind()

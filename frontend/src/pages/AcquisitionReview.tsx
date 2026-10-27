@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
 import { AcquisitionUnderwriting } from '@/pages/AcquisitionUnderwriting';
+import { InboundRequestQueue } from '@/components/acquisition/InboundRequestQueue';
 import { IntakeReview } from '@/components/acquisition/IntakeReview';
 import { CampaignDrafts } from '@/components/acquisition/CampaignDrafts';
 import { InquiryHealth } from '@/components/acquisition/InquiryHealth';
@@ -54,6 +55,7 @@ function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: str
   return <section className="space-y-4">
     <CampaignDrafts userId={userId} workspace={workspace} onPending={onCampaignPending} />
     <InquiryHealth userId={userId} workspace={workspace} />
+    <InboundRequestQueue key={`${userId}:${workspace}`} userId={userId} workspace={workspace} />
     <IntakeReview userId={userId} workspace={workspace} />
     <AcquisitionUnderwriting userId={userId} workspace={workspace} onProposed={() => { void queue.refetch(); }} />
     <div className="flex justify-between items-center"><h2 className="text-lg font-semibold">Proposals and review history</h2>

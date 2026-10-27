@@ -29,6 +29,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_inbound_request_queue':['p_workspace','p_after','p_limit'],
  'acquisition_inbound_requests':['p_workspace','p_integration','p_call','p_after','p_limit'],
  'record_acquisition_inbound_intake':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision','p_prepared'],
  'record_acquisition_inbound_request':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_expected_revision','p_kind','p_evidence'],
@@ -313,6 +314,12 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(deliver().status_code,503)
         self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'2')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        queue=self.client.get(f'{self.base}/inbound/requests',headers=self.headers)
+        self.assertEqual(queue.status_code,200,queue.text)
+        self.assertEqual(len(queue.json()['items']),2)
+        self.assertFalse(queue.json()['execution_authorized'])
+        self.assertEqual({r['call_id'] for r in queue.json()['items']},{'call_test'})
+        self.assertEqual(self.client.get(f'{self.base}/inbound/requests',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
         path=f'{self.base}/inbound/integrations/{integration}/calls/call_test/requests'
         response=self.client.get(path+'?limit=1',headers=self.headers)
         self.assertEqual(response.status_code,200,response.text)

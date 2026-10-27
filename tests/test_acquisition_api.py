@@ -781,3 +781,22 @@ def test_inbound_request_read_denial_is_sanitized(api):
     response = client.get(f'/api/acquisition/workspaces/{W}/inbound/integrations/{U}/calls/call_test/requests', headers={'Authorization': 'Bearer user-token'})
     assert response.status_code == 403
     assert 'private SQL' not in response.text
+
+
+def test_inbound_queue_read_uses_scoped_rpc(api):
+    client, state = api
+    response = client.get(f'/api/acquisition/workspaces/{W}/inbound/requests?limit=10&after={U}', headers={'Authorization': 'Bearer user-token'})
+    assert response.status_code == 200
+    request = state['requests'][0]
+    assert request.url.path == '/rest/v1/rpc/acquisition_inbound_request_queue'
+    assert request.headers['authorization'] == 'Bearer user-token'
+    assert request.headers['apikey'] == 'public-test-key'
+    assert json.loads(request.content) == {'p_workspace': W, 'p_after': U, 'p_limit': 10}
+
+
+@pytest.mark.parametrize('query', ['limit=0', 'limit=51', 'after=invalid'])
+def test_inbound_queue_invalid_bounds_do_not_query_database(api, query):
+    client, state = api
+    response = client.get(f'/api/acquisition/workspaces/{W}/inbound/requests?'+query, headers={'Authorization': 'Bearer user-token'})
+    assert response.status_code == 422
+    assert not state['requests']

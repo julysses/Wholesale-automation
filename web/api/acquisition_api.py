@@ -853,3 +853,12 @@ async def inbound_call_requests(workspace_id: UUID, integration_id: UUID, call_i
         'p_workspace': str(workspace_id), 'p_integration': str(integration_id),
         'p_call': call_id, 'p_after': str(after) if after else None, 'p_limit': limit,
     })
+
+
+@router.get('/workspaces/{workspace_id}/inbound/requests')
+async def inbound_request_queue(workspace_id: UUID, after: UUID | None = None,
+                                limit: int = Query(default=20, ge=1, le=50),
+                                store=Depends(acquisition_store)):
+    return await store.request('POST', 'rpc/acquisition_inbound_request_queue', body={
+        'p_workspace': str(workspace_id), 'p_after': str(after) if after else None, 'p_limit': limit,
+    })

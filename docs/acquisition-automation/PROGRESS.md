@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — workspace-wide inbound request queue
+
+- Continued from pushed `2f0ffd7`; pulled unchanged branch after sandbox DNS retry. Used the Supabase skill and current function-security documentation. Read-only deployed catalog confirms **95 migrations, latest 20261023221455**, unchanged legacy tasks columns/constraints/indexes/policies. No production rows or mutations.
+- CLI created local `20261027023450_acquisition_inbound_request_queue.sql`: partial workspace/UUID index plus bounded authenticated read RPC. Reuses immutable tasks and session-aware membership. Owner/admin/operator only; caller/agency/service roles denied. Highest revision per call and kind selected with historical rows retained. No intake join, so callers who never finish an intake remain discoverable.
+- Added validated user-token API and an on-demand dashboard queue with scoped cache/abort handling, cursor validation, one-click call history and denied-refresh clearing. Queue summaries omit phone and request evidence; full history is independently authorized. Explicitly states per-read latest revision and absence of review completion tracking. No execution controls.
+- Validation: **386 frontend tests / 61 files passed**, then **21 focused tests passed** after the one-click history adjustment. **115 API tests**, **two focused real-SQL cases** (no-intake latest revision, pagination, role/revocation and legacy preservation), and **all 17 integrated SQL workflows passed**, including HTTP queue discovery before any intake exists and foreign-workspace denial. Acquisition-enabled build/lint results checked before commit; no new lint findings against the 147 baseline. Initial SQL launch hit sandbox shared-memory denial; approved rerun passed.
+- Browser verified standalone discovery, one-click callback/escalation history and denied queue refresh removing the selection, with no console errors/warnings. Saved `evidence/2026-10-26-inbound-queue.jpg`; temporary tab/server closed. Schema mapping documents forward compensation and pagination limits. Production migration/deployment, outreach, transfer, spend and paused SMS unchanged.
+
+Next: immutable audited inbound request review/assignment/completion events, current-state derivation and queue filters; then privacy-safe property lookup. Do not mutate original request evidence or treat review completion as contact permission. Full PRD and sequential release gates remain active and incomplete.
+
 ## Implementation checkpoint — call-specific callback and escalation history
 
 - Continued from pushed `b6b055b`; pulled unchanged branch after sandbox DNS retry. Exposed the existing bounded `acquisition_inbound_requests` RPC through a validated user-token GET API. No service-role substitution; exact workspace/integration/call and UUID cursor forwarded, invalid bounds/call IDs rejected, SQL denials sanitized.
