@@ -3,6 +3,16 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — inbound lifecycle and privacy foundation
+
+- Previous goal turn pushed `cd32e63`; pulled unchanged branch after approved network retry. Reviewed remaining plan and existing Retell adapter/webhook paths: they are outbound/legacy voice and shared paused-SMS paths, so acquisition inbound will use a separate default-disabled integration. No existing transport was changed.
+- Checked official Retell webhook/agent documentation and recorded links in INBOUND-VOICE.md. Provider storage opt-out does not suppress recordings/transcripts in webhooks and does not establish the PRD recording/transcription-disabled requirement. Live inbound remains gated pending technical/legal control verification. Transfer attempts require distinct attempt identity and cannot use lifecycle call-wide deduplication.
+- Added a pure inbound metadata parser with exact configured agent/version/destination and inbound-phone checks. It excludes phone numbers, caller metadata, dynamic variables, transcripts, recordings and analysis text. Stable scoped lifecycle keys and projection integrity hashes support receipt/reconciliation design without claiming authentication or execution authority.
+- Added bounded, order-independent lifecycle reconciliation: duplicate retries collapse, late started events cannot undo terminal state, failed calls can omit started, conflicting retry/status/timestamp evidence requires review, and analysis receipt never becomes seller qualification. Rebuilt validation rejects tampered projections. A permutation test exposed the need to compare timestamps across all conflicting variants; adjusted the reducer accordingly.
+- Validation: **55 tests passed**, comprising 33 new inbound parser/reconciliation cases and existing Retell webhook security/call-creation regressions. No SQL, database, provider, production, scheduling, spend or paused-SMS change. New module is offline only and not wired into HTTP or CRM. See INBOUND-VOICE.md for persistence/schema, signature, privacy, structured intake, escalation and live acceptance work.
+
+Next: inspect existing call/event schemas and build the dedicated scoped durable inbound receipt path while retaining disabled activation and privacy gates. Phase 1 artifact/provider/funnel gaps remain open; building Phase 2 foundations does not advance its activation gate. Full PRD goal remains active.
+
 ## Implementation checkpoint — cost-entry browser acceptance
 
 - Previous goal turn pushed `07f0528`; pulled unchanged branch after approved network retry. Added a dedicated local cost-entry fixture with canonical synthetic scope IDs, current reviewed account link, in-memory daily revision ledger, coverage projection and one-shot confirmed-rejection/lost-response simulation. It imports the actual entry/coverage components and has no fetch, credentials, database or provider transport.

@@ -2,7 +2,7 @@
 
 PRD version: 1.0 · PRD date: October 25, 2026 · Business: Hilltop Home Company
 
-Status: proposed implementation; documentation only. This plan translates the user-provided PRD into work packages. The complete PRD supplied in the conversation remains controlling; this document is not a verbatim copy or a claim of implementation.
+Status: implementation in progress; see PROGRESS.md for verified increments and open release gates. This plan translates the user-provided PRD into work packages. The complete PRD supplied in the conversation remains controlling; this document is not a verbatim copy or a claim of implementation.
 
 ## Objective and boundaries
 
