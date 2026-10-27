@@ -3,6 +3,17 @@
 Checkpoint date: October 26, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — reviewed cost persistence and coverage API
+
+- Previous turn made progress: pushed `cae734f` with live cost catalog and expanded fixture. Pulled unchanged branch. CLI created `20261026234504_acquisition_cost_evidence.sql`; initial CLI telemetry sandbox failure resolved through approved escalation. Production migration remains unapplied.
+- Extended existing fb_campaign_performance with immutable workspace/campaign/review daily evidence revisions, exact minor units, coverage, account timezone, observation/recording timestamps and original reviewed import. Legacy IDs/defaults/generated CPL remain intact; new evidence has null legacy metrics and is excluded from direct command-center queries. Removed TRUNCATE/TRIGGER grants and enforced scoped mutation denial, including direct service-role insert/update.
+- Owner/admin MFA reviewed SQL writes derive campaign from the exact current account link, lock checked authority and serialize request/day revisions. Exact retries reconcile one prior record/audit even after link revocation; stale revision/new writes are rejected. First evidence fixes campaign account/calendar identity. This is explicitly reviewed import, not verified Meta retrieval; automated importer and HTTP write UI remain open.
+- Added bounded SQL evidence reads and authenticated GET cost-coverage API. Latest revisions honor both observation and recording cutoff; current campaign authority is checked now. Unknown timezone stays unavailable. Partial/missing coverage has no complete total; stale attribution suppresses totals while retaining marked historical daily evidence. CPL stays null. No credential/provider transport or spending authority.
+- Validation: **91 API/calculation tests passed**, **seven distinct focused PostgreSQL cases passed**, and **all 13 integrated real-SQL journeys passed**. Coverage includes tenant/role/MFA/session denial, exact/concurrent retry, stale revisions, account/unit validation, legacy isolation, generated CPL, populated legacy preservation, cutoff and revoked attribution. Final direct service insertion test checks the trigger's actual rejection message, not a generated-column error.
+- Fixed test fixture campaign/account IDs, a SQL string delimiter, and date/timestamp types in the synthetic PostgREST adapter after failures. A redundant py_compile attempt hit the macOS cache sandbox; subsequent executing tests verified syntax. No frontend changes. Full-schema upgrade, real PostgREST/provider acceptance and retention approvals remain open.
+
+Next: provide a reviewed cost-import HTTP contract and dashboard with exact retry recovery, evidence review and unavailable/partial/current/historical coverage; then reconcile lead/conversion denominators. Full PRD goal active; production and paused SMS unchanged.
+
 ## Implementation checkpoint — inspected cost persistence target and database fixture
 
 - Prior goal turn made progress: pushed `cd2847c` with tested cost projection. Pulled unchanged branch; inspected live metadata before SQL design and rechecked Supabase RLS/grant documentation.

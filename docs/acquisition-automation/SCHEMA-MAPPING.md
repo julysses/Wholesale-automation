@@ -114,3 +114,8 @@ Live metadata inspection identifies `public.fb_campaign_performance` as the exis
 The implementation must preserve legacy IDs/defaults/history while adding explicit workspace/acquisition-campaign identity, immutable evidence revision metadata, currency/account timezone, observed time, coverage and amount minor units. Acquisition rows must not populate default-zero legacy metrics or enter the existing command-center aggregates. Existing mutable legacy rows have no acquisition evidence provenance and must remain outside new coverage totals. Review both direct browser reads in ActiveCampaignsDashboard/PerformanceTracker and service-role paths when designing the boundary.
 
 Metadata evidence: `evidence/2026-10-26-cost-catalog.json` contains 43 columns, 7 constraints, 6 policies, 6 indexes, 1 trigger and 63 role grants across fb_campaigns, fb_ad_sets and fb_campaign_performance. All three currently enable RLS. Approved-user policies are broad; service-role bypass and TRUNCATE/TRIGGER grants require explicit controls. Ledger remains 95 migrations/latest 20261023221455. Only catalog metadata was read; no production records or schema were changed.
+
+
+### Cost evidence extension implementation
+
+`20261026234504_acquisition_cost_evidence.sql` now adds the reviewed acquisition evidence namespace to existing fb_campaign_performance. No parallel cost or campaign master is created. Existing legacy metrics remain unchanged and are isolated from new evidence rows. New composite workspace FKs reference ad_campaigns and acquisition_campaign_links; read/write RPCs enforce current membership and reviewed account scope. See CAMPAIGN-COSTS.md for immutable revisions, null legacy metrics, read coverage and forward compensation.

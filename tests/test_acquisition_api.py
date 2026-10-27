@@ -607,3 +607,41 @@ def test_property_source_touches_use_scoped_bounded_rpc(api):
     for query in ('?limit=0','?limit=51','?after=not-a-uuid'):
         assert client.get(path+query,headers={'Authorization':'Bearer user-token'}).status_code==422
     assert len(state['requests'])==count
+
+
+def cost_envelope():
+    return dict(workspace_id=W,campaign_id=U,start_date='2026-10-24',end_date='2026-10-24',as_of='2026-10-25T06:00:00Z',
+        reporting_timezone='America/Chicago',currency='USD',truncated=False,execution_authorized=False,
+        items=[dict(id=U,workspace_id=W,campaign_id=U,date='2026-10-24',revision=1,amount_minor=12550,coverage='complete',
+                    reporting_timezone='America/Chicago',currency='USD',observed_at='2026-10-25T06:00:00Z',
+                    evidence_ref='persisted-cost-record:'+U,evidence_hash='a'*64,link_review_id=U,attribution_current=True,basis='reviewed_import')])
+
+
+def cost_path():
+    return f'/api/acquisition/workspaces/{W}/campaigns/{U}/cost-coverage?start_date=2026-10-24&end_date=2026-10-24&as_of=2026-10-25T06:00:00Z'
+
+
+def test_cost_coverage_forwards_user_scope_and_preserves_exact_amount(api):
+    client,state=api; state['body']=cost_envelope()
+    response=client.get(cost_path(),headers={'Authorization':'Bearer user-token'})
+    assert response.status_code==200 and response.json()['total_cost_minor']=='12550'
+    assert response.json()['days'][0]['attribution_current'] is True
+    assert response.json()['cost_per_lead_minor'] is None
+    assert state['requests'][-1].headers['authorization']=='Bearer user-token'
+    assert json.loads(state['requests'][-1].content)['p_campaign']==U
+
+
+@pytest.mark.parametrize('patch',[{'workspace_id':U},{'truncated':True},{'execution_authorized':True},{'currency':'CAD'},{'as_of':'2026-10-24T00:00:00Z'}])
+def test_cost_coverage_rejects_mismatched_or_incomplete_envelope(api,patch):
+    client,state=api; state['body']=cost_envelope()|patch
+    assert client.get(cost_path(),headers={'Authorization':'Bearer user-token'}).status_code==502
+
+
+def test_stale_attribution_suppresses_totals_and_empty_timezone_stays_unknown(api):
+    client,state=api; state['body']=cost_envelope(); state['body']['items'][0]['attribution_current']=False
+    value=client.get(cost_path(),headers={'Authorization':'Bearer user-token'}).json()
+    assert value['total_cost_minor'] is None and value['observed_cost_minor'] is None
+    assert 'COST_ATTRIBUTION_NOT_CURRENT' in value['reason_codes']
+    state['body']=cost_envelope()|{'items':[],'reporting_timezone':None}
+    value=client.get(cost_path(),headers={'Authorization':'Bearer user-token'}).json()
+    assert value['status']=='unavailable' and value['reporting_timezone'] is None

@@ -27,6 +27,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_cost_evidence':['p_workspace','p_campaign','p_start','p_end','p_as_of'],
  'acquisition_property_source_touches':['p_workspace','p_lead','p_after','p_limit'],
  'capture_acquisition_source_campaign':['p_id','p_workspace','p_source','p_link_review'],
  'acquisition_campaign_link_state':['p_workspace','p_intake'],
@@ -125,7 +126,7 @@ class WorkflowTests(WorkspaceTests):
             for key in RPC_ARGS[name]:
                 value=body[key]
                 kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review'}
-                      else 'timestamptz' if key=='p_expected_updated_at' else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
+                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
@@ -451,6 +452,24 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.client.get(path+'/campaign-link-reviews',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
         self.assertEqual(self.sql('SELECT count(*) FROM leads WHERE ad_campaign_id IS NOT NULL'),'0')
         self.assertEqual(sum(path.startswith('/v26.0/') for path,token in self.requests),1)
+
+    def test_reviewed_cost_coverage_http_preserves_gaps_and_revoked_attribution(self):
+        intake,review=self.cost_fixture()
+        path=f'{self.base}/campaigns/{self.link_campaign}/cost-coverage?start_date=2026-10-24&end_date=2026-10-24'
+        empty=self.client.get(path,headers=self.headers); self.assertEqual(empty.status_code,200,empty.text)
+        self.assertEqual(empty.json()['status'],'unavailable')
+        self.cost_record(review)
+        response=self.client.get(path,headers=self.headers); self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()['total_cost_minor'],'12550')
+        self.assertTrue(response.json()['days'][0]['attribution_current'])
+        gap=self.client.get(path.replace('end_date=2026-10-24','end_date=2026-10-25'),headers=self.headers)
+        self.assertIsNone(gap.json()['total_cost_minor']); self.assertIn('COST_MISSING',gap.json()['reason_codes'])
+        self.assertEqual(self.client.get(path,headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
+        self.campaign_link_review(intake,self.campaign_link_state(intake),p_id='cf000000-0000-4000-8000-000000000002',p_action='revoke',p_campaign=None,p_ad_account=None)
+        stale=self.client.get(path,headers=self.headers).json()
+        self.assertEqual(stale['status'],'requires_review'); self.assertIsNone(stale['total_cost_minor'])
+        self.assertFalse(stale['days'][0]['attribution_current']); self.assertIsNone(stale['cost_per_lead_minor'])
+        self.assertFalse(any('graph.facebook' in route for route,_ in self.requests))
 
     def test_campaign_draft_http_is_idempotent_scoped_and_non_executing(self):
         path=self.base+'/campaigns'

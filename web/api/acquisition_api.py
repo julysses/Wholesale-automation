@@ -1,4 +1,5 @@
 """Acquisition workspace administration; unavailable until explicitly enabled."""
+from datetime import date, datetime, timezone
 from typing import Literal
 from uuid import UUID
 
@@ -709,3 +710,51 @@ async def acquisition_property_source_touches(workspace_id: UUID, lead_id: UUID,
                                               limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
     return await store.request('POST', 'rpc/acquisition_property_source_touches', body={
         'p_workspace': str(workspace_id), 'p_lead': str(lead_id), 'p_after': str(after) if after else None, 'p_limit': limit})
+
+
+@router.get('/workspaces/{workspace_id}/campaigns/{campaign_id}/cost-coverage')
+async def acquisition_cost_coverage(workspace_id: UUID, campaign_id: UUID, start_date: date, end_date: date,
+                                    as_of: AwareDatetime | None = None, store=Depends(acquisition_store)):
+    from tools.acquisition_costs import campaign_cost_coverage
+    cutoff = as_of or datetime.now(timezone.utc)
+    if end_date < start_date or (end_date-start_date).days > 365 or cutoff > datetime.now(timezone.utc):
+        raise HTTPException(status_code=422, detail='Invalid cost reporting window')
+    value = await store.request('POST', 'rpc/acquisition_cost_evidence', body={
+        'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id), 'p_start': start_date.isoformat(),
+        'p_end': end_date.isoformat(), 'p_as_of': cutoff.isoformat()})
+    try:
+        if (not isinstance(value, dict) or value.get('workspace_id') != str(workspace_id)
+            or value.get('campaign_id') != str(campaign_id) or value.get('start_date') != start_date.isoformat()
+            or value.get('end_date') != end_date.isoformat() or value.get('truncated') is not False
+            or value.get('execution_authorized') is not False or value.get('currency') != 'USD'
+            or datetime.fromisoformat(value['as_of'].replace('Z', '+00:00')) != cutoff
+            or not isinstance(value.get('items'), list) or len(value['items']) > 366):
+            raise ValueError('Invalid evidence envelope')
+        rows = value['items']
+        if any(type(row.get('attribution_current')) is not bool or row.get('basis') != 'reviewed_import' for row in rows):
+            raise ValueError('Invalid evidence authority')
+        zone = value.get('reporting_timezone')
+        if zone is None:
+            if rows:
+                raise ValueError('Missing cost units')
+            return {**{k: value[k] for k in ('workspace_id','campaign_id','start_date','end_date','as_of','currency')},
+                    'reporting_timezone': None, 'status': 'unavailable', 'reason_codes': ['COST_REPORTING_TIMEZONE_UNKNOWN'],
+                    'total_cost_minor': None, 'observed_cost_minor': None, 'cost_per_lead_minor': None,
+                    'qualified_cost_per_lead_minor': None, 'denominator_status': 'NOT_RECONCILED',
+                    'days': [], 'execution_authorized': False}
+        result = campaign_cost_coverage(workspace_id=str(workspace_id), campaign_id=str(campaign_id),
+            start_date=start_date.isoformat(), end_date=end_date.isoformat(), reporting_timezone=zone,
+            currency='USD', as_of=cutoff.isoformat(), records=rows)
+        authority = {row['id']: row for row in rows}
+        for day in result['days']:
+            row = authority.get(day['revision_id'])
+            day['attribution_current'] = row['attribution_current'] if row else None
+            day['link_review_id'] = row['link_review_id'] if row else None
+        result['evidence_basis'] = 'reviewed_import'
+        result['attribution_checked_at'] = datetime.now(timezone.utc).isoformat()
+        if any(not row['attribution_current'] for row in rows):
+            result.update(status='requires_review', total_cost_minor=None, observed_cost_minor=None)
+            result['reason_codes'] = sorted(set(result['reason_codes'] + ['COST_ATTRIBUTION_NOT_CURRENT']))
+        return result
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError):
+        raise HTTPException(status_code=502, detail='Cost evidence could not be verified') from None

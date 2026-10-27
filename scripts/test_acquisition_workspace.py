@@ -160,6 +160,11 @@ class WorkspaceTests(unittest.TestCase):
         if self._testMethodName != 'test_source_migration_backfills_without_changing_intakes':
             self.sql((ROOT/'frontend/supabase/migrations/20261026221434_acquisition_lead_sources.sql').read_text())
             self.sql((ROOT/'frontend/supabase/migrations/20261026223054_acquisition_property_source_touches.sql').read_text())
+        if self._testMethodName == 'test_cost_migration_preserves_populated_legacy_metrics':
+            self.sql("INSERT INTO fb_campaign_performance(id,date,spend,leads) VALUES('94000000-0000-4000-8000-000000000001','2026-10-24',123.45,3)")
+            self.legacy_cost_before=self.sql("SELECT jsonb_build_object('id',id,'date',date,'spend',spend,'leads',leads,'cpl',cpl)::text FROM fb_campaign_performance")
+        if self._testMethodName != 'test_source_migration_backfills_without_changing_intakes':
+            self.sql((ROOT/'frontend/supabase/migrations/20261026234504_acquisition_cost_evidence.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -168,6 +173,100 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def cost_record(self, review, data=None, request='93000000-0000-4000-8000-000000000001', user=ADMIN, fail=False, **kwargs):
+        payload={'date':'2026-10-24','amount_minor':12550,'coverage':'complete','currency':'USD','reporting_timezone':'America/Chicago',
+                 'observed_at':'2026-10-25T06:00:00Z','external_campaign_id':'987654','ad_account_id':'123456',
+                 'evidence_ref':'private-reviewed-cost-artifact','evidence_hash':'a'*64,'expected_revision':0}
+        payload.update(data or {})
+        result=self.sql(f"SELECT public.record_acquisition_cost('{request}','{WORKSPACE}','{review}',{literal(json.dumps(payload))}::jsonb)",user=user,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def cost_fixture(self):
+        self.bind(); self.member(); self.link_campaign=self.campaign_draft()['id']
+        intake=self.campaign_link_fixture()
+        review=self.campaign_link_review(intake,self.campaign_link_state(intake))['review_id']
+        return intake,review
+
+    def test_cost_evidence_idempotent_revision_and_legacy_namespace(self):
+        intake,review=self.cost_fixture()
+        saved=self.cost_record(review); self.assertEqual(saved['revision'],1)
+        self.assertTrue(self.cost_record(review)['duplicate'])
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_cost'"),'1')
+        self.cost_record(review,{'amount_minor':9},fail=True)
+        self.cost_record(review,request='93000000-0000-4000-8000-000000000002',fail=True)
+        withdrawn=self.cost_record(review,{'expected_revision':1,'coverage':'withdrawn','amount_minor':None},request='93000000-0000-4000-8000-000000000002')
+        self.assertEqual(withdrawn['revision'],2)
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance',user=ADMIN),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance WHERE spend IS NULL AND leads IS NULL AND cpl IS NULL'),'2')
+        self.sql("INSERT INTO fb_campaign_performance(date,spend,leads) VALUES('2026-10-24',100,4)",user=ADMIN)
+        self.assertEqual(self.sql('SELECT cpl::text FROM fb_campaign_performance',user=ADMIN),'25.00')
+        self.campaign_link_review(intake,self.campaign_link_state(intake),p_id='cf000000-0000-4000-8000-000000000002',p_action='revoke',p_campaign=None,p_ad_account=None)
+        self.assertTrue(self.cost_record(review)['duplicate'])
+        self.cost_record(review,{'expected_revision':2},request='93000000-0000-4000-8000-000000000003',fail=True)
+
+    def test_cost_evidence_roles_immutability_units_and_account(self):
+        intake,review=self.cost_fixture()
+        for patch in ({'currency':'CAD'},{'reporting_timezone':'bad/zone'},{'amount_minor':True},{'amount_minor':1.5},
+                      {'amount_minor':-1},{'amount_minor':10**15},{'observed_at':'2026-10-24T06:00:00Z'},
+                      {'observed_at':'2026-10-25'},{'observed_at':'2999-01-01T00:00:00Z'},
+                      {'ad_account_id':'998'},{'external_campaign_id':'301'},{'evidence_hash':'bad'},
+                      {'coverage':'withdrawn'},{'coverage':'unknown'},{'expected_revision':True}):
+            self.cost_record(review,patch,fail=True)
+        self.cost_record(review,user=OTHER,fail=True)
+        self.member(target=OPERATOR,role='operator'); self.cost_record(review,user=OPERATOR,fail=True)
+        self.cost_record(review,aal='aal1',fail=True); self.cost_record(review,session=False,fail=True)
+        saved=self.cost_record(review)
+        self.cost_record(review,{'date':'2026-10-23','reporting_timezone':'UTC'},request='93000000-0000-4000-8000-000000000002',fail=True)
+        for role in ('authenticated','service_role'):
+            self.sql(f"UPDATE fb_campaign_performance SET acquisition_coverage='partial' WHERE id='{saved['id']}'",user=ADMIN,role=role,fail=(role=='service_role'))
+            self.sql('TRUNCATE fb_campaign_performance',user=ADMIN,role=role,fail=True)
+        self.sql(f"DELETE FROM fb_campaign_performance WHERE id='{saved['id']}'",fail=True)
+        self.assertEqual(self.sql(f"SELECT acquisition_coverage FROM fb_campaign_performance WHERE id='{saved['id']}'"),'complete')
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance',user=OTHER),'0')
+        self.cost_record(review,role='service_role',fail=True)
+        columns='date,campaign_id,ad_set_id,spend,leads,contact_rate,appt_rate,frequency,workspace_id,acquisition_campaign_id,acquisition_link_review_id,acquisition_amount_minor,acquisition_coverage,acquisition_timezone,acquisition_observed_at,acquisition_data,acquisition_actor_id,acquisition_recorded_at'
+        rejected=self.sql(f"INSERT INTO fb_campaign_performance(id,acquisition_revision,{columns}) SELECT '93000000-0000-4000-8000-000000000099',99,{columns} FROM fb_campaign_performance WHERE workspace_id IS NOT NULL",user=ADMIN,role='service_role',fail=True)
+        self.assertIn('Use reviewed cost function',rejected)
+
+
+    def cost_evidence(self, user=ADMIN, fail=False, campaign=None, workspace=WORKSPACE, cutoff='statement_timestamp()', **kwargs):
+        campaign=campaign or self.link_campaign
+        result=self.sql(f"SELECT public.acquisition_cost_evidence('{workspace}','{campaign}','2026-10-24','2026-10-24',{cutoff})",user=user,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_cost_evidence_read_latest_scope_cutoff_and_revoked_attribution(self):
+        intake,review=self.cost_fixture()
+        empty=self.cost_evidence(); self.assertEqual(empty['items'],[]); self.assertIsNone(empty['reporting_timezone'])
+        self.cost_record(review)
+        value=self.cost_evidence(); self.assertEqual(value['items'][0]['amount_minor'],12550)
+        self.assertTrue(value['items'][0]['attribution_current']); self.assertFalse(value['truncated'])
+        self.assertNotIn('private-reviewed-cost-artifact',json.dumps(value))
+        cutoff=literal(self.sql('SELECT clock_timestamp()'))+'::timestamptz'
+        self.cost_record(review,{'coverage':'partial','expected_revision':1,'amount_minor':500},request='93000000-0000-4000-8000-000000000002')
+        self.assertEqual(self.cost_evidence()['items'][0]['revision'],2)
+        self.assertEqual(self.cost_evidence(cutoff=cutoff)['items'][0]['revision'],1)
+        self.cost_evidence(user=OTHER,fail=True); self.cost_evidence(workspace=WORKSPACE_B,fail=True)
+        self.cost_evidence(campaign=LEAD,fail=True); self.cost_evidence(role='service_role',fail=True)
+        self.cost_evidence(cutoff="'2999-01-01T00:00:00Z'",fail=True)
+        self.member(target=OPERATOR,role='operator'); self.assertEqual(len(self.cost_evidence(user=OPERATOR)['items']),1)
+        self.member(target=CALLER,role='acquisition_caller'); self.cost_evidence(user=CALLER,fail=True)
+        self.campaign_link_review(intake,self.campaign_link_state(intake),p_id='cf000000-0000-4000-8000-000000000002',p_action='revoke',p_campaign=None,p_ad_account=None)
+        historical=self.cost_evidence()['items'][0]; self.assertFalse(historical['attribution_current']); self.assertEqual(historical['revision'],2)
+
+    def test_cost_evidence_concurrent_retries_create_one_revision(self):
+        intake,review=self.cost_fixture()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.cost_record(review),range(3)))
+        self.assertEqual(sum(not row['duplicate'] for row in results),1)
+        self.assertEqual(self.sql("SELECT count(*) FROM fb_campaign_performance WHERE workspace_id IS NOT NULL"),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_cost'"),'1')
+
+    def test_cost_migration_preserves_populated_legacy_metrics(self):
+        after=self.sql("SELECT jsonb_build_object('id',id,'date',date,'spend',spend,'leads',leads,'cpl',cpl)::text FROM fb_campaign_performance")
+        self.assertEqual(after,self.legacy_cost_before)
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance WHERE workspace_id IS NULL'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance',user=ADMIN),'1')
 
     def test_cost_fixture_restores_generated_metrics_and_parent_edges(self):
         campaign='92000000-0000-4000-8000-000000000001'
@@ -179,7 +278,7 @@ class WorkspaceTests(unittest.TestCase):
         self.sql('UPDATE fb_campaign_performance SET cpl=1',fail=True)
         self.sql(f"INSERT INTO fb_campaign_performance(campaign_id,ad_set_id,date) VALUES('{campaign}','{adset}','2026-10-24')",fail=True)
         self.sql(f"DELETE FROM fb_ad_sets WHERE id='{adset}'",fail=True)
-        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE tablename IN ('fb_campaigns','fb_ad_sets','fb_campaign_performance')"),'6')
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_indexes WHERE tablename IN ('fb_campaigns','fb_ad_sets','fb_campaign_performance') AND indexname NOT LIKE 'acquisition_%'"),'6')
         self.sql('UPDATE fb_campaign_performance SET ad_set_id=NULL')
         self.sql(f"DELETE FROM fb_campaigns WHERE id='{campaign}'")
         self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance'),'0')
@@ -196,9 +295,8 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.sql('SELECT count(*) FROM fb_campaign_performance',user=OPERATOR),'0')
         self.sql('UPDATE fb_campaign_performance SET spend=10',user=ADMIN)
         self.assertEqual(self.sql('SELECT spend::text FROM fb_campaign_performance'),'10.00')
-        # This captured baseline grant must be removed by the cost extension;
-        # RLS does not protect TRUNCATE and service-role access bypasses RLS.
-        self.assertEqual(self.sql("SELECT has_table_privilege('anon','fb_campaign_performance','TRUNCATE')::text"),'true')
+        # The cost extension removes the captured baseline TRUNCATE grant.
+        self.assertEqual(self.sql("SELECT has_table_privilege('anon','fb_campaign_performance','TRUNCATE')::text"),'false')
 
     def test_campaign_fixture_preserves_generated_cost_and_parent_constraints(self):
         campaign='90000000-0000-4000-8000-000000000001'
