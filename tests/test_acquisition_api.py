@@ -960,3 +960,16 @@ def test_destination_review_timeout_retains_single_attempt(api,monkeypatch):
     monkeypatch.setenv('ACQUISITION_ENABLED','false')
     assert client.post(DEST_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=DEST_REVIEW).status_code==404
     assert len(state['requests'])==1
+
+
+def test_destination_history_uses_fixed_scoped_projection_and_bounded_cursor(api):
+    client,state=api;state['body']=[{'id':U},{'id':W}]
+    response=client.get(DEST_PATH.rsplit('/',1)[0]+'?limit=1&after='+U,headers={'Authorization':'Bearer user-token'})
+    assert response.json()=={'items':[{'id':U}],'next_after':U}
+    request=state['requests'][-1]
+    assert request.url.path=='/rest/v1/acquisition_mail_destination_reviews'
+    assert dict(request.url.params)=={'select':'id,workspace_id,campaign_id,destination_id,version,action,mode,value,created_at',
+        'workspace_id':'eq.'+W,'campaign_id':'eq.'+U,'order':'id','limit':'2','id':'gt.'+U}
+    for query in ('limit=51','after=not-a-uuid'):
+        assert client.get(DEST_PATH.rsplit('/',1)[0]+'?'+query,headers={'Authorization':'Bearer user-token'}).status_code==422
+    assert len(state['requests'])==1

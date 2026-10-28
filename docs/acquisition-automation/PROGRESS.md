@@ -3,6 +3,17 @@
 Checkpoint date: October 28, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — destination history and review screen
+
+- Previous goal turn made concrete progress: durable destination ledger/API and verified database workflows were pushed. Pulled unchanged `8ff31a2`; its exact CI run is https://github.com/julysses/Wholesale-automation/actions/runs/40745000188. All five jobs completed successfully before this increment was pushed (database job 10m37s).
+- Added a bounded UUID-paginated historical destination endpoint with fixed projection and existing workspace/campaign RLS. Real SQL workflow verifies pages and denies cross-workspace visibility. Historical approval records are distinct from the current-state projection.
+- Direct-mail campaign cards now include a lazy destination panel. Current owner/admin membership gates review controls; existing destinations require explicit current-version loading, and a changed version locks old form edits. Evidence/date fields, review reason and affirmative routing/control attestation precede approval. Withdrawal sends only request identity, expected version, action and reason. Role/session/authority enforcement remains server-side.
+- Exact pending requests are persisted before transmission under user/workspace/campaign keys. Lost/malformed outcomes survive remount, block edits and preserve identical retries; rejected uncertain retries remain retained. Corrupt/unavailable storage fails closed. Current state requires valid scope/version/status/date consistency and displays its check timestamp. Destination and history text stay inert.
+- Validation: full frontend suite **449 tests / 64 files passed** before final timestamp/expiry display validation; **44 focused destination/campaign tests passed** after that tightening. Final build passed with existing bundle/Zod warnings; lint reports **147 existing/no new findings**. **172 API tests passed** and **all 22 API-to-PostgreSQL workflows passed in 184.632 seconds**. Initial shell attempts used the wrong relative frontend path/root npm directory; corrected before executing the successful checks. Whitespace check passed.
+- No SQL changes in this increment. Component tests do not establish real-browser/layout/accessibility acceptance. Evidence references still require protected artifact resolution and actual routing verification before live release; this panel does not configure providers, approve content, reserve budgets or send mail.
+
+Next: browser acceptance of the destination panel, protected evidence resolution and content approval/withdrawal persistence; connect renderer to current destination/content reviews. Continue postal matching, atomic mail batches/jobs, vendor proofs/reconciliation and remaining portal/caller/disposition work. Full PRD goal stays active; production, outreach, schedules and spending remain unchanged.
+
 ## Implementation checkpoint — durable destination review API and SQL
 
 - Previous goal turn made concrete progress by implementing/pushing reviewed proof rendering. Pulled unchanged `3469b76`; its exact CI run https://github.com/julysses/Wholesale-automation/actions/runs/40743393939 completed successfully across all five jobs before this update was pushed.

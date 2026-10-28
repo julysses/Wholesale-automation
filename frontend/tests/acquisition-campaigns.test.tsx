@@ -84,5 +84,6 @@ it('paginates with the verified cursor and hides stale rows after a failed refre
 it('connects the mail editor only to direct-mail campaign drafts', async () => {
   mock.page = { items: [{ ...row, acquisition_channel: 'direct_mail' }], next_after: null }; view();
   expect(await screen.findByRole('button', { name: 'Edit mail drafts' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Review mail destinations' })).toBeVisible();
   expect(screen.queryByRole('button', { name: 'View campaign costs' })).toBeNull();
 });

@@ -640,6 +640,18 @@ class MailDestinationReview(BaseModel):
         return self
 
 
+@router.get('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-destinations')
+async def mail_destination_history(workspace_id: UUID, campaign_id: UUID, after: UUID | None = None,
+                                   limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select': 'id,workspace_id,campaign_id,destination_id,version,action,mode,value,created_at',
+              'workspace_id': 'eq.'+str(workspace_id), 'campaign_id': 'eq.'+str(campaign_id),
+              'order': 'id', 'limit': str(limit+1)}
+    if after is not None:
+        params['id'] = 'gt.'+str(after)
+    rows = await store.request('GET', 'acquisition_mail_destination_reviews', params=params)
+    return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}
+
+
 @router.post('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-destinations/{destination_id}/reviews')
 async def review_mail_destination(workspace_id: UUID, campaign_id: UUID, destination_id: UUID,
                                   body: MailDestinationReview, store=Depends(acquisition_store)):

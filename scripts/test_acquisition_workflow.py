@@ -180,6 +180,18 @@ class WorkflowTests(WorkspaceTests):
                 op,value=request.url.params['sequence'].split('.',1); self.assertEqual(op,'lt'); filters.append(f'sequence<{int(value)}')
             limit=int(request.url.params['limit']); self.assertTrue(1<=limit<=50)
             query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {fields} FROM public.acquisition_campaign_links WHERE {' AND '.join(filters)} ORDER BY sequence DESC LIMIT {limit}) row;"
+        elif request.url.path=='/rest/v1/acquisition_mail_destination_reviews':
+            self.assertEqual(request.method,'GET')
+            fields='id,workspace_id,campaign_id,destination_id,version,action,mode,value,created_at'
+            self.assertEqual(request.url.params['select'],fields);self.assertEqual(request.url.params['order'],'id')
+            self.assertTrue(set(request.url.params)<={'select','workspace_id','campaign_id','order','limit','id'})
+            filters=[]
+            for key in ('workspace_id','campaign_id'):
+                op,value=request.url.params[key].split('.',1);self.assertEqual(op,'eq');filters.append(f'{key}={literal(value)}::uuid')
+            if 'id' in request.url.params:
+                op,value=request.url.params['id'].split('.',1);self.assertEqual(op,'gt');filters.append(f'id>{literal(value)}::uuid')
+            limit=int(request.url.params['limit']);self.assertTrue(1<=limit<=51)
+            query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {fields} FROM public.acquisition_mail_destination_reviews WHERE {' AND '.join(filters)} ORDER BY id LIMIT {limit}) row;"
         elif request.url.path=='/rest/v1/ad_creatives':
             self.assertEqual(request.method,'GET')
             fields='id,workspace_id,campaign_id,acquisition_template_id,acquisition_template_version,name,primary_text,acquisition_mail_format,acquisition_tracking_mode,status,created_at'
@@ -778,6 +790,16 @@ class WorkflowTests(WorkspaceTests):
         result=self.client.post(path+'/reviews',headers=self.headers,json=withdrawal)
         self.assertEqual(result.status_code,200,result.text)
         self.assertEqual(self.client.get(path,headers=self.headers).json()['status'],'withdrawn')
+        history_path=path.rsplit('/',1)[0]
+        listing=self.client.get(history_path+'?limit=1',headers=self.headers)
+        self.assertEqual(listing.status_code,200,listing.text)
+        self.assertEqual(listing.json()['items'][0]['id'],body['id'])
+        self.assertEqual(listing.json()['next_after'],body['id'])
+        page=self.client.get(history_path+'?after='+body['id'],headers=self.headers).json()
+        self.assertEqual(page['items'][0]['action'],'withdrawn')
+        self.assertEqual(page['items'][0]['id'],withdrawal['id'])
+        self.assertEqual(self.client.get(history_path,headers=other).json()['items'],[])
+
         self.assertTrue(self.client.post(path+'/reviews',headers=self.headers,json=body).json()['duplicate'])
         self.assertFalse(self.client.get(path,headers=self.headers).json()['review_current'])
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_destination'"),'2')
