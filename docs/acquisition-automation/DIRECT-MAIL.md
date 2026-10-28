@@ -50,3 +50,15 @@ Validation covers component behavior, full frontend regression, type/build and l
 ### Browser verification — October 28, 2026
 
 The `mail-templates` local browser fixture exercised normal save, lost response, reload with exact pending request, duplicate-free retry, stale-version rejection and phone-to-landing-page postcard validation. Literal HTML remained text and no browser errors/warnings were recorded. The fixture uses a synthetic tab-persistent ledger and no real API/provider calls. It does not establish approval, fulfillment, production integration or comprehensive responsive/accessibility acceptance.
+
+## Reviewed content binding and inert proofs
+
+`schemas/acquisition_mail_render.py` and `tools/acquisition_mail_render.py` implement the pure content boundary for the upcoming authenticated review flow. They do not persist approvals or expose an endpoint. Repository-sourced evidence remains mandatory: a caller cannot authorize mail by submitting these models.
+
+`content_binding` hashes the exact template identity/version/body/format/mode, company identity, destination scope/identity/version/value/verification evidence and renderer version. A human review must retain this digest. `render_mail_proof` rejects scope mismatches, destination mode mismatches, changed bindings, withdrawn/rejected reviews, revoked/expired destination evidence, future timestamps and review predating destination verification. It requires timezone-aware evidence and strict flags/version numbers.
+
+Phone values must already be normalized E.164. Website values use a conservative HTTPS syntax with no credentials, ports, query/fragment, percent escapes, local/reserved suffixes or IP literals. This is syntax screening only: it does not establish ownership, DNS safety, absence of redirects, lawful content or functioning attribution. The authenticated destination-review workflow must supply that evidence; the renderer does not fetch websites or configure numbers.
+
+Only the selected response placeholder is permitted. Company/property substitutions are literal, reject controls and nested placeholders, and cannot execute markup. Output includes plain text plus an escaped inert HTML fragment, with a bounded expanded length. Plain text must never be reinterpreted as HTML by a future adapter. The proof digest also binds property identity/address, per-piece tracking ID and exact review evidence, so changed recipient content or review needs another proof. It excludes preparation time for stable exact retries while checking current expiry each invocation.
+
+Every output says `execution_authorized: false`. A content review is not campaign approval, recipient eligibility, budget/cadence reservation, vendor layout/proof approval or delivery. There is no vendor-ready design or print-quality claim. Persisting evidence, recording human approvals/withdrawals, securely storing proof content, selecting approved routing, and connecting proofs to atomic jobs remain required. Do not log property-bearing rendered content; future persistence must use access-controlled retention.

@@ -3,6 +3,16 @@
 Checkpoint date: October 28, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — reviewed mail proof content
+
+- Previous turn made concrete progress: committed/pushed the repeatable browser fixture and verified reload recovery. Pulled unchanged `a10d1c7`; its exact CI run is https://github.com/julysses/Wholesale-automation/actions/runs/40741637109. All five jobs completed successfully before this increment was pushed (database job 10m23s).
+- Added typed repository-only template/destination/review snapshots and a pure proof renderer. Exact content, company identity, format/version, destination/version/verification and renderer version bind the review digest. Rejects scope changes, expired/revoked/future evidence, review predating destination verification, unsupported/mismatched tokens and changed review bindings.
+- Proof output is inert plain text plus escaped HTML, with literal substitutions, control/placeholder screening and an expansion limit. Proof fingerprint additionally binds recipient property/address, tracking identity and exact review; current evidence is rechecked on every render. Output exposes earliest content evidence expiry and always grants false execution authority.
+- Validation: full backend suite **1,951 passed, 10 skipped, 6 subtests passed** with existing deprecation warnings. After adding explicit earliest-evidence-expiry output/test, **125 focused mail selection/render tests passed** (73 renderer, 52 selection). No SQL, API, frontend or provider changes. Whitespace check passed.
+- This is a prerequisite for persisted review, not an approval workflow by itself. No API accepts client-supplied review authority. Domain ownership, redirect/routing behavior, legal approval, canonical address evidence, protected proof storage, authenticated approve/withdraw ledgers, vendor print proofs and atomic job authorization remain required. DIRECT-MAIL.md documents these boundaries.
+
+Next: inspect current deployed schema and add authenticated versioned destination/content review persistence with exact-request retries, current membership/session checks, immutable audit and withdrawal. Connect proof preparation to that evidence and review UI before batch/job reservations. Full PRD goal remains active; production and outreach remain unchanged.
+
 ## Browser checkpoint — mail draft recovery
 
 - Pulled unchanged `0658dca`; all five jobs on https://github.com/julysses/Wholesale-automation/actions/runs/40702786528 completed successfully before this update was pushed.
