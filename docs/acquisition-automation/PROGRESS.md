@@ -3,6 +3,16 @@
 Checkpoint date: October 27, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — deterministic mail proposal preparation
+
+- Pulled unchanged `57d8fed` and implemented the next MAIL work package locally while its CI ran. Run https://github.com/julysses/Wholesale-automation/actions/runs/40617362606 reached a terminal cancelled result: all four other jobs passed; PostgreSQL log reports all **163 tests passed in 576.580 seconds**, then the ten-minute job deadline cancelled teardown. No test failure was hidden. Raised only that job timeout from 10 to 15 minutes to cover observed test duration plus setup/cleanup; no checks removed or bypassed. This corrective push requires terminal CI verification before further pushes.
+- Added typed server-snapshot inputs and a pure mail proposal builder. Scores select Dallas/Collin TX candidates deterministically; missing verification, deceased/unknown owners, contact preferences and non-ALLOW/expired eligibility hold selection. Exact duplicate properties collapse; conflicting property snapshots reject; canonical recipient/address identities preserve unit distinctions.
+- Applies cross-campaign cadence and lifetime campaign budget in USD integer cents. Unknown/in-flight jobs and failed/cancelled jobs without nonfulfillment evidence retain holds and commitments. Unverified history yields unknown committed/remaining amounts. Versioned template, format, vendor quote, tracked destination, stable batch/property tracking IDs and canonical input digest are preserved. Preparation grants no execution permission and creates no reservation.
+- Validation: initial full backend regression **1,855 passed, 10 skipped, 6 subtests passed** (existing deprecation warnings). After final unknown-budget and currency tightening, **52 focused mail tests passed**, covering exact cost arithmetic, scope, evidence gaps, cadence boundary, retained unknown outcomes, nonfulfillment release, stable ordering, deduplication, fingerprints and strict inputs. No SQL/frontend/provider changes. Diff whitespace check passed.
+- `DIRECT-MAIL.md` records the remaining authoritative repository, postal suppression, atomic reservation/approval, vendor proof/submission/reconciliation and acceptance work. No endpoint trusts clients to assert eligibility, address verification or snapshot completeness. Current shared eligibility remains BLOCK/REVIEW; ALLOW exists only as a synthetic domain fixture. No live vendor was selected, configured or called.
+
+Next: inspect current schema and implement durable mail jobs/batches and postal preference enforcement with tenant isolation, immutable review evidence and atomic budget/cadence reservation. Continue vendor adapter/sandbox proof, portal, human/agency caller and disposition requirements. Full PRD goal remains active; production, schedules, outreach and spending remain unchanged.
+
 ## Implementation checkpoint — draft native call termination
 
 - Pulled the clean branch after verifying all five jobs passed on exact `733673ea90c9601156952a5948e68b8f2d857456`, run https://github.com/julysses/Wholesale-automation/actions/runs/40564885071. The prior turn supplied terminal CI evidence and cleared the next increment.

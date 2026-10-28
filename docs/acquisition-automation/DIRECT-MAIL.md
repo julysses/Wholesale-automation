@@ -1,0 +1,24 @@
+# Direct mail — implementation and release boundaries
+
+The pure preparation module in `tools/acquisition_mail.py` accepts typed, trusted repository snapshots from `schemas/acquisition_mail.py`. It prepares a review proposal; it performs no I/O, reservation, approval, scheduling or fulfillment. No API exposes these models as caller-provided authorization. There is no selected vendor or active mail campaign.
+
+## Current preparation behavior
+
+- Rank scored Dallas/Collin, TX properties deterministically, with stable property-ID tie breaking. Missing score remains missing. Owner status must be living; deceased or unknown status requires review. No automatic estate-recipient inference.
+- Require unexpired address verification with an evidence reference and canonical recipient/delivery-point identity preserving unit distinctions. The module does not validate addresses itself or treat punctuation-stripped addresses as verified.
+- Require clear contact preferences and a nonexpired ALLOW eligibility receipt. BLOCK/REVIEW selects no piece. The current shared eligibility service still returns BLOCK/REVIEW; synthetic ALLOW fixtures test the future boundary, not current permission.
+- Collapse identical property snapshots, reject conflicting duplicates, and deduplicate selected recipient/address identities. Cadence includes jobs across campaigns. Active and unknown submissions, or failed/cancelled jobs without authoritative nonfulfillment evidence, hold indefinitely. Fulfilled pieces age out of cadence at the configured interval, but remain charged against lifetime campaign budget.
+- Costs require USD and use integer cents and a positive, unexpired unit quote. Existing campaign commitments reduce the available budget. Unknown costs cannot be omitted or silently defaulted to zero. Existing proposals are not reservations. Failed/cancelled jobs release budget only with nonfulfillment evidence; a transport failure alone is insufficient.
+- Require a complete, recent history snapshot across all workspace campaigns/dates. Incomplete/stale snapshots select nothing and report committed/remaining amounts as unknown, not zero. Five minutes allows snapshot transport latency only; it grants no execution window. Workspace mismatch, duplicate history jobs and future timestamps reject the snapshot.
+- Preserve template/version, letter/postcard format, quote/vendor and tracked destination references. Each proposed piece receives a stable batch/property UUID tracking ID. A canonical snapshot digest binds the selection inputs for future immutable persistence; changed inputs must not reuse a persisted batch ID without conflict handling. No raw postal address or recipient key is returned in the proposal.
+
+## Required integration before MAIL release acceptance
+
+1. Reinspect current deployed schema, migration history, constraints, RLS and equivalent entities before creating additive mail SQL. The prior inventory found no dedicated mail_jobs table; this module does not change that inventory into a migration.
+2. Load snapshots under actual membership/role authorization from canonical property/owner relationships, approved template/destination versions, selected vendor verification/quote evidence and shared eligibility. Resolve postal preferences across matching owner/address identities, including inbound direct_mail/all restrictions. Client assertions must never supply clear preferences, ALLOW, verification, quote validity or history completeness.
+3. Persist proposed batches and immutable selected inputs, tracking IDs, audit history and exact idempotency fingerprints. Implement atomic approval/reservation across campaign budget, property cadence and recipient deduplication. This pure algorithm offers no concurrency protection and must not be used as an execution lock.
+4. Select a vendor; implement sandbox/proof creation, idempotent submission, signed status receipts and reconciliation. Establish quote coverage for print, postage, taxes and other charges, and proof of nonfulfillment before release. A provider acceptance response is not delivery.
+5. Recheck current eligibility, suppressions, approved template/destination, cost/budget and frequency atomically before execution. Bind authorization to exact batch contents and authorized approval. Unknown outcomes retain reservations. Enforce sequential channel activation and separate campaign approval.
+6. Verify populated upgrades, workspace/role RLS, simultaneous approvals/submissions, replay/lost responses, postal preference matching, refunds/nonfulfillment and vendor proof reconciliation end to end. Only then request campaign approval. A daily scheduler may initially prepare proposals only.
+
+No counsel-approved mail policy, final mailing frequency, vendor, template, tracked destination or budget is invented by this implementation. These are configuration and release dependencies. Production, SMS schedules, provider routing and live outreach remain unchanged.
