@@ -22,3 +22,13 @@ The pure preparation module in `tools/acquisition_mail.py` accepts typed, truste
 6. Verify populated upgrades, workspace/role RLS, simultaneous approvals/submissions, replay/lost responses, postal preference matching, refunds/nonfulfillment and vendor proof reconciliation end to end. Only then request campaign approval. A daily scheduler may initially prepare proposals only.
 
 No counsel-approved mail policy, final mailing frequency, vendor, template, tracked destination or budget is invented by this implementation. These are configuration and release dependencies. Production, SMS schedules, provider routing and live outreach remain unchanged.
+
+## Versioned mail drafts in the existing creative master
+
+Local migration `20261028020606_acquisition_mail_template_versions.sql` extends `public.ad_creatives` rather than creating another content master. Each immutable row represents a version of a workspace/template identity, bound to the existing `ad_campaigns` direct_mail draft. Historical creative rows retain null acquisition columns and their prior behavior. No production migration has run.
+
+The authenticated `save_acquisition_mail_template` RPC requires MFA, a current approved profile/session, actual active owner/admin/operator membership, active workspace and acquisition gate. It locks authority and campaign records, serializes request/template identities, confirms exact retries and rejects changed request reuse or stale expected versions. Each new version produces one minimal audit event. Callers and service-role direct invocation cannot write drafts through this function; raw scoped mutations and legacy lead attribution are blocked. RLS restricts reads to the workspace's permitted roles.
+
+Content is a draft string, not executable HTML or an approved legal statement. Supported placeholders are company_name, property_address, tracking_phone and tracking_url. The selected tracking mode requires its matching placeholder. Rendering must escape substituted content and bind an approved destination before proof generation. Saving content does not validate marketing claims, approve a template, reserve money, create mail jobs or authorize fulfillment. Unknown performance metrics remain null.
+
+Compensation: revoke EXECUTE on both public/private save functions to stop new drafts, retain immutable rows/audit evidence and keep restrictive policies/triggers. Do not drop scoped columns, restore broad legacy writes over mail rows, or delete historical versions. A forward correction may add a new version; approval and retirement require their own controlled ledgers. Remaining integration includes template review UI/API, destination binding, proofs, postal preferences, durable jobs, reservation and vendor reconciliation.

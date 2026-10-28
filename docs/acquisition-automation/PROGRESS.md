@@ -1,7 +1,17 @@
 # Acquisition automation — progress and resume checkpoint
 
-Checkpoint date: October 27, 2026 (America/Chicago).
+Checkpoint date: October 28, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
+
+## Implementation checkpoint — immutable mail template versions
+
+- Resumed after an interrupted command: only the CLI-created empty migration existed; no SQL body or tests had executed. Verified run https://github.com/julysses/Wholesale-automation/actions/runs/40618644620 completed successfully on `ec3feb5`; pulled unchanged branch. The CI timeout correction is now verified remotely.
+- Reinspected deployed metadata before migration work: 95 migrations/latest 20261023221455, no mail/template tables, existing ad_campaigns and ad_creatives columns, constraints, indexes, policies and triggers. Consulted current Supabase function/security documentation. CLI created `20261028020606_acquisition_mail_template_versions.sql`; it remains local/unapplied.
+- Extended existing ad_creatives for immutable workspace/campaign/template versions with letter/postcard format and tracked phone/landing-page placeholder mode. No second content master. Authenticated draft RPC requires MFA and current profile/session/membership, locks current authority/campaign scope, serializes requests and versions, rejects changed retries/stale versions, and appends one audit event per saved version. Preserves unknown performance metrics as null.
+- Restrictive RLS permits only scoped owner/admin/operator reads. Raw mail mutations, caller/service-role draft invocation and legacy lead attribution to mail drafts are rejected. Existing legacy rows retain their values and update behavior; existing form/lead campaign enrollment remains closed. Destination binding, legal/template approval, rendering and vendor proofs are separate pending steps.
+- Validation: six focused real-PostgreSQL cases passed, including populated upgrade preservation and existing campaign guards. Initial MFA test exposed a missing explicit aal2 check; corrected and rerun. Final scope test also verified RLS, public invoker and anonymous EXECUTE restrictions. All 20 application-to-SQL workflows passed in 149.7 seconds on the final migration. Whitespace checks passed. The new commit still requires terminal remote CI verification after push. No frontend/API/provider changes; see DIRECT-MAIL.md for compensation.
+
+Next: connect mail template draft/review to the application, add destination/proof review and durable batches/jobs with postal preferences, atomic budget/cadence reservation and vendor reconciliation. Complete the remaining portal/caller/disposition and real acceptance gates. Full PRD goal remains active; production, schedules, outreach, mail and spending remain unchanged.
 
 ## Implementation checkpoint — deterministic mail proposal preparation
 

@@ -187,6 +187,10 @@ class WorkspaceTests(unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261027031552_acquisition_inbound_property_lookup.sql').read_text())
             if self._testMethodName != 'test_inbound_restriction_migration_preserves_operator_ledger':
                 self.sql((ROOT/'frontend/supabase/migrations/20261027140038_acquisition_inbound_contact_restrictions.sql').read_text())
+        if self._testMethodName == 'test_mail_template_populated_upgrade':
+            self.sql("INSERT INTO ad_creatives(name,status) VALUES('Legacy before upgrade','active')")
+            self.mail_legacy_before=self.sql('SELECT jsonb_strip_nulls(to_jsonb(c)) FROM ad_creatives c')
+        self.sql((ROOT/'frontend/supabase/migrations/20261028020606_acquisition_mail_template_versions.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -195,6 +199,67 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def mail_template(self, request='97000000-0000-4000-8000-000000000001', expected=0, body='Contact {{company_name}} at {{tracking_phone}}.', actor=ADMIN, fail=False, **kwargs):
+        value=self.sql(f"SELECT public.save_acquisition_mail_template('{request}','{WORKSPACE}','91000000-0000-4000-8000-000000000001','98000000-0000-4000-8000-000000000001',{expected},'Mail draft','letter','phone',{literal(body)})",user=actor,fail=fail,**kwargs)
+        return value if fail else json.loads(value)
+
+    def mail_campaign(self):
+        self.sql(f"SELECT public.create_acquisition_campaign('91000000-0000-4000-8000-000000000001','{WORKSPACE}','Mail draft','direct_mail',50000,'USD')",user=ADMIN)
+
+    def test_mail_template_versions_retries_and_concurrency(self):
+        self.mail_campaign()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.mail_template(),range(3)))
+        self.assertEqual(sum(not row['duplicate'] for row in results),1)
+        self.assertTrue(all(row['execution_authorized'] is False for row in results))
+        self.mail_template(body='Changed {{tracking_phone}}',fail=True)
+        self.mail_template(request='97000000-0000-4000-8000-000000000002',expected=1,body='Second {{tracking_phone}}')
+        self.assertTrue(self.mail_template()['duplicate'])
+        self.mail_template(request='97000000-0000-4000-8000-000000000003',expected=1,fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_template'"),'2')
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_creatives'),'2')
+        self.assertEqual(self.sql("SELECT bool_and(total_spend IS NULL AND impressions IS NULL AND status='draft') FROM ad_creatives"),'t')
+
+    def test_mail_template_scope_authority_and_immutability(self):
+        self.mail_campaign();self.mail_template()
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_creatives',user=OTHER),'0')
+        self.member(target=OPERATOR,role='operator')
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_creatives',user=OPERATOR),'1')
+        self.mail_template(actor=OTHER,fail=True)
+        self.mail_template(aal='aal1',fail=True)
+        self.mail_template(session=False,fail=True)
+        self.mail_template(role='service_role',fail=True)
+        self.member(target=CALLER,role='acquisition_caller')
+        self.mail_template(actor=CALLER,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_creatives',user=CALLER),'0')
+        for query in ("UPDATE ad_creatives SET primary_text='overwrite'",'DELETE FROM ad_creatives','TRUNCATE ad_creatives CASCADE',
+                      f"UPDATE leads SET ad_creative_id='97000000-0000-4000-8000-000000000001' WHERE id='{LEAD}'"):
+            self.sql(query,user=ADMIN,role='service_role',fail=True)
+        self.assertEqual(self.sql("SELECT relrowsecurity FROM pg_class WHERE oid='public.ad_creatives'::regclass"),'t')
+        self.assertEqual(self.sql("SELECT bool_and(NOT prosecdef) FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname='save_acquisition_mail_template'"),'t')
+        self.assertEqual(self.sql("SELECT has_function_privilege('anon','public.save_acquisition_mail_template(uuid,uuid,uuid,uuid,integer,text,text,text,text)','EXECUTE')"),'f')
+        self.sql("UPDATE private.acquisition_activation SET enabled=false")
+        self.mail_template(fail=True)
+
+    def test_mail_template_populated_upgrade(self):
+        self.assertEqual(self.mail_legacy_before,self.sql('SELECT jsonb_strip_nulls(to_jsonb(c)) FROM ad_creatives c'))
+        self.mail_campaign()
+        for body in ('No tracked destination','{{unknown}} {{tracking_phone}}','{{tracking_phone}'):
+            error=self.mail_template(body=body,fail=True)
+            self.assertIn('Tracked destination placeholder',error)
+        self.mail_template()
+        self.sql(f"DELETE FROM auth.sessions WHERE id='{ADMIN}'")
+        self.mail_template(fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_creatives'),'2')
+
+    def test_mail_template_rejects_wrong_campaign_and_untracked_content(self):
+        self.campaign_draft();self.mail_template(fail=True)
+        self.sql("INSERT INTO ad_creatives(id,name,status) VALUES('97000000-0000-4000-8000-000000000009','Legacy sentinel','active')")
+        self.assertEqual(self.sql("SELECT workspace_id IS NULL FROM ad_creatives WHERE name='Legacy sentinel'"),'t')
+        self.sql("UPDATE ad_creatives SET name='Legacy edited' WHERE name='Legacy sentinel'")
+        self.assertEqual(self.sql("SELECT count(*) FROM ad_creatives WHERE name='Legacy edited'"),'1')
+        for body in ('No tracked destination','{{unknown}} {{tracking_phone}}','{{tracking_phone}'): self.mail_template(body=body,fail=True)
 
     def inbound_restriction(self, *, request='50000000-0000-4000-8000-000000000001',kind='do_not_contact',details='Caller explicitly requested no further contact.',channels=None,role='service_role',call='call_test',fail=False):
         evidence={'requested_by_caller':True,'details':details,'channels':channels if channels is not None else (['all'] if kind=='do_not_contact' else [])}
