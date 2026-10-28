@@ -847,3 +847,55 @@ def test_inbound_queue_forwards_personal_filter_without_client_actor(api):
     response=client.get(f'/api/acquisition/workspaces/{W}/inbound/requests?status=on_hold&assignment=mine',headers={'Authorization':'Bearer user-token'})
     assert response.status_code==200
     assert json.loads(state['requests'][0].content)=={'p_workspace':W,'p_after':None,'p_limit':20,'p_status':'on_hold','p_assignment':'mine'}
+
+
+MAIL_DRAFT={'id':U,'template_id':U,'expected_version':0,'name':'Mail draft','format':'letter',
+            'tracking_mode':'phone','body':'Contact {{company_name}} at {{tracking_phone}}.'}
+MAIL_PATH=f'/api/acquisition/workspaces/{W}/campaigns/{U}/mail-templates'
+MAIL_RECEIPT={'id':U,'workspace_id':W,'template_id':U,'version':1,'status':'draft','duplicate':False,'execution_authorized':False}
+
+
+def test_mail_draft_scoped_rpc_and_version_listing(api):
+    client,state=api;state['body']=MAIL_RECEIPT
+    response=client.post(MAIL_PATH,headers={'Authorization':'Bearer user-token'},json=MAIL_DRAFT)
+    assert response.status_code==200 and response.json()==MAIL_RECEIPT
+    request=state['requests'][-1]
+    assert request.url.path=='/rest/v1/rpc/save_acquisition_mail_template'
+    assert request.headers['authorization']=='Bearer user-token'
+    assert request.headers['apikey']=='public-test-key'
+    assert json.loads(request.content)=={'p_id':U,'p_workspace':W,'p_campaign':U,'p_template':U,
+        'p_expected_version':0,'p_name':'Mail draft','p_format':'letter','p_tracking_mode':'phone','p_body':MAIL_DRAFT['body']}
+    state['body']=[{'id':U},{'id':W}]
+    result=client.get(MAIL_PATH+'?limit=1&after='+U+'&template_id='+U,headers={'Authorization':'Bearer user-token'})
+    assert result.json()=={'items':[{'id':U}],'next_after':U}
+    params=state['requests'][-1].url.params
+    assert params['workspace_id']=='eq.'+W and params['campaign_id']=='eq.'+U
+    assert params['acquisition_template_id']=='eq.'+U and params['id']=='gt.'+U and params['limit']=='2'
+
+
+@pytest.mark.parametrize('change',[{'expected_version':True},{'expected_version':1.5},{'expected_version':-1},
+    {'status':'approved'},{'approved_by':U},{'workspace_id':U},{'format':'email'},
+    {'name':'  '},{'body':'No tracking'},{'body':'{{secret}} {{tracking_phone}}'},
+    {'body':'{{tracking_phone}'},{'tracking_mode':'landing_page'}])
+def test_mail_draft_rejects_unsupported_content_and_authority(api,change):
+    client,state=api
+    assert client.post(MAIL_PATH,headers={'Authorization':'Bearer user-token'},json=MAIL_DRAFT|change).status_code==422
+    assert not state['requests']
+
+
+@pytest.mark.parametrize('change',[{'workspace_id':U},{'version':True},{'version':2},{'duplicate':'false'},
+    {'execution_authorized':0},{'execution_authorized':True},{'status':'approved'},{'extra':'private data'}])
+def test_mail_draft_unconfirmed_receipt_is_not_success(api,change):
+    client,state=api;state['body']=MAIL_RECEIPT|change
+    response=client.post(MAIL_PATH,headers={'Authorization':'Bearer user-token'},json=MAIL_DRAFT)
+    assert response.status_code==503 and 'private data' not in response.text
+    assert len(state['requests'])==1
+
+
+def test_mail_draft_timeout_no_retry_and_disabled_no_write(api,monkeypatch):
+    client,state=api;state['timeout']=True
+    assert client.post(MAIL_PATH,headers={'Authorization':'Bearer user-token'},json=MAIL_DRAFT).status_code==503
+    assert len(state['requests'])==1
+    monkeypatch.setenv('ACQUISITION_ENABLED','false')
+    assert client.post(MAIL_PATH,headers={'Authorization':'Bearer user-token'},json=MAIL_DRAFT).status_code==404
+    assert len(state['requests'])==1

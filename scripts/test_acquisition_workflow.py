@@ -29,6 +29,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'save_acquisition_mail_template':['p_id','p_workspace','p_campaign','p_template','p_expected_version','p_name','p_format','p_tracking_mode','p_body'],
  'record_acquisition_inbound_restriction':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_kind','p_evidence'],
  'acquisition_inbound_property_lookup':['p_integration','p_number','p_agent','p_agent_version','p_call','p_intake_revision'],
  'acquisition_inbound_request_queue_v2':['p_workspace','p_after','p_limit','p_status','p_assignment'],
@@ -139,8 +140,8 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee'}
-                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template'}
+                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
@@ -177,6 +178,26 @@ class WorkflowTests(WorkspaceTests):
                 op,value=request.url.params['sequence'].split('.',1); self.assertEqual(op,'lt'); filters.append(f'sequence<{int(value)}')
             limit=int(request.url.params['limit']); self.assertTrue(1<=limit<=50)
             query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {fields} FROM public.acquisition_campaign_links WHERE {' AND '.join(filters)} ORDER BY sequence DESC LIMIT {limit}) row;"
+        elif request.url.path=='/rest/v1/ad_creatives':
+            self.assertEqual(request.method,'GET')
+            fields='id,workspace_id,campaign_id,acquisition_template_id,acquisition_template_version,name,primary_text,acquisition_mail_format,acquisition_tracking_mode,status,created_at'
+            self.assertEqual(request.url.params['select'],fields)
+            self.assertEqual(request.url.params['order'],'id')
+            self.assertTrue(set(request.url.params)<={'select','workspace_id','campaign_id','acquisition_template_id','order','limit','id'})
+            filters=[]
+            for key in ('workspace_id','campaign_id'):
+                op,value=request.url.params[key].split('.',1);self.assertEqual(op,'eq')
+                filters.append(f'{key}={literal(value)}::uuid')
+            template=request.url.params['acquisition_template_id']
+            if template=='not.is.null': filters.append('acquisition_template_id IS NOT NULL')
+            else:
+                op,value=template.split('.',1);self.assertEqual(op,'eq')
+                filters.append(f'acquisition_template_id={literal(value)}::uuid')
+            if 'id' in request.url.params:
+                op,value=request.url.params['id'].split('.',1);self.assertEqual(op,'gt')
+                filters.append(f'id>{literal(value)}::uuid')
+            limit=int(request.url.params['limit']);self.assertTrue(1<=limit<=51)
+            query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {fields} FROM public.ad_creatives WHERE {' AND '.join(filters)} ORDER BY id LIMIT {limit}) row;"
         elif request.url.path=='/rest/v1/ad_campaigns':
             self.assertEqual(request.method,'GET')
             self.assertEqual(request.url.params['select'],'id,name,workspace_id,status,acquisition_channel,acquisition_budget_cents,acquisition_currency,created_at')
@@ -733,6 +754,33 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(stale['status'],'requires_review'); self.assertIsNone(stale['total_cost_minor'])
         self.assertFalse(stale['days'][0]['attribution_current']); self.assertIsNone(stale['cost_per_lead_minor'])
         self.assertFalse(any('graph.facebook' in route for route,_ in self.requests))
+
+    def test_mail_template_http_commit_loss_retry_history_and_revocation(self):
+        self.mail_campaign()
+        path=self.base+'/campaigns/91000000-0000-4000-8000-000000000001/mail-templates'
+        body={'id':'97000000-0000-4000-8000-000000000001','template_id':'98000000-0000-4000-8000-000000000001',
+              'expected_version':0,'name':'Draft letter','format':'letter','tracking_mode':'phone','body':'Contact {{tracking_phone}}.'}
+        self.lose_facebook_reply='save_acquisition_mail_template'
+        first=self.client.post(path,headers=self.headers,json=body)
+        self.assertEqual(first.status_code,503,first.text)
+        retry=self.client.post(path,headers=self.headers,json=body)
+        self.assertEqual(retry.status_code,200,retry.text)
+        self.assertTrue(retry.json()['duplicate']);self.assertFalse(retry.json()['execution_authorized'])
+        self.assertEqual(self.client.post(path,headers=self.headers,json=body|{'body':'Changed {{tracking_phone}}'}).status_code,409)
+        second=body|{'id':'97000000-0000-4000-8000-000000000002','expected_version':1,'body':'Second {{tracking_phone}}'}
+        self.assertEqual(self.client.post(path,headers=self.headers,json=second).status_code,200)
+        listing=self.client.get(path+'?limit=1&template_id='+body['template_id'],headers=self.headers).json()
+        self.assertEqual(listing['items'][0]['id'],body['id'])
+        self.assertEqual(listing['next_after'],body['id'])
+        next_page=self.client.get(path+'?after='+listing['next_after'],headers=self.headers).json()
+        self.assertEqual(next_page['items'][0]['id'],second['id'])
+        other={'Authorization':'Bearer synthetic-other-session'}
+        self.assertEqual(self.client.get(path,headers=other).json()['items'],[])
+        self.assertEqual(self.client.post(path,headers=other,json=body).status_code,403)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_template'"),'2')
+        self.sql(f"DELETE FROM auth.sessions WHERE id='{ADMIN}'")
+        self.assertEqual(self.client.post(path,headers=self.headers,json=body).status_code,403)
+        self.assertEqual(self.sql('SELECT count(*) FROM ad_creatives'),'2')
 
     def test_campaign_draft_http_is_idempotent_scoped_and_non_executing(self):
         path=self.base+'/campaigns'

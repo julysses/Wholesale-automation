@@ -615,6 +615,60 @@ async def workspace_campaigns(workspace_id: UUID, after: UUID | None = None,
     return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}
 
 
+class MailTemplateDraft(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    template_id: UUID
+    expected_version: int = Field(strict=True, ge=0, lt=1000000000)
+    name: str = Field(min_length=1, max_length=200)
+    format: Literal['letter','postcard']
+    tracking_mode: Literal['phone','landing_page']
+    body: str = Field(min_length=1, max_length=20000)
+
+    @model_validator(mode='after')
+    def validate_content(self):
+        if not self.name.strip() or not self.body.strip():
+            raise ValueError('Name and content required')
+        required = '{{tracking_phone}}' if self.tracking_mode == 'phone' else '{{tracking_url}}'
+        rest = re.sub(r'\{\{(tracking_phone|tracking_url|property_address|company_name)\}\}', '', self.body)
+        if required not in self.body or '{' in rest or '}' in rest:
+            raise ValueError('Tracked destination and supported placeholders required')
+        return self
+
+
+@router.post('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-templates')
+async def save_mail_template(workspace_id: UUID, campaign_id: UUID, body: MailTemplateDraft,
+                             store=Depends(acquisition_store)):
+    receipt = await store.request('POST', 'rpc/save_acquisition_mail_template', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id),
+        'p_template': str(body.template_id), 'p_expected_version': body.expected_version,
+        'p_name': body.name, 'p_format': body.format, 'p_tracking_mode': body.tracking_mode, 'p_body': body.body,
+    })
+    expected = {'id': str(body.id), 'workspace_id': str(workspace_id), 'template_id': str(body.template_id),
+                'version': body.expected_version+1, 'status': 'draft', 'execution_authorized': False}
+    if (not isinstance(receipt, dict) or set(receipt) != set(expected) | {'duplicate'}
+            or any(receipt.get(key) != value for key, value in expected.items())
+            or type(receipt.get('version')) is not int or type(receipt.get('duplicate')) is not bool
+            or receipt.get('execution_authorized') is not False):
+        raise HTTPException(503, 'Mail draft save could not be confirmed; retain the same request for reconciliation')
+    return receipt
+
+
+@router.get('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-templates')
+async def mail_template_versions(workspace_id: UUID, campaign_id: UUID, template_id: UUID | None = None,
+                                 after: UUID | None = None, limit: int = Query(default=20, ge=1, le=50),
+                                 store=Depends(acquisition_store)):
+    params = {'select': 'id,workspace_id,campaign_id,acquisition_template_id,acquisition_template_version,name,primary_text,acquisition_mail_format,acquisition_tracking_mode,status,created_at',
+              'workspace_id': 'eq.'+str(workspace_id), 'campaign_id': 'eq.'+str(campaign_id),
+              'acquisition_template_id': 'not.is.null', 'order': 'id', 'limit': str(limit+1)}
+    if template_id is not None:
+        params['acquisition_template_id'] = 'eq.'+str(template_id)
+    if after is not None:
+        params['id'] = 'gt.'+str(after)
+    rows = await store.request('GET', 'ad_creatives', params=params)
+    return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}
+
+
 class AcquisitionCampaignLinkReview(BaseModel):
     model_config = ConfigDict(extra='forbid')
     id: UUID

@@ -3,6 +3,15 @@
 Checkpoint date: October 28, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — authenticated mail draft API
+
+- Pulled unchanged `f9f1615`. Its exact CI run https://github.com/julysses/Wholesale-automation/actions/runs/40699703528 completed successfully before this increment was pushed.
+- Added authenticated POST/GET mail-template endpoints under workspace and campaign paths. Reuses the existing bearer-token/public-key store and controlled SQL RPC. Strict input rejects extra authority fields, unsupported format/tracking choices, noninteger versions and invalid placeholders. Confirmed saves require exact identity/scope/version/status and false execution authority; malformed receipts and timeouts cannot claim success and do not auto-retry.
+- Added bounded immutable-history pagination with optional template identity, fixed projection, workspace/campaign filters and UUID cursor. Order is identity, not latest version; SQL expected-version checks remain authoritative. UI pending-request recovery and review remain next work, with no implied approval/rendering capability.
+- Validation: **148 acquisition API tests passed**. Added application-to-real-PostgreSQL coverage for a committed save with lost response, exact replay, changed-body conflict, new version/history pagination, cross-workspace denial and revoked session. All 21 integrated workflows passed in 155.1 seconds. Whitespace check passed. No SQL or frontend changes this increment.
+
+Next: connect a durable-retry mail-template editor/history to campaign drafts, then implement destination/proof review, postal preference matching, durable batches/jobs and atomic budget/cadence reservation with vendor reconciliation. Full PRD, remaining channels and live release gates remain active. Production and outreach remain unchanged.
+
 ## Implementation checkpoint — immutable mail template versions
 
 - Resumed after an interrupted command: only the CLI-created empty migration existed; no SQL body or tests had executed. Verified run https://github.com/julysses/Wholesale-automation/actions/runs/40618644620 completed successfully on `ec3feb5`; pulled unchanged branch. The CI timeout correction is now verified remotely.
