@@ -46,3 +46,7 @@ Direct-mail campaign rows now expose a collapsed mail editor. Opening it loads s
 Each intentional save persists its exact UUID, template identity, expected version and content in sessionStorage before transmission, keyed by signed-in user/workspace/campaign. Unknown responses freeze editing and keep exact retries available after refresh, unmount or reload. A first definite rejection may clear that new pending request; rejection of an already uncertain retry preserves it. Storage failures prevent writes or preserve the unresolved request. The editor cannot approve content, select a vendor, fund campaigns or send mail.
 
 Validation covers component behavior, full frontend regression, type/build and lint. Real-browser layout/accessibility review and real PostgREST/JWT delivery remain separate acceptance items; component tests do not establish those outcomes.
+
+### Browser verification — October 28, 2026
+
+The `mail-templates` local browser fixture exercised normal save, lost response, reload with exact pending request, duplicate-free retry, stale-version rejection and phone-to-landing-page postcard validation. Literal HTML remained text and no browser errors/warnings were recorded. The fixture uses a synthetic tab-persistent ledger and no real API/provider calls. It does not establish approval, fulfillment, production integration or comprehensive responsive/accessibility acceptance.

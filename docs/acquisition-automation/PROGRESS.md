@@ -3,6 +3,16 @@
 Checkpoint date: October 28, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Browser checkpoint — mail draft recovery
+
+- Pulled unchanged `0658dca`; all five jobs on https://github.com/julysses/Wholesale-automation/actions/runs/40702786528 completed successfully before this update was pushed.
+- Added `frontend/tests/browser/mail-templates*` synthetic browser fixture. Its local adapter replaces the API import, has no fetch/credentials/provider access, and persists only synthetic ledger rows in tab session storage to exercise reload recovery.
+- In the actual in-app browser verified: normal save creates one version; literal HTML remains displayed as text; simulated save-then-lost-response locks editing; reload restores the exact pending request; retry reconciles version 2 with ledger count still 2; selecting version 1 rejects a stale edit; switching to landing-page tracking disables save until its URL placeholder is present; corrected postcard saves version 3. No browser warnings/errors were recorded. Reviewed the current viewport screenshot; this is not a comprehensive responsive or accessibility audit.
+- Build passed with existing bundle/Zod warnings. Fixed a fixture-only Fast Refresh lint warning by exporting the fixture component; final lint reports 147 existing/no new findings. Whitespace check passed. Browser tab and local preview server were closed after verification.
+- This browser test verifies the production component against a synthetic adapter. Real SQL/API behavior remains covered by the prior isolated integration tests; no live provider or production acceptance is claimed.
+
+Next: mail template approval, tracked destination and proof review; postal preferences, durable batches/jobs and atomic reservations; remaining channel and disposition requirements. Full PRD goal remains active.
+
 ## Implementation checkpoint — campaign mail draft editor
 
 - Pulled unchanged `e60d6f8`; all five jobs on https://github.com/julysses/Wholesale-automation/actions/runs/40701110996 completed successfully before this increment was pushed. A transient watcher TLS timeout was rechecked against the same run; no run was restarted.

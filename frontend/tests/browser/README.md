@@ -61,3 +61,19 @@ Reviewed cost-entry fixture:
 Run `./node_modules/.bin/vite --config tests/browser/cost-entry.vite.config.ts`, then open `/tests/browser/cost-entry.html`. Use only one fixture server at a time on port 5179. This dedicated adapter has canonical synthetic UUIDs, an in-memory ledger and no network/database/provider calls. Reload resets the ledger, so do not use reload as persistence acceptance; component and real-SQL tests cover that separately.
 
 Choose Save then lose response, open entry and enter a past reporting date, partial USD cost, America/Chicago timezone, explicit observed timestamp, synthetic evidence reference and 64-character lowercase hash. Prepare, review the exact derived revision/account and acknowledge. After recording, verify one revision, locked input and exact retry. Retry must clear the lock without increasing the revision count. Then choose Confirmed rejection, prepare the next revision and record: verify no new revision, editable inputs, no retained preview and disabled save until re-preparation. October 26 browser QA completed this path with $125.50 on October 24 and inspected the final rejection at 375px; no console errors. Screenshot: `docs/acquisition-automation/evidence/2026-10-26-cost-entry-mobile.jpg`.
+
+## Mail draft recovery fixture
+
+Run `./node_modules/.bin/vite --config tests/browser/mail-templates.vite.config.ts` from frontend, then open `http://127.0.0.1:5181/tests/browser/mail-templates.html`.
+
+The API alias is entirely synthetic: no network requests, credentials, database, approval or fulfillment. Ledger rows and pending requests survive reload in the same tab. A fresh tab provides a separate session. Use only synthetic text.
+
+Verified October 28, 2026 in the in-app browser:
+1. Save a named letter with `{{tracking_phone}}`; inspect ledger: 1 version.
+2. Select “Save then lose response”, edit content, save; controls lock and ledger becomes 2.
+3. Reload; exact-retry action and locked content survive. Retry and inspect: still 2 versions, version 2 confirmed.
+4. Select version 1 and save; stale version is rejected without overwrite.
+5. Select version 2, choose Postcard / Landing page; save stays disabled until `{{tracking_url}}` is present. Save then records version 3.
+6. Template markup such as `<img src=x onerror=alert(1)>` displays as text in history. No script execution or console errors observed.
+
+This is component/browser evidence, not live API/provider, full accessibility or all-device acceptance.
