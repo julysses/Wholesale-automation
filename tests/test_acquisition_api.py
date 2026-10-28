@@ -899,3 +899,64 @@ def test_mail_draft_timeout_no_retry_and_disabled_no_write(api,monkeypatch):
     monkeypatch.setenv('ACQUISITION_ENABLED','false')
     assert client.post(MAIL_PATH,headers={'Authorization':'Bearer user-token'},json=MAIL_DRAFT).status_code==404
     assert len(state['requests'])==1
+
+DEST_PATH=f'/api/acquisition/workspaces/{W}/campaigns/{U}/mail-destinations/{U}'
+DEST_REVIEW={'id':U,'expected_version':0,'action':'approved','mode':'phone','value':'+12145550100',
+             'verification_ref':U,'verification_hash':'a'*64,'verified_at':'2026-01-01T00:00:00Z',
+             'expires_at':'2099-01-01T00:00:00Z','note':'Synthetic controlled destination verification.'}
+DEST_RECEIPT={'review_id':U,'workspace_id':W,'destination_id':U,'version':1,'duplicate':False,'execution_authorized':False}
+
+
+def test_destination_review_scoped_user_rpc_and_withdrawal(api):
+    client,state=api;state['body']=DEST_RECEIPT
+    result=client.post(DEST_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=DEST_REVIEW)
+    assert result.status_code==200 and result.json()==DEST_RECEIPT
+    request=state['requests'][-1];payload=json.loads(request.content)
+    assert request.url.path=='/rest/v1/rpc/review_acquisition_mail_destination'
+    assert request.headers['authorization']=='Bearer user-token' and request.headers['apikey']=='public-test-key'
+    assert payload['p_workspace']==W and payload['p_campaign']==U and payload['p_destination']==U
+    assert payload['p_verification_hash']=='a'*64 and payload['p_action']=='approved'
+    withdrawal={'id':U,'expected_version':0,'action':'withdrawn','note':'Synthetic destination withdrawal reason.'}
+    assert client.post(DEST_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=withdrawal).status_code==200
+    payload=json.loads(state['requests'][-1].content)
+    assert all(payload[k] is None for k in ('p_mode','p_value','p_verification_ref','p_verification_hash','p_verified_at','p_expires_at'))
+
+
+@pytest.mark.parametrize('change',[{'expected_version':True},{'expected_version':-1},{'actor_id':U},{'workspace_id':U},
+    {'action':'sent'},{'mode':None},{'verification_ref':None},{'verification_hash':'bad'},
+    {'verified_at':'2026-01-01T00:00:00'},{'expires_at':'2000-01-01T00:00:00Z'},{'note':' '*25},
+    {'execution_authorized':True},{'action':'withdrawn'}])
+def test_destination_review_rejects_bad_or_client_authority_fields(api,change):
+    client,state=api
+    assert client.post(DEST_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=DEST_REVIEW|change).status_code==422
+    assert not state['requests']
+
+
+@pytest.mark.parametrize('change',[{'workspace_id':U},{'version':True},{'duplicate':'false'},{'execution_authorized':0},
+    {'execution_authorized':True},{'review_id':W},{'extra':'private data'}])
+def test_destination_review_unconfirmed_receipts_are_held(api,change):
+    client,state=api;state['body']=DEST_RECEIPT|change
+    result=client.post(DEST_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=DEST_REVIEW)
+    assert result.status_code==503 and 'private data' not in result.text and len(state['requests'])==1
+
+
+def test_destination_state_rejects_wrong_scope_and_false_approval(api):
+    client,state=api
+    valid={'workspace_id':W,'campaign_id':U,'destination_id':U,'version':0,'latest_review':None,
+           'status':'pending_review','review_current':False,'execution_authorized':False,'checked_at':'2026-10-28T12:00:00Z'}
+    state['body']=valid
+    assert client.get(DEST_PATH,headers={'Authorization':'Bearer user-token'}).json()==valid
+    assert json.loads(state['requests'][-1].content)=={'p_workspace':W,'p_campaign':U,'p_destination':U}
+    for change in ({'workspace_id':U},{'version':True},{'review_current':True},{'status':'approved'},
+                   {'version':1},{'execution_authorized':True},{'extra':'unexpected evidence'}):
+        state['body']=valid|change
+        assert client.get(DEST_PATH,headers={'Authorization':'Bearer user-token'}).status_code==503
+
+
+def test_destination_review_timeout_retains_single_attempt(api,monkeypatch):
+    client,state=api;state['timeout']=True
+    assert client.post(DEST_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=DEST_REVIEW).status_code==503
+    assert len(state['requests'])==1
+    monkeypatch.setenv('ACQUISITION_ENABLED','false')
+    assert client.post(DEST_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=DEST_REVIEW).status_code==404
+    assert len(state['requests'])==1

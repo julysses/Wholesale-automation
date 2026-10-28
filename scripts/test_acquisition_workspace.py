@@ -191,6 +191,8 @@ class WorkspaceTests(unittest.TestCase):
             self.sql("INSERT INTO ad_creatives(name,status) VALUES('Legacy before upgrade','active')")
             self.mail_legacy_before=self.sql('SELECT jsonb_strip_nulls(to_jsonb(c)) FROM ad_creatives c')
         self.sql((ROOT/'frontend/supabase/migrations/20261028020606_acquisition_mail_template_versions.sql').read_text())
+        if self._testMethodName != 'test_mail_destination_populated_upgrade':
+            self.sql((ROOT/'frontend/supabase/migrations/20261028181631_acquisition_mail_destination_reviews.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -199,6 +201,123 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def mail_destination(self, request='99000000-0000-4000-8000-000000000001', expected=0, action='approved',
+                         mode='phone', value='+12145550100', actor=ADMIN, fail=False, workspace=WORKSPACE,
+                         campaign='91000000-0000-4000-8000-000000000001', destination='99000000-0000-4000-8000-000000000099',
+                         verified='2026-01-01T00:00:00Z', expires='2099-01-01T00:00:00Z', note='Verified controlled destination and routing evidence.', **kwargs):
+        args=[request,workspace,campaign,destination,expected,action,mode,value,
+              '99000000-0000-4000-8000-000000000088','a'*64,verified,expires,note]
+        if action=='withdrawn':args[6:12]=[None]*6
+        values=','.join('NULL' if v is None else str(v) if isinstance(v,int) else literal(v) for v in args)
+        result=self.sql(f'SELECT public.review_acquisition_mail_destination({values})',user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def mail_destination_state(self, actor=ADMIN, fail=False):
+        result=self.sql(f"SELECT public.acquisition_mail_destination_state('{WORKSPACE}','91000000-0000-4000-8000-000000000001','99000000-0000-4000-8000-000000000099')",user=actor,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_mail_destination_exact_retries_versions_and_withdrawal(self):
+        self.mail_campaign()
+        self.assertEqual(self.mail_destination_state()['status'],'pending_review')
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            rows=list(pool.map(lambda _:self.mail_destination(),range(3)))
+        self.assertEqual(sum(not r['duplicate'] for r in rows),1)
+        self.assertTrue(all(r['execution_authorized'] is False for r in rows))
+        self.assertTrue(self.mail_destination_state()['review_current'])
+        self.assertIn('conflict',self.mail_destination(value='+12145550101',fail=True))
+        # Same instant in another offset must remain an exact request retry.
+        self.assertTrue(self.mail_destination(verified='2025-12-31T18:00:00-06:00',expires='2098-12-31T18:00:00-06:00')['duplicate'])
+        self.mail_destination(request='99000000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
+        state=self.mail_destination_state()
+        self.assertEqual(state['status'],'withdrawn');self.assertFalse(state['review_current'])
+        self.assertEqual(state['latest_review']['value'],'+12145550100')
+        self.assertTrue(self.mail_destination()['duplicate'])
+        self.assertFalse(self.mail_destination_state()['review_current'])
+        self.mail_destination(request='99000000-0000-4000-8000-000000000003',expected=1,fail=True)
+        self.mail_destination(request='99000000-0000-4000-8000-000000000003',expected=2,value='+12145550101')
+        self.assertTrue(self.mail_destination_state()['review_current'])
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_destination'"),'3')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_destination_reviews'),'3')
+
+    def test_mail_destination_scope_roles_sessions_and_immutability(self):
+        self.mail_campaign();self.mail_destination()
+        self.member(target=OPERATOR,role='operator');self.member(target=CALLER,role='acquisition_caller')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_destination_reviews',user=OPERATOR),'1')
+        for actor in (OTHER,CALLER):
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_destination_reviews',user=actor),'0')
+            self.mail_destination_state(actor=actor,fail=True)
+        for actor in (OPERATOR,OTHER,CALLER):self.mail_destination(actor=actor,fail=True)
+        self.mail_destination(aal='aal1',fail=True);self.mail_destination(session=False,fail=True)
+        self.mail_destination(role='service_role',fail=True)
+        for role in ('authenticated','service_role'):
+            for query in ("UPDATE acquisition_mail_destination_reviews SET value='+12145550101'",'DELETE FROM acquisition_mail_destination_reviews',
+                          'TRUNCATE acquisition_mail_destination_reviews',
+                          'INSERT INTO acquisition_mail_destination_reviews SELECT * FROM acquisition_mail_destination_reviews'):
+                self.sql(query,user=ADMIN,role=role,fail=True)
+        self.sql("UPDATE acquisition_mail_destination_reviews SET review_note='Changed by owner'",fail=True)
+        self.sql(f"DELETE FROM auth.sessions WHERE id='{ADMIN}'")
+        self.mail_destination(fail=True)
+        self.assertEqual(self.sql("SELECT relrowsecurity FROM pg_class WHERE oid='public.acquisition_mail_destination_reviews'::regclass"),'t')
+        self.assertEqual(self.sql("SELECT bool_and(NOT prosecdef) FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname IN ('review_acquisition_mail_destination','acquisition_mail_destination_state')"),'t')
+        self.assertEqual(self.sql("SELECT has_table_privilege('anon','acquisition_mail_destination_reviews','SELECT')"),'f')
+
+    def test_mail_destination_authority_revocation_gate_and_expiry(self):
+        self.mail_campaign();self.member(target=OPERATOR,role='admin');self.mail_destination(actor=OPERATOR)
+        self.assertTrue(self.mail_destination_state()['review_current'])
+        self.member(target=OPERATOR,role='operator')
+        self.assertFalse(self.mail_destination_state()['review_current'])
+        self.member(target=OPERATOR,role='admin')
+        self.assertFalse(self.mail_destination_state()['review_current'])
+        self.mail_destination(request='99000000-0000-4000-8000-000000000002',expected=1)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.assertFalse(self.mail_destination_state()['review_current'])
+        self.mail_destination(fail=True)
+        self.mail_destination(request='99000000-0000-4000-8000-000000000003',expected=2,action='withdrawn')
+        self.assertEqual(self.mail_destination_state()['status'],'withdrawn')
+
+    def test_mail_destination_evidence_and_website_validation(self):
+        self.mail_campaign()
+        for value in ('12145550100','+01234567890','+1','+12145550100 ext 1'):
+            self.mail_destination(value=value,fail=True)
+        for value in ('http://example.com','https://127.0.0.1/','https://host.local','https://user@example.com',
+                      'https://example.com?x=1','https://example.com/#','https://example.com:443/','https://example.com/%0a'):
+            self.mail_destination(mode='landing_page',value=value,fail=True)
+        self.mail_destination(verified='infinity',fail=True);self.mail_destination(expires='infinity',fail=True)
+        self.mail_destination(verified='2099-01-01',fail=True);self.mail_destination(expires='2000-01-01',fail=True)
+        self.mail_destination(note='short',fail=True)
+        self.mail_destination(mode='landing_page',value='https://example.com/seller')
+        self.assertTrue(self.mail_destination_state()['review_current'])
+
+    def test_mail_destination_expiry_does_not_revive_on_exact_replay(self):
+        self.mail_campaign()
+        expires=self.sql("SELECT (clock_timestamp()+interval '2 seconds')::text")
+        self.mail_destination(expires=expires)
+        self.assertTrue(self.mail_destination_state()['review_current'])
+        self.sql('SELECT pg_sleep(2.1)')
+        self.assertEqual(self.mail_destination_state()['status'],'requires_review')
+        self.assertTrue(self.mail_destination(expires=expires)['duplicate'])
+        self.assertFalse(self.mail_destination_state()['review_current'])
+        self.mail_destination(request='99000000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
+        self.assertEqual(self.mail_destination_state()['status'],'withdrawn')
+
+    def test_mail_destination_concurrent_different_reviews_only_one_wins(self):
+        self.mail_campaign()
+        def attempt(n):
+            try:return self.mail_destination(request=f'99000000-0000-4000-8000-{n:012d}',value=f'+1214555010{n}')
+            except AssertionError as error:return str(error)
+        with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(attempt,(1,2)))
+        self.assertEqual(sum(isinstance(r,dict) for r in results),1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_destination_reviews'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_destination'"),'1')
+
+    def test_mail_destination_populated_upgrade(self):
+        self.mail_campaign();self.mail_template()
+        before=self.sql('SELECT to_jsonb(c) FROM ad_creatives c')
+        self.sql((ROOT/'frontend/supabase/migrations/20261028181631_acquisition_mail_destination_reviews.sql').read_text())
+        self.assertEqual(before,self.sql('SELECT to_jsonb(c) FROM ad_creatives c'))
+        self.mail_destination()
+        self.assertEqual(self.sql('SELECT count(*) FROM campaigns'),'1')
 
     def mail_template(self, request='97000000-0000-4000-8000-000000000001', expected=0, body='Contact {{company_name}} at {{tracking_phone}}.', actor=ADMIN, fail=False, **kwargs):
         value=self.sql(f"SELECT public.save_acquisition_mail_template('{request}','{WORKSPACE}','91000000-0000-4000-8000-000000000001','98000000-0000-4000-8000-000000000001',{expected},'Mail draft','letter','phone',{literal(body)})",user=actor,fail=fail,**kwargs)

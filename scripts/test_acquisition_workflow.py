@@ -29,6 +29,8 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'review_acquisition_mail_destination':['p_id','p_workspace','p_campaign','p_destination','p_expected_version','p_action','p_mode','p_value','p_verification_ref','p_verification_hash','p_verified_at','p_expires_at','p_note'],
+ 'acquisition_mail_destination_state':['p_workspace','p_campaign','p_destination'],
  'save_acquisition_mail_template':['p_id','p_workspace','p_campaign','p_template','p_expected_version','p_name','p_format','p_tracking_mode','p_body'],
  'record_acquisition_inbound_restriction':['p_integration','p_number','p_agent','p_agent_version','p_call','p_request','p_kind','p_evidence'],
  'acquisition_inbound_property_lookup':['p_integration','p_number','p_agent','p_agent_version','p_call','p_intake_revision'],
@@ -140,8 +142,8 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template'}
-                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref'}
+                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of','p_verified_at','p_expires_at'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
@@ -754,6 +756,33 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(stale['status'],'requires_review'); self.assertIsNone(stale['total_cost_minor'])
         self.assertFalse(stale['days'][0]['attribution_current']); self.assertIsNone(stale['cost_per_lead_minor'])
         self.assertFalse(any('graph.facebook' in route for route,_ in self.requests))
+
+    def test_mail_destination_http_commit_loss_withdrawal_and_revocation(self):
+        self.mail_campaign()
+        path=self.base+'/campaigns/91000000-0000-4000-8000-000000000001/mail-destinations/99000000-0000-4000-8000-000000000099'
+        body={'id':'99000000-0000-4000-8000-000000000001','expected_version':0,'action':'approved','mode':'phone',
+              'value':'+12145550100','verification_ref':'99000000-0000-4000-8000-000000000088','verification_hash':'a'*64,
+              'verified_at':'2026-01-01T00:00:00Z','expires_at':'2099-01-01T00:00:00Z','note':'Synthetic controlled routing verification evidence.'}
+        self.lose_facebook_reply='review_acquisition_mail_destination'
+        self.assertEqual(self.client.post(path+'/reviews',headers=self.headers,json=body).status_code,503)
+        result=self.client.post(path+'/reviews',headers=self.headers,json=body)
+        self.assertEqual(result.status_code,200,result.text);self.assertTrue(result.json()['duplicate'])
+        self.assertEqual(self.client.post(path+'/reviews',headers=self.headers,json=body|{'value':'+12145550101'}).status_code,409)
+        current=self.client.get(path,headers=self.headers)
+        self.assertEqual(current.status_code,200,current.text);self.assertTrue(current.json()['review_current'])
+        self.assertFalse(current.json()['execution_authorized'])
+        other={'Authorization':'Bearer synthetic-other-session'}
+        self.assertEqual(self.client.get(path,headers=other).status_code,403)
+        self.assertEqual(self.client.post(path+'/reviews',headers=other,json=body).status_code,403)
+        withdrawal={'id':'99000000-0000-4000-8000-000000000002','expected_version':1,'action':'withdrawn','note':'Synthetic routing no longer approved for mail.'}
+        result=self.client.post(path+'/reviews',headers=self.headers,json=withdrawal)
+        self.assertEqual(result.status_code,200,result.text)
+        self.assertEqual(self.client.get(path,headers=self.headers).json()['status'],'withdrawn')
+        self.assertTrue(self.client.post(path+'/reviews',headers=self.headers,json=body).json()['duplicate'])
+        self.assertFalse(self.client.get(path,headers=self.headers).json()['review_current'])
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_destination'"),'2')
+        self.sql(f"DELETE FROM auth.sessions WHERE id='{ADMIN}'")
+        self.assertEqual(self.client.post(path+'/reviews',headers=self.headers,json=withdrawal).status_code,403)
 
     def test_mail_template_http_commit_loss_retry_history_and_revocation(self):
         self.mail_campaign()

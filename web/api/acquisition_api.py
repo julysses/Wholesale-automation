@@ -615,6 +615,80 @@ async def workspace_campaigns(workspace_id: UUID, after: UUID | None = None,
     return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}
 
 
+class MailDestinationReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    expected_version: int = Field(strict=True, ge=0, lt=1000000000)
+    action: Literal['approved','withdrawn']
+    mode: Literal['phone','landing_page'] | None = None
+    value: str | None = Field(default=None, min_length=1, max_length=2048)
+    verification_ref: UUID | None = None
+    verification_hash: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
+    verified_at: AwareDatetime | None = None
+    expires_at: AwareDatetime | None = None
+    note: str = Field(min_length=20, max_length=2000)
+
+    @model_validator(mode='after')
+    def validate_review(self):
+        evidence = (self.mode, self.value, self.verification_ref, self.verification_hash, self.verified_at, self.expires_at)
+        if len(self.note.strip()) < 20 or (self.action == 'approved' and any(v is None for v in evidence)):
+            raise ValueError('Documented destination evidence required')
+        if self.action == 'withdrawn' and any(v is not None for v in evidence):
+            raise ValueError('Withdrawal retains prior destination evidence')
+        if self.verified_at is not None and self.expires_at is not None and self.expires_at <= self.verified_at:
+            raise ValueError('Verification expiry must follow observation')
+        return self
+
+
+@router.post('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-destinations/{destination_id}/reviews')
+async def review_mail_destination(workspace_id: UUID, campaign_id: UUID, destination_id: UUID,
+                                  body: MailDestinationReview, store=Depends(acquisition_store)):
+    receipt = await store.request('POST', 'rpc/review_acquisition_mail_destination', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id),
+        'p_destination': str(destination_id), 'p_expected_version': body.expected_version, 'p_action': body.action,
+        'p_mode': body.mode, 'p_value': body.value,
+        'p_verification_ref': str(body.verification_ref) if body.verification_ref else None,
+        'p_verification_hash': body.verification_hash,
+        'p_verified_at': body.verified_at.isoformat() if body.verified_at else None,
+        'p_expires_at': body.expires_at.isoformat() if body.expires_at else None, 'p_note': body.note,
+    })
+    expected = {'review_id': str(body.id), 'workspace_id': str(workspace_id), 'destination_id': str(destination_id),
+                'version': body.expected_version+1, 'execution_authorized': False}
+    if (not isinstance(receipt, dict) or set(receipt) != set(expected) | {'duplicate'}
+            or any(receipt.get(key) != value for key, value in expected.items())
+            or type(receipt.get('version')) is not int or type(receipt.get('duplicate')) is not bool
+            or receipt.get('execution_authorized') is not False):
+        raise HTTPException(503, 'Destination review could not be confirmed; retain the same request for reconciliation')
+    return receipt
+
+
+@router.get('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-destinations/{destination_id}')
+async def mail_destination_state(workspace_id: UUID, campaign_id: UUID, destination_id: UUID,
+                                 store=Depends(acquisition_store)):
+    state = await store.request('POST', 'rpc/acquisition_mail_destination_state', body={
+        'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id), 'p_destination': str(destination_id)})
+    expected = {'workspace_id': str(workspace_id), 'campaign_id': str(campaign_id), 'destination_id': str(destination_id)}
+    if (not isinstance(state, dict) or set(state) != set(expected) | {'version','latest_review','review_current','status','execution_authorized','checked_at'}
+            or any(state.get(k) != v for k,v in expected.items())
+            or type(state.get('version')) is not int or state['version'] < 0
+            or type(state.get('review_current')) is not bool or state.get('execution_authorized') is not False
+            or state.get('status') not in {'pending_review','approved','withdrawn','requires_review'}
+            or state['review_current'] != (state['status'] == 'approved')):
+        raise HTTPException(503, 'Destination review state could not be confirmed')
+    latest = state.get('latest_review')
+    if state['version'] == 0:
+        valid = latest is None and state['status'] == 'pending_review'
+    else:
+        valid = (isinstance(latest,dict) and all(latest.get(k) == v for k,v in expected.items())
+                 and type(latest.get('version')) is int and latest['version'] == state['version']
+                 and latest.get('action') in {'approved','withdrawn'}
+                 and (latest['action'] == 'withdrawn') == (state['status'] == 'withdrawn')
+                 and state['status'] != 'pending_review')
+    if not valid:
+        raise HTTPException(503, 'Destination review evidence could not be confirmed')
+    return state
+
+
 class MailTemplateDraft(BaseModel):
     model_config = ConfigDict(extra='forbid')
     id: UUID
