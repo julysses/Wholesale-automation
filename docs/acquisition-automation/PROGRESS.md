@@ -3,6 +3,16 @@
 Checkpoint date: October 27, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — draft native call termination
+
+- Pulled the clean branch after verifying all five jobs passed on exact `733673ea90c9601156952a5948e68b8f2d857456`, run https://github.com/julysses/Wholesale-automation/actions/runs/40564885071. The prior turn supplied terminal CI evidence and cleared the next increment.
+- Added `config/acquisition/inbound/controls.draft.json` with one provider-native end_call definition, separate from the five custom signed application tools. Verified fields against Retell's current official SDK. No application URL, credentials, SIP headers, transfer or outbound capability is included. README describes assembly into the separately reviewed response engine; this folder still is not a complete deployable agent.
+- Prompt honors immediate hangup without requiring intake or waiting for an uncertain write; distinguishes ending a conversation from opting out, preserves pending-write uncertainty, and requires the approved silence interval. Added native termination and opt-out/hangup race acceptance cases. Corrected terminal-replay expectations to allow the already implemented late signed restriction. All **19 provider/audio acceptance cases remain not_run**.
+- Validation: **23 Python config/server-boundary tests passed** and **23 Node/Ajv config tests passed** with clean temporary dependency fixtures. The signed server rejects end_call as an application tool. Git diff whitespace check passed. Remote CI requires terminal verification after this increment is pushed.
+- No production SQL, deployment, provider agent configuration, calls, transfers, flags, schedules, mail or spending changed. Native tool import, actual audio termination, silence timing, lifecycle reconciliation, selected model behavior and privacy controls remain release prerequisites.
+
+Next: implement direct-mail proposal preparation and durable approval/fulfillment controls, including postal suppression matching, verified address provenance, per-property cadence, vendor idempotency and atomic budget reservation. Remaining portal/caller/disposition and all live acceptance gates remain in scope; the full PRD goal is active.
+
 ## Implementation checkpoint — inbound opt-outs and callback withdrawal
 
 - Continued from pushed `de252dc`; pulled unchanged branch. All five jobs on `de252dc46b0aef7735fe58b03887107a169976fd` passed in GitHub run https://github.com/julysses/Wholesale-automation/actions/runs/40516466932 before this increment was pushed. Rechecked production migration/catalog metadata (95/latest 20261023221455, acquisition tables still unapplied), existing legacy restriction columns and local suppression/contact/eligibility/task functions. CLI created local migration `20261027140038_acquisition_inbound_contact_restrictions.sql`.

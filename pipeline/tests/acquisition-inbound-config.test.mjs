@@ -29,3 +29,13 @@ test('review draft has no real target, extra capability, provider credentials or
     assert.equal(tool.query_params, undefined);
   }
 });
+
+test('native termination remains separate from application endpoints and credentials', () => {
+  const controls = read('controls.draft.json');
+  assert.equal(controls.length, 1);
+  assert.deepEqual(Object.keys(controls[0]).sort(), ['description', 'name', 'type']);
+  assert.equal(controls[0].type, 'end_call');
+  assert.equal(controls[0].name, 'end_call');
+  const names = [...tools, ...controls].map(tool => tool.name);
+  assert.equal(new Set(names).size, names.length);
+});

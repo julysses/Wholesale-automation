@@ -1,0 +1,7 @@
+[
+  {
+    "type": "end_call",
+    "name": "end_call",
+    "description": "End the current inbound call when the caller asks to stop or says goodbye, after a completed conversation, or after the approved silence interval following one reminder. Do not require intake, a callback, or a successful save before honoring a request to end. Never interpret a failed tool response as a confirmed save. This tool does not transfer, schedule contact, revoke consent, or cancel a pending database request."
+  }
+]

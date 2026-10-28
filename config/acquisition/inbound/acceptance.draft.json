@@ -141,7 +141,7 @@
       "requirement": "RET-006",
       "id": "terminal_replay",
       "exercise": "End the call, replay receipts, then send a late tool write or lookup.",
-      "expected": "Receipts deduplicate; late new actions reject, scoped records remain isolated, no provider side effects.",
+      "expected": "Receipts deduplicate; late new intake, callback and lookup actions reject. Explicit signed restrictions can still commit after the hangup race; no record is duplicated and workspace isolation holds.",
       "result": "not_run",
       "evidence_ref": null,
       "reviewed_by": null
@@ -151,6 +151,24 @@
       "id": "auth_abuse",
       "exercise": "Invalid signature, other workspace/call, oversized payload or caller prompt injection.",
       "expected": "Boundary rejects invalid delivery; no data or authority bypass, private errors remain hidden.",
+      "result": "not_run",
+      "evidence_ref": null,
+      "reviewed_by": null
+    },
+    {
+      "requirement": "RET-005",
+      "id": "native_end_call",
+      "exercise": "Import the reviewed draft control into an approved test configuration. Request immediate hangup during intake, after goodbye, and while a save is unconfirmed.",
+      "expected": "Native end_call ends only the current call; no requirement to finish intake or await a save, no false receipt confirmation, no transfer or outbound action. Correlate actual call termination with the durable lifecycle receipt.",
+      "result": "not_run",
+      "evidence_ref": null,
+      "reviewed_by": null
+    },
+    {
+      "requirement": "RET-005",
+      "id": "end_call_and_optout",
+      "exercise": "Request no further calls and immediate hangup while a callback save is pending. Also test a hangup-only request and speech resuming during the silence interval.",
+      "expected": "Explicit opt-out uses the restriction tool without forcing the caller to stay; pending writes reconcile and restricted callbacks remain withdrawn. Hangup alone creates no invented opt-out. Resumed speech prevents silence termination; approved timer is verified.",
       "result": "not_run",
       "evidence_ref": null,
       "reviewed_by": null

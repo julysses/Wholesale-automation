@@ -28,3 +28,13 @@ def test_draft_answer_fields_match_server_allowlist():
     tools=json.loads((ROOT/'tools.draft.json').read_text())
     intake=next(tool for tool in tools if tool['name']=='submit_seller_intake')
     assert set(intake['parameters']['properties']['answers']['properties'])==FIELDS
+
+
+def test_native_termination_is_not_a_database_tool():
+    controls=json.loads((ROOT/'controls.draft.json').read_text())
+    assert len(controls)==1
+    assert set(controls[0])=={'type','name','description'}
+    assert controls[0]['type']==controls[0]['name']=='end_call'
+    data=payload();data.update(name='end_call',args={})
+    with pytest.raises(ValueError):
+        prepare_inbound_tool(data,**ROUTE)
