@@ -77,3 +77,18 @@ Verified October 28, 2026 in the in-app browser:
 6. Template markup such as `<img src=x onerror=alert(1)>` displays as text in history. No script execution or console errors observed.
 
 This is component/browser evidence, not live API/provider, full accessibility or all-device acceptance.
+
+## Destination review recovery fixture
+
+Run `./node_modules/.bin/vite --config tests/browser/mail-destinations.vite.config.ts` from frontend, then open `http://127.0.0.1:5182/tests/browser/mail-destinations.html`.
+
+The adapter is entirely synthetic and never fetches a provider/API. A single synthetic approved destination seeds the tab-persistent ledger. Its 2099 expiry is test data, not an approved retention/verification policy. Role changes are test controls only; actual roles remain governed by SQL. A fresh tab starts independent data.
+
+Verified October 28, 2026 in the in-app browser:
+1. Open destinations and inspect the seeded row. Current state is version 1; fields stay locked until explicitly loading current details.
+2. Load details, enter a synthetic review reason and check the evidence attestation. Select “Save then lose response” and record approval. Controls lock, exact retry appears and ledger count becomes 2.
+3. Reload. Pending request/locked content survive; current state shows committed version 2. Retry and inspect ledger: still 2 reviews, with confirmed result.
+4. Enter a withdrawal reason and withdraw. History remains intact, current state becomes withdrawn/version 3 and ledger count becomes 3.
+5. Switch simulated role to Operator and refresh. Approval/edit controls remain unavailable and history remains inspectable. No console errors/warnings were recorded.
+
+Reviewed a full-page screenshot at the browser's current viewport. This is not a comprehensive responsive/accessibility audit or live API/provider acceptance. The app-to-real-SQL tests separately cover authority, retry and history behavior.

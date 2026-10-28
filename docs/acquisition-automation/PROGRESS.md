@@ -3,6 +3,16 @@
 Checkpoint date: October 28, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Browser checkpoint — destination approval recovery and withdrawal
+
+- Previous goal turn made concrete progress by implementing/pushing the destination screen and scoped history API. Pulled unchanged `b2218dc`; its exact CI run is https://github.com/julysses/Wholesale-automation/actions/runs/40746781609. All five jobs completed successfully before this fixture update was pushed (database job 11m42s).
+- Added a repeatable synthetic `mail-destinations` browser fixture with a tab-persistent review ledger, owner/operator controls and simulated saved-but-lost or rejected responses. The adapter has no fetch, credentials, database or provider calls; approvals here are test data only.
+- Actual in-app browser verified explicit current-version loading, lost approval response with locked fields, pending request surviving reload, exact reconciliation without duplication (count 1→2→2), withdrawal preserving history/current withdrawn version 3, and operator read-only controls. No console warnings/errors were recorded. Reviewed the current viewport and saved full-page evidence at `../destination-review-browser-qa.jpg`; not a comprehensive responsive/accessibility audit. Closed the tab and stopped the local preview after verification.
+- Build passed with existing bundle/Zod warnings; lint reports **147 existing/no new findings**. No production component, SQL, API or provider changes this increment. Whitespace check passed. Existing application-to-SQL tests remain separate from this synthetic browser evidence.
+- DIRECT-MAIL.md now specifies the next content-review contract: server-loaded immutable versions, server-computed preparation hash, locked recomputation at approval, distinct SQL/Python digests, current-state invalidation, retained withdrawal and no client-supplied review authority. This is a design contract, not implemented approval persistence.
+
+Next: inspect schema and implement content preparation/approval/withdrawal persistence, then connect authenticated API/UI and trusted proof loading. Continue protected evidence resolution, postal preferences, atomic batch/job reservations, vendor proofs and all remaining PRD channels/disposition requirements. Full PRD goal remains active; production, schedules, outreach and spending remain unchanged.
+
 ## Implementation checkpoint — destination history and review screen
 
 - Previous goal turn made concrete progress: durable destination ledger/API and verified database workflows were pushed. Pulled unchanged `8ff31a2`; its exact CI run is https://github.com/julysses/Wholesale-automation/actions/runs/40745000188. All five jobs completed successfully before this increment was pushed (database job 10m37s).
