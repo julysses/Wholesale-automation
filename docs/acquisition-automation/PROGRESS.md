@@ -3,6 +3,15 @@
 Checkpoint date: October 28, 2026 (America/Chicago).
 Status: implementation in progress on `codex/acquisition-foundation`; production remains unchanged.
 
+## Implementation checkpoint — campaign mail draft editor
+
+- Pulled unchanged `e60d6f8`; all five jobs on https://github.com/julysses/Wholesale-automation/actions/runs/40701110996 completed successfully before this increment was pushed. A transient watcher TLS timeout was rechecked against the same run; no run was restarted.
+- Added a lazy-opening mail editor under direct-mail campaign drafts, reusing authenticated API calls and scoped query caches. Letter/postcard formats, tracked phone/landing-page placeholders, version history and explicit next-version editing are supported. Plain-text rendering prevents template markup from executing. Saving remains distinct from legal/content approval, destination binding or fulfillment.
+- Exact request persistence precedes transmission and is keyed by user/workspace/campaign. Unknown outcomes survive refresh/remount and preserve exact retries; controls freeze while unresolved. First definite rejection clears a newly rejected request, while a rejected uncertain retry stays retained. Corrupt/unavailable storage fails closed. The editor remounts on identity/scope changes.
+- Validation: all **427 frontend tests / 63 files passed**, build passed with existing bundle/Zod warnings. Lint initially flagged an event handler named useVersion as a hook; renamed selectVersion. Final lint reports **147 existing/no new findings**, and **36 focused mail/campaign tests passed** after the rename. Tests cover lost-response reload/retry, storage failure, role and scope denial, malformed receipt holds, plaintext rendering, explicit versions, formats/placeholders and campaign wiring. No browser acceptance or live-provider claim; no SQL changes.
+
+Next: browser acceptance and mail template approval/destination/proof review, followed by postal preference enforcement, durable batches/jobs, atomic budget/cadence reservations and vendor reconciliation. Continue remaining portal/caller/disposition work and sequential live gates. Full PRD goal remains active; production, schedules, providers, outreach and spending remain unchanged.
+
 ## Implementation checkpoint — authenticated mail draft API
 
 - Pulled unchanged `f9f1615`. Its exact CI run https://github.com/julysses/Wholesale-automation/actions/runs/40699703528 completed successfully before this increment was pushed.

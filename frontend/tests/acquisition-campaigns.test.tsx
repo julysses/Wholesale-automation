@@ -81,3 +81,8 @@ it('paginates with the verified cursor and hides stale rows after a failed refre
   mock.page = { items: [{ ...row, workspace_id: 'other' }], next_after: null }; fireEvent.click(screen.getByRole('button', { name: 'Refresh campaigns' }));
   await screen.findByRole('alert'); expect(screen.queryByText(draft.name)).toBeNull();
 });
+it('connects the mail editor only to direct-mail campaign drafts', async () => {
+  mock.page = { items: [{ ...row, acquisition_channel: 'direct_mail' }], next_after: null }; view();
+  expect(await screen.findByRole('button', { name: 'Edit mail drafts' })).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'View campaign costs' })).toBeNull();
+});
