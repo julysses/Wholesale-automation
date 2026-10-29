@@ -2,7 +2,9 @@
 
 ## Current implementation boundary
 
-`schemas/acquisition_evidence.py` defines an internal immutable artifact descriptor and strict registry projection. `AcquisitionStore.verify_evidence` now accepts identity only, loads protected current registry state, verifies streamed object bytes and reloads state through the same user-authenticated client. No public endpoint accepts a verification descriptor or returns this byte receipt. Metadata registration/state/revocation endpoints are implemented below; byte upload and verification remain internal. The local registry and private-storage migrations below remain unapplied to production; no real document has been uploaded or downloaded.
+The local implementation includes protected registry metadata, scoped discovery, guarded raw-byte upload and the guided mail-review picker. `AcquisitionStore.verify_evidence` resolves identity through current registry state and checks exact stored bytes. The internal `scan_evidence` method adds bounded local ClamAV screening with fresh registry checks; see [Evidence scanning](EVIDENCE-SCANNING.md). No public endpoint accepts a verification descriptor or scan verdict. Uploads remain unverified for approval: no persisted verification/quarantine, safe preview or locked approval binding exists yet. All registry/storage migrations remain unapplied to production, and no real document or live scanner has been used.
+
+The sections below record successive implementation stages. Their older next-step notes describe the state at that stage; this opening boundary and PROGRESS.md describe the current state.
 
 Read-only catalog inspection on 2026-10-29 UTC found storage.objects/storage.buckets, no existing public table matching document/evidence names, zero storage buckets and zero storage policies. This narrow inventory is not a complete schema inventory or permission test; inspect columns, constraints, grants, policies and migration history before the additive registry/storage migration.
 
@@ -16,7 +18,7 @@ The authenticated object path follows [Supabase's documented private download ro
 - Stream exact raw bytes with a size ceiling, per-read timeout and a 15-second total deadline. Reject non-200/partial results, compression, incompatible media type, invalid length, truncated/oversized content and hash mismatch. Recheck retention and clock order after reading. Responses and failures do not expose document bytes, upstream error bodies, credentials or URLs.
 - Success is `bytes_verified` with source identity, exact digest/size/type and check/retention timestamps. Both content approval and execution authority remain false. A byte match is not malware scanning, factual verification, legal approval, immutable-storage proof or authorization to mail.
 
-## Required next integration
+## Integration sequence (original checklist; local implementation tracked below)
 
 1. Inventory full live/local catalog and migration history. Add the artifact registry using workspace/campaign foreign keys, immutable provenance/digest/type/size, revocation state, retention policy/version and audit records. Reuse an equivalent existing table if the expanded inventory identifies one.
 2. Add a private bucket and tightly scoped object policies in a local forward-only migration. Enforce actual current workspace membership/session/role and exact registry key. Deny replacement/upsert, cross-workspace paths, raw unauthorized mutation and unaudited deletion. SQL must not directly insert/delete Storage object metadata in place of Storage APIs.

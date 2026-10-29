@@ -1,5 +1,16 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — bounded local evidence scanning
+
+- Previous goal turn made progress: f73bccd repaired the Node 20 test fixture and retained the scanner implementation locally. Pulled unchanged, reviewed retained changes, and verified exact CI 40927382780 for f73bccd40ca6e5199f9449697dc947c65d684489 completed successfully across all five jobs before this increment's push. The full PRD goal remains active.
+- Added the internal `AcquisitionStore.scan_evidence` path: current user-authorized registry, bounded exact-byte verification, a second registry check, local ClamAV INSTREAM observation and a final registry check. Only the same verified buffer is scanned. Uses an explicit server policy, pinned engine/signature version before and after, bounded configuration validity, local socket only, bounded response/EOF parsing, deadlines and two process slots. No scanner is installed or configured by this code.
+- A no-detection result remains non-persistent and non-approving. Detection remains an observation pending durable quarantine. No preview, HTTP scan endpoint, browser-supplied attestation, service-key bypass, automatic file release, application activation or production mutation was introduced. Existing numbered navy/orange UI remains unchanged and continues to distinguish uploads from approved evidence.
+- Final review added cooperative cancellation for small buffered chunks in both registry and byte reads. Initial empty-chunk regressions were corrected because HTTPX filters those chunks before delivery; the final tests exercise one-byte chunks and verify timely closure. All 621 combined evidence/API tests passed in 21.22 seconds, including 44 scanner tests. Paired Unix-socket coverage preserves the offline guard and exercises actual framed I/O with a synthetic daemon, not installed antivirus acceptance.
+- Added database-backed workflow checks for same-byte scanning without approval, cross-workspace denial, and artifact/session revocation during scanning. All 42 application-to-PostgreSQL workflows passed in 340.083 seconds. Updated EVIDENCE-STORAGE.md's opening summary to distinguish current implementation from historical stage notes; EVIDENCE-SCANNING.md contains limits, deployment acceptance and remaining integration.
+
+Next: trusted immutable verification/quarantine persistence through restricted server authority, transactionally locked binding to exact reviews, shared scan admission and approved real-daemon/Storage acceptance. Continue retention/holds/purge, canonical mailing rules, budgets/cadence/vendor reconciliation, portal, callers and contracts/disposition. No production migration, deployment, outreach, spending or fulfillment occurred. Wait for this increment's exact all-five CI success before the next push.
+
+
 ## Implementation checkpoint — Node 20 evidence-test repair; scanner work retained locally
 
 - Previous goal turn was progress: 2ae7e38 pushed the guided evidence picker. Pulled unchanged and inspected exact CI 40913759364. It reached terminal failure: four jobs passed; frontend tests failed. Do not queue another feature push until the repair is green. A corrective push is necessary because the failed commit cannot satisfy the all-five-success gate unchanged; no checks are disabled or cancelled.

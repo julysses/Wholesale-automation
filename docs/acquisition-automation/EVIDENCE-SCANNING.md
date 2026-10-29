@@ -1,0 +1,23 @@
+# Evidence scanning — internal local adapter
+
+Status: implemented locally and tested; not deployed, activated or connected to a real ClamAV daemon. No HTTP route or browser approval authority. The guided mail-review UI continues to show verification pending.
+
+## Flow and limits
+
+`AcquisitionStore.scan_evidence` accepts artifact/workspace/campaign identities, purpose and server-supplied `ClamAVPolicy`. It reads protected registry state with the existing user-authenticated client, verifies exact stored bytes, rechecks the registry before scanning, scans the same bytes, then reloads registry state. Revocation, expiry, changed expectations/policy, stale snapshots or changed authority prevent a receipt. Caller-supplied expected hashes, object URLs and scan verdicts are not accepted by any public route.
+
+`tools/acquisition_evidence_scan.py` uses a local Unix socket and ClamAV INSTREAM: NUL command framing, network-order chunk lengths, at most 64 KiB per chunk, zero-length terminator and bounded response plus EOF. No TCP, filename command, file descriptor transfer, scanner installation, daemon reload or document temporary file. Input is at most 10 MiB, scanner work 30 seconds and the complete registry/byte/scan flow 60 seconds, with two process-wide concurrent scans and bounded connection cleanup. Buffer storage is released on completion/failure/cancellation; this is not a claim of secure memory erasure. Shared worker admission is still required before exposing scans across instances.
+
+A server-supplied policy pins the complete VERSION response, including engine and signature database, before and after scanning. It also requires a named configuration revision and a maximum 24-hour validity window. This is an operational configuration bound, not a legal retention rule. It does not itself prove the pin is current or that daemon settings were reviewed. No default policy, environment activation or daemon address is seeded.
+
+Exact `stream: OK` maps to `no_detection`; a bounded FOUND response maps to `detected` without returning the raw signature. Errors, malformed/multiple/oversized/truncated replies, unknown versions, configuration expiry and timeouts fail closed. A scan result remains an observation: `verification_persisted=false`, `scan_persisted=false`, `preview_authorized=false`, `content_approved=false`, `execution_authorized=false`. Detection is not yet durably quarantined; both outcomes remain unavailable for preview or approval.
+
+## Validation and remaining integration
+
+44 tests cover framing with fake stream transports and real paired Unix sockets, exact-byte binding, detection, unknown replies, changed versions, policy validity, source mismatch, revocation, concurrency and cancellation cleanup. The socket-pair test leaves the existing offline network guard intact. All 621 combined evidence/API tests passed in 21.22 seconds after two additional small-chunk deadline regressions. Both registry and byte readers now yield between delivered chunks so buffered micro-chunk streams cannot starve cancellation. HTTPX filters empty chunks before delivery; the regressions intentionally exercise nonempty one-byte chunks. Earlier filesystem socket testing exposed macOS path length and the intentional offline connection guard; replaced that fixture with socket pairs rather than weakening the guard. All 42 application-to-PostgreSQL workflows passed in 340.083 seconds, including real registry/Storage RLS, other-workspace denial and artifact/session revocation during the synthetic scan. No installed ClamAV or actual malware detection acceptance is claimed.
+
+Deployment must review socket ownership/permissions, daemon identity, scanner isolation, signature freshness, exact version rollout, StreamMaxLength, parser/archive/resource limits, and encrypted/limit-exceeded detection settings. Exercise known clean and standard antivirus test fixtures in the approved environment. A no-detection result is not proof of complete parsing, safe active content, factual accuracy or legal sufficiency.
+
+Next: trusted immutable persistence and quarantine decisions, restricted attestation privileges, exact review binding under registry locks, shared scan admission and deployment acceptance. Never accept this returned dictionary from a browser as proof of scanning. No review or UI selection may turn it into approval until that path is implemented. Immediate compensation is to leave the internal method uncalled; no production mutation needs rollback.
+
+Protocol source: [Official ClamAV protocol documentation](https://docs.clamav.net/manual/Usage/ClamdProtocol.html), consulted October 29, 2026.

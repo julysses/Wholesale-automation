@@ -598,6 +598,54 @@ class WorkflowTests(WorkspaceTests):
         self.assertTrue(self.evidence_streams[0].closed)
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_revocations'),'0')
 
+    def scan_registered_fixture(self, token='synthetic-admin-session', after_scan=None):
+        from datetime import datetime, timedelta, timezone
+        from tools.acquisition_evidence_scan import ClamAVPolicy
+        now=datetime.now(timezone.utc)
+        version='ClamAV 1.4.3/12345/Thu Oct 29 00:00:00 2026'
+        policy=ClamAVPolicy('/run/clamav/clamd.sock',version,'synthetic-reviewed-v1',
+                           now-timedelta(minutes=1),now+timedelta(minutes=5))
+        async def daemon_command(path,command,body=None):
+            self.assertEqual(path,policy.socket_path)
+            if command==b'zVERSION\0':return version.encode()
+            self.assertEqual(command,b'zINSTREAM\0');self.assertEqual(body,self.evidence_body)
+            self.scanner_calls+=1
+            if after_scan:after_scan()
+            return b'stream: OK'
+        async def scan():
+            async with httpx.AsyncClient(base_url='https://workflow.example.test/rest/v1/',
+                     headers={'Authorization':'Bearer '+token,'apikey':'synthetic-public-key'}) as client:
+                return await AcquisitionStore(client).scan_evidence(UUID('99200000-0000-4000-8000-000000000002'),
+                    workspace_id=UUID(WORKSPACE),campaign_id=UUID('91000000-0000-4000-8000-000000000001'),
+                    purpose='mail_content',policy=policy)
+        with patch('tools.acquisition_evidence_scan._command',daemon_command):return asyncio.run(scan())
+
+    def test_evidence_scan_rechecks_real_registry_without_granting_approval(self):
+        self.registered_evidence_fixture();self.scanner_calls=0
+        receipt=self.scan_registered_fixture()
+        self.assertEqual(receipt['scan_status'],'no_detection');self.assertEqual(self.scanner_calls,1)
+        for field in ('verification_persisted','scan_persisted','preview_authorized','content_approved','execution_authorized'):
+            self.assertFalse(receipt[field])
+        with self.assertRaises(EvidenceUnavailable):self.scan_registered_fixture('synthetic-other-session')
+        self.assertEqual(self.scanner_calls,1)
+        self.assertEqual(self.evidence_state()['status'],'pending_verification')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'1')
+
+    def test_evidence_scan_revocation_during_scanning_prevents_receipt(self):
+        self.registered_evidence_fixture();self.scanner_calls=0
+        with self.assertRaises(EvidenceUnavailable):self.scan_registered_fixture(after_scan=lambda:self.evidence_revoke())
+        self.assertEqual(self.scanner_calls,1)
+        self.assertEqual(self.evidence_state()['status'],'revoked')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'2')
+
+    def test_evidence_scan_session_revocation_during_scanning_prevents_receipt(self):
+        self.registered_evidence_fixture();self.scanner_calls=0
+        with self.assertRaises(EvidenceUnavailable):
+            self.scan_registered_fixture(after_scan=lambda:self.sql(
+                f"UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 second' WHERE user_id='{ADMIN}'"))
+        self.assertEqual(self.scanner_calls,1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_revocations'),'0')
+
     def configure_inbound(self):
         integration=self.inbound_fixture()
         os.environ.update({'ACQUISITION_INBOUND_WEBHOOK_ENABLED':'true',

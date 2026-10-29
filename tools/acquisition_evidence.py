@@ -66,6 +66,7 @@ async def load_registry_state(client: httpx.AsyncClient, *, artifact_id: UUID, w
                     if len(data) + len(chunk) > 8192:
                         raise EvidenceUnavailable('Evidence registry is unavailable')
                     data.extend(chunk)
+                    await asyncio.sleep(0)  # Small buffered chunks must not starve the deadline.
                 if length is not None and len(data) != int(length):
                     raise EvidenceUnavailable('Evidence registry is unavailable')
         state = EvidenceRegistryState.model_validate(json.loads(data, object_pairs_hook=unique_json_object))
@@ -113,7 +114,10 @@ async def verify_registered_evidence(client: httpx.AsyncClient, artifact_id: UUI
 
 async def verify_evidence_bytes(client: httpx.AsyncClient, artifact: EvidenceArtifact, *,
                                 workspace_id: UUID, campaign_id: UUID, purpose: str,
-                                clock: Callable[[], datetime] = utcnow) -> dict:
+                                clock: Callable[[], datetime] = utcnow,
+                                _observe_chunk: Callable[[bytes], None] | None = None) -> dict:
+    # Internal observer receives bounded chunks, never an independently fetched object.
+    # Its collected bytes are not trustworthy until the complete receipt validates.
     # Revalidate even model_construct/model_copy inputs from internal callers.
     try:
         artifact = EvidenceArtifact.model_validate(artifact.model_dump())
@@ -146,6 +150,9 @@ async def verify_evidence_bytes(client: httpx.AsyncClient, artifact: EvidenceArt
                     if size > artifact.byte_size:
                         raise EvidenceUnavailable('Evidence bytes could not be verified')
                     digest.update(chunk)
+                    if _observe_chunk is not None:
+                        _observe_chunk(chunk)
+                    await asyncio.sleep(0)  # Keep wall-clock cancellation effective.
     except (httpx.HTTPError, TimeoutError):
         raise EvidenceUnavailable('Evidence storage could not be read') from None
     checked = clock()

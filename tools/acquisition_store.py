@@ -20,6 +20,12 @@ class AcquisitionStore:
         return await upload_with_admission(self, artifact_id, source, workspace_id=workspace_id,
                                            campaign_id=campaign_id, purpose=purpose)
 
+    async def scan_evidence(self, artifact_id, *, workspace_id, campaign_id, purpose, policy):
+        """Internal reviewed local scanner; no public or persistent approval authority."""
+        from tools.acquisition_evidence_scan import scan_registered_evidence
+        return await scan_registered_evidence(self.client, artifact_id, workspace_id=workspace_id,
+                                              campaign_id=campaign_id, purpose=purpose, policy=policy)
+
     async def verify_evidence(self, artifact_id, *, workspace_id, campaign_id, purpose):
         """Resolve protected registry state; callers supply identity only, never expectations."""
         from tools.acquisition_evidence import verify_registered_evidence

@@ -172,6 +172,45 @@ def test_total_timeout_stops_a_trickle_stream(monkeypatch):
     assert stream.closed
 
 
+def test_small_chunks_cannot_starve_byte_read_deadline(monkeypatch):
+    original = asyncio.timeout
+    monkeypatch.setattr('tools.acquisition_evidence.asyncio.timeout', lambda seconds: original(0.001))
+    body = b'x' * 100000
+    class ChunkFlood(Stream):
+        async def __aiter__(self):
+            for value in body:
+                self.reads += 1
+                yield bytes([value])
+    stream = ChunkFlood()
+    artifact = descriptor(byte_size=len(body), sha256=hashlib.sha256(body).hexdigest())
+    execute, _, _ = run(artifact, stream=stream)
+    with pytest.raises(EvidenceUnavailable, match='storage could not be read'):
+        asyncio.run(execute())
+    assert stream.closed and stream.reads < len(body)
+
+
+def test_small_chunks_cannot_starve_registry_read_deadline(monkeypatch):
+    from tools.acquisition_evidence import load_registry_state
+    original = asyncio.timeout
+    monkeypatch.setattr('tools.acquisition_evidence.asyncio.timeout', lambda seconds: original(0.001))
+    body = b' ' * 4096 + json.dumps(registry_payload()).encode()
+    class ChunkFlood(Stream):
+        async def __aiter__(self):
+            for value in body:
+                self.reads += 1
+                yield bytes([value])
+    stream = ChunkFlood()
+    async def execute():
+        async with httpx.AsyncClient(base_url='https://storage.example.test/rest/v1/', headers=AUTH,
+                transport=httpx.MockTransport(lambda request: httpx.Response(200,
+                    headers={'content-type':'application/json'}, stream=stream))) as client:
+            return await load_registry_state(client, artifact_id=ARTIFACT, workspace_id=WORKSPACE,
+                                             campaign_id=CAMPAIGN, purpose='mail_content', clock=lambda:NOW)
+    with pytest.raises(EvidenceUnavailable, match='registry is unavailable'):
+        asyncio.run(execute())
+    assert stream.closed and stream.reads < len(body)
+
+
 def registry_payload(artifact=None, checked=NOW, **changes):
     artifact = artifact or descriptor()
     data = artifact.model_dump(mode='json')
