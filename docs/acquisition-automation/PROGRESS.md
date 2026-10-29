@@ -1,6 +1,16 @@
 # WholesaleOS acquisition automation — progress
 
 
+## Implementation checkpoint — guarded HTTP evidence upload
+
+- Previous turn was progress: 063e513 committed/pushed shared upload admission and guarded orchestration. Clean checkout; pulled unchanged using approved Git access after restricted-network DNS failure. Previous exact CI 40903816404 completed successfully across all five jobs before this push. Full PRD goal remains active.
+- Added a scoped raw-stream upload endpoint with a separate default-closed upload flag. Uses only guarded admission/upload orchestration, actual user authority and registered expectations. Rejects unsupported/ambiguous headers, compression, filenames, extra query inputs and invalid/oversized declared lengths before admission or input reads. Checks actual streamed size and declared length without multipart/temp-file processing.
+- Added strict unverified upload receipts and stable failure codes: rejected preparation versus uncertain possible write. Preserves Retry-After, exact artifact/file recovery and no-store handled responses. Does not retry, overwrite, create another identity, grant safe preview or persist approval. Uploaded files remain unscanned/unverified; no UI or production activation was introduced.
+- Raw-ASGI receive-count tests prove early rejection leaves the body unread. Initial disconnect coverage exposed Starlette's distinct ClientDisconnect exception; explicitly handled as an incomplete-input rejection before storage write. All 574 combined evidence/API tests passed in 21.21 seconds after correction. All 39 application-to-PostgreSQL workflows passed in 300.516 seconds, including lost provider reply plus unavailable verification, exact recovery after capacity expiry and revocation during verification. No SQL migration or provider action in this increment.
+
+Next: guided upload/recovery UI using this contract within the existing numbered mail-review step, plus trusted persisted verification, scanning/quarantine and locked approval binding. Keep IDs/hashes out of product fields and distinguish pending evidence from approved evidence. Continue retention administration, postal rules, mail fulfillment/budget/cadence/vendor reconciliation, portal, callers and contracts/disposition. Production, paused SMS, outreach, spending and fulfillment remain unchanged; wait for exact all-five CI success before the next push.
+
+
 ## Implementation checkpoint — shared upload admission
 
 - Previous turn was progress: f5d8402 added/pushed scoped evidence discovery. Current checkout was clean and pull confirmed unchanged after an approved network retry. Exact previous run 40891193375 completed successfully across all five jobs before this increment's push. Full PRD goal remains active.

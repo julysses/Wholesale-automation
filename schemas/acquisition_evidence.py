@@ -244,3 +244,44 @@ class EvidenceUploadAdmission(BaseModel):
         elif self.expires_at is not None or self.retry_after_seconds<1:
             raise ValueError('Bounded retry required')
         return self
+
+
+class EvidenceUploadReceipt(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    status: Literal['stored_unverified']
+    workspace_id: UUID
+    campaign_id: UUID
+    evidence_ref: UUID
+    purpose: Literal['mail_content', 'mail_destination']
+    sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    byte_size: int = Field(strict=True, ge=1, le=MAX_EVIDENCE_BYTES)
+    media_type: Literal['application/pdf', 'image/png', 'image/jpeg', 'text/plain']
+    retention_policy_id: UUID
+    checked_at: AwareDatetime
+    registry_checked_at: AwareDatetime
+    retain_until: AwareDatetime
+    verifier_version: Literal['acquisition-evidence-bytes-v1']
+    registry_verifier_version: Literal['acquisition-evidence-registry-v1']
+    upload_version: Literal['acquisition-evidence-upload-v1']
+    write_outcome: Literal['stored_or_existing']
+    scan_status: Literal['not_scanned']
+    byte_match_observed: StrictBool
+    verification_persisted: StrictBool
+    content_approved: StrictBool
+    execution_authorized: StrictBool
+
+    @field_validator('checked_at', 'registry_checked_at', 'retain_until', mode='before')
+    @classmethod
+    def timestamp_strings(cls, value):
+        if not isinstance(value, str):
+            raise ValueError('Timestamp string required')
+        return value
+
+    @model_validator(mode='after')
+    def observed_bytes_are_not_approval(self):
+        if not self.byte_match_observed or self.verification_persisted or self.content_approved or self.execution_authorized:
+            raise ValueError('Unpersisted byte observation without approval required')
+        if (self.retain_until <= max(self.checked_at, self.registry_checked_at)
+                or (self.checked_at-self.registry_checked_at).total_seconds()>5):
+            raise ValueError('Current retained evidence required')
+        return self

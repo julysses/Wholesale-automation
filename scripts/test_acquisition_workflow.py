@@ -163,6 +163,9 @@ class WorkflowTests(WorkspaceTests):
         }[request.headers['authorization']]
         self.assertEqual(request.headers['apikey'],request.headers['authorization'].removeprefix('Bearer ') if role=='service_role' else 'synthetic-public-key')
         if request.url.path.startswith('/storage/v1/object/authenticated/acquisition-evidence/'):
+            if getattr(self,'unavailable_evidence_read_once',False):
+                self.unavailable_evidence_read_once=False
+                return httpx.Response(503,json={'message':'Synthetic unavailable verification'})
             self.assertEqual(request.method,'GET')
             name=request.url.path.removeprefix('/storage/v1/object/authenticated/acquisition-evidence/')
             visible=self.sql("SET storage.operation='object.get_authenticated'; SELECT count(*) FROM storage.objects "
@@ -461,6 +464,50 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.client.post(self.evidence_endpoint,json=second,headers=self.headers).status_code,200)
         self.sql('SELECT pg_sleep(1.1)')
         self.assertEqual(self.client.get(self.evidence_endpoint+'/'+second['id'],headers=self.headers).json()['status'],'expired')
+
+    def test_evidence_upload_http_closed_gate_scope_and_uncertain_recovery(self):
+        self.registered_evidence_fixture(with_object=False)
+        path=self.base+'/campaigns/91000000-0000-4000-8000-000000000001/evidence/99200000-0000-4000-8000-000000000002/bytes?purpose=mail_content'
+        headers={**self.headers,'Content-Type':'application/octet-stream'}
+        self.assertEqual(self.client.post(path,headers=headers,content=self.evidence_body).status_code,404)
+        self.assertEqual(self.requests,[])
+        os.environ['ACQUISITION_EVIDENCE_UPLOAD_ENABLED']='true'
+        denied=self.client.post(path,headers={**headers,'Authorization':'Bearer synthetic-other-session'},content=self.evidence_body)
+        self.assertEqual(denied.status_code,403)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'0')
+        self.lose_evidence_reply_once=True;self.unavailable_evidence_read_once=True
+        uncertain=self.client.post(path,headers=headers,content=self.evidence_body)
+        self.assertEqual(uncertain.status_code,503,uncertain.text)
+        self.assertEqual(uncertain.json()['detail']['code'],'EVIDENCE_UPLOAD_UNCONFIRMED')
+        self.assertEqual(self.evidence_uploads,1)
+        busy=self.client.post(path,headers=headers,content=self.evidence_body)
+        self.assertEqual(busy.status_code,429);self.assertIn('retry-after',busy.headers)
+        self.sql("UPDATE private.acquisition_evidence_upload_slots SET started_at=started_at-interval '121 seconds',expires_at=expires_at-interval '121 seconds'")
+        recovered=self.client.post(path,headers=headers,content=self.evidence_body)
+        self.assertEqual(recovered.status_code,200,recovered.text)
+        self.assertEqual(recovered.headers['cache-control'],'no-store')
+        self.assertEqual(recovered.json()['status'],'stored_unverified')
+        self.assertFalse(recovered.json()['verification_persisted']);self.assertFalse(recovered.json()['content_approved'])
+        self.assertEqual(self.evidence_uploads,1)
+        self.assertEqual(self.sql("SELECT count(*) FROM storage.objects WHERE bucket_id='acquisition-evidence'"),'1')
+        self.assertEqual(self.evidence_state()['status'],'pending_verification')
+
+    def test_evidence_upload_http_bad_file_and_revocation_during_verification(self):
+        self.registered_evidence_fixture(with_object=False)
+        os.environ['ACQUISITION_EVIDENCE_UPLOAD_ENABLED']='true'
+        path=self.base+'/campaigns/91000000-0000-4000-8000-000000000001/evidence/99200000-0000-4000-8000-000000000002/bytes?purpose=mail_content'
+        headers={**self.headers,'Content-Type':'application/octet-stream'}
+        wrong=self.client.post(path,headers=headers,content=b'wrong file')
+        self.assertEqual(wrong.status_code,409)
+        self.assertEqual(wrong.json()['detail']['code'],'EVIDENCE_UPLOAD_NOT_ACCEPTED');self.assertEqual(self.evidence_uploads,0)
+        self.sql("UPDATE private.acquisition_evidence_upload_slots SET started_at=started_at-interval '121 seconds',expires_at=expires_at-interval '121 seconds'")
+        self.after_evidence_read=lambda:self.evidence_revoke()
+        result=self.client.post(path,headers=headers,content=self.evidence_body)
+        self.assertEqual(result.status_code,503,result.text)
+        self.assertEqual(result.json()['detail']['code'],'EVIDENCE_UPLOAD_UNCONFIRMED')
+        self.assertEqual(self.evidence_state()['status'],'revoked')
+        self.assertEqual(self.client.post(path,headers=headers,content=self.evidence_body).status_code,403)
+        self.assertEqual(self.evidence_uploads,1)
 
     def upload_registered_fixture(self, after=None, token='synthetic-admin-session', guarded=False):
         async def source():
