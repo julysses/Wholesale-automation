@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { webcrypto, createHash } from 'node:crypto';
 import { EvidenceUploadPanel } from '@/components/acquisition/EvidenceUploadPanel';
 import { ApiError } from '@/lib/api';
+import { chooseFile } from '@/lib/acquisition/evidence';
 const mock = vi.hoisted(() => ({ fetch: vi.fn(), register: vi.fn(), upload: vi.fn(), enabled: true, policy: true, role: 'owner', wrongScope: false }));
 vi.mock('@/lib/api', () => ({ apiFetch: mock.fetch, ApiError: class extends Error { constructor(message: string, public status: number, public rejectedCreate = false, public rejectedCost = false, public retryAfterSeconds?: number) { super(message); } } }));
 const W = '10000000-0000-4000-8000-000000000001', C = '20000000-0000-4000-8000-000000000001', U = '30000000-0000-4000-8000-000000000001', P = '40000000-0000-4000-8000-000000000001';
@@ -12,7 +13,16 @@ const body = 'Synthetic original file contents', digest = createHash('sha256').u
 function pending(stage: 'register' | 'upload' = 'upload') { return { user_id: U, workspace_id: W, campaign_id: C, stage, registration: { id: '50000000-0000-4000-8000-000000000001', purpose: 'mail_content', expected_sha256: digest, expected_byte_size: body.length, media_type: 'text/plain', retention_policy_id: P, provenance_note: 'Synthetic reviewed source for this content.' } }; }
 function candidates() { return { workspace_id: mock.wrongScope ? C : W, campaign_id: C, purpose: 'mail_content', current_policy: mock.policy ? { id: P, workspace_id: W, purpose: 'mail_content', version: 1, retention_seconds: 86400, valid_from: '2026-01-01T00:00:00Z', valid_until: '2099-01-01T00:00:00Z' } : null, items: [], next_after: null, checked_at: new Date().toISOString(), execution_authorized: false, upload_enabled: mock.enabled }; }
 function uploaded() { const saved = JSON.parse(sessionStorage.getItem(key)!), r = saved.registration, now = new Date().toISOString(); return { workspace_id: W, campaign_id: C, evidence_ref: r.id, purpose: 'mail_content', sha256: r.expected_sha256, byte_size: r.expected_byte_size, media_type: r.media_type, retention_policy_id: r.retention_policy_id, checked_at: now, registry_checked_at: now, retain_until: '2099-01-01T00:00:00Z', status: 'stored_unverified', verifier_version: 'acquisition-evidence-bytes-v1', registry_verifier_version: 'acquisition-evidence-registry-v1', upload_version: 'acquisition-evidence-upload-v1', write_outcome: 'stored_or_existing', scan_status: 'not_scanned', byte_match_observed: true, verification_persisted: false, content_approved: false, execution_authorized: false }; }
-function file(value = body) { const f = new File([value], 'evidence.txt', { type: 'text/plain' }); Object.defineProperty(f, 'arrayBuffer', { value: async () => Uint8Array.from(Buffer.from(value)).buffer }); return f; }
+function file(value = body) {
+  const f = new File([value], 'evidence.txt', { type: 'text/plain' });
+  // Node 20 WebCrypto rejects jsdom-realm ArrayBuffers. Preserve real hashing
+  // with a Node-realm buffer and exclude unrelated pooled bytes.
+  Object.defineProperty(f, 'arrayBuffer', { value: async () => {
+    const bytes = Buffer.from(value);
+    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  } });
+  return f;
+}
 beforeEach(() => {
   sessionStorage.clear(); vi.clearAllMocks(); mock.enabled = true; mock.policy = true; mock.role = 'owner'; mock.wrongScope = false;
   vi.stubGlobal('crypto', { subtle: webcrypto.subtle, randomUUID: () => '60000000-0000-4000-8000-000000000001' });
@@ -103,4 +113,8 @@ it('rejects oversized and unsupported files before reading or registering them',
   expect(screen.getByRole('button', { name: 'Register and upload file' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Evidence file'), { target: { files: [new File(['html'], 'file.html', { type: 'text/html' })] } });
   await waitFor(() => expect(screen.getByRole('button', { name: 'Register and upload file' })).toBeDisabled()); expect(mock.register).not.toHaveBeenCalled();
+});
+
+it('uses actual WebCrypto for the synthetic file bytes', async () => {
+  expect((await chooseFile(file())).hash).toBe(digest);
 });

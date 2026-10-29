@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — Node 20 evidence-test repair; scanner work retained locally
+
+- Previous goal turn was progress: 2ae7e38 pushed the guided evidence picker. Pulled unchanged and inspected exact CI 40913759364. It reached terminal failure: four jobs passed; frontend tests failed. Do not queue another feature push until the repair is green. A corrective push is necessary because the failed commit cannot satisfy the all-five-success gate unchanged; no checks are disabled or cancelled.
+- Reproduced the nine picker failures with GitHub's Node 20 runtime. A direct hashing regression exposed Node 20 WebCrypto rejecting a jsdom-realm ArrayBuffer; local Node 24 accepted it. Corrected only the synthetic File.arrayBuffer fixture to return an exact Node-realm ArrayBuffer slice, excluding pooled bytes. Production hashing, upload checks and recovery behavior are unchanged. Real WebCrypto remains in the tests.
+- Validation after repair: all 66 frontend files / 500 tests passed under Node 20 in 20.17 seconds; lint reports no new findings (147 existing baseline). Typecheck passed under Node 20. Push only the test repair and this checkpoint first, then verify its exact CI before publishing scanner changes.
+- Concurrent implementation is retained locally, not part of the repair commit: `tools/acquisition_evidence_scan.py`, `tests/test_acquisition_evidence_scan.py`, changes to `tools/acquisition_evidence.py` and `tools/acquisition_store.py`, plus `EVIDENCE-SCANNING.md`. Adds an internal bounded local ClamAV adapter, version pin, same-byte scan and registry rechecks, without any preview, persisted clearance or approval authority. All 44 scanner tests and all 619 combined evidence/API tests passed (25.75 seconds combined). No scanner installation, live provider call, production migration, deployment or outreach occurred.
+
+Next: after the repair's five CI jobs pass, review and commit/push the retained scanner increment with its documentation. Then implement trusted immutable verification/quarantine persistence and locked approval binding, preserving the existing numbered UI. Full PRD goal remains active; postal rules, mail fulfillment, portal, callers, contracts/disposition and sequential acceptance gates remain open.
+
+
 ## Implementation checkpoint — guided evidence files in mail review
 
 - Previous exact commit 5a251f20b754ae26e1ae8c56656882267ddf73cc passed all five jobs in CI 40906100111. Pulled unchanged before completing this update. Full PRD goal remains active.
