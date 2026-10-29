@@ -34,6 +34,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_evidence_candidates':['p_workspace','p_campaign','p_purpose','p_after','p_limit'],
  'register_acquisition_evidence':['p_id','p_workspace','p_campaign','p_purpose','p_sha256','p_byte_size','p_media_type','p_policy','p_note'],
  'revoke_acquisition_evidence':['p_id','p_workspace','p_campaign','p_artifact','p_reason'],
  'acquisition_evidence_state':['p_workspace','p_campaign','p_artifact'],
@@ -356,6 +357,26 @@ class WorkflowTests(WorkspaceTests):
         # Synthetic metadata only: provider object bytes are simulated in handle().
         if with_object:
             self.sql(f"SET storage.operation='object.upload'; INSERT INTO storage.objects(bucket_id,name) VALUES('acquisition-evidence',{literal(name)})",user=ADMIN)
+
+    def test_evidence_discovery_guided_choices_and_revocation(self):
+        payload=self.evidence_http_fixture()
+        path=self.evidence_endpoint+'?purpose=mail_content&limit=1'
+        empty=self.client.get(path,headers=self.headers)
+        self.assertEqual(empty.status_code,200,empty.text)
+        self.assertEqual(empty.json()['items'],[])
+        self.assertEqual(empty.json()['current_policy']['id'],payload['retention_policy_id'])
+        self.assertEqual(self.client.post(self.evidence_endpoint,json=payload,headers=self.headers).status_code,200)
+        self.evidence_register(request='99200000-0000-4000-8000-000000000004')
+        first=self.client.get(path,headers=self.headers)
+        self.assertEqual(first.status_code,200,first.text)
+        self.assertEqual(first.headers['cache-control'],'no-store')
+        self.assertEqual(first.json()['items'][0]['status'],'pending_verification')
+        last=self.client.get(path+'&after='+first.json()['next_after'],headers=self.headers)
+        self.assertEqual(last.status_code,200,last.text);self.assertIsNone(last.json()['next_after'])
+        self.evidence_revoke()
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.assertEqual(self.client.get(path,headers=self.headers).json()['items'][0]['status'],'revoked')
+        self.assertEqual(self.client.get(path,headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
 
     def evidence_http_fixture(self):
         self.mail_campaign();self.evidence_policy()

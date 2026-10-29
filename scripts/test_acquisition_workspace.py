@@ -203,6 +203,8 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261029014552_acquisition_mail_proof_context.sql').read_text())
         if self._testMethodName != 'test_evidence_registry_populated_upgrade':
             self.sql((ROOT/'frontend/supabase/migrations/20261029022851_acquisition_evidence_registry.sql').read_text())
+        if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_discovery_populated_upgrade'):
+            self.sql((ROOT/'frontend/supabase/migrations/20261029035546_acquisition_evidence_discovery.sql').read_text())
         install_storage_fixture(self.sql)
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
             self.sql(STORAGE_MIGRATION.read_text())
@@ -214,6 +216,72 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def evidence_candidates(self, actor=ADMIN, purpose='mail_content', after=None, limit=20, workspace=WORKSPACE, campaign='91000000-0000-4000-8000-000000000001', fail=False, **kwargs):
+        args=[workspace,campaign,purpose,after,limit]
+        values=','.join('NULL' if v is None else str(v) if isinstance(v,int) else literal(v) for v in args)
+        result=self.sql(f'SELECT public.acquisition_evidence_candidates({values})',user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_evidence_discovery_scope_authority_and_closed_writes(self):
+        self.mail_campaign();self.evidence_policy();self.evidence_register()
+        self.member(target=OPERATOR,role='operator')
+        self.assertEqual(len(self.evidence_candidates(actor=OPERATOR)['items']),1)
+        for actor in (OTHER,CALLER): self.evidence_candidates(actor=actor,fail=True)
+        for kwargs in ({'aal':'aal1'},{'session':False},{'role':'anon'},{'role':'service_role'},
+                       {'workspace':WORKSPACE_B},{'campaign':WORKSPACE},{'purpose':None},{'purpose':'sms'},
+                       {'limit':0},{'limit':51},{'limit':None}):
+            self.evidence_candidates(fail=True,**kwargs)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.assertFalse(self.evidence_candidates()['execution_authorized'])
+        self.evidence_register(request='99200000-0000-4000-8000-000000000009',fail=True)
+        self.sql('SELECT * FROM private.acquisition_evidence_policies',user=ADMIN,fail=True)
+        self.activate()
+        self.member(target=OPERATOR,role='operator',status='revoked')
+        self.evidence_candidates(actor=OPERATOR,fail=True)
+        self.sql(f"DELETE FROM auth.sessions WHERE user_id='{ADMIN}'")
+        self.evidence_candidates(fail=True)
+
+    def test_evidence_discovery_current_policy_and_history_pages(self):
+        self.mail_campaign()
+        self.assertIsNone(self.evidence_candidates()['current_policy'])
+        self.evidence_policy();self.evidence_register()
+        self.evidence_register(request='99200000-0000-4000-8000-000000000004')
+        first=self.evidence_candidates(limit=1)
+        self.assertEqual(first['current_policy']['version'],1)
+        self.assertEqual(first['next_after'],first['items'][0]['artifact_id'])
+        second=self.evidence_candidates(after=first['next_after'],limit=1)
+        self.assertEqual(len(second['items']),1);self.assertIsNone(second['next_after'])
+        self.assertEqual(self.evidence_candidates(purpose='mail_destination')['items'],[])
+        self.evidence_revoke()
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=clock_timestamp()")
+        page=self.evidence_candidates()
+        self.assertIsNone(page['current_policy'])
+        self.assertEqual([x['status'] for x in page['items']],['revoked','policy_review_required'])
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=NULL,valid_from='2098-01-01'")
+        self.assertIsNone(self.evidence_candidates()['current_policy'])
+        self.sql("UPDATE private.acquisition_evidence_policies SET valid_from='2026-01-01',valid_until='2026-02-01'")
+        self.assertIsNone(self.evidence_candidates()['current_policy'])
+        self.sql("UPDATE private.acquisition_evidence_policies SET valid_until='2099-01-01'")
+        self.sql(f"INSERT INTO private.acquisition_evidence_policies SELECT '99200000-0000-4000-8000-000000000005',workspace_id,purpose,2,retention_seconds,valid_from,valid_until,approval_ref,reviewed_by,reviewed_at,NULL FROM private.acquisition_evidence_policies")
+        self.assertEqual(self.evidence_candidates()['current_policy']['version'],2)
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=clock_timestamp() WHERE version=2")
+        self.assertEqual(self.evidence_candidates()['current_policy']['version'],1)
+        self.sql("UPDATE private.acquisition_evidence_policies SET retention_seconds=1 WHERE version=1")
+        self.evidence_register(request='99200000-0000-4000-8000-000000000006')
+        self.sql('SELECT pg_sleep(1.05)')
+        self.assertEqual(self.evidence_candidates()['items'][-1]['status'],'expired')
+
+    def test_evidence_discovery_populated_upgrade(self):
+        self.mail_campaign();self.evidence_policy();self.evidence_register();self.evidence_revoke()
+        before=self.sql("SELECT jsonb_agg(to_jsonb(a)) FROM acquisition_evidence_artifacts a")
+        audits=self.sql("SELECT count(*) FROM audit_logs")
+        self.sql((ROOT/'frontend/supabase/migrations/20261029035546_acquisition_evidence_discovery.sql').read_text())
+        self.assertEqual(self.sql("SELECT jsonb_agg(to_jsonb(a)) FROM acquisition_evidence_artifacts a"),before)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs"),audits)
+        self.assertEqual(self.evidence_candidates()['items'][0]['status'],'revoked')
+        self.assertEqual(self.sql("SELECT prosecdef FROM pg_proc WHERE oid='public.acquisition_evidence_candidates(uuid,uuid,text,uuid,integer)'::regprocedure"),'f')
+        self.assertEqual(self.sql("SELECT has_function_privilege('anon','public.acquisition_evidence_candidates(uuid,uuid,text,uuid,integer)','EXECUTE')"),'f')
 
     def evidence_policy(self, purpose='mail_content'):
         # Reviewed retention configuration is synthetic and seeded only by the disposable DB owner.

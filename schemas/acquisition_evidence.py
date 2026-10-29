@@ -156,3 +156,59 @@ class EvidenceRevocationReceipt(BaseModel):
         if self.execution_authorized:
             raise ValueError('Revocation grants no execution')
         return self
+
+
+class EvidencePolicyChoice(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: UUID
+    workspace_id: UUID
+    purpose: Literal['mail_content', 'mail_destination']
+    version: int = Field(strict=True, ge=1, le=1000000000)
+    retention_seconds: int = Field(strict=True, ge=1, le=2147483647)
+    valid_from: AwareDatetime
+    valid_until: AwareDatetime
+
+    @field_validator('valid_from', 'valid_until', mode='before')
+    @classmethod
+    def timestamp_strings(cls, value):
+        if not isinstance(value, str):
+            raise ValueError('Timestamp string required')
+        return value
+
+
+class EvidenceCandidates(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    workspace_id: UUID
+    campaign_id: UUID
+    purpose: Literal['mail_content', 'mail_destination']
+    current_policy: EvidencePolicyChoice | None
+    items: list[EvidenceState] = Field(max_length=50)
+    next_after: UUID | None
+    checked_at: AwareDatetime
+    execution_authorized: StrictBool
+
+    @field_validator('checked_at', mode='before')
+    @classmethod
+    def timestamp_string(cls, value):
+        if not isinstance(value, str):
+            raise ValueError('Timestamp string required')
+        return value
+
+    @model_validator(mode='after')
+    def scoped_current_candidates(self):
+        if self.execution_authorized:
+            raise ValueError('Discovery grants no execution')
+        if self.current_policy and (
+                (self.current_policy.workspace_id, self.current_policy.purpose) != (self.workspace_id, self.purpose)
+                or not self.current_policy.valid_from <= self.checked_at < self.current_policy.valid_until):
+            raise ValueError('Current policy required')
+        previous = None
+        for item in self.items:
+            if ((item.workspace_id, item.campaign_id, item.purpose, item.checked_at)
+                    != (self.workspace_id, self.campaign_id, self.purpose, self.checked_at)
+                    or previous is not None and item.id.int <= previous):
+                raise ValueError('Scoped ordered current evidence required')
+            previous = item.id.int
+        if self.next_after is not None and (not self.items or self.next_after != self.items[-1].id):
+            raise ValueError('Last returned artifact cursor required')
+        return self

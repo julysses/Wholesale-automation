@@ -1351,3 +1351,57 @@ def test_content_history_projection_pagination_and_scope(api):
     for query in ('limit=51','after=bad-id'):
         assert client.get(path+'?'+query,headers={'Authorization':'Bearer user-token'}).status_code==422
     assert len(state['requests'])==1
+
+
+def evidence_candidates_reply():
+    item=evidence_current_reply()
+    return {'workspace_id':W,'campaign_id':EVIDENCE_CAMPAIGN,'purpose':'mail_content',
+            'current_policy':{'id':EVIDENCE_POLICY,'workspace_id':W,'purpose':'mail_content','version':1,'retention_seconds':86400,
+                              'valid_from':'2026-01-01T00:00:00Z','valid_until':'2099-01-01T00:00:00Z'},
+            'items':[item],'next_after':None,'checked_at':item['checked_at'],'execution_authorized':False}
+
+
+def test_evidence_discovery_user_scope_and_empty_policy(api):
+    client,state=api;state['body']=evidence_candidates_reply()
+    result=client.get(EVIDENCE_BASE+'?purpose=mail_content',headers=EVIDENCE_AUTH)
+    assert result.status_code==200 and result.headers['cache-control']=='no-store'
+    request=state['requests'][0]
+    assert request.url.path=='/rest/v1/rpc/acquisition_evidence_candidates'
+    assert request.headers['authorization']==EVIDENCE_AUTH['Authorization']
+    assert json.loads(request.content)=={'p_workspace':W,'p_campaign':EVIDENCE_CAMPAIGN,'p_purpose':'mail_content','p_after':None,'p_limit':20}
+    state['body'].update(current_policy=None,items=[])
+    assert client.get(EVIDENCE_BASE+'?purpose=mail_content',headers=EVIDENCE_AUTH).status_code==200
+
+
+@pytest.mark.parametrize('where,change',[
+    ('root',{'workspace_id':U}),('root',{'campaign_id':U}),('root',{'purpose':'mail_destination'}),
+    ('root',{'checked_at':'2000-01-01T00:00:00Z'}),('root',{'execution_authorized':True}),
+    ('root',{'next_after':U}),('root',{'download_url':'secret'}),
+    ('policy',{'workspace_id':U}),('policy',{'purpose':'mail_destination'}),('policy',{'version':True}),('policy',{'retention_seconds':0}),('policy',{'valid_until':'2000-01-01T00:00:00Z'}),
+    ('policy',{'valid_from':'2099-01-01T00:00:00Z'}),('policy',{'reviewed_by':U}),
+    ('item',{'workspace_id':U}),('item',{'purpose':'mail_destination'}),('item',{'bytes_verified':True}),
+    ('item',{'checked_at':'2000-01-01T00:00:00Z'})])
+def test_evidence_discovery_rejects_untrusted_projection(api,where,change):
+    client,state=api;body=evidence_candidates_reply()
+    target=body if where=='root' else body['current_policy'] if where=='policy' else body['items'][0]
+    target.update(change);state['body']=body
+    result=client.get(EVIDENCE_BASE+'?purpose=mail_content',headers=EVIDENCE_AUTH)
+    assert result.status_code==503 and result.headers['cache-control']=='no-store' and 'secret' not in result.text
+
+
+def test_evidence_discovery_page_validation_and_disabled_gate(api,monkeypatch):
+    client,state=api;state['body']=evidence_candidates_reply()
+    for query in ('','?purpose=sms','?purpose=mail_content&limit=51','?purpose=mail_content&after=bad'):
+        assert client.get(EVIDENCE_BASE+query,headers=EVIDENCE_AUTH).status_code==422
+    assert not state['requests']
+    body=state['body'];body['items']*=2
+    assert client.get(EVIDENCE_BASE+'?purpose=mail_content',headers=EVIDENCE_AUTH).status_code==503
+    body['items']=body['items'][:1]
+    assert client.get(EVIDENCE_BASE+'?purpose=mail_content&after='+EVIDENCE_ARTIFACT,headers=EVIDENCE_AUTH).status_code==503
+    body['next_after']=EVIDENCE_ARTIFACT
+    assert client.get(EVIDENCE_BASE+'?purpose=mail_content&limit=2',headers=EVIDENCE_AUTH).status_code==503
+    assert client.get(EVIDENCE_BASE+'?purpose=mail_content&limit=1',headers=EVIDENCE_AUTH).status_code==200
+    state['timeout']=True
+    assert client.get(EVIDENCE_BASE+'?purpose=mail_content',headers=EVIDENCE_AUTH).status_code==503
+    monkeypatch.setenv('ACQUISITION_ENABLED','false')
+    assert client.get(EVIDENCE_BASE+'?purpose=mail_content',headers=EVIDENCE_AUTH).status_code==404

@@ -1,11 +1,12 @@
 """Workspace evidence metadata. Upload/download and approval are deliberately separate contracts."""
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Query
 
 from schemas.acquisition_evidence import (
-    EvidenceRegistration, EvidenceRegistrationReceipt, EvidenceRevocation, EvidenceRevocationReceipt, EvidenceState,
+    EvidenceCandidates, EvidenceRegistration, EvidenceRegistrationReceipt, EvidenceRevocation, EvidenceRevocationReceipt, EvidenceState,
 )
 from tools.acquisition_store import acquisition_store
 
@@ -22,6 +23,29 @@ async def evidence_rpc(store, name, body):
 
 def unconfirmed(message):
     return HTTPException(503, message, headers={'Cache-Control': 'no-store'})
+
+
+@router.get('')
+async def evidence_candidates(workspace_id: UUID, campaign_id: UUID, response: Response,
+                              purpose: Literal['mail_content', 'mail_destination'],
+                              limit: int = Query(20, ge=1, le=50), after: UUID | None = None,
+                              store=Depends(acquisition_store)):
+    response.headers['Cache-Control'] = 'no-store'
+    result = await evidence_rpc(store, 'acquisition_evidence_candidates', {
+        'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id), 'p_purpose': purpose,
+        'p_after': str(after) if after else None, 'p_limit': limit})
+    try:
+        page = EvidenceCandidates.model_validate(result)
+        now = datetime.now(timezone.utc)
+        if ((page.workspace_id, page.campaign_id, page.purpose) != (workspace_id, campaign_id, purpose)
+                or not now-timedelta(seconds=30) <= page.checked_at <= now+timedelta(seconds=5)
+                or len(page.items) > limit or page.next_after is not None and len(page.items) != limit
+                or after is not None and any(item.id.int <= after.int for item in page.items)
+                or page.current_policy is not None and page.current_policy.valid_until <= now):
+            raise ValueError('Evidence discovery scope, page or freshness mismatch')
+    except (ValueError, TypeError):
+        raise unconfirmed('Current evidence choices could not be confirmed') from None
+    return result
 
 
 @router.post('')
