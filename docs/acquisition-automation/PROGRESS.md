@@ -1,4 +1,13 @@
-## Implementation checkpoint — trusted internal mail proof and history
+## Implementation checkpoint — guided mail content decisions and preview
+
+- Previous goal turn was progress: e2f5080 committed/pushed the pending-navigation protection. Pulled unchanged. Its exact CI 40804181963 completed successfully across all five jobs before this increment was pushed.
+- Connected complete content preparation, approval/withdrawal, historical discovery, current status and internal property preview within existing direct-mail step 3. Uses the existing navy/rounded-card styling, plain task labels and next-step guidance. Source/history paging is bounded; recorded history does not imply current approval.
+- Added typed response validation for scope, source/current-version correspondence, status, expiry and false execution flags. Source/company changes clear preparation and attestation. Existing reviews require explicit current-version loading. Operators can inspect/preview but cannot approve or withdraw. Preview accepts only an enrolled lead identifier and uses the trusted server loader; literal text is displayed without executing HTML.
+- Exact pending decisions are saved before submission, retained across reload/lost responses/uncertain rejection, and reconciled with identical IDs/bodies. Corrupt storage blocks writes. Busy/pending state uses the shared campaign/workspace navigation guard. Unknown or mismatched receipts cannot be treated as success. Withdrawal sends no replacement source/evidence fields.
+- Validation: full frontend suite 477 passed across 65 files, including 23 new content cases covering explicit preparation/loading, changed versions, permissions, unsafe text, scope/receipt/preview mismatches, preview freshness, storage rejection and exact recovery. Build passed. Lint fixes removed an unused test import and exported the fixture component; final lint rerun passed with no new findings (147 existing). No backend or SQL changes in this increment.
+- Synthetic browser QA verified preparation, deliberate evidence attestation, save-then-lost-response, reload, exact retry without duplication, property preview and withdrawal removing preview availability. Ledger progressed 1 → 2 → 2 → 3. Screenshot: ../mail-content-browser-qa.jpg. This is synthetic UI evidence, not a live provider, legal/evidence approval or production acceptance; comprehensive mobile/accessibility QA remains open.
+
+Next: implement protected evidence resolution/retention and real artifact verification; canonical postal preferences and recipient eligibility; durable batch/job persistence with atomic budget/cadence reservations; vendor sandbox/proof/status reconciliation. Continue all remaining online portal, human/agency calling, offer/contract/disposition requirements and sequential release gates. Full goal remains active. No production migrations, deployment, outreach, schedules, spending or fulfillment changed.
 
 ## Implementation checkpoint — preserve guided mail review context
 
@@ -10,6 +19,8 @@
 
 Next: content history, preparation, approval/withdrawal and trusted preview remain to be connected in mail step 3. Reuse the new pending propagation for that component. Continue protected evidence resolution, postal rules, durable batches/jobs, atomic budget/cadence reservations, vendor sandbox/reconciliation and the remaining portal/caller/contract/disposition scope. Full goal remains active. No production migrations, deployment, SMS schedules, outreach, spending or fulfillment changed.
 
+
+## Implementation checkpoint — trusted internal mail proof and history
 
 - Previous turn was progress: immutable content decisions committed/pushed as 2dd8c4a. Pulled unchanged. Exact CI run 40802139439 completed successfully across all five jobs before this increment was pushed; database job 9m50s.
 - Reinspected deployed history (95/latest 20261023221455), canonical properties columns, indexes, primary/unique/foreign/check constraints and RLS. CLI-generated local `20261029014552_acquisition_mail_proof_context.sql`; no production DDL. Adds private definer/public invoker read functions only, using prior local enrollment/content-ledger migrations.

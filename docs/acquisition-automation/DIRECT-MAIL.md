@@ -138,3 +138,14 @@ The loader preserves the renderer digest separately, binds the SQL preparation h
 GET `/api/acquisition/workspaces/{workspace}/campaigns/{campaign}/mail-content` supplies bounded UUID-paginated history with a fixed projection and workspace/campaign RLS. Historical rows are discovery evidence only, not current approval; the per-content current-state endpoint remains separate.
 
 Compensation: revoke public/private proof-context execution to stop preview reads without removing approvals/history or blocking withdrawal. No data migration, new table, index or policy is introduced. Protected evidence-file resolution, vendor/print proof acceptance, mailing-address verification, recipient eligibility and the guided approval/proof screen remain outstanding. No production migration or mail fulfillment occurred.
+
+
+## Guided content review and internal preview UI
+
+Direct-mail step 3 now connects the server preparation, content decision ledger, current-state projection and internal proof loader. Users choose saved message/destination versions and proposed company wording, prepare the exact sources, explicitly attest retained evidence and record an owner/admin decision. Current-version loading is deliberate; changing sources or company wording invalidates preparation. Expiry cannot exceed destination verification. Withdrawal uses current version and a reason, retaining prior immutable evidence.
+
+History is bounded and separate from current status. Approval and preview response checks reject wrong scopes, source/version mismatches, inconsistent authority and expired previews. Operators may inspect and preview enrolled properties, not make content decisions. Preview text is inert; HTML is never evaluated. Both preparation and preview remain non-executing and do not certify postal delivery or recipient permission.
+
+Pending request storage includes exact content/review identities and body, scoped to user/workspace/campaign. It is written before submission; unknown results survive reload and retry without replacement. Navigation guards remain held until reconciliation. Initial definitive rejections can clear the request; rejection of an already-uncertain retry cannot. Corrupt storage fails closed.
+
+Synthetic browser QA verified the complete preparation/approval/lost-response/reload/retry/preview/withdrawal path and ledger counts 1→2→2→3. Full frontend suite: 477 passing tests. Protected evidence-file resolution remains unimplemented: the evidence reference/digest fields record reviewer attestations and do not establish artifact existence. Vendor proof acceptance, postal preferences, recipient eligibility, durable reservations/jobs and real release acceptance remain required. This section supersedes earlier UI-pending notes; production remains untouched.
