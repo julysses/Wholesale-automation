@@ -205,6 +205,8 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261029022851_acquisition_evidence_registry.sql').read_text())
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_discovery_populated_upgrade'):
             self.sql((ROOT/'frontend/supabase/migrations/20261029035546_acquisition_evidence_discovery.sql').read_text())
+        if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_upload_admission_populated_upgrade'):
+            self.sql((ROOT/'frontend/supabase/migrations/20261029142852_acquisition_evidence_upload_admission.sql').read_text())
         install_storage_fixture(self.sql)
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
             self.sql(STORAGE_MIGRATION.read_text())
@@ -216,6 +218,91 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def upload_admission(self, actor=ADMIN, attempt=None, artifact='99200000-0000-4000-8000-000000000002',
+                         workspace=WORKSPACE, campaign='91000000-0000-4000-8000-000000000001', purpose='mail_content', fail=False, **kwargs):
+        from uuid import uuid4
+        values=','.join('NULL' if v is None else literal(v) for v in (attempt or str(uuid4()),workspace,campaign,artifact,purpose))
+        result=self.sql(f'SELECT public.admit_acquisition_evidence_upload({values})',user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_evidence_upload_admission_concurrent_capacity_and_expiry(self):
+        self.mail_campaign();self.evidence_policy();self.evidence_register()
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            results=list(pool.map(lambda _:self.upload_admission(),range(6)))
+        self.assertEqual(sum(r['admitted'] for r in results),1)
+        self.assertTrue(all(r['retry_after_seconds'] in range(1,121) for r in results if not r['admitted']))
+        first=next(r for r in results if r['admitted'])
+        self.upload_admission(attempt=first['attempt_id'],fail=True)
+        for actor,artifact in ((OPERATOR,'99200000-0000-4000-8000-000000000004'),(OTHER,'99200000-0000-4000-8000-000000000005')):
+            self.member(target=actor,role='operator');self.evidence_register(actor=actor,request=artifact)
+        second=self.upload_admission(actor=OPERATOR,artifact='99200000-0000-4000-8000-000000000004')
+        self.assertTrue(second['admitted'])
+        self.assertFalse(self.upload_admission(actor=OTHER,artifact='99200000-0000-4000-8000-000000000005')['admitted'])
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'2')
+        self.sql("UPDATE private.acquisition_evidence_upload_slots SET started_at=started_at-interval '121 seconds',expires_at=expires_at-interval '121 seconds'")
+        self.assertTrue(self.upload_admission()['admitted'])
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'2')
+        self.assertEqual(self.sql("SELECT count(*) FROM storage.objects WHERE bucket_id='acquisition-evidence'"),'0')
+
+    def test_evidence_upload_admission_authority_and_immutable_capacity(self):
+        self.mail_campaign();self.evidence_policy();self.evidence_register()
+        self.member(target=OPERATOR,role='operator')
+        for kwargs in ({'actor':OTHER},{'actor':OPERATOR},{'actor':CALLER},{'aal':'aal1'},{'session':False},
+                       {'role':'anon'},{'role':'service_role'},{'workspace':WORKSPACE_B},{'campaign':WORKSPACE},
+                       {'artifact':WORKSPACE},{'purpose':'mail_destination'},{'purpose':None}):
+            self.upload_admission(fail=True,**kwargs)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'0')
+        self.sql('UPDATE private.acquisition_activation SET enabled=false');self.upload_admission(fail=True)
+        self.activate()
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=clock_timestamp()")
+        self.upload_admission(fail=True)
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=NULL")
+        self.assertTrue(self.upload_admission()['admitted'])
+        for command in ('SELECT * FROM','DELETE FROM','TRUNCATE'):
+            self.sql(command+' private.acquisition_evidence_upload_slots',user=ADMIN,fail=True)
+        self.evidence_revoke();self.upload_admission(fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'1')
+
+    def test_evidence_upload_admission_rechecks_waiting_session(self):
+        import select
+        import time
+        self.mail_campaign();self.evidence_policy();self.evidence_register()
+        self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()+interval '2 seconds' WHERE user_id='{ADMIN}'")
+        process=subprocess.Popen([str(PG/'psql'),'-X','-qAt','-v','ON_ERROR_STOP=1','-h',self.socket,'-U','test_admin','-d','acquisition_test'],
+            stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,env=self.env)
+        try:
+            process.stdin.write(f"BEGIN; DO $$ BEGIN PERFORM pg_advisory_xact_lock(hashtextextended('evidence-upload-admission:{WORKSPACE}',0)); END $$;\n\\echo admission_locked\n")
+            process.stdin.flush()
+            self.assertTrue(select.select([process.stdout],[],[],5)[0])
+            self.assertEqual(process.stdout.readline().strip(),'admission_locked')
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(self.upload_admission,fail=True)
+                try:
+                    deadline=time.monotonic()+5;waiting='0'
+                    while time.monotonic()<deadline:
+                        waiting=self.sql("SELECT count(*) FROM pg_stat_activity WHERE wait_event='advisory' AND query LIKE '%public.admit_acquisition_evidence_upload%'")
+                        if waiting!='0':break
+                        time.sleep(.02)
+                    self.assertNotEqual(waiting,'0')
+                    self.sql('SELECT pg_sleep(2.1)')
+                finally:
+                    process.stdin.write('COMMIT;\n');process.stdin.flush()
+                self.assertIn('Current evidence upload authority required',future.result(timeout=5))
+            self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'0')
+        finally:
+            process.communicate('\\q\n',timeout=5)
+
+    def test_evidence_upload_admission_populated_upgrade(self):
+        self.mail_campaign();self.evidence_policy();self.evidence_register();self.evidence_revoke()
+        before=self.sql('SELECT jsonb_agg(to_jsonb(a)) FROM acquisition_evidence_artifacts a')
+        audits=self.sql('SELECT count(*) FROM audit_logs')
+        self.sql((ROOT/'frontend/supabase/migrations/20261029142852_acquisition_evidence_upload_admission.sql').read_text())
+        self.assertEqual(self.sql('SELECT jsonb_agg(to_jsonb(a)) FROM acquisition_evidence_artifacts a'),before)
+        self.assertEqual(self.sql('SELECT count(*) FROM audit_logs'),audits)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'0')
+        self.upload_admission(fail=True)
+        self.assertEqual(self.sql("SELECT prosecdef FROM pg_proc WHERE oid='public.admit_acquisition_evidence_upload(uuid,uuid,uuid,uuid,text)'::regprocedure"),'f')
 
     def evidence_candidates(self, actor=ADMIN, purpose='mail_content', after=None, limit=20, workspace=WORKSPACE, campaign='91000000-0000-4000-8000-000000000001', fail=False, **kwargs):
         args=[workspace,campaign,purpose,after,limit]

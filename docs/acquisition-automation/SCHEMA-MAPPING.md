@@ -242,3 +242,8 @@ Local migration `20261029024603_acquisition_evidence_storage.sql` adds one priva
 ### Evidence discovery extension
 
 Local migration `20261029035546_acquisition_evidence_discovery.sql` maps the guided evidence picker to the existing `acquisition_evidence_artifacts`, `acquisition_evidence_revocations`, private `acquisition_evidence_policies` and `ad_campaigns`. It adds no duplicate entities or data columns. The bounded private read function/public invoker wrapper reuse actual membership/session authority and current artifact state. See EVIDENCE-STORAGE.md for projections, policy selection, pagination and forward compensation. Live metadata recheck still shows ledger 95/latest 20261023221455 and no deployed evidence registry/policy tables.
+
+
+### Evidence upload capacity
+
+`20261029142852_acquisition_evidence_upload_admission.sql` adds private `acquisition_evidence_upload_slots`, an operational two-slot-per-workspace table referencing existing workspaces/profiles and composite registry identities. No equivalent local capacity table was found; existing evidence, contact and campaign entities are reused. Application roles receive only guarded function execution, no slot-table privileges. See EVIDENCE-STORAGE.md for limits, expiry/reuse, protection scope and forward compensation.

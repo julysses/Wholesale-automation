@@ -34,6 +34,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'admit_acquisition_evidence_upload':['p_attempt','p_workspace','p_campaign','p_artifact','p_purpose'],
  'acquisition_evidence_candidates':['p_workspace','p_campaign','p_purpose','p_after','p_limit'],
  'register_acquisition_evidence':['p_id','p_workspace','p_campaign','p_purpose','p_sha256','p_byte_size','p_media_type','p_policy','p_note'],
  'revoke_acquisition_evidence':['p_id','p_workspace','p_campaign','p_artifact','p_reason'],
@@ -189,7 +190,7 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content','p_artifact','p_policy'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_attempt','p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content','p_artifact','p_policy'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
                       else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of','p_verified_at','p_expires_at'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version','p_byte_size'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
@@ -378,6 +379,29 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.client.get(path,headers=self.headers).json()['items'][0]['status'],'revoked')
         self.assertEqual(self.client.get(path,headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
 
+    def test_evidence_admission_store_throttle_and_unavailable_state(self):
+        self.registered_evidence_fixture(with_object=False)
+        async def admit():
+            async with httpx.AsyncClient(base_url='https://workflow.example.test/rest/v1/',
+                    headers={'Authorization':'Bearer synthetic-admin-session','apikey':'synthetic-public-key'}) as client:
+                return await AcquisitionStore(client).admit_evidence_upload(
+                    UUID('99200000-0000-4000-8000-000000000002'),workspace_id=UUID(WORKSPACE),
+                    campaign_id=UUID('91000000-0000-4000-8000-000000000001'),purpose='mail_content')
+        import asyncio
+        from fastapi import HTTPException
+        self.lose_evidence_metadata_reply='admit_acquisition_evidence_upload'
+        with self.assertRaises(HTTPException) as lost: asyncio.run(admit())
+        self.assertEqual(lost.exception.status_code,503)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'1')
+        with self.assertRaises(HTTPException) as denied: asyncio.run(admit())
+        self.assertEqual(denied.exception.status_code,429)
+        self.assertIn('Retry-After',denied.exception.headers)
+        self.evidence_revoke()
+        with self.assertRaises(HTTPException) as revoked: asyncio.run(admit())
+        self.assertEqual(revoked.exception.status_code,403)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'1')
+        self.assertEqual(self.evidence_uploads,0)
+
     def evidence_http_fixture(self):
         self.mail_campaign();self.evidence_policy()
         self.evidence_endpoint=self.base+'/campaigns/91000000-0000-4000-8000-000000000001/evidence'
@@ -438,17 +462,32 @@ class WorkflowTests(WorkspaceTests):
         self.sql('SELECT pg_sleep(1.1)')
         self.assertEqual(self.client.get(self.evidence_endpoint+'/'+second['id'],headers=self.headers).json()['status'],'expired')
 
-    def upload_registered_fixture(self, after=None, token='synthetic-admin-session'):
+    def upload_registered_fixture(self, after=None, token='synthetic-admin-session', guarded=False):
         async def source():
+            self.evidence_source_reads=getattr(self,'evidence_source_reads',0)+1
             yield self.evidence_body[:8]
             yield self.evidence_body[8:]
             if after:after()
         async def upload():
             async with httpx.AsyncClient(base_url='https://workflow.example.test/rest/v1/',
                      headers={'Authorization':'Bearer '+token,'apikey':'synthetic-public-key'}) as client:
-                return await AcquisitionStore(client).upload_evidence(UUID('99200000-0000-4000-8000-000000000002'),source(),
+                store=AcquisitionStore(client)
+                upload_method=store.upload_evidence_with_admission if guarded else store.upload_evidence
+                return await upload_method(UUID('99200000-0000-4000-8000-000000000002'),source(),
                     workspace_id=UUID(WORKSPACE),campaign_id=UUID('91000000-0000-4000-8000-000000000001'),purpose='mail_content')
         return asyncio.run(upload())
+
+    def test_guarded_evidence_upload_consumes_input_only_after_capacity(self):
+        from fastapi import HTTPException
+        self.registered_evidence_fixture(with_object=False)
+        self.assertEqual(self.upload_registered_fixture(guarded=True)['status'],'stored_unverified')
+        self.assertEqual(self.evidence_source_reads,1)
+        with self.assertRaises(HTTPException) as busy:self.upload_registered_fixture(guarded=True)
+        self.assertEqual(busy.exception.status_code,429)
+        self.assertEqual(self.evidence_source_reads,1);self.assertEqual(self.evidence_uploads,1)
+        self.sql("UPDATE private.acquisition_evidence_upload_slots SET started_at=started_at-interval '121 seconds',expires_at=expires_at-interval '121 seconds'")
+        self.assertEqual(self.upload_registered_fixture(guarded=True)['status'],'stored_unverified')
+        self.assertEqual(self.sql("SELECT count(*) FROM storage.objects WHERE bucket_id='acquisition-evidence'"),'1')
 
     def test_evidence_upload_real_rls_lost_reply_and_exact_retry(self):
         self.registered_evidence_fixture(with_object=False)

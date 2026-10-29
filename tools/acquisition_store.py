@@ -10,6 +10,16 @@ class AcquisitionStore:
     def __init__(self, client):
         self.client = client
 
+    async def admit_evidence_upload(self, artifact_id, *, workspace_id, campaign_id, purpose):
+        from tools.acquisition_evidence_admission import admit_evidence_upload
+        return await admit_evidence_upload(self, artifact_id, workspace_id=workspace_id,
+                                          campaign_id=campaign_id, purpose=purpose)
+
+    async def upload_evidence_with_admission(self, artifact_id, source, *, workspace_id, campaign_id, purpose):
+        from tools.acquisition_evidence_admission import upload_with_admission
+        return await upload_with_admission(self, artifact_id, source, workspace_id=workspace_id,
+                                           campaign_id=campaign_id, purpose=purpose)
+
     async def verify_evidence(self, artifact_id, *, workspace_id, campaign_id, purpose):
         """Resolve protected registry state; callers supply identity only, never expectations."""
         from tools.acquisition_evidence import verify_registered_evidence

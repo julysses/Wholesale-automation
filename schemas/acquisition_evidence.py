@@ -212,3 +212,35 @@ class EvidenceCandidates(BaseModel):
         if self.next_after is not None and (not self.items or self.next_after != self.items[-1].id):
             raise ValueError('Last returned artifact cursor required')
         return self
+
+
+class EvidenceUploadAdmission(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    attempt_id: UUID
+    workspace_id: UUID
+    campaign_id: UUID
+    artifact_id: UUID
+    purpose: Literal['mail_content', 'mail_destination']
+    admitted: StrictBool
+    checked_at: AwareDatetime
+    expires_at: AwareDatetime | None
+    retry_after_seconds: int = Field(strict=True, ge=0, le=120)
+    execution_authorized: StrictBool
+
+    @field_validator('checked_at', 'expires_at', mode='before')
+    @classmethod
+    def timestamp_strings(cls, value):
+        if value is not None and not isinstance(value, str):
+            raise ValueError('Timestamp string required')
+        return value
+
+    @model_validator(mode='after')
+    def bounded_reservation(self):
+        if self.execution_authorized:
+            raise ValueError('Upload admission grants no execution')
+        if self.admitted:
+            if self.expires_at is None or (self.expires_at-self.checked_at).total_seconds()!=120 or self.retry_after_seconds!=0:
+                raise ValueError('Bounded upload reservation required')
+        elif self.expires_at is not None or self.retry_after_seconds<1:
+            raise ValueError('Bounded retry required')
+        return self
