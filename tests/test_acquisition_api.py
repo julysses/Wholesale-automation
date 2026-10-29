@@ -973,3 +973,63 @@ def test_destination_history_uses_fixed_scoped_projection_and_bounded_cursor(api
     for query in ('limit=51','after=not-a-uuid'):
         assert client.get(DEST_PATH.rsplit('/',1)[0]+'?'+query,headers={'Authorization':'Bearer user-token'}).status_code==422
     assert len(state['requests'])==1
+
+
+CONTENT_PATH=f'/api/acquisition/workspaces/{W}/campaigns/{U}/mail-content/prepare'
+CONTENT_REQUEST={'creative_id':U,'destination_review_id':U,'company_name':'Hilltop Home Company'}
+CONTENT_RESULT={'status':'content_prepared','execution_authorized':False,'content_approved':False,
+    'preparation_hash':'a'*64,'checked_at':'2026-10-28T12:00:00Z','destination_valid_until':'2099-01-01T00:00:00Z',
+    'snapshot':{'workspace_id':W,'campaign_id':U,'renderer_version':'acquisition-mail-render-v1','company_name':'Hilltop Home Company',
+        'template':{'creative_id':U,'template_id':U,'version':1,'format':'letter','tracking_mode':'phone','body':'Contact {{company_name}} at {{tracking_phone}}.'},
+        'destination':{'review_id':U,'destination_id':U,'version':1,'mode':'phone','value':'+12145550100',
+            'verification_ref':U,'verification_hash':'b'*64,'verified_epoch':1767225600,'expires_epoch':4070908800,
+            'reviewer_id':U,'reviewer_membership_epoch':1767225600}}}
+
+
+def test_content_preparation_loads_only_identified_server_records(api):
+    client,state=api;state['body']=CONTENT_RESULT
+    response=client.post(CONTENT_PATH,headers={'Authorization':'Bearer user-token'},json=CONTENT_REQUEST)
+    assert response.status_code==200 and response.json()==CONTENT_RESULT
+    request=state['requests'][-1]
+    assert request.url.path=='/rest/v1/rpc/prepare_acquisition_mail_content'
+    assert request.headers['authorization']=='Bearer user-token'
+    assert request.headers['apikey']=='public-test-key'
+    assert json.loads(request.content)=={'p_workspace':W,'p_campaign':U,'p_creative':U,'p_destination_review':U,'p_company_name':'Hilltop Home Company'}
+
+
+@pytest.mark.parametrize('change',[{'company_name':' '},{'company_name':'Bad\nIdentity'},{'company_name':'Bad\u202eIdentity'},
+    {'company_name':'{{tracking_phone}}'},{'creative_id':'bad'},{'destination_review_id':None},
+    {'content_approved':True},{'snapshot':{}},{'preparation_hash':'a'*64},{'workspace_id':W}])
+def test_content_preparation_rejects_client_authority_and_invalid_identity(api,change):
+    client,state=api
+    assert client.post(CONTENT_PATH,headers={'Authorization':'Bearer user-token'},json=CONTENT_REQUEST|change).status_code==422
+    assert not state['requests']
+
+
+@pytest.mark.parametrize('where,change',[
+    ('root',{'execution_authorized':0}),('root',{'execution_authorized':True}),('root',{'content_approved':True}),
+    ('root',{'extra':'private evidence'}),('root',{'preparation_hash':'bad'}),('root',{'checked_at':'2099-01-01T00:00:00Z'}),
+    ('root',{'destination_valid_until':'2098-01-01T00:00:00Z'}),('root',{'checked_at':'2026-10-28T12:00:00'}),
+    ('snapshot',{'workspace_id':U}),('snapshot',{'campaign_id':W}),('snapshot',{'renderer_version':'unknown'}),
+    ('snapshot',{'company_name':'Changed identity'}),('template',{'creative_id':W}),('template',{'version':True}),
+    ('template',{'body':'{{unknown}} {{tracking_phone}}'}),('destination',{'review_id':W}),
+    ('destination',{'value':'invalid number'}),('destination',{'verified_epoch':'NaN'}),
+    ('destination',{'expires_epoch':'Infinity'}),('destination',{'verification_hash':'bad'}),
+])
+def test_content_preparation_rejects_unconfirmed_server_projection(api,where,change):
+    import copy
+    client,state=api;result=copy.deepcopy(CONTENT_RESULT)
+    target=result if where=='root' else result['snapshot'] if where=='snapshot' else result['snapshot'][where]
+    target.update(change);state['body']=result
+    response=client.post(CONTENT_PATH,headers={'Authorization':'Bearer user-token'},json=CONTENT_REQUEST)
+    assert response.status_code==503 and 'private evidence' not in response.text
+    assert len(state['requests'])==1
+
+
+def test_content_preparation_timeout_and_disabled_route(api,monkeypatch):
+    client,state=api;state['timeout']=True
+    assert client.post(CONTENT_PATH,headers={'Authorization':'Bearer user-token'},json=CONTENT_REQUEST).status_code==503
+    assert len(state['requests'])==1
+    monkeypatch.setenv('ACQUISITION_ENABLED','false')
+    assert client.post(CONTENT_PATH,headers={'Authorization':'Bearer user-token'},json=CONTENT_REQUEST).status_code==404
+    assert len(state['requests'])==1

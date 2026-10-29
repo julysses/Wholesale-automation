@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from tools.acquisition_store import acquisition_store
+from schemas.acquisition_mail_preparation import ContentPreparationRequest, ContentPreparation
+from tools.acquisition_mail_render import safe_text
 
 router = APIRouter(prefix='/api/acquisition', tags=['Acquisition'])
 
@@ -613,6 +615,32 @@ async def workspace_campaigns(workspace_id: UUID, after: UUID | None = None,
         params['id'] = 'gt.'+str(after)
     rows = await store.request('GET', 'ad_campaigns', params=params)
     return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}
+
+
+@router.post('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-content/prepare')
+async def prepare_mail_content(workspace_id: UUID, campaign_id: UUID, body: ContentPreparationRequest,
+                               store=Depends(acquisition_store)):
+    try:
+        safe_text(body.company_name)
+        if any(c in body.company_name for c in '{}'):
+            raise ValueError('Company identity cannot contain placeholders')
+    except ValueError:
+        raise HTTPException(422, 'A plain-text proposed company identity is required')
+    result = await store.request('POST', 'rpc/prepare_acquisition_mail_content', body={
+        'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id),
+        'p_creative': str(body.creative_id), 'p_destination_review': str(body.destination_review_id),
+        'p_company_name': body.company_name})
+    try:
+        prepared = ContentPreparation.model_validate(result)
+        snapshot = prepared.snapshot
+        if (snapshot.workspace_id != workspace_id or snapshot.campaign_id != campaign_id
+                or snapshot.template.creative_id != body.creative_id
+                or snapshot.destination.review_id != body.destination_review_id
+                or snapshot.company_name != body.company_name):
+            raise ValueError('Preparation scope changed')
+    except (ValueError, TypeError):
+        raise HTTPException(503, 'Mail content preparation could not be confirmed')
+    return result
 
 
 class MailDestinationReview(BaseModel):

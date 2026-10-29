@@ -193,6 +193,8 @@ class WorkspaceTests(unittest.TestCase):
         self.sql((ROOT/'frontend/supabase/migrations/20261028020606_acquisition_mail_template_versions.sql').read_text())
         if self._testMethodName != 'test_mail_destination_populated_upgrade':
             self.sql((ROOT/'frontend/supabase/migrations/20261028181631_acquisition_mail_destination_reviews.sql').read_text())
+        if self._testMethodName != 'test_mail_destination_populated_upgrade':
+            self.sql((ROOT/'frontend/supabase/migrations/20261029012211_acquisition_mail_content_preparation.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -201,6 +203,71 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def mail_content_preparation(self, actor=ADMIN, fail=False, workspace=WORKSPACE,
+                                 creative='97000000-0000-4000-8000-000000000001',
+                                 review='99000000-0000-4000-8000-000000000001', company='Hilltop Home Company', **kwargs):
+        value=self.sql(f"SELECT public.prepare_acquisition_mail_content('{workspace}','91000000-0000-4000-8000-000000000001','{creative}','{review}',{literal(company)})",user=actor,fail=fail,**kwargs)
+        return value if fail else json.loads(value)
+
+    def test_mail_content_preparation_exact_sources_and_no_writes(self):
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        before=self.sql('SELECT count(*) FROM audit_logs')
+        first=self.mail_content_preparation();second=self.mail_content_preparation()
+        self.assertEqual(first['preparation_hash'],second['preparation_hash'])
+        self.assertEqual(len(first['preparation_hash']),64)
+        shifted=self.sql(f"SET TIME ZONE 'America/Chicago'; SELECT public.prepare_acquisition_mail_content('{WORKSPACE}','91000000-0000-4000-8000-000000000001','97000000-0000-4000-8000-000000000001','99000000-0000-4000-8000-000000000001','Hilltop Home Company')",user=ADMIN)
+        self.assertEqual(first['preparation_hash'],json.loads(shifted.splitlines()[-1])['preparation_hash'])
+        self.assertFalse(first['execution_authorized']);self.assertFalse(first['content_approved'])
+        self.assertEqual(first['snapshot']['template']['body'],'Contact {{company_name}} at {{tracking_phone}}.')
+        self.assertEqual(first['snapshot']['destination']['value'],'+12145550100')
+        self.assertEqual(self.sql('SELECT count(*) FROM audit_logs'),before)
+        self.assertNotEqual(first['preparation_hash'],self.mail_content_preparation(company='Other proposed identity')['preparation_hash'])
+        self.mail_destination(request='99000000-0000-4000-8000-000000000002',expected=1)
+        self.mail_content_preparation(fail=True)
+        newer=self.mail_content_preparation(review='99000000-0000-4000-8000-000000000002')
+        self.assertNotEqual(first['preparation_hash'],newer['preparation_hash'])
+        self.mail_template(request='97000000-0000-4000-8000-000000000002',expected=1,body='New text {{tracking_phone}}')
+        self.mail_content_preparation(review='99000000-0000-4000-8000-000000000002',fail=True)
+        newest=self.mail_content_preparation(creative='97000000-0000-4000-8000-000000000002',review='99000000-0000-4000-8000-000000000002')
+        self.assertNotEqual(newer['preparation_hash'],newest['preparation_hash'])
+
+    def test_mail_content_preparation_scope_roles_and_input(self):
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.member(target=OPERATOR,role='operator');self.member(target=CALLER,role='acquisition_caller')
+        self.assertEqual(self.mail_content_preparation(actor=OPERATOR)['status'],'content_prepared')
+        for actor in (OTHER,CALLER):self.mail_content_preparation(actor=actor,fail=True)
+        self.mail_content_preparation(workspace=WORKSPACE_B,fail=True)
+        self.mail_content_preparation(role='service_role',fail=True)
+        self.mail_content_preparation(session=False,fail=True)
+        for company in ('', ' '*5, 'a'*201, '{{company_name}}', 'Bad\nIdentity'):
+            self.mail_content_preparation(company=company,fail=True)
+        self.mail_content_preparation(creative='97000000-0000-4000-8000-000000000099',fail=True)
+        self.mail_content_preparation(review='99000000-0000-4000-8000-000000000099',fail=True)
+
+    def test_mail_content_preparation_invalidates_revoked_destination_and_gate(self):
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_destination(request='99000000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
+        self.mail_content_preparation(fail=True)
+        self.mail_content_preparation(review='99000000-0000-4000-8000-000000000002',fail=True)
+        self.mail_destination(request='99000000-0000-4000-8000-000000000003',expected=2)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.mail_content_preparation(review='99000000-0000-4000-8000-000000000003',fail=True)
+
+    def test_mail_content_preparation_expiry_reviewer_change_and_method_mismatch(self):
+        self.mail_campaign();self.mail_template();self.member(target=OPERATOR,role='admin')
+        self.mail_destination(actor=OPERATOR)
+        self.assertEqual(self.mail_content_preparation()['status'],'content_prepared')
+        self.member(target=OPERATOR,role='operator');self.mail_content_preparation(fail=True)
+        self.member(target=OPERATOR,role='admin');self.mail_content_preparation(fail=True)
+        self.mail_destination(request='99000000-0000-4000-8000-000000000002',expected=1,
+                              mode='landing_page',value='https://example.com/seller')
+        self.mail_content_preparation(review='99000000-0000-4000-8000-000000000002',fail=True)
+        expires=self.sql("SELECT (clock_timestamp()+interval '2 seconds')::text")
+        self.mail_destination(request='99000000-0000-4000-8000-000000000003',expected=2,expires=expires)
+        self.assertEqual(self.mail_content_preparation(review='99000000-0000-4000-8000-000000000003')['status'],'content_prepared')
+        self.sql('SELECT pg_sleep(2.1)')
+        self.mail_content_preparation(review='99000000-0000-4000-8000-000000000003',fail=True)
 
     def mail_destination(self, request='99000000-0000-4000-8000-000000000001', expected=0, action='approved',
                          mode='phone', value='+12145550100', actor=ADMIN, fail=False, workspace=WORKSPACE,
