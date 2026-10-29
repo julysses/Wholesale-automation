@@ -1,0 +1,911 @@
+{
+  "rls": [
+    {
+      "table": "profiles",
+      "forced": false,
+      "schema": "public",
+      "enabled": true
+    },
+    {
+      "table": "audit_logs",
+      "forced": false,
+      "schema": "public",
+      "enabled": true
+    },
+    {
+      "table": "ad_campaigns",
+      "forced": false,
+      "schema": "public",
+      "enabled": true
+    },
+    {
+      "table": "objects",
+      "forced": false,
+      "schema": "storage",
+      "enabled": true
+    },
+    {
+      "table": "buckets",
+      "forced": false,
+      "schema": "storage",
+      "enabled": true
+    }
+  ],
+  "columns": [
+    {
+      "type": "uuid",
+      "table": "objects",
+      "column": "id",
+      "schema": "storage",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "objects",
+      "column": "bucket_id",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "objects",
+      "column": "name",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "objects",
+      "column": "owner",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "objects",
+      "column": "created_at",
+      "schema": "storage",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "objects",
+      "column": "updated_at",
+      "schema": "storage",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "objects",
+      "column": "last_accessed_at",
+      "schema": "storage",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "objects",
+      "column": "metadata",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "_text",
+      "table": "objects",
+      "column": "path_tokens",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "objects",
+      "column": "version",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "objects",
+      "column": "owner_id",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "objects",
+      "column": "user_metadata",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "objects",
+      "column": "archived_at",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "objects",
+      "column": "is_delete_marker",
+      "schema": "storage",
+      "default": "false",
+      "nullable": "NO"
+    },
+    {
+      "type": "bool",
+      "table": "objects",
+      "column": "is_versioned",
+      "schema": "storage",
+      "default": "false",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "buckets",
+      "column": "id",
+      "schema": "storage",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "buckets",
+      "column": "name",
+      "schema": "storage",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "buckets",
+      "column": "owner",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "buckets",
+      "column": "created_at",
+      "schema": "storage",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "buckets",
+      "column": "updated_at",
+      "schema": "storage",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "buckets",
+      "column": "public",
+      "schema": "storage",
+      "default": "false",
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "buckets",
+      "column": "avif_autodetection",
+      "schema": "storage",
+      "default": "false",
+      "nullable": "YES"
+    },
+    {
+      "type": "int8",
+      "table": "buckets",
+      "column": "file_size_limit",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "_text",
+      "table": "buckets",
+      "column": "allowed_mime_types",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "buckets",
+      "column": "owner_id",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "buckettype",
+      "table": "buckets",
+      "column": "type",
+      "schema": "storage",
+      "default": "'STANDARD'::storage.buckettype",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "buckets",
+      "column": "versioning_status",
+      "schema": "storage",
+      "default": "'DISABLED'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "jsonb",
+      "table": "buckets",
+      "column": "lifecycle_configuration",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "buckets",
+      "column": "lifecycle_configuration_generation",
+      "schema": "storage",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "profiles",
+      "column": "id",
+      "schema": "public",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "profiles",
+      "column": "created_at",
+      "schema": "public",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "profiles",
+      "column": "updated_at",
+      "schema": "public",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "profiles",
+      "column": "email",
+      "schema": "public",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "profiles",
+      "column": "full_name",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "profiles",
+      "column": "role",
+      "schema": "public",
+      "default": "'user'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "profiles",
+      "column": "status",
+      "schema": "public",
+      "default": "'pending'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "profiles",
+      "column": "avatar_url",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "profiles",
+      "column": "approved_at",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "profiles",
+      "column": "approved_by",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "profiles",
+      "column": "denied_at",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "profiles",
+      "column": "denied_by",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "profiles",
+      "column": "denied_reason",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "profiles",
+      "column": "last_seen_at",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "audit_logs",
+      "column": "id",
+      "schema": "public",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "audit_logs",
+      "column": "entity_type",
+      "schema": "public",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "audit_logs",
+      "column": "entity_id",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "audit_logs",
+      "column": "action",
+      "schema": "public",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "audit_logs",
+      "column": "actor",
+      "schema": "public",
+      "default": "'system'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "audit_logs",
+      "column": "old_value",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "audit_logs",
+      "column": "new_value",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "audit_logs",
+      "column": "metadata",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "audit_logs",
+      "column": "occurred_at",
+      "schema": "public",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "ad_campaigns",
+      "column": "id",
+      "schema": "public",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "ad_campaigns",
+      "column": "created_at",
+      "schema": "public",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "ad_campaigns",
+      "column": "updated_at",
+      "schema": "public",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "ad_campaigns",
+      "column": "name",
+      "schema": "public",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "ad_campaigns",
+      "column": "platform",
+      "schema": "public",
+      "default": "'facebook'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "ad_campaigns",
+      "column": "status",
+      "schema": "public",
+      "default": "'active'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "ad_campaigns",
+      "column": "campaign_objective",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "ad_campaigns",
+      "column": "external_campaign_id",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "ad_campaigns",
+      "column": "daily_budget",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "ad_campaigns",
+      "column": "total_spend",
+      "schema": "public",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "ad_campaigns",
+      "column": "impressions",
+      "schema": "public",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "ad_campaigns",
+      "column": "clicks",
+      "schema": "public",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "ad_campaigns",
+      "column": "leads_count",
+      "schema": "public",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "ad_campaigns",
+      "column": "cpl",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "ad_campaigns",
+      "column": "avg_lead_quality_score",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "_text",
+      "table": "ad_campaigns",
+      "column": "target_zip_codes",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "ad_campaigns",
+      "column": "target_audience_notes",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "date",
+      "table": "ad_campaigns",
+      "column": "start_date",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "date",
+      "table": "ad_campaigns",
+      "column": "end_date",
+      "schema": "public",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "ad_campaigns",
+      "column": "settings",
+      "schema": "public",
+      "default": "'{}'::jsonb",
+      "nullable": "YES"
+    }
+  ],
+  "indexes": [
+    {
+      "table": "profiles",
+      "schema": "public",
+      "definition": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)"
+    },
+    {
+      "table": "profiles",
+      "schema": "public",
+      "definition": "CREATE INDEX idx_profiles_status ON public.profiles USING btree (status)"
+    },
+    {
+      "table": "profiles",
+      "schema": "public",
+      "definition": "CREATE INDEX idx_profiles_role ON public.profiles USING btree (role)"
+    },
+    {
+      "table": "audit_logs",
+      "schema": "public",
+      "definition": "CREATE UNIQUE INDEX audit_logs_pkey ON public.audit_logs USING btree (id)"
+    },
+    {
+      "table": "audit_logs",
+      "schema": "public",
+      "definition": "CREATE INDEX audit_logs_entity_idx ON public.audit_logs USING btree (entity_type, entity_id)"
+    },
+    {
+      "table": "audit_logs",
+      "schema": "public",
+      "definition": "CREATE INDEX audit_logs_action_idx ON public.audit_logs USING btree (action)"
+    },
+    {
+      "table": "audit_logs",
+      "schema": "public",
+      "definition": "CREATE INDEX audit_logs_occurred_at_idx ON public.audit_logs USING btree (occurred_at DESC)"
+    },
+    {
+      "table": "ad_campaigns",
+      "schema": "public",
+      "definition": "CREATE UNIQUE INDEX ad_campaigns_pkey ON public.ad_campaigns USING btree (id)"
+    },
+    {
+      "table": "objects",
+      "schema": "storage",
+      "definition": "CREATE UNIQUE INDEX objects_pkey ON storage.objects USING btree (id)"
+    },
+    {
+      "table": "objects",
+      "schema": "storage",
+      "definition": "CREATE INDEX name_prefix_search ON storage.objects USING btree (name text_pattern_ops)"
+    },
+    {
+      "table": "objects",
+      "schema": "storage",
+      "definition": "CREATE INDEX idx_objects_bucket_id_name ON storage.objects USING btree (bucket_id, name COLLATE \"C\")"
+    },
+    {
+      "table": "objects",
+      "schema": "storage",
+      "definition": "CREATE INDEX idx_objects_bucket_id_name_lower ON storage.objects USING btree (bucket_id, lower(name) COLLATE \"C\")"
+    },
+    {
+      "table": "objects",
+      "schema": "storage",
+      "definition": "CREATE UNIQUE INDEX objects_bucket_id_name_version_key ON storage.objects USING btree (bucket_id, name COLLATE \"C\", version) NULLS NOT DISTINCT"
+    },
+    {
+      "table": "objects",
+      "schema": "storage",
+      "definition": "CREATE UNIQUE INDEX idx_objects_current_version ON storage.objects USING btree (bucket_id, name COLLATE \"C\") WHERE (archived_at IS NULL)"
+    },
+    {
+      "table": "objects",
+      "schema": "storage",
+      "definition": "CREATE UNIQUE INDEX idx_objects_null_version ON storage.objects USING btree (bucket_id, name COLLATE \"C\") WHERE (NOT is_versioned)"
+    },
+    {
+      "table": "objects",
+      "schema": "storage",
+      "definition": "CREATE INDEX idx_objects_delete_markers ON storage.objects USING btree (bucket_id, name COLLATE \"C\") WHERE is_delete_marker"
+    },
+    {
+      "table": "buckets",
+      "schema": "storage",
+      "definition": "CREATE UNIQUE INDEX buckets_pkey ON storage.buckets USING btree (id)"
+    },
+    {
+      "table": "buckets",
+      "schema": "storage",
+      "definition": "CREATE UNIQUE INDEX bname ON storage.buckets USING btree (name)"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "name": "profiles_admin_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "profiles",
+      "using": "( SELECT private.is_approved_admin() AS is_approved_admin)",
+      "schema": "public"
+    },
+    {
+      "cmd": "UPDATE",
+      "name": "profiles_admin_write",
+      "check": "( SELECT private.is_approved_admin() AS is_approved_admin)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "profiles",
+      "using": "( SELECT private.is_approved_admin() AS is_approved_admin)",
+      "schema": "public"
+    },
+    {
+      "cmd": "SELECT",
+      "name": "profiles_read_own",
+      "check": null,
+      "roles": [
+        "public"
+      ],
+      "table": "profiles",
+      "using": "(id = auth.uid())",
+      "schema": "public"
+    },
+    {
+      "cmd": "SELECT",
+      "name": "approved_read_audit_logs",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "audit_logs",
+      "using": "is_approved()",
+      "schema": "public"
+    },
+    {
+      "cmd": "INSERT",
+      "name": "service_write_audit_logs",
+      "check": "true",
+      "roles": [
+        "service_role"
+      ],
+      "table": "audit_logs",
+      "using": null,
+      "schema": "public"
+    },
+    {
+      "cmd": "ALL",
+      "name": "auth_all_ad_campaigns",
+      "check": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "ad_campaigns",
+      "using": "true",
+      "schema": "public"
+    },
+    {
+      "cmd": "ALL",
+      "name": "require_approved_operator",
+      "check": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "ad_campaigns",
+      "using": "( SELECT is_approved() AS is_approved)",
+      "schema": "public"
+    }
+  ],
+  "constraints": [
+    {
+      "name": "profiles_approved_by_fkey",
+      "table": "profiles",
+      "schema": "public",
+      "definition": "FOREIGN KEY (approved_by) REFERENCES auth.users(id)"
+    },
+    {
+      "name": "profiles_denied_by_fkey",
+      "table": "profiles",
+      "schema": "public",
+      "definition": "FOREIGN KEY (denied_by) REFERENCES auth.users(id)"
+    },
+    {
+      "name": "profiles_id_fkey",
+      "table": "profiles",
+      "schema": "public",
+      "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "profiles_pkey",
+      "table": "profiles",
+      "schema": "public",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "profiles_role_check",
+      "table": "profiles",
+      "schema": "public",
+      "definition": "CHECK ((role = ANY (ARRAY['admin'::text, 'user'::text])))"
+    },
+    {
+      "name": "profiles_status_check",
+      "table": "profiles",
+      "schema": "public",
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'denied'::text, 'suspended'::text])))"
+    },
+    {
+      "name": "audit_logs_pkey",
+      "table": "audit_logs",
+      "schema": "public",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "ad_campaigns_pkey",
+      "table": "ad_campaigns",
+      "schema": "public",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "objects_bucketId_fkey",
+      "table": "objects",
+      "schema": "storage",
+      "definition": "FOREIGN KEY (bucket_id) REFERENCES storage.buckets(id)"
+    },
+    {
+      "name": "objects_pkey",
+      "table": "objects",
+      "schema": "storage",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "buckets_lifecycle_configuration_pair_check",
+      "table": "buckets",
+      "schema": "storage",
+      "definition": "CHECK (((lifecycle_configuration IS NULL) = (lifecycle_configuration_generation IS NULL)))"
+    },
+    {
+      "name": "buckets_lifecycle_configuration_shape_check",
+      "table": "buckets",
+      "schema": "storage",
+      "definition": "CHECK (((lifecycle_configuration IS NULL) OR ((jsonb_typeof(lifecycle_configuration) = 'object'::text) AND (lifecycle_configuration ? 'rules'::text) AND\nCASE\n    WHEN (jsonb_typeof((lifecycle_configuration -> 'rules'::text)) = 'array'::text) THEN ((jsonb_array_length((lifecycle_configuration -> 'rules'::text)) >= 1) AND (jsonb_array_length((lifecycle_configuration -> 'rules'::text)) <= 1000))\n    ELSE false\nEND)))"
+    },
+    {
+      "name": "buckets_lifecycle_configuration_standard_only_check",
+      "table": "buckets",
+      "schema": "storage",
+      "definition": "CHECK (((type = 'STANDARD'::storage.buckettype) OR ((lifecycle_configuration IS NULL) AND (lifecycle_configuration_generation IS NULL))))"
+    },
+    {
+      "name": "buckets_pkey",
+      "table": "buckets",
+      "schema": "storage",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "buckets_versioning_dark_check",
+      "table": "buckets",
+      "schema": "storage",
+      "definition": "CHECK ((versioning_status = 'DISABLED'::text))"
+    },
+    {
+      "name": "buckets_versioning_standard_only_check",
+      "table": "buckets",
+      "schema": "storage",
+      "definition": "CHECK (((type = 'STANDARD'::storage.buckettype) OR (versioning_status = 'DISABLED'::text)))"
+    },
+    {
+      "name": "buckets_versioning_status_check",
+      "table": "buckets",
+      "schema": "storage",
+      "definition": "CHECK ((versioning_status = ANY (ARRAY['DISABLED'::text, 'ENABLED'::text, 'SUSPENDED'::text])))"
+    }
+  ],
+  "migration_count": 95,
+  "candidate_tables": [
+    {
+      "table": "profiles",
+      "schema": "public"
+    },
+    {
+      "table": "audit_logs",
+      "schema": "public"
+    },
+    {
+      "table": "ad_campaigns",
+      "schema": "public"
+    },
+    {
+      "table": "objects",
+      "schema": "storage"
+    },
+    {
+      "table": "buckets",
+      "schema": "storage"
+    }
+  ],
+  "latest_migration": "20261023221455"
+}

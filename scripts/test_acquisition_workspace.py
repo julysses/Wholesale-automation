@@ -199,6 +199,8 @@ class WorkspaceTests(unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261029013306_acquisition_mail_content_reviews.sql').read_text())
         if self._testMethodName not in ('test_mail_destination_populated_upgrade','test_mail_content_populated_upgrade'):
             self.sql((ROOT/'frontend/supabase/migrations/20261029014552_acquisition_mail_proof_context.sql').read_text())
+        if self._testMethodName != 'test_evidence_registry_populated_upgrade':
+            self.sql((ROOT/'frontend/supabase/migrations/20261029022851_acquisition_evidence_registry.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -207,6 +209,151 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def evidence_policy(self, purpose='mail_content'):
+        # Reviewed retention configuration is synthetic and seeded only by the disposable DB owner.
+        self.sql(f"INSERT INTO private.acquisition_evidence_policies(id,workspace_id,purpose,version,retention_seconds,valid_from,valid_until,approval_ref,reviewed_by,reviewed_at) VALUES('99200000-0000-4000-8000-000000000001','{WORKSPACE}',{literal(purpose)},1,86400,'2026-01-01','2099-01-01','99200000-0000-4000-8000-000000000088','{ADMIN}','2026-01-01')")
+
+    def evidence_register(self, actor=ADMIN, request='99200000-0000-4000-8000-000000000002', campaign='91000000-0000-4000-8000-000000000001',
+                          workspace=WORKSPACE, purpose='mail_content', digest='a'*64, size=123, media='application/pdf',
+                          policy='99200000-0000-4000-8000-000000000001', note='Synthetic original review evidence provenance.', fail=False, **kwargs):
+        args=[request,workspace,campaign,purpose,digest,size,media,policy,note]
+        values=','.join('NULL' if v is None else str(v) if isinstance(v,int) else literal(v) for v in args)
+        result=self.sql(f'SELECT public.register_acquisition_evidence({values})',user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def evidence_revoke(self, actor=ADMIN, request='99200000-0000-4000-8000-000000000003',
+                        artifact='99200000-0000-4000-8000-000000000002', reason='Synthetic evidence no longer valid for review.', fail=False, **kwargs):
+        result=self.sql(f"SELECT public.revoke_acquisition_evidence('{request}','{WORKSPACE}','91000000-0000-4000-8000-000000000001','{artifact}',{literal(reason)})",user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def evidence_state(self, actor=ADMIN, fail=False, **kwargs):
+        result=self.sql(f"SELECT public.acquisition_evidence_state('{WORKSPACE}','91000000-0000-4000-8000-000000000001','99200000-0000-4000-8000-000000000002')",user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_evidence_registration_requires_reviewed_policy_and_preserves_exact_retry(self):
+        self.mail_campaign(); self.evidence_register(fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_artifacts'),'0')
+        self.evidence_policy()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.evidence_register(),range(3)))
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        self.assertEqual(len({r['retain_until'] for r in results}),1)
+        self.assertTrue(all(r['bytes_verified'] is False and r['execution_authorized'] is False for r in results))
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'1')
+        self.evidence_register(digest='b'*64,fail=True)
+        self.evidence_register(size=124,fail=True)
+        self.evidence_register(note='Different request with the same identity.',fail=True)
+        state=self.evidence_state();self.assertEqual(state['status'],'pending_verification');self.assertFalse(state['content_approved'])
+        self.assertNotIn('object_url',state)
+        self.assertEqual(self.sql('SELECT extract(epoch FROM retain_until-created_at)::integer FROM acquisition_evidence_artifacts'),'86400')
+
+    def test_evidence_registry_authority_scope_and_immutable_metadata(self):
+        self.mail_campaign();self.evidence_policy();self.evidence_register()
+        self.member(target=OPERATOR,role='operator');self.member(target=CALLER,role='acquisition_caller')
+        self.assertEqual(self.evidence_state(actor=OPERATOR)['status'],'pending_verification')
+        self.evidence_register(actor=OPERATOR,request='99200000-0000-4000-8000-000000000004')
+        for actor in (OTHER,CALLER):
+            self.evidence_register(actor=actor,fail=True);self.evidence_state(actor=actor,fail=True)
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_artifacts',user=actor),'0')
+        self.evidence_register(aal='aal1',fail=True);self.evidence_register(session=False,fail=True)
+        self.evidence_register(role='service_role',fail=True);self.evidence_state(role='service_role',fail=True)
+        self.evidence_register(workspace=WORKSPACE_B,fail=True)
+        self.evidence_register(campaign='91000000-0000-4000-8000-000000000099',fail=True)
+        for table in ('acquisition_evidence_artifacts','acquisition_evidence_revocations'):
+            for command in (f'DELETE FROM {table}',f'TRUNCATE {table}',f'UPDATE {table} SET workspace_id=workspace_id'):
+                self.sql(command,user=ADMIN,fail=True);self.sql(command,user=ADMIN,role='service_role',fail=True)
+        self.sql('SELECT * FROM private.acquisition_evidence_policies',user=ADMIN,fail=True)
+        self.sql("UPDATE acquisition_evidence_artifacts SET expected_sha256=repeat('c',64)",fail=True)
+        self.assertEqual(self.sql("SELECT bool_and(NOT prosecdef) FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname IN ('register_acquisition_evidence','revoke_acquisition_evidence','acquisition_evidence_state')"),'t')
+        self.assertEqual(self.sql("SELECT has_function_privilege('anon','public.acquisition_evidence_state(uuid,uuid,uuid)','EXECUTE')"),'f')
+
+    def test_evidence_policy_scope_bounds_revocation_and_closed_activation(self):
+        self.mail_campaign();self.evidence_policy(purpose='mail_destination')
+        self.evidence_register(fail=True)
+        self.sql("UPDATE private.acquisition_evidence_policies SET purpose='mail_content',valid_until=clock_timestamp()-interval '1 second'")
+        self.evidence_register(fail=True)
+        self.sql("UPDATE private.acquisition_evidence_policies SET valid_until='2099-01-01',revoked_at=clock_timestamp()")
+        self.evidence_register(fail=True)
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=NULL")
+        for params in ({'size':0},{'size':10485761},{'digest':'A'*64},{'media':'text/html'},{'note':'short'},{'purpose':None}):
+            self.evidence_register(fail=True,**params)
+        self.evidence_register()
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.evidence_register(request='99200000-0000-4000-8000-000000000004',fail=True)
+        self.evidence_revoke()
+        self.assertEqual(self.evidence_state()['status'],'revoked')
+
+    def test_evidence_revocation_concurrency_replay_and_retained_history(self):
+        self.mail_campaign();self.evidence_policy();original=self.evidence_register()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.evidence_revoke(),range(3)))
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        self.assertEqual(self.evidence_state()['status'],'revoked')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'2')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_artifacts'),'1')
+        replay=self.evidence_register();self.assertTrue(replay['duplicate']);self.assertEqual(replay['retain_until'],original['retain_until'])
+        self.evidence_revoke(reason='A changed reason cannot reuse the same request.',fail=True)
+        self.evidence_revoke(request='99200000-0000-4000-8000-000000000005',fail=True)
+        self.member(target=OPERATOR,role='operator');self.evidence_revoke(actor=OPERATOR,fail=True)
+        self.evidence_revoke(actor=OTHER,fail=True);self.evidence_revoke(aal='aal1',fail=True)
+        self.evidence_revoke(session=False,fail=True);self.evidence_revoke(role='service_role',fail=True)
+
+    def test_evidence_state_expiry_policy_change_and_session_revocation(self):
+        self.mail_campaign();self.evidence_policy();self.evidence_register()
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=clock_timestamp()")
+        self.assertEqual(self.evidence_state()['status'],'policy_review_required')
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=NULL")
+        self.sql("ALTER TABLE acquisition_evidence_artifacts DISABLE TRIGGER acquisition_evidence_immutable; UPDATE acquisition_evidence_artifacts SET created_at=clock_timestamp()-interval '2 days',retain_until=clock_timestamp()-interval '1 day'; ALTER TABLE acquisition_evidence_artifacts ENABLE TRIGGER acquisition_evidence_immutable")
+        self.assertEqual(self.evidence_state()['status'],'expired')
+        self.sql(f"DELETE FROM auth.sessions WHERE id='{ADMIN}'")
+        self.evidence_state(fail=True);self.evidence_register(fail=True)
+
+    def test_evidence_waiting_requests_recheck_session_deadline(self):
+        import select
+        import time
+        self.mail_campaign();self.evidence_policy();self.evidence_register()
+        for action in ('register','revoke'):
+            artifact=('99200000-0000-4000-8000-000000000004' if action=='register' else '99200000-0000-4000-8000-000000000002')
+            self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()+interval '2 seconds' WHERE id='{ADMIN}'")
+            process=subprocess.Popen([str(PG/'psql'),'-X','-qAt','-v','ON_ERROR_STOP=1','-h',self.socket,'-U','test_admin','-d','acquisition_test'],
+                stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,env=self.env)
+            try:
+                process.stdin.write(f"BEGIN; DO $$ BEGIN PERFORM pg_advisory_xact_lock(hashtextextended('evidence-artifact:{artifact}',0)); END $$;\n\\echo evidence_locked\n")
+                process.stdin.flush()
+                self.assertTrue(select.select([process.stdout],[],[],5)[0],'Evidence lock was not obtained')
+                self.assertEqual(process.stdout.readline().strip(),'evidence_locked')
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    future=(pool.submit(self.evidence_register,request=artifact,fail=True) if action=='register' else pool.submit(self.evidence_revoke,fail=True))
+                    try:
+                        deadline=time.monotonic()+5;waiting='0'
+                        while time.monotonic()<deadline:
+                            waiting=self.sql(f"SELECT count(*) FROM pg_stat_activity WHERE wait_event='advisory' AND query LIKE '%public.{action}_acquisition_evidence%'")
+                            if waiting!='0':break
+                            time.sleep(0.02)
+                        self.assertNotEqual(waiting,'0','Evidence request did not wait on its lock')
+                        self.sql(f"SELECT pg_sleep(greatest(0,extract(epoch FROM not_after-clock_timestamp()))+0.05) FROM auth.sessions WHERE id='{ADMIN}'")
+                        process.stdin.write('COMMIT;\n\\q\n');process.stdin.flush();process.wait(timeout=5)
+                        self.assertEqual(process.returncode,0,process.stderr.read())
+                    finally:
+                        if process.poll() is None:process.kill();process.wait(timeout=5)
+                    self.assertIn('Evidence session expired',future.result(timeout=5))
+            finally:
+                if process.poll() is None:process.kill();process.wait(timeout=5)
+                for pipe in (process.stdin,process.stdout,process.stderr):pipe.close()
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_artifacts'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_revocations'),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'1')
+
+    def test_evidence_registry_populated_upgrade(self):
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_review()
+        before=self.sql("SELECT jsonb_build_object('campaigns',(SELECT jsonb_agg(to_jsonb(c)) FROM ad_campaigns c),'reviews',(SELECT jsonb_agg(to_jsonb(r)) FROM acquisition_mail_content_reviews r),'audit',(SELECT count(*) FROM audit_logs))")
+        self.sql((ROOT/'frontend/supabase/migrations/20261029022851_acquisition_evidence_registry.sql').read_text())
+        after=self.sql("SELECT jsonb_build_object('campaigns',(SELECT jsonb_agg(to_jsonb(c)) FROM ad_campaigns c),'reviews',(SELECT jsonb_agg(to_jsonb(r)) FROM acquisition_mail_content_reviews r),'audit',(SELECT count(*) FROM audit_logs))")
+        self.assertEqual(before,after)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_policies'),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_artifacts'),'0')
+        self.evidence_policy();self.evidence_register()
 
     def mail_proof_context(self, actor=ADMIN, lead=LEAD, fail=False, **kwargs):
         result=self.sql(f"SELECT public.acquisition_mail_proof_context('{WORKSPACE}','91000000-0000-4000-8000-000000000001','99100000-0000-4000-8000-000000000099','{lead}')",user=actor,fail=fail,**kwargs)

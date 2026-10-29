@@ -214,3 +214,20 @@ Reinspected deployed metadata before `20261029013306_acquisition_mail_content_re
 ### Proof context inspection — October 28, 2026
 
 Before `20261029014552_acquisition_mail_proof_context.sql`, reinspected deployed migration history (95/latest 20261023221455), wholesale_ingest.properties columns, primary/unique/foreign/check constraints, indexes and worker-only RLS. Workspace enrollment and content ledger are prior unapplied local migrations. New private definer/public invoker read functions join enrolled canonical property identity with current content review, return a fixed non-owner projection and grant only authenticated execution after actual membership/session authorization. No table/index/policy change, data copy, production DDL or provider action. DIRECT-MAIL.md documents compensation and live acceptance gaps.
+
+
+## Evidence registry inventory and mapping — 2026-10-29 UTC
+
+Metadata-only inspection saved in `evidence/2026-10-29-evidence-catalog.json`: deployed history remains 95 migrations/latest 20261023221455. Inspected relevant columns, constraints, indexes, RLS and policies. No public document/evidence/artifact table was found. Existing storage.objects/storage.buckets are managed storage metadata and are not a review/provenance registry; they are not recreated or mutated here. Prior inspection found no buckets or storage policies.
+
+| Logical entity | Mapping | Isolation and compatibility |
+| --- | --- | --- |
+| Retention policy configuration | New private.acquisition_evidence_policies | Deployment-controlled reviewed configuration; workspace/purpose/version, approval reference, explicit retention seconds and validity/revocation. RLS with no application grants. No default rows or invented business duration. |
+| Evidence identity and expectations | New public.acquisition_evidence_artifacts | Immutable metadata; composite workspace/campaign and workspace/policy foreign keys. Expected hash/size/type are unverified. Existing actual-membership/session helpers restrict exposed reads; only guarded RPC writes. |
+| Evidence revocation | New public.acquisition_evidence_revocations | Append-only, one terminal revocation per artifact; composite workspace/campaign/artifact association. Owner/admin MFA and current-session checks; preserves registration and audit history. |
+| Evidence audit | Existing public.audit_logs | Minimal registration/revocation events, reusing the acquisition workspace and immutability extension. |
+| File storage | Existing storage schema, future private bucket/policies | No bucket or object policy is added by this migration. Upload, quarantine, immutable object rules and verification linkage remain required. |
+
+Local CLI-generated migration: `20261029022851_acquisition_evidence_registry.sql`. Existing public campaign/workspace/auth/audit masters are reused. Public entry points are invokers over private definers with empty search_path and restricted EXECUTE. Raw insert/update/delete/truncate is denied to application roles. New tables do not backfill, rewrite or approve existing mail review evidence. Registration is deliberately unavailable until reviewed retention configuration exists.
+
+Compensation: revoke registration EXECUTE on both public/private entry points to stop new registrations while preserving metadata, state reads and revocation. Do not drop ledgers or erase audit events. Retire an approved policy through a reviewed configuration change setting revoked_at; historical rows remain. Application-facing policy administration/auditing remains future work, and no policy configuration changes are authorized by this migration alone.
