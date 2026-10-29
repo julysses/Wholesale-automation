@@ -1,6 +1,7 @@
 """Byte-level evidence checks using synthetic streams, never real stored documents."""
 import asyncio
 import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -9,7 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from schemas.acquisition_evidence import EvidenceArtifact, MAX_EVIDENCE_BYTES
-from tools.acquisition_evidence import EvidenceUnavailable, verify_evidence_bytes
+from tools.acquisition_evidence import EvidenceUnavailable, verify_evidence_bytes, verify_registered_evidence
 from tools.acquisition_store import AcquisitionStore
 
 WORKSPACE = UUID('10000000-0000-4000-8000-000000000001')
@@ -46,7 +47,7 @@ class Stream(httpx.AsyncByteStream):
 
 
 def run(artifact=None, *, stream=None, headers=None, status=200, origin='https://storage.example.test/rest/v1/', auth=None,
-        workspace=WORKSPACE, campaign=CAMPAIGN, purpose='mail_content', clock=lambda: NOW, via_store=False):
+        workspace=WORKSPACE, campaign=CAMPAIGN, purpose='mail_content', clock=lambda: NOW):
     artifact = artifact or descriptor()
     stream = stream or Stream()
     requests = []
@@ -56,8 +57,6 @@ def run(artifact=None, *, stream=None, headers=None, status=200, origin='https:/
     async def execute():
         async with httpx.AsyncClient(base_url=origin, headers=AUTH if auth is None else auth,
                                     transport=httpx.MockTransport(handler), follow_redirects=True) as client:
-            if via_store:
-                return await AcquisitionStore(client).verify_evidence(artifact, workspace_id=workspace, campaign_id=campaign, purpose=purpose)
             return await verify_evidence_bytes(client, artifact, workspace_id=workspace, campaign_id=campaign, purpose=purpose, clock=clock)
     return execute, requests, stream
 
@@ -173,9 +172,157 @@ def test_total_timeout_stops_a_trickle_stream(monkeypatch):
     assert stream.closed
 
 
-def test_existing_store_reuses_authenticated_client():
-    # The store uses the production default clock, so use a current descriptor.
+def registry_payload(artifact=None, checked=NOW, **changes):
+    artifact = artifact or descriptor()
+    data = artifact.model_dump(mode='json')
+    data['artifact_id'] = data.pop('id')
+    data['expected_sha256'] = data.pop('sha256')
+    data['expected_byte_size'] = data.pop('byte_size')
+    return {**data, 'retention_policy_id': str(CAMPAIGN), 'status': 'pending_verification',
+            'bytes_verified': False, 'content_approved': False, 'execution_authorized': False,
+            'checked_at': checked.isoformat(), **changes}
+
+
+def registered_run(*, states=None, clock=lambda: NOW, origin='https://storage.example.test/rest/v1/',
+                   registry_status=200, registry_headers=None, raw=None, via_store=False,
+                   artifact_id=ARTIFACT, body=BODY):
+    states = [registry_payload(), registry_payload()] if states is None else states
+    requests, streams = [], []
+    index = 0
+    def handler(request):
+        nonlocal index
+        requests.append(request)
+        if request.method == 'POST':
+            assert request.url.path == '/rest/v1/rpc/acquisition_evidence_state'
+            assert json.loads(request.content) == {'p_workspace': str(WORKSPACE), 'p_campaign': str(CAMPAIGN), 'p_artifact': str(artifact_id)}
+            stream = Stream(chunks=[raw if raw is not None else json.dumps(states[index]).encode()])
+            index += 1
+            streams.append(stream)
+            return httpx.Response(registry_status, stream=stream, headers={'content-type': 'application/json', **(registry_headers or {})})
+        stream = Stream(chunks=[body]); streams.append(stream)
+        return httpx.Response(200, stream=stream, headers={'content-type': 'text/plain'})
+    async def execute():
+        async with httpx.AsyncClient(base_url=origin, headers=AUTH, transport=httpx.MockTransport(handler), follow_redirects=True) as client:
+            if via_store:
+                return await AcquisitionStore(client).verify_evidence(artifact_id, workspace_id=WORKSPACE, campaign_id=CAMPAIGN, purpose='mail_content')
+            return await verify_registered_evidence(client, artifact_id, workspace_id=WORKSPACE, campaign_id=CAMPAIGN, purpose='mail_content', clock=clock)
+    return execute, requests, streams
+
+
+def test_registered_verifier_resolves_then_rechecks_exact_identity_without_persistence():
+    execute, requests, streams = registered_run()
+    receipt = asyncio.run(execute())
+    assert [r.method for r in requests] == ['POST', 'GET', 'POST']
+    assert all(s.closed for s in streams)
+    assert all(r.headers['authorization'] == AUTH['Authorization'] and r.headers['apikey'] == AUTH['apikey'] for r in requests)
+    assert all(r.headers['cache-control'] == 'no-store' and r.headers['accept-encoding'] == 'identity' for r in requests)
+    assert receipt['status'] == 'bytes_verified' and receipt['verification_persisted'] is False
+    assert receipt['scan_status'] == 'not_scanned' and receipt['content_approved'] is False and receipt['execution_authorized'] is False
+    assert receipt['retention_policy_id'] == str(CAMPAIGN) and receipt['registry_checked_at'] == NOW.isoformat()
+    assert not {'url','signed_url','body','token','object_name'} & receipt.keys()
+
+
+@pytest.mark.parametrize('changes', [
+    {'workspace_id': str(ARTIFACT)}, {'campaign_id': str(ARTIFACT)}, {'artifact_id': str(CAMPAIGN)},
+    {'purpose': 'mail_destination'}, {'status': 'revoked'}, {'status': 'expired'}, {'status': 'policy_review_required'},
+    {'revoked_at': NOW.isoformat()}, {'retain_until': NOW.isoformat()}, {'created_at': (NOW+timedelta(seconds=1)).isoformat()},
+    {'bytes_verified': True}, {'content_approved': True}, {'execution_authorized': True}, {'bytes_verified': 0},
+    {'expected_byte_size': True}, {'expected_byte_size': MAX_EVIDENCE_BYTES+1}, {'expected_sha256': 'invalid'},
+    {'media_type': 'text/html'}, {'checked_at': (NOW-timedelta(seconds=31)).isoformat()},
+    {'checked_at': (NOW+timedelta(seconds=6)).isoformat()}, {'checked_at': NOW.replace(tzinfo=None).isoformat()},
+    {'retention_policy_id': None}, {'object_url': 'https://attacker.example/private'},
+])
+def test_invalid_registry_state_stops_before_download(changes):
+    execute, requests, streams = registered_run(states=[registry_payload(**changes)])
+    with pytest.raises(EvidenceUnavailable): asyncio.run(execute())
+    assert len(requests) == 1 and streams[0].closed
+
+
+@pytest.mark.parametrize('changes', [
+    {'status': 'revoked'}, {'status': 'policy_review_required'}, {'status': 'expired'},
+    {'expected_sha256': 'b'*64}, {'expected_byte_size': len(BODY)+1}, {'retention_policy_id': str(ARTIFACT)},
+    {'retain_until': (NOW+timedelta(days=2)).isoformat()}, {'created_at': (NOW-timedelta(days=2)).isoformat()},
+    {'checked_at': (NOW-timedelta(seconds=1)).isoformat()},
+])
+def test_changed_or_revoked_registry_after_bytes_produces_no_receipt(changes):
+    execute, requests, streams = registered_run(states=[registry_payload(), registry_payload(**changes)])
+    with pytest.raises(EvidenceUnavailable): asyncio.run(execute())
+    assert [r.method for r in requests] == ['POST','GET','POST'] and all(s.closed for s in streams)
+
+
+@pytest.mark.parametrize('status', [206,301,302,307,401,403,404,429,500])
+def test_registry_failures_and_redirects_never_read_body_or_follow_location(status):
+    execute, requests, streams = registered_run(registry_status=status, registry_headers={'location':'https://attacker.example/private'})
+    with pytest.raises(EvidenceUnavailable) as error: asyncio.run(execute())
+    assert len(requests) == 1 and streams[0].closed and streams[0].reads == 0
+    assert str(error.value) == 'Evidence registry is unavailable'
+
+
+@pytest.mark.parametrize('raw', [b'[]', b'null', b'{}', b'invalid', b'x'*8193,
+    b'{"status":"expired","status":"pending_verification"}', b'['*2000+b']'*2000])
+def test_registry_payload_is_bounded_unambiguous_and_strict(raw):
+    execute, requests, streams = registered_run(raw=raw)
+    with pytest.raises(EvidenceUnavailable): asyncio.run(execute())
+    assert len(requests) == 1 and streams[0].closed
+
+
+@pytest.mark.parametrize('headers', [{'content-length':'8193'}, {'content-length':'1'}, {'content-length':'-1'},
+    {'content-length':'0'}, {'content-encoding':'gzip'}, {'content-type':'text/html'}])
+def test_registry_rejects_unbounded_or_incompatible_response_metadata(headers):
+    execute, requests, streams = registered_run(registry_headers=headers)
+    with pytest.raises(EvidenceUnavailable): asyncio.run(execute())
+    assert len(requests) == 1 and streams[0].closed
+
+
+@pytest.mark.parametrize('identity', [str(ARTIFACT), descriptor(), None, {'artifact_id': str(ARTIFACT)}])
+def test_store_seam_cannot_accept_untrusted_expectations(identity):
+    execute, requests, _ = registered_run(artifact_id=identity, via_store=True)
+    with pytest.raises(EvidenceUnavailable): asyncio.run(execute())
+    assert requests == []
+
+
+def test_registry_origin_is_checked_before_sending_user_credentials():
+    execute, requests, _ = registered_run(origin='https://user:secret@storage.example.test/rest/v1/')
+    with pytest.raises(EvidenceUnavailable): asyncio.run(execute())
+    assert requests == []
+
+
+def test_byte_mismatch_never_reaches_final_registry_state():
+    execute, requests, streams = registered_run(body=b'wrong bytes')
+    with pytest.raises(EvidenceUnavailable): asyncio.run(execute())
+    assert [r.method for r in requests] == ['POST','GET'] and all(s.closed for s in streams)
+
+
+def test_existing_store_resolves_registry_using_same_user_client():
     current = datetime.now(timezone.utc)
-    execute, requests, stream = run(descriptor(created_at=current - timedelta(days=1), retain_until=current + timedelta(days=1)), via_store=True)
+    state = registry_payload(descriptor(created_at=current-timedelta(days=1), retain_until=current+timedelta(days=1)), checked=current)
+    execute, requests, streams = registered_run(states=[state,state], via_store=True)
     assert asyncio.run(execute())['status'] == 'bytes_verified'
-    assert len(requests) == 1 and stream.closed
+    assert len(requests) == 3 and all(s.closed for s in streams)
+
+
+@pytest.mark.parametrize('completed', [NOW-timedelta(seconds=1), NOW+timedelta(days=1)])
+def test_registry_verification_rechecks_completion_clock_and_retention(completed):
+    times=iter([NOW,NOW,NOW,NOW,NOW,completed])
+    execute, requests, streams=registered_run(clock=lambda:next(times))
+    with pytest.raises(EvidenceUnavailable):asyncio.run(execute())
+    assert len(requests)==3 and all(s.closed for s in streams)
+
+
+def test_registry_orchestration_has_a_total_deadline(monkeypatch):
+    original=asyncio.timeout
+    monkeypatch.setattr('tools.acquisition_evidence.asyncio.timeout',lambda seconds:original(0.01 if seconds==25 else seconds))
+    async def stalled(*args,**kwargs):
+        await asyncio.sleep(1)
+    monkeypatch.setattr('tools.acquisition_evidence.verify_evidence_bytes',stalled)
+    execute, requests, streams=registered_run()
+    with pytest.raises(EvidenceUnavailable,match='timed out'):asyncio.run(execute())
+    assert len(requests)==1 and streams[0].closed
+
+
+def test_final_registry_check_cannot_predate_bytes_beyond_clock_skew():
+    later=NOW+timedelta(seconds=6)
+    times=iter([NOW,NOW,NOW,later,later,later])
+    execute, requests, streams=registered_run(clock=lambda:next(times))
+    with pytest.raises(EvidenceUnavailable):asyncio.run(execute())
+    assert len(requests)==3 and all(s.closed for s in streams)

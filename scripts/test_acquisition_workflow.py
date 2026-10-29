@@ -5,6 +5,7 @@ The inherited runner creates an inert socket-only PostgreSQL cluster. This does
 not claim real JWT signature, PostgREST, auth middleware or full-schema acceptance.
 """
 import hashlib
+import asyncio
 import hmac
 import copy
 import json
@@ -14,6 +15,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from uuid import UUID
 from unittest.mock import patch
 
 from test_acquisition_workspace import WorkspaceTests, main, ROOT, PG, ADMIN, OTHER, WORKSPACE, LEAD, PROPERTY, literal
@@ -24,11 +26,14 @@ from fastapi.testclient import TestClient
 from web.api.acquisition_api import router
 from web.api.acquisition_webhooks import router as facebook_router
 from web.api.acquisition_inbound_webhooks import router as inbound_router
+from tools.acquisition_store import AcquisitionStore
+from tools.acquisition_evidence import EvidenceUnavailable
 
 ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_evidence_state':['p_workspace','p_campaign','p_artifact'],
  'acquisition_mail_proof_context':['p_workspace','p_campaign','p_content','p_lead'],
  'review_acquisition_mail_content':['p_id','p_workspace','p_campaign','p_content','p_expected_version','p_action','p_creative','p_destination_review','p_company_name','p_preparation_hash','p_evidence_ref','p_evidence_hash','p_expires_at','p_note'],
  'acquisition_mail_content_state':['p_workspace','p_campaign','p_content'],
@@ -87,6 +92,19 @@ def inputs():
     return {'cases':{name:copy.deepcopy(case) for name in ['base','downside','upside']}}
 
 
+class EvidenceStream(httpx.AsyncByteStream):
+    def __init__(self, body, after=None):
+        self.body, self.after, self.closed = body, after, False
+
+    async def __aiter__(self):
+        yield self.body
+        if self.after:
+            self.after()
+
+    async def aclose(self):
+        self.closed = True
+
+
 class WorkflowTests(WorkspaceTests):
     def setUp(self):
         super().setUp()
@@ -138,6 +156,16 @@ class WorkflowTests(WorkspaceTests):
             'Bearer synthetic-facebook-worker-key':(ADMIN,'service_role'),
         }[request.headers['authorization']]
         self.assertEqual(request.headers['apikey'],request.headers['authorization'].removeprefix('Bearer ') if role=='service_role' else 'synthetic-public-key')
+        if request.url.path.startswith('/storage/v1/object/authenticated/acquisition-evidence/'):
+            self.assertEqual(request.method,'GET')
+            name=request.url.path.removeprefix('/storage/v1/object/authenticated/acquisition-evidence/')
+            visible=self.sql("SET storage.operation='object.get_authenticated'; SELECT count(*) FROM storage.objects "
+                             f"WHERE bucket_id='acquisition-evidence' AND name={literal(name)}",user=identity,role=role)
+            if visible!='1':
+                return httpx.Response(403,json={'error':'Synthetic inaccessible object'})
+            stream=EvidenceStream(self.evidence_body,getattr(self,'after_evidence_read',None))
+            self.evidence_streams.append(stream)
+            return httpx.Response(200,headers={'content-type':'text/plain'},stream=stream)
         if request.url.path.startswith('/rest/v1/rpc/'):
             name=request.url.path.rsplit('/',1)[-1]
             self.assertIn(name,RPC_ARGS)
@@ -146,7 +174,7 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content','p_artifact'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
                       else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of','p_verified_at','p_expires_at'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
@@ -290,7 +318,53 @@ class WorkflowTests(WorkspaceTests):
         if request.url.path.endswith('/'+str(self.lose_facebook_reply)):
             self.lose_facebook_reply=None
             raise httpx.ReadTimeout('Synthetic lost Facebook reply after real commit',request=request)
+        if request.url.path.endswith('/acquisition_evidence_state'):
+            return httpx.Response(200,headers={'content-type':'application/json'},stream=EvidenceStream(result.stdout.strip().encode()))
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
+
+    def registered_evidence_fixture(self):
+        self.mail_campaign();self.evidence_policy()
+        self.evidence_body=b'Synthetic registry-backed evidence bytes'
+        self.evidence_streams=[]
+        digest=hashlib.sha256(self.evidence_body).hexdigest()
+        self.evidence_register(digest=digest,size=len(self.evidence_body),media='text/plain')
+        name=f'{WORKSPACE}/99200000-0000-4000-8000-000000000002/{digest}'
+        # Synthetic metadata only: provider object bytes are simulated in handle().
+        self.sql(f"SET storage.operation='object.upload'; INSERT INTO storage.objects(bucket_id,name) VALUES('acquisition-evidence',{literal(name)})",user=ADMIN)
+
+    def verify_registered_fixture(self, token='synthetic-admin-session'):
+        async def verify():
+            async with httpx.AsyncClient(base_url='https://workflow.example.test/rest/v1/',
+                     headers={'Authorization':'Bearer '+token,'apikey':'synthetic-public-key'}) as client:
+                return await AcquisitionStore(client).verify_evidence(UUID('99200000-0000-4000-8000-000000000002'),
+                    workspace_id=UUID(WORKSPACE),campaign_id=UUID('91000000-0000-4000-8000-000000000001'),purpose='mail_content')
+        return asyncio.run(verify())
+
+    def test_registered_evidence_uses_real_current_state_and_storage_rls(self):
+        self.registered_evidence_fixture()
+        receipt=self.verify_registered_fixture()
+        self.assertEqual(receipt['status'],'bytes_verified');self.assertFalse(receipt['verification_persisted'])
+        self.assertFalse(receipt['content_approved']);self.assertFalse(receipt['execution_authorized'])
+        self.assertEqual(self.evidence_state()['status'],'pending_verification')
+        with self.assertRaises(EvidenceUnavailable):self.verify_registered_fixture('synthetic-other-session')
+        self.assertEqual(len(self.evidence_streams),1)
+        self.assertTrue(self.evidence_streams[0].closed)
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'1')
+
+    def test_registered_evidence_revocation_during_stream_prevents_receipt(self):
+        self.registered_evidence_fixture()
+        self.after_evidence_read=lambda:self.evidence_revoke()
+        with self.assertRaises(EvidenceUnavailable):self.verify_registered_fixture()
+        self.assertTrue(self.evidence_streams[0].closed)
+        self.assertEqual(self.evidence_state()['status'],'revoked')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'2')
+
+    def test_registered_evidence_session_revoked_during_stream_prevents_receipt(self):
+        self.registered_evidence_fixture()
+        self.after_evidence_read=lambda:self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 second' WHERE user_id='{ADMIN}'")
+        with self.assertRaises(EvidenceUnavailable):self.verify_registered_fixture()
+        self.assertTrue(self.evidence_streams[0].closed)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_revocations'),'0')
 
     def configure_inbound(self):
         integration=self.inbound_fixture()

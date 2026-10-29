@@ -10,11 +10,11 @@ class AcquisitionStore:
     def __init__(self, client):
         self.client = client
 
-    async def verify_evidence(self, artifact, *, workspace_id, campaign_id, purpose):
-        """Internal registry integration seam; never accept descriptors from an HTTP body."""
-        from tools.acquisition_evidence import verify_evidence_bytes
-        return await verify_evidence_bytes(self.client, artifact, workspace_id=workspace_id,
-                                           campaign_id=campaign_id, purpose=purpose)
+    async def verify_evidence(self, artifact_id, *, workspace_id, campaign_id, purpose):
+        """Resolve protected registry state; callers supply identity only, never expectations."""
+        from tools.acquisition_evidence import verify_registered_evidence
+        return await verify_registered_evidence(self.client, artifact_id, workspace_id=workspace_id,
+                                                campaign_id=campaign_id, purpose=purpose)
 
     async def request(self, method, path, *, params=None, body=None):
         try:

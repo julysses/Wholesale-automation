@@ -1,13 +1,13 @@
 """Internal immutable evidence descriptor, never a public download request.
 
-The future evidence registry must supply these fields through actual workspace
+The protected evidence registry supplies these fields through actual workspace
 membership checks. A descriptor alone is not proof of access, provenance or approval.
 """
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictBool, model_validator
 
 MAX_EVIDENCE_BYTES = 10 * 1024 * 1024
 EVIDENCE_BUCKET = 'acquisition-evidence'
@@ -41,3 +41,25 @@ class EvidenceArtifact(BaseModel):
 
     def available_at(self, now: datetime) -> bool:
         return now.utcoffset() is not None and self.revoked_at is None and self.created_at <= now < self.retain_until
+
+
+class EvidenceRegistryState(EvidenceArtifact):
+    """Exact current-state RPC projection; never accept this model from an HTTP caller."""
+    id: UUID = Field(validation_alias='artifact_id')
+    sha256: str = Field(validation_alias='expected_sha256', pattern=r'^[0-9a-f]{64}$')
+    byte_size: int = Field(validation_alias='expected_byte_size', strict=True, ge=1, le=MAX_EVIDENCE_BYTES)
+    retention_policy_id: UUID
+    status: Literal['pending_verification']
+    bytes_verified: StrictBool
+    content_approved: StrictBool
+    execution_authorized: StrictBool
+    checked_at: AwareDatetime
+
+    @model_validator(mode='after')
+    def unverified_state(self):
+        if self.revoked_at is not None or self.bytes_verified or self.content_approved or self.execution_authorized:
+            raise ValueError('Unverified current registry state required')
+        return self
+
+    def descriptor(self) -> EvidenceArtifact:
+        return EvidenceArtifact.model_validate({key: getattr(self, key) for key in EvidenceArtifact.model_fields})
