@@ -5,12 +5,14 @@ import re
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Response
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from tools.acquisition_store import acquisition_store
 from schemas.acquisition_mail_preparation import ContentPreparationRequest, ContentPreparation, ContentReviewRequest, ContentReviewState
 from tools.acquisition_mail_render import safe_text
+from schemas.acquisition_mail_proof import MailProofRequest
+from tools.acquisition_mail_proof import build_reviewed_mail_proof, ProofUnavailable
 
 router = APIRouter(prefix='/api/acquisition', tags=['Acquisition'])
 
@@ -617,6 +619,18 @@ async def workspace_campaigns(workspace_id: UUID, after: UUID | None = None,
     return {'items': rows[:limit], 'next_after': rows[limit-1]['id'] if len(rows)>limit else None}
 
 
+@router.get('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-content')
+async def mail_content_history(workspace_id: UUID, campaign_id: UUID, after: UUID | None = None,
+                                limit: int = Query(default=20, ge=1, le=50), store=Depends(acquisition_store)):
+    params = {'select': 'id,workspace_id,campaign_id,content_id,version,action,creative_id,destination_review_id,company_name,created_at',
+              'workspace_id': 'eq.' + str(workspace_id), 'campaign_id': 'eq.' + str(campaign_id),
+              'order': 'id', 'limit': str(limit + 1)}
+    if after is not None:
+        params['id'] = 'gt.' + str(after)
+    rows = await store.request('GET', 'acquisition_mail_content_reviews', params=params)
+    return {'items': rows[:limit], 'next_after': rows[limit - 1]['id'] if len(rows) > limit else None}
+
+
 @router.post('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-content/prepare')
 async def prepare_mail_content(workspace_id: UUID, campaign_id: UUID, body: ContentPreparationRequest,
                                store=Depends(acquisition_store)):
@@ -641,6 +655,21 @@ async def prepare_mail_content(workspace_id: UUID, campaign_id: UUID, body: Cont
     except (ValueError, TypeError):
         raise HTTPException(503, 'Mail content preparation could not be confirmed')
     return result
+
+
+@router.post('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-content/{content_id}/proof')
+async def mail_content_proof(workspace_id: UUID, campaign_id: UUID, content_id: UUID,
+                              body: MailProofRequest, response: Response, store=Depends(acquisition_store)):
+    context = await store.request('POST', 'rpc/acquisition_mail_proof_context', body={
+        'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id), 'p_content': str(content_id), 'p_lead': str(body.lead_id)})
+    response.headers['Cache-Control'] = 'no-store'
+    try:
+        return build_reviewed_mail_proof(context, workspace_id=workspace_id, campaign_id=campaign_id,
+            content_id=content_id, lead_id=body.lead_id, now=datetime.now(timezone.utc))
+    except ProofUnavailable:
+        raise HTTPException(409, 'Refresh the content approval and property records before previewing')
+    except (ValueError, TypeError, OverflowError):
+        raise HTTPException(503, 'Reviewed mail proof could not be confirmed')
 
 
 @router.post('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-content/{content_id}/reviews')

@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 from unittest.mock import patch
 
-from test_acquisition_workspace import WorkspaceTests, main, ROOT, PG, ADMIN, OTHER, WORKSPACE, LEAD, literal
+from test_acquisition_workspace import WorkspaceTests, main, ROOT, PG, ADMIN, OTHER, WORKSPACE, LEAD, PROPERTY, literal
 sys.path.insert(0, str(ROOT))
 import httpx
 from fastapi import FastAPI
@@ -29,6 +29,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_mail_proof_context':['p_workspace','p_campaign','p_content','p_lead'],
  'review_acquisition_mail_content':['p_id','p_workspace','p_campaign','p_content','p_expected_version','p_action','p_creative','p_destination_review','p_company_name','p_preparation_hash','p_evidence_ref','p_evidence_hash','p_expires_at','p_note'],
  'acquisition_mail_content_state':['p_workspace','p_campaign','p_content'],
  'prepare_acquisition_mail_content':['p_workspace','p_campaign','p_creative','p_destination_review','p_company_name'],
@@ -183,6 +184,18 @@ class WorkflowTests(WorkspaceTests):
                 op,value=request.url.params['sequence'].split('.',1); self.assertEqual(op,'lt'); filters.append(f'sequence<{int(value)}')
             limit=int(request.url.params['limit']); self.assertTrue(1<=limit<=50)
             query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {fields} FROM public.acquisition_campaign_links WHERE {' AND '.join(filters)} ORDER BY sequence DESC LIMIT {limit}) row;"
+        elif request.url.path=='/rest/v1/acquisition_mail_content_reviews':
+            self.assertEqual(request.method,'GET')
+            fields='id,workspace_id,campaign_id,content_id,version,action,creative_id,destination_review_id,company_name,created_at'
+            self.assertEqual(request.url.params['select'],fields);self.assertEqual(request.url.params['order'],'id')
+            self.assertTrue(set(request.url.params)<={'select','workspace_id','campaign_id','order','limit','id'})
+            filters=[]
+            for key in ('workspace_id','campaign_id'):
+                op,value=request.url.params[key].split('.',1);self.assertEqual(op,'eq');filters.append(f'{key}={literal(value)}::uuid')
+            if 'id' in request.url.params:
+                op,value=request.url.params['id'].split('.',1);self.assertEqual(op,'gt');filters.append(f'id>{literal(value)}::uuid')
+            limit=int(request.url.params['limit']);self.assertTrue(1<=limit<=51)
+            query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {fields} FROM public.acquisition_mail_content_reviews WHERE {' AND '.join(filters)} ORDER BY id LIMIT {limit}) row;"
         elif request.url.path=='/rest/v1/acquisition_mail_destination_reviews':
             self.assertEqual(request.method,'GET')
             fields='id,workspace_id,campaign_id,destination_id,version,action,mode,value,created_at'
@@ -771,6 +784,36 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(stale['status'],'requires_review'); self.assertIsNone(stale['total_cost_minor'])
         self.assertFalse(stale['days'][0]['attribution_current']); self.assertIsNone(stale['cost_per_lead_minor'])
         self.assertFalse(any('graph.facebook' in route for route,_ in self.requests))
+
+    def test_mail_proof_http_current_review_canonical_property_and_history(self):
+        self.mail_campaign();self.mail_template(body='Call {{company_name}} at {{tracking_phone}} about {{property_address}}.')
+        self.mail_destination();self.content_review()
+        self.sql(f"UPDATE wholesale_ingest.properties SET address_std='123 <Canonical> St',unit='2',city='Dallas' WHERE id='{PROPERTY}'")
+        path=self.base+'/campaigns/91000000-0000-4000-8000-000000000001/mail-content/99100000-0000-4000-8000-000000000099'
+        before=self.sql('SELECT count(*) FROM audit_logs')
+        response=self.client.post(path+'/proof',headers=self.headers,json={'lead_id':LEAD})
+        self.assertEqual(response.status_code,200,response.text)
+        proof=response.json();self.assertFalse(proof['execution_authorized']);self.assertFalse(proof['vendor_proof'])
+        self.assertIn('123 <Canonical> St',proof['text']);self.assertIn('Unit 2',proof['text']);self.assertIn('&lt;Canonical&gt;',proof['html_fragment'])
+        self.assertEqual(response.headers['cache-control'],'no-store')
+        replay=self.client.post(path+'/proof',headers=self.headers,json={'lead_id':LEAD})
+        self.assertEqual(replay.json()['proof_digest'],proof['proof_digest'])
+        self.assertEqual(self.sql('SELECT count(*) FROM audit_logs'),before)
+        other={'Authorization':'Bearer synthetic-other-session'}
+        self.assertEqual(self.client.post(path+'/proof',headers=other,json={'lead_id':LEAD}).status_code,403)
+        self.sql(f"UPDATE wholesale_ingest.properties SET unit='3' WHERE id='{PROPERTY}'")
+        changed=self.client.post(path+'/proof',headers=self.headers,json={'lead_id':LEAD}).json()
+        self.assertNotEqual(changed['proof_digest'],proof['proof_digest'])
+        self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
+        self.assertEqual(self.client.post(path+'/proof',headers=self.headers,json={'lead_id':LEAD}).status_code,409)
+        history_path=path.rsplit('/',1)[0]
+        history=self.client.get(history_path+'?limit=1',headers=self.headers)
+        self.assertEqual(history.status_code,200,history.text)
+        self.assertEqual(history.json()['items'][0]['action'],'approved')
+        self.assertEqual(history.json()['next_after'],'99100000-0000-4000-8000-000000000001')
+        second=self.client.get(history_path+'?after='+history.json()['next_after'],headers=self.headers).json()
+        self.assertEqual(second['items'][0]['action'],'withdrawn')
+        self.assertEqual(self.client.get(history_path,headers=other).json()['items'],[])
 
     def test_mail_content_review_http_commit_loss_and_current_state(self):
         self.mail_campaign();self.mail_template();self.mail_destination()

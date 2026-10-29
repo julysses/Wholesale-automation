@@ -197,6 +197,8 @@ class WorkspaceTests(unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261029012211_acquisition_mail_content_preparation.sql').read_text())
         if self._testMethodName not in ('test_mail_destination_populated_upgrade','test_mail_content_populated_upgrade'):
             self.sql((ROOT/'frontend/supabase/migrations/20261029013306_acquisition_mail_content_reviews.sql').read_text())
+        if self._testMethodName not in ('test_mail_destination_populated_upgrade','test_mail_content_populated_upgrade'):
+            self.sql((ROOT/'frontend/supabase/migrations/20261029014552_acquisition_mail_proof_context.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -205,6 +207,36 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def mail_proof_context(self, actor=ADMIN, lead=LEAD, fail=False, **kwargs):
+        result=self.sql(f"SELECT public.acquisition_mail_proof_context('{WORKSPACE}','91000000-0000-4000-8000-000000000001','99100000-0000-4000-8000-000000000099','{lead}')",user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_mail_proof_uses_enrolled_canonical_address_without_owner_data(self):
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_review();self.bind()
+        self.sql(f"UPDATE wholesale_ingest.properties SET address_std='123 Canonical St',unit='2',city='Dallas',zip=NULL WHERE id='{PROPERTY}'")
+        before=self.sql('SELECT count(*) FROM audit_logs')
+        result=self.mail_proof_context()
+        self.assertEqual(result['property'],{'property_id':PROPERTY,'lead_id':LEAD,'address_std':'123 Canonical St','unit':'2','city':'Dallas','state':'TX','zip':None})
+        self.assertEqual(result['checked_at'],result['review_state']['checked_at'])
+        self.assertFalse(result['execution_authorized'])
+        self.assertNotIn('owner_phone',json.dumps(result))
+        self.assertEqual(self.sql('SELECT count(*) FROM audit_logs'),before)
+        self.member(target=OPERATOR,role='operator');self.assertTrue(self.mail_proof_context(actor=OPERATOR)['review_state']['review_current'])
+        self.sql(f"UPDATE wholesale_ingest.properties SET unit='3' WHERE id='{PROPERTY}'")
+        self.assertEqual(self.mail_proof_context()['property']['unit'],'3')
+
+    def test_mail_proof_scope_unlinked_property_and_stale_review_are_blocked(self):
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_review()
+        self.mail_proof_context(fail=True)
+        self.bind();self.mail_proof_context(fail=True)  # missing canonical address; legacy lead address is not a fallback
+        self.sql(f"UPDATE wholesale_ingest.properties SET address_std='123 Canonical St',city='Dallas' WHERE id='{PROPERTY}'")
+        self.member(target=CALLER,role='acquisition_caller')
+        for actor in (OTHER,CALLER):self.mail_proof_context(actor=actor,fail=True)
+        self.mail_proof_context(lead=LEAD_B,fail=True);self.mail_proof_context(session=False,fail=True)
+        self.mail_proof_context(role='service_role',fail=True)
+        self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
+        self.mail_proof_context(fail=True)
 
     def content_review(self, request='99100000-0000-4000-8000-000000000001', expected=0, action='approved',
                        actor=ADMIN, fail=False, workspace=WORKSPACE, content='99100000-0000-4000-8000-000000000099',

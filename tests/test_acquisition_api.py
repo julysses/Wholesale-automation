@@ -1121,3 +1121,76 @@ def test_content_review_timeout_keeps_one_attempt_and_disabled_gate(api,monkeypa
     monkeypatch.setenv('ACQUISITION_ENABLED','false')
     assert client.post(CONTENT_REVIEW_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=CONTENT_REVIEW).status_code==404
     assert len(state['requests'])==1
+
+
+def api_proof_context():
+    import copy
+    from datetime import datetime, timezone
+    checked=datetime.now(timezone.utc).isoformat()
+    review=copy.deepcopy(CONTENT_REVIEW_STATE)
+    review['checked_at']=checked;review['preparation']['checked_at']=checked
+    return {'workspace_id':W,'campaign_id':U,'content_id':U,'lead_id':U,'review_state':review,
+        'checked_at':checked,'execution_authorized':False,
+        'property':{'property_id':U,'lead_id':U,'address_std':'123 Fixture St','unit':'2','city':'Dallas','state':'TX','zip':None}}
+
+
+def test_proof_api_uses_one_scoped_read_and_never_client_source_material(api):
+    client,state=api;state['body']=api_proof_context()
+    result=client.post(CONTENT_REVIEW_PATH+'/proof',headers={'Authorization':'Bearer user-token'},json={'lead_id':U})
+    assert result.status_code==200,result.text
+    assert result.headers['cache-control']=='no-store'
+    assert result.json()['proof_kind']=='internal_content_preview' and result.json()['execution_authorized'] is False
+    assert len(state['requests'])==1
+    request=state['requests'][0]
+    assert request.url.path=='/rest/v1/rpc/acquisition_mail_proof_context'
+    assert request.headers['authorization']=='Bearer user-token' and request.headers['apikey']=='public-test-key'
+    assert json.loads(request.content)=={'p_workspace':W,'p_campaign':U,'p_content':U,'p_lead':U}
+
+
+@pytest.mark.parametrize('extra',[{'property_address':'injected'},{'property_id':U},{'snapshot':{}},
+    {'review_current':True},{'tracking_id':U},{'company_name':'Other company'},{'now':'2026-01-01'}])
+def test_proof_api_rejects_client_evidence_and_identity_overrides(api,extra):
+    client,state=api
+    assert client.post(CONTENT_REVIEW_PATH+'/proof',headers={'Authorization':'Bearer user-token'},json={'lead_id':U}|extra).status_code==422
+    assert not state['requests']
+
+
+@pytest.mark.parametrize('scope',['workspace_id','campaign_id','content_id','lead_id'])
+def test_proof_api_rejects_mismatched_database_context(api,scope):
+    client,state=api;state['body']=api_proof_context();state['body'][scope]=U if scope=='workspace_id' else W
+    result=client.post(CONTENT_REVIEW_PATH+'/proof',headers={'Authorization':'Bearer user-token'},json={'lead_id':U})
+    assert result.status_code==503 and len(state['requests'])==1
+
+
+def test_proof_api_requires_recent_current_approval(api):
+    from datetime import datetime, timedelta, timezone
+    client,state=api;raw=api_proof_context()
+    checked=(datetime.now(timezone.utc)-timedelta(seconds=31)).isoformat()
+    raw['checked_at']=checked;raw['review_state']['checked_at']=checked;raw['review_state']['preparation']['checked_at']=checked
+    state['body']=raw
+    assert client.post(CONTENT_REVIEW_PATH+'/proof',headers={'Authorization':'Bearer user-token'},json={'lead_id':U}).status_code==409
+    raw=api_proof_context();raw['review_state'].update(review_current=False,status='requires_review',preparation=None);state['body']=raw
+    assert client.post(CONTENT_REVIEW_PATH+'/proof',headers={'Authorization':'Bearer user-token'},json={'lead_id':U}).status_code==409
+
+
+def test_proof_timeout_and_disabled_gate_never_retry_or_render(api,monkeypatch):
+    client,state=api;state['timeout']=True
+    assert client.post(CONTENT_REVIEW_PATH+'/proof',headers={'Authorization':'Bearer user-token'},json={'lead_id':U}).status_code==503
+    assert len(state['requests'])==1
+    monkeypatch.setenv('ACQUISITION_ENABLED','false')
+    assert client.post(CONTENT_REVIEW_PATH+'/proof',headers={'Authorization':'Bearer user-token'},json={'lead_id':U}).status_code==404
+    assert len(state['requests'])==1
+
+
+def test_content_history_projection_pagination_and_scope(api):
+    client,state=api;state['body']=[{'id':U},{'id':W}]
+    path=CONTENT_REVIEW_PATH.rsplit('/',1)[0]
+    result=client.get(path+'?limit=1&after='+U,headers={'Authorization':'Bearer user-token'})
+    assert result.json()=={'items':[{'id':U}],'next_after':U}
+    request=state['requests'][-1]
+    assert request.url.path=='/rest/v1/acquisition_mail_content_reviews'
+    assert dict(request.url.params)=={'select':'id,workspace_id,campaign_id,content_id,version,action,creative_id,destination_review_id,company_name,created_at',
+        'workspace_id':'eq.'+W,'campaign_id':'eq.'+U,'order':'id','limit':'2','id':'gt.'+U}
+    for query in ('limit=51','after=bad-id'):
+        assert client.get(path+'?'+query,headers={'Authorization':'Bearer user-token'}).status_code==422
+    assert len(state['requests'])==1
