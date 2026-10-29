@@ -1,3 +1,13 @@
+## Implementation checkpoint — bounded evidence-byte verification
+
+- Previous goal turn was progress: ec98b2a committed/pushed the complete guided mail-content UI. Pulled unchanged before this increment. Its exact CI run 40805414145 completed successfully across all five jobs before this increment was pushed.
+- Consulted current Supabase storage docs and performed metadata-only, read-only catalog inspection. No public document/evidence table matched the narrow inventory; storage buckets and policies were empty. No real documents, credentials or seller records were retrieved. No SQL or production changes were made.
+- Added a strict immutable internal artifact descriptor and a bounded authenticated streaming verifier through the existing AcquisitionStore user client. Enforces workspace/campaign/purpose, derived content-addressed object paths, retention/revocation, byte size/media type and exact SHA-256; rejects redirects, compression, partial/error responses and unsafe origins before body processing. Total/read deadlines and stream closure bound failures. Result is byte verification only with false approval/execution flags and no payload or URL.
+- This is the transport foundation, not completed protected evidence storage: no registry, bucket, upload API or approval linkage exists yet. Documented the required private registry/RLS, immutable upload/quarantine, transaction rechecks, retention/hold/purge controls and guided evidence selection in EVIDENCE-STORAGE.md. Existing reference/digest fields remain attestations until linked to those controls.
+- Validation: 315 evidence/API tests passed in 6.57 seconds with external networking disabled. Initial run had one test-fixture Unicode header construction error before transport invocation; changed it to raw UTF-8 header bytes and reran successfully. No actual storage download or provider request occurred.
+
+Next: expanded schema/migration inventory, additive protected artifact registry and private object policies, then bounded upload/quarantine and transactional evidence verification/approval linkage. Continue postal preferences, durable batches/jobs and atomic budget/cadence reservations, vendor sandbox/reconciliation, online offers, human/agency calling and contract/disposition requirements. Full goal remains active. Production, paused SMS, outreach, spending and fulfillment remain unchanged.
+
 ## Implementation checkpoint — guided mail content decisions and preview
 
 - Previous goal turn was progress: e2f5080 committed/pushed the pending-navigation protection. Pulled unchanged. Its exact CI 40804181963 completed successfully across all five jobs before this increment was pushed.
