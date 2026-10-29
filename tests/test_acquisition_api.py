@@ -1033,3 +1033,91 @@ def test_content_preparation_timeout_and_disabled_route(api,monkeypatch):
     monkeypatch.setenv('ACQUISITION_ENABLED','false')
     assert client.post(CONTENT_PATH,headers={'Authorization':'Bearer user-token'},json=CONTENT_REQUEST).status_code==404
     assert len(state['requests'])==1
+
+
+CONTENT_REVIEW_PATH=f'/api/acquisition/workspaces/{W}/campaigns/{U}/mail-content/{U}'
+CONTENT_REVIEW={'id':U,'expected_version':0,'action':'approved','creative_id':U,'destination_review_id':U,
+    'company_name':'Hilltop Home Company','preparation_hash':'a'*64,'evidence_ref':U,'evidence_hash':'c'*64,
+    'expires_at':'2098-01-01T00:00:00Z','note':'Reviewed exact content and retained evidence.'}
+CONTENT_REVIEW_RECEIPT={'review_id':U,'workspace_id':W,'content_id':U,'version':1,'duplicate':False,'execution_authorized':False}
+CONTENT_REVIEW_STATE={'workspace_id':W,'campaign_id':U,'content_id':U,'version':1,'review_current':True,
+    'status':'approved','execution_authorized':False,'checked_at':CONTENT_RESULT['checked_at'],'preparation':CONTENT_RESULT,
+    'latest_review':{'id':U,'workspace_id':W,'campaign_id':U,'content_id':U,'version':1,'action':'approved',
+        'creative_id':U,'destination_review_id':U,'company_name':'Hilltop Home Company','renderer_version':'acquisition-mail-render-v1',
+        'preparation_hash':'a'*64,'evidence_ref':U,'evidence_hash':'c'*64,'expires_at':CONTENT_REVIEW['expires_at'],
+        'review_note':CONTENT_REVIEW['note'],'actor_id':U,'actor_membership_updated_at':'2026-01-01T00:00:00Z',
+        'request_hash':'d'*64,'created_at':'2026-10-28T11:00:00Z'}}
+
+
+def test_content_review_rpc_scope_bearer_and_withdrawal_preserves_evidence(api):
+    client,state=api;state['body']=CONTENT_REVIEW_RECEIPT
+    result=client.post(CONTENT_REVIEW_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=CONTENT_REVIEW)
+    assert result.status_code==200 and result.json()==CONTENT_REVIEW_RECEIPT
+    request=state['requests'][-1]
+    assert request.url.path=='/rest/v1/rpc/review_acquisition_mail_content'
+    assert request.headers['authorization']=='Bearer user-token' and request.headers['apikey']=='public-test-key'
+    assert json.loads(request.content)=={'p_id':U,'p_workspace':W,'p_campaign':U,'p_content':U,'p_expected_version':0,
+        'p_action':'approved','p_creative':U,'p_destination_review':U,'p_company_name':'Hilltop Home Company',
+        'p_preparation_hash':'a'*64,'p_evidence_ref':U,'p_evidence_hash':'c'*64,'p_expires_at':'2098-01-01T00:00:00+00:00',
+        'p_note':CONTENT_REVIEW['note']}
+    withdrawal={'id':U,'expected_version':0,'action':'withdrawn','note':CONTENT_REVIEW['note']}
+    assert client.post(CONTENT_REVIEW_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=withdrawal).status_code==200
+    payload=json.loads(state['requests'][-1].content)
+    assert all(payload[key] is None for key in ('p_creative','p_destination_review','p_company_name','p_preparation_hash','p_evidence_ref','p_evidence_hash','p_expires_at'))
+
+
+@pytest.mark.parametrize('change',[{'action':'sent'},{'action':'withdrawn'},{'expected_version':True},{'expected_version':-1},
+    {'creative_id':None},{'evidence_ref':None},{'evidence_hash':'bad'},{'preparation_hash':'bad'},
+    {'expires_at':'2098-01-01T00:00:00'},{'note':' '*30},{'execution_authorized':True},{'actor_id':U},{'snapshot':{}}])
+def test_content_review_rejects_missing_evidence_and_client_authority(api,change):
+    client,state=api
+    assert client.post(CONTENT_REVIEW_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=CONTENT_REVIEW|change).status_code==422
+    assert not state['requests']
+
+
+@pytest.mark.parametrize('change',[{'workspace_id':U},{'content_id':W},{'review_id':W},{'version':True},
+    {'duplicate':'false'},{'execution_authorized':0},{'execution_authorized':True},{'extra':'private details'}])
+def test_content_review_holds_unknown_receipts(api,change):
+    client,state=api;state['body']=CONTENT_REVIEW_RECEIPT|change
+    result=client.post(CONTENT_REVIEW_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=CONTENT_REVIEW)
+    assert result.status_code==503 and 'private details' not in result.text and len(state['requests'])==1
+
+
+def test_content_review_state_validates_current_and_historical_states(api):
+    import copy
+    client,state=api;state['body']=CONTENT_REVIEW_STATE
+    result=client.get(CONTENT_REVIEW_PATH,headers={'Authorization':'Bearer user-token'})
+    assert result.status_code==200 and result.json()==CONTENT_REVIEW_STATE
+    assert json.loads(state['requests'][-1].content)=={'p_workspace':W,'p_campaign':U,'p_content':U}
+    stale=copy.deepcopy(CONTENT_REVIEW_STATE);stale.update(status='requires_review',review_current=False,preparation=None)
+    state['body']=stale
+    assert client.get(CONTENT_REVIEW_PATH,headers={'Authorization':'Bearer user-token'}).status_code==200
+    stale['status']='withdrawn';stale['latest_review']['action']='withdrawn'
+    assert client.get(CONTENT_REVIEW_PATH,headers={'Authorization':'Bearer user-token'}).status_code==200
+    state['body']={**stale,'status':'pending_review','version':0,'latest_review':None}
+    assert client.get(CONTENT_REVIEW_PATH,headers={'Authorization':'Bearer user-token'}).status_code==200
+
+
+@pytest.mark.parametrize('where,change',[('root',{'workspace_id':U}),('root',{'content_id':W}),('root',{'review_current':False}),
+    ('root',{'execution_authorized':True}),('root',{'preparation':None}),('root',{'version':True}),
+    ('root',{'status':'withdrawn'}),('root',{'checked_at':'2099-01-01T00:00:00Z'}),('root',{'extra':'unexpected'}),
+    ('latest_review',{'version':2}),('latest_review',{'company_name':'Other company'}),('latest_review',{'content_id':W}),
+    ('latest_review',{'creative_id':W}),('latest_review',{'destination_review_id':W}),('latest_review',{'preparation_hash':'f'*64}),
+    ('latest_review',{'renderer_version':'old'}),('latest_review',{'expires_at':'2000-01-01T00:00:00Z'}),
+    ('latest_review',{'created_at':'2090-01-01T00:00:00Z'}),('latest_review',{'action':'withdrawn'}),
+    ('latest_review',{'expires_at':'2100-01-01T00:00:00Z'}),
+    ('preparation',{'content_approved':True}),('preparation',{'execution_authorized':True})])
+def test_content_review_state_rejects_mismatched_or_stale_approval(api,where,change):
+    import copy
+    client,state=api;result=copy.deepcopy(CONTENT_REVIEW_STATE)
+    (result if where=='root' else result[where]).update(change);state['body']=result
+    assert client.get(CONTENT_REVIEW_PATH,headers={'Authorization':'Bearer user-token'}).status_code==503
+
+
+def test_content_review_timeout_keeps_one_attempt_and_disabled_gate(api,monkeypatch):
+    client,state=api;state['timeout']=True
+    assert client.post(CONTENT_REVIEW_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=CONTENT_REVIEW).status_code==503
+    assert len(state['requests'])==1
+    monkeypatch.setenv('ACQUISITION_ENABLED','false')
+    assert client.post(CONTENT_REVIEW_PATH+'/reviews',headers={'Authorization':'Bearer user-token'},json=CONTENT_REVIEW).status_code==404
+    assert len(state['requests'])==1

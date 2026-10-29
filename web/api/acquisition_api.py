@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from tools.acquisition_store import acquisition_store
-from schemas.acquisition_mail_preparation import ContentPreparationRequest, ContentPreparation
+from schemas.acquisition_mail_preparation import ContentPreparationRequest, ContentPreparation, ContentReviewRequest, ContentReviewState
 from tools.acquisition_mail_render import safe_text
 
 router = APIRouter(prefix='/api/acquisition', tags=['Acquisition'])
@@ -640,6 +640,41 @@ async def prepare_mail_content(workspace_id: UUID, campaign_id: UUID, body: Cont
             raise ValueError('Preparation scope changed')
     except (ValueError, TypeError):
         raise HTTPException(503, 'Mail content preparation could not be confirmed')
+    return result
+
+
+@router.post('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-content/{content_id}/reviews')
+async def review_mail_content(workspace_id: UUID, campaign_id: UUID, content_id: UUID,
+                              body: ContentReviewRequest, store=Depends(acquisition_store)):
+    receipt = await store.request('POST', 'rpc/review_acquisition_mail_content', body={
+        'p_id': str(body.id), 'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id),
+        'p_content': str(content_id), 'p_expected_version': body.expected_version, 'p_action': body.action,
+        'p_creative': str(body.creative_id) if body.creative_id else None,
+        'p_destination_review': str(body.destination_review_id) if body.destination_review_id else None,
+        'p_company_name': body.company_name, 'p_preparation_hash': body.preparation_hash,
+        'p_evidence_ref': str(body.evidence_ref) if body.evidence_ref else None, 'p_evidence_hash': body.evidence_hash,
+        'p_expires_at': body.expires_at.isoformat() if body.expires_at else None, 'p_note': body.note})
+    expected = {'review_id': str(body.id), 'workspace_id': str(workspace_id), 'content_id': str(content_id),
+                'version': body.expected_version + 1, 'execution_authorized': False}
+    if (not isinstance(receipt, dict) or set(receipt) != set(expected) | {'duplicate'}
+            or any(receipt.get(key) != value for key, value in expected.items())
+            or type(receipt.get('version')) is not int or type(receipt.get('duplicate')) is not bool
+            or receipt.get('execution_authorized') is not False):
+        raise HTTPException(503, 'Content review could not be confirmed; retain the same request for reconciliation')
+    return receipt
+
+
+@router.get('/workspaces/{workspace_id}/campaigns/{campaign_id}/mail-content/{content_id}')
+async def mail_content_state(workspace_id: UUID, campaign_id: UUID, content_id: UUID,
+                              store=Depends(acquisition_store)):
+    result = await store.request('POST', 'rpc/acquisition_mail_content_state', body={
+        'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id), 'p_content': str(content_id)})
+    try:
+        state = ContentReviewState.model_validate(result)
+        if (state.workspace_id, state.campaign_id, state.content_id) != (workspace_id, campaign_id, content_id):
+            raise ValueError('Content scope mismatch')
+    except (ValueError, TypeError):
+        raise HTTPException(503, 'Content review state could not be confirmed')
     return result
 
 

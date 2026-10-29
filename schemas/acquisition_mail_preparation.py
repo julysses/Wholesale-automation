@@ -96,3 +96,94 @@ class ContentPreparation(ExactModel):
         except (OverflowError, OSError) as error:
             raise ValueError('Unsupported destination evidence date') from error
         return self
+
+
+class ContentReviewRequest(ExactModel):
+    id: UUID
+    expected_version: int = Field(strict=True, ge=0, lt=1000000000)
+    action: Literal['approved', 'withdrawn']
+    creative_id: UUID | None = None
+    destination_review_id: UUID | None = None
+    company_name: str | None = Field(default=None, min_length=1, max_length=200)
+    preparation_hash: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
+    evidence_ref: UUID | None = None
+    evidence_hash: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
+    expires_at: AwareDatetime | None = None
+    note: str = Field(min_length=20, max_length=2000)
+
+    @model_validator(mode='after')
+    def require_review(self):
+        evidence = (self.creative_id, self.destination_review_id, self.company_name, self.preparation_hash,
+                    self.evidence_ref, self.evidence_hash, self.expires_at)
+        if len(self.note.strip()) < 20:
+            raise ValueError('Documented content review required')
+        if self.action == 'approved' and any(value is None for value in evidence):
+            raise ValueError('Exact preparation and evidence required')
+        if self.action == 'withdrawn' and any(value is not None for value in evidence):
+            raise ValueError('Withdrawal retains prior content evidence')
+        return self
+
+
+class ContentReviewRecord(ExactModel):
+    id: UUID
+    workspace_id: UUID
+    campaign_id: UUID
+    content_id: UUID
+    version: int = Field(strict=True, ge=1, le=1000000000)
+    action: Literal['approved', 'withdrawn']
+    creative_id: UUID
+    destination_review_id: UUID
+    company_name: str = Field(min_length=1, max_length=200)
+    renderer_version: str
+    preparation_hash: str = Field(pattern=r'^[0-9a-f]{64}$')
+    evidence_ref: UUID
+    evidence_hash: str = Field(pattern=r'^[0-9a-f]{64}$')
+    expires_at: AwareDatetime
+    review_note: str = Field(min_length=20, max_length=2000)
+    actor_id: UUID
+    actor_membership_updated_at: AwareDatetime
+    request_hash: str = Field(pattern=r'^[0-9a-f]{64}$')
+    created_at: AwareDatetime
+
+
+class ContentReviewState(ExactModel):
+    workspace_id: UUID
+    campaign_id: UUID
+    content_id: UUID
+    version: int = Field(strict=True, ge=0, le=1000000000)
+    latest_review: ContentReviewRecord | None
+    review_current: StrictBool
+    status: Literal['pending_review', 'approved', 'withdrawn', 'requires_review']
+    preparation: ContentPreparation | None
+    execution_authorized: StrictBool
+    checked_at: AwareDatetime
+
+    @model_validator(mode='after')
+    def check_state(self):
+        if self.execution_authorized or self.review_current != (self.status == 'approved'):
+            raise ValueError('Content state cannot grant execution authority')
+        latest = self.latest_review
+        if self.version == 0:
+            if latest is not None or self.status != 'pending_review' or self.preparation is not None:
+                raise ValueError('Unexpected initial state')
+            return self
+        if (latest is None or latest.version != self.version
+                or (latest.workspace_id, latest.campaign_id, latest.content_id) != (self.workspace_id, self.campaign_id, self.content_id)
+                or self.status == 'pending_review' or (latest.action == 'withdrawn') != (self.status == 'withdrawn')):
+            raise ValueError('Review identity or action mismatch')
+        if not self.review_current:
+            if self.preparation is not None:
+                raise ValueError('Stale review cannot expose current preparation')
+            return self
+        prepared = self.preparation
+        if (prepared is None or prepared.checked_at != self.checked_at or latest.expires_at <= self.checked_at
+                or latest.created_at > self.checked_at or prepared.preparation_hash != latest.preparation_hash
+                or latest.expires_at > prepared.destination_valid_until):
+            raise ValueError('Current preparation evidence required')
+        snapshot = prepared.snapshot
+        if ((snapshot.workspace_id, snapshot.campaign_id, snapshot.company_name, snapshot.renderer_version) !=
+                (self.workspace_id, self.campaign_id, latest.company_name, latest.renderer_version)
+                or snapshot.template.creative_id != latest.creative_id
+                or snapshot.destination.review_id != latest.destination_review_id):
+            raise ValueError('Prepared source identities changed')
+        return self

@@ -195,6 +195,8 @@ class WorkspaceTests(unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261028181631_acquisition_mail_destination_reviews.sql').read_text())
         if self._testMethodName != 'test_mail_destination_populated_upgrade':
             self.sql((ROOT/'frontend/supabase/migrations/20261029012211_acquisition_mail_content_preparation.sql').read_text())
+        if self._testMethodName not in ('test_mail_destination_populated_upgrade','test_mail_content_populated_upgrade'):
+            self.sql((ROOT/'frontend/supabase/migrations/20261029013306_acquisition_mail_content_reviews.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
@@ -203,6 +205,168 @@ class WorkspaceTests(unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def content_review(self, request='99100000-0000-4000-8000-000000000001', expected=0, action='approved',
+                       actor=ADMIN, fail=False, workspace=WORKSPACE, content='99100000-0000-4000-8000-000000000099',
+                       creative='97000000-0000-4000-8000-000000000001', destination='99000000-0000-4000-8000-000000000001',
+                       company='Hilltop Home Company', fingerprint=None, expires='2098-01-01T00:00:00Z', **kwargs):
+        if fingerprint is None and action=='approved':
+            fingerprint=self.mail_content_preparation()['preparation_hash']
+        args=[request,workspace,'91000000-0000-4000-8000-000000000001',content,expected,action,creative,destination,company,
+              fingerprint,'99100000-0000-4000-8000-000000000088','c'*64,expires,'Reviewed exact content and retained approval evidence.']
+        if action=='withdrawn':args[6:13]=[None]*7
+        values=','.join('NULL' if v is None else str(v) if isinstance(v,int) else literal(v) for v in args)
+        result=self.sql(f'SELECT public.review_acquisition_mail_content({values})',user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def content_state(self, actor=ADMIN, fail=False):
+        result=self.sql(f"SELECT public.acquisition_mail_content_state('{WORKSPACE}','91000000-0000-4000-8000-000000000001','99100000-0000-4000-8000-000000000099')",user=actor,fail=fail)
+        return result if fail else json.loads(result)
+
+    def test_mail_content_review_idempotency_concurrency_and_withdrawal(self):
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.assertEqual(self.content_state()['status'],'pending_review')
+        fingerprint=self.mail_content_preparation()['preparation_hash']
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            rows=list(pool.map(lambda _:self.content_review(fingerprint=fingerprint),range(3)))
+        self.assertEqual(sum(not row['duplicate'] for row in rows),1)
+        self.assertTrue(all(row['execution_authorized'] is False for row in rows))
+        self.assertTrue(self.content_state()['review_current'])
+        self.content_review(company='Changed company',fingerprint=fingerprint,fail=True)
+        self.assertTrue(self.content_review(fingerprint=fingerprint,expires='2097-12-31T18:00:00-06:00')['duplicate'])
+        self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
+        self.assertTrue(self.content_review(fingerprint=fingerprint)['duplicate'])
+        state=self.content_state();self.assertEqual(state['status'],'withdrawn');self.assertIsNone(state['preparation'])
+        self.assertEqual(state['latest_review']['creative_id'],'97000000-0000-4000-8000-000000000001')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_content'"),'2')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews'),'2')
+
+    def test_mail_content_review_scope_roles_mfa_and_immutability(self):
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_review()
+        self.member(target=OPERATOR,role='operator');self.member(target=CALLER,role='acquisition_caller')
+        self.assertTrue(self.content_state(actor=OPERATOR)['review_current'])
+        for actor in (OPERATOR,CALLER,OTHER):self.content_review(actor=actor,fail=True)
+        for actor in (CALLER,OTHER):
+            self.content_state(actor=actor,fail=True)
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews',user=actor),'0')
+        self.content_review(aal='aal1',fail=True);self.content_review(session=False,fail=True)
+        self.content_review(role='service_role',fail=True);self.content_review(workspace=WORKSPACE_B,fail=True)
+        for role in ('authenticated','service_role'):
+            for query in ('DELETE FROM acquisition_mail_content_reviews','TRUNCATE acquisition_mail_content_reviews',
+                          "UPDATE acquisition_mail_content_reviews SET company_name='Changed'",
+                          'INSERT INTO acquisition_mail_content_reviews SELECT * FROM acquisition_mail_content_reviews'):
+                self.sql(query,user=ADMIN,role=role,fail=True)
+        self.sql("UPDATE acquisition_mail_content_reviews SET company_name='Changed'",fail=True)
+
+    def test_mail_content_review_rejects_stale_binding_and_invalidates_sources(self):
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        original=self.mail_content_preparation()['preparation_hash']
+        self.content_review(fingerprint='f'*64,fail=True)
+        self.content_review(expires='infinity',fail=True);self.content_review(expires='2100-01-01',fail=True)
+        self.content_review();self.assertTrue(self.content_state()['review_current'])
+        self.mail_template(request='97000000-0000-4000-8000-000000000002',expected=1)
+        self.assertEqual(self.content_state()['status'],'requires_review')
+        self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,fingerprint=original,fail=True)
+        newer=self.mail_content_preparation(creative='97000000-0000-4000-8000-000000000002')['preparation_hash']
+        self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,
+                            creative='97000000-0000-4000-8000-000000000002',fingerprint=newer)
+        self.assertTrue(self.content_state()['review_current'])
+        self.mail_destination(request='99000000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
+        self.assertFalse(self.content_state()['review_current'])
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.content_review(request='99100000-0000-4000-8000-000000000003',expected=2,action='withdrawn')
+        self.assertEqual(self.content_state()['status'],'withdrawn')
+
+    def test_mail_content_review_reviewer_change_expiry_and_gate(self):
+        self.mail_campaign();self.mail_template();self.mail_destination();self.member(target=OPERATOR,role='admin')
+        self.content_review(actor=OPERATOR);self.assertTrue(self.content_state()['review_current'])
+        self.member(target=OPERATOR,role='operator');self.assertFalse(self.content_state()['review_current'])
+        self.member(target=OPERATOR,role='admin');self.assertFalse(self.content_state()['review_current'])
+        expires=self.sql("SELECT (clock_timestamp()+interval '2 seconds')::text")
+        fingerprint=self.mail_content_preparation()['preparation_hash']
+        self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,expires=expires,fingerprint=fingerprint)
+        self.assertTrue(self.content_state()['review_current']);self.sql('SELECT pg_sleep(2.1)')
+        self.assertFalse(self.content_state()['review_current'])
+        self.assertTrue(self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,expires=expires,fingerprint=fingerprint)['duplicate'])
+        self.assertFalse(self.content_state()['review_current'])
+        self.content_review(request='99100000-0000-4000-8000-000000000003',expected=2)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.assertFalse(self.content_state()['review_current'])
+        self.content_review(fingerprint=fingerprint,fail=True)
+        self.content_review(request='99100000-0000-4000-8000-000000000004',expected=3,action='withdrawn')
+
+    def test_mail_content_different_concurrent_decisions_conflict(self):
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        fingerprint=self.mail_content_preparation()['preparation_hash']
+        def write(i):
+            try:
+                return self.content_review(request=f'99100000-0000-4000-8000-{i:012d}',fingerprint=fingerprint)
+            except AssertionError:
+                return None
+        with ThreadPoolExecutor(max_workers=3) as pool: rows=list(pool.map(write,(1,2,3)))
+        self.assertEqual(sum(isinstance(row,dict) for row in rows),1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_content'"),'1')
+
+    def content_source_race(self, source):
+        import select
+        import time
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        fingerprint=self.mail_content_preparation()['preparation_hash']
+        key=(f'mail-template:{WORKSPACE}:98000000-0000-4000-8000-000000000001' if source=='template'
+             else f'mail-destination:{WORKSPACE}:99000000-0000-4000-8000-000000000099')
+        claims=json.dumps({'sub':ADMIN,'aal':'aal2','role':'authenticated','session_id':ADMIN})
+        process=subprocess.Popen([str(PG/'psql'),'-X','-qAt','-v','ON_ERROR_STOP=1','-h',self.socket,'-U','test_admin','-d','acquisition_test'],
+            stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,env=self.env)
+        try:
+            process.stdin.write(f"BEGIN; SET ROLE authenticated; SET request.jwt.claims={literal(claims)}; DO $$ BEGIN PERFORM pg_advisory_xact_lock(hashtextextended({literal(key)},0)); END $$;\n\\echo source_locked\n")
+            process.stdin.flush()
+            deadline=time.monotonic()+5
+            locked=False
+            while time.monotonic()<deadline:
+                if select.select([process.stdout],[],[],0.1)[0]:
+                    if process.stdout.readline().strip()=='source_locked':locked=True;break
+            self.assertTrue(locked,'Source writer did not obtain its lock')
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(self.content_review,fingerprint=fingerprint,fail=True)
+                deadline=time.monotonic()+5
+                while time.monotonic()<deadline:
+                    waiting=self.sql("SELECT count(*) FROM pg_stat_activity WHERE wait_event='advisory' AND query LIKE '%public.review_acquisition_mail_content%'")
+                    if waiting!='0':break
+                    time.sleep(0.02)
+                try:
+                    self.assertNotEqual(waiting,'0','Content approval did not wait for source lock')
+                    if source=='template':
+                        change=f"SELECT public.save_acquisition_mail_template('97000000-0000-4000-8000-000000000002','{WORKSPACE}','91000000-0000-4000-8000-000000000001','98000000-0000-4000-8000-000000000001',1,'Changed','letter','phone','Changed {{{{tracking_phone}}}}');"
+                    else:
+                        change=f"SELECT public.review_acquisition_mail_destination('99000000-0000-4000-8000-000000000002','{WORKSPACE}','91000000-0000-4000-8000-000000000001','99000000-0000-4000-8000-000000000099',1,'withdrawn',NULL,NULL,NULL,NULL,NULL,NULL,'Withdrawing routing during content review.');"
+                    process.stdin.write(change+' COMMIT;\n\\q\n');process.stdin.flush()
+                    process.wait(timeout=5)
+                    self.assertEqual(process.returncode,0,process.stderr.read())
+                finally:
+                    if process.poll() is None:process.kill();process.wait(timeout=5)
+                error=future.result(timeout=5)
+                self.assertTrue('changed' in error or 'Current destination' in error,error)
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews'),'0')
+        finally:
+            if process.poll() is None:process.kill();process.wait(timeout=5)
+            for stream in (process.stdin,process.stdout,process.stderr):stream.close()
+
+    def test_mail_content_waiting_approval_reloads_changed_template(self):
+        self.content_source_race('template')
+
+    def test_mail_content_waiting_approval_reloads_withdrawn_destination(self):
+        self.content_source_race('destination')
+
+    def test_mail_content_populated_upgrade(self):
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        before=self.sql('SELECT to_jsonb(c) FROM ad_creatives c')
+        destinations=self.sql('SELECT to_jsonb(d) FROM acquisition_mail_destination_reviews d')
+        self.sql((ROOT/'frontend/supabase/migrations/20261029013306_acquisition_mail_content_reviews.sql').read_text())
+        self.assertEqual(self.sql('SELECT to_jsonb(c) FROM ad_creatives c'),before)
+        self.assertEqual(self.sql('SELECT to_jsonb(d) FROM acquisition_mail_destination_reviews d'),destinations)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews'),'0')
+        self.content_review();self.assertTrue(self.content_state()['review_current'])
 
     def mail_content_preparation(self, actor=ADMIN, fail=False, workspace=WORKSPACE,
                                  creative='97000000-0000-4000-8000-000000000001',
