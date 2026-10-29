@@ -16,6 +16,12 @@ class AcquisitionStore:
         return await verify_registered_evidence(self.client, artifact_id, workspace_id=workspace_id,
                                                 campaign_id=campaign_id, purpose=purpose)
 
+    async def upload_evidence(self, artifact_id, source, *, workspace_id, campaign_id, purpose):
+        """Internal bounded upload; preserves identity for uncertain-outcome recovery."""
+        from tools.acquisition_evidence_upload import upload_registered_evidence
+        return await upload_registered_evidence(self.client, artifact_id, source, workspace_id=workspace_id,
+                                                campaign_id=campaign_id, purpose=purpose)
+
     async def request(self, method, path, *, params=None, body=None):
         try:
             response = await self.client.request(method, path, params=params, json=body)

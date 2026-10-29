@@ -28,6 +28,7 @@ from web.api.acquisition_webhooks import router as facebook_router
 from web.api.acquisition_inbound_webhooks import router as inbound_router
 from tools.acquisition_store import AcquisitionStore
 from tools.acquisition_evidence import EvidenceUnavailable
+from tools.acquisition_evidence_upload import EvidenceUploadUnconfirmed
 
 ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
@@ -166,7 +167,17 @@ class WorkflowTests(WorkspaceTests):
             stream=EvidenceStream(self.evidence_body,getattr(self,'after_evidence_read',None))
             self.evidence_streams.append(stream)
             return httpx.Response(200,headers={'content-type':'text/plain'},stream=stream)
-        if request.url.path.startswith('/rest/v1/rpc/'):
+        evidence_upload=request.url.path.startswith('/storage/v1/object/acquisition-evidence/')
+        if evidence_upload:
+            self.assertEqual(request.method,'POST');self.assertEqual(request.headers['x-upsert'],'false')
+            self.assertEqual(request.headers['content-type'],'text/plain')
+            self.assertEqual(request.content,self.evidence_body)
+            name=request.url.path.removeprefix('/storage/v1/object/acquisition-evidence/')
+            # Match StoragePgDB.createObject's INSERT without RETURNING. A
+            # RETURNING projection adds SELECT RLS, deliberately denied for upload.
+            query=("SET storage.operation='object.upload'; INSERT INTO storage.objects(bucket_id,name,owner_id) "
+                   f"VALUES('acquisition-evidence',{literal(name)},{literal(identity)});")
+        elif request.url.path.startswith('/rest/v1/rpc/'):
             name=request.url.path.rsplit('/',1)[-1]
             self.assertIn(name,RPC_ARGS)
             body=json.loads(request.content)
@@ -303,7 +314,7 @@ class WorkflowTests(WorkspaceTests):
                 filters.append(f'{key}={literal(value)}::uuid')
             self.assertEqual(request.url.params['limit'],'1')
             query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT {','.join(fields)} FROM public.deal_analyses WHERE {' AND '.join(filters)} LIMIT 1) row;"
-        claims={'sub':identity,'session_id':identity,'aal':'aal2'}
+        claims={'sub':identity,'session_id':identity,'aal':'aal2','role':role}
         query=f'SET ROLE {role}; SET request.jwt.claims={literal(json.dumps(claims))}; '+query
         result=subprocess.run([str(PG/'psql'),'-X','-qAt','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose',
             '-h',self.socket,'-U','test_admin','-d','acquisition_test'],input=query,text=True,capture_output=True,env=self.env)
@@ -312,6 +323,12 @@ class WorkflowTests(WorkspaceTests):
             if not match:raise AssertionError(result.stderr)
             code=match.group(1)
             return httpx.Response(403 if code=='42501' else 400,json={'code':code})
+        if evidence_upload:
+            self.evidence_uploads+=1
+            if getattr(self,'lose_evidence_reply_once',False):
+                self.lose_evidence_reply_once=False
+                raise httpx.ReadTimeout('Synthetic lost response after object metadata commit',request=request)
+            return httpx.Response(200,json={'ignored':'Synthetic provider receipt'})
         if request.url.path.endswith('complete_acquisition_calculation') and self.lose_completion_once:
             self.lose_completion_once=False
             raise httpx.ReadTimeout('Synthetic lost response after real commit',request=request)
@@ -322,15 +339,57 @@ class WorkflowTests(WorkspaceTests):
             return httpx.Response(200,headers={'content-type':'application/json'},stream=EvidenceStream(result.stdout.strip().encode()))
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
 
-    def registered_evidence_fixture(self):
+    def registered_evidence_fixture(self, with_object=True):
         self.mail_campaign();self.evidence_policy()
         self.evidence_body=b'Synthetic registry-backed evidence bytes'
         self.evidence_streams=[]
+        self.evidence_uploads=0
         digest=hashlib.sha256(self.evidence_body).hexdigest()
         self.evidence_register(digest=digest,size=len(self.evidence_body),media='text/plain')
         name=f'{WORKSPACE}/99200000-0000-4000-8000-000000000002/{digest}'
         # Synthetic metadata only: provider object bytes are simulated in handle().
-        self.sql(f"SET storage.operation='object.upload'; INSERT INTO storage.objects(bucket_id,name) VALUES('acquisition-evidence',{literal(name)})",user=ADMIN)
+        if with_object:
+            self.sql(f"SET storage.operation='object.upload'; INSERT INTO storage.objects(bucket_id,name) VALUES('acquisition-evidence',{literal(name)})",user=ADMIN)
+
+    def upload_registered_fixture(self, after=None, token='synthetic-admin-session'):
+        async def source():
+            yield self.evidence_body[:8]
+            yield self.evidence_body[8:]
+            if after:after()
+        async def upload():
+            async with httpx.AsyncClient(base_url='https://workflow.example.test/rest/v1/',
+                     headers={'Authorization':'Bearer '+token,'apikey':'synthetic-public-key'}) as client:
+                return await AcquisitionStore(client).upload_evidence(UUID('99200000-0000-4000-8000-000000000002'),source(),
+                    workspace_id=UUID(WORKSPACE),campaign_id=UUID('91000000-0000-4000-8000-000000000001'),purpose='mail_content')
+        return asyncio.run(upload())
+
+    def test_evidence_upload_real_rls_lost_reply_and_exact_retry(self):
+        self.registered_evidence_fixture(with_object=False)
+        name=f'{WORKSPACE}/99200000-0000-4000-8000-000000000002/{hashlib.sha256(self.evidence_body).hexdigest()}'
+        rejected=self.sql(f"SET storage.operation='object.upload'; INSERT INTO storage.objects(bucket_id,name) VALUES('acquisition-evidence',{literal(name)}) RETURNING id",user=ADMIN,fail=True)
+        self.assertIn('row-level security',rejected)
+        self.lose_evidence_reply_once=True
+        receipt=self.upload_registered_fixture()
+        self.assertEqual(receipt['status'],'stored_unverified');self.assertFalse(receipt['verification_persisted'])
+        self.assertEqual(self.upload_registered_fixture()['status'],'stored_unverified')
+        self.assertEqual(self.evidence_uploads,1)
+        self.assertEqual(self.sql("SELECT count(*) FROM storage.objects WHERE bucket_id='acquisition-evidence'"),'1')
+        self.assertEqual(self.evidence_state()['status'],'pending_verification')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'1')
+
+    def test_evidence_upload_activation_changed_during_input_read_blocks_write(self):
+        self.registered_evidence_fixture(with_object=False)
+        with self.assertRaises(EvidenceUploadUnconfirmed):
+            self.upload_registered_fixture(after=lambda:self.sql('UPDATE private.acquisition_activation SET enabled=false'))
+        self.assertEqual(self.evidence_uploads,0)
+        self.assertEqual(self.sql("SELECT count(*) FROM storage.objects WHERE bucket_id='acquisition-evidence'"),'0')
+
+    def test_evidence_upload_other_workspace_cannot_read_input_or_write(self):
+        self.registered_evidence_fixture(with_object=False)
+        consumed=[]
+        with self.assertRaises(EvidenceUnavailable):self.upload_registered_fixture(after=lambda:consumed.append(True),token='synthetic-other-session')
+        self.assertEqual(consumed,[]);self.assertEqual(self.evidence_uploads,0)
+        self.assertFalse(any(path.startswith('/storage/') for path,auth in self.requests))
 
     def verify_registered_fixture(self, token='synthetic-admin-session'):
         async def verify():
