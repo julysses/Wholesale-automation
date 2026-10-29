@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — bounded signed-observation persistence
+
+- Continued from a8d891e after an unchanged fast-forward pull. Full PRD goal remains active. This increment contains no migration or production activation.
+- Added internal user-authorized persistence of the original signed request with strict scope validation, a fixed RPC target, ten-second total deadline and 2 KiB streamed receipt cap. It does not sign, scan, retry automatically, create new identities or grant preview/approval/execution authority.
+- Every post-dispatch error remains unconfirmed, including later authorization denial. Exact historical retries can reconcile a committed record after signer/artifact revocation without renewing its observation. A durable worker checkpoint is still required before this internal seam is wired into execution; restart recovery is not claimed.
+- Preserved the app's numbered navy/orange process. Future integration belongs inside the existing supporting-files step, using plain saved/pending/approved states and one clear next action. No technical signer inputs or extra disconnected screens were added.
+- Validation: 71 focused persistence tests passed; the combined evidence/API selection passed 686 tests, and the remaining upload API suite passed 42 tests (728 total). The real disposable database workflow includes the bounded transport, lost reply after commit, exact duplicate recovery after revocation, changed-signature rejection and later session denial. All 44 application-to-PostgreSQL workflows passed in 325.155 seconds. Prerequisite CI 40935475072 remains in progress with four successful jobs; the final acquisition workspace/isolation test step is still running, so this increment is not yet pushed.
+
+Next: durable exact-request worker recovery, current quarantine/clearance and locked approval binding, shared scan admission and reviewed real-provider acceptance. Keep production, paused SMS, outreach, spending and fulfillment unchanged. Do not push another feature before this increment's exact five-job CI success.
+
 ## Implementation checkpoint — signed evidence observation ledger
 
 - Previous goal turn made progress: 5df77e8 pushed the bounded scanner. Pulled unchanged before this increment. Exact CI 40932809598 for 5df77e8f503b5473d1cc3e51c2f4ffee77401c45 completed successfully across all five jobs before this push. Full PRD goal remains active.

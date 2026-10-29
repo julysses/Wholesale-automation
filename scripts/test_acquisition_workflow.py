@@ -34,6 +34,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'record_acquisition_evidence_verification':['p_id','p_workspace','p_campaign','p_artifact','p_actor','p_session','p_key','p_observation','p_signature'],
  'admit_acquisition_evidence_upload':['p_attempt','p_workspace','p_campaign','p_artifact','p_purpose'],
  'acquisition_evidence_candidates':['p_workspace','p_campaign','p_purpose','p_after','p_limit'],
  'register_acquisition_evidence':['p_id','p_workspace','p_campaign','p_purpose','p_sha256','p_byte_size','p_media_type','p_policy','p_note'],
@@ -193,7 +194,7 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_attempt','p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content','p_artifact','p_policy'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_attempt','p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content','p_artifact','p_policy','p_actor','p_session','p_key'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
                       else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of','p_verified_at','p_expires_at'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version','p_byte_size'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
@@ -346,7 +347,7 @@ class WorkflowTests(WorkspaceTests):
         if request.url.path.endswith('/'+str(self.lose_facebook_reply)):
             self.lose_facebook_reply=None
             raise httpx.ReadTimeout('Synthetic lost Facebook reply after real commit',request=request)
-        if request.url.path.endswith('/acquisition_evidence_state'):
+        if request.url.path.rsplit('/',1)[-1] in {'acquisition_evidence_state','record_acquisition_evidence_verification'}:
             return httpx.Response(200,headers={'content-type':'application/json'},stream=EvidenceStream(result.stdout.strip().encode()))
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
 
@@ -620,7 +621,7 @@ class WorkflowTests(WorkspaceTests):
                     purpose='mail_content',policy=policy)
         with patch('tools.acquisition_evidence_scan._command',daemon_command):return asyncio.run(scan())
 
-    def test_evidence_scan_attestation_persists_exact_result_without_approval(self):
+    def signed_scan_fixture(self):
         from datetime import datetime, timedelta, timezone
         from tools.acquisition_evidence_attestation import VerificationSigningKey, build_scan_attestation
         self.registered_evidence_fixture();self.verification_key_fixture();self.scanner_calls=0
@@ -631,13 +632,44 @@ class WorkflowTests(WorkspaceTests):
             observation['scanner_version'],observation['scan_policy_version'],now-timedelta(hours=1),now+timedelta(minutes=30))
         request=build_scan_attestation(observation,request_id=UUID('99300000-0000-4000-8000-000000000002'),
                                        actor_id=UUID(ADMIN),session_id=UUID(ADMIN),key=key)
-        args=[request[k] for k in ('p_id','p_workspace','p_campaign','p_artifact','p_actor','p_session','p_key','p_observation','p_signature')]
-        result=self.record_observation(args)
+        return request
+
+    def persist_scan_fixture(self, request, token='synthetic-admin-session'):
+        async def persist():
+            async with httpx.AsyncClient(base_url='https://workflow.example.test/rest/v1/',
+                     headers={'Authorization':'Bearer '+token,'apikey':'synthetic-public-key'}) as client:
+                return await AcquisitionStore(client).persist_evidence_attestation(request,
+                    workspace_id=UUID(WORKSPACE),campaign_id=UUID(request['p_campaign']),
+                    artifact_id=UUID(request['p_artifact']),actor_id=UUID(ADMIN),session_id=UUID(ADMIN))
+        return asyncio.run(persist())
+
+    def test_evidence_scan_attestation_persists_exact_result_without_approval(self):
+        request=self.signed_scan_fixture()
+        result=self.persist_scan_fixture(request)
         self.assertTrue(result['observation_persisted']);self.assertFalse(result['preview_authorized'])
         self.assertFalse(result['content_approved']);self.assertFalse(result['execution_authorized'])
-        self.assertTrue(self.record_observation(args)['duplicate']);self.assertEqual(self.scanner_calls,1)
+        self.assertTrue(self.persist_scan_fixture(request)['duplicate']);self.assertEqual(self.scanner_calls,1)
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'1')
         self.assertEqual(self.evidence_state()['status'],'pending_verification')
+
+    def test_evidence_persistence_lost_reply_reconciles_original_after_revocation(self):
+        from tools.acquisition_evidence_persistence import EvidencePersistenceUnconfirmed
+        request=self.signed_scan_fixture();original=dict(request)
+        self.lose_evidence_metadata_reply='record_acquisition_evidence_verification'
+        with self.assertRaises(EvidencePersistenceUnconfirmed):self.persist_scan_fixture(request)
+        self.sql('UPDATE private.acquisition_evidence_verification_keys SET revoked_at=clock_timestamp()')
+        self.evidence_revoke()
+        receipt=self.persist_scan_fixture(request)
+        self.assertTrue(receipt['duplicate']);self.assertEqual(request,original)
+        self.assertEqual(self.scanner_calls,1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence_verification'"),'1')
+        self.assertEqual(self.evidence_state()['status'],'revoked')
+        with self.assertRaises(EvidencePersistenceUnconfirmed):
+            self.persist_scan_fixture(dict(request,p_signature='0'*64))
+        self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 second' WHERE user_id='{ADMIN}'")
+        with self.assertRaises(EvidencePersistenceUnconfirmed):self.persist_scan_fixture(request)
+        self.assertEqual(request,original)
 
     def test_evidence_scan_rechecks_real_registry_without_granting_approval(self):
         self.registered_evidence_fixture();self.scanner_calls=0

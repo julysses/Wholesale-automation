@@ -20,6 +20,12 @@ class AcquisitionStore:
         return await upload_with_admission(self, artifact_id, source, workspace_id=workspace_id,
                                            campaign_id=campaign_id, purpose=purpose)
 
+    async def persist_evidence_attestation(self, signed_request, *, workspace_id, campaign_id, artifact_id, actor_id, session_id):
+        """One bounded write of the original signed request; never regenerate on retry."""
+        from tools.acquisition_evidence_persistence import persist_evidence_attestation
+        return await persist_evidence_attestation(self.client, signed_request, workspace_id=workspace_id,
+            campaign_id=campaign_id, artifact_id=artifact_id, actor_id=actor_id, session_id=session_id)
+
     async def scan_evidence(self, artifact_id, *, workspace_id, campaign_id, purpose, policy):
         """Internal reviewed local scanner; no public or persistent approval authority."""
         from tools.acquisition_evidence_scan import scan_registered_evidence

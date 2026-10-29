@@ -25,7 +25,7 @@ The database rejects absent keys, forged signatures, unknown/duplicate JSON keys
 
 ## Recovery, history and limits
 
-One request identity records one immutable observation and audit event. Simultaneous exact retries append once. Changed reuse conflicts. Preserve the entire signed request, including exact JSON text and original actor/session, after an uncertain write; do not rebuild it with new timestamps or another ID. The persistence transport and durable pending-request handling are still to be built. An exact historical retry can return its original receipt after signer/artifact revocation, but still requires the original current authorized session. Such a receipt is historical evidence of storage, not current clearance.
+One request identity records one immutable observation and audit event. Simultaneous exact retries append once. Changed reuse conflicts. Preserve the entire signed request, including exact JSON text and original actor/session, after an uncertain write; do not rebuild it with new timestamps or another ID. The bounded persistence transport is implemented; durable pending-request handling is still to be built. An exact historical retry can return its original receipt after signer/artifact revocation, but still requires the original current authorized session. Such a receipt is historical evidence of storage, not current clearance.
 
 Both `no_detection` and `detected` can be recorded. The receipt says `observation_persisted=true`, while preview, content approval and execution remain false. Existing artifact state remains `pending_verification`; the ledger is not yet consumed by approval or preview. Durable quarantine state, protected review selection and locked approval binding must consume the ledger before any file is released. A later clean observation must not silently erase a detection.
 
@@ -38,3 +38,15 @@ Disposable database tests exercise exact retries, changed signatures/context, st
 All changes remain local until approved deployment. Leave the signing configuration empty and the internal path uncalled as the immediate hold. If a future deployment must be compensated, revoke signing keys and stop the signing worker, retain immutable observations/audit history, and use a reviewed forward-only migration to revoke function execution if needed. Do not drop history or disable RLS. A transaction failure during this migration rolls back its schema changes.
 
 References: [Supabase database functions](https://supabase.com/docs/guides/database/functions), [PostgreSQL pgcrypto HMAC](https://www.postgresql.org/docs/current/pgcrypto.html#PGCRYPTO-HMAC), consulted October 29, 2026.
+
+## Bounded persistence transport
+
+`AcquisitionStore.persist_evidence_attestation` sends one already signed request through the current user-authorized client to the fixed database function. It validates canonical context identities and the bounded observation without rewriting its signed text. It never creates an identity, signs, scans, retries automatically, switches credentials or grants clearance. The original request must be durably checkpointed by its future worker before dispatch; this module alone is not a restart recovery journal.
+
+The transport uses a ten-second total deadline, five-second HTTP timeout and a 2 KiB streamed receipt limit. Redirects, compression, mismatched response identities, duplicate JSON fields, malformed receipts and approval claims fail closed. Exact receipt booleans must confirm storage while keeping preview, content and execution authority false. Cancellation closes the response; buffered response data is cleared.
+
+Every failure after dispatch is unconfirmed, including denial on a later retry: it cannot prove an earlier attempt did not commit. Retain the entire original request. Historical duplicate receipts can reconcile after artifact or signer revocation without renewing the observation; current session authority remains required by SQL. A changed request cannot replace the original record. Actual quarantine, current clearance, durable worker recovery and locked review binding remain separate unfinished work.
+
+This backend increment preserves the existing numbered navy/orange app workflow. Future UI integration belongs inside its existing supporting-files step, with plain saved/pending/approved states and one next action; it must not expose signer identifiers or treat a stored observation as approval.
+
+Transport validation: 71 focused tests passed, with 728 evidence/API tests total and 44 complete application-to-PostgreSQL workflows (325.155 seconds). The database-backed workflow confirms a lost post-commit response reconciles to one record and one audit event even after signer/artifact revocation, while changed signatures and revoked sessions remain unconfirmed.
