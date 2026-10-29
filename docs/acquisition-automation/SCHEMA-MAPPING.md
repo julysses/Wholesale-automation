@@ -247,3 +247,8 @@ Local migration `20261029035546_acquisition_evidence_discovery.sql` maps the gui
 ### Evidence upload capacity
 
 `20261029142852_acquisition_evidence_upload_admission.sql` adds private `acquisition_evidence_upload_slots`, an operational two-slot-per-workspace table referencing existing workspaces/profiles and composite registry identities. No equivalent local capacity table was found; existing evidence, contact and campaign entities are reused. Application roles receive only guarded function execution, no slot-table privileges. See EVIDENCE-STORAGE.md for limits, expiry/reuse, protection scope and forward compensation.
+
+
+## Signed scan observation ledger — October 29, 2026
+
+Rechecked production: 95 migration entries, latest 20261023221455; evidence registry/key/verification tables absent; zero Storage buckets; pgcrypto in extensions. Local migration 20261029184129 reuses the artifact/policy/revocation/campaign/workspace/session/audit dependencies and adds private workspace-scoped signing-key configuration plus an immutable public observation ledger. See EVIDENCE-ATTESTATIONS.md for composite relationships, RLS/grants, empty-by-default provisioning, signature contract, preservation tests and forward compensation. This is persistence of a signed observation, not approval or preview clearance. No production DDL ran.

@@ -207,6 +207,8 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261029035546_acquisition_evidence_discovery.sql').read_text())
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_upload_admission_populated_upgrade'):
             self.sql((ROOT/'frontend/supabase/migrations/20261029142852_acquisition_evidence_upload_admission.sql').read_text())
+        if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_attestation_populated_upgrade'):
+            self.sql((ROOT/'frontend/supabase/migrations/20261029184129_acquisition_evidence_attestations.sql').read_text())
         install_storage_fixture(self.sql)
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
             self.sql(STORAGE_MIGRATION.read_text())
@@ -218,6 +220,110 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def attestation_fixture(self):
+        self.mail_campaign();self.evidence_policy();self.evidence_register()
+        self.verification_key_fixture()
+
+    def verification_key_fixture(self):
+        self.sql(f"INSERT INTO private.acquisition_evidence_verification_keys(id,workspace_id,secret,scanner_version,scan_policy_version,valid_from,valid_until,reviewed_by,approval_ref) VALUES('99300000-0000-4000-8000-000000000001','{WORKSPACE}',decode(repeat('ab',32),'hex'),'ClamAV 1.4.3/12345/Thu Oct 29 00:00:00 2026','synthetic-v1',clock_timestamp()-interval '1 hour',clock_timestamp()+interval '1 hour','{ADMIN}','99300000-0000-4000-8000-000000000088')")
+
+    def signed_observation(self, request='99300000-0000-4000-8000-000000000002', actor=ADMIN, **changes):
+        import hmac
+        state=self.evidence_state()
+        payload={k:state[k] for k in ('media_type','retain_until','retention_policy_id','checked_at')}
+        payload.update(sha256=state['expected_sha256'],byte_size=state['expected_byte_size'],scan_checked_at=state['checked_at'],
+            registry_checked_at=state['checked_at'],scanner='clamav-instream-v1',scanner_version='ClamAV 1.4.3/12345/Thu Oct 29 00:00:00 2026',
+            scan_policy_version='synthetic-v1',scan_status='no_detection')
+        payload.update(changes)
+        body=json.dumps(payload,sort_keys=True,separators=(',',':'))
+        context=[request,WORKSPACE,'91000000-0000-4000-8000-000000000001',state['artifact_id'],actor,actor,'99300000-0000-4000-8000-000000000001']
+        message='acquisition-evidence-attestation-v1\n'+'\n'.join(context)+'\n'+body
+        return context+[body,hmac.new(bytes.fromhex('ab'*32),message.encode(),hashlib.sha256).hexdigest()]
+
+    def record_observation(self, args, actor=ADMIN, fail=False, **kwargs):
+        result=self.sql('SELECT public.record_acquisition_evidence_verification('+','.join(literal(v) for v in args)+')',user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_evidence_attestation_exact_retry_and_detected_history(self):
+        self.attestation_fixture();args=self.signed_observation()
+        result=self.record_observation(args);self.assertTrue(result['observation_persisted']);self.assertFalse(result['duplicate'])
+        self.assertFalse(result['preview_authorized']);self.assertFalse(result['content_approved']);self.assertFalse(result['execution_authorized'])
+        self.assertTrue(self.record_observation(args)['duplicate'])
+        self.record_observation(self.signed_observation(request='99300000-0000-4000-8000-000000000003',scan_status='detected'))
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'2')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence_verification'"),'2')
+        self.assertEqual(self.evidence_state()['status'],'pending_verification')
+        # Historical exact retry is only a receipt, even after signer/artifact revocation.
+        self.evidence_revoke();self.sql('UPDATE private.acquisition_evidence_verification_keys SET revoked_at=clock_timestamp()')
+        self.assertTrue(self.record_observation(args)['duplicate'])
+
+    def test_evidence_attestation_signature_scope_roles_and_immutable_rows(self):
+        self.attestation_fixture();args=self.signed_observation()
+        for index in range(9):
+            changed=args.copy();changed[index]=('b'*64 if index==8 else args[index]+' ' if index==7 else OTHER)
+            self.record_observation(changed,fail=True)
+        for actor in (OTHER,CALLER,OPERATOR):self.record_observation(args,actor=actor,fail=True)
+        for kwargs in ({'aal':'aal1'},{'session':False},{'role':'service_role'}):self.record_observation(args,fail=True,**kwargs)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'0')
+        self.record_observation(args)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications',user=OTHER),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications',user=CALLER),'0')
+        for actor in (ADMIN,OPERATOR):
+            self.sql('SELECT secret FROM private.acquisition_evidence_verification_keys',user=actor,fail=True)
+            for command in ('UPDATE acquisition_evidence_verifications SET scan_status=\'detected\'','DELETE FROM acquisition_evidence_verifications','TRUNCATE acquisition_evidence_verifications'):
+                self.sql(command,user=actor,fail=True)
+        self.sql("UPDATE acquisition_evidence_verifications SET scan_status='detected'",fail=True)
+        self.sql('DELETE FROM acquisition_evidence_verifications',fail=True)
+
+    def test_evidence_attestation_rejects_stale_changed_or_unreviewed_observations(self):
+        self.attestation_fixture()
+        for changes in ({'checked_at':'2026-01-01T00:00:00Z'},{'checked_at':'now'},{'byte_size':True},
+                        {'byte_size':'123'},{'sha256':'b'*64},{'retention_policy_id':OTHER},{'scan_status':'clean'},
+                        {'scanner_version':'different'},{'scan_policy_version':'different'},{'media_type':'text/html'},
+                        {'content_approved':True},{'scan_status':None}):
+            self.record_observation(self.signed_observation(**changes),fail=True)
+        duplicate=self.signed_observation()
+        duplicate[7]=duplicate[7][:-1]+',\"scan_status\":\"no_detection\"}'
+        self.assertIn('Exact observation fields required',self.record_observation(duplicate,fail=True))
+        args=self.signed_observation()
+        self.sql('UPDATE private.acquisition_evidence_verification_keys SET revoked_at=clock_timestamp()')
+        self.record_observation(args,fail=True)
+        self.sql('UPDATE private.acquisition_evidence_verification_keys SET revoked_at=NULL')
+        self.evidence_revoke();self.record_observation(args,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'0')
+
+    def test_evidence_attestation_operator_scope_and_security_catalog(self):
+        self.mail_campaign();self.evidence_policy();self.member(target=OPERATOR,role='operator')
+        self.evidence_register(actor=OPERATOR);self.verification_key_fixture()
+        self.record_observation(self.signed_observation(actor=OPERATOR),actor=OPERATOR)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications',user=OPERATOR),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications',user=ADMIN),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications',user=OTHER),'0')
+        self.member(target=OPERATOR,status='revoked')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications',user=OPERATOR),'0')
+        self.assertEqual(self.sql("SELECT bool_and(relrowsecurity) FROM pg_class WHERE oid IN ('public.acquisition_evidence_verifications'::regclass,'private.acquisition_evidence_verification_keys'::regclass)"),'t')
+        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','private.acquisition_evidence_verification_keys','SELECT') OR has_table_privilege('service_role','private.acquisition_evidence_verification_keys','SELECT')"),'f')
+        self.assertEqual(self.sql("SELECT has_table_privilege('authenticated','public.acquisition_evidence_verifications','INSERT') OR has_table_privilege('service_role','public.acquisition_evidence_verifications','INSERT')"),'f')
+        self.assertEqual(self.sql("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE p.proname='record_acquisition_evidence_verification' AND (p.proconfig IS NULL OR NOT array_to_string(p.proconfig,',') LIKE 'search_path=%')"),'0')
+
+    def test_evidence_attestation_concurrent_retries_append_once(self):
+        self.attestation_fixture();args=self.signed_observation()
+        with ThreadPoolExecutor(max_workers=4) as pool:results=list(pool.map(lambda _:self.record_observation(args),range(4)))
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence_verification'"),'1')
+
+    def test_evidence_attestation_populated_upgrade(self):
+        self.mail_campaign();self.evidence_policy();self.evidence_register();self.evidence_revoke()
+        before=self.sql('SELECT jsonb_agg(to_jsonb(a)) FROM acquisition_evidence_artifacts a')
+        audit=self.sql('SELECT count(*) FROM audit_logs')
+        self.sql((ROOT/'frontend/supabase/migrations/20261029184129_acquisition_evidence_attestations.sql').read_text())
+        self.assertEqual(self.sql('SELECT jsonb_agg(to_jsonb(a)) FROM acquisition_evidence_artifacts a'),before)
+        self.assertEqual(self.sql('SELECT count(*) FROM audit_logs'),audit)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_verification_keys'),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'0')
+        self.assertEqual(self.sql("SELECT prosecdef FROM pg_proc WHERE oid='public.record_acquisition_evidence_verification(uuid,uuid,uuid,uuid,uuid,uuid,uuid,text,text)'::regprocedure"),'f')
 
     def upload_admission(self, actor=ADMIN, attempt=None, artifact='99200000-0000-4000-8000-000000000002',
                          workspace=WORKSPACE, campaign='91000000-0000-4000-8000-000000000001', purpose='mail_content', fail=False, **kwargs):
@@ -263,6 +369,35 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
             self.sql(command+' private.acquisition_evidence_upload_slots',user=ADMIN,fail=True)
         self.evidence_revoke();self.upload_admission(fail=True)
         self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'1')
+
+    def test_evidence_attestation_rechecks_waiting_session(self):
+        import select
+        import time
+        self.attestation_fixture();args=self.signed_observation()
+        self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()+interval '2 seconds' WHERE user_id='{ADMIN}'")
+        process=subprocess.Popen([str(PG/'psql'),'-X','-qAt','-v','ON_ERROR_STOP=1','-h',self.socket,'-U','test_admin','-d','acquisition_test'],
+            stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,env=self.env)
+        try:
+            process.stdin.write(f"BEGIN; DO $$ BEGIN PERFORM pg_advisory_xact_lock(hashtextextended('evidence-artifact:99200000-0000-4000-8000-000000000002',0)); END $$;\n\\echo admission_locked\n")
+            process.stdin.flush()
+            self.assertTrue(select.select([process.stdout],[],[],5)[0])
+            self.assertEqual(process.stdout.readline().strip(),'admission_locked')
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(self.record_observation,args,fail=True)
+                try:
+                    deadline=time.monotonic()+5;waiting='0'
+                    while time.monotonic()<deadline:
+                        waiting=self.sql("SELECT count(*) FROM pg_stat_activity WHERE wait_event='advisory' AND query LIKE '%public.record_acquisition_evidence_verification%'")
+                        if waiting!='0':break
+                        time.sleep(.02)
+                    self.assertNotEqual(waiting,'0')
+                    self.sql('SELECT pg_sleep(2.1)')
+                finally:
+                    process.stdin.write('COMMIT;\n');process.stdin.flush()
+                self.assertIn('Verification session expired',future.result(timeout=5))
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'0')
+        finally:
+            process.communicate('\\q\n',timeout=5)
 
     def test_evidence_upload_admission_rechecks_waiting_session(self):
         import select

@@ -620,6 +620,25 @@ class WorkflowTests(WorkspaceTests):
                     purpose='mail_content',policy=policy)
         with patch('tools.acquisition_evidence_scan._command',daemon_command):return asyncio.run(scan())
 
+    def test_evidence_scan_attestation_persists_exact_result_without_approval(self):
+        from datetime import datetime, timedelta, timezone
+        from tools.acquisition_evidence_attestation import VerificationSigningKey, build_scan_attestation
+        self.registered_evidence_fixture();self.verification_key_fixture();self.scanner_calls=0
+        self.sql("UPDATE private.acquisition_evidence_verification_keys SET scan_policy_version='synthetic-reviewed-v1'")
+        observation=self.scan_registered_fixture()
+        now=datetime.now(timezone.utc)
+        key=VerificationSigningKey(UUID('99300000-0000-4000-8000-000000000001'),UUID(WORKSPACE),bytes.fromhex('ab'*32),
+            observation['scanner_version'],observation['scan_policy_version'],now-timedelta(hours=1),now+timedelta(minutes=30))
+        request=build_scan_attestation(observation,request_id=UUID('99300000-0000-4000-8000-000000000002'),
+                                       actor_id=UUID(ADMIN),session_id=UUID(ADMIN),key=key)
+        args=[request[k] for k in ('p_id','p_workspace','p_campaign','p_artifact','p_actor','p_session','p_key','p_observation','p_signature')]
+        result=self.record_observation(args)
+        self.assertTrue(result['observation_persisted']);self.assertFalse(result['preview_authorized'])
+        self.assertFalse(result['content_approved']);self.assertFalse(result['execution_authorized'])
+        self.assertTrue(self.record_observation(args)['duplicate']);self.assertEqual(self.scanner_calls,1)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'1')
+        self.assertEqual(self.evidence_state()['status'],'pending_verification')
+
     def test_evidence_scan_rechecks_real_registry_without_granting_approval(self):
         self.registered_evidence_fixture();self.scanner_calls=0
         receipt=self.scan_registered_fixture()
