@@ -1,3 +1,13 @@
+## Implementation checkpoint — guided acquisition review layout
+
+- User direction: every new screen must fit an easy-to-follow process and match the existing app aesthetic. Treat this as an ongoing implementation requirement: reuse navy/orange, numbered steps, consistent cards and plain-language handoffs; preserve draft and retry state; distinguish recorded history from current approval; never imply completion from navigation.
+- The acquisition page now groups existing controls into four review steps: campaign preparation, seller inquiries, property evaluation, and proposed-amount review. Anchor navigation leaves all forms mounted. The sidebar now calls this page Acquisition Workflow. This supplements the existing 11-step dashboard guide; it does not reuse its manual completion markers as workspace approval evidence.
+- Direct-mail campaign cards explain the message-to-destination-to-proof sequence. Complete-proof approval is visibly unavailable until implemented. Existing permissions, endpoints, pending recovery and release gates remain unchanged.
+- Validation: build passed; lint has 147 existing findings and no new findings. Acquisition review and destination regression tests passed (28 tests). Campaign regressions passed (20 tests), for 48 focused tests total. Synthetic browser confirmed all four sections, matching visual styling, anchor focus and retained draft text after navigating to amount review and back. Screenshot: ../acquisition-workflow-preview.jpg. This is desktop fixture evidence, not mobile or live-provider acceptance.
+- Previous commit 4e47323 CI run 40748690240 completed successfully before this increment was pushed. No production changes, migrations or outreach activation.
+
+Next: apply the same process and aesthetic standard to content preparation/approval, simplify evidence entry with protected evidence resolution, and verify complete handoffs as those features are added. Full PRD goal remains active; remaining channel, contract and disposition work is tracked below.
+
 # Acquisition automation — progress and resume checkpoint
 
 Checkpoint date: October 28, 2026 (America/Chicago).

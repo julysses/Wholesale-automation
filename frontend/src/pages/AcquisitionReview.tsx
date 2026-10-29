@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
 import { AcquisitionUnderwriting } from '@/pages/AcquisitionUnderwriting';
@@ -34,8 +34,8 @@ export function AcquisitionReview({ userId }: { userId: string }) {
   const spaces = useQuery({ queryKey: ['acquisition-review', userId, 'workspaces'],
     queryFn: ({ signal }) => read<Workspace[]>('/api/acquisition/workspaces', signal), retry: false, gcTime: 0, staleTime: 0 });
   return <main className="max-w-6xl mx-auto p-6 space-y-6">
-    <header><h1 className="text-2xl font-bold text-[#1B3A5C]">Acquisition offer review</h1>
-      <p className="text-gray-600 mt-2">Review the proposed amount and supporting underwriting. Amount approval does not send an offer or approve a contract.</p></header>
+    <header><h1 className="text-2xl font-bold text-[#1B3A5C]">Acquisition workflow</h1>
+      <p className="text-gray-600 mt-2">Prepare campaigns, review seller inquiries, evaluate the property, and review the proposed amount in one workspace.</p><p className="text-sm text-gray-500 mt-2">These review steps support your existing acquisition process. Amount approval does not send an offer or approve a contract.</p></header>
     {spaces.isPending && <p role="status">Loading your workspaces…</p>}
     {spaces.isError && <p role="alert">{message(spaces.error)}</p>}
     {spaces.data && <label className="block max-w-md">Workspace<select className={input} disabled={campaignPending} value={workspace} onChange={e => setWorkspace(e.target.value)}>
@@ -43,6 +43,24 @@ export function AcquisitionReview({ userId }: { userId: string }) {
     {spaces.data?.length === 0 && <p>No acquisition workspace is available to your account.</p>}
     {workspace && spaces.data?.some(w => w.id === workspace) && <WorkspaceReview key={`${userId}:${workspace}`} userId={userId} workspace={workspace} onCampaignPending={setCampaignPending} />}
   </main>;
+}
+
+const reviewSteps = [
+  { id: 'prepare', title: 'Prepare campaigns', detail: 'Choose the channel and budget. For mail, prepare the message and verify where sellers will respond.' },
+  { id: 'sellers', title: 'Review seller inquiries', detail: 'Resolve intake issues, review callback requests, and confirm the seller and property information.' },
+  { id: 'evaluate', title: 'Evaluate the property', detail: 'Review the evidence and costs, then prepare a proposed amount.' },
+  { id: 'decide', title: 'Review the proposed amount', detail: 'Check the supporting analysis and record your decision. Contract approval and delivery are separate steps.' },
+];
+
+function ReviewStep({ index, children }: { index: number; children: ReactNode }) {
+  const step = reviewSteps[index];
+  return <section id={`acquisition-${step.id}`} aria-labelledby={`acquisition-${step.id}-title`} tabIndex={-1} className="scroll-mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5 space-y-4 focus:outline-none focus:ring-2 focus:ring-[#E8720C]">
+    <header className="flex gap-3 items-start">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1B3A5C] text-[#E8720C] font-bold" aria-hidden="true">{index + 1}</span>
+      <div><p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Review step {index + 1} of 4</p><h2 id={`acquisition-${step.id}-title`} className="text-lg font-bold text-[#1B3A5C]">{step.title}</h2><p className="text-sm text-gray-600 mt-1">{step.detail}</p></div>
+    </header>
+    {children}
+  </section>;
 }
 
 function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: string; workspace: string; onCampaignPending: (pending: boolean) => void }) {
@@ -55,12 +73,17 @@ function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: str
   const base = `/api/acquisition/workspaces/${workspace}`;
   const queue = useQuery({ queryKey: ['acquisition-review', userId, workspace, 'queue', after],
     queryFn: ({ signal }) => read<Page>(`${base}/offers?limit=20${after ? `&after=${after}` : ''}`, signal), retry: false, gcTime: 0, staleTime: 0 });
-  return <section className="space-y-4">
-    <CampaignDrafts userId={userId} workspace={workspace} onPending={setDraftPending} />
-    <InquiryHealth userId={userId} workspace={workspace} />
+  return <section className="space-y-6">
+    <nav aria-label="Acquisition review steps" className="rounded-xl bg-[#1B3A5C] p-4 sm:p-5 text-white">
+      <p className="font-semibold">Your acquisition review path</p><p className="text-sm text-white/80 mt-1">Jump to the work you need. Step numbers show the order of review, not completion or launch approval.</p>
+      <ol className="grid gap-2 mt-4 sm:grid-cols-2 lg:grid-cols-4">{reviewSteps.map((step, index) => <li key={step.id}><a href={`#acquisition-${step.id}`} className="flex gap-2 items-center rounded-lg bg-white/10 p-3 text-sm hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E8720C]"><span className="font-bold text-[#E8720C]">{index + 1}</span>{step.title}</a></li>)}</ol>
+    </nav>
+    <ReviewStep index={0}><CampaignDrafts userId={userId} workspace={workspace} onPending={setDraftPending} /></ReviewStep>
+    <ReviewStep index={1}><InquiryHealth userId={userId} workspace={workspace} />
     <InboundRequestQueue key={`${userId}:${workspace}`} userId={userId} workspace={workspace} onPending={setInboundPending} />
-    <IntakeReview userId={userId} workspace={workspace} />
-    <AcquisitionUnderwriting userId={userId} workspace={workspace} onProposed={() => { void queue.refetch(); }} />
+    <IntakeReview userId={userId} workspace={workspace} /></ReviewStep>
+    <ReviewStep index={2}><AcquisitionUnderwriting userId={userId} workspace={workspace} onProposed={() => { void queue.refetch(); }} /></ReviewStep>
+    <ReviewStep index={3}>
     <div className="flex justify-between items-center"><h2 className="text-lg font-semibold">Proposals and review history</h2>
       <button className={button} disabled={queue.isFetching} onClick={() => { setSelected(null); void queue.refetch(); }}>Refresh queue</button></div>
     {queue.isFetching ? <p role="status">Loading proposals…</p> : queue.isError ? <p role="alert">{message(queue.error)}</p> : <>
@@ -74,6 +97,7 @@ function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: str
     <nav aria-label="Proposal pages" className="flex gap-2"><button className={button} disabled={cursors.length === 1 || queue.isFetching} onClick={() => { setSelected(null); setCursors(c => c.slice(0, -1)); }}>Previous</button>
       <button className={button} disabled={!queue.data?.next_after || queue.isFetching || queue.isError} onClick={() => { const next = queue.data?.next_after; if (next) { setSelected(null); setCursors(c => [...c, next]); } }}>Next</button></nav>
     {selected && <OfferReview key={selected.offer_id} userId={userId} workspace={workspace} selected={selected} onSaved={() => { void queue.refetch(); }} />}
+    </ReviewStep>
   </section>;
 }
 
