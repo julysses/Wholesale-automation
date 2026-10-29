@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '@/lib/api';
+
+type PendingReporter = (key: string, pending: boolean) => void;
 
 type Evidence = { mode: 'phone' | 'landing_page'; value: string; verification_ref: string; verification_hash: string; verified_at: string; expires_at: string };
 type Review = { id: string; expected_version: number; action: 'approved' | 'withdrawn'; note: string } & Partial<Evidence>;
@@ -33,10 +35,10 @@ function validHistory(row: History, workspace: string, campaign: string): boolea
     && ['phone', 'landing_page'].includes(row.mode) && typeof row.value === 'string' && !!row.value && row.value.length <= 2048;
 }
 async function read(path: string, signal?: AbortSignal) { return (await apiFetch(path, { signal })).json(); }
-export function MailDestinations(props: { userId: string; workspace: string; campaign: string }) {
+export function MailDestinations(props: { userId: string; workspace: string; campaign: string; onPending?: PendingReporter }) {
   return <DestinationEditor key={`${props.userId}:${props.workspace}:${props.campaign}`} {...props}/>;
 }
-function DestinationEditor({ userId, workspace, campaign }: { userId: string; workspace: string; campaign: string }) {
+function DestinationEditor({ userId, workspace, campaign, onPending }: { userId: string; workspace: string; campaign: string; onPending?: PendingReporter }) {
   const path = `/api/acquisition/workspaces/${workspace}/campaigns/${campaign}/mail-destinations`;
   const key = `acquisition-destination-request:v1:${userId}:${workspace}:${campaign}`;
   const [initial] = useState(() => {
@@ -50,7 +52,9 @@ function DestinationEditor({ userId, workspace, campaign }: { userId: string; wo
   const [baseVersion, setBaseVersion] = useState<number | null>(initial.request?.review.expected_version ?? null);
   const [details, setDetails] = useState<Evidence>(initial.request?.review.action === 'approved' ? initial.request.review as Evidence : empty);
   const [note, setNote] = useState(initial.request?.review.note ?? ''); const [attested, setAttested] = useState(false);
-  const [busy, setBusy] = useState(false); const inFlight = useRef(false); const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false); const inFlight = useRef(false);
+  useEffect(() => { onPending?.(`${campaign}:destination`, busy || !!pending || initial.invalid); }, [campaign, busy, pending, initial.invalid, onPending]);
+  const [message, setMessage] = useState('');
   const [cursors, setCursors] = useState<(string | null)[]>([null]); const after = cursors.at(-1);
   const access = useQuery({ queryKey: ['mail-destination-access', userId, workspace], enabled: open, retry: false, gcTime: 0, staleTime: 0,
     queryFn: async ({ signal }) => { const rows = await read(`/api/acquisition/workspaces/${workspace}/memberships`, signal);

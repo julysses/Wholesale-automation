@@ -1,7 +1,7 @@
 import { MailDestinations } from '@/components/acquisition/MailDestinations';
 import { MailTemplates } from '@/components/acquisition/MailTemplates';
 import { CampaignCosts } from '@/components/acquisition/CampaignCosts';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '@/lib/api';
 
@@ -46,14 +46,19 @@ export function CampaignDrafts({ userId, workspace, onPending }: { userId: strin
   const [feedback, setFeedback] = useState('');
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const after = cursors[cursors.length - 1];
-  useEffect(() => { onPending(!!pending || initial.error); }, [pending, initial.error, onPending]);
+  const [mailHolds, setMailHolds] = useState<Record<string, boolean>>({});
+  const reportMailPending = useCallback((key: string, held: boolean) => {
+    setMailHolds(previous => !!previous[key] === held ? previous : { ...previous, [key]: held });
+  }, []);
+  const mailPending = Object.values(mailHolds).some(Boolean);
+  useEffect(() => { onPending(busy || !!pending || initial.error || mailPending); }, [busy, pending, initial.error, mailPending, onPending]);
   const access = useQuery({ queryKey: ['campaign-access', userId, workspace], retry: false, gcTime: 0, staleTime: 0,
     queryFn: async ({ signal }) => {
       const rows = await read(`/api/acquisition/workspaces/${workspace}/memberships`, signal);
       if (!Array.isArray(rows)) throw new Error('Membership unavailable');
       return rows.some(row => row?.workspace_id === workspace && row.user_id === userId && row.status === 'active' && ['owner', 'admin'].includes(row.role));
     } });
-  const list = useQuery({ queryKey: ['campaign-drafts', userId, workspace, after], retry: false, gcTime: 0, staleTime: 0,
+  const list = useQuery({ queryKey: ['campaign-drafts', userId, workspace, after], refetchOnWindowFocus: false, refetchOnReconnect: false, retry: false, gcTime: 0, staleTime: 0,
     queryFn: async ({ signal }): Promise<{ items: Campaign[]; next_after: string | null }> => {
       const page = await read(`${path}?limit=20${after ? `&after=${after}` : ''}`, signal);
       if (!Array.isArray(page?.items) || page.items.length > 20 || !page.items.every((row: Campaign) => row && uuid.test(row.id) && row.workspace_id === workspace
@@ -64,7 +69,7 @@ export function CampaignDrafts({ userId, workspace, onPending }: { userId: strin
       return page;
     } });
   const cents = budgetCents(budget);
-  const canCreate = access.data === true && !access.isError && !access.isFetching && !initial.error;
+  const canCreate = access.data === true && !access.isError && !access.isFetching && !initial.error && !mailPending;
   const valid = canCreate && name.trim().length > 0 && name.trim().length <= 200 && cents !== null;
   async function save() {
     if (inFlight.current || initial.error || (!pending && !valid)) return;
@@ -93,16 +98,17 @@ export function CampaignDrafts({ userId, workspace, onPending }: { userId: strin
     } finally { inFlight.current = false; setBusy(false); }
   }
   return <section aria-label="Campaign drafts" className="border rounded-xl bg-white p-5 space-y-4">
-    <div className="flex flex-wrap justify-between gap-2"><h2 className="text-lg font-semibold">Campaign drafts</h2><button className={button} disabled={list.isFetching} onClick={() => { void list.refetch(); void access.refetch(); }}>Refresh campaigns</button></div>
+    <div className="flex flex-wrap justify-between gap-2"><h2 className="text-lg font-semibold">Campaign drafts</h2><button className={button} disabled={list.isFetching || mailPending} onClick={() => { if (!mailPending) { void list.refetch(); void access.refetch(); } }}>Refresh campaigns</button></div>
     <p className="text-sm text-gray-600">Plan a campaign budget. Channels activate in the approved rollout order, beginning with Facebook. Drafts do not publish ads, fund campaigns or authorize outreach.</p>
-    {list.isFetching ? <p role="status">Loading campaign drafts…</p> : list.isError ? <p role="alert">Campaign records could not be verified.</p> : <ul className="space-y-2">{list.data?.items.map(row => <li className="border rounded p-3" key={row.id}><strong>{row.name}</strong><p>{channels[row.acquisition_channel]} · Draft · Budget {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(row.acquisition_budget_cents / 100)}</p><p className="text-sm text-gray-600">Actual spend requires reviewed cost evidence.</p><p className="text-xs break-all">Reference: {row.id}</p>{row.acquisition_channel === 'direct_mail' && <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+    {mailPending && <p role="status" className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-[#1B3A5C]">Finish reconciling the saved mail request below before changing campaigns or workspaces. You can retry the same request in its current step.</p>}
+    {list.isFetching && !mailPending ? <p role="status">Loading campaign drafts…</p> : list.isError ? <p role="alert">Campaign records could not be verified.</p> : <ul className="space-y-2">{list.data?.items.map(row => <li className="border rounded p-3" key={row.id}><strong>{row.name}</strong><p>{channels[row.acquisition_channel]} · Draft · Budget {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(row.acquisition_budget_cents / 100)}</p><p className="text-sm text-gray-600">Actual spend requires reviewed cost evidence.</p><p className="text-xs break-all">Reference: {row.id}</p>{row.acquisition_channel === 'direct_mail' && <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
         <div><h3 className="font-semibold text-[#1B3A5C]">Prepare this mailing</h3><p className="text-sm text-gray-600 mt-1">First prepare the message, then verify the phone number or website sellers will use.</p></div>
-        <div><h4 className="text-sm font-semibold text-[#1B3A5C]">1. Prepare the message</h4><MailTemplates userId={userId} workspace={workspace} campaign={row.id}/></div><div className="border-t border-gray-200 pt-4"><h4 className="text-sm font-semibold text-[#1B3A5C]">2. Verify the response destination</h4><MailDestinations userId={userId} workspace={workspace} campaign={row.id}/></div><div className="border-t border-gray-200 pt-4"><h4 className="text-sm font-semibold text-gray-600">3. Review the complete mail proof</h4><p className="text-sm text-gray-600 mt-1">Coming next. Content approval and fulfillment are not available here yet.</p></div></div>}
+        <div><h4 className="text-sm font-semibold text-[#1B3A5C]">1. Prepare the message</h4><MailTemplates userId={userId} workspace={workspace} campaign={row.id} onPending={reportMailPending}/></div><div className="border-t border-gray-200 pt-4"><h4 className="text-sm font-semibold text-[#1B3A5C]">2. Verify the response destination</h4><MailDestinations userId={userId} workspace={workspace} campaign={row.id} onPending={reportMailPending}/></div><div className="border-t border-gray-200 pt-4"><h4 className="text-sm font-semibold text-gray-600">3. Review the complete mail proof</h4><p className="text-sm text-gray-600 mt-1">Coming next. Content approval and fulfillment are not available here yet.</p></div></div>}
 {row.acquisition_channel === 'facebook' && <CampaignCosts userId={userId} workspace={workspace} campaign={row.id}/>}</li>)}</ul>}
     {list.data?.items.length === 0 && !list.isFetching && !list.isError && <p>No campaign drafts on this page.</p>}
-    <nav aria-label="Campaign pages" className="flex gap-2"><button className={button} disabled={cursors.length === 1 || list.isFetching} onClick={() => setCursors(value => value.slice(0, -1))}>Previous campaigns</button><button className={button} disabled={!list.data?.next_after || list.isError || list.isFetching} onClick={() => { if (list.data?.next_after) setCursors(value => [...value, list.data!.next_after]); }}>Next campaigns</button></nav>
+    <nav aria-label="Campaign pages" className="flex gap-2"><button className={button} disabled={cursors.length === 1 || list.isFetching || mailPending} onClick={() => setCursors(value => value.slice(0, -1))}>Previous campaigns</button><button className={button} disabled={!list.data?.next_after || list.isError || list.isFetching || mailPending} onClick={() => { if (list.data?.next_after) setCursors(value => [...value, list.data!.next_after]); }}>Next campaigns</button></nav>
     {initial.error && <p role="alert">A saved draft request could not be read. Resolve browser storage access or reconcile the saved campaign request before creating another draft in this tab.</p>}
-    {!canCreate && !pending && !initial.error && <p className="text-sm">Creating drafts requires active owner or administrator access.</p>}
+    {!canCreate && !pending && !initial.error && !mailPending && <p className="text-sm">Creating drafts requires active owner or administrator access.</p>}
     <fieldset disabled={!canCreate || busy || !!pending} className="grid gap-3 md:grid-cols-3"><legend className="font-semibold mb-2">New campaign draft</legend>
       <label>Campaign name<input className={input} value={name} maxLength={200} onChange={event => setName(event.target.value)} /></label>
       <label>Acquisition channel<select className={input} value={channel} onChange={event => setChannel(event.target.value)}>{Object.entries(channels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>

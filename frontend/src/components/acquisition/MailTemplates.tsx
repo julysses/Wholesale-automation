@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '@/lib/api';
+
+type PendingReporter = (key: string, pending: boolean) => void;
 
 type Draft = { id: string; template_id: string; expected_version: number; name: string; format: 'letter' | 'postcard'; tracking_mode: 'phone' | 'landing_page'; body: string };
 type Version = { id: string; workspace_id: string; campaign_id: string; acquisition_template_id: string; acquisition_template_version: number; name: string; primary_text: string; acquisition_mail_format: Draft['format']; acquisition_tracking_mode: Draft['tracking_mode']; status: string };
@@ -19,10 +21,10 @@ function valid(value: unknown): value is Draft {
 }
 async function read(path: string, signal?: AbortSignal) { return (await apiFetch(path, { signal })).json(); }
 
-export function MailTemplates(props: { userId: string; workspace: string; campaign: string }) {
+export function MailTemplates(props: { userId: string; workspace: string; campaign: string; onPending?: PendingReporter }) {
   return <MailEditor key={`${props.userId}:${props.workspace}:${props.campaign}`} {...props} />;
 }
-function MailEditor({ userId, workspace, campaign }: { userId: string; workspace: string; campaign: string }) {
+function MailEditor({ userId, workspace, campaign, onPending }: { userId: string; workspace: string; campaign: string; onPending?: PendingReporter }) {
   const path = `/api/acquisition/workspaces/${workspace}/campaigns/${campaign}/mail-templates`;
   const key = `acquisition-mail-request:v1:${userId}:${workspace}:${campaign}`;
   const [initial] = useState(() => {
@@ -39,6 +41,7 @@ function MailEditor({ userId, workspace, campaign }: { userId: string; workspace
   const [format, setFormat] = useState<Draft['format']>(initial.pending?.format ?? 'letter');
   const [mode, setMode] = useState<Draft['tracking_mode']>(initial.pending?.tracking_mode ?? 'phone');
   const [busy, setBusy] = useState(false); const inFlight = useRef(false);
+  useEffect(() => { onPending?.(`${campaign}:template`, busy || !!pending || initial.invalid); }, [campaign, busy, pending, initial.invalid, onPending]);
   const [message, setMessage] = useState(''); const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const after = cursors.at(-1);
   const access = useQuery({ queryKey: ['mail-template-access', userId, workspace], enabled: open, retry: false, gcTime: 0, staleTime: 0,

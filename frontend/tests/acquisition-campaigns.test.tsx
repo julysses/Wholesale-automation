@@ -87,3 +87,42 @@ it('connects the mail editor only to direct-mail campaign drafts', async () => {
   expect(screen.getByRole('button', { name: 'Review mail destinations' })).toBeVisible();
   expect(screen.queryByRole('button', { name: 'View campaign costs' })).toBeNull();
 });
+
+const mailKey = `acquisition-mail-request:v1:user:${workspace}:${campaign}`;
+const destinationKey = `acquisition-destination-request:v1:user:${workspace}:${campaign}`;
+const messageDraft = { id: campaign, template_id: campaign, expected_version: 0, name: 'Dallas letter', format: 'letter', tracking_mode: 'phone', body: 'Call {{tracking_phone}} about {{property_address}}.' };
+const destinationRequest = { destination_id: campaign, review: { id: campaign, expected_version: 1, action: 'withdrawn', note: 'Withdraw this previously reviewed destination.' } };
+function directMailPage() { mock.page = { items: [{ ...row, acquisition_channel: 'direct_mail' }], next_after: campaign }; }
+it('keeps each unresolved mail step mounted and holds navigation until both exact retries reconcile', async () => {
+  directMailPage(); sessionStorage.setItem(mailKey, JSON.stringify(messageDraft)); sessionStorage.setItem(destinationKey, JSON.stringify(destinationRequest));
+  mock.post.mockImplementation(async (init: RequestInit) => {
+    const body = JSON.parse(init.body as string);
+    return body.action ? { review_id: body.id, workspace_id: workspace, destination_id: campaign, version: 2, duplicate: true, execution_authorized: false }
+      : { id: body.id, workspace_id: workspace, template_id: body.template_id, version: 1, status: 'draft', duplicate: true, execution_authorized: false };
+  });
+  const pending = vi.fn(); view('user', pending);
+  await screen.findByText(/Finish reconciling the saved mail request/);
+  expect(pending).toHaveBeenLastCalledWith(true);
+  expect(screen.getByRole('button', { name: 'Refresh campaigns' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Next campaigns' })).toBeDisabled();
+  expect(screen.getByLabelText('Campaign name')).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry exact mail save' }));
+  await screen.findByText(/Draft version 1 saved/);
+  expect(pending).toHaveBeenLastCalledWith(true);
+  expect(screen.getByRole('button', { name: 'Refresh campaigns' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry exact destination review' }));
+  await screen.findByText(/Destination review recorded/);
+  await waitFor(() => expect(pending).toHaveBeenLastCalledWith(false));
+  expect(screen.getByRole('button', { name: 'Refresh campaigns' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Next campaigns' })).toBeEnabled();
+  expect(JSON.parse(mock.post.mock.calls[0][0].body)).toEqual(messageDraft);
+  expect(JSON.parse(mock.post.mock.calls[1][0].body)).toEqual(destinationRequest.review);
+});
+it.each([mailKey, destinationKey])('holds campaign and workspace navigation when mail request storage is unreadable (%s)', async storageKey => {
+  directMailPage(); sessionStorage.setItem(storageKey, '{broken'); const pending = vi.fn(); view('user', pending);
+  await screen.findByText(/Finish reconciling the saved mail request/);
+  expect(pending).toHaveBeenLastCalledWith(true);
+  expect(screen.getByRole('button', { name: 'Refresh campaigns' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Next campaigns' })).toBeDisabled();
+  expect(mock.post).not.toHaveBeenCalled();
+});

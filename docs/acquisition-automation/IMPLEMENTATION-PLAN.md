@@ -10,6 +10,16 @@ Build a shared acquisition system for Dallas and Collin Counties that sources di
 
 Use existing authentication, workspace membership, roles, audit logging, deployment infrastructure, CRM, and county ingestion. Preserve production and paused SMS recovery. No production migrations, funded/published advertising, live outreach, mail fulfillment, binding offers, or contract execution are authorized by this planning checkpoint.
 
+## App process and visual continuity
+
+User direction: preserve the existing easy step-by-step process and align the aesthetic with the interconnected work. Treat this as a requirement for every UI increment.
+
+- Place new controls within the guided acquisition workflow: prepare campaigns → review seller inquiries → evaluate the property → review the proposed amount. Later contract and disposition stages must extend this journey with explicit handoffs.
+- Reuse the app's navy/orange palette, numbered steps, rounded cards, readable labels and consistent buttons. Keep technical evidence details secondary to the task and its next action.
+- Show what is ready, what needs attention and the next permitted action. Historical records and manually completed checklist items never imply current approval or live activation.
+- Preserve the selected workspace, campaign and property context through each handoff. Keep unconfirmed writes recoverable with the same request; do not navigate away or hide the active review during reconciliation.
+- Validate connected behavior, keyboard-accessible controls and understandable failure/retry messages. Use browser verification for new screens; tests and local previews do not establish production or provider acceptance.
+
 ## Ordered delivery gates
 
 | Gate | Deliverable | Evidence required before activation |

@@ -1,5 +1,16 @@
 ## Implementation checkpoint — trusted internal mail proof and history
 
+## Implementation checkpoint — preserve guided mail review context
+
+- Pulled the implementation branch before edits; previous proof-loader commit a90dc84 was already current. Its exact CI run 40803213237 completed successfully across all five jobs before this increment was pushed.
+- Added the user's step-by-step process and visual-continuity requirements to IMPLEMENTATION-PLAN.md. Existing numbered workflow and navy/orange cards remain the UI baseline.
+- Found and corrected a navigation gap before extending mail step 3: template/destination pending requests now propagate to the campaign screen and existing workspace guard. Campaign refresh, pagination and new draft creation are held while any mail request is in flight, unconfirmed or unreadable. Independent holds remain until every request is reconciled; a clear inline message points to the existing retry step.
+- Disabled automatic campaign refetch on focus/reconnect so those events cannot unmount editors mid-review. No request bodies, server authority, eligibility policies or external execution behavior changed.
+- Validation: 67 focused campaign/mail/destination/workflow tests passed, including simultaneous restored requests, exact retry bodies, independent hold release and corrupt-storage holds. An initial added test used an incorrect retry-button label; corrected to the actual accessible label before passing. Frontend build passed; lint reported no new findings (147 existing). Whitespace check passed. No new browser acceptance claimed.
+
+Next: content history, preparation, approval/withdrawal and trusted preview remain to be connected in mail step 3. Reuse the new pending propagation for that component. Continue protected evidence resolution, postal rules, durable batches/jobs, atomic budget/cadence reservations, vendor sandbox/reconciliation and the remaining portal/caller/contract/disposition scope. Full goal remains active. No production migrations, deployment, SMS schedules, outreach, spending or fulfillment changed.
+
+
 - Previous turn was progress: immutable content decisions committed/pushed as 2dd8c4a. Pulled unchanged. Exact CI run 40802139439 completed successfully across all five jobs before this increment was pushed; database job 9m50s.
 - Reinspected deployed history (95/latest 20261023221455), canonical properties columns, indexes, primary/unique/foreign/check constraints and RLS. CLI-generated local `20261029014552_acquisition_mail_proof_context.sql`; no production DDL. Adds private definer/public invoker read functions only, using prior local enrollment/content-ledger migrations.
 - One stable database snapshot combines current content approval and enrolled canonical property with matching lead/property association. Fixed property projection excludes owner/contact data; missing canonical street/city/state blocks preview without falling back to legacy lead text. No approval, reservation or audit mutation occurs.
