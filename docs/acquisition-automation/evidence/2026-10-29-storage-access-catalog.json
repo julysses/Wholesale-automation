@@ -1,0 +1,168 @@
+{
+  "rls": [
+    {
+      "table": "buckets",
+      "enabled": true
+    },
+    {
+      "table": "objects",
+      "enabled": true
+    }
+  ],
+  "grants": [
+    {
+      "role": "service_role",
+      "table": "buckets",
+      "privilege": "INSERT"
+    },
+    {
+      "role": "service_role",
+      "table": "buckets",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "service_role",
+      "table": "buckets",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "service_role",
+      "table": "buckets",
+      "privilege": "DELETE"
+    },
+    {
+      "role": "service_role",
+      "table": "buckets",
+      "privilege": "TRUNCATE"
+    },
+    {
+      "role": "service_role",
+      "table": "buckets",
+      "privilege": "REFERENCES"
+    },
+    {
+      "role": "service_role",
+      "table": "buckets",
+      "privilege": "TRIGGER"
+    },
+    {
+      "role": "authenticated",
+      "table": "buckets",
+      "privilege": "INSERT"
+    },
+    {
+      "role": "authenticated",
+      "table": "buckets",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "authenticated",
+      "table": "buckets",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "authenticated",
+      "table": "buckets",
+      "privilege": "DELETE"
+    },
+    {
+      "role": "anon",
+      "table": "buckets",
+      "privilege": "INSERT"
+    },
+    {
+      "role": "anon",
+      "table": "buckets",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "anon",
+      "table": "buckets",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "anon",
+      "table": "buckets",
+      "privilege": "DELETE"
+    },
+    {
+      "role": "service_role",
+      "table": "objects",
+      "privilege": "INSERT"
+    },
+    {
+      "role": "service_role",
+      "table": "objects",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "service_role",
+      "table": "objects",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "service_role",
+      "table": "objects",
+      "privilege": "DELETE"
+    },
+    {
+      "role": "service_role",
+      "table": "objects",
+      "privilege": "TRUNCATE"
+    },
+    {
+      "role": "service_role",
+      "table": "objects",
+      "privilege": "REFERENCES"
+    },
+    {
+      "role": "service_role",
+      "table": "objects",
+      "privilege": "TRIGGER"
+    },
+    {
+      "role": "authenticated",
+      "table": "objects",
+      "privilege": "INSERT"
+    },
+    {
+      "role": "authenticated",
+      "table": "objects",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "authenticated",
+      "table": "objects",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "authenticated",
+      "table": "objects",
+      "privilege": "DELETE"
+    },
+    {
+      "role": "anon",
+      "table": "objects",
+      "privilege": "INSERT"
+    },
+    {
+      "role": "anon",
+      "table": "objects",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "anon",
+      "table": "objects",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "anon",
+      "table": "objects",
+      "privilege": "DELETE"
+    }
+  ],
+  "latest": "20261023221455",
+  "buckets": [],
+  "policies": [],
+  "migration_count": 95
+}

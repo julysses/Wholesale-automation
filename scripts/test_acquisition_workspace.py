@@ -15,6 +15,8 @@ from concurrent.futures import ThreadPoolExecutor
 from acquisition_campaign_fixture import install_campaign_fixture
 from acquisition_call_fixture import install_call_fixture
 from acquisition_task_fixture import install_task_fixture
+from acquisition_storage_fixture import install_storage_fixture, STORAGE_MIGRATION
+from acquisition_storage_tests import StorageTests
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / 'frontend/supabase/migrations/20261026024157_acquisition_workspace_foundation.sql'
@@ -60,7 +62,7 @@ def identifier(value):
     return '"' + value.replace('"', '""') + '"'
 
 
-class WorkspaceTests(unittest.TestCase):
+class WorkspaceTests(StorageTests, unittest.TestCase):
     env = None
     socket = None
 
@@ -80,7 +82,7 @@ class WorkspaceTests(unittest.TestCase):
         return result.stdout.strip()
 
     def setUp(self):
-        self.sql('DROP SCHEMA IF EXISTS wholesale_ingest CASCADE; DROP SCHEMA IF EXISTS public CASCADE; DROP SCHEMA IF EXISTS private CASCADE; '
+        self.sql('DROP SCHEMA IF EXISTS storage CASCADE; DROP SCHEMA IF EXISTS wholesale_ingest CASCADE; DROP SCHEMA IF EXISTS public CASCADE; DROP SCHEMA IF EXISTS private CASCADE; '
                  'DROP SCHEMA IF EXISTS auth CASCADE; CREATE SCHEMA public; CREATE SCHEMA private; '
                  'CREATE SCHEMA auth; CREATE SCHEMA wholesale_ingest; CREATE EXTENSION "uuid-ossp"; '
                  'GRANT USAGE ON SCHEMA public,private,auth,wholesale_ingest TO authenticated,service_role; '
@@ -201,6 +203,9 @@ class WorkspaceTests(unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261029014552_acquisition_mail_proof_context.sql').read_text())
         if self._testMethodName != 'test_evidence_registry_populated_upgrade':
             self.sql((ROOT/'frontend/supabase/migrations/20261029022851_acquisition_evidence_registry.sql').read_text())
+        install_storage_fixture(self.sql)
+        if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
+            self.sql(STORAGE_MIGRATION.read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':
