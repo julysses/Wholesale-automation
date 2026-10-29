@@ -2,7 +2,7 @@
 
 ## Current implementation boundary
 
-`schemas/acquisition_evidence.py` defines an internal immutable artifact descriptor and strict registry projection. `AcquisitionStore.verify_evidence` now accepts identity only, loads protected current registry state, verifies streamed object bytes and reloads state through the same user-authenticated client. No public endpoint accepts a descriptor or returns this receipt. The local registry and private-storage migrations below remain unapplied to production; no real document has been uploaded or downloaded.
+`schemas/acquisition_evidence.py` defines an internal immutable artifact descriptor and strict registry projection. `AcquisitionStore.verify_evidence` now accepts identity only, loads protected current registry state, verifies streamed object bytes and reloads state through the same user-authenticated client. No public endpoint accepts a verification descriptor or returns this byte receipt. Metadata registration/state/revocation endpoints are implemented below; byte upload and verification remain internal. The local registry and private-storage migrations below remain unapplied to production; no real document has been uploaded or downloaded.
 
 Read-only catalog inspection on 2026-10-29 UTC found storage.objects/storage.buckets, no existing public table matching document/evidence names, zero storage buckets and zero storage policies. This narrow inventory is not a complete schema inventory or permission test; inspect columns, constraints, grants, policies and migration history before the additive registry/storage migration.
 
@@ -87,3 +87,23 @@ The local database adapter now matches the current official [Storage createObjec
 Synthetic tests cover duplicate/concurrent uploads, commit followed by lost/error/timed-out response, wrong/oversized/truncated/type-mismatched input, empty-chunk flooding, revoked/changed registry state, ambiguous outcomes, no redirects/overwrite, and source/response closure. Disposable PostgreSQL workflows prove one object record after retry, cross-workspace denial before input consumption, and current activation enforcement when the gate changes during input reading. No actual file, provider upload, public route or approval was introduced.
 
 Next: controlled registration/upload/state/revocation HTTP contracts with rate and concurrency limits, trusted persisted verification and scan/quarantine lifecycle, locked approval binding, then a guided file picker/recovery panel within the existing numbered mail-review step. The picker must preserve artifact identity and exact-file matching across unknown outcomes; it must not label these uploads approved or safe to open. Retention administration, legal holds and audited purge reconciliation remain open.
+
+## Implemented evidence metadata API
+
+The existing `/api/acquisition` router now includes three workspace/campaign-scoped metadata contracts:
+
+| Method and path suffix | Input and result | Authority |
+| --- | --- | --- |
+| `POST /workspaces/{workspace}/campaigns/{campaign}/evidence` | Client-generated artifact ID; purpose, expected SHA-256/byte count/media type, reviewed retention-policy ID and provenance. Returns the original registration receipt and duplicate flag. | Existing guarded registration RPC: actual owner/admin/operator, MFA/session/profile/workspace, active acquisition, direct-mail draft and current reviewed policy for new records. |
+| `GET /workspaces/{workspace}/campaigns/{campaign}/evidence/{artifact}` | No caller-supplied descriptor. Returns current pending_verification, revoked, expired or policy_review_required state, always unverified/non-approving/non-executing. | Existing actual-membership/session read function; exact workspace/campaign/artifact response validation. |
+| `POST /workspaces/{workspace}/campaigns/{campaign}/evidence/{artifact}/revocations` | Client-generated revocation request ID and documented reason. Returns the original immutable revocation receipt and duplicate flag. | Existing owner/admin + MFA/session RPC; remains usable while acquisition activation is paused. |
+
+Routes forward only the user's bearer/public key to existing RPCs. Request bodies reject unknown fields, client actor/workspace/path/URL/approval values, unsupported purposes/types, non-integer or oversized byte counts, invalid digests and undocumented/oversized provenance or reasons. Exact text and IDs are preserved for retries. Existing acquisition feature gating remains in force; no production flag was changed.
+
+Responses are validated before exposure, including exact receipt identities, strict booleans, timestamp strings with timezone, allowed fields and false verification/execution flags. Current state checks status precedence and timestamp consistency, with the existing 30-second age/five-second clock-skew bounds. Successful responses and downstream failures are no-store. Unknown or malformed write receipts return a sanitized 503 instructing the caller to retain the same request. A historical duplicate registration may return its original already-expired retention; the current-state route, not that receipt, determines availability. The API does not extend retention, substitute a new ID or retry writes automatically.
+
+HTTP-to-PostgreSQL tests cover lost registration/revocation replies followed by exact retries, changed-body conflicts, one registration/revocation audit pair, revocation while acquisition is paused, operator restrictions and revoked membership, cross-workspace denial, expired evidence and revoked-policy rejection. Unit contracts cover malformed inputs/receipts, false approval flags, freshness and unavailable routes.
+
+Uploads, downloads, verification and approval are not exposed by these metadata endpoints. Before exposing byte upload, implement shared rate/concurrency admission and exact uncertain-outcome recovery. Policy discovery/administration, evidence listing/selection, trusted persisted verification, scanning/quarantine, locked review binding and guided UI remain open. The existing mail-review reference/digest inputs remain attestations and are not silently upgraded by registration.
+
+In the future guided picker, generate request IDs and compute the file digest in the background. Resolve approved retention policies through a scoped selection contract; do not ask the user to type policy UUIDs or hashes. Present plain file/status/next-action labels in the existing mail review card, and preserve the exact pending request across navigation or lost replies. This API's internal field names are not product copy.

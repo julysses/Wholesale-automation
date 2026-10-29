@@ -18,7 +18,7 @@ from pathlib import Path
 from uuid import UUID
 from unittest.mock import patch
 
-from test_acquisition_workspace import WorkspaceTests, main, ROOT, PG, ADMIN, OTHER, WORKSPACE, LEAD, PROPERTY, literal
+from test_acquisition_workspace import WorkspaceTests, main, ROOT, PG, ADMIN, OTHER, OPERATOR, WORKSPACE, LEAD, PROPERTY, literal
 sys.path.insert(0, str(ROOT))
 import httpx
 from fastapi import FastAPI
@@ -34,6 +34,8 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'register_acquisition_evidence':['p_id','p_workspace','p_campaign','p_purpose','p_sha256','p_byte_size','p_media_type','p_policy','p_note'],
+ 'revoke_acquisition_evidence':['p_id','p_workspace','p_campaign','p_artifact','p_reason'],
  'acquisition_evidence_state':['p_workspace','p_campaign','p_artifact'],
  'acquisition_mail_proof_context':['p_workspace','p_campaign','p_content','p_lead'],
  'review_acquisition_mail_content':['p_id','p_workspace','p_campaign','p_content','p_expected_version','p_action','p_creative','p_destination_review','p_company_name','p_preparation_hash','p_evidence_ref','p_evidence_hash','p_expires_at','p_note'],
@@ -151,6 +153,7 @@ class WorkflowTests(WorkspaceTests):
         identity,role={
             'Bearer synthetic-admin-session':(ADMIN,'authenticated'),
             'Bearer synthetic-other-session':(OTHER,'authenticated'),
+            'Bearer synthetic-operator-session':(OPERATOR,'authenticated'),
             'Bearer synthetic-worker-key':(ADMIN,'service_role'),
             'Bearer synthetic-ingestion-key':(ADMIN,'service_role'),
             'Bearer synthetic-inbound-key':(ADMIN,'service_role'),
@@ -185,8 +188,8 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content','p_artifact'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
-                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of','p_verified_at','p_expires_at'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence'} else 'uuid' if key in {'p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content','p_artifact','p_policy'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
+                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of','p_verified_at','p_expires_at'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version','p_byte_size'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
@@ -329,6 +332,9 @@ class WorkflowTests(WorkspaceTests):
                 self.lose_evidence_reply_once=False
                 raise httpx.ReadTimeout('Synthetic lost response after object metadata commit',request=request)
             return httpx.Response(200,json={'ignored':'Synthetic provider receipt'})
+        if request.url.path.rsplit('/',1)[-1]==getattr(self,'lose_evidence_metadata_reply',None):
+            self.lose_evidence_metadata_reply=None
+            raise httpx.ReadTimeout('Synthetic lost evidence metadata response after commit',request=request)
         if request.url.path.endswith('complete_acquisition_calculation') and self.lose_completion_once:
             self.lose_completion_once=False
             raise httpx.ReadTimeout('Synthetic lost response after real commit',request=request)
@@ -350,6 +356,66 @@ class WorkflowTests(WorkspaceTests):
         # Synthetic metadata only: provider object bytes are simulated in handle().
         if with_object:
             self.sql(f"SET storage.operation='object.upload'; INSERT INTO storage.objects(bucket_id,name) VALUES('acquisition-evidence',{literal(name)})",user=ADMIN)
+
+    def evidence_http_fixture(self):
+        self.mail_campaign();self.evidence_policy()
+        self.evidence_endpoint=self.base+'/campaigns/91000000-0000-4000-8000-000000000001/evidence'
+        return {'id':'99200000-0000-4000-8000-000000000002','purpose':'mail_content','expected_sha256':'a'*64,
+            'expected_byte_size':123,'media_type':'application/pdf','retention_policy_id':'99200000-0000-4000-8000-000000000001',
+            'provenance_note':'Synthetic exact original evidence provenance.'}
+
+    def test_evidence_metadata_http_lost_replies_and_revocation_while_paused(self):
+        payload=self.evidence_http_fixture()
+        self.lose_evidence_metadata_reply='register_acquisition_evidence'
+        response=self.client.post(self.evidence_endpoint,json=payload,headers=self.headers)
+        self.assertEqual(response.status_code,503);self.assertEqual(response.headers['cache-control'],'no-store')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_artifacts'),'1')
+        response=self.client.post(self.evidence_endpoint,json=payload,headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text);self.assertTrue(response.json()['duplicate'])
+        current=self.evidence_endpoint+'/'+payload['id']
+        self.assertEqual(self.client.get(current,headers=self.headers).json()['status'],'pending_verification')
+        self.assertEqual(self.client.post(self.evidence_endpoint,json={**payload,'expected_byte_size':124},headers=self.headers).status_code,409)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        revocation={'id':'99200000-0000-4000-8000-000000000003','reason':'Synthetic documented evidence revocation.'}
+        self.lose_evidence_metadata_reply='revoke_acquisition_evidence'
+        self.assertEqual(self.client.post(current+'/revocations',json=revocation,headers=self.headers).status_code,503)
+        response=self.client.post(current+'/revocations',json=revocation,headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text);self.assertTrue(response.json()['duplicate'])
+        changed={**revocation,'reason':'Changed evidence revocation request with reused identity.'}
+        self.assertEqual(self.client.post(current+'/revocations',json=changed,headers=self.headers).status_code,409)
+        self.assertEqual(self.client.get(current,headers=self.headers).json()['status'],'revoked')
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_revocations'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'2')
+        self.assertFalse(any(path.startswith('/storage/') for path,auth in self.requests))
+
+    def test_evidence_metadata_http_preserves_operator_and_tenant_boundaries(self):
+        payload=self.evidence_http_fixture();self.member(target=OPERATOR,role='operator')
+        operator={'Authorization':'Bearer synthetic-operator-session'}
+        response=self.client.post(self.evidence_endpoint,json=payload,headers=operator)
+        self.assertEqual(response.status_code,200,response.text)
+        current=self.evidence_endpoint+'/'+payload['id']
+        other={'Authorization':'Bearer synthetic-other-session'}
+        self.assertEqual(self.client.get(current,headers=other).status_code,403)
+        self.assertEqual(self.client.post(self.evidence_endpoint,json=payload,headers=other).status_code,403)
+        revocation={'id':'99200000-0000-4000-8000-000000000003','reason':'Synthetic documented evidence revocation.'}
+        self.assertEqual(self.client.post(current+'/revocations',json=revocation,headers=operator).status_code,403)
+        self.member(target=OPERATOR,role='operator',status='revoked')
+        self.assertEqual(self.client.get(current,headers=operator).status_code,403)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_revocations'),'0')
+
+    def test_evidence_metadata_http_reports_expiry_and_policy_review(self):
+        payload=self.evidence_http_fixture()
+        response=self.client.post(self.evidence_endpoint,json=payload,headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        current=self.evidence_endpoint+'/'+payload['id']
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=clock_timestamp()")
+        self.assertEqual(self.client.get(current,headers=self.headers).json()['status'],'policy_review_required')
+        second={**payload,'id':'99200000-0000-4000-8000-000000000004'}
+        self.assertEqual(self.client.post(self.evidence_endpoint,json=second,headers=self.headers).status_code,409)
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=NULL,retention_seconds=1")
+        self.assertEqual(self.client.post(self.evidence_endpoint,json=second,headers=self.headers).status_code,200)
+        self.sql('SELECT pg_sleep(1.1)')
+        self.assertEqual(self.client.get(self.evidence_endpoint+'/'+second['id'],headers=self.headers).json()['status'],'expired')
 
     def upload_registered_fixture(self, after=None, token='synthetic-admin-session'):
         async def source():

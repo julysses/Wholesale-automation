@@ -1,5 +1,6 @@
 """HTTP contract/auth forwarding tests; SQL authorization uses real PostgreSQL QA."""
 import json
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -10,6 +11,162 @@ from web.api.acquisition_api import router
 
 W = '10000000-0000-4000-8000-000000000001'
 U = '00000000-0000-4000-8000-000000000001'
+
+EVIDENCE_CAMPAIGN='91000000-0000-4000-8000-000000000001'
+EVIDENCE_ARTIFACT='99200000-0000-4000-8000-000000000002'
+EVIDENCE_POLICY='99200000-0000-4000-8000-000000000001'
+EVIDENCE_REVOCATION='99200000-0000-4000-8000-000000000003'
+EVIDENCE_BASE=f'/api/acquisition/workspaces/{W}/campaigns/{EVIDENCE_CAMPAIGN}/evidence'
+EVIDENCE_AUTH={'Authorization':'Bearer evidence-user'}
+
+
+def evidence_registration_payload():
+    return {'id':EVIDENCE_ARTIFACT,'purpose':'mail_content','expected_sha256':'a'*64,'expected_byte_size':123,
+            'media_type':'application/pdf','retention_policy_id':EVIDENCE_POLICY,
+            'provenance_note':'  Synthetic original evidence provenance.  '}
+
+
+def evidence_registration_reply(**changes):
+    return {'artifact_id':EVIDENCE_ARTIFACT,'workspace_id':W,'retain_until':(datetime.now(timezone.utc)+timedelta(days=1)).isoformat(),
+            'duplicate':False,'bytes_verified':False,'execution_authorized':False,**changes}
+
+
+def evidence_current_reply(status='pending_verification',**changes):
+    now=datetime.now(timezone.utc)
+    return {'artifact_id':EVIDENCE_ARTIFACT,'workspace_id':W,'campaign_id':EVIDENCE_CAMPAIGN,
+            'purpose':'mail_content','expected_sha256':'a'*64,'expected_byte_size':123,'media_type':'application/pdf',
+            'retention_policy_id':EVIDENCE_POLICY,'created_at':(now-timedelta(days=1)).isoformat(),
+            'retain_until':(now+timedelta(days=1) if status!='expired' else now-timedelta(seconds=1)).isoformat(),
+            'revoked_at':(now-timedelta(seconds=1)).isoformat() if status=='revoked' else None,
+            'status':status,'bytes_verified':False,'content_approved':False,'execution_authorized':False,
+            'checked_at':now.isoformat(),**changes}
+
+
+def evidence_revocation_reply(**changes):
+    return {'revocation_id':EVIDENCE_REVOCATION,'artifact_id':EVIDENCE_ARTIFACT,'workspace_id':W,
+            'duplicate':False,'execution_authorized':False,**changes}
+
+
+def test_evidence_registration_forwards_exact_expectations_and_user_authority(api):
+    client,state=api;state['body']=evidence_registration_reply()
+    payload=evidence_registration_payload()
+    response=client.post(EVIDENCE_BASE,json=payload,headers=EVIDENCE_AUTH)
+    assert response.status_code==200 and response.headers['cache-control']=='no-store'
+    request=state['requests'][0]
+    assert request.url.path=='/rest/v1/rpc/register_acquisition_evidence'
+    assert request.headers['authorization']=='Bearer evidence-user' and request.headers['apikey']=='public-test-key'
+    assert json.loads(request.content)=={'p_id':EVIDENCE_ARTIFACT,'p_workspace':W,'p_campaign':EVIDENCE_CAMPAIGN,
+        'p_purpose':'mail_content','p_sha256':'a'*64,'p_byte_size':123,'p_media_type':'application/pdf',
+        'p_policy':EVIDENCE_POLICY,'p_note':payload['provenance_note']}
+    assert response.json()['bytes_verified'] is False and response.json()['execution_authorized'] is False
+
+
+@pytest.mark.parametrize('changes',[{'expected_byte_size':True},{'expected_byte_size':0},{'expected_byte_size':10485761},
+    {'expected_byte_size':'123'},{'expected_sha256':'A'*64},{'purpose':'contract'},{'media_type':'text/html'},
+    {'retention_policy_id':None},{'provenance_note':' '*25},{'provenance_note':'a'*2001},
+    {'provenance_note':'Documented\x00 private evidence provenance.'},{'actor_id':U},{'workspace_id':W},
+    {'object_url':'https://attacker.example/file'},{'bytes_verified':True},{'retain_until':'2099-01-01'}])
+def test_invalid_evidence_registration_never_reaches_database(api,changes):
+    client,state=api
+    response=client.post(EVIDENCE_BASE,json={**evidence_registration_payload(),**changes},headers=EVIDENCE_AUTH)
+    assert response.status_code==422 and not state['requests']
+
+
+@pytest.mark.parametrize('changes',[{'artifact_id':EVIDENCE_POLICY},{'workspace_id':U},{'duplicate':0},
+    {'bytes_verified':0},{'bytes_verified':True},{'execution_authorized':True},{'retain_until':'invalid'},
+    {'retain_until':'2026-01-01T00:00:00'},{'retain_until':1793246400},{'object_url':'https://attacker.example/file'}])
+def test_ambiguous_registration_receipt_requires_exact_request_recovery(api,changes):
+    client,state=api;state['body']=evidence_registration_reply(**changes)
+    response=client.post(EVIDENCE_BASE,json=evidence_registration_payload(),headers=EVIDENCE_AUTH)
+    assert response.status_code==503 and response.headers['cache-control']=='no-store'
+    assert 'retain the same request' in response.text and 'attacker' not in response.text
+    assert len(state['requests'])==1
+
+
+def test_registration_exact_replay_can_return_original_expired_retention(api):
+    client,state=api
+    state['body']=evidence_registration_reply(duplicate=True,retain_until='2026-01-01T00:00:00Z')
+    response=client.post(EVIDENCE_BASE,json=evidence_registration_payload(),headers=EVIDENCE_AUTH)
+    assert response.status_code==200 and response.json()['duplicate'] is True
+    assert response.json()['retain_until']=='2026-01-01T00:00:00Z'
+
+
+@pytest.mark.parametrize('status',['pending_verification','revoked','expired','policy_review_required'])
+def test_evidence_state_reports_current_unavailability_without_approval(api,status):
+    client,state=api;state['body']=evidence_current_reply(status)
+    response=client.get(f'{EVIDENCE_BASE}/{EVIDENCE_ARTIFACT}',headers=EVIDENCE_AUTH)
+    assert response.status_code==200 and response.headers['cache-control']=='no-store'
+    assert response.json()['status']==status and response.json()['content_approved'] is False
+    assert json.loads(state['requests'][0].content)=={'p_workspace':W,'p_campaign':EVIDENCE_CAMPAIGN,'p_artifact':EVIDENCE_ARTIFACT}
+
+
+@pytest.mark.parametrize('changes',[{'artifact_id':U},{'workspace_id':U},{'campaign_id':U},{'status':'approved'},
+    {'bytes_verified':True},{'content_approved':True},{'execution_authorized':True},{'bytes_verified':0},
+    {'status':'revoked','revoked_at':None},{'status':'expired'},
+    {'revoked_at':'2026-01-01T00:00:00Z'},{'retain_until':'2026-01-01T00:00:00Z'},
+    {'expected_byte_size':True},{'created_at':1793246400},{'checked_at':datetime.now(timezone.utc).timestamp()},
+    {'object_url':'https://attacker.example/file'}])
+def test_inconsistent_evidence_state_is_not_exposed(api,changes):
+    client,state=api;state['body']={**evidence_current_reply(),**changes}
+    response=client.get(f'{EVIDENCE_BASE}/{EVIDENCE_ARTIFACT}',headers=EVIDENCE_AUTH)
+    assert response.status_code==503 and 'attacker' not in response.text
+
+
+@pytest.mark.parametrize('offset',[-31,6])
+def test_stale_or_future_evidence_state_is_not_current(api,offset):
+    client,state=api
+    state['body']=evidence_current_reply(checked_at=(datetime.now(timezone.utc)+timedelta(seconds=offset)).isoformat())
+    assert client.get(f'{EVIDENCE_BASE}/{EVIDENCE_ARTIFACT}',headers=EVIDENCE_AUTH).status_code==503
+
+
+def test_evidence_revocation_is_scoped_and_preserves_exact_reason(api):
+    client,state=api;state['body']=evidence_revocation_reply(duplicate=True)
+    reason='  Synthetic documented evidence revocation.  '
+    response=client.post(f'{EVIDENCE_BASE}/{EVIDENCE_ARTIFACT}/revocations',json={'id':EVIDENCE_REVOCATION,'reason':reason},headers=EVIDENCE_AUTH)
+    assert response.status_code==200 and response.headers['cache-control']=='no-store'
+    assert response.json()['duplicate'] is True
+    assert json.loads(state['requests'][0].content)=={'p_id':EVIDENCE_REVOCATION,'p_workspace':W,
+        'p_campaign':EVIDENCE_CAMPAIGN,'p_artifact':EVIDENCE_ARTIFACT,'p_reason':reason}
+
+
+@pytest.mark.parametrize('changes',[{'reason':' '*20},{'reason':'a'*2001},{'actor_id':U},{'artifact_id':EVIDENCE_POLICY}])
+def test_revocation_rejects_unbounded_or_client_authority_fields(api,changes):
+    client,state=api
+    response=client.post(f'{EVIDENCE_BASE}/{EVIDENCE_ARTIFACT}/revocations',headers=EVIDENCE_AUTH,
+        json={'id':EVIDENCE_REVOCATION,'reason':'Synthetic documented evidence revocation.',**changes})
+    assert response.status_code==422 and not state['requests']
+
+
+@pytest.mark.parametrize('changes',[{'revocation_id':U},{'artifact_id':U},{'workspace_id':U},{'duplicate':1},
+    {'execution_authorized':0},{'execution_authorized':True},{'object_url':'https://attacker.example/file'}])
+def test_unconfirmed_revocation_preserves_recovery_contract(api,changes):
+    client,state=api;state['body']=evidence_revocation_reply(**changes)
+    response=client.post(f'{EVIDENCE_BASE}/{EVIDENCE_ARTIFACT}/revocations',headers=EVIDENCE_AUTH,
+        json={'id':EVIDENCE_REVOCATION,'reason':'Synthetic documented evidence revocation.'})
+    assert response.status_code==503 and 'retain the same request' in response.text
+    assert response.headers['cache-control']=='no-store' and len(state['requests'])==1
+
+
+def test_evidence_database_denial_is_sanitized_and_not_cacheable(api):
+    client,state=api;state.update(status=403,body={'code':'42501','message':'PRIVATE EVIDENCE DETAIL'})
+    response=client.get(f'{EVIDENCE_BASE}/{EVIDENCE_ARTIFACT}',headers=EVIDENCE_AUTH)
+    assert response.status_code==403 and response.headers['cache-control']=='no-store'
+    assert 'PRIVATE' not in response.text
+
+
+def test_evidence_disabled_and_unauthenticated_requests_have_no_database_effect(api,monkeypatch):
+    client,state=api
+    assert client.get(f'{EVIDENCE_BASE}/{EVIDENCE_ARTIFACT}').status_code==401
+    monkeypatch.delenv('ACQUISITION_ENABLED')
+    assert client.post(EVIDENCE_BASE,json=evidence_registration_payload(),headers=EVIDENCE_AUTH).status_code==404
+    assert not state['requests']
+
+
+@pytest.mark.parametrize('suffix',['upload','download','verify','approve'])
+def test_metadata_api_does_not_expose_unfinished_byte_or_approval_routes(api,suffix):
+    client,state=api
+    response=client.post(f'{EVIDENCE_BASE}/{EVIDENCE_ARTIFACT}/{suffix}',content=b'not accepted',headers=EVIDENCE_AUTH)
+    assert response.status_code==404 and not state['requests']
 
 
 @pytest.fixture
