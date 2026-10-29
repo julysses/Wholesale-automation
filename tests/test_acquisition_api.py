@@ -1405,3 +1405,14 @@ def test_evidence_discovery_page_validation_and_disabled_gate(api,monkeypatch):
     assert client.get(EVIDENCE_BASE+'?purpose=mail_content',headers=EVIDENCE_AUTH).status_code==503
     monkeypatch.setenv('ACQUISITION_ENABLED','false')
     assert client.get(EVIDENCE_BASE+'?purpose=mail_content',headers=EVIDENCE_AUTH).status_code==404
+
+
+def test_evidence_discovery_upload_availability_is_server_owned_and_default_closed(api,monkeypatch):
+    client,state=api;state['body']=evidence_candidates_reply()
+    monkeypatch.delenv('ACQUISITION_EVIDENCE_UPLOAD_ENABLED',raising=False)
+    path=EVIDENCE_BASE+'?purpose=mail_content'
+    assert client.get(path,headers=EVIDENCE_AUTH).json()['upload_enabled'] is False
+    monkeypatch.setenv('ACQUISITION_EVIDENCE_UPLOAD_ENABLED','true')
+    assert client.get(path,headers=EVIDENCE_AUTH).json()['upload_enabled'] is True
+    state['body']['upload_enabled']=True
+    assert client.get(path,headers=EVIDENCE_AUTH).status_code==503

@@ -1,7 +1,7 @@
 // Synthetic QA adapter only: no network, credentials, database or providers.
 import { ids, scope, templateRow, destinationRow, prepared, reviewRow, currentState, internalProof, leadRow } from '../fixtures/mail-content';
 export { ids };
-export class ApiError extends Error { constructor(message: string, public status = 409) { super(message); } }
+export class ApiError extends Error { constructor(message: string, public status = 409, public retryAfterSeconds?: number) { super(message); } }
 let fault = 'none', role = 'owner';
 export function setFault(value: string) { fault = value; }
 export function setRole(value: string) { role = value; }
@@ -11,6 +11,22 @@ function ledger(): Entry[] { const raw = sessionStorage.getItem(key); return raw
 export function count() { return ledger().length; }
 export async function apiFetch(path: string, init?: RequestInit) {
   const base = `/api/acquisition/workspaces/${ids.workspace}/campaigns/${ids.campaign}`, root = `${base}/mail-content`;
+
+  const evidenceKey = 'synthetic-evidence-registration:v1';
+  if (path.startsWith(`${base}/evidence?`)) return { json: async () => ({ ...scope, purpose: 'mail_content', current_policy: { id: ids.review, workspace_id: ids.workspace, purpose: 'mail_content', version: 1, retention_seconds: 86400, valid_from: '2026-01-01T00:00:00Z', valid_until: '2099-01-01T00:00:00Z' }, items: [], next_after: null, checked_at: new Date().toISOString(), execution_authorized: false, upload_enabled: true }) };
+  if (path === `${base}/evidence` && init?.method === 'POST') {
+    const r = JSON.parse(String(init.body)); sessionStorage.setItem(evidenceKey, JSON.stringify(r));
+    if (fault === 'lost') { fault = 'none'; throw new Error('Synthetic lost registration reply'); }
+    return { json: async () => ({ artifact_id: r.id, workspace_id: ids.workspace, retain_until: '2099-01-01T00:00:00Z', duplicate: false, bytes_verified: false, execution_authorized: false }) };
+  }
+  if (path.startsWith(`${base}/evidence/`) && path.includes('/bytes?')) {
+    const r = JSON.parse(sessionStorage.getItem(evidenceKey) ?? '{}');
+    if (!(init?.body instanceof File) || !path.includes(r.id)) throw new ApiError('Synthetic file mismatch');
+    const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await init.body.arrayBuffer())), b => b.toString(16).padStart(2, '0')).join('');
+    if (hash !== r.expected_sha256 || init.body.size !== r.expected_byte_size) throw new ApiError('Synthetic file mismatch');
+    const now = new Date().toISOString();
+    return { json: async () => ({ ...scope, evidence_ref: r.id, purpose: r.purpose, sha256: hash, byte_size: r.expected_byte_size, media_type: r.media_type, retention_policy_id: r.retention_policy_id, checked_at: now, registry_checked_at: now, retain_until: '2099-01-01T00:00:00Z', status: 'stored_unverified', verifier_version: 'acquisition-evidence-bytes-v1', registry_verifier_version: 'acquisition-evidence-registry-v1', upload_version: 'acquisition-evidence-upload-v1', write_outcome: 'stored_or_existing', scan_status: 'not_scanned', byte_match_observed: true, verification_persisted: false, content_approved: false, execution_authorized: false }) };
+  }
   if (path.endsWith('/memberships')) return { json: async () => [{ workspace_id: ids.workspace, user_id: ids.user, status: 'active', role }] };
   if (path.startsWith(`${base}/mail-templates?`)) return { json: async () => ({ items: [templateRow], next_after: null }) };
   if (path.startsWith(`${base}/mail-destinations?`)) return { json: async () => ({ items: [destinationRow], next_after: null }) };

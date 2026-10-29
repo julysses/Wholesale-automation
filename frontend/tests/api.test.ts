@@ -44,3 +44,9 @@ it.each([
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('{"detail":"rejected"}',{status:Number(status),headers:{'X-Acquisition-Cost-Rejected':String(header)}})));
   await expect(apiFetch(String(path),{method:String(method)})).rejects.toMatchObject({rejectedCost:rejected});
 });
+
+it.each(['120', '5', '0', '-1', '121', 'Wed, 21 Oct 2026 07:28:00 GMT'])('only accepts bounded retry seconds: %s', async value => {
+  getSession.mockResolvedValue({ data: { session: { access_token: 'test-token' } } });
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 429, headers: { 'Retry-After': value } })));
+  await expect(apiFetch('/api/acquisition/test')).rejects.toMatchObject({ retryAfterSeconds: ['120', '5'].includes(value) ? Number(value) : undefined });
+});

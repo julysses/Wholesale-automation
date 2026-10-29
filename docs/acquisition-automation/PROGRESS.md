@@ -1,5 +1,16 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — guided evidence files in mail review
+
+- Previous exact commit 5a251f20b754ae26e1ae8c56656882267ddf73cc passed all five jobs in CI 40906100111. Pulled unchanged before completing this update. Full PRD goal remains active.
+- Added a navy/orange supporting-files card within the existing numbered mail-content review step. Users select a file and describe its source; UUIDs and SHA-256 values are generated internally. Scoped discovery supplies a reviewed retention policy and a server-owned, default-closed upload availability hint. Local preparation remains editable when the read freshness window expires; uploads require refreshed status and server authorization.
+- Saves a versioned, user/workspace/campaign-bound exact request before registration. Lost replies preserve the same identity and original file requirement; restored upload requests require matching type, size and SHA-256. Browser recovery-storage failures hold navigation and prevent unsafe continuation. Registration reconciliation remains possible while byte uploads are paused. Capacity responses offer a bounded manual retry countdown, never automatic retries.
+- Upload completion explicitly remains unscanned and unapproved. No preview/download or approval binding was added. Existing manual evidence-reference fields remain legacy attestations until trusted verification and locked approval binding are implemented; this increment does not claim to replace those fields.
+- Validation: all 499 frontend tests passed; frontend production build passed with existing chunk-size warnings; lint passed with no new findings (147 baseline findings). All 354 acquisition API tests passed. Browser QA used only the local synthetic adapter and a generated text file: inspected the numbered navy/orange layout, selected and hashed a file, refreshed stale status and completed upload with verification-pending feedback. No real provider, production database, approval or fulfillment occurred. Focused frontend tests were rerun after the preparation-state adjustment.
+
+Next: trusted persisted verification, scanning/quarantine and locked approval binding; then replace legacy technical evidence entry with eligible file selection. Continue policy administration/retention, postal rules, mail budgets/cadence/vendor reconciliation, portal, callers and contracts/disposition. Production, paused SMS, outreach, spending and fulfillment remain unchanged. Wait for this pushed commit's exact all-five CI success before another push.
+
+
 
 ## Implementation checkpoint — guarded HTTP evidence upload
 

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
+import { EvidenceUploadPanel } from './EvidenceUploadPanel';
 import { ApiError, apiFetch } from '@/lib/api';
 import { destination, history, id, page, pendingSchema, preparation, proof, scoped, state, template, type Pending, type Preparation, type Proof } from '@/lib/acquisition/mail-content';
 
@@ -18,6 +19,8 @@ function usePage<T extends { id: string; workspace_id: string; campaign_id: stri
 export function MailContentReviews(props: Props) { return <ContentEditor key={`${props.userId}:${props.workspace}:${props.campaign}`} {...props}/>; }
 function ContentEditor(props: Props) {
   const { userId, workspace, campaign, onPending } = props;
+  const [evidenceHeld, setEvidenceHeld] = useState(false);
+  const evidencePending = useCallback((key: string, held: boolean) => { setEvidenceHeld(held); onPending(key, held); }, [onPending]);
   const base = `/api/acquisition/workspaces/${workspace}/campaigns/${campaign}`;
   const path = `${base}/mail-content`, storageKey = `acquisition-content-request:v1:${userId}:${workspace}:${campaign}`;
   const [initial] = useState(() => {
@@ -45,7 +48,7 @@ function ContentEditor(props: Props) {
     queryFn: async ({ signal }) => { const s = scoped(state.parse(await read(`${path}/${selected}`, signal)), workspace, campaign); if (s.content_id !== selected) throw new Error('Review mismatch'); return s; } });
   const leads = useQuery({ queryKey: ['mail-content-leads', userId, workspace, leadAfter], enabled: open && current.data?.review_current === true, retry: false, gcTime: 0, staleTime: 0,
     queryFn: async ({ signal }) => z.array(z.object({ lead_id: id, property_id: id.nullable(), property_address: z.string(), city: z.string() })).max(20).parse(await read(`/api/acquisition/workspaces/${workspace}/leads?limit=20${leadAfter ? `&after=${leadAfter}` : ''}`, signal)) });
-  const locked = busy || !!pending || initial.invalid;
+  const locked = busy || !!pending || initial.invalid || evidenceHeld;
   const editable = access.data === true && !access.isFetching && !access.isError && !locked;
   const ready = !!current.data && !current.isFetching && !current.isError;
   const loaded = !selected || (ready && baseVersion === current.data?.version);
@@ -142,5 +145,6 @@ function ContentEditor(props: Props) {
       </div>}
       {busy && <p role="status">Checking or recording content…</p>}{message && <p role="status">{message}</p>}
     </>}
+    <EvidenceUploadPanel userId={userId} workspace={workspace} campaign={campaign} onPending={evidencePending} disabled={busy}/>
   </section>;
 }

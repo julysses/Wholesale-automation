@@ -49,7 +49,7 @@ async def evidence_candidates(workspace_id: UUID, campaign_id: UUID, response: R
             raise ValueError('Evidence discovery scope, page or freshness mismatch')
     except (ValueError, TypeError):
         raise unconfirmed('Current evidence choices could not be confirmed') from None
-    return result
+    return {**result, 'upload_enabled': os.getenv('ACQUISITION_EVIDENCE_UPLOAD_ENABLED', '').lower() == 'true'}
 
 
 @router.post('')
