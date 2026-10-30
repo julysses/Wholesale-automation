@@ -54,3 +54,10 @@ Run with `ACQUISITION_TEST_SUPAUTILS` set to the explicitly reviewed absolute li
 ### Remaining acceptance
 
 The populated migration/preservation stage passed. Authenticated workspace/RLS and complete application workflows must still be exercised against this upgraded full baseline, rather than only their smaller fixtures. Hosted PostgreSQL 17/Supautils CI setup, managed Auth/Storage/PostgREST/JWT behavior, live provider acceptance, production drift recheck and explicit migration approval remain outstanding. Existing CI focused jobs remain unchanged. No production SQL, permission, provider, scheduling or spending action was taken.
+
+
+## Full-catalog access checkpoint
+
+The populated-upgrade command now also executes `acquisition_upgrade_access.py` after migration and history checks. Its 19 named checks passed on the complete restored application catalog and candidate migrations; the saved result is `evidence/2026-10-30-full-catalog-access-result.json`. It tests actual SQL roles, workspace isolation, assignment-scoped caller projection, legacy lead restrictions, MFA, session/profile/membership revocation, idempotency and closed activation controls. All probe mutations roll back; the runner then rechecks the historical fingerprints. No grants or migration definitions were relaxed.
+
+The synthetic JWT claim adapter remains a platform fixture. Full application workflow coverage on this baseline, real Auth/PostgREST/Storage transport, matching hosted CI, and production approval remain required. The existing focused workflow tests remain useful but do not close those gaps.

@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — access on the full upgraded catalog
+
+- Previous turn published f5491ea124480cca37c49b9a9b800159c1c10a51. Its exact CI run 40998774727 remains the prerequisite before publishing this increment. Pulled unchanged before editing.
+- Added acquisition_upgrade_access.py to the populated-upgrade runner: 19 named probes exercise actual authenticated/anonymous/service-role SQL permissions against the restored 103-table application baseline plus all 45 candidate migrations. No migration SQL changed.
+- Verified disabled activation, two-owner workspace isolation, nonmember denial, creation idempotency, caller MFA and assignment-only queue, legacy lead scope, no caller raw contact access, no direct workspace writes, no caller membership administration, expired sessions, suspended profiles and immediate membership revocation even while activation is disabled.
+- Test activation and all access fixtures are contained in a rolled-back local transaction. Rechecked disabled activation, empty workspaces and exact historical row fingerprints afterward. Full rerun passed with 24 synthetic historical rows preserved, five baseline mutation-detection probes and all 45 migrations. Evidence: evidence/2026-10-30-full-catalog-access-result.json.
+- These are real database-role tests with synthetic claims, not an Auth/PostgREST JWT acceptance result. No production, provider, SMS, schedule or UI changes. Next: carry the seller-intake and underwriting/offer workflow through the full upgraded baseline, then add matching PostgreSQL 17/Supautils hosted CI and managed-platform acceptance. Preserve the existing guided app journey.
+
+
 ## Publication and guided-process checkpoint
 
 - Rechecked exact prerequisite 855025500804f2a438492aafaed95e95c80bb4bb: GitHub run 40996195877 completed with all five jobs successful. The previously reported pipeline job is green on this revision.

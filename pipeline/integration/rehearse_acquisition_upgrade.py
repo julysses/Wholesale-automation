@@ -107,7 +107,11 @@ def run_upgrade(db):
             raise RuntimeError('Candidate provisioned live integration/signing configuration')
     for table in ('net.test_requests','cron.job','vault.decrypted_secrets'):
         if db.query('SELECT count(*) AS n FROM '+table)[0]['n']!=0:raise RuntimeError('External execution state changed')
-    return {'populated_upgrade':'passed','candidate_migrations_applied':len(files),
+    from acquisition_upgrade_access import run_access_probes
+    access = run_access_probes(db)
+    if fingerprints(db,CATALOG['tables']) != after:
+        raise RuntimeError('Access probes changed historical records')
+    return {'access_probes':access,'populated_upgrade':'passed','candidate_migrations_applied':len(files),
         'historical_rows_preserved':sum(sum(x.values()) for x in before.values()),
         'historical_tables_with_rows':sum(bool(x) for x in before.values()),
         'historical_table_definitions_checked':len(before),'storage_fixture_preserved':True,

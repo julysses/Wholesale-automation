@@ -1,0 +1,64 @@
+{
+  "baseline": {
+    "baseline_restore": "passed",
+    "candidate_migrations_applied": false,
+    "catalog_sha256": "b4e7afdf48056e7de66f720e98cdb363078ca972ffbf4ed1c77efa4f2ad1e38f",
+    "functions": 122,
+    "live_platform_acceptance": false,
+    "migrations": 95,
+    "platform_fixtures": [
+      "auth",
+      "net",
+      "vault",
+      "cron"
+    ],
+    "production_rows_copied": 0,
+    "rejected_security_mutations": [
+      "view_security",
+      "widened_acl",
+      "function_security",
+      "relation_owner",
+      "missing_foreign_key"
+    ],
+    "tables": 103,
+    "views": 17
+  },
+  "result": {
+    "access_probes": {
+      "changes_rolled_back": true,
+      "checks": [
+        "activation blocks enrollment",
+        "authenticated cannot activate",
+        "anon cannot activate",
+        "service_role cannot activate",
+        "two owners and nonmember isolated",
+        "workspace creation retry idempotent",
+        "other owner cannot take workspace",
+        "caller MFA enforced",
+        "assigned caller queue and contact minimization",
+        "legacy lead policies preserve workspace and caller boundaries",
+        "cross-workspace queue denied",
+        "authenticated raw workspace write denied",
+        "anon raw workspace write denied",
+        "service_role raw workspace write denied",
+        "caller cannot administer membership",
+        "expired session queue denied",
+        "profile suspension immediate",
+        "disabled gate prevents new enrollment",
+        "membership revocation immediate"
+      ],
+      "full_catalog_access_probes": "passed",
+      "jwt_transport_verified": false
+    },
+    "candidate_migrations_applied": 45,
+    "execution_controls_disabled": true,
+    "historical_rows_preserved": 24,
+    "historical_table_definitions_checked": 103,
+    "historical_tables_with_rows": 22,
+    "live_platform_acceptance": false,
+    "populated_upgrade": "passed",
+    "production_rows_copied": 0,
+    "storage_fixture_preserved": true
+  },
+  "scope": "Offline SQL roles and synthetic JWT claims on restored full application catalog; no Auth/PostgREST transport acceptance."
+}
