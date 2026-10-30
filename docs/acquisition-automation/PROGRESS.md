@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Rendered supporting-file walkthrough
+
+- Extended the synthetic mail-content browser fixture with pending, no-detection, detection-hold and denied-access file states. No network/provider/database actions are possible through this adapter.
+- Used the real app components in the local browser to verify all four states. Pending gives a wait/check-next instruction; no detection explicitly leaves content review required; detection holds explain that re-upload cannot clear the hold; a denied refresh replaces the previous result with an error. The result sits inside step 3 and preserves navy/orange visual hierarchy.
+- Saved the synthetic preview at evidence/2026-10-30-file-status-preview.jpg. Closed the preview tab and terminated the local Vite process after inspection. Frontend build and lint baseline passed (no new lint findings).
+- Exact predecessor CI 41105042913 remains live with five successful jobs and PostgreSQL contention running. Retained commits 2de33d1 and 0ee8681 have not been pushed. Push the retained UI/transport/fixture increments together only after all six predecessor jobs succeed, then verify successor CI. This walkthrough is not hosted or provider acceptance. Full original PRD and locked evidence approval binding remain open.
+
+
 ## 2026-10-30 — Actual local evidence RPC transport
 
 - Guided UI increment is retained in local commit 2de33d1. Predecessor CI 41105042913 remains five successful jobs plus a live PostgreSQL contention job; no new push or cancellation occurred.
