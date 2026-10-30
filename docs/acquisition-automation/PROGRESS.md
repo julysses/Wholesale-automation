@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Actual local content approval gateway acceptance
+
+- Pulled unchanged from published 69239df98a2754c1b6f1674858fb9d3e52ac252b. Its exact CI run is 41138136317; five jobs passed and the contention job was still running at this checkpoint. Retain this increment locally until all six succeed, then push and record the successor run. No cancellation or bypass.
+- Added acquisition_content_http.py to the existing real local PostgREST rehearsal. It validates the exact candidate and preparation/state schemas, owner/other-workspace/anonymous boundaries, excessive approval deadline rejection, exact registered artifact/verification/hash binding, one audit on retry, signer-revocation invalidation, historical exact retry and withdrawal preserving immutable binding history. This is actual named-parameter RPC transport, not the Python SQL adapter. No schema or production UI changes are required.
+- Full rehearsal passed: 50 proposed migrations, 26 access probes, 60 full-catalog application journeys, historical preservation (24 rows, 22 populated tables, 103 definitions) and 23 actual local gateway checks. Evidence: evidence/2026-10-30-content-http-result.json. No real scanner, hosted Auth/Storage, provider acceptance or production approval is implied.
+- Refreshed CURRENT-STATUS.md to remove stale current-state claims about missing guided selection/binding and old unpublished commits. Historical chronological checkpoints remain explicitly historical.
+- Next: verify predecessor six-job success and publish this retained increment. Close shared-foundation/Phase 1 hosted acceptance packet gaps before requesting specific rollout approval; continue the remaining postal, portal, caller, agency and contract/disposition requirements under their original activation gates. Remaining evidence-worker custody/retention, quarantine clearance and expiry/revocation contention are not waived. No live activation, paused SMS, provider, spending, fulfillment or transaction change.
+
 ## 2026-10-30 — Guided supporting-file selection and server-derived deadline
 
 - Exact predecessor e90bab97409fa4f147651e5a3ebcdeb45144f1e0 / CI 41136025124 completed with all six jobs successful before this update is published. Pulled unchanged before implementation.

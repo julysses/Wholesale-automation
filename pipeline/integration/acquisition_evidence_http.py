@@ -83,8 +83,11 @@ def verify_evidence_http(db, request, token, admin, other, workspace):
         if any(receipt.get(field) is not False for field in ('preview_authorized', 'content_approved', 'execution_authorized')):
             raise AssertionError('Evidence signed receipt granted approval')
     check('no_detection_observed', observation=clean_id)
+    from acquisition_content_http import verify_content_http
+    after_revocation = verify_content_http(db, request, token, other, workspace, campaign, artifact, clean_id)
     db.query('UPDATE private.acquisition_evidence_verification_keys SET revoked_at=clock_timestamp() WHERE id=%s', [key_id])
     check('requires_review')
+    after_revocation()
     # A different reviewed synthetic key is used for subsequent observations; never un-revoke a key.
     key_id = '99300000-0000-4000-8000-000000000779'
     secret = secrets.token_bytes(32)
@@ -110,4 +113,8 @@ def verify_evidence_http(db, request, token, admin, other, workspace):
     return ['evidence real RPC pending-to-withdrawn lifecycle', 'evidence HTTP tenant and anonymous isolation',
             'evidence HTTP campaign binding', 'evidence HTTP read never grants approval or creates scans',
             'signed evidence HTTP exact retry and audit convergence', 'evidence HTTP invalid signature rejected',
-            'evidence HTTP signer revocation invalidates clean state', 'evidence HTTP later clean observation preserves detection hold']
+            'evidence HTTP signer revocation invalidates clean state', 'evidence HTTP later clean observation preserves detection hold',
+            'content HTTP candidate scope and deadline', 'content HTTP approval role and expiry denial',
+            'content HTTP exact bound approval and retry convergence',
+            'content HTTP signer revocation invalidates candidate and approval',
+            'content HTTP historical retry and withdrawal preserve immutable binding']
