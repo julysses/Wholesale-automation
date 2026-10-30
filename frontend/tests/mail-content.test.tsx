@@ -3,19 +3,21 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MailContentReviews } from '../src/components/acquisition/MailContentReviews';
 import { ApiError } from '@/lib/api';
-import { ids, templateRow, destinationRow, prepared, reviewRow, currentState, internalProof, leadRow } from './fixtures/mail-content';
-const mock = vi.hoisted(() => ({ fetch: vi.fn(), save: vi.fn(), prepare: vi.fn(), proof: vi.fn(), state: vi.fn(), role: 'owner', history: [] as unknown[], templateScope: '' }));
+import { ids, evidencePage, reviewCandidate, templateRow, destinationRow, prepared, reviewRow, currentState, internalProof, leadRow } from './fixtures/mail-content';
+const mock = vi.hoisted(() => ({ fetch: vi.fn(), save: vi.fn(), prepare: vi.fn(), proof: vi.fn(), state: vi.fn(), role: 'owner', history: [] as unknown[], templateScope: '', candidate: vi.fn() }));
 vi.mock('@/lib/api', () => ({ apiFetch: mock.fetch, ApiError: class extends Error { constructor(message: string, public status: number) { super(message); } } }));
 const root = `/api/acquisition/workspaces/${ids.workspace}/campaigns/${ids.campaign}/mail-content`;
 const key = `acquisition-content-request:v1:${ids.user}:${ids.workspace}:${ids.campaign}`;
 const pending = { content_id: ids.content, review: { id: ids.review, expected_version: 0, action: 'approved', creative_id: ids.creative, destination_review_id: ids.destination, company_name: 'Hilltop Home Company', preparation_hash: 'a'.repeat(64), evidence_ref: ids.review, evidence_hash: 'b'.repeat(64), expires_at: '2098-01-01T00:00:00Z', note: 'Reviewed the complete content and retained evidence.' } };
 beforeEach(() => {
   sessionStorage.clear(); vi.clearAllMocks(); mock.role = 'owner'; mock.history = []; mock.templateScope = ids.workspace;
-  mock.prepare.mockImplementation(prepared); mock.proof.mockImplementation(internalProof); mock.state.mockImplementation(currentState);
+  mock.candidate.mockImplementation(reviewCandidate); mock.prepare.mockImplementation(prepared); mock.proof.mockImplementation(internalProof); mock.state.mockImplementation(currentState);
   mock.save.mockImplementation((body, path) => ({ review_id: body.id, workspace_id: ids.workspace, content_id: path.split('/').at(-2), version: body.expected_version + 1, duplicate: false, execution_authorized: false }));
   mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
     if (init?.method === 'POST') { const body = JSON.parse(String(init.body)); return { json: async () => path.endsWith('/prepare') ? mock.prepare(body) : path.endsWith('/proof') ? mock.proof(body) : mock.save(body, path) }; }
     return { json: async () => path.endsWith('/memberships') ? [{ workspace_id: ids.workspace, user_id: ids.user, status: 'active', role: mock.role }]
+      : path.endsWith('/review-candidate') ? mock.candidate()
+      : path.includes('/evidence?') ? evidencePage()
       : path.includes('/mail-templates?') ? { items: [{ ...templateRow, workspace_id: mock.templateScope }], next_after: null }
       : path.includes('/mail-destinations?') ? { items: [destinationRow], next_after: null }
       : path.includes('/leads?') ? [leadRow]
@@ -27,15 +29,17 @@ async function open() { view(); fireEvent.click(screen.getByRole('button', { nam
 async function fill() {
   fireEvent.change(screen.getByLabelText('Saved message'), { target: { value: ids.creative } }); fireEvent.change(screen.getByLabelText('Reviewed response destination'), { target: { value: ids.destination } });
   fireEvent.click(screen.getByRole('button', { name: 'Prepare content for review' })); await screen.findByText(/Content prepared for your review/);
-  fireEvent.change(screen.getByLabelText('Content evidence reference'), { target: { value: ids.review } }); fireEvent.change(screen.getByLabelText('Content evidence SHA-256 digest'), { target: { value: 'b'.repeat(64) } });
-  fireEvent.change(screen.getByLabelText('Content approval expires at (ISO date with time zone)'), { target: { value: '2098-01-01T00:00:00Z' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add or review evidence files' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Use this file for review' }));
+  await screen.findByText('Supporting file selected');
+  await waitFor(() => expect(screen.getByRole('checkbox')).toBeEnabled());
   fireEvent.change(screen.getByLabelText('Content review or withdrawal reason'), { target: { value: pending.review.note } }); fireEvent.click(screen.getByRole('checkbox'));
 }
 it('prepares exact saved sources and records an explicit non-executing approval', async () => {
   await open(); await fill(); expect(mock.prepare).toHaveBeenCalledWith({ creative_id: ids.creative, destination_review_id: ids.destination, company_name: 'Hilltop Home Company' });
   expect(screen.getByText(/Hello Hilltop Home Company: \[Property address\]/)).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Record content approval' })); await screen.findByText(/Content decision recorded/);
-  expect(mock.save.mock.calls[0][0]).toEqual({ ...pending.review, id: expect.any(String) }); expect(sessionStorage.getItem(key)).toBeNull();
+  expect(mock.save.mock.calls[0][0]).toEqual({ ...pending.review, id: expect.any(String), expires_at: expect.any(String) }); expect(sessionStorage.getItem(key)).toBeNull();
 });
 it('invalidates preparation and attestation when wording changes', async () => {
   await open(); await fill(); fireEvent.change(screen.getByLabelText('Company name printed on mail'), { target: { value: 'Changed name' } });
@@ -101,4 +105,35 @@ it('requires reloading an updated review version before preparing another decisi
 it.each([{ execution_authorized: true }, { review_current: false }, { content_id: ids.user }])('blocks inconsistent current-state response %j', async override => {
   mock.history = [reviewRow()]; mock.state.mockImplementation(() => ({ ...currentState(), ...override })); await open(); fireEvent.click(await screen.findByRole('button', { name: `Inspect content ${ids.content}` }));
   await screen.findByText('Current content could not be verified.'); expect(screen.getByRole('button', { name: 'Load current content for review' })).toBeDisabled(); expect(screen.queryByRole('button', { name: 'Prepare internal preview' })).toBeNull();
+});
+
+it('keeps approval unavailable until a current supporting file is selected', async () => {
+  await open(); fireEvent.change(screen.getByLabelText('Saved message'), { target: { value: ids.creative } });
+  fireEvent.change(screen.getByLabelText('Reviewed response destination'), { target: { value: ids.destination } });
+  fireEvent.click(screen.getByRole('button', { name: 'Prepare content for review' })); await screen.findByText(/Content prepared for your review/);
+  expect(screen.queryByLabelText('Content evidence reference')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Record content approval' })).toBeDisabled();
+});
+it.each([{ workspace_id: ids.user }, { sha256: 'c'.repeat(64) }, { execution_authorized: true }])('rejects an unsafe file selection %j', async override => {
+  mock.candidate.mockImplementation(() => ({ ...reviewCandidate(), ...override }));
+  await open(); fireEvent.change(screen.getByLabelText('Saved message'), { target: { value: ids.creative } });
+  fireEvent.change(screen.getByLabelText('Reviewed response destination'), { target: { value: ids.destination } });
+  fireEvent.click(screen.getByRole('button', { name: 'Prepare content for review' })); await screen.findByText(/Content prepared for your review/);
+  fireEvent.click(screen.getByRole('button', { name: 'Add or review evidence files' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Use this file for review' }));
+  await screen.findByText(/This file cannot currently support approval/);
+  expect(screen.queryByText('Supporting file selected')).toBeNull(); expect(mock.save).not.toHaveBeenCalled();
+});
+it('rejects an approval expiry beyond the selected file deadline', async () => {
+  await open(); await fill(); fireEvent.change(screen.getByLabelText('Content approval expires'), { target: { value: '2098-01-01T12:00' } });
+  fireEvent.click(screen.getByRole('checkbox'));
+  expect(screen.getByRole('button', { name: 'Record content approval' })).toBeDisabled();
+});
+
+it('clears a previous file selection when its refresh is denied', async () => {
+  await open(); await fill(); mock.candidate.mockImplementation(() => { throw new Error('Denied'); });
+  fireEvent.click(screen.getByRole('button', { name: 'Use this file for review' }));
+  await screen.findByText(/This file cannot currently support approval/);
+  expect(screen.queryByText('Supporting file selected')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Record content approval' })).toBeDisabled();
 });

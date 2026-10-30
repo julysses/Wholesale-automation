@@ -7,3 +7,11 @@ export function reviewRow() { return { ...scope, id: ids.review, content_id: ids
 export function currentState() { const preparation = prepared(); return { ...scope, content_id: ids.content, version: 1, latest_review: reviewRow(), status: 'approved', review_current: true, execution_authorized: false, checked_at: preparation.checked_at, preparation }; }
 export function internalProof() { return { ...scope, status: 'proof_prepared', execution_authorized: false, renderer_version: 'acquisition-mail-render-v1', proof_loader_version: 'acquisition-mail-proof-loader-v1', proof_kind: 'internal_content_preview', tracking_id_kind: 'preview_only', content_id: ids.content, content_version: 1, lead_id: ids.lead, property_id: ids.property, review_id: ids.review, preparation_hash: 'a'.repeat(64), text: '<script>unsafe()</script> Hello Hilltop Home Company: 123 Test Street, Dallas TX. Call +12125550100.', source_checked_at: new Date().toISOString(), prepared_at: new Date().toISOString(), content_valid_until: '2098-01-01T00:00:00Z', postal_verified: false, recipient_authorized: false, vendor_proof: false }; }
 export const leadRow = { lead_id: ids.lead, property_id: ids.property, property_address: '123 Test Street', city: 'Dallas' };
+export function reviewCandidate() { return { ...scope, artifact_id: ids.review, sha256: 'b'.repeat(64), verification_id: ids.content,
+  status: 'review_candidate', max_approval_until: new Date(Date.now() + 1800000).toISOString(), checked_at: new Date().toISOString(),
+  preview_authorized: false, content_approved: false, execution_authorized: false }; }
+export function evidencePage() { const checked_at = new Date().toISOString(); return { ...scope, purpose: 'mail_content', current_policy: null,
+  items: [{ ...scope, artifact_id: ids.review, purpose: 'mail_content', expected_sha256: 'b'.repeat(64), expected_byte_size: 123,
+    media_type: 'application/pdf', retention_policy_id: ids.review, created_at: '2026-01-01T00:00:00Z', retain_until: '2099-01-01T00:00:00Z',
+    revoked_at: null, checked_at, status: 'pending_verification', bytes_verified: false, content_approved: false, execution_authorized: false }],
+  next_after: null, checked_at, execution_authorized: false, upload_enabled: false }; }

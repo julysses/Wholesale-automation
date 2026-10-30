@@ -197,6 +197,10 @@
     {
       "file": "20261030214239_acquisition_content_evidence_bindings.sql",
       "sha256": "7afe4be48013101e9436d452bf303d01c735abe0ea648697d0ab7693a2c914a7"
+    },
+    {
+      "file": "20261030220930_acquisition_evidence_review_candidate.sql",
+      "sha256": "21cbe9b34a9bbe166891e372daeafac0949f0117cb1bab9f39d78f9bc0c1e253"
     }
   ]
 }

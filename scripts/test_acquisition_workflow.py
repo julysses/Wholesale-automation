@@ -35,6 +35,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+    'acquisition_evidence_review_candidate': ['p_workspace','p_campaign','p_artifact'],
  'acquisition_evidence_scan_state':['p_workspace','p_campaign','p_artifact'],
  'import_acquisition_postal_observation':['p_id','p_workspace','p_relationship'],
  'record_acquisition_evidence_verification':['p_id','p_workspace','p_campaign','p_artifact','p_actor','p_session','p_key','p_observation','p_signature'],
@@ -381,6 +382,31 @@ class WorkflowTests(WorkspaceTests):
         if request.url.path.rsplit('/',1)[-1] in {'acquisition_evidence_state','record_acquisition_evidence_verification'}:
             return httpx.Response(200,headers={'content-type':'application/json'},stream=EvidenceStream(result.stdout.strip().encode()))
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
+
+    def test_content_review_candidate_reports_limiting_expiry_without_approval(self):
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
+        artifact='99100000-0000-4000-8000-000000000088'
+        path=f'{self.base}/campaigns/91000000-0000-4000-8000-000000000001/evidence/{artifact}/review-candidate'
+        before=self.sql('SELECT count(*) FROM audit_logs')
+        response=self.client.get(path,headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.headers['cache-control'],'no-store')
+        candidate=response.json()
+        self.assertEqual(candidate['artifact_id'],artifact);self.assertEqual(candidate['sha256'],'c'*64)
+        self.assertFalse(candidate['content_approved']);self.assertFalse(candidate['execution_authorized'])
+        self.assertEqual(self.sql(f"SELECT {literal(candidate['max_approval_until'])}::timestamptz=valid_until FROM private.acquisition_evidence_verification_keys"),'t')
+        self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()+interval '2 minutes' WHERE id='{ADMIN}'")
+        candidate=self.client.get(path,headers=self.headers).json()
+        self.assertEqual(self.sql(f"SELECT {literal(candidate['max_approval_until'])}::timestamptz=not_after FROM auth.sessions WHERE id='{ADMIN}'"),'t')
+        self.assertEqual(self.sql('SELECT count(*) FROM audit_logs'),before)
+        self.member(target=OPERATOR,role='operator')
+        for kwargs in ({'user':OPERATOR},{'user':OTHER},{'user':ADMIN,'aal':'aal1'},{'user':ADMIN,'role':'service_role'}):
+            self.sql(f"SELECT public.acquisition_evidence_review_candidate('{WORKSPACE}','91000000-0000-4000-8000-000000000001','{artifact}')",fail=True,**kwargs)
+        self.sql("UPDATE private.acquisition_evidence_verification_keys SET revoked_at=clock_timestamp()")
+        self.assertEqual(self.client.get(path,headers=self.headers).status_code,409)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_content_evidence_bindings'),'0')
+        # Only the explicit membership setup above can have appended audit; read RPCs never do.
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_content'"),'0')
 
     def test_content_evidence_binding_requires_exact_current_file_and_preserves_retry(self):
         self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()

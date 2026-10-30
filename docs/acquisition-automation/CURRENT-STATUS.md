@@ -4,9 +4,7 @@ Updated October 30, 2026 (America/Chicago). This is a navigation and gap invento
 
 ## Latest handoff
 
-Postal import now has a disabled-by-default API with strict scope, exact retry and unverified receipt checks. Full local rehearsal passed 46 migrations, 26 access checks, 49 application journeys and ten real PostgREST checks; nine malformed-receipt tests passed. No new operator button is exposed until canonical address validation and shared eligibility are implemented. User selected PropStream as the address-data/skip-trace source; letters/postcards provider remains unselected. Prior commit 31cd558 passed all six jobs in run 41003002597. See PROGRESS.md for publication and remaining work.
-
-Current scan assessment is now implemented locally as a scoped read-only RPC/API, with sticky same-byte detection holds and current signer/observer/retention checks. It grants no preview or approval. Final local rehearsal passes 47 migrations and 51 application journeys; locked evidence-to-review binding remains next. Exact prerequisite ee82549 / run 41097350211 passed all six jobs. See the newest PROGRESS.md checkpoint for publication.
+Guided supporting-file selection and server-derived review deadlines are implemented in the existing mail content step. All 50 proposed migrations, 60 full-catalog journeys, 26 access probes, 18 real local gateway checks, 13 API response tests and 62 related screen tests pass. Exact predecessor e90bab9 / CI 41136025124 is all-six successful. See the newest PROGRESS.md checkpoint for publication and remaining acceptance. No production migration, scanner, provider or fulfillment activation occurred. PropStream is the address/skip-trace source; no mail vendor is selected. Older sections below are historical checkpoints, not current publication status.
 
 ## Git and validation
 

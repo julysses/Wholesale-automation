@@ -94,3 +94,15 @@ export const scanGuidance = {
   expired: ['File retention expired', 'Ask an administrator about a new supporting file and its retention policy.'],
   policy_review_required: ['Retention policy needs review', 'Ask an administrator to review the retention policy before using this file.'],
 } as const;
+
+const reviewCandidate = z.object({ ...scope, artifact_id: id, sha256: hash, verification_id: id,
+  status: z.literal('review_candidate'), max_approval_until: date, checked_at: date,
+  preview_authorized: z.literal(false), content_approved: z.literal(false), execution_authorized: z.literal(false),
+}).strict();
+export type ReviewCandidate = z.infer<typeof reviewCandidate>;
+export function parseReviewCandidate(raw: unknown, workspace: string, campaign: string, artifact: string) {
+  const value = scoped(reviewCandidate.parse(raw), workspace, campaign); fresh(value.checked_at);
+  if (value.artifact_id !== artifact || Date.parse(value.max_approval_until) <= Math.max(Date.now(), Date.parse(value.checked_at)))
+    throw new Error('Review file scope or expiry mismatch');
+  return value;
+}

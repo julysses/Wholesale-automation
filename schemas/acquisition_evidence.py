@@ -310,3 +310,24 @@ class EvidenceScanState(BaseModel):
                 or self.quarantined and self.status in {'not_scanned', 'no_detection_observed', 'requires_review'}):
             raise ValueError('Inconsistent scan state')
         return self
+
+
+class EvidenceReviewCandidate(BaseModel):
+    model_config = ConfigDict(extra='forbid', frozen=True)
+    workspace_id: UUID
+    campaign_id: UUID
+    artifact_id: UUID
+    sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    verification_id: UUID
+    status: Literal['review_candidate']
+    max_approval_until: AwareDatetime
+    checked_at: AwareDatetime
+    preview_authorized: StrictBool
+    content_approved: StrictBool
+    execution_authorized: StrictBool
+
+    @model_validator(mode='after')
+    def candidate_is_not_approval(self):
+        if self.preview_authorized or self.content_approved or self.execution_authorized or self.max_approval_until <= self.checked_at:
+            raise ValueError('Current non-authorizing file candidate required')
+        return self

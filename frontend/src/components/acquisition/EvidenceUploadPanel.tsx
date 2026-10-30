@@ -3,14 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { ApiError, apiFetch } from '@/lib/api';
 import { id } from '@/lib/acquisition/mail-content';
-import { checkRegistration, checkUpload, chooseFile, matchesFile, parseCandidates, parseScanState, scanGuidance, pendingSchema, retentionLabel, type FileChoice, type PendingEvidence } from '@/lib/acquisition/evidence';
+import { checkRegistration, checkUpload, chooseFile, matchesFile, parseCandidates, parseReviewCandidate, type ReviewCandidate, parseScanState, scanGuidance, pendingSchema, retentionLabel, type FileChoice, type PendingEvidence } from '@/lib/acquisition/evidence';
 
-type Props = { userId: string; workspace: string; campaign: string; disabled?: boolean; onPending: (key: string, pending: boolean) => void };
+type Props = { userId: string; workspace: string; campaign: string; disabled?: boolean; onChoose?: (candidate: ReviewCandidate | null) => void; onPending: (key: string, pending: boolean) => void };
 const button = 'rounded-lg border px-3 py-2 text-sm disabled:opacity-40';
 const input = 'block w-full rounded-lg border bg-white p-2';
 const statuses = { pending_verification: 'Registered — upload or verification pending', revoked: 'Withdrawn', expired: 'Retention expired', policy_review_required: 'Policy review required' };
 export function EvidenceUploadPanel(props: Props) { return <EvidenceEditor key={`${props.userId}:${props.workspace}:${props.campaign}`} {...props}/>; }
-function EvidenceEditor({ userId, workspace, campaign, disabled = false, onPending }: Props) {
+function EvidenceEditor({ userId, workspace, campaign, disabled = false, onChoose, onPending }: Props) {
   const path = `/api/acquisition/workspaces/${workspace}/campaigns/${campaign}/evidence`;
   const storageKey = `acquisition-evidence-request:v1:${userId}:${workspace}:${campaign}`;
   const [initial] = useState(() => {
@@ -101,6 +101,17 @@ function EvidenceEditor({ userId, workspace, campaign, disabled = false, onPendi
       } else setMessage(sent || retrying ? 'The result is unconfirmed. Keep the original file and retry this saved request; do not create another evidence record.' : 'Browser recovery storage is unavailable. No request was sent.');
     } finally { inFlight.current = false; if (mounted.current) setBusy(false); }
   }
+  async function chooseRegisteredFile(artifact: string, expectedHash: string) {
+    if (inFlight.current || disabled || held || !current || !onChoose) return;
+    inFlight.current = true; onChoose(null); setBusy(true); setMessage('Checking this file for content review…');
+    try {
+      const candidate = parseReviewCandidate(await (await apiFetch(`${path}/${artifact}/review-candidate`)).json(), workspace, campaign, artifact);
+      if (candidate.sha256 !== expectedHash) throw new Error('File changed');
+      if (!mounted.current) return;
+      onChoose(candidate); setMessage('File selected for content review. Review the wording and approval expiry above.');
+    } catch { if (mounted.current) setMessage('This file cannot currently support approval. Refresh its status and check verification, retention and your access.'); }
+    finally { inFlight.current = false; if (mounted.current) setBusy(false); }
+  }
   const retrySeconds = Math.max(0, Math.ceil((retryAt - now) / 1000));
   return <section aria-label="Mail evidence files" className="mt-3 rounded-xl border border-orange-200 bg-orange-50/40 p-4 space-y-3">
     <button className={`${button} border-[#E8720C] text-[#1B3A5C]`} aria-expanded={open} disabled={held || disabled} onClick={() => setOpen(v => !v)}>{open ? 'Hide evidence files' : 'Add or review evidence files'}</button>
@@ -126,7 +137,7 @@ function EvidenceEditor({ userId, workspace, campaign, disabled = false, onPendi
       {message && <p role="status" className="text-sm">{message}</p>}
       <div className="border-t border-orange-200 pt-3"><h5 className="font-semibold text-[#1B3A5C]">Registered evidence</h5><p className="text-xs text-gray-600">These records do not establish that a file has been uploaded, scanned or approved.</p>
         {!records.isFetching && !records.isError && records.data?.items.length === 0 && <p className="text-sm">No evidence registered for this campaign.</p>}
-        <ul>{!records.isError && records.data?.items.map(row => <li key={row.artifact_id} className="border-t py-2 text-sm"><span>{row.media_type === 'application/pdf' ? 'PDF' : row.media_type.startsWith('image/') ? 'Image' : 'Text'} · {new Date(row.created_at).toLocaleString()} · {row.expected_byte_size.toLocaleString()} bytes</span><p>{statuses[row.status]}</p>{current && !disabled && !held && <FileScanStatus key={`${row.artifact_id}:${records.data!.checked_at}`} userId={userId} workspace={workspace} campaign={campaign} artifact={row.artifact_id} now={now}/>}</li>)}</ul>
+        <ul>{!records.isError && records.data?.items.map(row => <li key={row.artifact_id} className="border-t py-2 text-sm"><span>{row.media_type === 'application/pdf' ? 'PDF' : row.media_type.startsWith('image/') ? 'Image' : 'Text'} · {new Date(row.created_at).toLocaleString()} · {row.expected_byte_size.toLocaleString()} bytes</span><p>{statuses[row.status]}</p>{onChoose && <button className={`${button} my-2 border-[#E8720C] text-[#1B3A5C]`} disabled={!current || held || disabled} onClick={() => { void chooseRegisteredFile(row.artifact_id, row.expected_sha256); }}>Use this file for review</button>}{current && !disabled && !held && <FileScanStatus key={`${row.artifact_id}:${records.data!.checked_at}`} userId={userId} workspace={workspace} campaign={campaign} artifact={row.artifact_id} now={now}/>}</li>)}</ul>
         <nav aria-label="Evidence history pages" className="flex gap-2"><button className={button} disabled={held || disabled || records.isFetching || cursors.length === 1} onClick={() => setCursors(v => v.slice(0, -1))}>Previous evidence</button><button className={button} disabled={held || disabled || records.isFetching || records.isError || !records.data?.next_after} onClick={() => setCursors(v => [...v, records.data!.next_after])}>Next evidence</button></nav>
       </div>
     </>}

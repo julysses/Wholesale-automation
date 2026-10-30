@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query, Request
 from starlette.requests import ClientDisconnect
 
 from schemas.acquisition_evidence import (
-    MAX_EVIDENCE_BYTES, EvidenceScanState, EvidenceUploadReceipt, EvidenceCandidates, EvidenceRegistration, EvidenceRegistrationReceipt, EvidenceRevocation, EvidenceRevocationReceipt, EvidenceState,
+    MAX_EVIDENCE_BYTES, EvidenceReviewCandidate, EvidenceScanState, EvidenceUploadReceipt, EvidenceCandidates, EvidenceRegistration, EvidenceRegistrationReceipt, EvidenceRevocation, EvidenceRevocationReceipt, EvidenceState,
 )
 from tools.acquisition_store import acquisition_store, open_acquisition_store
 from tools.acquisition_evidence import EvidenceUnavailable
@@ -101,6 +101,24 @@ async def evidence_scan_state(workspace_id: UUID, campaign_id: UUID, artifact_id
     except (ValueError, TypeError):
         raise unconfirmed('Current scan state could not be confirmed') from None
     return state.model_dump(mode='json')
+
+
+@router.get('/{artifact_id}/review-candidate')
+async def evidence_review_candidate(workspace_id: UUID, campaign_id: UUID, artifact_id: UUID,
+                                    response: Response, store=Depends(acquisition_store)):
+    response.headers['Cache-Control'] = 'no-store'
+    result = await evidence_rpc(store, 'acquisition_evidence_review_candidate', {
+        'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id), 'p_artifact': str(artifact_id)})
+    try:
+        candidate = EvidenceReviewCandidate.model_validate(result)
+        now = datetime.now(timezone.utc)
+        if ((candidate.workspace_id, candidate.campaign_id, candidate.artifact_id) != (workspace_id, campaign_id, artifact_id)
+                or not now-timedelta(seconds=30) <= candidate.checked_at <= now+timedelta(seconds=5)
+                or candidate.max_approval_until <= now):
+            raise ValueError('Review file scope, freshness or expiry mismatch')
+    except (ValueError, TypeError):
+        raise unconfirmed('Current review file could not be confirmed') from None
+    return candidate.model_dump(mode='json')
 
 
 @router.post('/{artifact_id}/revocations')

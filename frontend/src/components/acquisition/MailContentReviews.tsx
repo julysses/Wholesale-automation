@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { EvidenceUploadPanel } from './EvidenceUploadPanel';
+import { type ReviewCandidate } from '@/lib/acquisition/evidence';
 import { ApiError, apiFetch } from '@/lib/api';
 import { destination, history, id, page, pendingSchema, preparation, proof, scoped, state, template, type Pending, type Preparation, type Proof } from '@/lib/acquisition/mail-content';
 
 type Props = { userId: string; workspace: string; campaign: string; onPending: (key: string, pending: boolean) => void };
 const button = 'max-w-full break-words rounded-lg border px-3 py-2 text-sm disabled:opacity-40';
 const input = 'block w-full rounded-lg border p-2';
+function localDateTime(value: string) { const d = new Date(value); return Number.isFinite(d.getTime()) ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''; }
 async function read(path: string, signal?: AbortSignal) { return (await apiFetch(path, { signal })).json(); }
 async function post(path: string, body: unknown) { return (await apiFetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json(); }
 function usePage<T extends { id: string; workspace_id: string; campaign_id: string }>(path: string, schema: z.ZodType<T>, props: Props, open: boolean) {
@@ -33,7 +35,8 @@ function ContentEditor(props: Props) {
   const [baseVersion, setBaseVersion] = useState<number | null>(null);
   const [creative, setCreative] = useState(''), [route, setRoute] = useState(''), [company, setCompany] = useState('Hilltop Home Company');
   const [prepared, setPrepared] = useState<Preparation | null>(null), [preview, setPreview] = useState<Proof | null>(null);
-  const [evidenceRef, setEvidenceRef] = useState(''), [evidenceHash, setEvidenceHash] = useState(''), [expires, setExpires] = useState('');
+  const [chosenEvidence, setChosenEvidence] = useState<ReviewCandidate | null>(null), [expires, setExpires] = useState('');
+  const evidenceRef = chosenEvidence?.artifact_id ?? '', evidenceHash = chosenEvidence?.sha256 ?? '';
   const [note, setNote] = useState(''), [attested, setAttested] = useState(false), [lead, setLead] = useState('');
   const [leadCursors, setLeadCursors] = useState<(string | null)[]>([null]); const leadAfter = leadCursors.at(-1);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [now, setNow] = useState(Date.now()); const inFlight = useRef(false);
@@ -54,10 +57,12 @@ function ContentEditor(props: Props) {
   const loaded = !selected || (ready && baseVersion === current.data?.version);
   const preparedCurrent = !!prepared && prepared.snapshot.template.creative_id === creative && prepared.snapshot.destination.review_id === route && prepared.snapshot.company_name === company.trim() && Date.parse(prepared.destination_valid_until) > now;
   const approvalBody = { id: campaign, expected_version: selected ? baseVersion : 0, action: 'approved', creative_id: creative, destination_review_id: route, company_name: company.trim(), preparation_hash: prepared?.preparation_hash, evidence_ref: evidenceRef, evidence_hash: evidenceHash, expires_at: expires, note };
-  const approve = editable && loaded && preparedCurrent && attested && pendingSchema.safeParse({ content_id: selected ?? campaign, review: approvalBody }).success
+  const evidenceCurrent = !!chosenEvidence && now - Date.parse(chosenEvidence.checked_at) <= 30000 && Date.parse(chosenEvidence.max_approval_until) > now;
+  const approvalLimit = Math.min(Date.parse(chosenEvidence?.max_approval_until ?? ''), Date.parse(prepared?.destination_valid_until ?? ''));
+  const approve = evidenceCurrent && Date.parse(expires) <= approvalLimit && editable && loaded && preparedCurrent && attested && pendingSchema.safeParse({ content_id: selected ?? campaign, review: approvalBody }).success
     && Date.parse(expires) > now && Date.parse(expires) <= Date.parse(prepared!.destination_valid_until);
   const withdraw = editable && ready && current.data!.version < 1000000000 && current.data!.latest_review?.action === 'approved' && note.trim().length >= 20 && note.length <= 2000;
-  function invalidate() { setPrepared(null); setPreview(null); setAttested(false); }
+  function invalidate() { setChosenEvidence(null); setPrepared(null); setPreview(null); setAttested(false); }
   function inspect(contentId: string | null) { setSelected(contentId); setBaseVersion(null); invalidate(); setNote(''); setMessage(''); setLead(''); }
   function refresh() { invalidate(); void access.refetch(); void templates.query.refetch(); void destinations.query.refetch(); void reviews.query.refetch(); if (selected) void current.refetch(); }
   async function prepare() {
@@ -116,7 +121,7 @@ function ContentEditor(props: Props) {
       {selected && <div className="rounded-lg border bg-white p-3 space-y-2">
         {current.isFetching ? <p role="status">Checking current content…</p> : current.isError ? <p role="alert">Current content could not be verified.</p> : current.data && <p>Current content: {current.data.status.replaceAll('_', ' ')} · Version {current.data.version} · Checked {current.data.checked_at}</p>}
         {!loaded && !locked && <p className="text-sm text-gray-600">To revise this content, load the current version below and prepare it again. Internal property preview is available below only while the content is approved.</p>}
-        <button className={button} disabled={!editable || !ready || !current.data?.latest_review} onClick={() => { const r = current.data!.latest_review!; setBaseVersion(r.version); setCreative(r.creative_id); setRoute(r.destination_review_id); setCompany(r.company_name); setEvidenceRef(''); setEvidenceHash(''); setExpires(''); setNote(''); invalidate(); }}>Load current content for review</button>
+        <button className={button} disabled={!editable || !ready || !current.data?.latest_review} onClick={() => { const r = current.data!.latest_review!; setBaseVersion(r.version); setCreative(r.creative_id); setRoute(r.destination_review_id); setCompany(r.company_name); setChosenEvidence(null); setExpires(''); setNote(''); invalidate(); }}>Load current content for review</button>
         <button className={button} disabled={locked} onClick={() => inspect(null)}>Start separate content review</button>
       </div>}
       <fieldset disabled={!editable || !loaded} className="space-y-3"><legend className="font-semibold text-[#1B3A5C]">Prepare the wording</legend>
@@ -129,12 +134,17 @@ function ContentEditor(props: Props) {
       </fieldset>
       {prepared && <div className="rounded-lg border bg-white p-4 space-y-2"><h5 className="font-semibold">Prepared wording — property placeholder</h5><pre className="whitespace-pre-wrap break-words font-sans text-sm">{prepared.snapshot.template.body.replace(/\{\{(company_name|property_address|tracking_phone|tracking_url)\}\}/g, (_, token: string) => token === 'company_name' ? prepared.snapshot.company_name : token === 'property_address' ? '[Property address]' : prepared.snapshot.destination.value)}</pre><p className="text-sm">Destination evidence expires: {prepared.destination_valid_until}. This view uses a property placeholder. An approved internal preview uses the selected property.</p>{!preparedCurrent && <p role="alert">Preparation expired or changed. Prepare the content again.</p>}</div>}
       <fieldset disabled={!editable || !loaded || !preparedCurrent} className="space-y-3"><legend className="font-semibold text-[#1B3A5C]">Record the content review</legend>
-        <details><summary className="cursor-pointer">Retained review evidence</summary><p className="text-sm">Use the reference and SHA-256 digest of your retained evidence. This form does not upload or verify that artifact; protected evidence resolution remains a separate release requirement.</p>
-          <label>Content evidence reference<input className={input} value={evidenceRef} onChange={e => setEvidenceRef(e.target.value)}/></label><label>Content evidence SHA-256 digest<input className={input} maxLength={64} value={evidenceHash} onChange={e => setEvidenceHash(e.target.value)}/></label></details>
-        <label>Content approval expires at (ISO date with time zone)<input className={input} placeholder="2026-11-01T12:00:00-06:00" value={expires} onChange={e => setExpires(e.target.value)}/></label>
+        <div className="rounded-lg border-l-4 border-[#E8720C] bg-orange-50/40 p-3 text-sm text-[#1B3A5C]">
+          {chosenEvidence ? <><p className="font-medium">Supporting file selected</p><p>Approval must end by {new Date(approvalLimit).toLocaleString()}.</p>
+            {!evidenceCurrent && <p>Select the file again below to refresh its verification.</p>}
+            <details><summary>File references</summary><p className="break-all">{evidenceRef}</p><p className="break-all">{evidenceHash}</p></details></>
+            : <p>Next: open supporting files below and choose a verified file for this review.</p>}
+        </div>
+        <label>Content approval expires<input className={input} type="datetime-local" value={localDateTime(expires)} max={Number.isFinite(approvalLimit) ? localDateTime(new Date(approvalLimit).toISOString()) : undefined}
+          onChange={e => { const date = new Date(e.target.value); setExpires(Number.isFinite(date.getTime()) ? date.toISOString() : ''); setAttested(false); }}/></label>
         <label className="block"><input type="checkbox" checked={attested} onChange={e => setAttested(e.target.checked)}/> I reviewed this wording, company name and response destination against the retained evidence.</label>
       </fieldset>
-      <label className="block">Content review or withdrawal reason<textarea className={input} disabled={!editable} maxLength={2000} value={note} onChange={e => setNote(e.target.value)}/></label><p className="text-sm text-gray-600">Explain the decision in at least 20 characters. Approval expiry cannot exceed destination evidence expiry.</p>
+      <label className="block">Content review or withdrawal reason<textarea className={input} disabled={!editable} maxLength={2000} value={note} onChange={e => setNote(e.target.value)}/></label><p className="text-sm text-gray-600">Explain the decision in at least 20 characters. Approval expiry must fit both the selected file and response destination.</p>
       {pending ? <button className={button} disabled={busy || initial.invalid} onClick={() => { void save(pending.review.action); }}>Retry exact content decision</button> : <div className="flex flex-wrap gap-2"><button className={`${button} bg-[#1B3A5C] text-white`} disabled={!approve} onClick={() => { void save('approved'); }}>Record content approval</button><button className={button} disabled={!withdraw} onClick={() => { void save('withdrawn'); }}>Withdraw content approval</button></div>}
       {selected && current.data?.review_current && <div className="rounded-lg border bg-white p-4 space-y-3"><h5 className="font-semibold text-[#1B3A5C]">Internal property preview</h5><p className="text-sm">Uses the current approved content and the property's canonical address. It does not verify postal delivery, recipient permission or a vendor proof.</p>
         <label>Preview property<select className={input} value={lead} disabled={locked || !ready || leads.isFetching || leads.isError} onChange={e => { setLead(e.target.value); setPreview(null); }}><option value="">Choose an enrolled property</option>{leads.data?.map(l => <option key={l.lead_id} value={l.lead_id} disabled={!l.property_id}>{l.property_address} · {l.city}</option>)}</select></label>
@@ -145,6 +155,12 @@ function ContentEditor(props: Props) {
       </div>}
       {busy && <p role="status">Checking or recording content…</p>}{message && <p role="status">{message}</p>}
     </>}
-    <EvidenceUploadPanel userId={userId} workspace={workspace} campaign={campaign} onPending={evidencePending} disabled={busy}/>
+    <EvidenceUploadPanel userId={userId} workspace={workspace} campaign={campaign} onPending={evidencePending} disabled={busy || !!pending || initial.invalid}
+      onChoose={editable && loaded && preparedCurrent ? candidate => {
+        setChosenEvidence(candidate); setAttested(false);
+        if (!candidate) { setExpires(''); return; }
+        const until = Math.min(Date.parse(candidate.max_approval_until), Date.parse(prepared!.destination_valid_until));
+        setExpires(new Date(Math.floor(until / 60000) * 60000).toISOString());
+      } : undefined}/>
   </section>;
 }

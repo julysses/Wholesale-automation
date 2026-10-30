@@ -1,0 +1,7 @@
+{
+  "captured_at": "2026-10-30 22:25:17.07454+00",
+  "latest_migration": "20261023221455",
+  "private_candidate": null,
+  "public_candidate": null,
+  "scope": "Read-only production metadata; confirms no conflict. Pre-write inspection at 22:09:29 UTC returned the same migration and absent signatures."
+}
