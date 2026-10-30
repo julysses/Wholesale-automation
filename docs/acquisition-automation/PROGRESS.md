@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — current full-schema rehearsal baseline
+
+- Previous turn published 2d1ba98 after exact repair CI success. Pulled unchanged before this work; successor run 40994624469 remains the prerequisite before another feature push.
+- Investigated the full-schema upgrade gap rather than treating focused fixture success as production compatibility. The historical Facebook restore has 100 tables and 91 migrations; the acquisition inventory has 103 tables plus 17 views but only two full auth-function definitions. Live read-only metadata confirmed 95 deployed migrations/latest 20261023221455 and no acquisition workspace/verification tables.
+- Captured one-query current catalog at 2026-10-30T03:00:51.255656Z: 103 tables, 17 views, 122 complete function definitions, 407 constraints, 113 non-constraint indexes, 127 policies and 28 triggers. Saved the query, catalog and SHA-256 baseline comparison under evidence/2026-10-30-upgrade-*. No business rows, session data, credentials or vault contents were selected.
+- Found a meaningful rehearsal gap: the old restore omits view options/ACLs, while all 17 current views require security_invoker=true. New populated-upgrade work must preserve those and the three newer Facebook/Retell tables; do not reuse the stale baseline or replay deployed migration filenames blindly. UPGRADE-REHEARSAL.md records the concrete restoration, seeding, comparison and no-dispatch test contract.
+- Validation this increment: parsed the complete JSON result, compared object/migration identities against the historical baseline, checked unsupported identity/enum/sequence categories and view security options, and recorded the content hash. Restoration has not run; no full-schema upgrade success is claimed. Production and paused SMS are unchanged.
+
+Next: implement the explicitly selected current-baseline disposable restore with exact ACL/view preservation, then populated candidate upgrade and role/workflow probes. Keep managed Auth/Storage/JWT acceptance separate. Check exact CI 40994624469 before pushing this retained baseline increment; keep the full PRD goal active.
+
 ## Publication checkpoint — prerequisite CI passed
 
 Exact repair run 40993385281 for e0885a6e6b7b94b168dd1b737a13e7784d112265 completed successfully across all five jobs. Refreshed origin/codex/acquisition-foundation unchanged before publication. The retained signed-observation transport, 48-workflow coverage and current-status handoff are now ready to push together. No live job was cancelled or restarted. After this push, inspect the new exact head/run before any further feature push; this prerequisite result does not prove the successor run. Full PRD goal remains active and production/SMS/provider controls are unchanged.

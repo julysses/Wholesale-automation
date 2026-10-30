@@ -1,0 +1,164 @@
+{
+  "catalog_sha256": "b4e7afdf48056e7de66f720e98cdb363078ca972ffbf4ed1c77efa4f2ad1e38f",
+  "captured_at": "2026-10-30T03:00:51.255656+00:00",
+  "counts": {
+    "tables": 103,
+    "views": 17,
+    "functions": 122,
+    "constraints": 407,
+    "indexes": 113,
+    "policies": 127,
+    "triggers": 28,
+    "migrations": 95,
+    "enums": 0,
+    "sequences": 0
+  },
+  "tables_added_since_old_rehearsal": [
+    "private.retell_generation_reconciliations",
+    "private.retell_owner_retest_authorizations",
+    "public.facebook_lead_submissions"
+  ],
+  "tables_removed_since_old_rehearsal": [],
+  "migrations_since_old_rehearsal": [
+    {
+      "name": "facebook_inquiry_sms_receipts",
+      "version": "20261020192531"
+    },
+    {
+      "name": "retell_owner_retest_authorization",
+      "version": "20261023213254"
+    },
+    {
+      "name": "retell_verified_generation_recovery",
+      "version": "20261023214643"
+    },
+    {
+      "name": "retell_recovery_production_guard",
+      "version": "20261023221455"
+    }
+  ],
+  "unsupported_table_columns": [],
+  "views_with_options": [
+    {
+      "schema": "public",
+      "name": "business_funnel_metrics",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "buyer_leaderboard",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "funnel_metrics",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "ibie_segment_summary",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "infill_pipeline",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "land_funnel",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "my_profile",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "precision_targeting_summary",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "reportable_ai_call_records",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "reportable_appointments",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "reportable_deal_analyses",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "reportable_deals",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "reportable_form_submissions",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "reportable_leads",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "reportable_offer_recommendations",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "reportable_qualification_results",
+      "options": [
+        "security_invoker=true"
+      ]
+    },
+    {
+      "schema": "public",
+      "name": "stack_analytics",
+      "options": [
+        "security_invoker=true"
+      ]
+    }
+  ],
+  "restore_executed": false,
+  "production_migration_executed": false
+}

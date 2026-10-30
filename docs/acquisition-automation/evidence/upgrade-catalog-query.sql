@@ -1,0 +1,16 @@
+WITH ns AS (SELECT oid,nspname FROM pg_namespace WHERE nspname IN ('public','private','wholesale_ingest'))
+SELECT jsonb_build_object(
+'captured_at',clock_timestamp(),'server_version',current_setting('server_version'),
+'tables',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'name',c.relname,'acl',c.relacl::text,'rls',c.relrowsecurity,'force_rls',c.relforcerowsecurity,'columns',(SELECT jsonb_agg(jsonb_build_object('name',a.attname,'type',format_type(a.atttypid,a.atttypmod),'default',pg_get_expr(d.adbin,d.adrelid),'notnull',a.attnotnull,'identity',a.attidentity,'generated',a.attgenerated) ORDER BY a.attnum) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped)) ORDER BY n.nspname,c.relname) FROM pg_class c JOIN ns n ON n.oid=c.relnamespace WHERE c.relkind='r'),
+'functions',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'name',p.proname,'signature',p.oid::regprocedure::text,'acl',p.proacl::text,'definition',pg_get_functiondef(p.oid)) ORDER BY n.nspname,p.oid::regprocedure::text) FROM pg_proc p JOIN ns n ON n.oid=p.pronamespace WHERE p.prokind='f'),
+'constraints',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'table',c.relname,'name',k.conname,'type',k.contype,'definition',pg_get_constraintdef(k.oid)) ORDER BY n.nspname,c.relname,k.conname) FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN ns n ON n.oid=c.relnamespace),
+'indexes',(SELECT jsonb_agg(pg_get_indexdef(i.indexrelid) ORDER BY i.indexrelid::regclass::text) FROM pg_index i JOIN pg_class c ON c.oid=i.indrelid JOIN ns n ON n.oid=c.relnamespace WHERE NOT EXISTS(SELECT 1 FROM pg_constraint k WHERE k.conindid=i.indexrelid)),
+'triggers',(SELECT jsonb_agg(pg_get_triggerdef(t.oid) ORDER BY n.nspname,c.relname,t.tgname) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN ns n ON n.oid=c.relnamespace WHERE NOT t.tgisinternal),
+'policies',(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.schemaname,p.tablename,p.policyname) FROM pg_policies p WHERE p.schemaname IN ('public','private','wholesale_ingest')),
+'views',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'name',c.relname,'definition',pg_get_viewdef(c.oid),'acl',c.relacl::text,'options',c.reloptions) ORDER BY n.nspname,c.relname) FROM pg_class c JOIN ns n ON n.oid=c.relnamespace WHERE c.relkind='v'),
+'enums',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'name',t.typname,'value',e.enumlabel,'order',e.enumsortorder)) FROM pg_type t JOIN ns n ON n.oid=t.typnamespace JOIN pg_enum e ON e.enumtypid=t.oid),
+'sequences',(SELECT jsonb_agg(to_jsonb(s)) FROM pg_sequences s WHERE s.schemaname IN ('public','private','wholesale_ingest')),
+'migrations',(SELECT jsonb_agg(jsonb_build_object('version',version,'name',name) ORDER BY version) FROM supabase_migrations.schema_migrations),
+'schema_acls',(SELECT jsonb_agg(jsonb_build_object('schema',nspname,'acl',nspacl::text)) FROM pg_namespace WHERE nspname IN ('public','private','wholesale_ingest')),
+'default_acls',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'type',d.defaclobjtype,'acl',d.defaclacl::text,'owner',pg_get_userbyid(d.defaclrole))) FROM pg_default_acl d JOIN ns n ON n.oid=d.defaclnamespace)
+) AS catalog;
