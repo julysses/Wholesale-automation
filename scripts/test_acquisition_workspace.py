@@ -212,6 +212,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         install_storage_fixture(self.sql)
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
             self.sql(STORAGE_MIGRATION.read_text())
+        self.sql((ROOT/'frontend/supabase/migrations/20261030041400_acquisition_postal_observations.sql').read_text())
         if self._testMethodName != 'test_activation_defaults_closed':
             self.activate()
         if self._testMethodName != 'test_activation_defaults_closed':

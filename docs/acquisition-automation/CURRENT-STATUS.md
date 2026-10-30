@@ -2,6 +2,10 @@
 
 Updated October 29, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 
+## Latest handoff
+
+Postal import now has a disabled-by-default API with strict scope, exact retry and unverified receipt checks. Full local rehearsal passed 46 migrations, 26 access checks, 49 application journeys and ten real PostgREST checks; nine malformed-receipt tests passed. No new operator button is exposed until canonical address validation and shared eligibility are implemented. User selected PropStream as the address-data/skip-trace source; letters/postcards provider remains unselected. Prior commit 31cd558 passed all six jobs in run 41003002597. See PROGRESS.md for publication and remaining work.
+
 ## Git and validation
 
 - Local branch: codex/acquisition-foundation. Retained feature bce25b9 adds bounded signed-observation persistence; merge 08c859a incorporates the separately pushed CI correction; e6d9b87 adds four-strategy persisted workflow coverage.

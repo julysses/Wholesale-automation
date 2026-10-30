@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — guarded postal import API
+
+- Added a disabled-by-default application handoff for importing the existing owner mailing-address source by workspace and owner relationship. Browser requests contain only a stable observation ID; addresses, verification and execution claims cannot be supplied. The response hides internal source evidence and remains unverified, with no mail authority.
+- Exact retry after a lost committed reply returns the original address even if the source changes. Workspace isolation, revoked sessions, no-store responses and one immutable audit were tested. Nine malformed receipt checks reject cross-scope IDs, false verification/execution claims, oversized addresses and ambiguous timestamps.
+- Complete local rehearsal passed 46 candidate migrations, 26 access checks, all 49 application journeys and ten real PostgREST checks. Evidence: evidence/2026-10-30-postal-api-result.json. The separate focused fixture run also passed all 49 tests (447.252 seconds).
+- Publication prerequisite 31cd558 / run 41003002597 completed successfully with all six jobs. Focused fixture validation passed; this handoff is ready for publication and successor CI verification.
+- No new app button is exposed yet: canonical postal validation and shared suppression/eligibility must precede guided recipient selection. User confirmed PropStream as the address-data/skip-trace source and no letters/postcards provider. No postal provider integration is configured. Continue the existing numbered navy/orange process and plain-language statuses. No production/provider/SMS/spend changes.
+
 ## Postal publication prerequisite cleared
 
 - Confirmed exact cb528546da3c67bcc679cae6d917e6189c66276f / CI 41001242316 completed with all six jobs successful. The original contention job finished; no cancellation/restart or disabled check was used.

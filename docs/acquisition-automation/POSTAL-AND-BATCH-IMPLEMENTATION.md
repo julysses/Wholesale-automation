@@ -44,3 +44,13 @@ Fresh read-only metadata at 2026-10-30T04:13:11Z confirms the separate owner mai
 
 
 Postal concurrency/transport follow-up: real signed PostgREST requests now verify exact parallel import convergence (one row/audit), source/unit preservation, tenant isolation and session expiry during an observed activation lock wait. The original local candidate accepted the expired session; acquiring activation before the final expiry check corrected it. The final run passed ten real HTTP checks plus all 46 migrations and 48 application journeys. Evidence: evidence/2026-10-30-postal-http-result.json. This is local transport evidence, not hosted Auth issuance or provider address verification.
+
+## Guarded application handoff
+
+The postal-observation POST route imports only an existing workspace owner relationship and a stable request ID. ACQUISITION_POSTAL_IMPORT_ENABLED defaults off. It returns the original unverified observation on exact retry, hides internal source evidence, validates receipt scope and denies execution claims. This is backend preparation, not a new operator step. Canonical validation, shared suppression/eligibility and vendor selection remain prerequisites to recipient selection in the existing guided app. Local coverage is recorded in evidence/2026-10-30-postal-api-result.json.
+
+### Confirmed provider preference
+
+User confirmed PropStream for address verification/skip trace, with no letters/postcards provider selected. Treat PropStream as the intended data source; verify the actual available export fields and evidence before classifying an address as deliverable. A returned address alone must remain unverified. Provider purchases, live lookups and fulfillment are not authorized by this preference. Next inspect the existing PropStream import mapping without ordering data, then map source and verification evidence into the shared postal workflow.
+
+Existing source inspection: frontend/src/lib/propstreamResultMatch.ts maps owner plus full property address to returned phone/email contacts; it has no postal-verification fields. frontend/src/lib/propstreamBulkCsv.ts deliberately leaves mailing-address export columns blank rather than substituting property address. Preserve both behaviors. A future PropStream postal import needs explicit source-column mapping and evidence handling; the current contact matcher does not prove postal deliverability.

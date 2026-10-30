@@ -14,9 +14,11 @@ from tools.acquisition_mail_render import safe_text
 from schemas.acquisition_mail_proof import MailProofRequest
 from tools.acquisition_mail_proof import build_reviewed_mail_proof, ProofUnavailable
 from web.api.acquisition_evidence_api import router as evidence_router
+from web.api.acquisition_postal_api import router as postal_router
 
 router = APIRouter(prefix='/api/acquisition', tags=['Acquisition'])
 router.include_router(evidence_router)
+router.include_router(postal_router)
 
 
 class WorkspaceCreate(BaseModel):
