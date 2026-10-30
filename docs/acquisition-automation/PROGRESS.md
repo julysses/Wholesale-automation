@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Actual local evidence RPC transport
+
+- Guided UI increment is retained in local commit 2de33d1. Predecessor CI 41105042913 remains five successful jobs plus a live PostgreSQL contention job; no new push or cancellation occurred.
+- Added evidence lifecycle checks to the real PostgREST 16.5 private-socket rehearsal. Campaign creation, evidence registration, scan-state read and withdrawal use actual authenticated RPC calls. Only the disposable database owner seeds the synthetic retention configuration.
+- Verified pending-to-withdrawn status, exact response scope/fields, tenant isolation, anonymous denial, mismatched campaign rejection and false preview/content/execution authority. Reads create no scan observations. These checks do not claim a real scanner, signature/clean-result transport acceptance, hosted Auth or Storage acceptance.
+- Full rehearsal completed successfully: 47 migrations, 26 access probes, 51 application journeys, 24 historical rows in 22 tables preserved, all 103 original table definitions checked and 14 real local PostgREST checks. Evidence: evidence/2026-10-30-evidence-http-result.json. No production data or services were used.
+- Next: after exact predecessor all-six success, push retained UI and this transport coverage together, inspect successor CI, then complete quarantine clearance and locked evidence-to-content-review binding plus all remaining PRD requirements. Production, SMS, providers, spending and fulfillment stay unchanged.
+
+
 ## 2026-10-30 — Guided supporting-file status (local, publication pending)
 
 - Pulled acquisition-foundation unchanged. Exact published predecessor d1094c3269678c7f71b5913c87ff5dfdc419893c is running CI 41105042913. At this checkpoint five jobs passed; PostgreSQL ingestion/tracing/scoring contention remains live. Do not cancel it or push this increment until all six succeed.
