@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Signed evidence through the actual local API gateway
+
+- Verified ca3697c07fd2fa03528db45ed94480e9913b9068 was pushed; successor CI is 41108995914. Pulled unchanged before this increment. Do not publish this increment until all six jobs on that exact predecessor succeed.
+- Extended real local PostgREST tests to submit synthetic HMAC-signed observations using ephemeral private test keys. Invalid signatures are rejected; exact repeated delivery creates one verification/audit; signer revocation invalidates current clean state; a replacement key and later clean observation cannot erase a recorded detection. Withdrawal retains the detection hold. Reads never grant preview/content/execution authority or create scans.
+- Final rehearsal passed 48 migrations, 26 access probes, 55 application journeys, preservation of 24 historical rows/22 populated tables and 103 definitions, and 18 actual local API-gateway checks. Evidence: evidence/2026-10-30-signed-evidence-http-result.json. The scanner daemon and hosted Auth/Storage remain unverified; these are synthetic signed payloads over real local transport.
+- Saved EVIDENCE-APPROVAL-BINDING.md from current source inspection. It identifies the missing workspace/hash serialization across artifact aliases, immutable review binding, exact-schema compatibility, current-state/proof invalidation, UI selection and required concurrency tests. This contract is preparation for implementation, not a claim that binding or quarantine clearance exists.
+- Next: enforce the documented binding in an additive migration and existing review/API/UI paths, preserving the newly fixed post-lock session checks and all historical records. Complete clearance, worker custody, postal/batches and the remaining original PRD requirements. No production, SMS, providers, outreach, spending or fulfillment changed.
+
+
 ## 2026-10-30 — Session authority rechecked after content-review waits
 
 - Exact predecessor d1094c3269678c7f71b5913c87ff5dfdc419893c / CI 41105042913 completed with all six jobs successful. PostgreSQL contention finished at 18:31:35 UTC. Retained UI/transport/visual-check commits 2de33d1, 0ee8681 and 5468be3 may now publish with this fix.
