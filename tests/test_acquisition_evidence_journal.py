@@ -151,3 +151,52 @@ os._exit(0)
     restarted=EvidenceJournal(saved.directory)
     assert restarted.load(REQUEST)==(sign(),'unconfirmed')
     assert run(restarted,success)['duplicate'] is True
+
+
+def test_restart_discovers_pending_requests_without_retained_ids(tmp_path):
+    saved=journal(tmp_path);body=sign();saved.prepare(body)
+    changed=copy.deepcopy(body);changed['p_id']='ffffffff-ffff-4fff-8fff-ffffffffffff'
+    saved.prepare(changed);saved.mark_dispatch(REQUEST,body)
+    reopened=EvidenceJournal(saved.directory)
+    first=reopened.pending(workspace_id=WORKSPACE,actor_id=ACTOR,limit=1)
+    assert first['items']==[{'id':str(REQUEST),'campaign_id':str(CAMPAIGN),
+        'artifact_id':str(ARTIFACT),'session_id':str(ACTOR),'state':'unconfirmed'}]
+    assert first['next_after']==str(REQUEST)
+    from uuid import UUID
+    second=reopened.pending(workspace_id=WORKSPACE,actor_id=ACTOR,after=UUID(first['next_after']),limit=1)
+    assert second['items'][0]['id']==changed['p_id'] and second['next_after'] is None
+    assert 'p_signature' not in json.dumps(first) and 'p_observation' not in json.dumps(first)
+    assert reopened.load(REQUEST)==(body,'unconfirmed')
+
+
+def test_pending_discovery_is_scoped_and_excludes_confirmed(tmp_path):
+    saved=journal(tmp_path);saved.prepare(sign());run(saved,success)
+    other_workspace=uuid4();other_actor=uuid4()
+    body=sign();body['p_id']=str(uuid4());body['p_workspace']=str(other_workspace);saved.prepare(body)
+    second=sign();second['p_id']=str(uuid4());second['p_actor']=str(other_actor);saved.prepare(second)
+    assert saved.pending(workspace_id=WORKSPACE,actor_id=ACTOR)=={'items':[],'next_after':None}
+    assert len(saved.pending(workspace_id=other_workspace,actor_id=ACTOR)['items'])==1
+    assert len(saved.pending(workspace_id=WORKSPACE,actor_id=other_actor)['items'])==1
+
+
+@pytest.mark.parametrize('change',[{'limit':0},{'limit':101},{'limit':True},{'limit':1.5},
+    {'workspace_id':str(WORKSPACE)},{'actor_id':None},{'after':'bad'}])
+def test_pending_rejects_invalid_scope_and_bounds(tmp_path,change):
+    saved=journal(tmp_path)
+    with pytest.raises(EvidenceJournalUnavailable):saved.pending(**(dict(workspace_id=WORKSPACE,actor_id=ACTOR)|change))
+
+
+def test_pending_fails_closed_on_corrupt_record(tmp_path):
+    saved=journal(tmp_path);body=sign();saved.prepare(body)
+    body['p_signature']='private-invalid-signature'
+    with sqlite3.connect(saved.path) as db:db.execute('UPDATE requests SET body=?',(json.dumps(body),))
+    with pytest.raises(EvidenceJournalUnavailable) as error:saved.pending(workspace_id=WORKSPACE,actor_id=ACTOR)
+    assert 'private-invalid-signature' not in str(error.value)
+
+
+def test_old_journal_without_recovery_index_opens_without_losing_requests(tmp_path):
+    saved=journal(tmp_path);body=sign();saved.prepare(body)
+    with sqlite3.connect(saved.path) as db:db.execute('DROP INDEX pending_observation_scope')
+    reopened=EvidenceJournal(saved.directory)
+    assert reopened.load(REQUEST)==(body,'prepared')
+    assert reopened.pending(workspace_id=WORKSPACE,actor_id=ACTOR)['items'][0]['id']==str(REQUEST)

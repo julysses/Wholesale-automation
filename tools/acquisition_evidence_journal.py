@@ -40,6 +40,9 @@ class EvidenceJournal:
                 state TEXT NOT NULL CHECK(state IN ('prepared','unconfirmed','confirmed')),
                 receipt TEXT
             )''')
+            db.execute("""CREATE INDEX IF NOT EXISTS pending_observation_scope
+                ON requests(json_extract(body,'$.p_workspace'),json_extract(body,'$.p_actor'),id)
+                WHERE state IN ('prepared','unconfirmed')""")
         # Make the initial directory entry durable before any provider dispatch.
         fd = os.open(self.directory, os.O_RDONLY | os.O_DIRECTORY)
         try: os.fsync(fd)
@@ -104,6 +107,38 @@ class EvidenceJournal:
         if checked_id != str(identity):
             raise EvidenceJournalUnavailable('Saved request identity mismatch')
         return body, row[1]
+
+    def pending(self, *, workspace_id: UUID, actor_id: UUID, after: UUID | None = None, limit: int = 50):
+        """Bounded discovery for a trusted worker, never an authorization service.
+
+        Keep the original session reference for historical reconciliation. A new
+        request can sort before a cursor; a later sweep must restart at None.
+        No requests are dispatched, renewed or removed by this read.
+        """
+        if (not isinstance(workspace_id, UUID) or not isinstance(actor_id, UUID)
+                or (after is not None and not isinstance(after, UUID))
+                or type(limit) is not int or not 1 <= limit <= 100):
+            raise EvidenceJournalUnavailable('Valid recovery scope and page size required')
+        try:
+            with self._connect() as db:
+                rows = db.execute("""SELECT id,body,state FROM requests
+                    WHERE json_extract(body,'$.p_workspace')=? AND json_extract(body,'$.p_actor')=?
+                    AND state IN ('prepared','unconfirmed') AND id>?
+                    ORDER BY id LIMIT ?""", (str(workspace_id), str(actor_id), str(after) if after else '', limit+1)).fetchall()
+            items = []
+            for identity, raw, state in rows:
+                if len(raw.encode('utf-8')) > 12288:
+                    raise ValueError('Oversized journal entry')
+                body = json.loads(raw, object_pairs_hook=unique_json_object)
+                checked_id, _ = self._body(body)
+                if (checked_id != identity or body['p_workspace'] != str(workspace_id)
+                        or body['p_actor'] != str(actor_id)):
+                    raise ValueError('Recovery scope mismatch')
+                items.append({'id': identity, 'campaign_id': body['p_campaign'],
+                              'artifact_id': body['p_artifact'], 'session_id': body['p_session'], 'state': state})
+            return {'items': items[:limit], 'next_after': items[limit-1]['id'] if len(items)>limit else None}
+        except (ValueError, TypeError, KeyError, AttributeError, RecursionError, sqlite3.Error):
+            raise EvidenceJournalUnavailable('Recovery journal could not be read') from None
 
     def mark_dispatch(self, identity, body):
         _, exact = self._body(body)

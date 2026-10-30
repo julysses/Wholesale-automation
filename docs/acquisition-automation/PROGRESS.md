@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — scoped journal recovery discovery
+
+- Previous turn made progress and pushed 85419cf after all-six predecessor success. Pulled unchanged; successor run 41082200037 remains live, with four jobs successful and two active at last inspection. Hold further publication until all six finish successfully.
+- Added bounded, workspace/actor-scoped pending-request discovery so restart recovery does not depend on a remembered ID list. Minimal references retain the original session; signatures/observation content are not listed. Prepared/unconfirmed requests remain unchanged, confirmed and unrelated entries are excluded, and malformed state fails closed. Added a compatible local SQLite recovery index without changing production schema.
+- All 97 journal/transport tests passed, including multi-page discovery after reopening, tenant/actor boundaries, corrupt-record rejection, page limits and old-journal compatibility. No live worker, credentials, scanner, provider or production state was activated.
+- Next: verify all six jobs on 41082200037 before publishing; integrate reviewed worker admission/credentials/lifecycle and persistent-volume acceptance, then current quarantine/clearance and locked evidence-to-review binding. Keep canonical postal validation, shared eligibility, persisted mail batches and the full remaining PRD scope active.
+
 ## Implementation checkpoint — durable signed-observation recovery
 
 - Previous turn made progress reconciling the handoff and verified the live CI wait. Exact prerequisite d017061 / run 41080189204 has now completed successfully with all six jobs. The existing watch exited successfully; no job was cancelled or restarted. Local guided UI commit 39d8e2d and handoff afe6926 are ready for publication with this increment.
