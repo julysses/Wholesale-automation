@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — full rehearsal hosted CI configuration
+
+- Pulled unchanged. Prerequisite remains exact f5491ea run 40998774727: four completed successful jobs, PostgreSQL contention still running at verification. Local access and full-workflow commits remain queued for publication; do not cancel that run or push over it.
+- Added a sixth independent CI job, Full acquisition schema upgrade and application journeys, on Ubuntu 24.04 with Python 3.12 and PostgreSQL 17. Uses the official signed PGDG package repository and pins Supautils source to 7a22990746ec17b1a84cf2a097dda411222f8ec7. Builds its library in the checkout without system installation; only the disposable cluster preloads it.
+- Runs the complete populated-upgrade command with the existing external-network block, private Unix sockets and synthetic fixtures. Retains combined output for 14 days even on failure. Repository permissions are read-only. No production/provider credentials are supplied.
+- Validation: parsed workflow YAML, verified all five existing job definitions are identical to HEAD, and checked every new shell step with bash -n. The Linux package/build/runtime result remains unverified until its first hosted run; local macOS rehearsal evidence does not substitute for that check.
+- After predecessor success, publish all retained increments and require all six jobs on the new head before another feature push. Next: inspect the new hosted rehearsal result, fix actual diagnostics if any, and continue managed Auth/Storage/PostgREST acceptance and the full PRD. No production, UI, SMS or activation changes.
+
+
 ## Implementation checkpoint — application journeys on the full upgraded catalog
 
 - Pulled unchanged. Previous access increment 6be42c1 remains local while exact prerequisite CI 40998774727 for f5491ea finishes; four jobs now passed and the PostgreSQL contention job remains running. Do not publish until all five succeed.

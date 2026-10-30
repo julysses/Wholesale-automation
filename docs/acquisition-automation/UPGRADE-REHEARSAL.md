@@ -68,3 +68,10 @@ The synthetic JWT claim adapter remains a platform fixture. Full application wor
 The populated rehearsal now runs eight existing application workflow cases on separate database copies of the fully upgraded catalog. `acquisition_upgrade_workflows.py` seeds synthetic users and properties without recreating schema or relaxing permissions. It reuses the API/calculator/SQL transport tests for Facebook intake identity and qualification handoff, four investment strategies and internal amount review, unsupported assignment buyer economics, missing market data, and a lost calculation response. All eight passed locally. Each copy is dropped, and original historical fingerprints are rechecked afterward.
 
 This moves application workflow evidence beyond the focused schema fixture. It does not remove the simulated provider and PostgREST boundaries or establish live authentication or platform acceptance. The default focused harness database and its tests remain available unchanged in behavior.
+
+
+## Hosted rehearsal configuration (execution pending)
+
+CI now defines a separate sixth job using PostgreSQL 17 and pinned Supautils source, leaving the five existing jobs unchanged. It runs the same populated upgrade, access probes and selected full-catalog application journeys, and retains combined diagnostic output for 14 days. YAML and shell syntax checks passed locally. A hosted passing result is still required; package installation, Linux extension compilation and runtime parity are not certified by the local macOS result.
+
+Runtime setup follows the [official PostgreSQL Ubuntu repository instructions](https://www.postgresql.org/download/linux/ubuntu/). The [Supautils source](https://github.com/supabase/supautils/tree/7a22990746ec17b1a84cf2a097dda411222f8ec7) is pinned to the same reviewed revision used locally. No production migration or provider credentials are part of the job. Once published, all six jobs must succeed on the exact candidate before another feature push.

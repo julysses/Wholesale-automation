@@ -144,3 +144,53 @@ jobs:
         env:
           PG_BIN: /usr/lib/postgresql/16/bin
         run: python scripts/run_offline_tests.py --acquisition-workflow
+
+  acquisition-full-upgrade:
+    name: Full acquisition schema upgrade and application journeys
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Check out reviewed Supautils source
+        uses: actions/checkout@v4
+        with:
+          repository: supabase/supautils
+          ref: 7a22990746ec17b1a84cf2a097dda411222f8ec7
+          path: .ci-supautils
+          persist-credentials: false
+      - name: Install PostgreSQL 17 build and test runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl ca-certificates build-essential
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --show-error --silent --location https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main' | sudo tee /etc/apt/sources.list.d/acquisition-pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-17 postgresql-server-dev-17
+          python -m pip install -r requirements.txt
+      - name: Build pinned policy-management extension locally
+        run: |
+          test "$(git -C .ci-supautils rev-parse HEAD)" = 7a22990746ec17b1a84cf2a097dda411222f8ec7
+          make -C .ci-supautils PG_CONFIG=/usr/lib/postgresql/17/bin/pg_config PG_VERSION=17 all
+          test -f .ci-supautils/supautils.so
+      - name: Rehearse full catalog upgrade with external networking blocked
+        env:
+          PG_BIN: /usr/lib/postgresql/17/bin
+          ACQUISITION_TEST_SUPAUTILS: ${{ github.workspace }}/.ci-supautils/supautils.so
+        run: |
+          set -o pipefail
+          python scripts/run_offline_tests.py --acquisition-populated-upgrade 2>&1 | tee acquisition-full-upgrade.log
+      - name: Retain synthetic rehearsal diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acquisition-full-upgrade-${{ github.sha }}
+          path: acquisition-full-upgrade.log
+          if-no-files-found: ignore
+          retention-days: 14
