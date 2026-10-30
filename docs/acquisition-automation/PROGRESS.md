@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — guided mail preparation boundary
+
+- Pulled unchanged. Prerequisite remains cb52854 / CI 41001242316; inspect all six jobs before publishing this increment.
+- Inspected actual proposal models/builder and contact/owner/eligibility SQL. Confirmed the postal gap: contact points are phone/email only, direct_mail compatibility is blocked, and batch inputs are trusted snapshots without canonical repository/reservations. No live-policy ALLOW or mailing readiness is inferred.
+- Added POSTAL-AND-BATCH-IMPLEMENTATION.md with dependency-ordered schema reuse, canonical postal provenance/unit identity, private suppression matching, shared eligibility, persisted proposals, atomic budget/cadence reservation and vendor reconciliation requirements. Fresh catalog inspection is required before additive SQL; no schema change is included here.
+- Updated CampaignDrafts within the existing numbered navy/orange flow: campaign IDs are now under expandable references, and the mail preparation card explains that recipient verification/contact checks and batch approval/fulfillment remain unavailable. Existing message/destination/content steps and pending-request handling are unchanged.
+- All 23 campaign regression tests passed after the UI edit. An initial command used the frontend directory with root-relative file paths and made no edits; reran correctly and retested the changed source. No new browser QA or full postal implementation is claimed.
+- Next: implement reviewed postal observations/canonical identity from fresh database dependency evidence, then persisted batch preparation and reservations. Keep app handoffs connected and preserve the full PRD's release gates. Production/SMS/providers/spending remain unchanged.
+
+
 ## Full six-job publication prerequisite passed
 
 - Verified exact published head 3b05b29b1677e6d3f073007ececb9dacd784d170, run 40999807734: all six jobs completed successfully, including full acquisition schema upgrade and application journeys. Waited for the original contention job; no cancellation/restart or test removal.

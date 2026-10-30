@@ -53,3 +53,6 @@ Current upgrade-baseline work: [UPGRADE-REHEARSAL.md](UPGRADE-REHEARSAL.md) docu
 
 
 Local transport increment: real PostgREST 16.5 passed six signed-session/tenant/revocation checks on a copy of the fully upgraded database. The new --acquisition-postgrest command and checksum-pinned CI runtime are prepared. Hosted Auth issuance/MFA lifecycle, actual Storage transport and provider acceptance remain open; see UPGRADE-REHEARSAL.md and the saved result for the exact local scope.
+
+
+Mail continuation: POSTAL-AND-BATCH-IMPLEMENTATION.md records the inspected phone/email-only endpoint gap and concrete postal/batch dependency order. The campaign card now keeps technical IDs expandable and clearly identifies mailing preparation as incomplete until recipient/contact checks and batch approval are implemented. The existing three numbered mail steps are preserved.
