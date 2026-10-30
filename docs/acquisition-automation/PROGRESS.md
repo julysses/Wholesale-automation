@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## Publication gate cleared
+
+- Live verification confirmed exact prerequisite f5491ea124480cca37c49b9a9b800159c1c10a51 / CI 40998774727 completed successfully across all five jobs. No cancellation, restart or disabled check was used.
+- Pulled unchanged before publication. Retained increments 6be42c1, e98ee35 and a62fc75 may now be pushed with this checkpoint. Verify the new exact head and all six successor jobs before another feature push; the new Linux full-schema job has not yet established hosted acceptance.
+- Local evidence remains 45 migrations, 19 access probes and eight full-catalog application journeys. Production, provider configuration, outreach, mail, spending, binding transactions and paused SMS remain unchanged. Full PRD goal continues.
+
+
 ## Implementation checkpoint — full rehearsal hosted CI configuration
 
 - Pulled unchanged. Prerequisite remains exact f5491ea run 40998774727: four completed successful jobs, PostgreSQL contention still running at verification. Local access and full-workflow commits remain queued for publication; do not cancel that run or push over it.

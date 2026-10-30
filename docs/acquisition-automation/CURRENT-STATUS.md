@@ -5,7 +5,7 @@ Updated October 29, 2026 (America/Chicago). This is a navigation and gap invento
 ## Git and validation
 
 - Local branch: codex/acquisition-foundation. Retained feature bce25b9 adds bounded signed-observation persistence; merge 08c859a incorporates the separately pushed CI correction; e6d9b87 adds four-strategy persisted workflow coverage.
-- Publication prerequisite: f5491ea124480cca37c49b9a9b800159c1c10a51, run 40998774727. Four jobs passed; PostgreSQL contention is still running at the latest check. Local commits 6be42c1 and e98ee35 add full-catalog access and application journeys. A sixth matching-runtime CI job is prepared; after publishing require all six jobs to pass on the new head.
+- Verified publication prerequisite: f5491ea124480cca37c49b9a9b800159c1c10a51, run 40998774727. All five jobs completed successfully. Commits 6be42c1, e98ee35 and a62fc75 add full-catalog access, application journeys and a sixth matching-runtime CI job. Verify all six jobs on the successor head before another feature push.
 - Local evidence: 728 evidence/API checks and 48 application-to-PostgreSQL workflows passed. These use isolated databases and synthetic transport/provider evidence. They do not establish live JWT, provider, deployment or operational acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
 
@@ -42,7 +42,7 @@ Amount approval is internal review only. Saving a document or scan observation d
 
 ## Next work in order
 
-1. Finish exact prerequisite CI 40998774727, then publish the retained access/workflow/full-rehearsal-CI increments. Inspect the new six-job run before another feature push. Never cancel an active run or disable checks to make this gate appear complete.
+1. Exact prerequisite CI 40998774727 passed all five jobs; publish the retained access/workflow/full-rehearsal-CI increments. Inspect the new six-job run before another feature push. Never cancel an active run or disable checks to make this gate appear complete.
 2. Close the shared-foundation and Facebook acceptance gaps against the complete candidate. Assemble a concrete migration/provider acceptance packet before requesting production or live-test authorization. Later mail-document work must not be mistaken for completion of the Phase 1 release gate.
 3. Complete the mail evidence worker and review binding, canonical mailing rules/reservations, vendor sandbox workflow, and inbound provider acceptance. Keep them within the existing campaign/review screens.
 4. Deliver portal, manual human caller, agency and contract/disposition capabilities with the PRD's sequential activation gates. These are still required parts of the goal, not optional enhancements.
