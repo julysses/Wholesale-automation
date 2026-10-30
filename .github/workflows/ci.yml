@@ -84,8 +84,9 @@ jobs:
   postgres-integration:
     name: Real PostgreSQL ingestion, tracing and scoring contention
     runs-on: ubuntu-24.04
-    # 163 workspace tests took 576.6s on a hosted runner; allow setup/teardown margin.
-    timeout-minutes: 15
+    # Run 40935475072 hit 15m while the expanded 217-test suite was still passing.
+    # Keep the full suite and a bounded budget with setup/teardown and runner margin.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
