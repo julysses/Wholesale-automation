@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## Full six-job publication prerequisite passed
+
+- Verified exact published head 3b05b29b1677e6d3f073007ececb9dacd784d170, run 40999807734: all six jobs completed successfully, including full acquisition schema upgrade and application journeys. Waited for the original contention job; no cancellation/restart or test removal.
+- Pulled unchanged before publication. Retained commits 926b6db (all 48 full-catalog journeys/history checks) and d8091ab (real local PostgREST signed-session checks and pinned Linux CI runtime) are ready to publish with this checkpoint. Verify the successor exact head and all six jobs before the next feature push.
+- Local complete rehearsal and six PostgREST checks passed as recorded in saved evidence. The successor Linux 48-case/PostgREST result is pending; do not infer it from predecessor success. Production migrations, providers, schedules, SMS, spending, offers and contracts remain unchanged. Continue managed-platform acceptance preparation and remaining PRD implementation after inspecting hosted diagnostics.
+
+
 ## Implementation checkpoint — real local PostgREST signed-session boundary
 
 - Pulled unchanged. Exact prerequisite remains 3b05b29 / CI 40999807734; five of six checks passed at last observation. Local all-48-workflow commit 926b6db is retained pending full success.
