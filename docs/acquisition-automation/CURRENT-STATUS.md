@@ -8,10 +8,10 @@ Postal import now has a disabled-by-default API with strict scope, exact retry a
 
 ## Git and validation
 
-- Branch: codex/acquisition-foundation. Latest published commit d017061 adds guarded postal provenance API and exact-retry coverage. Local commit 39d8e2d improves the connected seller-intake list and remains held for the prerequisite run.
-- Exact prerequisite: d017061e2ddfdc97d892f491be8f878999bf5488, run 41080189204. All six jobs completed successfully. Local interface and journal increments may now publish; verify the successor CI before further feature publication.
-- Current local evidence: 46 additive migrations, 26 access probes, 49 full-catalog application journeys, ten actual local PostgREST checks, nine postal receipt-boundary checks and a separate 49-case focused workflow run. Guided intake changes passed 34 related frontend tests, typecheck/build and synthetic browser review including access-revocation refresh. See evidence/2026-10-30-postal-api-result.json and PROGRESS.md for scope.
-- The full-schema hosted job for d017061 is successful, and the complete CI run is now successful. Local JWT signing/transport tests do not verify hosted Supabase Auth issuance, live provider delivery or deployment acceptance.
+- Branch: codex/acquisition-foundation. Published predecessor 85419cf adds the private signed-observation journal. Retained b320bd5, 477a4f9 and 6fb59e3 add scoped restart discovery, bounded admission and original-destination binding. See the newest PROGRESS.md checkpoint for publication verification.
+- Exact prerequisite 85419cfb7873e5e9b96ca5a843b6562717c629e1 / run 41082200037 completed successfully with all six jobs. Publish the retained commits, then verify the successor run before further feature publication.
+- Current local evidence: 46 additive migrations, 26 access probes, 49 full-catalog application journeys, ten actual local PostgREST checks, nine postal receipt-boundary checks and a separate 49-case focused workflow run. Guided intake changes passed 34 related frontend tests, typecheck/build and synthetic browser review including access-revocation refresh. Journal/transport recovery now has 103 passing tests, including actual process exit, concurrent admission, compatibility, scope and endpoint binding.
+- Hosted CI verifies code and synthetic full-schema rehearsal. It does not verify hosted Supabase Auth issuance, live provider delivery, persistent worker storage or deployment acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
 
 ## One app process

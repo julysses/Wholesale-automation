@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## Recovery publication gate cleared
+
+- Exact predecessor 85419cfb7873e5e9b96ca5a843b6562717c629e1 / run 41082200037 completed successfully with all six jobs. The original database job finished without cancellation/restart. Previous turns were verified waits; this turn clears the publication gate.
+- Pulled unchanged. Publish retained b320bd5 (scoped recovery discovery), 477a4f9 (bounded admission), 6fb59e3 (original destination binding), and this checkpoint. Final focused evidence is 103 passing journal/transport tests. Verify every successor CI job before another feature push.
+- Next implementation work remains actual worker lifecycle and credential/scanner/persistent-volume custody, current quarantine/clearance and locked review binding; canonical postal validation/shared eligibility/batch persistence and all other PRD gaps remain open. This journal is a tested local building block, not a deployed scanner or active sender.
+- Production schema, provider settings, SMS schedules, outreach, paid activity and fulfillment remain unchanged.
+
 ## Implementation checkpoint — original recovery destination
 
 - Previous turn was a verified wait on live run 41082200037. Upstream remains unchanged. Five predecessor jobs passed and the database contention check remains running; retain b320bd5 and 477a4f9 plus this correction locally until all six finish.
