@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — durable signed-observation recovery
+
+- Previous turn made progress reconciling the handoff and verified the live CI wait. Exact prerequisite d017061 / run 41080189204 has now completed successfully with all six jobs. The existing watch exited successfully; no job was cancelled or restarted. Local guided UI commit 39d8e2d and handoff afe6926 are ready for publication with this increment.
+- Added a private persistent SQLite worker journal and AcquisitionStore handoff for prepared signed observations. Exact IDs/body/signatures survive restart; a committed uncertain state precedes network dispatch. Confirmation failure or denied retry retains the request. No local receipt grants current authorization. No signing keys or authentication tokens are journaled.
+- All 86 journal/transport tests passed locally in the offline runner. Recovery tests cover process exit, reopened lost-response recovery, concurrent preparation, conflicts, scope mismatch, pre/post-dispatch disk failure, private-file permissions/links and post-confirmation authorization denial. The existing bounded transport remains unchanged. See EVIDENCE-STORAGE.md for operating and deployment limits.
+- Next: verify successor CI after publishing; complete actual worker lifecycle, persistent-volume/key/scanner custody, quarantine/clearance and locked review binding. Continue canonical postal validation, shared eligibility, batch persistence and the complete remaining PRD. No production migration, provider, outreach, SMS, spending or fulfillment changed.
+
 ## Implementation checkpoint — guided seller-intake list
 
 - Pulled unchanged at d017061. Its successor CI run 41080189204 remains the exact publication prerequisite; five jobs passed and the database contention job was still running at final inspection. Previous turn made progress by publishing the postal handoff.

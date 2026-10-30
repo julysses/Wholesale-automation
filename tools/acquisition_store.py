@@ -26,6 +26,13 @@ class AcquisitionStore:
         return await persist_evidence_attestation(self.client, signed_request, workspace_id=workspace_id,
             campaign_id=campaign_id, artifact_id=artifact_id, actor_id=actor_id, session_id=session_id)
 
+    async def persist_journaled_evidence(self, journal, request_id, *, workspace_id, campaign_id, artifact_id, actor_id, session_id):
+        """Worker entry point: dispatch only an already durably prepared request."""
+        from tools.acquisition_evidence_journal import persist_journaled_observation
+        return await persist_journaled_observation(self.client, journal, request_id,
+            workspace_id=workspace_id, campaign_id=campaign_id, artifact_id=artifact_id,
+            actor_id=actor_id, session_id=session_id)
+
     async def scan_evidence(self, artifact_id, *, workspace_id, campaign_id, purpose, policy):
         """Internal reviewed local scanner; no public or persistent approval authority."""
         from tools.acquisition_evidence_scan import scan_registered_evidence
