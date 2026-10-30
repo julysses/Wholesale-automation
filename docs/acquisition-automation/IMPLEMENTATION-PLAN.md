@@ -4,6 +4,8 @@ PRD version: 1.0 · PRD date: October 25, 2026 · Business: Hilltop Home Company
 
 Status: implementation in progress; see PROGRESS.md for verified increments and open release gates. This plan translates the user-provided PRD into work packages. The complete PRD supplied in the conversation remains controlling; this document is not a verbatim copy or a claim of implementation.
 
+Current code/release navigation: [CURRENT-STATUS.md](CURRENT-STATUS.md). Read it before older chronological feature checkpoints; verify live Git/CI state independently.
+
 ## Objective and boundaries
 
 Build a shared acquisition system for Dallas and Collin Counties that sources distressed properties, captures seller interest, qualifies opportunities, prepares investment scenarios, and supports principal purchases or legally permitted assignments. Hilltop acts for its own account and does not provide brokerage, marketing, or other services to sellers.
