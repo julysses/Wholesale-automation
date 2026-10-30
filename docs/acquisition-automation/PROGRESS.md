@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## Postal publication prerequisite cleared
+
+- Confirmed exact cb528546da3c67bcc679cae6d917e6189c66276f / CI 41001242316 completed with all six jobs successful. The original contention job finished; no cancellation/restart or disabled check was used.
+- Pulled unchanged. Retained 86a0435 (guided mail preparation), d027669 (postal provenance) and 23fab86 (real HTTP concurrency/expiry fix) are ready to publish with this checkpoint. Verify all six successor jobs before another feature push.
+- Local final evidence: 46 additive migrations, 26 access checks, all 48 application journeys and ten real PostgREST checks. Candidate postal migration remains unapplied to production and imports remain unverified observations, never mail authorization.
+- Next: inspect successor hosted diagnostics, then implement canonical postal validation and suppression/eligibility integration before app import exposure and persisted batch reservations. Preserve all original PRD phases and the existing guided UI. Production/providers/SMS/spend/fulfillment are unchanged.
+
+
 ## Implementation checkpoint — postal HTTP concurrency and expiry regression
 
 - Pulled unchanged. Exact prerequisite remains cb52854 / run 41001242316, with five successful jobs and the existing contention suite still running at last observation. Prior UI/postal commits are retained locally.
