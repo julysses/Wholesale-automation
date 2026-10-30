@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { ApiError, apiFetch } from '@/lib/api';
 import { id } from '@/lib/acquisition/mail-content';
-import { checkRegistration, checkUpload, chooseFile, matchesFile, parseCandidates, pendingSchema, retentionLabel, type FileChoice, type PendingEvidence } from '@/lib/acquisition/evidence';
+import { checkRegistration, checkUpload, chooseFile, matchesFile, parseCandidates, parseScanState, scanGuidance, pendingSchema, retentionLabel, type FileChoice, type PendingEvidence } from '@/lib/acquisition/evidence';
 
 type Props = { userId: string; workspace: string; campaign: string; disabled?: boolean; onPending: (key: string, pending: boolean) => void };
 const button = 'rounded-lg border px-3 py-2 text-sm disabled:opacity-40';
@@ -126,9 +126,28 @@ function EvidenceEditor({ userId, workspace, campaign, disabled = false, onPendi
       {message && <p role="status" className="text-sm">{message}</p>}
       <div className="border-t border-orange-200 pt-3"><h5 className="font-semibold text-[#1B3A5C]">Registered evidence</h5><p className="text-xs text-gray-600">These records do not establish that a file has been uploaded, scanned or approved.</p>
         {!records.isFetching && !records.isError && records.data?.items.length === 0 && <p className="text-sm">No evidence registered for this campaign.</p>}
-        <ul>{!records.isError && records.data?.items.map(row => <li key={row.artifact_id} className="border-t py-2 text-sm"><span>{row.media_type === 'application/pdf' ? 'PDF' : row.media_type.startsWith('image/') ? 'Image' : 'Text'} · {new Date(row.created_at).toLocaleString()} · {row.expected_byte_size.toLocaleString()} bytes</span><p>{statuses[row.status]}</p></li>)}</ul>
+        <ul>{!records.isError && records.data?.items.map(row => <li key={row.artifact_id} className="border-t py-2 text-sm"><span>{row.media_type === 'application/pdf' ? 'PDF' : row.media_type.startsWith('image/') ? 'Image' : 'Text'} · {new Date(row.created_at).toLocaleString()} · {row.expected_byte_size.toLocaleString()} bytes</span><p>{statuses[row.status]}</p>{current && !disabled && !held && <FileScanStatus key={`${row.artifact_id}:${records.data!.checked_at}`} userId={userId} workspace={workspace} campaign={campaign} artifact={row.artifact_id} now={now}/>}</li>)}</ul>
         <nav aria-label="Evidence history pages" className="flex gap-2"><button className={button} disabled={held || disabled || records.isFetching || cursors.length === 1} onClick={() => setCursors(v => v.slice(0, -1))}>Previous evidence</button><button className={button} disabled={held || disabled || records.isFetching || records.isError || !records.data?.next_after} onClick={() => setCursors(v => [...v, records.data!.next_after])}>Next evidence</button></nav>
       </div>
     </>}
   </section>;
+}
+
+function FileScanStatus({ userId, workspace, campaign, artifact, now }: { userId: string; workspace: string; campaign: string; artifact: string; now: number }) {
+  const scan = useQuery({ queryKey: ['evidence-scan', userId, workspace, campaign, artifact], enabled: false,
+    retry: false, gcTime: 0, staleTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false,
+    queryFn: async ({ signal }) => parseScanState(await (await apiFetch(
+      `/api/acquisition/workspaces/${workspace}/campaigns/${campaign}/evidence/${artifact}/scan-state`, { signal })).json(), workspace, campaign, artifact),
+  });
+  const visible = scan.data && !scan.isFetching && !scan.isError && now - Date.parse(scan.data.checked_at) <= 30000;
+  const guidance = visible ? scanGuidance[scan.data!.status] : null;
+  return <div className="mt-2 rounded-lg border-l-4 border-[#E8720C] bg-white p-3 text-[#1B3A5C]">
+    <button className={button} disabled={scan.isFetching} onClick={() => { void scan.refetch(); }}>Check file status</button>
+    {scan.isFetching && <p role="status">Checking current file status…</p>}
+    {scan.isError && <p role="alert">File status could not be verified. Check your access and try again.</p>}
+    {guidance && <div role="status"><p className="font-medium">{guidance[0]}</p><p>Next: {guidance[1]}</p>
+      {scan.data!.quarantined && scan.data!.status !== 'quarantined' && <p>A recorded detection also keeps this file on hold.</p>}
+      <p className="text-xs text-gray-600">Checked {new Date(scan.data!.checked_at).toLocaleTimeString()}. This is a status snapshot, not approval to use the file.</p></div>}
+    {!scan.isFetching && !scan.isError && scan.data && !visible && <p>Check file status again to refresh this result.</p>}
+  </div>;
 }

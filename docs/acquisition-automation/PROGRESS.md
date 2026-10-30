@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Guided supporting-file status (local, publication pending)
+
+- Pulled acquisition-foundation unchanged. Exact published predecessor d1094c3269678c7f71b5913c87ff5dfdc419893c is running CI 41105042913. At this checkpoint five jobs passed; PostgreSQL ingestion/tracing/scoring contention remains live. Do not cancel it or push this increment until all six succeed.
+- Connected the existing supporting-files panel to the scoped read-only scan-state API through an explicit Check file status action. Navy/orange guidance explains pending scans, current no-detection observations, detection holds, withdrawal, expiry and policy review. No new approval, preview, scanner execution or fulfillment action was added.
+- Validates workspace/campaign/file identity, freshness, exact response fields, contradictory states and false approval flags. Clears visible results during refresh or access failure; removes the control when parent evidence access is stale/unavailable. Detection holds remain visible even on withdrawn records. One on-demand query per selected file; no polling or per-row automatic scan requests.
+- Validation: 33 supporting-file tests passed, including 16 new scan-state checks. Frontend build passed; lint baseline check reports no new findings (147 existing). React review covered stable query scope, explicit request initiation, disabled/loading states and native keyboard-operable buttons. This is component-level validation, not a new rendered-browser or hosted acceptance claim.
+- Next: verify exact predecessor terminal success, commit/push this increment, and inspect successor CI. Then implement reviewed quarantine clearance and transactionally locked evidence-to-content review binding; retain full worker/custody, postal/batch, portal, calling and disposition requirements. Production/SMS/providers/spend/fulfillment remain unchanged.
+
+
 ## Implementation checkpoint — current scan assessment
 
 - Previous turn made progress publishing ee82549; its exact CI run 41097350211 has now passed all six jobs. Pulled unchanged.

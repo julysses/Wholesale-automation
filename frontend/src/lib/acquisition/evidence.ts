@@ -71,3 +71,26 @@ export function retentionLabel(seconds: number) {
   if (seconds % 3600 === 0) return `${seconds / 3600} hour${seconds === 3600 ? '' : 's'}`;
   return `${seconds.toLocaleString()} seconds`;
 }
+
+const scanState = z.object({ ...scope, artifact_id: id,
+  status: z.enum(['not_scanned', 'no_detection_observed', 'requires_review', 'quarantined', 'revoked', 'expired', 'policy_review_required']),
+  quarantined: z.boolean(), observation_id: id.nullable(), checked_at: date,
+  preview_authorized: z.literal(false), content_approved: z.literal(false), execution_authorized: z.literal(false),
+}).strict().refine(v => (v.status === 'no_detection_observed') === (v.observation_id !== null)
+  && (v.status !== 'quarantined' || v.quarantined)
+  && (!v.quarantined || !['not_scanned', 'no_detection_observed', 'requires_review'].includes(v.status)));
+export function parseScanState(raw: unknown, workspace: string, campaign: string, artifact: string) {
+  const value = scoped(scanState.parse(raw), workspace, campaign);
+  fresh(value.checked_at);
+  if (value.artifact_id !== artifact) throw new Error('File status mismatch');
+  return value;
+}
+export const scanGuidance = {
+  not_scanned: ['Scan pending', 'Wait for file verification, then check again.'],
+  no_detection_observed: ['No threat detected in the current scan', 'Content review is still required. This result does not enable file preview or mailing.'],
+  requires_review: ['File verification needs review', 'Ask an administrator to review the verification before using this file.'],
+  quarantined: ['File on hold', 'Ask an administrator to review the recorded detection. Uploading the same file again does not remove this hold.'],
+  revoked: ['File withdrawn', 'Use a different, reviewed supporting file.'],
+  expired: ['File retention expired', 'Ask an administrator about a new supporting file and its retention policy.'],
+  policy_review_required: ['Retention policy needs review', 'Ask an administrator to review the retention policy before using this file.'],
+} as const;

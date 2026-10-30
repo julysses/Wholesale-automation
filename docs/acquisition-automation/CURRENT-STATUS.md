@@ -69,3 +69,7 @@ Postal provenance foundation: local migration 20261030041400 preserves the owner
 
 
 Postal HTTP checkpoint: signed concurrent import and tenant checks passed locally; a real activation-lock/session-expiry race was reproduced and fixed in the unpublished postal migration. The final full rehearsal passed ten real PostgREST checks, with no extra row/audit after rejected expiry. Canonical postal validation, shared suppression integration and app import UX remain next.
+
+
+### 2026-10-30 supporting-file status interface — local validation
+The existing mail supporting-files step now has an explicit, scoped Check file status action with plain next-step guidance. It reports current scan assessment separately from registration history and never approves file use, content or mailing. Refresh/access failures hide old scan results. 33 related tests, frontend build and lint baseline pass. Publication is held until all six jobs of predecessor CI 41105042913 succeed; five were successful and the contention job was still live at this checkpoint. Locked evidence-to-content approval binding and the remaining original PRD scope are still incomplete.
