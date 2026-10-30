@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import hashlib
 import os
+import re
 import subprocess
 import tempfile
 
@@ -48,6 +49,7 @@ def restore(db):
     db.query('SET check_function_bodies=false; SET search_path=public,extensions,wholesale_ingest')
     for role in ['anon','authenticated','service_role','postgres','wholesale_ingestor','wholesale_worker','supabase_admin']:
         db.query(f'CREATE ROLE {ident(role)} NOLOGIN'+(' BYPASSRLS' if role in ['service_role','postgres','supabase_admin'] else ''))
+    db.query('ALTER DATABASE acquisition_upgrade OWNER TO postgres')
     db.query('CREATE SCHEMA extensions; CREATE EXTENSION "uuid-ossp" WITH SCHEMA extensions; CREATE EXTENSION pgcrypto WITH SCHEMA extensions')
     db.query('GRANT USAGE ON SCHEMA extensions TO PUBLIC')
     for name in ['private','wholesale_ingest','auth','net','vault','cron','supabase_migrations']:
@@ -198,9 +200,12 @@ class DisposableDatabase:
             return [dict(row) for row in cursor.fetchall()] if cursor.description else []
 
 
-def main():
+def main(*, upgrade=False):
     if not all((PG/name).is_file() for name in ('initdb','pg_ctl','createdb')):
         raise RuntimeError('Local PostgreSQL binaries required')
+    library=os.environ.get('ACQUISITION_TEST_SUPAUTILS','')
+    if upgrade and (not re.fullmatch(r'/[A-Za-z0-9/._-]+',library) or not Path(library).is_file()):
+        raise RuntimeError('Populated upgrade requires an explicitly built local Supautils library')
     with tempfile.TemporaryDirectory(prefix='acq-upgrade-',dir='/tmp') as folder:
         path=Path(folder);data=path/'data'
         env={'PATH':'/usr/bin:/bin','HOME':folder,'TMPDIR':folder,'LANG':'C','PGCONNECT_TIMEOUT':'5'}
@@ -208,6 +213,9 @@ def main():
         run([PG/'initdb','-D',data,'-U','test_admin','--auth-local=trust','--auth-host=reject','--no-locale','--encoding=UTF8'])
         with (data/'postgresql.conf').open('a') as out:
             out.write("\nlisten_addresses=''\nunix_socket_directories='"+folder+"'\n")
+            if upgrade:
+                out.write("shared_preload_libraries='"+library+"'\n")
+                out.write("supautils.policy_grants='"+json.dumps({'postgres':['storage.objects','storage.buckets']})+"'\n")
         started=False;db=None
         try:
             run([PG/'pg_ctl','-D',data,'-l',path/'server.log','-w','start']);started=True
@@ -219,9 +227,16 @@ def main():
             restore(db)
             verify(db)
             print(json.dumps(verify_rejection_guards(db),sort_keys=True),flush=True)
+            if upgrade:
+                from rehearse_acquisition_upgrade import run_upgrade
+                print(json.dumps(run_upgrade(db),sort_keys=True),flush=True)
         finally:
             if db:db.connection.close()
             if started:run([PG/'pg_ctl','-D',data,'-m','immediate','-w','stop'])
 
 
-if __name__=='__main__':main()
+if __name__=='__main__':
+    import argparse
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--populated-upgrade',action='store_true')
+    main(upgrade=parser.parse_args().populated_upgrade)

@@ -1,0 +1,186 @@
+{
+  "baseline": "2026-10-30-upgrade-catalog.json",
+  "production_apply_approved": false,
+  "migrations": [
+    {
+      "file": "20261026024157_acquisition_workspace_foundation.sql",
+      "sha256": "14c7f1a45a17da6b97501f66695afe0296b1b2dd1a8cb62e63fe457a41b6ebcb"
+    },
+    {
+      "file": "20261026025259_acquisition_legacy_access_boundary.sql",
+      "sha256": "d8969087ce39307e9dbbdd54dca72487476c8deaa76dd00827393a6bcd4b8f0a"
+    },
+    {
+      "file": "20261026030633_acquisition_related_record_isolation.sql",
+      "sha256": "c6bfe34982edcc14ecfd0d3e6e7cc109eb085e64a8c40fd59cf08b45857708c1"
+    },
+    {
+      "file": "20261026031751_acquisition_activation_gate.sql",
+      "sha256": "90096d53cc5c2a781f072b7c4535899f3303d29ef105e1bf9a95304fe6de8317"
+    },
+    {
+      "file": "20261026032050_acquisition_contact_crosswalk.sql",
+      "sha256": "c442e4fd51a14c4d4cb86641b2911e74a771904c64d66d1149f536e59fdd3ed5"
+    },
+    {
+      "file": "20261026032519_acquisition_eligibility_ledger.sql",
+      "sha256": "4b5d5a0d33a036baeff28d79f4069bea8eea86a3b64770abae1a5f794cb718f2"
+    },
+    {
+      "file": "20261026033010_acquisition_owner_relationships.sql",
+      "sha256": "e5ca7b0b5a02246fe136900be26008449a633b3c43c18c76262b8fdc6782826f"
+    },
+    {
+      "file": "20261026033554_acquisition_permission_evidence.sql",
+      "sha256": "dcf9ad8056f6c4555165fbf4fd5fa2da0180609438d22b71e788797520963c6c"
+    },
+    {
+      "file": "20261026040321_acquisition_analysis_versions.sql",
+      "sha256": "6833b308cf58a9b9588f215e69ac027514bd40d75b31850a3eff1c88ea4db996"
+    },
+    {
+      "file": "20261026041236_acquisition_offer_review.sql",
+      "sha256": "0b264e0abe1f91d2aad6d233bc3ec999ea2ab2ee1f7bec90b5367f9b3d9581ca"
+    },
+    {
+      "file": "20261026041845_acquisition_offer_review_state.sql",
+      "sha256": "7f9aabec53828a1812a44d6d345d49063cc968ca05ab48d557cfa39247a312d6"
+    },
+    {
+      "file": "20261026153314_acquisition_provider_inbox.sql",
+      "sha256": "070efee732cd2e9f0deaf06a755900ffc9f41b11fab40b1706ec58d9ad91755e"
+    },
+    {
+      "file": "20261026153939_acquisition_inbox_leases.sql",
+      "sha256": "bd29c2ab0c4eb2f36571076f64d2fab3e325b4217214e69d8331448d4a2157ba"
+    },
+    {
+      "file": "20261026162924_acquisition_seller_intakes.sql",
+      "sha256": "c8e6b03c055c8a5ecc919113316fc4b31b249f9a90aaf58da2485a83156b4e19"
+    },
+    {
+      "file": "20261026163900_acquisition_facebook_batch_acceptance.sql",
+      "sha256": "35b26bd95a60558c6fbd8455cf0034048c895d5ae74ebb4b77fda45542c4ddfb"
+    },
+    {
+      "file": "20261026165322_acquisition_inquiry_health.sql",
+      "sha256": "b5ef334d4021de05aa780cf316ab7d1eb31e48715066b331f473137a7eb538da"
+    },
+    {
+      "file": "20261026170113_acquisition_inquiry_recovery.sql",
+      "sha256": "8282520d359024c00c57fcd54be272da1d71eb5c168154cfe40b67a773eb5cd6"
+    },
+    {
+      "file": "20261026171817_acquisition_intake_candidates.sql",
+      "sha256": "05152506bcad080f6ec086c7e0825a23b98217ae76b2c1731c185e07db9a4275"
+    },
+    {
+      "file": "20261026173422_acquisition_intake_identity_reviews.sql",
+      "sha256": "3d7e0314aefe5fddaf6905355c9cb0a53f409fbf7b8710c3f7233dd67e4b53c5"
+    },
+    {
+      "file": "20261026181452_acquisition_intake_qualification.sql",
+      "sha256": "949f878c0606abe15785c375ac0a1b7f5a9e07406a9fb7aae570f1325a6c328c"
+    },
+    {
+      "file": "20261026184848_acquisition_intake_underwriting_handoff.sql",
+      "sha256": "3cd73cc07fc2184bf823cc03be2c01ff30926d04fe9308d65199a9b30580d701"
+    },
+    {
+      "file": "20261026205233_acquisition_campaign_ownership.sql",
+      "sha256": "4f3deb45e46c6757b932cbb27468c03e91302865fb5ea971b233e5c7db65987f"
+    },
+    {
+      "file": "20261026214412_acquisition_campaign_links.sql",
+      "sha256": "a9bf8c9e2d0b14c4dc993a9acabd94019145fa653031dbbb6be2ed84a4cca092"
+    },
+    {
+      "file": "20261026221434_acquisition_lead_sources.sql",
+      "sha256": "0f055a1d73f32304fd7cddfcd81a68fa0636d825b74226db5a3112663208cda0"
+    },
+    {
+      "file": "20261026223054_acquisition_property_source_touches.sql",
+      "sha256": "dcef02beca7eb557e355711a9cf9137634c4359379ca5f80e037ebe098adf109"
+    },
+    {
+      "file": "20261026234504_acquisition_cost_evidence.sql",
+      "sha256": "f06c7920d611507e0c03ad1c94c8fd124d3212faa1048c0a5332cc467db0cf3c"
+    },
+    {
+      "file": "20261027010558_acquisition_inbound_event_ledger.sql",
+      "sha256": "bc96c9df95cc50a5820459fc7823ac0a9a210408fdba2ac28f5f245a4957629b"
+    },
+    {
+      "file": "20261027013724_acquisition_inbound_review_tasks.sql",
+      "sha256": "5d6b023070827d6014e5900568e3ceb16f2d99aaa949851c441f9faa684f3db5"
+    },
+    {
+      "file": "20261027015624_acquisition_inbound_intakes.sql",
+      "sha256": "b4375d11cd96bb8dca6499a1452f2781c69929ee2d70a1549c65123f8f3e9f08"
+    },
+    {
+      "file": "20261027020314_acquisition_inbound_read_metadata.sql",
+      "sha256": "3e9a94404755e25f8456dd112bccc6b3569343eb87ed5cc1f70dba80937e17c4"
+    },
+    {
+      "file": "20261027023450_acquisition_inbound_request_queue.sql",
+      "sha256": "63c781c11835d9439e611c3330d66dd4720970364af7ae2036867aa61472260e"
+    },
+    {
+      "file": "20261027024045_acquisition_inbound_request_reviews.sql",
+      "sha256": "ab52fc48b68a7a08c254b065d07200f296072f5660f206ee699fc7bb8987b0ff"
+    },
+    {
+      "file": "20261027025554_acquisition_inbound_queue_review_status.sql",
+      "sha256": "9e725de6870d5390457d9508dfd240e8aa1b3b3bd540f22b4f6f8d23450cb590"
+    },
+    {
+      "file": "20261027031552_acquisition_inbound_property_lookup.sql",
+      "sha256": "48d706c8b374b74759b1a0233f9be2f247feb2e592b8b3a17bd08147b2b9c274"
+    },
+    {
+      "file": "20261027140038_acquisition_inbound_contact_restrictions.sql",
+      "sha256": "25e72ba784d42135d2b976e4171ddc59e8035244fbde5a23b2411d26b4403f08"
+    },
+    {
+      "file": "20261028020606_acquisition_mail_template_versions.sql",
+      "sha256": "df52f3e11ef252cf6032dcd892a88eb1fe48e3be9c338393f950c550e6e0f749"
+    },
+    {
+      "file": "20261028181631_acquisition_mail_destination_reviews.sql",
+      "sha256": "099d671bfe638b6ecb9dc58689ffaabc564383567f6f941b72c139f09603ceb6"
+    },
+    {
+      "file": "20261029012211_acquisition_mail_content_preparation.sql",
+      "sha256": "588e652c5c9adde1381555bce19a529b68c63e75695b619c6eeb8d27eafaa777"
+    },
+    {
+      "file": "20261029013306_acquisition_mail_content_reviews.sql",
+      "sha256": "f30d7c209a00b52670567b42276d91a37f3d29fa73e0145291a8ece3a32a44ec"
+    },
+    {
+      "file": "20261029014552_acquisition_mail_proof_context.sql",
+      "sha256": "40a5567c927ab7ee6857cd747a19b394e865e7bde284a15a399b260c16a037e2"
+    },
+    {
+      "file": "20261029022851_acquisition_evidence_registry.sql",
+      "sha256": "47c9b25b58658e2f61d054a86c15dbf2aa7cc671c6c3ed00bb5df214bf4799fc"
+    },
+    {
+      "file": "20261029024603_acquisition_evidence_storage.sql",
+      "sha256": "90ca43744bc69036bacbdc9c1ac44c37fe9813867536781ee7584294fb4938d2"
+    },
+    {
+      "file": "20261029035546_acquisition_evidence_discovery.sql",
+      "sha256": "f73577f3e5c44f79dd9a6df786b00efa8fa9482d9bf731a13028c7a45ab03f0e"
+    },
+    {
+      "file": "20261029142852_acquisition_evidence_upload_admission.sql",
+      "sha256": "d958bbe53e68655ea25118176d673876fde7018e76f39e17b628f47667bafa25"
+    },
+    {
+      "file": "20261029184129_acquisition_evidence_attestations.sql",
+      "sha256": "538a797101ff77e81ec5feabfd78fd32ac6509504393cc3c98dd3fc3d2913e0d"
+    }
+  ]
+}

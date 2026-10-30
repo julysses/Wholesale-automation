@@ -1,0 +1,124 @@
+{
+  "roles": [
+    {
+      "name": "postgres",
+      "inherit": true,
+      "bypassrls": true,
+      "superuser": false
+    },
+    {
+      "name": "supabase_storage_admin",
+      "inherit": false,
+      "bypassrls": false,
+      "superuser": false
+    }
+  ],
+  "schema": {
+    "acl": "{supabase_admin=UC/supabase_admin,postgres=U*/supabase_admin,anon=U/supabase_admin,authenticated=U/supabase_admin,service_role=U/supabase_admin,supabase_storage_admin=U*C*/supabase_admin,dashboard_user=UC/supabase_admin}",
+    "owner": "supabase_admin"
+  },
+  "tables": [
+    {
+      "acl": "{supabase_storage_admin=a*r*w*d*D*x*t*m*/supabase_storage_admin,service_role=arwdDxtm/supabase_storage_admin,authenticated=arwd/supabase_storage_admin,anon=arwd/supabase_storage_admin,postgres=a*r*w*d*D*x*t*m*/supabase_storage_admin}",
+      "name": "buckets",
+      "owner": "supabase_storage_admin"
+    },
+    {
+      "acl": "{supabase_storage_admin=a*r*w*d*D*x*t*m*/supabase_storage_admin,service_role=arwdDxtm/supabase_storage_admin,authenticated=arwd/supabase_storage_admin,anon=arwd/supabase_storage_admin,postgres=a*r*w*d*D*x*t*m*/supabase_storage_admin}",
+      "name": "objects",
+      "owner": "supabase_storage_admin"
+    }
+  ],
+  "captured_at": "2026-10-30T03:27:13.47297+00:00",
+  "memberships": [
+    {
+      "set": true,
+      "role": "anon",
+      "member": "postgres",
+      "inherit": true
+    },
+    {
+      "set": true,
+      "role": "authenticated",
+      "member": "postgres",
+      "inherit": true
+    },
+    {
+      "set": true,
+      "role": "service_role",
+      "member": "postgres",
+      "inherit": true
+    },
+    {
+      "set": true,
+      "role": "authenticator",
+      "member": "postgres",
+      "inherit": true
+    },
+    {
+      "set": true,
+      "role": "pg_monitor",
+      "member": "postgres",
+      "inherit": true
+    },
+    {
+      "set": true,
+      "role": "pg_read_all_data",
+      "member": "postgres",
+      "inherit": true
+    },
+    {
+      "set": true,
+      "role": "pg_signal_backend",
+      "member": "postgres",
+      "inherit": true
+    },
+    {
+      "set": true,
+      "role": "pg_create_subscription",
+      "member": "postgres",
+      "inherit": true
+    },
+    {
+      "set": true,
+      "role": "supabase_privileged_role",
+      "member": "postgres",
+      "inherit": true
+    },
+    {
+      "set": false,
+      "role": "wholesale_ingestor",
+      "member": "postgres",
+      "inherit": false
+    },
+    {
+      "set": false,
+      "role": "wholesale_worker",
+      "member": "postgres",
+      "inherit": false
+    },
+    {
+      "set": false,
+      "role": "wholesale_ingest_edge",
+      "member": "postgres",
+      "inherit": false
+    }
+  ],
+  "database_authority": {
+    "database_owner": "postgres",
+    "postgres_database_create": true
+  },
+  "policy_grants_required": {
+    "postgres": [
+      "storage.objects",
+      "storage.buckets"
+    ]
+  },
+  "postgres_member_storage_owner": false,
+  "live_supautils_version": null,
+  "local_supautils_source": {
+    "repository": "https://github.com/supabase/supautils",
+    "tag": "v4.0.0",
+    "commit": "7a22990746ec17b1a84cf2a097dda411222f8ec7"
+  }
+}

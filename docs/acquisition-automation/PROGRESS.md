@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — populated 45-migration rehearsal
+
+- Previous turn pushed the verified catalog restore as 8550255. Pulled unchanged before extending it. Exact run 40996195877 remains the prerequisite for the next feature push; recheck current status.
+- Added a complete 45-file SHA-256 candidate manifest and --acquisition-populated-upgrade mode. It rejects manifest drift/deployed identities, restores the verified current application catalog, seeds representative historical data and applies candidates in chronological order with function-body validation enabled.
+- Investigated actual Storage authority rather than granting blanket ownership or superuser permission after a fixture failure. Read-only metadata captured real grants/owners and Supautils policy rights. Built official Supautils v4.0.0 at pinned commit 7a22990746ec17b1a84cf2a097dda411222f8ec7 in /tmp only; no system install. The disposable database now models postgres database ownership and Storage schema/table privileges, retaining its non-superuser/non-owner boundary and using the real policy-management extension. No candidate migration SQL was changed.
+- Final local run passed all 45 migrations and preserved 24 historical rows in 22 populated tables, original-column fingerprints across 103 tables, and the Storage object fixture. Held Facebook/Retell recovery history is included. Acquisition activation and both SMS schedulers remained disabled; provider/signing configuration and external execution fixtures remained empty. Exact report and manifest are in evidence/. Existing baseline negative security probes also passed in the same run.
+- This is not full managed-platform or production acceptance. Real deployed Supautils version remains unverified; the pinned local extension proves the scoped policy mechanism. Full-baseline authenticated role/workflow probes and matching hosted runtime are next, followed by real Auth/Storage/JWT/provider acceptance and explicit deployment approval. The app's guided navy/orange process is unchanged.
+
+Next: reuse the new upgraded baseline for role/isolation and application workflow acceptance; retain migration/preservation evidence and keep production/SMS/outreach/spend paused. UPGRADE-REHEARSAL.md contains the exact local dependency path, pinned build, invocation and remaining gates. Full PRD goal remains active.
+
 ## Implementation checkpoint — verified current-catalog restore
 
 - Previous turn captured the current baseline. Pulled unchanged before this increment. Exact CI 40994624469 for 2d1ba983db3ec7d9d0fcc013cac08d73e5abae69 completed successfully across all five jobs. The retained capture and verified restore may now be published together; verify the new head/run before another feature push.
