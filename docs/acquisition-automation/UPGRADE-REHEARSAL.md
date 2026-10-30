@@ -61,3 +61,10 @@ The populated migration/preservation stage passed. Authenticated workspace/RLS a
 The populated-upgrade command now also executes `acquisition_upgrade_access.py` after migration and history checks. Its 19 named checks passed on the complete restored application catalog and candidate migrations; the saved result is `evidence/2026-10-30-full-catalog-access-result.json`. It tests actual SQL roles, workspace isolation, assignment-scoped caller projection, legacy lead restrictions, MFA, session/profile/membership revocation, idempotency and closed activation controls. All probe mutations roll back; the runner then rechecks the historical fingerprints. No grants or migration definitions were relaxed.
 
 The synthetic JWT claim adapter remains a platform fixture. Full application workflow coverage on this baseline, real Auth/PostgREST/Storage transport, matching hosted CI, and production approval remain required. The existing focused workflow tests remain useful but do not close those gaps.
+
+
+## Full-catalog application journeys
+
+The populated rehearsal now runs eight existing application workflow cases on separate database copies of the fully upgraded catalog. `acquisition_upgrade_workflows.py` seeds synthetic users and properties without recreating schema or relaxing permissions. It reuses the API/calculator/SQL transport tests for Facebook intake identity and qualification handoff, four investment strategies and internal amount review, unsupported assignment buyer economics, missing market data, and a lost calculation response. All eight passed locally. Each copy is dropped, and original historical fingerprints are rechecked afterward.
+
+This moves application workflow evidence beyond the focused schema fixture. It does not remove the simulated provider and PostgREST boundaries or establish live authentication or platform acceptance. The default focused harness database and its tests remain available unchanged in behavior.

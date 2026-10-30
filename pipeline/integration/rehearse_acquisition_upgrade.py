@@ -111,7 +111,11 @@ def run_upgrade(db):
     access = run_access_probes(db)
     if fingerprints(db,CATALOG['tables']) != after:
         raise RuntimeError('Access probes changed historical records')
-    return {'access_probes':access,'populated_upgrade':'passed','candidate_migrations_applied':len(files),
+    from acquisition_upgrade_workflows import run_workflow_probes
+    workflows = run_workflow_probes(db)
+    if fingerprints(db,CATALOG['tables']) != after:
+        raise RuntimeError('Workflow copies changed source history')
+    return {'workflow_probes':workflows,'access_probes':access,'populated_upgrade':'passed','candidate_migrations_applied':len(files),
         'historical_rows_preserved':sum(sum(x.values()) for x in before.values()),
         'historical_tables_with_rows':sum(bool(x) for x in before.values()),
         'historical_table_definitions_checked':len(before),'storage_fixture_preserved':True,

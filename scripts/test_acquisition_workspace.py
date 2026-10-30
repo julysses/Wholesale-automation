@@ -73,7 +73,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
                 claims['session_id'] = user  # Synthetic session IDs only.
             query = (f'SET ROLE {identifier(role)}; SET request.jwt.claims={literal(json.dumps(claims))}; ' + query)
         result = subprocess.run([str(PG/'psql'), '-X', '-qAt', '-v', 'ON_ERROR_STOP=1',
-                                 '-h', self.socket, '-U', 'test_admin', '-d', 'acquisition_test'],
+                                 '-h', self.socket, '-U', 'test_admin', '-d', getattr(self, 'database_name', 'acquisition_test')],
                                 input=query, text=True, capture_output=True, env=self.env)
         if fail:
             self.assertNotEqual(result.returncode, 0, 'Expected database rejection')

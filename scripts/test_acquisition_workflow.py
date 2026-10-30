@@ -135,8 +135,11 @@ class EvidenceStream(httpx.AsyncByteStream):
 
 
 class WorkflowTests(WorkspaceTests):
-    def setUp(self):
+    def prepare_database(self):
         super().setUp()
+
+    def setUp(self):
+        self.prepare_database()
         self.bind()
         self.requests=[]
         self.lose_completion_once=False
@@ -349,7 +352,7 @@ class WorkflowTests(WorkspaceTests):
         claims={'sub':identity,'session_id':identity,'aal':'aal2','role':role}
         query=f'SET ROLE {role}; SET request.jwt.claims={literal(json.dumps(claims))}; '+query
         result=subprocess.run([str(PG/'psql'),'-X','-qAt','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose',
-            '-h',self.socket,'-U','test_admin','-d','acquisition_test'],input=query,text=True,capture_output=True,env=self.env)
+            '-h',self.socket,'-U','test_admin','-d',getattr(self,'database_name','acquisition_test')],input=query,text=True,capture_output=True,env=self.env)
         if result.returncode:
             match=re.search(r'ERROR:\s+([0-9A-Z]{5}):',result.stderr)
             if not match:raise AssertionError(result.stderr)

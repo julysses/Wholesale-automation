@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — application journeys on the full upgraded catalog
+
+- Pulled unchanged. Previous access increment 6be42c1 remains local while exact prerequisite CI 40998774727 for f5491ea finishes; four jobs now passed and the PostgreSQL contention job remains running. Do not publish until all five succeed.
+- Added acquisition_upgrade_workflows.py. Each selected existing WorkflowTests case runs against a fresh PostgreSQL database copied from the full restored/upgraded catalog. The fixture seeds only synthetic users, workspaces and property records; it does not replace tables, omit foreign keys or grant additional access. Copies are removed after each case, and the original rehearsal database is reconnected and its historical fingerprints checked again.
+- Refactored the existing workflow harness to expose prepare_database and an optional database_name, retaining the existing acquisition_test default. The full-catalog runner reuses the actual API routes, calculator, assertions and SQL transport adapter rather than duplicating business logic.
+- Full local rehearsal passed: exact baseline restoration and five mutation probes, all 45 migrations, 19 role/access checks, then eight application journeys. Covered qualified Facebook intake identity/qualification/attribution and stale handoff, fix-and-flip/rental/development/assignment calculations and internal offer review, rejected unsupported end-buyer economics, missing market data, and lost calculation-response retry. Historical records stayed intact. No migration SQL or product UI changed.
+- Provider and PostgREST transport are still simulated; these tests do not establish live Meta, JWT/Auth, Storage or deployment acceptance. Next: matching PostgreSQL 17/Supautils hosted CI for this full rehearsal, plus concrete managed-platform acceptance preparation. Continue the complete PRD and its existing guided app process; no production activation or SMS changes.
+
+
 ## Implementation checkpoint — access on the full upgraded catalog
 
 - Previous turn published f5491ea124480cca37c49b9a9b800159c1c10a51. Its exact CI run 40998774727 remains the prerequisite before publishing this increment. Pulled unchanged before editing.
