@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — four-strategy persisted workflow coverage
+
+- Previous turn made progress by diagnosing the actual GitHub timeout and pushing isolated repair e0885a6. Refreshed that repair branch unchanged. Run 40993385281 for e0885a6e6b7b94b168dd1b737a13e7784d112265 is still running; four jobs are successful and the database integration job is not yet terminal. This is a verified CI wait, not a failed or cancelled job.
+- Merged the repair locally into codex/acquisition-foundation as 08c859a, preserving bce25b9 and its bounded persistence work. No feature push occurred while the prerequisite run remained live. The merge has no production-code changes beyond the already-tested retained feature and the CI timeout adjustment.
+- Closed a documented persisted-path coverage gap: rental, development and wholesale now traverse real API, calculator, disposable PostgreSQL persistence, proposal and internal amount approval, alongside fix-and-flip. Assert independent cash-flow/cost/spread expectations, exact ceilings, three cases, idempotent records/audit, workspace isolation, unchanged legacy MAO and no transmission authority. A positive assignment spread with unsupported buyer economics is saved as nonviable and cannot enter the offer queue.
+- All 48 application-to-PostgreSQL workflow tests passed in 173.747 seconds. Updated WORKFLOW-ACCEPTANCE.md to distinguish this four-strategy synthetic persistence evidence from still-unproven live data, full browser and provider acceptance. No production/UI code or migration changed in this coverage increment; the existing numbered navy/orange review path remains controlling.
+
+Next: check exact repair run 40993385281 without restarting/cancelling it. After all five jobs succeed, push the current local acquisition-foundation branch (repair already merged; do not repeat the merge or discard bce25b9). Record the new head/run and require its five-job success before another feature push. Continue durable evidence-worker recovery, quarantine/clearance and locked review binding; then the remaining canonical mailing/budget/vendor, portal, caller and contract/disposition work and sequential release gates. Full PRD goal remains active; production, paused SMS, outreach, spending and fulfillment are unchanged.
+
 ## Implementation checkpoint — bounded signed-observation persistence
 
 - Continued from a8d891e after an unchanged fast-forward pull. Full PRD goal remains active. This increment contains no migration or production activation.

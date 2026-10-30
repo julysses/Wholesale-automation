@@ -7,6 +7,7 @@ not claim real JWT signature, PostgREST, auth middleware or full-schema acceptan
 import hashlib
 import asyncio
 import hmac
+from decimal import Decimal
 import copy
 import json
 import os
@@ -86,7 +87,7 @@ RPC_ARGS = {
 }
 
 
-def inputs():
+def inputs(strategy='fix_and_flip'):
     def fact(value):
         return {'value':str(value),'source':'Synthetic workflow evidence','basis':'estimate','confidence':'medium','as_of':'2026-01-01'}
     case={'strategy':'fix_and_flip',**{key:fact(value) for key,value in {
@@ -95,6 +96,28 @@ def inputs():
       'contingency':3000,'selling_rate':'0.06','selling_fixed':2000,'target_profit':40000}.items()},
       'financing':{key:fact(value) for key,value in {'principal':120000,'average_balance':120000,
         'annual_rate':'0.12','points_rate':'0.02','other_fees':500}.items()}}
+    if strategy=='rental':
+        for key in ('arv','selling_rate','selling_fixed','target_profit'):del case[key]
+        values={'market_value':250000,'holding_months':0,'monthly_rent':2500,'vacancy_rate':'0.05',
+            'property_tax_annual':3000,'insurance_annual':1000,'maintenance_annual':1000,'utilities_annual':0,
+            'hoa_annual':0,'other_operating_annual':0,'management_rate':'0.1','capital_reserve_annual':1000,
+            'target_cap_rate':'0.08','target_cash_on_cash':'0.1'}
+        case.update({key:fact(value) for key,value in values.items()})
+        case.update(strategy=strategy,amortization_months=0)
+        case['financing']['annual_rate']=fact('0.06')
+    elif strategy=='development':
+        for key in ('arv','repairs'):del case[key]
+        values={'purchase_price':170000,'completed_value':1000000,'hard_costs':400000,'soft_costs':60000,
+            'infrastructure':20000,'permits':10000,'contingency':40000,'acquisition_closing':6000,'liens':0,
+            'holding_months':12,'holding_monthly_ex_interest':2000,'selling_fixed':8000,'target_profit':150000}
+        case.update({key:fact(value) for key,value in values.items()});case['strategy']=strategy
+        case['financing']={key:fact(value) for key,value in {'principal':500000,'average_balance':300000,
+            'annual_rate':'0.1','points_rate':'0.02','other_fees':2000}.items()}
+    elif strategy=='wholesale':
+        case={'strategy':strategy,'contract_price':fact(130000),'end_buyer_price':fact(150000),
+            'assignment_expenses':fact(2000),'target_net_fee':fact(15000),'offer_floor_fraction':fact('0.9'),
+            'buyer_case':case}
+    elif strategy!='fix_and_flip':raise ValueError('Unsupported synthetic strategy')
     return {'cases':{name:copy.deepcopy(case) for name in ['base','downside','upside']}}
 
 
@@ -1460,6 +1483,60 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql(f"SELECT coalesce(mao,-1) FROM leads WHERE id='{LEAD}'"),'-1')
         other={'Authorization':'Bearer synthetic-other-session'}
         self.assertEqual(self.client.get(f'{self.base}/offers/{OFFER}/state',headers=other).status_code,403)
+
+    def assert_strategy_workflow(self, strategy, ceiling, metrics):
+        body={'id':ANALYSIS,'inputs':inputs(strategy)}
+        saved=self.save(body)['analysis']
+        self.assertEqual(saved['acquisition_strategy'],strategy)
+        self.assertEqual(saved['acquisition_status'],'calculated')
+        for name in ('base','downside','upside'):
+            result=saved['acquisition_outputs']['cases'][name]
+            self.assertEqual(result['mao'],ceiling)
+            self.assertTrue(result['viable'])
+            for key,value in metrics.items():self.assertEqual(result['metrics'][key],value)
+        self.assertTrue(saved['acquisition_outputs']['persisted'])
+        self.assertEqual(self.proposal(amount=str(Decimal(ceiling)+Decimal('0.01'))).status_code,409)
+        proposed=self.proposal(amount=ceiling)
+        self.assertEqual(proposed.status_code,200,proposed.text)
+        response=self.client.post(f'{self.base}/offers/{OFFER}/reviews',headers=self.headers,json={
+            'id':EVENT,'expected_sequence':1,'status':'amount_approved','note':'Synthetic strategy review',
+            'review_notes':{key:'Synthetic diligence, final documentation pending' for key in
+                ['title','liens','occupancy','valuation','repairs','financing','downside']}})
+        self.assertEqual(response.status_code,200,response.text)
+        state=self.client.get(f'{self.base}/offers/{OFFER}/state',headers=self.headers).json()
+        self.assertTrue(state['amount_approval_current']);self.assertFalse(state['transmission_authorized'])
+        self.assertEqual(self.save(body)['analysis']['acquisition_revision'],1)
+        self.assertEqual(self.proposal(amount=ceiling).status_code,200)
+        self.assertEqual(self.sql('SELECT count(*) FROM deal_analyses'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM offer_recommendations'),'1')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_analysis' AND action='calculated'"),'1')
+        self.assertEqual(self.sql(f"SELECT coalesce(mao,-1) FROM leads WHERE id='{LEAD}'"),'-1')
+        other={'Authorization':'Bearer synthetic-other-session'}
+        self.assertEqual(self.client.get(f'{self.base}/offers/{OFFER}/state',headers=other).status_code,403)
+
+    def test_rental_persisted_cashflow_enters_amount_review(self):
+        self.assert_strategy_workflow('rental','203600.00',{'noi_annual':'20650.00',
+            'debt_service_annual':'7200.00','cashflow_annual':'12450.00'})
+
+    def test_development_persisted_costs_enter_amount_review(self):
+        self.assert_strategy_workflow('development','180000.00',{'profit':'160000.00'})
+        result=json.loads(self.sql('SELECT acquisition_outputs::text FROM deal_analyses'))
+        self.assertEqual(result['cases']['base']['cost_breakdown']['financing_interest'],'30000.00')
+
+    def test_assignment_persisted_buyer_economics_enter_amount_review(self):
+        self.assert_strategy_workflow('wholesale','133000.00',{'gross_assignment_spread':'20000.00',
+            'net_assignment_proceeds':'18000.00'})
+
+    def test_assignment_unsupported_buyer_price_cannot_enter_offer_queue(self):
+        body=inputs('wholesale')
+        for case in body['cases'].values():case['buyer_case']['arv']['value']='240000'
+        saved=self.save({'id':ANALYSIS,'inputs':body})['analysis']
+        result=saved['acquisition_outputs']['cases']['base']
+        self.assertEqual(result['metrics']['gross_assignment_spread'],'20000.00')
+        self.assertFalse(result['viable']);self.assertIsNone(result['proposed_offer_range'])
+        self.assertIn('END_BUYER_ECONOMICS_DO_NOT_SUPPORT_PROPOSED_PRICE',result['warnings'])
+        self.assertEqual(self.proposal(amount='130000').status_code,409)
+        self.assertEqual(self.sql('SELECT count(*) FROM offer_recommendations'),'0')
 
     def test_missing_market_value_is_persisted_as_incomplete_and_cannot_propose(self):
         data=inputs()

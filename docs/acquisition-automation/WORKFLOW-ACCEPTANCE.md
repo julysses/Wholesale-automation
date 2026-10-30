@@ -30,10 +30,20 @@ Five additional journeys run the actual new webhook router, HMAC verification, d
 4. Signature tampering creates no receipt. A subsequent valid delivery whose fetched form differs from the receipt parks with IDENTITY_CONFLICT and creates no lead.
 5. The integration is disabled during synthetic provider retrieval. Atomic completion fails without creating a lead/intake; a subsequent worker invocation cannot claim or contact the provider. The prior lease remains recoverable subject to a reviewed integration recovery.
 
-The existing dedicated CI job invokes the same eight-journey runner. No CI configuration change is necessary for additional methods defined on WorkflowTests.
+The existing dedicated CI job invokes the same workflow runner. No CI configuration change is necessary for additional methods defined on WorkflowTests.
 
 ## Boundaries and remaining acceptance
 
-This is not a live PostgREST/JWT-signature test. It does not exercise the whole application authentication middleware, actual HTTP provider transport, browser-to-database flow, full production schema, frontend input serialization or all four strategies end to end. Those layers have separate focused tests and still require integrated acceptance. The engine's broader arithmetic suite covers additional strategies, but that must not be confused with full persisted-path coverage for each strategy.
+This is not a live PostgREST/JWT-signature test. It does not exercise the whole application authentication middleware, actual HTTP provider transport, browser-to-database flow, full production schema, frontend input serialization or live strategy acceptance. Those layers have separate focused tests and still require integrated acceptance. The four-strategy journeys below cover persisted synthetic results; broader arithmetic tests cover additional sensitivity and missing-input cases. Neither establishes live investment accuracy.
 
 CI retains ordinary repository pytest coverage, including county Python tests, while excluding only the two standalone acquisition database runner files from ordinary collection. Those run in dedicated cluster-owning jobs. Root collection had attempted to collect their inherited tests without the setup runner; explicit separation fixes orchestration without dropping ordinary tests. The standalone workflow job installs backend requirements and invokes the same offline command. Local success is not a claim that remote CI has completed or that production activation is approved.
+
+## Four-strategy persisted underwriting coverage
+
+The workflow suite now exercises rental, development and wholesale assignment in addition to fix-and-flip. Each positive journey passes provenance-bearing base/downside/upside inputs through the real API, calculator, PostgreSQL reservation/completion, immutable saved result, offer proposal and internal amount-review state. Replays must preserve one analysis, recommendation and calculation audit; cross-workspace reads are denied and the legacy lead MAO is unchanged. An amount above the computed ceiling is rejected, and amount approval never authorizes transmission.
+
+Synthetic fixture expectations are independently stated: rental NOI $20,650/year, debt service $7,200/year, cash flow $12,450/year and MAO $203,600; development financing interest $30,000, profit $160,000 at a $170,000 acquisition and MAO $180,000; assignment gross spread $20,000, net proceeds $18,000 and MAO $133,000. These are test inputs, not property valuations. All three cases use the same fixture assumptions in these persistence tests; separate arithmetic tests cover sensitivity differences.
+
+A separate assignment journey reduces the buyer's ARV while leaving a positive gross spread. The saved result must be nonviable and the proposal must be rejected, proving that the spread alone cannot support an offer. This adds persisted-path evidence for UW-001, UW-002, UW-003, UW-006 and UW-007; live data quality, full user-facing strategy acceptance and final contract delivery remain unproven.
+
+Validation: all 48 workflow tests passed locally in 173.747 seconds after adding these four cases. Hosted CI for this increment remains pending publication behind the preceding repair run.
