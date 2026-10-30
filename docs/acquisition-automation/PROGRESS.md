@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — bounded recovery admission
+
+- Previous turn made progress with b320bd5 recovery discovery. Pulled unchanged; exact predecessor 85419cf / run 41082200037 remains live. Five jobs passed and the workspace-isolation/concurrent-administration step is still running. Retain local updates until all six succeed.
+- Added a 10,000-record admission cap under the same SQLite transaction as insertion. Existing exact requests remain retryable at capacity, confirmed history still counts, and no uncertain request is erased or replaced. Parallel separate-connection admission cannot overfill the cap.
+- All 99 journal/transport tests passed locally, including capacity holds, continued exact recovery and concurrent admission. No production/provider work was executed.
+- Read-only portal inventory confirms LeadForm.tsx and lead_forms_api.py are legacy form infrastructure with saved-request recovery and server-captured SMS disclosures. The acquisition campaign-association trigger intentionally blocks attaching those legacy forms to acquisition workspaces. Reuse the guided form/recovery concepts in Phase 3, but do not bypass that boundary; a tenant-scoped enrollment/ingestion path, authority/consent versioning and bot/rate/privacy controls remain required.
+- Next: publish retained commits after predecessor success; continue worker lifecycle/credentials/persistent-volume acceptance and locked evidence review, alongside canonical postal eligibility and persisted mail batches. The original PRD remains incomplete and active.
+
 ## Implementation checkpoint — scoped journal recovery discovery
 
 - Previous turn made progress and pushed 85419cf after all-six predecessor success. Pulled unchanged; successor run 41082200037 remains live, with four jobs successful and two active at last inspection. Hold further publication until all six finish successfully.

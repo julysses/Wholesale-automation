@@ -17,6 +17,9 @@ from tools.acquisition_evidence_persistence import (
 )
 
 
+MAX_JOURNAL_REQUESTS = 10000
+
+
 class EvidenceJournalUnavailable(EvidenceUnavailable):
     pass
 
@@ -94,6 +97,11 @@ class EvidenceJournal:
             if old and old[0] != body:
                 raise EvidenceJournalUnavailable('Exact original request required')
             if not old:
+                # The admission check shares the write lock with insertion. Exact
+                # recovery remains available even when new work is held. Nothing
+                # is purged here, including confirmed history.
+                if db.execute('SELECT count(*) FROM requests').fetchone()[0] >= MAX_JOURNAL_REQUESTS:
+                    raise EvidenceJournalUnavailable('Journal capacity reached; retain existing requests for recovery')
                 db.execute('INSERT INTO requests VALUES (?, ?, ?, NULL)', (identity, body, 'prepared'))
         return UUID(identity)
 

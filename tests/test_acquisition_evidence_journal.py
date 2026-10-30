@@ -200,3 +200,32 @@ def test_old_journal_without_recovery_index_opens_without_losing_requests(tmp_pa
     reopened=EvidenceJournal(saved.directory)
     assert reopened.load(REQUEST)==(body,'prepared')
     assert reopened.pending(workspace_id=WORKSPACE,actor_id=ACTOR)['items'][0]['id']==str(REQUEST)
+
+
+def test_capacity_holds_new_work_without_erasing_exact_recovery(tmp_path,monkeypatch):
+    monkeypatch.setattr('tools.acquisition_evidence_journal.MAX_JOURNAL_REQUESTS',1)
+    saved=journal(tmp_path);body=sign();saved.prepare(body);saved.mark_dispatch(REQUEST,body)
+    new=copy.deepcopy(body);new['p_id']=str(uuid4())
+    with pytest.raises(EvidenceJournalUnavailable,match='capacity'):saved.prepare(new)
+    assert saved.prepare(body)==REQUEST
+    assert saved.load(REQUEST)==(body,'unconfirmed')
+    assert run(saved,success)['duplicate'] is True
+    # Even confirmed history is retained; no automatic purge or quota bypass.
+    with pytest.raises(EvidenceJournalUnavailable,match='capacity'):saved.prepare(new)
+    assert saved.prepare(body)==REQUEST
+    assert saved.load(REQUEST)[1]=='confirmed'
+
+
+def test_concurrent_admission_cannot_overfill_journal(tmp_path,monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    monkeypatch.setattr('tools.acquisition_evidence_journal.MAX_JOURNAL_REQUESTS',1)
+    saved=journal(tmp_path);other=EvidenceJournal(saved.directory)
+    first=sign();second=copy.deepcopy(first);second['p_id']=str(uuid4())
+    def attempt(pair):
+        store,body=pair
+        try:return store.prepare(body)
+        except EvidenceJournalUnavailable:return None
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        result=list(pool.map(attempt,[(saved,first),(other,second)]))
+    assert sum(value is not None for value in result)==1
+    assert len(saved.pending(workspace_id=WORKSPACE,actor_id=ACTOR)['items'])==1
