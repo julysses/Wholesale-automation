@@ -185,3 +185,9 @@ A recovery pass does not reserve, renew, sign, dispatch, delete or approve anyth
 ### Bounded admission
 
 New journal requests are capped at 10,000 records, each with the existing 12 KiB serialized-request bound. Admission and insertion share the SQLite write transaction, so concurrent preparers cannot overfill the record cap. The cap includes confirmed history; exact existing requests still prepare/reconcile at capacity. Nothing is automatically purged, replaced, resigned or moved to another journal. Capacity exhaustion requires operational review and a separately designed retention/archive procedure. This record cap does not replace filesystem quotas, persistent-volume monitoring or audited retention controls.
+
+### Original destination binding
+
+Before the first dispatch, the journal saves the canonical authenticated HTTPS REST base URL in the same transaction as the uncertain state. Every later attempt must use that exact destination. Changing worker configuration cannot replay a saved signed request to a different project. Concurrent first attempts cannot bind two destinations. Current credentials are validated before the dispatch marker; no credentials are stored.
+
+Existing journals receive an additive nullable destination column. Prepared requests can bind their first destination. Older unconfirmed/confirmed requests without destination evidence stay readable and discoverable but cannot dispatch: they require review of original worker configuration and an explicitly reviewed recovery procedure. Never guess the endpoint, erase the request, change its identity or bind it automatically from the current configuration. No production worker or journal was migrated by this code change.

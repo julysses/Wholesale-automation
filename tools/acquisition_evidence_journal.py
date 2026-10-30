@@ -9,9 +9,10 @@ import os
 from pathlib import Path
 import sqlite3
 import stat
+import httpx
 from uuid import UUID
 
-from tools.acquisition_evidence import EvidenceUnavailable, unique_json_object
+from tools.acquisition_evidence import EvidenceUnavailable, authenticated_origin, unique_json_object
 from tools.acquisition_evidence_persistence import (
     SignedObservationRequest, EvidencePersistenceUnconfirmed, persist_evidence_attestation,
 )
@@ -38,11 +39,14 @@ class EvidenceJournal:
             os.close(fd)
         self._private_file()
         with self._connect() as db:
+            db.execute('BEGIN IMMEDIATE')
             db.execute('''CREATE TABLE IF NOT EXISTS requests (
                 id TEXT PRIMARY KEY, body TEXT NOT NULL,
                 state TEXT NOT NULL CHECK(state IN ('prepared','unconfirmed','confirmed')),
-                receipt TEXT
+                receipt TEXT, destination TEXT
             )''')
+            if 'destination' not in {row[1] for row in db.execute('PRAGMA table_info(requests)')}:
+                db.execute('ALTER TABLE requests ADD COLUMN destination TEXT')
             db.execute("""CREATE INDEX IF NOT EXISTS pending_observation_scope
                 ON requests(json_extract(body,'$.p_workspace'),json_extract(body,'$.p_actor'),id)
                 WHERE state IN ('prepared','unconfirmed')""")
@@ -102,7 +106,7 @@ class EvidenceJournal:
                 # is purged here, including confirmed history.
                 if db.execute('SELECT count(*) FROM requests').fetchone()[0] >= MAX_JOURNAL_REQUESTS:
                     raise EvidenceJournalUnavailable('Journal capacity reached; retain existing requests for recovery')
-                db.execute('INSERT INTO requests VALUES (?, ?, ?, NULL)', (identity, body, 'prepared'))
+                db.execute('INSERT INTO requests(id,body,state,receipt) VALUES (?, ?, ?, NULL)', (identity, body, 'prepared'))
         return UUID(identity)
 
     def load(self, identity: UUID):
@@ -148,14 +152,27 @@ class EvidenceJournal:
         except (ValueError, TypeError, KeyError, AttributeError, RecursionError, sqlite3.Error):
             raise EvidenceJournalUnavailable('Recovery journal could not be read') from None
 
-    def mark_dispatch(self, identity, body):
+    def mark_dispatch(self, identity, body, origin):
         _, exact = self._body(body)
+        url = httpx.URL(origin)
+        if (url.scheme != 'https' or not url.host or url.userinfo or url.query or url.fragment
+                or url.path != '/rest/v1/'):
+            raise EvidenceJournalUnavailable('Valid journal destination required')
+        destination = str(url)
         with self._connect() as db:
-            # A committed unconfirmed state precedes EVERY network attempt.
-            changed = db.execute("UPDATE requests SET state='unconfirmed',receipt=NULL WHERE id=? AND body=?",
-                                 (str(identity), exact)).rowcount
-            if changed != 1:
+            db.execute('BEGIN IMMEDIATE')
+            old = db.execute('SELECT body,state,destination FROM requests WHERE id=?', (str(identity),)).fetchone()
+            if not old or old[0] != exact:
                 raise EvidenceJournalUnavailable('Original journal request unavailable')
+            if old[2] is None and old[1] != 'prepared':
+                # A pre-binding journal may already have sent this request. Never
+                # guess its original destination from today's worker config.
+                raise EvidenceJournalUnavailable('Original destination requires recovery review')
+            if old[2] is not None and old[2] != destination:
+                raise EvidenceJournalUnavailable('Original journal destination required')
+            # Destination and uncertainty are durable before EVERY network attempt.
+            db.execute("UPDATE requests SET state='unconfirmed',receipt=NULL,destination=? WHERE id=?",
+                       (destination, str(identity)))
 
     def confirm(self, identity, body, receipt):
         _, exact = self._body(body)
@@ -178,7 +195,7 @@ async def persist_journaled_observation(client, journal: EvidenceJournal, identi
                     artifact_id=request.p_artifact, actor_id=request.p_actor, session_id=request.p_session)
     if scope != expected:
         raise EvidenceJournalUnavailable('Journal request scope mismatch')
-    journal.mark_dispatch(identity, body)
+    journal.mark_dispatch(identity, body, str(authenticated_origin(client)))
     receipt = await persist_evidence_attestation(client, body, **scope)
     try:
         journal.confirm(identity, body, receipt)

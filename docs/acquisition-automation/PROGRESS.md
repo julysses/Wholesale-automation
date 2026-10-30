@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — original recovery destination
+
+- Previous turn was a verified wait on live run 41082200037. Upstream remains unchanged. Five predecessor jobs passed and the database contention check remains running; retain b320bd5 and 477a4f9 plus this correction locally until all six finish.
+- Found and closed a recovery gap: a saved signed request was scoped to workspace/actor/session but not to its original database destination. The journal now atomically binds destination and uncertain state before first dispatch and rejects changed endpoints on retry. Concurrent first attempts cannot bind competing destinations.
+- Additive local-journal compatibility preserves all request bodies. Older already-dispatched requests with no recorded endpoint stay readable/discoverable but require recovery review rather than adopting today's configuration. Prepared old requests may bind their first endpoint. No token or key is stored.
+- All 103 journal/transport tests passed, including changed-destination rejection before network activity, legacy uncertain holds, additive upgrade and concurrent endpoint binding. Existing lost-response recovery, process exit, quota, scope and permission coverage still passes.
+- Next: publish after exact predecessor success, verify successor CI, then continue actual worker lifecycle/custody and evidence approval binding alongside the remaining postal and PRD work. No production, provider, schedule, outreach or spending changes.
+
 ## Implementation checkpoint — bounded recovery admission
 
 - Previous turn made progress with b320bd5 recovery discovery. Pulled unchanged; exact predecessor 85419cf / run 41082200037 remains live. Five jobs passed and the workspace-isolation/concurrent-administration step is still running. Retain local updates until all six succeed.
