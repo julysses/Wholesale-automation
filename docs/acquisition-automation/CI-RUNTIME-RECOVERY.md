@@ -17,3 +17,5 @@ Validation of this correction: inspected the exact job annotation and full cance
 ## Local integration follow-up
 
 The repair is pushed as e0885a6; exact CI is 40993385281. It was merged locally into codex/acquisition-foundation as 08c859a without pushing the retained feature. The branch now also has the four-strategy workflow coverage documented in PROGRESS.md (48 workflows passed). The original switch/merge instructions above are historical: on resume inspect current state, wait for exact repair CI success, then push the already-integrated branch. Do not drop the retained local feature or repeat branch reconstruction.
+
+The repair run 40993385281 subsequently completed successfully across all five jobs for exact head e0885a6e6b7b94b168dd1b737a13e7784d112265. The 25-minute allowance permitted the unchanged full suite to finish. The retained branch can now be pushed; inspect its successor CI separately.

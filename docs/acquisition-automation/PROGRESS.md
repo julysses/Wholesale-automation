@@ -1,5 +1,9 @@
 # WholesaleOS acquisition automation — progress
 
+## Publication checkpoint — prerequisite CI passed
+
+Exact repair run 40993385281 for e0885a6e6b7b94b168dd1b737a13e7784d112265 completed successfully across all five jobs. Refreshed origin/codex/acquisition-foundation unchanged before publication. The retained signed-observation transport, 48-workflow coverage and current-status handoff are now ready to push together. No live job was cancelled or restarted. After this push, inspect the new exact head/run before any further feature push; this prerequisite result does not prove the successor run. Full PRD goal remains active and production/SMS/provider controls are unchanged.
+
 ## Implementation checkpoint — four-strategy persisted workflow coverage
 
 - Previous turn made progress by diagnosing the actual GitHub timeout and pushing isolated repair e0885a6. Refreshed that repair branch unchanged. Run 40993385281 for e0885a6e6b7b94b168dd1b737a13e7784d112265 is still running; four jobs are successful and the database integration job is not yet terminal. This is a verified CI wait, not a failed or cancelled job.

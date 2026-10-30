@@ -5,7 +5,7 @@ Updated October 29, 2026 (America/Chicago). This is a navigation and gap invento
 ## Git and validation
 
 - Local branch: codex/acquisition-foundation. Retained feature bce25b9 adds bounded signed-observation persistence; merge 08c859a incorporates the separately pushed CI correction; e6d9b87 adds four-strategy persisted workflow coverage.
-- Remote prerequisite: e0885a6e6b7b94b168dd1b737a13e7784d112265, run 40993385281. Last observed: four successful jobs, database integration still running. Recheck the exact run before pushing; do not infer success from this document.
+- Remote prerequisite: e0885a6e6b7b94b168dd1b737a13e7784d112265, run 40993385281. Verified terminal success across all five jobs. The retained updates may now be published; verify the successor run independently before further feature pushes.
 - Local evidence: 728 evidence/API checks and 48 application-to-PostgreSQL workflows passed. These use isolated databases and synthetic transport/provider evidence. They do not establish live JWT, provider, deployment or operational acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
 
