@@ -1,6 +1,6 @@
 # Acquisition automation — current implementation and release handoff
 
-Updated October 29, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
+Updated October 30, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 
 ## Latest handoff
 
@@ -8,9 +8,10 @@ Postal import now has a disabled-by-default API with strict scope, exact retry a
 
 ## Git and validation
 
-- Local branch: codex/acquisition-foundation. Retained feature bce25b9 adds bounded signed-observation persistence; merge 08c859a incorporates the separately pushed CI correction; e6d9b87 adds four-strategy persisted workflow coverage.
-- Verified publication prerequisite: cb528546da3c67bcc679cae6d917e6189c66276f, run 41001242316. All six jobs completed successfully. Retained 86a0435, d027669 and 23fab86 add guided mail preparation clarity, postal provenance and a reproduced/fixed session-expiry race. Verify all six successor jobs after publication.
-- Local evidence: 728 evidence/API checks and 48 application-to-PostgreSQL workflows passed. These use isolated databases and synthetic transport/provider evidence. They do not establish live JWT, provider, deployment or operational acceptance.
+- Branch: codex/acquisition-foundation. Latest published commit d017061 adds guarded postal provenance API and exact-retry coverage. Local commit 39d8e2d improves the connected seller-intake list and remains held for the prerequisite run.
+- Exact prerequisite: d017061e2ddfdc97d892f491be8f878999bf5488, run 41080189204. Five jobs have passed; Real PostgreSQL ingestion, tracing and scoring contention remains in progress. Its active step is Acquisition workspace isolation and concurrent administration. Do not publish a successor until all six finish successfully.
+- Current local evidence: 46 additive migrations, 26 access probes, 49 full-catalog application journeys, ten actual local PostgREST checks, nine postal receipt-boundary checks and a separate 49-case focused workflow run. Guided intake changes passed 34 related frontend tests, typecheck/build and synthetic browser review including access-revocation refresh. See evidence/2026-10-30-postal-api-result.json and PROGRESS.md for scope.
+- The full-schema hosted job for d017061 is successful, but the complete CI run is not yet terminal. Local JWT signing/transport tests do not verify hosted Supabase Auth issuance, live provider delivery or deployment acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
 
 ## One app process
@@ -33,7 +34,7 @@ Amount approval is internal review only. Saving a document or scan observation d
 
 | PRD area | Current source evidence | Required next evidence or implementation |
 | --- | --- | --- |
-| MIG-001–005 shared foundation | Additive acquisition migrations, SCHEMA-MAPPING.md, workspace/role/session RPCs, suppressions, immutable audit and provider idempotency; standalone workspace and workflow harnesses | Local full-catalog populated upgrade passed all 45 candidate migrations. 19 SQL role/isolation probes now pass on that upgraded baseline; all 48 application journeys now pass locally on full-schema copies; add matching hosted rehearsal and real authentication/Data API acceptance; obtain migration approval before deployment. Focused fixtures do not prove this full gate. |
+| MIG-001–005 shared foundation | Additive acquisition migrations, SCHEMA-MAPPING.md, workspace/role/session RPCs, suppressions, immutable audit and provider idempotency; standalone workspace and workflow harnesses | Full-catalog upgrade passed 46 candidate migrations, 26 access probes and 49 application journeys; ten local PostgREST checks passed. The matching hosted full-schema job passed in run 41080189204; the complete run is still pending. Hosted Auth issuance, Storage/platform parity and approved deployment remain unverified. Obtain migration approval before production application. |
 | FB-001–006 | acquisition_webhooks.py, acquisition_facebook_worker.py, acquisition_intake.py; signed batch inbox, leased retrieval, identity/qualification, recovery, attribution and costs; synthetic database journeys | Current Meta permissions/version/subscription and credential custody acceptance, monitored worker/retention, approved fresh lead through actual provider and actual auth. No publishing or funding authority. |
 | RET-001–006 | acquisition_inbound_webhooks.py, acquisition_inbound_tools.py, inbound intake/restriction/request-review migrations, config/acquisition/inbound draft package | Actual inbound-only Twilio/Retell configuration, approved disclosure/privacy/recording controls, audio/interruption/transfer QA and bilingual acceptance. Draft package and synthetic requests are not live calls. |
 | MAIL-001–006 | acquisition_mail.py preparation rules, acquisition_mail_render.py/proof.py, campaign/template/destination/content review UI and SQL | Canonical postal eligibility and suppression matching, authoritative history and locked budget/cadence reservations, persisted batches/jobs, selected vendor adapter and sandbox/proof reconciliation, separately approved fulfillment. Preparation is not a reservation. |
@@ -62,7 +63,7 @@ Local transport increment: real PostgREST 16.5 passed six signed-session/tenant/
 Mail continuation: POSTAL-AND-BATCH-IMPLEMENTATION.md records the inspected phone/email-only endpoint gap and concrete postal/batch dependency order. The campaign card now keeps technical IDs expandable and clearly identifies mailing preparation as incomplete until recipient/contact checks and batch approval are implemented. The existing three numbered mail steps are preserved.
 
 
-Postal provenance foundation: local migration 20261030041400 preserves the owner mailing-address source as an immutable unverified observation tied to existing workspace owner/property relationships. Full upgrade now passes 46 migrations and all 48 workflows. Canonical postal validation, suppression integration, broader postal concurrency/transport acceptance and an app import action remain pending; this does not authorize mail. See POSTAL-AND-BATCH-IMPLEMENTATION.md.
+Postal provenance foundation: local migration 20261030041400 preserves the owner mailing-address source as an immutable unverified observation tied to existing workspace owner/property relationships. Full upgrade now passes 46 migrations and all 49 workflows, including postal HTTP retry and access checks. Canonical postal validation, suppression integration and an app import action remain pending; this does not authorize mail. See POSTAL-AND-BATCH-IMPLEMENTATION.md.
 
 
 Postal HTTP checkpoint: signed concurrent import and tenant checks passed locally; a real activation-lock/session-expiry race was reproduced and fixed in the unpublished postal migration. The final full rehearsal passed ten real PostgREST checks, with no extra row/audit after rejected expiry. Canonical postal validation, shared suppression integration and app import UX remain next.
