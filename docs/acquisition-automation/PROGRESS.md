@@ -1,5 +1,11 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — CI retry test timing repaired
+
+- Published predecessor 2136d97 / CI 41142317415 finished with five successful jobs and one frontend failure. Log identifies acquisition-underwriting.test.tsx: proposal retry clicked as soon as its label appeared, before the first request finished and enabled the button. No backend/database job failed.
+- Updated the test to await the explicit unknown-outcome message and enabled retry action; same-payload assertions remain. No production UI behavior, retry protection, timeout or workflow configuration changed. All 522 frontend tests passed locally after the repair. Publish this repair separately; require all six successor checks before publishing the form-registry feature.
+- Uncommitted offer-form registry work is retained locally: proposed migration 20261030230704, immutable campaign routing/version definitions and legacy form containment. Three focused SQL journeys passed; API test fixture needs its now-invalid scoped public configuration adjusted, then broader database rehearsal and documentation remain. No production/provider activation.
+
 ## 2026-10-30 — Public form projection repaired before tenant routing
 
 - Pulled unchanged and inspected live form columns/constraints/indexes/policies plus proposed acquisition campaign guards. Metadata-only evidence saved at evidence/2026-10-30-online-form-source.json; no production SQL/schema/config changes.

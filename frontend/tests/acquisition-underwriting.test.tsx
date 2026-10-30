@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AcquisitionUnderwriting } from '../src/pages/AcquisitionUnderwriting';
 const mock=vi.hoisted(()=>({fetch:vi.fn(),fail:false,pendingHistory:false,source:'manual'}));
@@ -31,7 +31,13 @@ it('proposes only the selected saved revision and retries an unknown outcome wit
   await open();fireEvent.click(await screen.findByRole('button',{name:/Revision 1/}));
   await screen.findByText('Manually entered scenario; no intake assessment is attached.');
   fireEvent.change(screen.getByLabelText('Proposed amount (USD)'),{target:{value:'140000.00'}});fireEvent.change(screen.getByLabelText('Proposal rationale'),{target:{value:'Documented case'}});
-  mock.fail=true;fireEvent.click(screen.getByRole('button',{name:'Create proposal for review'}));fireEvent.click(await screen.findByRole('button',{name:'Retry same proposal'}));await screen.findByText(/Proposal saved for review/);
+  mock.fail=true;fireEvent.click(screen.getByRole('button',{name:'Create proposal for review'}));
+  // The label changes when the request is retained, before the busy state ends.
+  // Wait for the failed attempt to settle before exercising the retry action.
+  await screen.findByText('Proposal outcome unconfirmed. Retry the same proposal reference.');
+  const retry=screen.getByRole('button',{name:'Retry same proposal'});
+  await waitFor(()=>expect(retry).toBeEnabled());fireEvent.click(retry);
+  await screen.findByText(/Proposal saved for review/);
   const posts=mock.fetch.mock.calls.filter(call=>call[1]?.method==='POST');expect(posts).toHaveLength(2);expect(posts[0][1].body).toBe(posts[1][1].body);
   const body=JSON.parse(posts[0][1].body);expect(body.analysis_id).toBe('saved-analysis');expect(body.case).toBe('base');expect(body.amount).toBe('140000.00');expect(body.approved_by).toBeUndefined();
 });
