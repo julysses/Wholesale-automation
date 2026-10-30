@@ -1,0 +1,27 @@
+{
+  "captured_at": "2026-10-30 18:25:38.304799+00",
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "scope": "Read-only live metadata, no customer rows",
+  "latest_migration": "20261023221455",
+  "existing_private_review_function": null,
+  "session_columns": [
+    {
+      "column": "id",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "type": "uuid"
+    },
+    {
+      "column": "not_after",
+      "type": "timestamp with time zone"
+    }
+  ],
+  "local_dependencies": [
+    "20261026024157_acquisition_workspace_foundation.sql",
+    "20261029012211_acquisition_mail_content_preparation.sql",
+    "20261029013306_acquisition_mail_content_reviews.sql"
+  ],
+  "change": "Replace private review function only; preserve signature, ACL, empty search_path, data, indexes, constraints, RLS and invoker wrapper"
+}

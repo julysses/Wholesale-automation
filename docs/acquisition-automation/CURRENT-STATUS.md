@@ -73,3 +73,7 @@ Postal HTTP checkpoint: signed concurrent import and tenant checks passed locall
 
 ### 2026-10-30 supporting-file status interface — local validation
 The existing mail supporting-files step now has an explicit, scoped Check file status action with plain next-step guidance. It reports current scan assessment separately from registration history and never approves file use, content or mailing. Refresh/access failures hide old scan results. 33 related tests, frontend build and lint baseline pass. Publication is held until all six jobs of predecessor CI 41105042913 succeed; five were successful and the contention job was still live at this checkpoint. Locked evidence-to-content approval binding and the remaining original PRD scope are still incomplete.
+
+
+### 2026-10-30 content-review session race repaired locally
+All six predecessor CI checks passed on d1094c3 / 41105042913. Proposed migration 20261030182649 repairs a reproduced session-expiry race in content review without changing its signature or saved history. The final isolated rehearsal passed 48 migrations, 55 application journeys, 26 access probes, historical preservation and 14 real local PostgREST checks. The guided supporting-file UI, actual transport tests and rendered synthetic walkthrough are retained for the next push. Quarantine clearance, locked file-to-approval binding and the broader PRD remain incomplete; nothing is activated in production.

@@ -201,6 +201,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261029013306_acquisition_mail_content_reviews.sql').read_text())
         if self._testMethodName not in ('test_mail_destination_populated_upgrade','test_mail_content_populated_upgrade'):
             self.sql((ROOT/'frontend/supabase/migrations/20261029014552_acquisition_mail_proof_context.sql').read_text())
+            self.sql((ROOT/'frontend/supabase/migrations/20261030182649_acquisition_content_review_session_freshness.sql').read_text())
         if self._testMethodName != 'test_evidence_registry_populated_upgrade':
             self.sql((ROOT/'frontend/supabase/migrations/20261029022851_acquisition_evidence_registry.sql').read_text())
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_discovery_populated_upgrade'):

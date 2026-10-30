@@ -1,5 +1,16 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Session authority rechecked after content-review waits
+
+- Exact predecessor d1094c3269678c7f71b5913c87ff5dfdc419893c / CI 41105042913 completed with all six jobs successful. PostgreSQL contention finished at 18:31:35 UTC. Retained UI/transport/visual-check commits 2de33d1, 0ee8681 and 5468be3 may now publish with this fix.
+- Found and reproduced a real expiry gap while inspecting approval binding: a content-review retry could return success after its actor session expired during an advisory lock wait. Before-fix regression failed because the database incorrectly accepted it.
+- CLI-created proposed migration 20261030182649 replaces only the private review function, preserving signature, grants, invoker wrapper and immutable history. It checks the locked session deadline using wall-clock time after content locks and again before insertion after source locks; new approval evidence expiry is also rechecked. Same-request history stays recoverable with current authority. No production DDL ran.
+- Fresh read-only metadata confirms latest deployed migration 20261023221455, no deployed conflicting review function, and expected auth.sessions column types. See evidence/2026-10-30-content-session-source.json. Existing dependency definitions, indexes, RLS and manifest were inspected; no table/constraint/policy changes are required.
+- Validation: three focused expiry tests passed. Full final rehearsal passed 48 migrations, 26 access probes, 55 application journeys (including four actual lock-wait expiry cases), historical preservation across 103 definitions and 14 real local PostgREST checks. See evidence/2026-10-30-content-session-result.json. Frontend UI/build/lint evidence remains in preceding checkpoints.
+- Next: pull, commit/push retained changes and verify successor CI. Continue quarantine/clearance and transactionally locked evidence-to-content binding, then the remaining full PRD requirements. No production, provider, SMS, outreach, spending or fulfillment changes.
+- Compensation: retain this stricter check. If deployment later needs containment, disable acquisition and revoke authenticated EXECUTE on both review wrappers in a reviewed forward migration while preserving all records. Do not restore the stale-session behavior. Production migration approval remains required.
+
+
 ## 2026-10-30 — Rendered supporting-file walkthrough
 
 - Extended the synthetic mail-content browser fixture with pending, no-detection, detection-hold and denied-access file states. No network/provider/database actions are possible through this adapter.

@@ -382,6 +382,51 @@ class WorkflowTests(WorkspaceTests):
             return httpx.Response(200,headers={'content-type':'application/json'},stream=EvidenceStream(result.stdout.strip().encode()))
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
 
+    def content_session_wait(self, mode):
+        import psycopg2
+        from concurrent.futures import ThreadPoolExecutor
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        fingerprint=self.mail_content_preparation()['preparation_hash']
+        if not mode.startswith('new'):self.content_review(fingerprint=fingerprint)
+        expected_count='0' if mode.startswith('new') else '1'
+        database=getattr(self,'database_name','acquisition_test')
+        blocker=psycopg2.connect(host=self.socket,dbname=database,user='test_admin')
+        kwargs={'fingerprint':fingerprint,'fail':True}
+        if mode=='withdraw':kwargs.update(request='99100000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
+        try:
+            with blocker.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",[f'mail-template:{WORKSPACE}:98000000-0000-4000-8000-000000000001' if mode=='new_source' else f'mail-content:{WORKSPACE}:99100000-0000-4000-8000-000000000099'])
+            self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()+interval '2 seconds' WHERE id='{ADMIN}'")
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(self.content_review,**kwargs)
+                try:
+                    deadline=time.monotonic()+1.5
+                    while self.sql(f"SELECT count(*) FROM pg_stat_activity WHERE datname={literal(database)} AND wait_event='advisory' AND query LIKE '%public.review_acquisition_mail_content%'")=='0':
+                        if future.done() or time.monotonic()>deadline:raise AssertionError('Content review never reached lock wait')
+                        time.sleep(.02)
+                    while self.sql(f"SELECT not_after<=clock_timestamp() FROM auth.sessions WHERE id='{ADMIN}'")!='t':
+                        if time.monotonic()>deadline+2:raise AssertionError('Session expiry was not reached')
+                        time.sleep(.02)
+                finally:blocker.rollback()
+                future.result(timeout=6)
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews'),expected_count)
+            self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_content'"),expected_count)
+        finally:
+            blocker.close()
+            self.sql(f"UPDATE auth.sessions SET not_after=NULL WHERE id='{ADMIN}'")
+
+    def test_content_approval_session_expiry_during_lock_wait(self):
+        self.content_session_wait('new')
+
+    def test_content_approval_session_expiry_during_source_wait(self):
+        self.content_session_wait('new_source')
+
+    def test_content_retry_session_expiry_during_lock_wait(self):
+        self.content_session_wait('retry')
+
+    def test_content_withdrawal_session_expiry_during_lock_wait(self):
+        self.content_session_wait('withdraw')
+
     def test_evidence_scan_rechecks_observer_session_membership_and_retention_policy(self):
         self.attestation_fixture();self.member(target=OTHER,role='admin')
         self.record_observation(self.signed_observation(actor=OTHER),actor=OTHER)

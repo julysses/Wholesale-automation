@@ -189,6 +189,10 @@
     {
       "file": "20261030171809_acquisition_evidence_scan_state.sql",
       "sha256": "963765598c21696df1f531e4f122e4c79747facf2545495aa6c4d389ae4258e7"
+    },
+    {
+      "file": "20261030182649_acquisition_content_review_session_freshness.sql",
+      "sha256": "27a3d7d249218144966c24b3432e425827fb16ac7c321823efde8cfe7db108c2"
     }
   ]
 }
