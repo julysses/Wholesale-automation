@@ -1,0 +1,1109 @@
+{
+  "schemas": [
+    {
+      "owner": "postgres",
+      "schema": "private"
+    },
+    {
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    }
+  ],
+  "functions": [
+    {
+      "owner": "postgres",
+      "signature": "admin_set_user_role(uuid,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "admin_set_user_status(uuid,text,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "apply_list_scoring_operation(uuid,uuid,text,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "bind_retell_api_session(uuid,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "book_appointment(uuid,uuid,timestamp with time zone,text,text,uuid,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "cancel_list_trace_as_operator(uuid,uuid,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "cancel_reserved_list_trace(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_email_message(uuid,text,text,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_intake_notification(uuid,uuid,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_list_score_job(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_list_trace(uuid,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_retell_api_turn(uuid,text,integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_retell_app_ack(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_retell_app_reply(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_retell_batch_next(uuid,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_retell_call(uuid,uuid,text,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_retell_form_sms_matching(integer,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_retell_form_sms_transport(integer,uuid,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_retell_form_sms(integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_sms_nurture(integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "claim_twilio_sms(uuid,uuid,text,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "clear_retell_app_turn_selection()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "complete_list_score_job(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "complete_list_trace(uuid,text,text,integer,text,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "configure_list_source(text,uuid,boolean,integer,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "create_pipeline_deal(uuid,uuid,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "deal_handoff_valid(deals)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "enqueue_retell_api_turn(uuid,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "finalize_form_submission(uuid,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "finish_intake_notification(uuid,uuid,jsonb,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "finish_retell_batch_item(uuid,uuid,text,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "foreclosure_appraisal_status(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "foreclosure_batch_status(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "foreclosure_capture_status(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "foreclosure_daily_actions(date,text,integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "handle_new_user()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "hold_retell_api_turn(uuid,text,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "increment_contact_attempts(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "inspect_list_scoring_job(uuid,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "intake_phone_status(text,uuid,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "is_approved()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "launch_monitor_findings()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "launch_monitor_snapshot()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "lead_cleanup_counts()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "lead_cleanup_ids(text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "lead_duplicate_losers()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "lead_retention_calc(leads,boolean)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "lead_retention_row_trigger()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "lead_street_key(text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "list_pipeline_snapshot_filtered(date,integer,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "list_pipeline_snapshot(date,integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "list_scoring_input(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "list_scoring_operations(uuid,integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "list_trace_input(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "list_trace_operations(uuid,integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "list_trace_total_budget()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "next_list_scoring_jobs(text,integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "notify_hot_lead()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "outreach_recipient_limits(text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "pick_retell_app_work(uuid,boolean,text[])"
+    },
+    {
+      "owner": "postgres",
+      "signature": "prepare_list_score_job(uuid,uuid,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "prepare_list_trace(uuid,uuid,text,integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "private.is_approved_admin()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "private.reconcile_retell_generation(uuid,bigint,uuid,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "private.tick_retell_app_sms()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "private.tick_retell_sms()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "propstream_bulk_action(uuid,uuid,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "propstream_bulk_recover(uuid,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "propstream_handoff_action(uuid,uuid,uuid,uuid,text,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "propstream_handoff_snapshot(uuid,integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "propstream_recover_event(uuid,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "protect_facebook_submission()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "protect_retell_api_session()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "protect_retell_api_turn()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "protect_retell_form_transport()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "receive_list_score_job(uuid,uuid,text,text,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "recompute_priority_ranks()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "reconcile_list_digests()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "record_sendgrid_events(jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "record_twilio_event(uuid,text,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "recover_propstream_external_submission(uuid,uuid,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "recover_retell_api_turn(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "recover_retell_app_ack(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "refresh_lead_retention(uuid[])"
+    },
+    {
+      "owner": "postgres",
+      "signature": "reserve_form_submission(uuid,jsonb,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "reserve_list_digest(date,text,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "reserve_list_trace(uuid,uuid,text,text,integer)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "resolve_list_record(uuid,integer,integer,uuid,text,text,uuid,boolean)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "resolve_reviewed_list_record(uuid,integer,integer,uuid,text,text,uuid,boolean,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "retell_app_monitor_findings()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "review_retell_app_dispatch(uuid,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "save_foreclosure_appraisal_batch(uuid,uuid,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "save_foreclosure_batch(uuid,uuid,text,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "save_foreclosure_captures(uuid,text,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "save_foreclosure_extractions(uuid,text,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "save_list_score(uuid,uuid,text,text,text,text,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "save_manual_analysis(uuid,uuid,uuid,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "save_retell_api_generation(uuid,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "scan_launch_monitor()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "scan_list_pipeline()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "score_leads_rules(uuid[],uuid,boolean,boolean)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "settle_list_trace(uuid,text,integer,text,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "sms_stop_has_reviewed_opt_in(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "sync_deal_handoff_tasks(deals)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "sync_deal_to_lead()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "sync_retell_app_outcome(uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "transition_appointment(uuid,text,text,uuid)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "update_app_settings_ts()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "update_pipeline_deal(uuid,uuid,timestamp with time zone,jsonb)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "update_updated_at_column()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "update_updated_at()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.collection_due_day(text,date,date)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.foreclosure_status_evidence_allowed(uuid,text,text)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.protect_score_job()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.protect_trace_identity()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.protect_trace_snapshot()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.publish_property_alerts()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.queue_property_alert()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.remember_foreclosure_notice()"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.scan_at(timestamp with time zone)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.scan_scoring_at(timestamp with time zone)"
+    },
+    {
+      "owner": "postgres",
+      "signature": "wholesale_ingest.supervise_bulk_pipeline()"
+    }
+  ],
+  "relations": [
+    {
+      "name": "retell_app_scheduler",
+      "owner": "postgres",
+      "schema": "private"
+    },
+    {
+      "name": "retell_generation_reconciliations",
+      "owner": "postgres",
+      "schema": "private"
+    },
+    {
+      "name": "retell_owner_retest_authorizations",
+      "owner": "postgres",
+      "schema": "private"
+    },
+    {
+      "name": "retell_sms_scheduler",
+      "owner": "postgres",
+      "schema": "private"
+    },
+    {
+      "name": "ad_campaigns",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "ad_creatives",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "ai_agent_log",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "ai_call_records",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "app_notifications",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "app_settings",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "appointments",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "audit_logs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "business_funnel_metrics",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "buyer_import_log",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "buyer_leaderboard",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "buyer_outreach_log",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "buyer_preferences",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "buyer_transactions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "buyers",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "call_events",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "call_transcripts",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "campaign_members",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "campaigns",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "comps",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "deal_analyses",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "deal_matches",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "deals",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "development_workspaces",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "dnc_registry",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "email_delivery_events",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "email_messages",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "email_suppressions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "facebook_lead_submissions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "fb_ad_sets",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "fb_campaign_performance",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "fb_campaigns",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "fb_custom_audiences",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "fb_leads",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "funnel_metrics",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "ibie_segment_summary",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "infill_pipeline",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "land_comps",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "land_funnel",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "land_import_log",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "land_leads",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "land_vetting",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "launch_monitor_incidents",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "lead_form_configs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "lead_form_submissions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "lead_lists",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "lead_reporting_exclusions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "lead_scores",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "leads",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "my_profile",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "offer_recommendations",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "outreach_activity",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "precision_targeting_summary",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "priority_scores",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "profiles",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "qualification_results",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "raw_vendor_payloads",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "repair_estimates",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "reportable_ai_call_records",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "reportable_appointments",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "reportable_deal_analyses",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "reportable_deals",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "reportable_form_submissions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "reportable_leads",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "reportable_offer_recommendations",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "reportable_qualification_results",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "retell_api_sessions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "retell_api_turns",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "retell_call_batches",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "retell_call_requests",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "retell_form_sms_jobs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "setup_checklist",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "sms_events",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "sms_nurture_jobs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "sms_resubscription_reviews",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "stack_analytics",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "tasks",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "vendor_sync_logs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "webhook_jobs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "name": "bulk_supervision",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "contacts",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "daily_budgets",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "daily_digests",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "distress_signals",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "expected_runs",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "foreclosure_appraisal_batches",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "foreclosure_batches",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "foreclosure_captures",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "foreclosure_extractions",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "foreclosure_first_seen",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "ingest_runs",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "jobs",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "lead_evaluations",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "monitor_incidents",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "onboarding_promotion_parts",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "onboarding_promotions",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "properties",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "property_alert_days",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "property_alert_events",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "property_aliases",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "propstream_abandoned_events",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "propstream_batches",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "propstream_events",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "propstream_external_submissions",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "propstream_handoffs",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "raw_payloads",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "records",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "review_events",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "scoring_incidents",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "scoring_jobs",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "scoring_operator_events",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "settings",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "signal_observations",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "skip_trace_requests",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "sources",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    },
+    {
+      "name": "trace_operator_events",
+      "owner": "postgres",
+      "schema": "wholesale_ingest"
+    }
+  ],
+  "captured_at": "2026-10-30T03:05:51.275114+00:00"
+}

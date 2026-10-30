@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — verified current-catalog restore
+
+- Previous turn captured the current baseline. Pulled unchanged before this increment. Exact CI 40994624469 for 2d1ba983db3ec7d9d0fcc013cac08d73e5abae69 completed successfully across all five jobs. The retained capture and verified restore may now be published together; verify the new head/run before another feature push.
+- Added an explicitly selected --acquisition-upgrade-baseline offline command and separate current-catalog restore runner. It creates/removes a private Unix-socket PostgreSQL cluster, rejects a major version different from the captured PostgreSQL 17 baseline and takes no hosted URL. The historical Facebook fixture remains unchanged.
+- Read-only ownership capture confirmed all 120 application relations/views and 122 functions belong to postgres. Restoration now preserves actual owners, all view security options and grants, table/function/schema/default ACLs and complete captured application definitions, with no FK omissions. It verifies the catalog hash and compares all categories against the one-query snapshot.
+- The final local restore passed. Five rolled-back negative probes confirmed detection of lost view security, widened access, changed function security, changed ownership and a missing historical FK; the pristine baseline passed again afterward. Early diagnostic mismatches were ACL order and extension qualification in displayed expressions, resolved without discarding permission entries or changing definitions.
+- Auth/net/vault/cron remain explicitly inert platform fixtures; no Storage platform acceptance, synthetic historical row population or candidate acquisition migration has run in this new harness. Existing hosted focused tests use PostgreSQL 16; wire this new baseline into a matching PostgreSQL 17 runtime rather than weakening its comparison. No production migration, data mutation, provider call, schedule or SMS change occurred.
+
+Next: seed representative historical CRM/county/Facebook/Retell records in this verified baseline and apply the exact acquisition migration manifest, then verify history, roles and workflows. Complete managed Auth/Storage/PostgREST/JWT acceptance separately and retain all PRD gates. See UPGRADE-REHEARSAL.md for the runnable command and remaining boundaries.
+
 ## Implementation checkpoint — current full-schema rehearsal baseline
 
 - Previous turn published 2d1ba98 after exact repair CI success. Pulled unchanged before this work; successor run 40994624469 remains the prerequisite before another feature push.

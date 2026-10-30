@@ -26,3 +26,13 @@ The acquisition inventory's 120 objects are 103 tables plus 17 views, not 120 ta
 ## Current outcome
 
 Fresh catalog capture and baseline comparison completed; the current-catalog restoration and full populated acquisition upgrade have not yet run. No production SQL mutation or migration occurred. This document is an implementation handoff, not a passing MIG-001 release certificate.
+
+## Executable baseline restore — October 29, 2026
+
+Run `python scripts/run_offline_tests.py --acquisition-upgrade-baseline` with backend dependencies and PostgreSQL 17 installed (`PG_BIN` selects the binary directory). The runner rejects a different PostgreSQL major version, creates and removes its own Unix-socket-only cluster, accepts no hosted database URL and retains the offline runner's cleared environment/network guard. The older Facebook restore and its fixtures are unchanged.
+
+`pipeline/integration/rehearse_acquisition_baseline.py` verifies the snapshot hash and separate read-only ownership capture, restores the application catalog as its captured postgres owner, preserves view security and ACLs, and compares every captured application category with the same catalog query. ACL entry ordering is normalized without dropping grantees, grantors, privileges or grant options. The display search path includes extensions to match the captured expression rendering; function definitions and stored search paths are still compared. Managed Auth/net/vault/cron are explicitly inert fixtures; Storage is not installed by this baseline stage.
+
+The final run passed for 103 tables, 17 views, 122 functions and 95 migration identities, including exact captured constraints/indexes/policies/triggers/columns/defaults/ACLs and schema/relation/function ownership. Transactional negative probes confirmed rejection of a removed foreign key, widened table grant, altered security_invoker view, altered function security and changed table owner; each was rolled back and the clean baseline reverified. No production rows were copied and no candidate acquisition migration was applied.
+
+Hosted CI still uses PostgreSQL 16 for its existing focused tests. Do not wire this snapshot comparison into that runtime or discard PostgreSQL 17 privileges to force compatibility. A matching PostgreSQL 17 hosted runtime and the populated candidate upgrade remain next work; this local result is not hosted or managed-platform acceptance.

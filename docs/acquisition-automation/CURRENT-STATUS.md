@@ -5,7 +5,7 @@ Updated October 29, 2026 (America/Chicago). This is a navigation and gap invento
 ## Git and validation
 
 - Local branch: codex/acquisition-foundation. Retained feature bce25b9 adds bounded signed-observation persistence; merge 08c859a incorporates the separately pushed CI correction; e6d9b87 adds four-strategy persisted workflow coverage.
-- Remote prerequisite: 2d1ba983db3ec7d9d0fcc013cac08d73e5abae69, run 40994624469. Four jobs passed; database integration was still running at the latest check. Verify exact five-job success before publishing the locally retained current-catalog baseline. The earlier repair e0885a6 passed all five checks before 2d1ba98 was pushed.
+- Remote prerequisite: 2d1ba983db3ec7d9d0fcc013cac08d73e5abae69, run 40994624469. All five jobs completed successfully. The current-catalog capture and verified restore can now be published together; verify their successor run independently. The earlier repair e0885a6 passed all five checks before 2d1ba98 was pushed.
 - Local evidence: 728 evidence/API checks and 48 application-to-PostgreSQL workflows passed. These use isolated databases and synthetic transport/provider evidence. They do not establish live JWT, provider, deployment or operational acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
 
@@ -39,4 +39,4 @@ Amount approval is internal review only. Saving a document or scan observation d
 
 PROGRESS.md records detailed checkpoints and test results. CI-RUNTIME-RECOVERY.md records the timeout diagnosis. WORKFLOW-ACCEPTANCE.md describes synthetic test boundaries. No production, provider, spending, outreach, mail, or binding transaction change is made by this status page.
 
-Current upgrade-baseline work: [UPGRADE-REHEARSAL.md](UPGRADE-REHEARSAL.md) documents a fresh catalog capture, stale-baseline differences and the exact next restoration/upgrade checks. Capture is complete; populated restoration and upgrade remain unproven.
+Current upgrade-baseline work: [UPGRADE-REHEARSAL.md](UPGRADE-REHEARSAL.md) documents a fresh catalog capture, stale-baseline differences and the exact next restoration/upgrade checks. Capture and exact application-catalog restoration passed locally, including five negative security/integrity probes. Populated candidate upgrade and managed-platform acceptance remain unproven.

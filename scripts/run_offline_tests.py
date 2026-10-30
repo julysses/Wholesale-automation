@@ -30,6 +30,10 @@ with tempfile.TemporaryDirectory(prefix="wholesale-offline-home-") as home:
         "DATABASE_URL": "sqlite:///:memory:",
     }
     command = sys.argv[1:]
+    if command == ['--acquisition-upgrade-baseline']:
+        if os.environ.get('PG_BIN'):
+            env['PG_BIN'] = os.environ['PG_BIN']
+        command = [sys.executable, str(root / 'pipeline/integration/rehearse_acquisition_baseline.py')]
     if command == ['--acquisition-workflow']:
         # PostgreSQL uses only a private Unix socket; Python HTTP remains mocked
         # and the network audit hook remains enabled. Forward only its bin path.
