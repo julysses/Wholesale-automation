@@ -36,7 +36,7 @@ Record only **present/missing**, **enabled/disabled**, approved identity referen
 | Payload retention | Bounded `purge_acquisition_payloads` RPC; configured receipt expiry | Reviewed duration and metadata/legal-hold policy, monitored runner and failed-run alert. No retention scheduler currently established by this branch |
 | Existing operations | Acquisition receipt states are separate from legacy pending jobs | Before/after SMS scheduler flags and held jobs, county ingestion and CRM smoke checks on the deployed environment |
 
-No new retention endpoint or scheduler should be activated merely because the purge RPC exists. The current source does not establish a legal-hold administration workflow or monitored retention service. Resolve policy and implementation before accepting live sensitive payloads.
+See `RETENTION-IMPLEMENTATION.md` for the inspected storage paths: receipt purge does not remove copied Meta answers in seller_intakes or canonical CRM data. No new retention endpoint or scheduler should be activated merely because the purge RPC exists. The current source does not establish a legal-hold administration workflow or monitored retention service. Resolve policy and implementation before accepting live sensitive payloads.
 
 ## Acceptance record required to close FB-001–006
 

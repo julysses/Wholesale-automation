@@ -4,13 +4,13 @@ Updated October 30, 2026 (America/Chicago). This is a navigation and gap invento
 
 ## Latest handoff
 
-Published head 475728112201540b5514e25e92d80cfb51b8a338 includes guided file selection, actual local content-approval gateway acceptance and the Phase 1 release packet. Its exact CI run is 41139435572; verify all six terminal outcomes before publishing the retained runner increment. Five jobs are successful and contention is still live at this checkpoint.
+Published head 475728112201540b5514e25e92d80cfb51b8a338 includes guided file selection, actual local content-approval gateway acceptance and the Phase 1 release packet. Its exact CI run 41139435572 has completed successfully with all six jobs. The retained runner/retention-map increments are ready to publish; verify successor CI before the next feature push.
 
 A disabled supervised Facebook runner is now implemented locally with safe status reporting, bounded cycles and graceful stop; all 52 related offline tests passed. No hosted process, scheduler, alert destination or provider was enabled. See the latest PROGRESS.md entry and config/acquisition/facebook/README.md.
 
 ## Git and validation
 
-- Branch: codex/acquisition-foundation. Latest all-six prerequisite: 69239df / CI 41138136317. Published successor: 4757281 / CI 41139435572.
+- Branch: codex/acquisition-foundation. Latest all-six prerequisite: 4757281 / CI 41139435572.
 - Published local evidence: 50 additive migrations, 26 access probes, 60 full-catalog journeys and 23 actual local PostgREST checks, plus guided-screen/API tests. Retained runner validation adds 52 offline tests without schema/UI changes.
 - Hosted CI verifies code and synthetic full-schema rehearsal. It does not verify hosted Supabase Auth issuance, live provider delivery, persistent worker storage or deployment acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior. Older chronological sections below remain historical.
@@ -50,7 +50,7 @@ See [PHASE-1-RELEASE-PACKET.md](PHASE-1-RELEASE-PACKET.md) for the exact candida
 
 ## Next work in order
 
-1. Verify all six jobs for published 4757281 / CI 41139435572 before publishing the retained supervised runner increment, then verify successor CI. Check branch/status and the newest PROGRESS.md checkpoint before resuming.
+1. All six jobs for 4757281 / CI 41139435572 passed. Publish the retained supervised runner and retention-map increments, then verify successor CI. Check branch/status and the newest PROGRESS.md checkpoint before resuming.
 2. Close the shared-foundation and Facebook acceptance gaps against the complete candidate. Assemble a concrete migration/provider acceptance packet before requesting production or live-test authorization. Later mail-document work must not be mistaken for completion of the Phase 1 release gate.
 3. Complete the mail evidence worker and remaining binding acceptance, canonical mailing rules/reservations, vendor sandbox workflow, and inbound provider acceptance. Keep them within the existing campaign/review screens.
 4. Deliver portal, manual human caller, agency and contract/disposition capabilities with the PRD's sequential activation gates. These are still required parts of the goal, not optional enhancements.

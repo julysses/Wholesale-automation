@@ -1,5 +1,11 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Retention coverage inspected before runner activation
+
+- Confirmed receipt purge clears webhook payload/raw bytes only. Retrieved Meta field_data, consent responses and normalized assertions are copied into immutable seller_intakes.prepared_answers; canonical acquisition leads are explicitly held out of legacy cleanup. Receipt-only purge therefore cannot be reported as complete seller-data disposal.
+- Added RETENTION-IMPLEMENTATION.md with source-backed data classes, policy decisions, non-authorizing preview, locked execution/hold dependencies, exact recovery and required acceptance. No purge endpoint/schedule, data deletion or retention-policy default was activated.
+- Retained runner 04fb02b remains tested (52 related offline tests). Final prerequisite verification: exact predecessor 475728112201540b5514e25e92d80cfb51b8a338 / CI 41139435572 completed successfully with all six jobs. Runner and retention-map increments are ready to publish; verify successor exact-head CI before another feature push.
+
 ## 2026-10-30 — Disabled supervised Facebook inquiry runner
 
 - Pulled unchanged from published 475728112201540b5514e25e92d80cfb51b8a338. Exact CI 41139435572 has five successful jobs; its real PostgreSQL contention job remains live. Hold this increment locally until all six succeed, then push and inspect successor CI.
