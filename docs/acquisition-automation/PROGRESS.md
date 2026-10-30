@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## Publication and guided-process checkpoint
+
+- Rechecked exact prerequisite 855025500804f2a438492aafaed95e95c80bb4bb: GitHub run 40996195877 completed with all five jobs successful. The previously reported pipeline job is green on this revision.
+- Pulled the acquisition branch unchanged. Local populated-upgrade commit 7329645 remains the tested implementation checkpoint, with 45 migrations and preserved synthetic history as recorded below.
+- Inspected AcquisitionReview.tsx: four numbered review sections already share navy/orange styling. Recorded the user's aesthetic and connected-process requirements in CURRENT-STATUS.md as acceptance criteria for all future app increments. This documentation update does not claim a new browser QA pass.
+- Publish this checkpoint, verify its exact successor CI separately, then continue full-baseline role/workflow acceptance. Production migrations, outreach, mail and paused SMS remain unchanged.
+
+
 ## Implementation checkpoint — populated 45-migration rehearsal
 
 - Previous turn pushed the verified catalog restore as 8550255. Pulled unchanged before extending it. Exact run 40996195877 remains the prerequisite for the next feature push; recheck current status.

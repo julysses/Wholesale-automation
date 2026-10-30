@@ -5,7 +5,7 @@ Updated October 29, 2026 (America/Chicago). This is a navigation and gap invento
 ## Git and validation
 
 - Local branch: codex/acquisition-foundation. Retained feature bce25b9 adds bounded signed-observation persistence; merge 08c859a incorporates the separately pushed CI correction; e6d9b87 adds four-strategy persisted workflow coverage.
-- Remote prerequisite: 2d1ba983db3ec7d9d0fcc013cac08d73e5abae69, run 40994624469. All five jobs completed successfully. The current-catalog capture and verified restore can now be published together; verify their successor run independently. The earlier repair e0885a6 passed all five checks before 2d1ba98 was pushed.
+- Verified publication prerequisite: 855025500804f2a438492aafaed95e95c80bb4bb, run 40996195877. All five jobs completed successfully, including Pipeline contracts and isolated SQL. Populated-upgrade commit 7329645 is locally validated; its publication and successor CI must be verified separately.
 - Local evidence: 728 evidence/API checks and 48 application-to-PostgreSQL workflows passed. These use isolated databases and synthetic transport/provider evidence. They do not establish live JWT, provider, deployment or operational acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
 
@@ -13,13 +13,23 @@ Updated October 29, 2026 (America/Chicago). This is a navigation and gap invento
 
 `frontend/src/pages/AcquisitionReview.tsx` currently provides four numbered review sections: prepare campaigns, review inquiries, evaluate property, review proposed amount. `CampaignDrafts.tsx` embeds mail templates, response destinations, content review and supporting files within campaign preparation. The internal mail step numbers are not the overall acquisition phase gates. Preserve the navy/orange styling, workspace/property context and exact pending requests through handoffs.
 
+User-required acceptance standard for every app-facing increment:
+
+- Preserve the existing navy/orange palette, numbered sections, consistent cards, spacing, labels and button hierarchy.
+- Keep campaign, seller and property context through each handoff; reuse saved records instead of requiring duplicate entry.
+- Show what is complete, what needs attention and one clear primary next action. Explain unavailable actions in plain language.
+- Keep detailed evidence and technical identifiers out of the primary flow; expose relevant supporting details progressively.
+- Distinguish saved drafts, review decisions, approved execution and completed delivery. A completed screen must not imply a live release gate passed.
+- Extend this journey for contracts, disposition and closing when implemented; preserve the PRD's separate channel activation order.
+- Verify new screens and transitions together, including loading, empty, error, pending-save and restricted-access states, before claiming usability acceptance.
+
 Amount approval is internal review only. Saving a document or scan observation does not approve evidence or authorize fulfillment. Later contract/disposition screens must extend this same journey with clear next actions; do not present the current four sections as a completed acquisition/closing pipeline.
 
 ## Current coverage and gaps
 
 | PRD area | Current source evidence | Required next evidence or implementation |
 | --- | --- | --- |
-| MIG-001–005 shared foundation | Additive acquisition migrations, SCHEMA-MAPPING.md, workspace/role/session RPCs, suppressions, immutable audit and provider idempotency; standalone workspace and workflow harnesses | Complete full-production-schema populated upgrade and real authentication/Data API acceptance for the entire candidate; migration approval before deployment. Focused fixtures do not prove this full gate. |
+| MIG-001–005 shared foundation | Additive acquisition migrations, SCHEMA-MAPPING.md, workspace/role/session RPCs, suppressions, immutable audit and provider idempotency; standalone workspace and workflow harnesses | Local full-catalog populated upgrade passed all 45 candidate migrations. Add role/workflow probes on that upgraded baseline and real authentication/Data API acceptance; obtain migration approval before deployment. Focused fixtures do not prove this full gate. |
 | FB-001–006 | acquisition_webhooks.py, acquisition_facebook_worker.py, acquisition_intake.py; signed batch inbox, leased retrieval, identity/qualification, recovery, attribution and costs; synthetic database journeys | Current Meta permissions/version/subscription and credential custody acceptance, monitored worker/retention, approved fresh lead through actual provider and actual auth. No publishing or funding authority. |
 | RET-001–006 | acquisition_inbound_webhooks.py, acquisition_inbound_tools.py, inbound intake/restriction/request-review migrations, config/acquisition/inbound draft package | Actual inbound-only Twilio/Retell configuration, approved disclosure/privacy/recording controls, audio/interruption/transfer QA and bilingual acceptance. Draft package and synthetic requests are not live calls. |
 | MAIL-001–006 | acquisition_mail.py preparation rules, acquisition_mail_render.py/proof.py, campaign/template/destination/content review UI and SQL | Canonical postal eligibility and suppression matching, authoritative history and locked budget/cadence reservations, persisted batches/jobs, selected vendor adapter and sandbox/proof reconciliation, separately approved fulfillment. Preparation is not a reservation. |
@@ -32,7 +42,7 @@ Amount approval is internal review only. Saving a document or scan observation d
 
 ## Next work in order
 
-1. Finish the current Git publication gate: check run 40993385281; after exact five-job success push the retained local branch, then track the new exact run. If it fails, inspect the actual diagnostic and make an isolated correction. Never turn off tests or cancel a live run to make the gate appear complete.
+1. Publish the locally passed populated-upgrade checkpoint after verified prerequisite run 40996195877 (all five jobs succeeded), then track the new exact head/run before another feature push. Never disable tests or cancel a live run to make the gate appear complete.
 2. Close the shared-foundation and Facebook acceptance gaps against the complete candidate. Assemble a concrete migration/provider acceptance packet before requesting production or live-test authorization. Later mail-document work must not be mistaken for completion of the Phase 1 release gate.
 3. Complete the mail evidence worker and review binding, canonical mailing rules/reservations, vendor sandbox workflow, and inbound provider acceptance. Keep them within the existing campaign/review screens.
 4. Deliver portal, manual human caller, agency and contract/disposition capabilities with the PRD's sequential activation gates. These are still required parts of the goal, not optional enhancements.
