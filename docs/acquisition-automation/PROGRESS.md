@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Phase 1 release boundary consolidated
+
+- Inspected native Facebook receiver, durable batch acceptance, single-inquiry worker, health/recovery UI, activation flags and payload-purge SQL. These components exist; no monitored worker/retention schedule or hosted/provider acceptance was established by this inspection.
+- Added PHASE-1-RELEASE-PACKET.md with the exact published/retained candidate, 50-migration manifest hash, scoped evidence, per-control hosted requirements and the FB-001–006 acceptance matrix. It separates isolated hosted rehearsal, disabled production migration/deployment, fresh approved Facebook tests and actual channel activation.
+- Explicitly records the retention-policy/legal-hold and monitoring gap rather than adding an unreviewed purge trigger. No provider version, credential, live result or deployment status is inferred. The packet is a concrete release dependency record, not an approval request or an activation certificate.
+- Retained 922de78 already passed 23 actual local gateway checks. Final verification: all six jobs of exact head 69239df98a2754c1b6f1674858fb9d3e52ac252b / 41138136317 completed successfully; the contention job finished at 22:36:42 UTC. Both retained increments are ready for publication; verify the successor exact-head run before the next feature push. No production/provider/SMS changes.
+
 ## 2026-10-30 — Actual local content approval gateway acceptance
 
 - Pulled unchanged from published 69239df98a2754c1b6f1674858fb9d3e52ac252b. Its exact CI run is 41138136317; five jobs passed and the contention job was still running at this checkpoint. Retain this increment locally until all six succeed, then push and record the successor run. No cancellation or bypass.

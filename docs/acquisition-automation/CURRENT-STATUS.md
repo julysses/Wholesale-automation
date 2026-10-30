@@ -8,7 +8,7 @@ Guided supporting-file selection and server-derived review deadlines are impleme
 
 ## Git and validation
 
-- Branch: codex/acquisition-foundation. Published head 69239df98a2754c1b6f1674858fb9d3e52ac252b adds guided file selection. Its CI run is 41138136317; verify all six terminal outcomes before the next push. Predecessor e90bab9 / 41136025124 passed all six.
+- Branch: codex/acquisition-foundation. Published head 69239df98a2754c1b6f1674858fb9d3e52ac252b adds guided file selection. Its CI run 41138136317 is all-six successful (last job finished 22:36:42 UTC); the retained gateway/packet increments are ready to publish. Predecessor e90bab9 / 41136025124 passed all six.
 - Latest published local evidence: 50 additive migrations, 26 access probes, 60 full-catalog journeys, 18 actual local PostgREST checks, 13 candidate response tests and 62 related frontend tests. Build and lint baseline pass. The retained gateway increment passed 23 actual local checks, including content approval/revocation; see PROGRESS.md for its publication gate.
 - Hosted CI verifies code and synthetic full-schema rehearsal. It does not verify hosted Supabase Auth issuance, live provider delivery, persistent worker storage or deployment acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
@@ -44,9 +44,11 @@ Amount approval is internal review only. Saving a document or scan observation d
 | UW-001–008 | Four-strategy Decimal engine, provenance-bearing three-case inputs, immutable stored results, proposal limits and human internal review; all four persisted paths now tested | Live market/provenance quality and full UI/provider acceptance; approved written-offer template and delivery authorization. No binding offer is sent by amount approval. |
 | DISP-001–010 | Shared property/owner/offer foundations | Executed-contract state machine, title and assignment review, deadlines/deposits, distinct direct-close/assignment paths, buyer profiles/matching, accurate buyer package, required disclosures, approvals and closing reconciliation. No reviewed acquisition disposition implementation was found in the inspected acquisition API/tool/migration paths. |
 
+See [PHASE-1-RELEASE-PACKET.md](PHASE-1-RELEASE-PACKET.md) for the exact candidate, verified local scope and remaining hosted/provider acceptance before any production proposal.
+
 ## Next work in order
 
-1. Verify all six jobs for published 69239df / CI 41138136317 before publishing the retained gateway test increment. Check branch/status and the newest PROGRESS.md checkpoint before resuming.
+1. All six jobs for published 69239df / CI 41138136317 passed. Publish the retained gateway test and Phase 1 packet increments, then verify successor CI. Check branch/status and the newest PROGRESS.md checkpoint before resuming.
 2. Close the shared-foundation and Facebook acceptance gaps against the complete candidate. Assemble a concrete migration/provider acceptance packet before requesting production or live-test authorization. Later mail-document work must not be mistaken for completion of the Phase 1 release gate.
 3. Complete the mail evidence worker and remaining binding acceptance, canonical mailing rules/reservations, vendor sandbox workflow, and inbound provider acceptance. Keep them within the existing campaign/review screens.
 4. Deliver portal, manual human caller, agency and contract/disposition capabilities with the PRD's sequential activation gates. These are still required parts of the goal, not optional enhancements.
