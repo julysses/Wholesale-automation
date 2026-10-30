@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — postal HTTP concurrency and expiry regression
+
+- Pulled unchanged. Exact prerequisite remains cb52854 / run 41001242316, with five successful jobs and the existing contention suite still running at last observation. Prior UI/postal commits are retained locally.
+- Extended the real local PostgREST runner with signed postal imports. Two concurrent identical requests converge to one observation and one audit event, preserve the source/unit and unverified state, and enforce cross-workspace HTTP read/import isolation.
+- Added a lock-confirmed regression: hold acquisition_activation, start an import, verify pg_stat_activity reports a real lock wait, allow the database session to expire, then release the lock. The test reproduced acceptance after expiry in the unpublished postal migration. Corrected it by acquiring activation before the final wall-clock session check, so the insert trigger cannot add another expiry-bearing lock wait. Updated the candidate manifest hash. No deployed migration was edited or applied.
+- Final complete rehearsal passed all 46 migrations, 26 access checks, all 48 application journeys and ten real PostgREST checks. The expiry regression returned 403 with no extra observation; exact concurrent retry left one audit. Saved full evidence in evidence/2026-10-30-postal-http-result.json. Temporary HTTP/DB resources were cleaned up.
+- Next: publish after all-six predecessor success and verify the new hosted run; continue canonical postal validation and shared suppression/eligibility integration before app exposure. Historical import replay is not verification or fulfillment authority. Production, providers, SMS and spending remain unchanged.
+
+
 ## Implementation checkpoint — owner mailing-address provenance
 
 - Pulled unchanged. Exact prerequisite remains cb52854 / run 41001242316; five jobs passed and contention remained running at last check. Retain prior UI checkpoint 86a0435 until all six pass.

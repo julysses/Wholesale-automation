@@ -58,7 +58,10 @@ BEGIN
  SELECT owner_mailing_address INTO raw FROM public.leads WHERE id=relation.lead_id FOR SHARE;
  IF raw IS NULL OR length(trim(raw))=0 OR octet_length(raw)>4096 THEN
   RAISE EXCEPTION 'Owner mailing address requires review' USING ERRCODE='22023'; END IF;
- -- A lead-row wait can outlive the session even while authority rows remain locked.
+ -- Acquire the activation lock before the final wall-clock session check.
+ -- The insert trigger reuses this lock and cannot introduce a new expiry wait.
+ PERFORM 1 FROM private.acquisition_activation WHERE singleton FOR SHARE;
+ -- Source or activation waits can outlive a session while authority rows stay locked.
  IF NOT EXISTS(SELECT 1 FROM auth.sessions s WHERE s.user_id=auth.uid() AND s.id::text=auth.jwt()->>'session_id'
   AND (s.not_after IS NULL OR s.not_after>clock_timestamp())) THEN
   RAISE EXCEPTION 'Current postal session required' USING ERRCODE='42501'; END IF;

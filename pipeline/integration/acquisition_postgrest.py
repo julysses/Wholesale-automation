@@ -61,11 +61,12 @@ def run_postgrest(db, binary, pg):
             def part(value):return base64.urlsafe_b64encode(json.dumps(value,separators=(',',':')).encode()).rstrip(b'=')
             body=part({'alg':'HS256','typ':'JWT'})+b'.'+part({'sub':user,'session_id':user,'aal':'aal2','role':'authenticated','exp':expiry or int(time.time())+300})
             return (body+b'.'+base64.urlsafe_b64encode(hmac.new(key.encode(),body,hashlib.sha256).digest()).rstrip(b'=')).decode()
-        def request(path, jwt=None):
+        def request(path, jwt=None, payload=None):
             if not path.startswith('/') or '://' in path:raise ValueError('Local API path required')
             args=['/usr/bin/curl','--silent','--show-error','--max-time','5','--noproxy','*','--unix-socket',str(sock),'-w','\n%{http_code}']
             if jwt:args+=['-H','Authorization: Bearer '+jwt]
-            result=subprocess.run(args+['http://localhost'+path],env=env,text=True,capture_output=True,timeout=8)
+            if payload is not None:args+=['-H','Content-Type: application/json','--data-binary','@-']
+            result=subprocess.run(args+['http://localhost'+path],input=json.dumps(payload) if payload is not None else None,env=env,text=True,capture_output=True,timeout=8)
             if result.returncode:raise RuntimeError('Local PostgREST request failed')
             body,status=result.stdout.rsplit('\n',1)
             return int(status),json.loads(body)
@@ -86,11 +87,13 @@ def run_postgrest(db, binary, pg):
             for jwt in (token(key='wrong-synthetic-signing-key-of-sufficient-length'),token(expiry=int(time.time())-60)):
                 if request('/workspaces?select=id',jwt)[0]!=401:raise AssertionError('Invalid JWT accepted')
             if request('/workspaces?select=id')[0]!=401:raise AssertionError('Anonymous workspace access accepted')
+            from acquisition_postal_http import verify_postal_http
+            postal_checks=verify_postal_http(clone,request,token,str(folder),ADMIN,OTHER,WORKSPACE)
             clone.query('DELETE FROM auth.sessions WHERE id=%s',[ADMIN])
             if request('/workspaces?select=id',token())!=(200,[]):raise AssertionError('Revoked session retains access')
             if request('/rpc/acquisition_offer_review_queue?p_workspace='+WORKSPACE,token())[0]!=403:
                 raise AssertionError('Revoked session RPC accepted')
-        return {'real_postgrest':'passed','version':version,'checks':['signed tenant isolation','wrong signature rejected','expired JWT rejected','anonymous denied','deleted session hidden','revoked RPC denied'],'hosted_auth_verified':False}
+        return {'real_postgrest':'passed','version':version,'checks':['signed tenant isolation','wrong signature rejected','expired JWT rejected','anonymous denied','deleted session hidden','revoked RPC denied']+postal_checks,'hosted_auth_verified':False}
     finally:
         if process:
             process.terminate()
