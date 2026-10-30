@@ -181,6 +181,10 @@
     {
       "file": "20261029184129_acquisition_evidence_attestations.sql",
       "sha256": "538a797101ff77e81ec5feabfd78fd32ac6509504393cc3c98dd3fc3d2913e0d"
+    },
+    {
+      "file": "20261030041400_acquisition_postal_observations.sql",
+      "sha256": "357abf5ff2c7f2db60b692a650eb9035b2656e086ea34e6a0f71097cebf0d98e"
     }
   ]
 }

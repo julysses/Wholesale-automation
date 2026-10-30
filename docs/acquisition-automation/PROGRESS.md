@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — owner mailing-address provenance
+
+- Pulled unchanged. Exact prerequisite remains cb52854 / run 41001242316; five jobs passed and contention remained running at last check. Retain prior UI checkpoint 86a0435 until all six pass.
+- Queried live metadata only: owner_mailing_address is distinct from property address/unit, no acquisition contact/owner tables are deployed, latest production migration remains 20261023221455. Saved inventory without customer rows. Reviewed candidate contact, owner-relation, eligibility and authority helper implementations before additive SQL.
+- Created 20261030041400_acquisition_postal_observations.sql through the Supabase CLI (local file only). It preserves exact owner mailing-address text, immutable source/hash and existing owner/property relationship, with workspace RLS, restricted import RPC, current membership/session/MFA, audit, same-ID historical retry and no property-address fallback. No normalized endpoint or verification/permission is inferred.
+- Updated candidate manifest and fixed its date-limited acquisition glob so October 30 and future additive candidates cannot silently be omitted. Full rehearsal passed all 46 migrations, 26 named access probes (including postal provenance, scope/MFA/service/raw-write denial, original-source retry and missing-source hold), all 48 application workflows and retained historical rows. Saved actual result in evidence/2026-10-30-postal-upgrade-result.json.
+- Import is not yet exposed in app/API; canonical validation, unit/alias identity, cross-identity postal suppressions, policy, reservations and fulfillment remain open. Postal-specific parallel imports/expiry-wait tests and real PostgREST import coverage remain to add before UI exposure. POSTAL-AND-BATCH-IMPLEMENTATION.md documents compensation by disabling/revoking new imports while retaining evidence.
+- No production migration, provider action, SMS change, spend or fulfillment occurred. Next: complete postal import concurrency/transport evidence, then verified canonical endpoint and shared eligibility integration within the guided campaign process.
+
+
 ## Implementation checkpoint — guided mail preparation boundary
 
 - Pulled unchanged. Prerequisite remains cb52854 / CI 41001242316; inspect all six jobs before publishing this increment.

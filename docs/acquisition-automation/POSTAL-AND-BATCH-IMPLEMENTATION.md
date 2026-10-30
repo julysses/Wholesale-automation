@@ -31,3 +31,13 @@ Retain message → response destination → content review inside the numbered n
 - Browser QA verifies connected steps, errors, empty states and pending-request recovery. Vendor sandbox evidence and separate campaign approval precede fulfillment.
 
 Next: fresh dependency inspection and additive postal observations/canonical identity, before exposing batch preparation through an API. No production migration or mailing is authorized by this document.
+
+## Postal provenance increment
+
+Local migration `20261030041400_acquisition_postal_observations.sql` adds an immutable, workspace-scoped observation tied to an existing owner/property relationship. It copies only `leads.owner_mailing_address`, preserving exact text, source evidence and SHA-256. Missing or oversized source values fail; the property address is never a fallback. Imports require current owner/admin/operator membership, MFA and an active session. Authority rows are locked and session expiry is rechecked after potential source-row waits. Raw writes and service-role imports are denied; exact-ID retries return the original historical evidence without conferring permission or verification.
+
+This is provenance, not a canonical verified endpoint. Provider validation, structured address/unit parsing, aliases, postal suppression integration, legal policy, batch reservations and fulfillment remain to implement. The new relation extends the existing owner/property graph instead of creating a second owner database. No UI import action is exposed yet.
+
+Compensation: keep acquisition activation and future postal import routes disabled. If needed, revoke authenticated EXECUTE from the new public/private import functions through a reviewed forward-only migration, while retaining rows, hashes and audit history. Do not drop observations, clear suppressions or enable another sender. Existing phone/email normalization, policies and SMS scheduling are unchanged. Production application of this migration requires explicit approval of the exact candidate and evidence.
+
+Fresh read-only metadata at 2026-10-30T04:13:11Z confirms the separate owner mailing-address field, property unit fields, unchanged latest production migration 20261023221455, and absent acquisition tables in production. Saved under evidence/2026-10-30-postal-source-inventory.json; no customer rows were read.

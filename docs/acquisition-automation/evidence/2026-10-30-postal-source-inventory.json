@@ -1,0 +1,273 @@
+{
+  "checked_at": "2026-10-30T04:13:11.656666+00:00",
+  "source_columns": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "NO"
+    },
+    {
+      "name": "property_address",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "NO"
+    },
+    {
+      "name": "city",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "NO"
+    },
+    {
+      "name": "state",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "zip_code",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_first_name",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_last_name",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_phone_1",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_phone_2",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_phone_3",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_email",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_mailing_address",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "email_sequence_active",
+      "type": "boolean",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "dnc",
+      "type": "boolean",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "absentee_owner",
+      "type": "boolean",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "out_of_state_owner",
+      "type": "boolean",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "skip_traced_at",
+      "type": "timestamp with time zone",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "skip_trace_provider",
+      "type": "text",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "emails_enriched",
+      "type": "jsonb",
+      "table": "leads",
+      "schema": "public",
+      "nullable": "YES"
+    },
+    {
+      "name": "id",
+      "type": "uuid",
+      "table": "contacts",
+      "schema": "wholesale_ingest",
+      "nullable": "NO"
+    },
+    {
+      "name": "lead_id",
+      "type": "uuid",
+      "table": "contacts",
+      "schema": "wholesale_ingest",
+      "nullable": "NO"
+    },
+    {
+      "name": "provider",
+      "type": "text",
+      "table": "contacts",
+      "schema": "wholesale_ingest",
+      "nullable": "NO"
+    },
+    {
+      "name": "traced_at",
+      "type": "timestamp with time zone",
+      "table": "contacts",
+      "schema": "wholesale_ingest",
+      "nullable": "NO"
+    },
+    {
+      "name": "expires_at",
+      "type": "timestamp with time zone",
+      "table": "contacts",
+      "schema": "wholesale_ingest",
+      "nullable": "NO"
+    },
+    {
+      "name": "email",
+      "type": "text",
+      "table": "contacts",
+      "schema": "wholesale_ingest",
+      "nullable": "YES"
+    },
+    {
+      "name": "dnc_status",
+      "type": "text",
+      "table": "contacts",
+      "schema": "wholesale_ingest",
+      "nullable": "NO"
+    },
+    {
+      "name": "dnc_checked_at",
+      "type": "timestamp with time zone",
+      "table": "contacts",
+      "schema": "wholesale_ingest",
+      "nullable": "YES"
+    },
+    {
+      "name": "id",
+      "type": "uuid",
+      "table": "properties",
+      "schema": "wholesale_ingest",
+      "nullable": "NO"
+    },
+    {
+      "name": "state",
+      "type": "text",
+      "table": "properties",
+      "schema": "wholesale_ingest",
+      "nullable": "NO"
+    },
+    {
+      "name": "address_std",
+      "type": "text",
+      "table": "properties",
+      "schema": "wholesale_ingest",
+      "nullable": "YES"
+    },
+    {
+      "name": "unit",
+      "type": "text",
+      "table": "properties",
+      "schema": "wholesale_ingest",
+      "nullable": "YES"
+    },
+    {
+      "name": "city",
+      "type": "text",
+      "table": "properties",
+      "schema": "wholesale_ingest",
+      "nullable": "YES"
+    },
+    {
+      "name": "zip",
+      "type": "text",
+      "table": "properties",
+      "schema": "wholesale_ingest",
+      "nullable": "YES"
+    },
+    {
+      "name": "lead_id",
+      "type": "uuid",
+      "table": "properties",
+      "schema": "wholesale_ingest",
+      "nullable": "YES"
+    }
+  ],
+  "candidate_tables": {
+    "owners": null,
+    "contact_points": null
+  },
+  "latest_migrations": [
+    {
+      "name": "retell_recovery_production_guard",
+      "version": "20261023221455"
+    },
+    {
+      "name": "retell_verified_generation_recovery",
+      "version": "20261023214643"
+    },
+    {
+      "name": "retell_owner_retest_authorization",
+      "version": "20261023213254"
+    },
+    {
+      "name": "facebook_inquiry_sms_receipts",
+      "version": "20261020192531"
+    },
+    {
+      "name": "sms_reply_notification_handoff",
+      "version": "20261019195321"
+    },
+    {
+      "name": "retell_app_intake_handoff",
+      "version": "20261017023006"
+    }
+  ]
+}

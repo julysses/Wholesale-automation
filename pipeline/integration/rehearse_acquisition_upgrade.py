@@ -56,7 +56,7 @@ def run_upgrade(db):
     if manifest['production_apply_approved'] is not False or manifest['baseline']!='2026-10-30-upgrade-catalog.json':
         raise RuntimeError('Explicit offline candidate manifest required')
     names=[r['file'] for r in files]
-    available=sorted(p.name for p in (ROOT/'frontend/supabase/migrations').glob('2026102*_acquisition*.sql'))
+    available=sorted(p.name for p in (ROOT/'frontend/supabase/migrations').glob('*_acquisition*.sql'))
     if names!=available or len(names)!=len(set(names)):
         raise RuntimeError('Candidate manifest does not match the complete ordered acquisition sequence')
     deployed={m['version'] for m in CATALOG['migrations']}

@@ -84,6 +84,35 @@ def run_access_probes(db):
                 raise AssertionError('Legacy lead policy bypassed acquisition scope')
         checks.append('legacy lead policies preserve workspace and caller boundaries')
 
+        owner='81000000-0000-4000-8000-000000000777'
+        relation='82000000-0000-4000-8000-000000000777'
+        observation='83000000-0000-4000-8000-000000000777'
+        raw=' 77 Synthetic Mailing Rd, Apt 2B, Dallas TX 75001 '
+        db.query("UPDATE public.leads SET owner_first_name='Synthetic',owner_last_name='Owner',owner_mailing_address=%s WHERE id=%s",[raw,LEAD])
+        actor('SELECT public.create_acquisition_owner(%s,%s,%s)',[owner,WORKSPACE,LEAD])
+        actor("SELECT public.associate_acquisition_owner(%s,%s,%s,%s,'reported_owner','Synthetic relationship for offline test')",[relation,WORKSPACE,owner,LEAD])
+        postal='SELECT public.import_acquisition_postal_observation(%s,%s,%s) AS result'
+        args=[observation,WORKSPACE,relation]
+        first=actor(postal,args)[0]['result']
+        if first['raw_address']!=raw or first['verification_status']!='unverified' or first['execution_authorized'] or first['duplicate']:
+            raise AssertionError('Postal source was transformed or granted authority')
+        db.query("UPDATE public.leads SET owner_mailing_address='Changed source unit 3C' WHERE id=%s",[LEAD])
+        replay=actor(postal,args)[0]['result']
+        if not replay['duplicate'] or replay['raw_address']!=raw or replay['source_hash']!=first['source_hash']:
+            raise AssertionError('Postal retry failed to preserve original source')
+        reject('postal cross-workspace import denied',postal,args,user=OTHER)
+        reject('postal caller import denied',postal,args,user=CALLER)
+        reject('postal import requires MFA',postal,args,aal='aal1')
+        reject('postal service import denied',postal,args,role='service_role')
+        reject('postal raw write denied',"UPDATE public.acquisition_postal_observations SET raw_address='tampered' WHERE id=%s",[observation])
+        for user,expected in ((ADMIN,1),(OTHER,0),(CALLER,0)):
+            if actor('SELECT count(*) AS n FROM public.acquisition_postal_observations',user=user)!=[{'n':expected}]:
+                raise AssertionError('Postal observation visibility mismatch')
+        if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_postal_observation'")!=[{'n':1}]:
+            raise AssertionError('Postal retry duplicated audit')
+        db.query('UPDATE public.leads SET owner_mailing_address=NULL WHERE id=%s',[LEAD])
+        reject('postal source never falls back to property address',postal,['83000000-0000-4000-8000-000000000778',WORKSPACE,relation],code='22023')
+        checks.append('postal raw unit provenance and immutable retry')
         reject('cross-workspace queue denied', 'SELECT public.list_acquisition_leads(%s)', [WORKSPACE], user=OTHER)
         for role in ('authenticated', 'anon', 'service_role'):
             reject(role+' raw workspace write denied', "UPDATE public.workspaces SET status='suspended' WHERE id=%s", [WORKSPACE], role=role)
