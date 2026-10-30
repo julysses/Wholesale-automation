@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — all 48 journeys on the full catalog
+
+- Pulled unchanged. Published predecessor 3b05b29 / CI 40999807734 now has five successful jobs, including the new PostgreSQL 17/Supautils full-schema job; the existing contention suite remains running. Require all six terminal successes before pushing this increment.
+- Expanded the full-schema runner from eight selected cases to all 48 directly declared WorkflowTests methods, with a new copy of the upgraded catalog per test. This automatically includes future application journeys without pulling in inherited focused schema-mutation tests.
+- Added per-copy historical row checks. Existing county triggers legitimately update the daily task/notification aggregate while seeding each fixture, so those tables are snapshotted after fixture setup and checked unchanged through application requests; all other original-table histories compare against the upgraded template. The original source database is also rechecked afterward.
+- Broader execution exposed fixture assumptions, not product failures: global campaign/creative/task counts assumed empty legacy tables, and a property-lookup setup updated every property. Assertions now compare exact row-count increments from initial totals (including legacy data), retain the no-new-nonreview-task check, and the lookup fixture update targets only PROPERTY. No schema grants, migrations, production code or test cases were removed.
+- Final complete run passed: 45 migrations, 19 access checks, all 48 application journeys and history preservation. Saved actual result in evidence/2026-10-30-full-workflow-result.json. This covers inbound events/intakes/opt-outs, campaign links/costs, document upload/scanning/persistence, mail content/destination review, Facebook retrieval/recovery and all four underwriting/offer paths. Provider and JWT/PostgREST transports remain simulated.
+- Next: publish after exact predecessor success, verify all six successor jobs, then continue concrete managed-platform acceptance and the remaining PRD features. The guided app aesthetic, production, SMS and activation controls are unchanged.
+
+
 ## Publication gate cleared
 
 - Live verification confirmed exact prerequisite f5491ea124480cca37c49b9a9b800159c1c10a51 / CI 40998774727 completed successfully across all five jobs. No cancellation, restart or disabled check was used.

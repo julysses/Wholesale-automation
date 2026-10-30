@@ -75,3 +75,12 @@ This moves application workflow evidence beyond the focused schema fixture. It d
 CI now defines a separate sixth job using PostgreSQL 17 and pinned Supautils source, leaving the five existing jobs unchanged. It runs the same populated upgrade, access probes and selected full-catalog application journeys, and retains combined diagnostic output for 14 days. YAML and shell syntax checks passed locally. A hosted passing result is still required; package installation, Linux extension compilation and runtime parity are not certified by the local macOS result.
 
 Runtime setup follows the [official PostgreSQL Ubuntu repository instructions](https://www.postgresql.org/download/linux/ubuntu/). The [Supautils source](https://github.com/supabase/supautils/tree/7a22990746ec17b1a84cf2a097dda411222f8ec7) is pinned to the same reviewed revision used locally. No production migration or provider credentials are part of the job. Once published, all six jobs must succeed on the exact candidate before another feature push.
+
+
+## Expanded complete application suite
+
+All 48 directly declared application journeys now pass on full-catalog copies, including evidence, inbound opt-outs and mail reviews. The runner discovers the methods directly on WorkflowTests; inherited schema-focused tests continue in their existing dedicated job. Actual output is saved in evidence/2026-10-30-full-workflow-result.json.
+
+Each copy verifies historical rows after its workflow. County daily task/notification aggregates are captured after synthetic property setup because existing triggers legitimately update those summaries; all other original-table fingerprints come from the unchanged upgraded template. Test assertions use exact increments from initial total counts, so historical records and unexpected extra writes remain observable. The property-lookup fixture updates only its synthetic property. No migration or runtime access rule changed.
+
+Published predecessor CI 40999807734 already passed the new hosted PostgreSQL 17 full-schema job (eight-case version); the expanded 48-case version still requires its own hosted run after publication. Managed Auth/Storage/PostgREST/provider acceptance remains separate.

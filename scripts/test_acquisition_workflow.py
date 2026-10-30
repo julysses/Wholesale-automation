@@ -140,6 +140,9 @@ class WorkflowTests(WorkspaceTests):
 
     def setUp(self):
         self.prepare_database()
+        self.initial_counts={table:int(self.sql('SELECT count(*) FROM '+table))
+                             for table in ('tasks','ad_campaigns','ad_creatives')}
+        self.initial_nonreview_tasks=int(self.sql("SELECT count(*) FROM tasks WHERE completed_at IS NOT NULL OR due_date IS NOT NULL OR assigned_to IS NOT NULL OR status<>'acquisition_review_required'"))
         self.bind()
         self.requests=[]
         self.lose_completion_once=False
@@ -772,11 +775,11 @@ class WorkflowTests(WorkspaceTests):
             signature='v='+stamp+',d='+hmac.new(b'synthetic-inbound-secret',raw+stamp.encode(),hashlib.sha256).hexdigest()
             return self.client.post('/webhooks/retell/acquisition/tools',content=raw,headers={'X-Retell-Signature':signature})
         self.assertEqual(deliver().status_code,503)  # No durable ongoing call yet.
-        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'0')
+        self.assertEqual(int(self.sql('SELECT count(*) FROM tasks')),self.initial_counts['tasks']+0)
         self.inbound_accept()
         self.lose_facebook_reply='record_acquisition_inbound_request'
         self.assertEqual(deliver().status_code,503)
-        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'1')
+        self.assertEqual(int(self.sql('SELECT count(*) FROM tasks')),self.initial_counts['tasks']+1)
         response=deliver();self.assertEqual(response.status_code,200,response.text)
         self.assertTrue(response.json()['duplicate']);self.assertFalse(response.json()['execution_authorized'])
         self.assertNotIn('2145550101',response.text)
@@ -799,7 +802,7 @@ class WorkflowTests(WorkspaceTests):
         payload['args']['request_id']='98000000-0000-4000-8000-000000000002'
         payload['args']['expected_revision']=0
         self.assertEqual(deliver().status_code,503)
-        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'2')
+        self.assertEqual(int(self.sql('SELECT count(*) FROM tasks')),self.initial_counts['tasks']+2)
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
         queue=self.client.get(f'{self.base}/inbound/requests',headers=self.headers)
         self.assertEqual(queue.status_code,200,queue.text)
@@ -817,7 +820,7 @@ class WorkflowTests(WorkspaceTests):
         self.assertNotEqual(first['items'][0]['id'],second['items'][0]['id'])
         self.assertEqual({first['items'][0]['acquisition_request_kind'],second['items'][0]['acquisition_request_kind']},{'request_callback','request_human'})
         self.assertEqual(self.client.get(path,headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
-        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'2')
+        self.assertEqual(int(self.sql('SELECT count(*) FROM tasks')),self.initial_counts['tasks']+2)
 
     def test_inbound_review_http_lost_reply_supersession_and_no_execution(self):
         self.configure_inbound();self.inbound_accept()
@@ -847,7 +850,7 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.client.get(path+'/state',headers={'Authorization':'Bearer synthetic-other-session'}).status_code,403)
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_inbound_request_review'"),'2')
         self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
-        self.assertEqual(self.sql("SELECT count(*) FROM tasks WHERE completed_at IS NOT NULL OR due_date IS NOT NULL OR assigned_to IS NOT NULL OR status<>'acquisition_review_required'"),'0')
+        self.assertEqual(int(self.sql("SELECT count(*) FROM tasks WHERE completed_at IS NOT NULL OR due_date IS NOT NULL OR assigned_to IS NOT NULL OR status<>'acquisition_review_required'")),self.initial_nonreview_tasks)
 
     def test_signed_optout_commits_once_withdraws_callback_and_blocks_matching_contact(self):
         integration,event=self.configure_inbound();self.inbound_accept();task=self.inbound_request()['id']
@@ -878,7 +881,7 @@ class WorkflowTests(WorkspaceTests):
         integration,event=self.configure_inbound()
         os.environ.update({'ACQUISITION_INBOUND_TOOLS_ENABLED':'true','ACQUISITION_INBOUND_LOOKUP_ENABLED':'true'})
         self.inbound_accept();self.inbound_intake()
-        self.sql("UPDATE wholesale_ingest.properties SET address_std='123 Main St',city='Dallas'")
+        self.sql(f"UPDATE wholesale_ingest.properties SET address_std='123 Main St',city='Dallas' WHERE id='{PROPERTY}'")
         payload={'name':'lookup_property','call':event['call'],'args':{'intake_revision':1}}
         def deliver():
             raw=json.dumps(payload).encode();stamp=str(int(time.time()*1000))
@@ -944,7 +947,7 @@ class WorkflowTests(WorkspaceTests):
         payload['args']['request_id']='99000000-0000-4000-8000-000000000003';payload['args']['expected_revision']=2
         self.assertEqual(deliver().status_code,503)
         self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='retell_inbound_acquisition' AND (sms_sequence_active OR email_sequence_active OR NOT ai_calling_paused)"),'0')
-        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),'0')
+        self.assertEqual(int(self.sql('SELECT count(*) FROM tasks')),self.initial_counts['tasks']+0)
 
     def configure_facebook(self):
         self.inbox_config(account='100')
@@ -1358,7 +1361,7 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_template'"),'2')
         self.sql(f"DELETE FROM auth.sessions WHERE id='{ADMIN}'")
         self.assertEqual(self.client.post(path,headers=self.headers,json=body).status_code,403)
-        self.assertEqual(self.sql('SELECT count(*) FROM ad_creatives'),'2')
+        self.assertEqual(int(self.sql('SELECT count(*) FROM ad_creatives')),self.initial_counts['ad_creatives']+2)
 
     def test_campaign_draft_http_is_idempotent_scoped_and_non_executing(self):
         path=self.base+'/campaigns'
@@ -1372,7 +1375,7 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(listed.json()['items'][0]['id'],body['id'])
         self.assertEqual(listed.json()['items'][0]['status'],'draft')
         self.assertEqual(self.client.get(path,headers={'Authorization':'Bearer synthetic-other-session'}).json()['items'],[])
-        self.assertEqual(self.sql('SELECT count(*) FROM ad_campaigns'),'1')
+        self.assertEqual(int(self.sql('SELECT count(*) FROM ad_campaigns')),self.initial_counts['ad_campaigns']+1)
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_campaign'"),'1')
         self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_inbox_processing'),'0')
 
