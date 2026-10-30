@@ -180,9 +180,37 @@ def _load_active_form(supabase, form_id: str) -> dict:
     return response.data[0]
 
 
+def _public_form_config(config: dict) -> dict:
+    """Seller-facing fields only; internal routing/scoring never leaves this boundary.
+
+    Submission validation continues using the complete server-owned config.
+    Explicit projection also prevents future acquisition columns leaking through
+    the legacy public endpoint when the shared form table is extended.
+    """
+    fields = ('id', 'name', 'slug', 'headline', 'subheadline', 'brand_color',
+              'logo_url', 'thank_you_message')
+    question_fields = ('id', 'step', 'type', 'field_name', 'label', 'placeholder', 'required')
+    questions = config.get('questions', [])
+    if not isinstance(questions, list) or any(not isinstance(q, dict) for q in questions):
+        raise HTTPException(503, "Form service is temporarily unavailable. Please try again.")
+    result = {key: config[key] for key in fields if key in config}
+    result['questions'] = []
+    for question in questions:
+        public = {key: question[key] for key in question_fields if key in question}
+        if question.get('options') is not None:
+            options = question['options']
+            if not isinstance(options, list) or any(not isinstance(option, dict) for option in options):
+                raise HTTPException(503, "Form service is temporarily unavailable. Please try again.")
+            public['options'] = [{key: option[key] for key in ('label', 'value') if key in option}
+                                 for option in options]
+        result['questions'].append(public)
+    return result
+
+
 @router.get("/api/forms/{form_id}")
 async def get_form_config(form_id: str):
-    return _load_active_form(_get_supabase(), form_id)
+    config = _load_active_form(_get_supabase(), form_id)
+    return JSONResponse(_public_form_config(config), headers={"Cache-Control": "no-store"})
 
 
 class FormSubmitRequest(BaseModel):

@@ -30,3 +30,14 @@ The preparer performs no network access, private-owner lookup, identity merge, p
 ## Validation checkpoint
 
 62 offline tests passed across the new online-offer contract and existing shared intake tests. Cases include exact wording/selection preservation, deterministic and conflicting fingerprints, stale versions, missing prices, denied/uncertain authority, out-of-territory review, unsupported contact formats, callback/contact consistency, strict bool/decimal types and rejection of injected workspace/price/permission fields. No migration, public endpoint or existing form changed.
+
+
+## Shared-table boundary inspection and first repair
+
+Live read-only metadata at 22:55:07 UTC confirmed the current ledger still ends at 20261023221455. lead_form_configs has its UUID primary key, globally unique slug, legacy campaign FK, the two corresponding unique indexes, broad authenticated legacy policies plus approved-profile restriction, and anonymous read of active rows. No private acquisition_public_forms registry exists. See evidence/2026-10-30-online-form-source.json. Proposed acquisition migration 20261026205233 already blocks any legacy form association to an acquisition campaign and prevents raw TRUNCATE/TRIGGER operations; preserve that protection until its reviewed replacement exists.
+
+The old public GET returned the entire service-loaded configuration. It now explicitly projects the fields used by LeadForm and strips internal top-level routing/settings and nested option scoring hints. The response uses no-store. Submit validation still loads the complete server configuration, without mutating it. Null/absent option lists retain legacy text-field rendering; malformed structures fail without disclosing config. This is HTTP output minimization, not a fix for raw-table legacy RLS and not new portal routing.
+
+Before registering acquisition rows in this shared table, implement restrictive workspace/role read/write policies, immutable version/wording evidence and guarded server-owned routing. Ensure legacy authenticated/service-backed CRUD cannot read or mutate new acquisition configurations across workspaces, activate them through the old active flag or attach them to global-owner intake. Both the database and service-backed list/update endpoints need explicit tests. Do not remove the existing acquisition campaign-association guard simply to allow the new form insert.
+
+Validation for the repair: 102 Python tests passed across public forms, online request contract and shared intake; 13 existing frontend outage/recovery/reset tests passed. No frontend code, schema, stored form configuration or production deployment was changed. Registry/persistence, bot/rate controls and new seller UI remain required.

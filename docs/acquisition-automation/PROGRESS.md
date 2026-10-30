@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Public form projection repaired before tenant routing
+
+- Pulled unchanged and inspected live form columns/constraints/indexes/policies plus proposed acquisition campaign guards. Metadata-only evidence saved at evidence/2026-10-30-online-form-source.json; no production SQL/schema/config changes.
+- Found the legacy public GET returned the whole service-loaded configuration, including campaign metadata and nested scoring hints. Added an explicit display-only projection and no-store response. Submission validation/scoring still receives the unchanged full server config. Existing form routes and seller rendering fields are preserved.
+- Validation: 102 related Python tests and 13 frontend public-form regression tests passed. Tests prove routing/settings/scoring fields and future unknown fields stay out of the public response, original config stays intact, malformed definitions fail safely, and null option lists retain text rendering. This does not claim raw-table RLS is tenant-safe.
+- Documented the database and service-backed legacy CRUD guards required before acquisition forms can be registered in the shared table. Keep the existing campaign-association prohibition until controlled enrollment replaces it. Registry and durable portal persistence remain the next implementation work.
+- Publication prerequisite verified: exact predecessor a8f9ef4e1217fe23517f6ac17d410bb69c0ae22c / CI 41140560041 completed successfully with all six jobs. Pulled unchanged before publication. Request-contract commit 1454c72 and this repair are ready to publish; verify successor exact-head CI before another feature push. PropStream remains the address/skip-trace source, with no mail vendor selected. No production/provider/SMS activation.
+
 ## 2026-10-30 — Online offer request contract over shared seller normalization
 
 - Pulled unchanged from a8f9ef4. Its CI 41140560041 is still live; wait for all six successful jobs before publishing this increment.

@@ -278,3 +278,50 @@ def test_saved_but_unfinished_inquiry_retry_uses_original_receipt(form_service):
     assert all(c.kwargs["submission_id"] == REFERENCE for c in processor.call_args_list)
     assert db.rpc.call_args_list[0].args[1]["p_manifest"]["utm_campaign"] == "original campaign"
     db.table.return_value.insert.assert_not_called()
+
+
+def test_public_configuration_projects_display_fields_and_hides_internal_routing(form_service):
+    import copy
+    db, _ = form_service
+    config = {'id': 'form-1', 'name': 'Seller inquiry', 'slug': 'test', 'headline': 'Request a review',
+              'subheadline': 'Tell us about the property', 'brand_color': '#1B3A5C', 'logo_url': None,
+              'thank_you_message': 'We will review your inquiry.', 'campaign_id': 'private-campaign',
+              'workspace_id': 'private-workspace', 'send_confirmation_sms': True, 'active': True,
+              'future_internal_setting': {'secret': 'private-marker'},
+              'questions': [{'id': 'q1', 'step': 1, 'type': 'radio', 'field_name': 'condition',
+                             'label': 'Property condition', 'required': True, 'placeholder': 'Choose',
+                             'scoring_rule': 'private-rule', 'options': [
+                                 {'label': 'Repairs needed', 'value': 'repairs', 'score_hint': 90,
+                                  'underwriting_assumption': 'private-cost'}]}]}
+    before = copy.deepcopy(config)
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[config])
+    response = TestClient(app).get('/api/forms/test')
+    assert response.status_code == 200
+    assert response.headers['cache-control'] == 'no-store'
+    assert set(response.json()) == {'id', 'name', 'slug', 'headline', 'subheadline', 'brand_color',
+                                    'logo_url', 'thank_you_message', 'questions'}
+    question = response.json()['questions'][0]
+    assert question == {'id': 'q1', 'step': 1, 'type': 'radio', 'field_name': 'condition',
+                        'label': 'Property condition', 'required': True, 'placeholder': 'Choose',
+                        'options': [{'label': 'Repairs needed', 'value': 'repairs'}]}
+    assert 'private-' not in response.text
+    assert config == before  # Internal scoring/validation configuration is untouched.
+
+
+@pytest.mark.parametrize('questions', [None, {}, [None], [{'options': [None]}], [{'options': {'private': 'value'}}]])
+def test_malformed_public_form_configuration_fails_without_disclosure(form_service, questions):
+    db, _ = form_service
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+        data=[{'id': 'form-1', 'questions': questions, 'internal': 'private-marker'}])
+    response = TestClient(app).get('/api/forms/test')
+    assert response.status_code == 503
+    assert 'private-marker' not in response.text
+
+
+def test_public_question_without_options_preserves_legacy_text_rendering(form_service):
+    db, _ = form_service
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+        data=[{'id': 'form-1', 'questions': [{'field_name': 'name', 'label': 'Name', 'type': 'text', 'options': None}]}])
+    response = TestClient(app).get('/api/forms/test')
+    assert response.status_code == 200
+    assert response.json()['questions'] == [{'field_name': 'name', 'label': 'Name', 'type': 'text'}]

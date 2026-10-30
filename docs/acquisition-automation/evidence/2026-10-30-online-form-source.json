@@ -1,0 +1,21 @@
+{
+  "captured_at": "2026-10-30 22:55:07.701952+00",
+  "latest_migration": "20261023221455",
+  "table": "public.lead_form_configs",
+  "existing_registry": null,
+  "constraints": [
+    "lead_form_configs_pkey: PRIMARY KEY (id)",
+    "lead_form_configs_slug_key: UNIQUE (slug)",
+    "lead_form_configs_campaign_id_fkey: FOREIGN KEY (campaign_id) REFERENCES ad_campaigns(id)"
+  ],
+  "indexes": [
+    "lead_form_configs_pkey",
+    "lead_form_configs_slug_key"
+  ],
+  "policies": [
+    "authenticated ALL auth_all_lead_form_configs: true",
+    "anon SELECT public_read_active_forms: active = true",
+    "authenticated ALL require_approved_operator: is_approved()"
+  ],
+  "scope": "Read-only schema metadata; no seller records or secrets retrieved. Active question options aggregate: 20 absent, 10 arrays."
+}
