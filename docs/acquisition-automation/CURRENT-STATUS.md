@@ -6,6 +6,8 @@ Updated October 30, 2026 (America/Chicago). This is a navigation and gap invento
 
 Postal import now has a disabled-by-default API with strict scope, exact retry and unverified receipt checks. Full local rehearsal passed 46 migrations, 26 access checks, 49 application journeys and ten real PostgREST checks; nine malformed-receipt tests passed. No new operator button is exposed until canonical address validation and shared eligibility are implemented. User selected PropStream as the address-data/skip-trace source; letters/postcards provider remains unselected. Prior commit 31cd558 passed all six jobs in run 41003002597. See PROGRESS.md for publication and remaining work.
 
+Current scan assessment is now implemented locally as a scoped read-only RPC/API, with sticky same-byte detection holds and current signer/observer/retention checks. It grants no preview or approval. Final local rehearsal passes 47 migrations and 51 application journeys; locked evidence-to-review binding remains next. Exact prerequisite ee82549 / run 41097350211 passed all six jobs. See the newest PROGRESS.md checkpoint for publication.
+
 ## Git and validation
 
 - Branch: codex/acquisition-foundation. Published predecessor 85419cf adds the private signed-observation journal. Retained b320bd5, 477a4f9 and 6fb59e3 add scoped restart discovery, bounded admission and original-destination binding. See the newest PROGRESS.md checkpoint for publication verification.

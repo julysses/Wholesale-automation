@@ -285,3 +285,28 @@ class EvidenceUploadReceipt(BaseModel):
                 or (self.checked_at-self.registry_checked_at).total_seconds()>5):
             raise ValueError('Current retained evidence required')
         return self
+
+
+class EvidenceScanState(BaseModel):
+    model_config = ConfigDict(extra='forbid', frozen=True)
+    workspace_id: UUID
+    campaign_id: UUID
+    artifact_id: UUID
+    status: Literal['not_scanned', 'no_detection_observed', 'quarantined', 'requires_review',
+                    'revoked', 'expired', 'policy_review_required']
+    quarantined: StrictBool
+    observation_id: UUID | None
+    preview_authorized: StrictBool
+    content_approved: StrictBool
+    execution_authorized: StrictBool
+    checked_at: AwareDatetime
+
+    @model_validator(mode='after')
+    def observation_is_not_clearance(self):
+        if self.preview_authorized or self.content_approved or self.execution_authorized:
+            raise ValueError('Scan state cannot grant approval')
+        if ((self.status == 'no_detection_observed') != (self.observation_id is not None)
+                or self.status == 'quarantined' and not self.quarantined
+                or self.quarantined and self.status in {'not_scanned', 'no_detection_observed', 'requires_review'}):
+            raise ValueError('Inconsistent scan state')
+        return self

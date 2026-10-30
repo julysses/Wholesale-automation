@@ -1,0 +1,146 @@
+[
+  {
+    "captured_at": "2026-10-30 17:17:02.174493+00",
+    "latest_migration": "20261023221455",
+    "columns": [
+      {
+        "type": "uuid",
+        "table": "sessions",
+        "column": "id",
+        "schema": "auth"
+      },
+      {
+        "type": "uuid",
+        "table": "sessions",
+        "column": "user_id",
+        "schema": "auth"
+      },
+      {
+        "type": "timestamp with time zone",
+        "table": "sessions",
+        "column": "not_after",
+        "schema": "auth"
+      },
+      {
+        "type": "uuid",
+        "table": "ad_campaigns",
+        "column": "id",
+        "schema": "public"
+      },
+      {
+        "type": "timestamp with time zone",
+        "table": "ad_campaigns",
+        "column": "created_at",
+        "schema": "public"
+      },
+      {
+        "type": "timestamp with time zone",
+        "table": "ad_campaigns",
+        "column": "updated_at",
+        "schema": "public"
+      },
+      {
+        "type": "text",
+        "table": "ad_campaigns",
+        "column": "name",
+        "schema": "public"
+      },
+      {
+        "type": "text",
+        "table": "ad_campaigns",
+        "column": "platform",
+        "schema": "public"
+      },
+      {
+        "type": "text",
+        "table": "ad_campaigns",
+        "column": "status",
+        "schema": "public"
+      },
+      {
+        "type": "text",
+        "table": "ad_campaigns",
+        "column": "campaign_objective",
+        "schema": "public"
+      },
+      {
+        "type": "text",
+        "table": "ad_campaigns",
+        "column": "external_campaign_id",
+        "schema": "public"
+      },
+      {
+        "type": "numeric",
+        "table": "ad_campaigns",
+        "column": "daily_budget",
+        "schema": "public"
+      },
+      {
+        "type": "numeric",
+        "table": "ad_campaigns",
+        "column": "total_spend",
+        "schema": "public"
+      },
+      {
+        "type": "integer",
+        "table": "ad_campaigns",
+        "column": "impressions",
+        "schema": "public"
+      },
+      {
+        "type": "integer",
+        "table": "ad_campaigns",
+        "column": "clicks",
+        "schema": "public"
+      },
+      {
+        "type": "integer",
+        "table": "ad_campaigns",
+        "column": "leads_count",
+        "schema": "public"
+      },
+      {
+        "type": "numeric",
+        "table": "ad_campaigns",
+        "column": "cpl",
+        "schema": "public"
+      },
+      {
+        "type": "numeric",
+        "table": "ad_campaigns",
+        "column": "avg_lead_quality_score",
+        "schema": "public"
+      },
+      {
+        "type": "ARRAY",
+        "table": "ad_campaigns",
+        "column": "target_zip_codes",
+        "schema": "public"
+      },
+      {
+        "type": "text",
+        "table": "ad_campaigns",
+        "column": "target_audience_notes",
+        "schema": "public"
+      },
+      {
+        "type": "date",
+        "table": "ad_campaigns",
+        "column": "start_date",
+        "schema": "public"
+      },
+      {
+        "type": "date",
+        "table": "ad_campaigns",
+        "column": "end_date",
+        "schema": "public"
+      },
+      {
+        "type": "jsonb",
+        "table": "ad_campaigns",
+        "column": "settings",
+        "schema": "public"
+      }
+    ]
+  }
+]

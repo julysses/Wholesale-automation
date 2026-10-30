@@ -209,6 +209,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261029142852_acquisition_evidence_upload_admission.sql').read_text())
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_attestation_populated_upgrade'):
             self.sql((ROOT/'frontend/supabase/migrations/20261029184129_acquisition_evidence_attestations.sql').read_text())
+            self.sql((ROOT/'frontend/supabase/migrations/20261030171809_acquisition_evidence_scan_state.sql').read_text())
         install_storage_fixture(self.sql)
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
             self.sql(STORAGE_MIGRATION.read_text())
@@ -221,6 +222,10 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.sql(f"INSERT INTO leads(id,property_address,city,owner_phone_1) VALUES ('{LEAD}','1 Fixture St','Dallas','+12145550101'),('{LEAD_B}','2 Fixture St','Plano','+12145550101'); "
                  f"INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES('{PROPERTY}','TX','Dallas','fixture-parcel','{LEAD}'); "
                  "INSERT INTO campaigns(name) VALUES('legacy-sentinel');")
+
+    def evidence_scan_state(self, actor=ADMIN, artifact='99200000-0000-4000-8000-000000000002', fail=False, **kwargs):
+        result=self.sql(f"SELECT public.acquisition_evidence_scan_state('{WORKSPACE}','91000000-0000-4000-8000-000000000001','{artifact}')",user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
 
     def attestation_fixture(self):
         self.mail_campaign();self.evidence_policy();self.evidence_register()

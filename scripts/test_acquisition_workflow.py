@@ -19,7 +19,7 @@ from pathlib import Path
 from uuid import UUID
 from unittest.mock import patch
 
-from test_acquisition_workspace import WorkspaceTests, main, ROOT, PG, ADMIN, OTHER, OPERATOR, WORKSPACE, LEAD, PROPERTY, literal
+from test_acquisition_workspace import WorkspaceTests, main, ROOT, PG, ADMIN, OTHER, OPERATOR, CALLER, WORKSPACE, LEAD, PROPERTY, literal
 sys.path.insert(0, str(ROOT))
 import httpx
 from fastapi import FastAPI
@@ -35,6 +35,7 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'acquisition_evidence_scan_state':['p_workspace','p_campaign','p_artifact'],
  'import_acquisition_postal_observation':['p_id','p_workspace','p_relationship'],
  'record_acquisition_evidence_verification':['p_id','p_workspace','p_campaign','p_artifact','p_actor','p_session','p_key','p_observation','p_signature'],
  'admit_acquisition_evidence_upload':['p_attempt','p_workspace','p_campaign','p_artifact','p_purpose'],
@@ -380,6 +381,51 @@ class WorkflowTests(WorkspaceTests):
         if request.url.path.rsplit('/',1)[-1] in {'acquisition_evidence_state','record_acquisition_evidence_verification'}:
             return httpx.Response(200,headers={'content-type':'application/json'},stream=EvidenceStream(result.stdout.strip().encode()))
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
+
+    def test_evidence_scan_rechecks_observer_session_membership_and_retention_policy(self):
+        self.attestation_fixture();self.member(target=OTHER,role='admin')
+        self.record_observation(self.signed_observation(actor=OTHER),actor=OTHER)
+        self.assertEqual(self.evidence_scan_state()['status'],'no_detection_observed')
+        self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 second' WHERE id='{OTHER}'")
+        self.assertEqual(self.evidence_scan_state()['status'],'requires_review')
+        self.sql(f"UPDATE auth.sessions SET not_after=NULL WHERE id='{OTHER}'")
+        self.member(target=OTHER,role='admin',status='revoked')
+        self.assertEqual(self.evidence_scan_state()['status'],'requires_review')
+        self.record_observation(self.signed_observation(request='99300000-0000-4000-8000-000000000009'))
+        self.assertEqual(self.evidence_scan_state()['status'],'no_detection_observed')
+        self.sql("UPDATE private.acquisition_evidence_policies SET revoked_at=clock_timestamp()")
+        self.assertEqual(self.evidence_scan_state()['status'],'policy_review_required')
+        self.member(target=OPERATOR,role='operator')
+        self.evidence_scan_state(actor=OPERATOR,fail=True)
+
+    def test_evidence_scan_current_state_and_sticky_detection(self):
+        self.attestation_fixture()
+        self.assertEqual(self.evidence_scan_state()['status'],'not_scanned')
+        self.record_observation(self.signed_observation())
+        path=f'{self.base}/campaigns/91000000-0000-4000-8000-000000000001/evidence/99200000-0000-4000-8000-000000000002/scan-state'
+        response=self.client.get(path,headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.headers.get('cache-control'),'no-store')
+        clean=response.json()
+        self.assertEqual(clean['status'],'no_detection_observed')
+        self.assertFalse(clean['preview_authorized']);self.assertFalse(clean['content_approved']);self.assertFalse(clean['execution_authorized'])
+        for kwargs in ({'actor':OTHER},{'actor':CALLER},{'aal':'aal1'},{'session':False},{'role':'service_role'},{'role':'anon'}):
+            self.evidence_scan_state(fail=True,**kwargs)
+        self.sql("UPDATE private.acquisition_evidence_verification_keys SET revoked_at=clock_timestamp()")
+        self.assertEqual(self.evidence_scan_state()['status'],'requires_review')
+        self.sql("UPDATE private.acquisition_evidence_verification_keys SET revoked_at=NULL")
+        self.record_observation(self.signed_observation(request='99300000-0000-4000-8000-000000000003',scan_status='detected'))
+        self.record_observation(self.signed_observation(request='99300000-0000-4000-8000-000000000004'))
+        held=self.evidence_scan_state()
+        self.assertEqual(held['status'],'quarantined');self.assertTrue(held['quarantined']);self.assertIsNone(held['observation_id'])
+        alias='99200000-0000-4000-8000-000000000099'
+        self.evidence_register(request=alias)
+        self.assertEqual(self.evidence_scan_state(artifact=alias)['status'],'quarantined')
+        self.evidence_revoke()
+        revoked=self.evidence_scan_state()
+        self.assertEqual(revoked['status'],'revoked');self.assertTrue(revoked['quarantined'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_evidence_verifications'),'3')
+        self.assertEqual(self.sql("SELECT prosecdef FROM pg_proc WHERE oid='public.acquisition_evidence_scan_state(uuid,uuid,uuid)'::regprocedure"),'f')
 
     def test_postal_import_http_exact_recovery_scope_and_unverified_receipt(self):
         self.sql(f"UPDATE leads SET owner_first_name='Synthetic',owner_last_name='Postal',owner_mailing_address='77 Postal Rd, Apt 2B' WHERE id='{LEAD}'")

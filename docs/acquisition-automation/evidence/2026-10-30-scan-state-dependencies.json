@@ -1,0 +1,39 @@
+[
+  {
+    "function_conflicts": null,
+    "indexes": [
+      {
+        "name": "ad_campaigns_pkey",
+        "table": "ad_campaigns",
+        "definition": "CREATE UNIQUE INDEX ad_campaigns_pkey ON public.ad_campaigns USING btree (id)"
+      }
+    ],
+    "policies": [
+      {
+        "name": "auth_all_ad_campaigns",
+        "check": "true",
+        "roles": [
+          "authenticated"
+        ],
+        "table": "ad_campaigns",
+        "using": "true"
+      },
+      {
+        "name": "require_approved_operator",
+        "check": "( SELECT is_approved() AS is_approved)",
+        "roles": [
+          "authenticated"
+        ],
+        "table": "ad_campaigns",
+        "using": "( SELECT is_approved() AS is_approved)"
+      }
+    ],
+    "constraints": [
+      {
+        "table": "ad_campaigns",
+        "constraint": "ad_campaigns_pkey",
+        "definition": "PRIMARY KEY (id)"
+      }
+    ]
+  }
+]

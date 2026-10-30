@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — current scan assessment
+
+- Previous turn made progress publishing ee82549; its exact CI run 41097350211 has now passed all six jobs. Pulled unchanged.
+- Inspected current local registry/attestation/review functions and fresh production metadata, constraints/indexes/policies and function conflicts. Latest deployed migration remains 20261023221455; saved metadata-only inventories under evidence/2026-10-30-scan-state-*.json. Used the Supabase CLI to create proposed migration 20261030171809, and updated the reviewed manifest hash. No production DDL ran.
+- Added current scan-state RPC and strict read-only API. A no-detection observation rechecks signer, observer membership/session and retention policy. Recorded detection remains a hold for matching bytes in the workspace across rescans and artifact identities. The response never grants preview, approval or execution. Current-state snapshots are not locked approval binding.
+- Final full rehearsal passed 47 migrations, 26 access probes, all 51 application journeys, preserved historical data and ten existing real PostgREST checks. Both focused scan-state journeys and 13 API receipt checks passed. Fixed a missing test-fixture import before the final successful runs. Evidence: evidence/2026-10-30-scan-state-result.json.
+- Next: publish and verify successor CI; complete reviewed quarantine/clearance and transactional binding to the existing guided mail-content review, plus actual worker lifecycle/custody. Continue canonical postal eligibility, persisted batches and all remaining original PRD phases. Production/provider/SMS/spending/outreach/fulfillment remain unchanged.
+
 ## Recovery publication gate cleared
 
 - Exact predecessor 85419cfb7873e5e9b96ca5a843b6562717c629e1 / run 41082200037 completed successfully with all six jobs. The original database job finished without cancellation/restart. Previous turns were verified waits; this turn clears the publication gate.
