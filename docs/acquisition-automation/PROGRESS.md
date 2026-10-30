@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Content decisions bound to exact trusted file evidence
+
+- Pulled unchanged; verified exact predecessor a1b0bad84567348f653960cfa8765a37a98c4de3 / CI 41132959949 completed with all six jobs successful before publication.
+- CLI-created proposed migration 20261030214239 adds an immutable private binding relation with RLS, denied direct application access and composite scope references. The existing content request/receipt shapes and historical review records are preserved. New approvals require the exact registered mail-content artifact/hash and current signed verification; maximum expiry fits retention, policy, signer and observer session. Historical unbound approvals remain readable/retryable/withdrawable but no longer current.
+- Approval and signed scan recording now serialize matching bytes across artifact aliases. Approval rechecks trusted evidence after its lock waits; source/session safeguards remain. A later alias detection invalidates current approval and proof without erasing history. Read-only scan status remains non-authorizing; no clearance or file-byte preview was introduced.
+- Validation: two focused application approval/preview journeys passed. Full rehearsal passed 49 migrations, 26 access probes, 58 application journeys, historical preservation and 18 actual local PostgREST checks. Added alias-detection contention test passed separately after the full run (the next full run includes 59 journeys). All 15 existing mail-content/proof/registry upgrade regressions passed. See evidence/2026-10-30-content-binding-result.json and EVIDENCE-APPROVAL-BINDING.md for scope and remaining acceptance.
+- Fresh live metadata at 21:42:38 UTC confirms latest production migration 20261023221455 and absent conflicting binding/review/verification objects. Metadata-only source inventory and reviewed manifest hash saved. No production SQL applied.
+- Next: publish this backend increment and verify successor CI. Add a server-derived review candidate/deadline and guided supporting-file selection in the existing content step; extend expiry/revocation contention and real approval RPC transport coverage. Complete quarantine clearance, worker custody, postal/batches and all remaining original PRD phases. Production, SMS, providers, outreach, spending and fulfillment remain unchanged.
+
+
 ## 2026-10-30 — Signed evidence through the actual local API gateway
 
 - Verified ca3697c07fd2fa03528db45ed94480e9913b9068 was pushed; successor CI is 41108995914. Pulled unchanged before this increment. Do not publish this increment until all six jobs on that exact predecessor succeed.

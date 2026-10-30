@@ -211,6 +211,8 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_attestation_populated_upgrade'):
             self.sql((ROOT/'frontend/supabase/migrations/20261029184129_acquisition_evidence_attestations.sql').read_text())
             self.sql((ROOT/'frontend/supabase/migrations/20261030171809_acquisition_evidence_scan_state.sql').read_text())
+        if self._testMethodName not in ('test_mail_destination_populated_upgrade','test_mail_content_populated_upgrade','test_evidence_registry_populated_upgrade','test_evidence_attestation_populated_upgrade'):
+            self.sql((ROOT/'frontend/supabase/migrations/20261030214239_acquisition_content_evidence_bindings.sql').read_text())
         install_storage_fixture(self.sql)
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
             self.sql(STORAGE_MIGRATION.read_text())
@@ -235,9 +237,9 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
     def verification_key_fixture(self):
         self.sql(f"INSERT INTO private.acquisition_evidence_verification_keys(id,workspace_id,secret,scanner_version,scan_policy_version,valid_from,valid_until,reviewed_by,approval_ref) VALUES('99300000-0000-4000-8000-000000000001','{WORKSPACE}',decode(repeat('ab',32),'hex'),'ClamAV 1.4.3/12345/Thu Oct 29 00:00:00 2026','synthetic-v1',clock_timestamp()-interval '1 hour',clock_timestamp()+interval '1 hour','{ADMIN}','99300000-0000-4000-8000-000000000088')")
 
-    def signed_observation(self, request='99300000-0000-4000-8000-000000000002', actor=ADMIN, **changes):
+    def signed_observation(self, request='99300000-0000-4000-8000-000000000002', actor=ADMIN, artifact='99200000-0000-4000-8000-000000000002', **changes):
         import hmac
-        state=self.evidence_state()
+        state=self.evidence_state(artifact=artifact)
         payload={k:state[k] for k in ('media_type','retain_until','retention_policy_id','checked_at')}
         payload.update(sha256=state['expected_sha256'],byte_size=state['expected_byte_size'],scan_checked_at=state['checked_at'],
             registry_checked_at=state['checked_at'],scanner='clamav-instream-v1',scanner_version='ClamAV 1.4.3/12345/Thu Oct 29 00:00:00 2026',
@@ -529,8 +531,8 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         result=self.sql(f"SELECT public.revoke_acquisition_evidence('{request}','{WORKSPACE}','91000000-0000-4000-8000-000000000001','{artifact}',{literal(reason)})",user=actor,fail=fail,**kwargs)
         return result if fail else json.loads(result)
 
-    def evidence_state(self, actor=ADMIN, fail=False, **kwargs):
-        result=self.sql(f"SELECT public.acquisition_evidence_state('{WORKSPACE}','91000000-0000-4000-8000-000000000001','99200000-0000-4000-8000-000000000002')",user=actor,fail=fail,**kwargs)
+    def evidence_state(self, actor=ADMIN, fail=False, artifact='99200000-0000-4000-8000-000000000002', **kwargs):
+        result=self.sql(f"SELECT public.acquisition_evidence_state('{WORKSPACE}','91000000-0000-4000-8000-000000000001','{artifact}')",user=actor,fail=fail,**kwargs)
         return result if fail else json.loads(result)
 
     def test_evidence_registration_requires_reviewed_policy_and_preserves_exact_retry(self):
@@ -648,7 +650,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_evidence'"),'1')
 
     def test_evidence_registry_populated_upgrade(self):
-        self.mail_campaign();self.mail_template();self.mail_destination();self.content_review()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture();self.content_review()
         before=self.sql("SELECT jsonb_build_object('campaigns',(SELECT jsonb_agg(to_jsonb(c)) FROM ad_campaigns c),'reviews',(SELECT jsonb_agg(to_jsonb(r)) FROM acquisition_mail_content_reviews r),'audit',(SELECT count(*) FROM audit_logs))")
         self.sql((ROOT/'frontend/supabase/migrations/20261029022851_acquisition_evidence_registry.sql').read_text())
         after=self.sql("SELECT jsonb_build_object('campaigns',(SELECT jsonb_agg(to_jsonb(c)) FROM ad_campaigns c),'reviews',(SELECT jsonb_agg(to_jsonb(r)) FROM acquisition_mail_content_reviews r),'audit',(SELECT count(*) FROM audit_logs))")
@@ -662,7 +664,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         return result if fail else json.loads(result)
 
     def test_mail_proof_uses_enrolled_canonical_address_without_owner_data(self):
-        self.mail_campaign();self.mail_template();self.mail_destination();self.content_review();self.bind()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture();self.content_review();self.bind()
         self.sql(f"UPDATE wholesale_ingest.properties SET address_std='123 Canonical St',unit='2',city='Dallas',zip=NULL WHERE id='{PROPERTY}'")
         before=self.sql('SELECT count(*) FROM audit_logs')
         result=self.mail_proof_context()
@@ -676,7 +678,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.assertEqual(self.mail_proof_context()['property']['unit'],'3')
 
     def test_mail_proof_scope_unlinked_property_and_stale_review_are_blocked(self):
-        self.mail_campaign();self.mail_template();self.mail_destination();self.content_review()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture();self.content_review()
         self.mail_proof_context(fail=True)
         self.bind();self.mail_proof_context(fail=True)  # missing canonical address; legacy lead address is not a fallback
         self.sql(f"UPDATE wholesale_ingest.properties SET address_std='123 Canonical St',city='Dallas' WHERE id='{PROPERTY}'")
@@ -687,14 +689,23 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
         self.mail_proof_context(fail=True)
 
+    def content_evidence_fixture(self):
+        if self.sql("SELECT to_regclass('private.acquisition_content_evidence_bindings') IS NOT NULL")!='t':return
+        self.evidence_policy()
+        self.evidence_register(request='99100000-0000-4000-8000-000000000088',digest='c'*64)
+        self.verification_key_fixture()
+        self.record_observation(self.signed_observation(artifact='99100000-0000-4000-8000-000000000088'))
+        self.content_evidence_expiry=json.loads(self.sql("SELECT to_json(clock_timestamp()+interval '30 minutes')"))
+
     def content_review(self, request='99100000-0000-4000-8000-000000000001', expected=0, action='approved',
                        actor=ADMIN, fail=False, workspace=WORKSPACE, content='99100000-0000-4000-8000-000000000099',
                        creative='97000000-0000-4000-8000-000000000001', destination='99000000-0000-4000-8000-000000000001',
-                       company='Hilltop Home Company', fingerprint=None, expires='2098-01-01T00:00:00Z', **kwargs):
+                       company='Hilltop Home Company', fingerprint=None, expires=None, evidence='99100000-0000-4000-8000-000000000088', digest='c'*64, **kwargs):
+        if expires is None:expires=getattr(self,'content_evidence_expiry','2098-01-01T00:00:00Z')
         if fingerprint is None and action=='approved':
             fingerprint=self.mail_content_preparation()['preparation_hash']
         args=[request,workspace,'91000000-0000-4000-8000-000000000001',content,expected,action,creative,destination,company,
-              fingerprint,'99100000-0000-4000-8000-000000000088','c'*64,expires,'Reviewed exact content and retained approval evidence.']
+              fingerprint,evidence,digest,expires,'Reviewed exact content and retained approval evidence.']
         if action=='withdrawn':args[6:13]=[None]*7
         values=','.join('NULL' if v is None else str(v) if isinstance(v,int) else literal(v) for v in args)
         result=self.sql(f'SELECT public.review_acquisition_mail_content({values})',user=actor,fail=fail,**kwargs)
@@ -705,7 +716,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         return result if fail else json.loads(result)
 
     def test_mail_content_review_idempotency_concurrency_and_withdrawal(self):
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         self.assertEqual(self.content_state()['status'],'pending_review')
         fingerprint=self.mail_content_preparation()['preparation_hash']
         with ThreadPoolExecutor(max_workers=3) as pool:
@@ -714,7 +725,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.assertTrue(all(row['execution_authorized'] is False for row in rows))
         self.assertTrue(self.content_state()['review_current'])
         self.content_review(company='Changed company',fingerprint=fingerprint,fail=True)
-        self.assertTrue(self.content_review(fingerprint=fingerprint,expires='2097-12-31T18:00:00-06:00')['duplicate'])
+        self.assertTrue(self.content_review(fingerprint=fingerprint,expires=self.sql(f"SELECT to_char({literal(self.content_evidence_expiry)}::timestamptz AT TIME ZONE 'Etc/GMT+6','YYYY-MM-DD\"T\"HH24:MI:SS.US')||'-06:00'"))['duplicate'])
         self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
         self.assertTrue(self.content_review(fingerprint=fingerprint)['duplicate'])
         state=self.content_state();self.assertEqual(state['status'],'withdrawn');self.assertIsNone(state['preparation'])
@@ -723,7 +734,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews'),'2')
 
     def test_mail_content_review_scope_roles_mfa_and_immutability(self):
-        self.mail_campaign();self.mail_template();self.mail_destination();self.content_review()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture();self.content_review()
         self.member(target=OPERATOR,role='operator');self.member(target=CALLER,role='acquisition_caller')
         self.assertTrue(self.content_state(actor=OPERATOR)['review_current'])
         for actor in (OPERATOR,CALLER,OTHER):self.content_review(actor=actor,fail=True)
@@ -740,7 +751,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.sql("UPDATE acquisition_mail_content_reviews SET company_name='Changed'",fail=True)
 
     def test_mail_content_review_rejects_stale_binding_and_invalidates_sources(self):
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         original=self.mail_content_preparation()['preparation_hash']
         self.content_review(fingerprint='f'*64,fail=True)
         self.content_review(expires='infinity',fail=True);self.content_review(expires='2100-01-01',fail=True)
@@ -759,7 +770,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.assertEqual(self.content_state()['status'],'withdrawn')
 
     def test_mail_content_review_reviewer_change_expiry_and_gate(self):
-        self.mail_campaign();self.mail_template();self.mail_destination();self.member(target=OPERATOR,role='admin')
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture();self.member(target=OPERATOR,role='admin')
         self.content_review(actor=OPERATOR);self.assertTrue(self.content_state()['review_current'])
         self.member(target=OPERATOR,role='operator');self.assertFalse(self.content_state()['review_current'])
         self.member(target=OPERATOR,role='admin');self.assertFalse(self.content_state()['review_current'])
@@ -777,7 +788,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.content_review(request='99100000-0000-4000-8000-000000000004',expected=3,action='withdrawn')
 
     def test_mail_content_different_concurrent_decisions_conflict(self):
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         fingerprint=self.mail_content_preparation()['preparation_hash']
         def write(i):
             try:
@@ -792,7 +803,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
     def content_source_race(self, source):
         import select
         import time
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         fingerprint=self.mail_content_preparation()['preparation_hash']
         key=(f'mail-template:{WORKSPACE}:98000000-0000-4000-8000-000000000001' if source=='template'
              else f'mail-destination:{WORKSPACE}:99000000-0000-4000-8000-000000000099')
@@ -840,7 +851,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.content_source_race('destination')
 
     def test_mail_content_populated_upgrade(self):
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         before=self.sql('SELECT to_jsonb(c) FROM ad_creatives c')
         destinations=self.sql('SELECT to_jsonb(d) FROM acquisition_mail_destination_reviews d')
         self.sql((ROOT/'frontend/supabase/migrations/20261029013306_acquisition_mail_content_reviews.sql').read_text())
@@ -856,7 +867,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         return value if fail else json.loads(value)
 
     def test_mail_content_preparation_exact_sources_and_no_writes(self):
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         before=self.sql('SELECT count(*) FROM audit_logs')
         first=self.mail_content_preparation();second=self.mail_content_preparation()
         self.assertEqual(first['preparation_hash'],second['preparation_hash'])
@@ -878,7 +889,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.assertNotEqual(newer['preparation_hash'],newest['preparation_hash'])
 
     def test_mail_content_preparation_scope_roles_and_input(self):
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         self.member(target=OPERATOR,role='operator');self.member(target=CALLER,role='acquisition_caller')
         self.assertEqual(self.mail_content_preparation(actor=OPERATOR)['status'],'content_prepared')
         for actor in (OTHER,CALLER):self.mail_content_preparation(actor=actor,fail=True)
@@ -891,7 +902,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.mail_content_preparation(review='99000000-0000-4000-8000-000000000099',fail=True)
 
     def test_mail_content_preparation_invalidates_revoked_destination_and_gate(self):
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         self.mail_destination(request='99000000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
         self.mail_content_preparation(fail=True)
         self.mail_content_preparation(review='99000000-0000-4000-8000-000000000002',fail=True)

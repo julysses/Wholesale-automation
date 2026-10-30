@@ -49,3 +49,16 @@ The supporting-file status panel is read-only and already implemented. Selection
 - Full predecessor CI success before feature push, exact successor CI verification and separately approved hosted/platform acceptance. Local test success is not production activation.
 
 Compensation must use a reviewed forward change that disables/revokes the affected write entry points while preserving decisions and bindings. Never compensate by restoring approval based solely on a user-supplied evidence reference.
+
+
+## Backend binding implementation checkpoint
+
+Proposed migration `20261030214239_acquisition_content_evidence_bindings.sql` implements the immutable private binding relation, with RLS and no application-role table access. Composite foreign keys enforce workspace/campaign/review and workspace/campaign/artifact/verification identity. Existing review records and API response shapes remain unchanged. New uniqueness constraints support those references; their identities were already globally unique.
+
+The private lock helper serializes artifact then workspace/hash, locks the policy, signer and observer authority rows, and evaluates eligibility using wall-clock time after waiting. Signed verification recording now takes the same workspace/hash lock after its artifact lock. This closes the alias-detection race without changing signed-request identities or exact historical receipts. The content-review write retains activation, owner/admin MFA, current session, source preparation and deadline checks and atomically inserts the exact verification binding plus its audit reference. Approval expiry cannot exceed the file retention, policy, signing-key or observer-session deadline. Current content/proof reads require the bound verification to remain the latest current observation, with no matching-byte detection hold. Historical unbound reviews remain readable and withdrawable but no longer provide current approval.
+
+The backend change does not yet replace manual UI reference fields, expose file bytes, implement detection clearance or deploy a scanner. The next UI increment needs a server-derived read-only review candidate with the actual limiting expiry, so users can choose a file and an attainable approval deadline without guessing signing-key or session limits. The final write must independently enforce the same constraints. Do not treat the read-only scan panel as permission.
+
+Regression evidence includes healthy approval/preview, exact retry, wrong identity/hash/deadline rejection, signing-key invalidation, raw binding read/write denial, immutable binding, historical unbound records, detection through an alias, and an actual lock wait on an uncommitted alias detection followed by rejection with no approval/binding/audit. More expiry/revocation contention and actual approval RPC transport coverage remain required before calling the entire binding contract complete.
+
+Compensation: keep acquisition disabled and use a reviewed forward migration to revoke authenticated EXECUTE on both public/private content-review functions if containment is needed. Preserve all binding rows, constraints, scan history and hash locks. Do not restore unbound approvals or manually clear detection records. Production application still requires approval.

@@ -77,3 +77,7 @@ The existing mail supporting-files step now has an explicit, scoped Check file s
 
 ### 2026-10-30 content-review session race repaired locally
 All six predecessor CI checks passed on d1094c3 / 41105042913. Proposed migration 20261030182649 repairs a reproduced session-expiry race in content review without changing its signature or saved history. The final isolated rehearsal passed 48 migrations, 55 application journeys, 26 access probes, historical preservation and 14 real local PostgREST checks. The guided supporting-file UI, actual transport tests and rendered synthetic walkthrough are retained for the next push. Quarantine clearance, locked file-to-approval binding and the broader PRD remain incomplete; nothing is activated in production.
+
+
+### 2026-10-30 exact evidence binding — backend implemented, UI handoff remains
+Proposed migration 20261030214239 binds new content approvals to an exact registered file/hash and current signed scan, serializes alias detections, and invalidates current approval/proof when evidence becomes untrusted. Old unbound reviews remain historical and withdrawable. All 49 proposed migrations, 58 full-catalog journeys, 18 real local gateway checks, the additional alias-contention test and 15 existing mail regressions passed. Predecessor a1b0bad CI 41132959949 is all-six successful. Guided file selection, actual limiting-expiry presentation, clearance and further binding acceptance remain open; this does not activate anything in production.

@@ -1,0 +1,16 @@
+{
+  "captured_at": "2026-10-30 21:42:38.418868+00",
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "scope": "Live metadata only, no customer records",
+  "latest_migration": "20261023221455",
+  "binding_table": null,
+  "lock_function": null,
+  "existing_verifications": null,
+  "existing_reviews": null,
+  "local_dependencies": [
+    "20261029013306_acquisition_mail_content_reviews.sql",
+    "20261029184129_acquisition_evidence_attestations.sql",
+    "20261030171809_acquisition_evidence_scan_state.sql",
+    "20261030182649_acquisition_content_review_session_freshness.sql"
+  ]
+}

@@ -382,10 +382,92 @@ class WorkflowTests(WorkspaceTests):
             return httpx.Response(200,headers={'content-type':'application/json'},stream=EvidenceStream(result.stdout.strip().encode()))
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
 
+    def test_content_evidence_binding_requires_exact_current_file_and_preserves_retry(self):
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
+        self.content_review(evidence='99100000-0000-4000-8000-000000000077',fail=True)
+        self.content_review(digest='a'*64,fail=True)
+        self.content_review(expires='2098-01-01T00:00:00Z',fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews'),'0')
+        self.content_review()
+        self.assertTrue(self.content_state()['review_current'])
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_content_evidence_bindings'),'1')
+        for role in ('authenticated','anon','service_role'):
+            self.sql('SELECT * FROM private.acquisition_content_evidence_bindings',user=ADMIN,role=role,fail=True)
+        self.sql("UPDATE private.acquisition_content_evidence_bindings SET sha256=repeat('a',64)",fail=True)
+        self.sql("UPDATE private.acquisition_evidence_verification_keys SET revoked_at=clock_timestamp()")
+        self.assertFalse(self.content_state()['review_current'])
+        self.assertTrue(self.content_review()['duplicate'])
+        self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,fail=True)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_content_evidence_bindings'),'1')
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.content_review(request='99100000-0000-4000-8000-000000000003',expected=1,action='withdrawn')
+        self.assertEqual(self.content_state()['status'],'withdrawn')
+
+    def test_content_evidence_binding_detection_on_alias_invalidates_approval(self):
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
+        self.content_review()
+        alias='99200000-0000-4000-8000-000000000099'
+        self.evidence_register(request=alias,digest='c'*64)
+        self.record_observation(self.signed_observation(request='99300000-0000-4000-8000-000000000005',artifact=alias,scan_status='detected'))
+        self.assertFalse(self.content_state()['review_current'])
+        self.record_observation(self.signed_observation(request='99300000-0000-4000-8000-000000000006',artifact='99100000-0000-4000-8000-000000000088'))
+        self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,fail=True)
+        self.assertFalse(self.content_state()['review_current'])
+        self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews'),'1')
+
+    def test_content_evidence_binding_waits_for_alias_detection_commit(self):
+        import psycopg2
+        from concurrent.futures import ThreadPoolExecutor
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
+        alias='99200000-0000-4000-8000-000000000099'
+        self.evidence_register(request=alias,digest='c'*64)
+        signed=self.signed_observation(request='99300000-0000-4000-8000-000000000005',artifact=alias,scan_status='detected')
+        fingerprint=self.mail_content_preparation()['preparation_hash']
+        database=getattr(self,'database_name','acquisition_test')
+        blocker=psycopg2.connect(host=self.socket,dbname=database,user='test_admin')
+        try:
+            with blocker.cursor() as cursor:
+                cursor.execute('SET ROLE authenticated')
+                cursor.execute("SELECT set_config('request.jwt.claims',%s,true)",[json.dumps({'sub':ADMIN,'session_id':ADMIN,'role':'authenticated','aal':'aal2'})])
+                cursor.execute('SELECT public.record_acquisition_evidence_verification('+','.join(['%s']*len(signed))+')',signed)
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(self.content_review,fingerprint=fingerprint,fail=True)
+                try:
+                    deadline=time.monotonic()+4
+                    while self.sql(f"SELECT count(*) FROM pg_stat_activity WHERE datname={literal(database)} AND wait_event='advisory' AND query LIKE '%public.review_acquisition_mail_content%'")=='0':
+                        if future.done() or time.monotonic()>deadline:raise AssertionError('Approval did not wait for alias detection')
+                        time.sleep(.02)
+                    blocker.commit()
+                finally:blocker.rollback()
+                future.result(timeout=6)
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_mail_content_reviews'),'0')
+            self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_content_evidence_bindings'),'0')
+            self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_content'"),'0')
+        finally:blocker.close()
+
+    def test_content_unbound_historical_attestation_remains_readable_not_current(self):
+        self.mail_campaign();self.mail_template();self.mail_destination()
+        # Simulate a historical pre-binding write without fabricating verified evidence.
+        old=(ROOT/'frontend/supabase/migrations/20261030182649_acquisition_content_review_session_freshness.sql').read_text()
+        self.sql(old)
+        self.content_review()
+        original=self.sql('SELECT to_jsonb(r) FROM acquisition_mail_content_reviews r')
+        new=(ROOT/'frontend/supabase/migrations/20261030214239_acquisition_content_evidence_bindings.sql').read_text()
+        start=new.index('CREATE OR REPLACE FUNCTION private.review_acquisition_mail_content(')
+        self.sql(new[start:new.index('END $$;',start)+len('END $$;')])
+        current=self.content_state()
+        self.assertFalse(current['review_current']);self.assertEqual(current['status'],'requires_review')
+        self.assertIsNotNone(current['latest_review']);self.assertIsNone(current['preparation'])
+        self.assertTrue(self.content_review()['duplicate'])
+        self.assertEqual(self.sql('SELECT to_jsonb(r) FROM acquisition_mail_content_reviews r'),original)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_content_evidence_bindings'),'0')
+        self.content_review(request='99100000-0000-4000-8000-000000000002',expected=1,action='withdrawn')
+        self.assertEqual(self.content_state()['status'],'withdrawn')
+
     def content_session_wait(self, mode):
         import psycopg2
         from concurrent.futures import ThreadPoolExecutor
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         fingerprint=self.mail_content_preparation()['preparation_hash']
         if not mode.startswith('new'):self.content_review(fingerprint=fingerprint)
         expected_count='0' if mode.startswith('new') else '1'
@@ -1343,7 +1425,7 @@ class WorkflowTests(WorkspaceTests):
 
     def test_mail_proof_http_current_review_canonical_property_and_history(self):
         self.mail_campaign();self.mail_template(body='Call {{company_name}} at {{tracking_phone}} about {{property_address}}.')
-        self.mail_destination();self.content_review()
+        self.mail_destination();self.content_evidence_fixture();self.content_review()
         self.sql(f"UPDATE wholesale_ingest.properties SET address_std='123 <Canonical> St',unit='2',city='Dallas' WHERE id='{PROPERTY}'")
         path=self.base+'/campaigns/91000000-0000-4000-8000-000000000001/mail-content/99100000-0000-4000-8000-000000000099'
         before=self.sql('SELECT count(*) FROM audit_logs')
@@ -1372,7 +1454,7 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.client.get(history_path,headers=other).json()['items'],[])
 
     def test_mail_content_review_http_commit_loss_and_current_state(self):
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         campaign=self.base+'/campaigns/91000000-0000-4000-8000-000000000001'
         source={'creative_id':'97000000-0000-4000-8000-000000000001','destination_review_id':'99000000-0000-4000-8000-000000000001','company_name':'Hilltop Home Company'}
         preparation=self.client.post(campaign+'/mail-content/prepare',headers=self.headers,json=source)
@@ -1380,7 +1462,7 @@ class WorkflowTests(WorkspaceTests):
         path=campaign+'/mail-content/99100000-0000-4000-8000-000000000099'
         body={**source,'id':'99100000-0000-4000-8000-000000000001','expected_version':0,'action':'approved',
               'preparation_hash':preparation.json()['preparation_hash'],'evidence_ref':'99100000-0000-4000-8000-000000000088',
-              'evidence_hash':'c'*64,'expires_at':'2098-01-01T00:00:00Z','note':'Reviewed exact content and retained approval evidence.'}
+              'evidence_hash':'c'*64,'expires_at':self.content_evidence_expiry,'note':'Reviewed exact content and retained approval evidence.'}
         self.lose_facebook_reply='review_acquisition_mail_content'
         self.assertEqual(self.client.post(path+'/reviews',headers=self.headers,json=body).status_code,503)
         result=self.client.post(path+'/reviews',headers=self.headers,json=body)
@@ -1402,7 +1484,7 @@ class WorkflowTests(WorkspaceTests):
         self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_mail_content'"),'2')
 
     def test_mail_content_preparation_http_uses_current_database_records(self):
-        self.mail_campaign();self.mail_template();self.mail_destination()
+        self.mail_campaign();self.mail_template();self.mail_destination();self.content_evidence_fixture()
         path=self.base+'/campaigns/91000000-0000-4000-8000-000000000001/mail-content/prepare'
         body={'creative_id':'97000000-0000-4000-8000-000000000001',
               'destination_review_id':'99000000-0000-4000-8000-000000000001','company_name':'Hilltop Home Company'}

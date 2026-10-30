@@ -193,6 +193,10 @@
     {
       "file": "20261030182649_acquisition_content_review_session_freshness.sql",
       "sha256": "27a3d7d249218144966c24b3432e425827fb16ac7c321823efde8cfe7db108c2"
+    },
+    {
+      "file": "20261030214239_acquisition_content_evidence_bindings.sql",
+      "sha256": "7afe4be48013101e9436d452bf303d01c735abe0ea648697d0ab7693a2c914a7"
     }
   ]
 }
