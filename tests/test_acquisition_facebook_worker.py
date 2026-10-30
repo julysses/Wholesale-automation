@@ -158,3 +158,28 @@ def test_missing_provider_campaign_does_not_get_invented_from_receipt(worker):
     assert asyncio.run(process_facebook_inquiry())['status']=='completed'
     evidence=json.loads(worker['requests'][-1].content)['p_prepared']['provider_evidence']
     assert 'campaign_id' not in evidence
+
+
+def test_supervised_runner_executes_existing_worker_once(worker, monkeypatch):
+    from tools.acquisition_facebook_runner import run
+    monkeypatch.setenv('ACQUISITION_FACEBOOK_RUNNER_ENABLED', 'true')
+    rows = []
+    assert asyncio.run(run(report=rows.append)) == 0
+    assert worker['complete_calls'] == 1
+    assert sum(r.url.host == 'graph.facebook.com' for r in worker['requests']) == 1
+    assert rows[1]['status'] == 'completed'
+    assert 'page-fixture' not in json.dumps(rows)
+    assert 'database-fixture' not in json.dumps(rows)
+
+
+def test_supervised_runner_stops_after_real_worker_parks_credentials(worker, monkeypatch):
+    from tools.acquisition_facebook_runner import run
+    monkeypatch.setenv('ACQUISITION_FACEBOOK_RUNNER_ENABLED', 'true')
+    worker['provider'] = {'error': {'code': 190, 'message': 'private provider token'}}
+    worker['provider_status'] = 400
+    rows = []
+    assert asyncio.run(run(max_cycles=3, report=rows.append)) == 2
+    assert worker['complete_calls'] == 0
+    assert sum(r.url.host == 'graph.facebook.com' for r in worker['requests']) == 1
+    assert rows[1]['reason_code'] == 'CREDENTIALS_INVALID'
+    assert 'private provider token' not in json.dumps(rows)

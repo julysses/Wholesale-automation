@@ -4,14 +4,16 @@ Updated October 30, 2026 (America/Chicago). This is a navigation and gap invento
 
 ## Latest handoff
 
-Guided supporting-file selection and server-derived review deadlines are implemented in the existing mail content step. All 50 proposed migrations, 60 full-catalog journeys, 26 access probes, 18 real local gateway checks, 13 API response tests and 62 related screen tests pass. Exact predecessor e90bab9 / CI 41136025124 is all-six successful. See the newest PROGRESS.md checkpoint for publication and remaining acceptance. No production migration, scanner, provider or fulfillment activation occurred. PropStream is the address/skip-trace source; no mail vendor is selected. Older sections below are historical checkpoints, not current publication status.
+Published head 475728112201540b5514e25e92d80cfb51b8a338 includes guided file selection, actual local content-approval gateway acceptance and the Phase 1 release packet. Its exact CI run is 41139435572; verify all six terminal outcomes before publishing the retained runner increment. Five jobs are successful and contention is still live at this checkpoint.
+
+A disabled supervised Facebook runner is now implemented locally with safe status reporting, bounded cycles and graceful stop; all 52 related offline tests passed. No hosted process, scheduler, alert destination or provider was enabled. See the latest PROGRESS.md entry and config/acquisition/facebook/README.md.
 
 ## Git and validation
 
-- Branch: codex/acquisition-foundation. Published head 69239df98a2754c1b6f1674858fb9d3e52ac252b adds guided file selection. Its CI run 41138136317 is all-six successful (last job finished 22:36:42 UTC); the retained gateway/packet increments are ready to publish. Predecessor e90bab9 / 41136025124 passed all six.
-- Latest published local evidence: 50 additive migrations, 26 access probes, 60 full-catalog journeys, 18 actual local PostgREST checks, 13 candidate response tests and 62 related frontend tests. Build and lint baseline pass. The retained gateway increment passed 23 actual local checks, including content approval/revocation; see PROGRESS.md for its publication gate.
+- Branch: codex/acquisition-foundation. Latest all-six prerequisite: 69239df / CI 41138136317. Published successor: 4757281 / CI 41139435572.
+- Published local evidence: 50 additive migrations, 26 access probes, 60 full-catalog journeys and 23 actual local PostgREST checks, plus guided-screen/API tests. Retained runner validation adds 52 offline tests without schema/UI changes.
 - Hosted CI verifies code and synthetic full-schema rehearsal. It does not verify hosted Supabase Auth issuance, live provider delivery, persistent worker storage or deployment acceptance.
-- No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
+- No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior. Older chronological sections below remain historical.
 
 ## One app process
 
@@ -34,7 +36,7 @@ Amount approval is internal review only. Saving a document or scan observation d
 | PRD area | Current source evidence | Required next evidence or implementation |
 | --- | --- | --- |
 | MIG-001–005 shared foundation | Additive acquisition migrations, SCHEMA-MAPPING.md, workspace/role/session RPCs, suppressions, immutable audit and provider idempotency; standalone workspace and workflow harnesses | Full-catalog upgrade passed 50 candidate migrations, 26 access probes and 60 application journeys; 18 local PostgREST checks passed for the published candidate. Hosted Auth issuance, Storage/platform parity and approved deployment remain unverified. Obtain migration approval before production application. |
-| FB-001–006 | acquisition_webhooks.py, acquisition_facebook_worker.py, acquisition_intake.py; signed batch inbox, leased retrieval, identity/qualification, recovery, attribution and costs; synthetic database journeys | Current Meta permissions/version/subscription and credential custody acceptance, monitored worker/retention, approved fresh lead through actual provider and actual auth. No publishing or funding authority. |
+| FB-001–006 | acquisition_webhooks.py, acquisition_facebook_worker.py, acquisition_intake.py; signed batch inbox, leased retrieval, identity/qualification, recovery, attribution and costs; synthetic database journeys | Disabled supervised runner now exists locally; current Meta permissions/version/subscription and credential custody acceptance, deployed supervision/alerts and monitored retention, approved fresh lead through actual provider and actual auth. No publishing or funding authority. |
 | RET-001–006 | acquisition_inbound_webhooks.py, acquisition_inbound_tools.py, inbound intake/restriction/request-review migrations, config/acquisition/inbound draft package | Actual inbound-only Twilio/Retell configuration, approved disclosure/privacy/recording controls, audio/interruption/transfer QA and bilingual acceptance. Draft package and synthetic requests are not live calls. |
 | MAIL-001–006 | acquisition_mail.py preparation rules, acquisition_mail_render.py/proof.py, campaign/template/destination/content review UI and SQL | Canonical postal eligibility and suppression matching, authoritative history and locked budget/cadence reservations, persisted batches/jobs, selected vendor adapter and sandbox/proof reconciliation, separately approved fulfillment. Preparation is not a reservation. |
 | Evidence supporting mail review | Registry/discovery/upload UI; same-byte scanner; signed ledger/journal; sticky detection hold; locked exact evidence-to-review binding and guided file/deadline selection | Actual worker lifecycle and persistent-volume acceptance, reviewed quarantine clearance, key/scanner deployment, hosted Storage/JWT acceptance, retention administration/holds/purge and additional expiry/revocation contention. Actual local approval gateway coverage passed in the retained increment; it does not prove hosted acceptance. |
@@ -48,7 +50,7 @@ See [PHASE-1-RELEASE-PACKET.md](PHASE-1-RELEASE-PACKET.md) for the exact candida
 
 ## Next work in order
 
-1. All six jobs for published 69239df / CI 41138136317 passed. Publish the retained gateway test and Phase 1 packet increments, then verify successor CI. Check branch/status and the newest PROGRESS.md checkpoint before resuming.
+1. Verify all six jobs for published 4757281 / CI 41139435572 before publishing the retained supervised runner increment, then verify successor CI. Check branch/status and the newest PROGRESS.md checkpoint before resuming.
 2. Close the shared-foundation and Facebook acceptance gaps against the complete candidate. Assemble a concrete migration/provider acceptance packet before requesting production or live-test authorization. Later mail-document work must not be mistaken for completion of the Phase 1 release gate.
 3. Complete the mail evidence worker and remaining binding acceptance, canonical mailing rules/reservations, vendor sandbox workflow, and inbound provider acceptance. Keep them within the existing campaign/review screens.
 4. Deliver portal, manual human caller, agency and contract/disposition capabilities with the PRD's sequential activation gates. These are still required parts of the goal, not optional enhancements.

@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Disabled supervised Facebook inquiry runner
+
+- Pulled unchanged from published 475728112201540b5514e25e92d80cfb51b8a338. Exact CI 41139435572 has five successful jobs; its real PostgreSQL contention job remains live. Hold this increment locally until all six succeed, then push and inspect successor CI.
+- Added `python -m tools.acquisition_facebook_runner`: default one cycle, explicit separate runner-enable gate, 1–10000 bounded cycles, 30–3600 second interval, 60-second cycle timeout, sanitized JSON status events and stable exit codes. It calls the existing leased worker directly and never changes SQL leases, reviewed recovery, admission or activation. No scheduler or hosted service is installed.
+- Unknown/malformed/timeout results stop with exit 1 and no immediate reprocessing; review outcomes stop with exit 2; disabled runner exits 78 before any worker call. SIGINT/SIGTERM allows the current bounded cycle to settle, then prevents another claim. Deployment contract requires at least 70 seconds graceful shutdown, reviewed restart/backoff and verified external alert delivery; runtime health is not fabricated in the app.
+- Validation: 52 related offline tests passed in 2.90 seconds. Includes real disabled CLI, real subprocess SIGTERM, stopped/disabled-between-cycle paths, bounded timeout and redacted errors/results, plus actual Python worker wiring against synthetic Meta/database transports. Existing SQL/PostgREST coverage remains unchanged; no migration or frontend change requires another database/browser rehearsal.
+- Added disabled `config/acquisition/facebook/runner.env.example` and operational README; updated Phase 1 packet. No credentials, platform version, monitored deployment, alert receipt or provider acceptance is inferred. Remaining hosted supervision/monitoring, retention-policy/service and fresh approved Meta lead acceptance are explicit release prerequisites.
+- Next: publish after predecessor CI, verify successor, and continue Phase 1 hosted/retention acceptance and the full PRD requirements. No production, provider, spending, SMS, fulfillment or binding transaction activation.
+
 ## 2026-10-30 — Phase 1 release boundary consolidated
 
 - Inspected native Facebook receiver, durable batch acceptance, single-inquiry worker, health/recovery UI, activation flags and payload-purge SQL. These components exist; no monitored worker/retention schedule or hosted/provider acceptance was established by this inspection.
