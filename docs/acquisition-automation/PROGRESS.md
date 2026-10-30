@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Online offer request contract over shared seller normalization
+
+- Pulled unchanged from a8f9ef4. Its CI 41140560041 is still live; wait for all six successful jobs before publishing this increment.
+- Inspected the existing public LeadForm and website backend. Kept them untouched because their legacy global-owner/follow-up path is not acquisition workspace authorization. New exact schema/preparer reuse shared seller normalization and preserve reviewed form version/wording, optional selections and a deterministic request fingerprint.
+- Contract rejects public workspace/actor/MAO/offer/wording overrides; null price stays missing; ownership/property remain unverified; phone shape normalization preserves original evidence. Callback/email requests never grant contact permission, outreach or binding-offer authority. There is no public route, pricing, persistence or channel activation yet.
+- Validation: 62 offline tests passed across new contract and existing intake tests. ONLINE-OFFER-PORTAL.md records inspected compatibility boundaries, the four-step seller UX and required scoped form registry, transactional persistence, privacy/abuse controls, canonical review and end-to-end acceptance. These remain required work, not optional follow-ups.
+- Next: inspect current schema/dependencies and implement server-owned form routing plus durable online intake using existing equivalents; preserve legacy public forms and all phase activation gates. Continue outstanding Phase 1 hosted/retention acceptance. No production/provider/SMS changes.
+
 ## 2026-10-30 — Retention coverage inspected before runner activation
 
 - Confirmed receipt purge clears webhook payload/raw bytes only. Retrieved Meta field_data, consent responses and normalized assertions are copied into immutable seller_intakes.prepared_answers; canonical acquisition leads are explicitly held out of legacy cleanup. Receipt-only purge therefore cannot be reported as complete seller-data disposal.
