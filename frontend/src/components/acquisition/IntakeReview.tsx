@@ -14,6 +14,7 @@ type State = { sequence: number; preparation_hash: string; target_hash: string |
 type Decision = { id: string; expected_sequence: number; preparation_hash: string; action: string; target_lead_id: string | null; target_hash: string | null;
   property_basis: string | null; property_evidence_ref: string | null; seller_evidence_ref: string | null; review_note: string };
 const button = 'rounded-lg border px-3 py-2 text-sm disabled:opacity-40';
+const intakeStatus: Record<string, string> = { qualified: 'Ready for review', incomplete: 'More information needed', duplicate: 'Possible repeat inquiry', unqualified: 'Does not meet intake criteria', requires_human_review: 'Human review needed' };
 const input = 'block w-full rounded border p-2';
 const options = { retry: false, gcTime: 0, staleTime: 0, refetchOnWindowFocus: false } as const;
 async function read<T>(path: string, signal?: AbortSignal): Promise<T> { return (await apiFetch(path, { signal })).json(); }
@@ -26,8 +27,8 @@ async function readState(path: string, signal?: AbortSignal): Promise<State> {
 
 export function IntakeReview({ userId, workspace }: { userId: string; workspace: string }) {
   const [open, setOpen] = useState(false);
-  return <section className="rounded-xl border bg-white p-4 space-y-4">
-    <h2 className="font-semibold text-lg">{open ? 'Seller intake identity review' : <button aria-expanded={false} onClick={() => setOpen(true)}>Seller intake identity review</button>}</h2>
+  return <section className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
+    <h2 className="font-semibold text-lg text-[#1B3A5C]">{open ? 'Seller intake identity review' : <button aria-expanded={false} onClick={() => setOpen(true)}>Seller intake identity review</button>}</h2>
     {!open && <p className="text-sm text-gray-600">Compare seller submissions with workspace property records and review repeat inquiries.</p>}
     {open && <IntakeQueue key={`${userId}:${workspace}`} userId={userId} workspace={workspace} />}
   </section>;
@@ -44,7 +45,7 @@ function IntakeQueue({ userId, workspace }: { userId: string; workspace: string 
     return data;
   } });
   return <div className="space-y-4">
-    <p className="text-sm">Each row is an immutable intake snapshot. Call revisions are not additional leads. Original classifications are retained. Identity review does not verify title, grant contact permission or send an offer.</p>
+    <div className="rounded-lg border-l-4 border-[#E8720C] bg-[#1B3A5C]/5 p-3 text-sm text-[#1B3A5C]"><p className="font-medium">{selected ? 'Next: review the selected inquiry below.' : 'Next: choose an inquiry to review.'}</p><p>Check the seller’s answers, compare the property records, then review qualification. Saved intake status is historical; refresh qualification before acting. Call updates may appear as separate snapshots of the same inquiry.</p></div>
     <button className={button} disabled={queue.isFetching} onClick={() => {
       void queue.refetch();
       if (selected) void client.refetchQueries({ type: 'active', predicate: ({ queryKey }) =>
@@ -53,11 +54,18 @@ function IntakeQueue({ userId, workspace }: { userId: string; workspace: string 
     }}>Refresh intakes</button>
     {queue.isFetching ? <p role="status">Loading intakes…</p> : queue.isError ? <p role="alert">Intakes unavailable. Check workspace access.</p> : <>
       {!queue.data?.items.length && <p>No seller intakes on this page.</p>}
-      <ul className="space-y-2">{queue.data?.items.map(row => <li key={row.id} className="border rounded p-3">
-        <p className="text-sm font-medium">{intakeOriginLabel(row)}</p>
-        {row.source_type === 'retell_inbound' && <p className="text-xs break-all">Call: {row.inbound_call_id} · Integration: {row.inbound_integration_id}</p>}
-        <p className="text-sm break-all">{row.id} · {row.classification.replaceAll('_', ' ')} · {row.created_at}</p>
-        <button className={button} disabled={!!selected} onClick={() => setSelected(row.id)}>Review intake</button>
+      <ul className="space-y-2">{queue.data?.items.map(row => <li key={row.id} className="rounded-lg border border-gray-200 p-3 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-[#1B3A5C]">{intakeOriginLabel(row)}</p>
+          <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">Saved status: {intakeStatus[row.classification] ?? 'Review needed'}</span>
+        </div>
+        <p className="text-xs text-gray-500">Received: {Number.isNaN(Date.parse(row.created_at)) ? 'Date unavailable' : new Date(row.created_at).toLocaleString()}</p>
+        <button className={`${button} bg-[#1B3A5C] text-white`} disabled={!!selected} onClick={() => setSelected(row.id)}>Review intake</button>
+        <details className="text-xs text-gray-500"><summary className="cursor-pointer">Intake references</summary>
+          <dl className="mt-2 space-y-1 break-all"><div><dt>Intake reference</dt><dd>{row.id}</dd></div><div><dt>Original classification</dt><dd>{row.classification}</dd></div>
+            {row.source_type === 'retell_inbound' && <><div><dt>Call reference</dt><dd>{row.inbound_call_id}</dd></div><div><dt>Integration reference</dt><dd>{row.inbound_integration_id}</dd></div></>}
+          </dl>
+        </details>
       </li>)}</ul></>}
     <nav aria-label="Intake pages" className="flex gap-2">
       <button className={button} disabled={queue.isFetching || cursors.length === 1} onClick={() => setCursors(c => c.slice(0, -1))}>Previous intakes</button>
@@ -132,7 +140,7 @@ function IdentityReview({ userId, workspace, intake, onClose, onSaved }: { userI
     <p className="text-sm">Owner/admin MFA is required to record a decision. Phone matches alone do not establish property or seller identity.</p>
     {detail.isError ? <p role="alert">Seller evidence unavailable.</p> : detail.data && <div>
       <p className="text-sm font-medium">{intakeOriginLabel(detail.data)}</p>
-      {detail.data.source_type === 'retell_inbound' && <p className="text-sm">Call: {detail.data.inbound_call_id}. This is saved evidence, not a claim that this is the latest revision. Refresh qualification before acting.</p>}
+      {detail.data.source_type === 'retell_inbound' && <p className="text-sm">This is saved evidence, not a claim that this is the latest revision. Refresh qualification before acting.</p>}
       <h4 className="font-medium">Seller-submitted answers</h4><dl className="grid sm:grid-cols-2 gap-2 text-sm">{Object.entries(detail.data.prepared_answers.answers).map(([key, value]) => <div key={key} className="break-words"><dt className="text-gray-500">{key.replaceAll('_', ' ')}</dt><dd>{value || 'Missing'}</dd></div>)}</dl>
       <p className="text-sm mt-2">Missing: {detail.data.prepared_answers.missing_fields.join(', ') || 'None reported'}</p>
       <p className="text-sm">Review flags: {[...detail.data.prepared_answers.reason_codes, ...detail.data.normalization_notes].join(', ') || 'None reported'}</p>

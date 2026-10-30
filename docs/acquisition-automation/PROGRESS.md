@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — guided seller-intake list
+
+- Pulled unchanged at d017061. Its successor CI run 41080189204 remains the exact publication prerequisite; five jobs passed and the database contention job was still running at final inspection. Previous turn made progress by publishing the postal handoff.
+- Improved the existing seller-intake list with the same navy/orange palette, one clear review action, plain saved-status labels and expandable technical references. A selected inquiry changes the next-action instruction. Original classifications/revisions remain accessible; saved status is explicitly historical and cannot imply current qualification or contact approval. No parallel workflow or new database was introduced.
+- Existing 34 intake-origin, identity, qualification and underwriting browser-component regression tests passed. Typecheck/build passed with existing bundle-size and third-party annotation warnings. Local synthetic browser inspection confirmed closed references, expanded exact IDs and entry into the connected seller/property/qualification review with disabled actions preserved. Simulated read-access revocation followed by Refresh intakes removed seller/candidate/qualification evidence and disabled assessment saving. The local preview was then closed. No production browser or provider was used.
+- Provider source review: official PropStream FAQs describe skip-trace contact output; the published direct-mail guidance describes mailing-address exports but does not establish a validation API or a deliverability evidence contract for this integration. Preserve raw source and require explicit validation evidence before a verified postal endpoint. No letters/postcards provider selected.
+- Next: verify all six jobs on 41080189204 before pushing this increment. Continue structured postal validation, shared eligibility, persisted batches and remaining PRD phases. Production migrations, outreach, SMS, spending and fulfillment remain unchanged.
+
 ## Implementation checkpoint — guarded postal import API
 
 - Added a disabled-by-default application handoff for importing the existing owner mailing-address source by workspace and owner relationship. Browser requests contain only a stable observation ID; addresses, verification and execution claims cannot be supplied. The response hides internal source evidence and remains unverified, with no mail authority.
