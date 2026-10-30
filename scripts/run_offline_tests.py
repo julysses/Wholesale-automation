@@ -30,13 +30,16 @@ with tempfile.TemporaryDirectory(prefix="wholesale-offline-home-") as home:
         "DATABASE_URL": "sqlite:///:memory:",
     }
     command = sys.argv[1:]
-    if command in (['--acquisition-upgrade-baseline'],['--acquisition-populated-upgrade']):
-        populated=command==['--acquisition-populated-upgrade']
+    if command in (['--acquisition-upgrade-baseline'],['--acquisition-populated-upgrade'],['--acquisition-postgrest']):
+        postgrest=command==['--acquisition-postgrest']
+        populated=postgrest or command==['--acquisition-populated-upgrade']
+        if postgrest:
+            env['ACQUISITION_TEST_POSTGREST']=os.environ.get('ACQUISITION_TEST_POSTGREST','')
         if populated and os.environ.get('ACQUISITION_TEST_SUPAUTILS'):
             env['ACQUISITION_TEST_SUPAUTILS']=os.environ['ACQUISITION_TEST_SUPAUTILS']
         if os.environ.get('PG_BIN'):
             env['PG_BIN'] = os.environ['PG_BIN']
-        command = [sys.executable, str(root / 'pipeline/integration/rehearse_acquisition_baseline.py')]+(['--populated-upgrade'] if populated else [])
+        command = [sys.executable, str(root / 'pipeline/integration/rehearse_acquisition_baseline.py')]+(['--postgrest'] if postgrest else ['--populated-upgrade'] if populated else [])
     if command == ['--acquisition-workflow']:
         # PostgreSQL uses only a private Unix socket; Python HTTP remains mocked
         # and the network audit hook remains enabled. Forward only its bin path.

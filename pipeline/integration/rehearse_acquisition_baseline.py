@@ -200,7 +200,7 @@ class DisposableDatabase:
             return [dict(row) for row in cursor.fetchall()] if cursor.description else []
 
 
-def main(*, upgrade=False):
+def main(*, upgrade=False, postgrest=False):
     if not all((PG/name).is_file() for name in ('initdb','pg_ctl','createdb')):
         raise RuntimeError('Local PostgreSQL binaries required')
     library=os.environ.get('ACQUISITION_TEST_SUPAUTILS','')
@@ -230,6 +230,9 @@ def main(*, upgrade=False):
             if upgrade:
                 from rehearse_acquisition_upgrade import run_upgrade
                 print(json.dumps(run_upgrade(db),sort_keys=True),flush=True)
+                if postgrest:
+                    from acquisition_postgrest import run_postgrest
+                    print(json.dumps(run_postgrest(db,os.environ.get('ACQUISITION_TEST_POSTGREST',''),PG),sort_keys=True),flush=True)
         finally:
             if db:db.connection.close()
             if started:run([PG/'pg_ctl','-D',data,'-m','immediate','-w','stop'])
@@ -239,4 +242,6 @@ if __name__=='__main__':
     import argparse
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--populated-upgrade',action='store_true')
-    main(upgrade=parser.parse_args().populated_upgrade)
+    parser.add_argument('--postgrest',action='store_true')
+    args=parser.parse_args()
+    main(upgrade=args.populated_upgrade or args.postgrest,postgrest=args.postgrest)

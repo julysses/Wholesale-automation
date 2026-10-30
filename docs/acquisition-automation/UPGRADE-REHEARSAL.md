@@ -84,3 +84,10 @@ All 48 directly declared application journeys now pass on full-catalog copies, i
 Each copy verifies historical rows after its workflow. County daily task/notification aggregates are captured after synthetic property setup because existing triggers legitimately update those summaries; all other original-table fingerprints come from the unchanged upgraded template. Test assertions use exact increments from initial total counts, so historical records and unexpected extra writes remain observable. The property-lookup fixture updates only its synthetic property. No migration or runtime access rule changed.
 
 Published predecessor CI 40999807734 already passed the new hosted PostgreSQL 17 full-schema job (eight-case version); the expanded 48-case version still requires its own hosted run after publication. Managed Auth/Storage/PostgREST/provider acceptance remains separate.
+
+
+## Real local PostgREST boundary
+
+`--acquisition-postgrest` runs the full populated rehearsal, then real PostgREST 16.5 on a private Unix socket against a copy of the upgraded database. Set `ACQUISITION_TEST_POSTGREST` to the verified binary path alongside `ACQUISITION_TEST_SUPAUTILS`. Local binary: `/tmp/acquisition-postgrest-v16.5/postgrest`. Synthetic credentials and the server config live only in the temporary cluster directory. The runtime uses a non-inheriting authenticator with anon/authenticated membership, never a superuser HTTP connection. It checks valid signed tenant isolation, invalid signatures, expired tokens, anonymous access and database-session revocation, then terminates and deletes its clone/role.
+
+All six HTTP checks passed locally. Official release archive checksums and result are in evidence/2026-10-30-postgrest-result.json. CI now prepares the pinned Linux static archive and runs this command; hosted execution is pending. Configuration was checked against the [official PostgREST configuration reference](https://docs.postgrest.org/en/stable/references/configuration.html) and the binary's --example output. Synthetic signing is not hosted Auth issuance, MFA lifecycle, Storage transport or production version-parity evidence.

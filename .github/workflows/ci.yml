@@ -179,13 +179,21 @@ jobs:
           test "$(git -C .ci-supautils rev-parse HEAD)" = 7a22990746ec17b1a84cf2a097dda411222f8ec7
           make -C .ci-supautils PG_CONFIG=/usr/lib/postgresql/17/bin/pg_config PG_VERSION=17 all
           test -f .ci-supautils/supautils.so
+      - name: Prepare pinned PostgREST runtime
+        run: |
+          mkdir -p .ci-postgrest
+          curl --fail --show-error --silent --location https://github.com/PostgREST/postgrest/releases/download/v16.5/postgrest-v16.5-linux-static-x86-64.tar.xz -o .ci-postgrest/runtime.tar.xz
+          echo '5099e7ada38f9f6846cd87c14c5f158b7c165f1e9959665ad412e61f4dceba95  .ci-postgrest/runtime.tar.xz' | sha256sum --check
+          tar --extract --xz --file=.ci-postgrest/runtime.tar.xz --directory=.ci-postgrest --no-same-owner
+          .ci-postgrest/postgrest --version
       - name: Rehearse full catalog upgrade with external networking blocked
         env:
           PG_BIN: /usr/lib/postgresql/17/bin
           ACQUISITION_TEST_SUPAUTILS: ${{ github.workspace }}/.ci-supautils/supautils.so
+          ACQUISITION_TEST_POSTGREST: ${{ github.workspace }}/.ci-postgrest/postgrest
         run: |
           set -o pipefail
-          python scripts/run_offline_tests.py --acquisition-populated-upgrade 2>&1 | tee acquisition-full-upgrade.log
+          python scripts/run_offline_tests.py --acquisition-postgrest 2>&1 | tee acquisition-full-upgrade.log
       - name: Retain synthetic rehearsal diagnostics
         if: always()
         uses: actions/upload-artifact@v4

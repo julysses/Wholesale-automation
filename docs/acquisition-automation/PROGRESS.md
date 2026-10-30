@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## Implementation checkpoint — real local PostgREST signed-session boundary
+
+- Pulled unchanged. Exact prerequisite remains 3b05b29 / CI 40999807734; five of six checks passed at last observation. Local all-48-workflow commit 926b6db is retained pending full success.
+- Added explicit --acquisition-postgrest offline command. After the full upgrade/access/48-journey suite, it copies the upgraded database, creates a non-superuser/non-bypass authenticator that can assume only anon/authenticated, and starts official PostgREST 16.5 on a private mode-600 Unix socket. Synthetic signing material is generated per run and kept in a mode-600 temporary config. No hosted URL, credentials, TCP listener or production object is used.
+- Verified official macOS archive SHA-256 before safe extraction into /tmp. Reused the installed PostgreSQL 17 libpq through its reported libdir; no global package installation. Tested actual signed HTTP workspace isolation, wrong signature and expired-token rejection, anonymous denial, deleted-session hiding and revoked-session RPC denial. All six checks passed after the complete local rehearsal. Process, cloned database and synthetic authenticator role are removed in finally.
+- Added checksum-pinned Linux static PostgREST preparation to the existing sixth CI job; its first execution remains pending. Saved local evidence in evidence/2026-10-30-postgrest-result.json. Existing Python network-denial hook stays unchanged; the HTTP probe uses curl with an explicit private Unix socket, fixed localhost URL and cleared environment.
+- This closes a local transport simulation gap, not hosted Supabase Auth/Storage or provider acceptance. Auth issuance/MFA lifecycle, production runtime parity and deployed acceptance remain unverified. No app UI or production activation changed. Next: publish after all-six predecessor success, verify successor Linux HTTP checks, then prepare the remaining managed-platform/provider acceptance and continue the full PRD.
+
+
 ## Implementation checkpoint — all 48 journeys on the full catalog
 
 - Pulled unchanged. Published predecessor 3b05b29 / CI 40999807734 now has five successful jobs, including the new PostgreSQL 17/Supautils full-schema job; the existing contention suite remains running. Require all six terminal successes before pushing this increment.
