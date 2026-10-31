@@ -174,7 +174,37 @@ def verify_portal_receipt_http(db,request,token,other,workspace,definition):
         status,rows=request('/'+table+'?portal_receipt_id=eq.'+identity+'&select=lead_id,source_type',token())
         if status!=200 or len(rows)!=1 or rows[0]['source_type']!='online_offer_portal':
             raise AssertionError('Portal intake/source handoff missing')
+    admission_checks=verify_portal_admission_http(db,request,token,definition['form_key'],identity,prepared['request_hash'])
     db.query('UPDATE private.acquisition_form_publications SET enabled=false')
     if request(path,service,body)[0]!=403:raise AssertionError('Portal retry ignored revoked publication')
     return ['portal HTTP exact retry and minimal confirmation','portal HTTP receipt evidence and workspace isolation',
-      'portal HTTP intake attribution and raw-write denial','portal HTTP disabled and revoked publication denied']
+      'portal HTTP intake attribution and raw-write denial','portal HTTP disabled and revoked publication denied']+admission_checks
+
+
+def verify_portal_admission_http(db,request,token,form_key,submission,request_hash):
+    from uuid import uuid4
+    from tools.acquisition_portal_admission import PortalAdmission
+    service=token(role='service_role');path='/rpc/admit_acquisition_portal_request'
+    body={'p_attempt':str(uuid4()),'p_form_key':form_key,'p_network_hash':'a'*64,'p_purpose':'submit',
+          'p_submission':submission,'p_request_hash':request_hash}
+    if request(path,service,body)[0]!=403:raise AssertionError('Disabled admission policy accepted')
+    db.query("UPDATE private.acquisition_portal_admission_policy SET enabled=true,network_per_minute=1,approval_ref='synthetic-http-policy',valid_from=clock_timestamp()-interval '1 minute',expires_at=clock_timestamp()+interval '1 hour'")
+    for caller in (None,token()):
+        if request(path,caller,body)[0] not in (401,403):raise AssertionError('Browser can reserve portal admission')
+    status,result=request(path,service,body)
+    if status!=200:raise AssertionError('Portal admission HTTP failed')
+    admission=PortalAdmission.model_validate(result)
+    if not admission.admitted or str(admission.attempt_id)!=body['p_attempt'] or admission.form_key!=form_key:
+        raise AssertionError('Portal admission identity changed')
+    if request(path,service,body)[0]!=409:raise AssertionError('Replayed admission was free capacity')
+    status,result=request(path,service,body|{'p_attempt':str(uuid4())})
+    denied=PortalAdmission.model_validate(result)
+    if status!=200 or denied.admitted:raise AssertionError('Network capacity was not enforced')
+    if db.query('SELECT denied_total FROM private.acquisition_portal_admission_totals')[0]['denied_total']!=1:
+        raise AssertionError('Admission denial did not commit')
+    db.query('UPDATE private.acquisition_portal_admission_policy SET enabled=false')
+    if request(path,service,body|{'p_attempt':str(uuid4())})[0]!=403:raise AssertionError('Disabled policy kept admitting')
+    if request('/rpc/purge_acquisition_portal_admissions',token(),{})[0]!=403:
+        raise AssertionError('Browser can purge private admission history')
+    return ['portal admission HTTP disabled and service-only', 'portal admission HTTP typed identity and fresh attempts',
+            'portal admission HTTP committed denial and network cap']

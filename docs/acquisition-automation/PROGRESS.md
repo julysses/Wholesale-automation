@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Durable portal capacity and private operational retention
+
+- Published exact checkpoint 09ebd1457a60ba2d2ed69042f4bc75e26915595e after predecessor 699d633 / CI 41238434660 passed all six jobs. Successor 41239853074 is active: four jobs successful; acquisition workflow and contention running at last observation. Hold this new admission increment until all six successor jobs succeed.
+- Read-only production metadata at 20:36:03 UTC confirmed ledger 20261023221455 and no matching admission/portal tables or functions; local prior entity/function definitions inspected. CLI-created proposed migration 20261031203609 adds disabled global/form/network rolling-minute policy, private bounded admissions, aggregate committed denial count, immutable policy audit and cleanup while disabled. No production migration or schedule.
+- Reservations serialize across processes and preserve exact form/workspace/campaign/purpose/request identity. Fresh attempt IDs count inquiry retries; reusing an attempt is rejected. Thirty-second reservations and five-minute operational retention are separate. Policy/publication checks run after waits. Existing atomic acceptance is not yet bound to admission or bot evidence: public submission remains disabled.
+- Python helper validates exact returned context, timestamps and typed decisions, emits no-store errors, and never retries uncertain admission. HMAC network identity normalizes mapped IPv4 and IPv6 /64 without saving raw IP, user-agent or seller fields. Trusted proxy configuration, key lifecycle and monitored cleanup still require deployment acceptance.
+- Final full rehearsal passed 55 migrations, 26 access probes, 78 workflows and 43 actual local PostgREST checks, preserving 24 historical rows/22 tables/103 definitions. Three focused tests passed after cross-form/global-cap and immutable-audit assertions; a further policy-expiry lock-wait test passed separately (not in the 78 count). Python admission/bot/preparer suite: 107 passed. Evidence: evidence/2026-10-31-portal-admission-result.json. All local test sessions completed.
+- Next: enforce a one-time admission plus fresh bot-verification association at inquiry acceptance, add bounded public HTTP orchestration and exact recovery, then complete the four-step seller interface and address validation. Preserve all remaining original PRD phases and separate production/provider/outreach/fulfillment/transaction approvals.
+
 ## 2026-10-31 — Repair gate cleared for retained portal work
 
 - Verified exact repair 699d633892b2cf2410578de7234d0522100c8d4f / CI 41238434660 completed successfully with all six jobs. No cancellation or restart.

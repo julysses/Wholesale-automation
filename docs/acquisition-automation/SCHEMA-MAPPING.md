@@ -257,3 +257,8 @@ Rechecked production: 95 migration entries, latest 20261023221455; evidence regi
 ### Portal receipt origin extension (proposed migration 20261031202407)
 
 Reuse public.lead_form_submissions for exact portal wording/submission evidence, workspace/campaign and request fingerprint; preserve legacy nullable scope. Composite form/lead foreign keys bind acquisition records. workspace_leads gains a distinct portal receipt origin; seller_intakes and acquisition_lead_sources gain portal receipt references, with the latter retaining the exact originating campaign. Existing Facebook and Retell branches remain explicit. No parallel lead/owner/property store or fabricated integration is introduced. Scope reads use existing workspace role checks; direct service/browser writes cannot create scoped receipts; immutable receipt history and the existing legacy recovery guards protect them. See ONLINE-OFFER-PORTAL.md for compensation and remaining HTTP/abuse/seller-interface work.
+
+
+### Portal operational admission (proposed migration 20261031203609)
+
+No existing production equivalent was found in the inspected catalog. Private policy, short-lived admissions and aggregate denial totals support cross-process abuse limits; they do not replace receipts, leads, owners or contact eligibility. Admission identity binds the existing immutable form/workspace/campaign plus purpose/request digest. Policy revisions use the existing audit master with an additional immutability guard and tenant-browser read exclusion for global policy events. Operational digests have five-minute retention with explicit disabled-policy cleanup; live monitored cleanup remains a release requirement.

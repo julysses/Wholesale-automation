@@ -207,6 +207,97 @@ class WorkflowTests(WorkspaceTests):
             self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='online_offer_acquisition'"),'0')
         finally:blocker.close()
 
+    def test_portal_admission_rechecks_policy_expiry_after_wait(self):
+        import psycopg2
+        from concurrent.futures import ThreadPoolExecutor
+        self.publication_fixture();self.enable_publication();self.enable_portal_admission()
+        database=getattr(self,'database_name','acquisition_test')
+        blocker=psycopg2.connect(host=self.socket,dbname=database,user='test_admin')
+        try:
+            with blocker.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(hashtextextended('portal-request-admission',0))")
+            self.sql("UPDATE private.acquisition_portal_admission_policy SET expires_at=clock_timestamp()+interval '2 seconds'")
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pending=pool.submit(self.portal_admit,fail=True)
+                try:
+                    deadline=time.monotonic()+1.5
+                    while self.sql(f"SELECT count(*) FROM pg_stat_activity WHERE datname={literal(database)} AND wait_event='advisory' AND query LIKE '%public.admit_acquisition_portal_request%'")=='0':
+                        if pending.done() or time.monotonic()>deadline:raise AssertionError('Admission never reached global lock')
+                        time.sleep(.02)
+                    while self.sql('SELECT expires_at<=clock_timestamp() FROM private.acquisition_portal_admission_policy')!='t':
+                        if time.monotonic()>deadline+2:raise AssertionError('Policy expiry not reached')
+                        time.sleep(.02)
+                finally:blocker.rollback()
+                self.assertIn('Portal admission unavailable',pending.result(timeout=6))
+            self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_portal_admissions'),'0')
+        finally:blocker.close()
+
+    def enable_portal_admission(self, **limits):
+        assignments=','.join(f'{key}={int(value)}' for key,value in limits.items())
+        self.sql("UPDATE private.acquisition_portal_admission_policy SET enabled=true,approval_ref='synthetic-policy',valid_from=clock_timestamp()-interval '1 minute',expires_at=clock_timestamp()+interval '1 hour'"+(','+assignments if assignments else ''))
+
+    def portal_admit(self, attempt=None, network='a'*64, key='synthetic-offer-form', role='service_role', **kwargs):
+        from uuid import uuid4
+        attempt=attempt or str(uuid4())
+        return self.sql(f"SELECT public.admit_acquisition_portal_request('{attempt}',{literal(key)},{literal(network)},'submit','fd000000-0000-4000-8000-000000000001',{'%s' % literal('b'*64)})",user=ADMIN,role=role,**kwargs)
+
+    def test_portal_admission_disabled_private_and_parallel_network_budget(self):
+        from concurrent.futures import ThreadPoolExecutor
+        self.publication_fixture();self.enable_publication()
+        self.assertIn('unavailable',self.portal_admit(fail=True))
+        self.enable_portal_admission(network_per_minute=2)
+        for role in ('anon','authenticated'):
+            self.portal_admit(role=role,fail=True)
+        self.sql('UPDATE private.acquisition_portal_admission_policy SET enabled=true',role='service_role',user=ADMIN,fail=True)
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            results=list(pool.map(lambda _:json.loads(self.portal_admit()),range(5)))
+        self.assertEqual(sum(x['admitted'] for x in results),2)
+        self.assertEqual(self.sql('SELECT denied_total FROM private.acquisition_portal_admission_totals'),'3')
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_portal_admissions'),'2')
+        for result in results:
+            self.assertNotIn('workspace_id',result);self.assertNotIn('network_hash',result)
+            self.assertEqual(result['purpose'],'submit')
+        self.sql('SELECT * FROM private.acquisition_portal_admissions',user=OTHER,fail=True)
+        self.sql('SELECT * FROM private.acquisition_portal_admissions',user=ADMIN,role='service_role',fail=True)
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='online_offer_acquisition'"),'0')
+
+    def test_portal_admission_global_form_window_and_retention(self):
+        self.publication_fixture();self.enable_publication();self.enable_portal_admission(global_per_minute=2,form_per_minute=1)
+        first=json.loads(self.portal_admit())
+        self.assertTrue(first['admitted'])
+        self.assertIn('Fresh portal attempt',self.portal_admit(attempt=first['attempt_id'],fail=True))
+        self.assertFalse(json.loads(self.portal_admit(network='c'*64))['admitted'])
+        self.enable_portal_admission(form_per_minute=2)
+        self.assertTrue(json.loads(self.portal_admit(network='c'*64))['admitted'])
+        # A different form and network isolate the global limit from the form cap.
+        campaign=self.offer_form_campaign(identity='fa000000-0000-4000-8000-000000000009')
+        definition=dict(form_key='second-admission-form',version='v1',privacy_acknowledged='Synthetic privacy',human_callback_requested='Synthetic callback',email_reply_requested='Synthetic reply')
+        form=self.offer_form_save(campaign,identity='fb000000-0000-4000-8000-000000000009',definition=definition)
+        self.sql(f"INSERT INTO private.acquisition_form_publications(form_key,workspace_id,campaign_id,form_id) VALUES('second-admission-form','{WORKSPACE}','{campaign}','{form['id']}')")
+        self.enable_publication()
+        self.assertFalse(json.loads(self.portal_admit(network='d'*64,key='second-admission-form'))['admitted'])
+        self.sql("UPDATE private.acquisition_portal_admissions SET checked_at=checked_at-interval '61 seconds',expires_at=expires_at-interval '61 seconds',retain_until=retain_until-interval '61 seconds'")
+        self.assertTrue(json.loads(self.portal_admit())['admitted'])
+        self.sql("UPDATE private.acquisition_portal_admission_policy SET enabled=false")
+        self.assertIn('unavailable',self.portal_admit(fail=True))
+        self.sql("UPDATE private.acquisition_portal_admissions SET checked_at=checked_at-interval '301 seconds',expires_at=expires_at-interval '301 seconds',retain_until=retain_until-interval '301 seconds'")
+        self.assertEqual(self.sql('SELECT public.purge_acquisition_portal_admissions()',user=ADMIN,role='service_role'),'3')
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_portal_admissions'),'0')
+        self.sql('SELECT public.purge_acquisition_portal_admissions()',user=ADMIN,fail=True)
+
+    def test_portal_admission_policy_and_publication_rechecked(self):
+        self.publication_fixture();self.enable_publication();self.enable_portal_admission()
+        self.sql("UPDATE private.acquisition_portal_admission_policy SET expires_at=clock_timestamp()-interval '1 second'")
+        self.assertIn('unavailable',self.portal_admit(fail=True))
+        self.enable_portal_admission()
+        self.sql('UPDATE private.acquisition_form_publications SET enabled=false')
+        self.assertIn('Form unavailable',self.portal_admit(fail=True))
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_portal_admissions'),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='portal_admission_policy'"),'4')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='portal_admission_policy'",user=ADMIN),'0')
+        self.sql("DELETE FROM audit_logs WHERE entity_type='portal_admission_policy'",fail=True)
+        self.sql("UPDATE audit_logs SET entity_type='legacy' WHERE entity_type='portal_admission_policy'",user=ADMIN,role='service_role',fail=True)
+
     def portal_prepared(self, submission='fd000000-0000-4000-8000-000000000001'):
         from schemas.acquisition_online_offer import OnlineOfferRequest, OfferFormDefinition
         from tools.acquisition_online_offer import prepare_online_offer

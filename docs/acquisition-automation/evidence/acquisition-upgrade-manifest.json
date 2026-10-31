@@ -217,6 +217,10 @@
     {
       "file": "20261031202407_acquisition_portal_receipts.sql",
       "sha256": "666843aed4476187fc94ce54f5cb4f7afa52a587a634b49aa32ad7aa7ec50e0f"
+    },
+    {
+      "file": "20261031203609_acquisition_portal_admission.sql",
+      "sha256": "d5649de6b29d4ab559e7247bed81d1eac04825b405687cc7199304d0806c9625"
     }
   ]
 }
