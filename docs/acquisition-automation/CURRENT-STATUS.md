@@ -4,11 +4,10 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 ## Publication and active process
 
-- Published repair: `2f2dbe788e1f090f5888b80d68c95db1d2ac7167`. Exact successor CI `41245920319` completed successfully with all six jobs. The predecessor `09ebd14` / CI `41239853074` failed two historical-upgrade fixture setups; this repair addresses that dependency order.
-- Repair checkout: `/tmp/wholesaleos-portal-ci-repair`, branch `codex/repair-portal-upgrade-fixtures`, based exactly on that published head. The repair defers the dependent portal migration until historical prerequisites exist. Both original cases pass, and all **217 workspace tests passed in 1730.570 seconds**; process 69164 exited 0. Published evidence includes the exact log and SHA256. No local test remains running.
-- Main checkout: `app`, branch `codex/acquisition-foundation`, latest pre-merge checkpoint `0e1c8fe`. Admission, verified acceptance, public receiver and seller UI remain local. Main fixture already includes the equivalent dependency guard for migrations 54–56.
-- Publication order: repair CI passed all six jobs; repair merged locally, preserving the migration 54–56 fixture guard and both documentation histories. Both historical regression cases passed (14.718 seconds); publish retained features and verify their exact successor CI before another feature push.
-- No production migration, deployment, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
+- Published merged candidate: `5ca649c0fbcb4247872767b40f71c6717fc5d20b` on `codex/acquisition-foundation`. Normal push confirmed `2f2dbe7` → `5ca649c`. Exact successor CI `41246949570` was queued at the latest observation: https://github.com/julysses/Wholesale-automation/actions/runs/41246949570. Require all six terminal successes before the next feature push.
+- Predecessor repair `2f2dbe788e1f090f5888b80d68c95db1d2ac7167` / CI `41245920319` completed with all six jobs successful. It corrects historical-upgrade fixture ordering; both originally failing cases also passed after the merge in 14.718 seconds. Evidence: `evidence/2026-10-31-merged-fixture-result.json` and the published full 217-case repair log.
+- The retained disabled admission, verified acceptance, receiver and four-step seller UI are now published in Git. This does not mean deployed or live. The merge preserved the migration 54–56 fixture guard and changed no application/test code relative to the validated retained head. Both documentation histories are retained.
+- No local test or preview process remains running. Branch automatic deployment is disabled in vercel.json. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
 ## Verified local scope
 

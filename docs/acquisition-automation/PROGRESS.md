@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Retained seller workflow published after repair gate
+
+- All six predecessor repair jobs passed. Merged and pushed `5ca649c0fbcb4247872767b40f71c6717fc5d20b`; normal remote advancement `2f2dbe7` → `5ca649c` confirmed. Worktree was clean after publication.
+- Exact successor CI `41246949570` is queued for that SHA. Verify its six terminal results before another feature push. No tests were cancelled or restarted.
+- This handoff update is local pending the successor gate; application features are published in Git, not deployed. No local process is running. Continue the remaining Phase 1 retention/hosted acceptance and the full PRD; preserve navy/orange guided workflow and separate production/provider approvals.
+
+
 ## 2026-10-31 — Repair CI passed; retained features merged
 
 - Exact repair `2f2dbe788e1f090f5888b80d68c95db1d2ac7167`, CI `41245920319`, completed successfully with all six jobs. Pulled and merged that repair into the retained feature branch.
