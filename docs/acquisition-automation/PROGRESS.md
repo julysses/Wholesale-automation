@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Legacy receipt listing and recovery boundaries
+
+- Pulled unchanged. Added explicit receipt/form scope exclusion to shared submission listing, preserving legacy name/slug projection and unlinked history. Parent inspection works before additive scope columns exist. Missing/malformed linked parents are hidden, limits are bounded, and responses use no-store.
+- Recovery rejects scoped receipts before parent lookup and scoped forms before processing. The internal legacy processor separately rejects scoped configurations before any database/provider work. Disabled legacy form recovery remains available and does not replay notifications. No SQL, schema, UI or production setting changed.
+- All 72 related offline tests passed, including 13 new cases for scope with flags on/off, projection, limit enforcement, recovery/processor guards, historical compatibility and response headers. Saved evidence/2026-10-31-legacy-submission-boundary-result.json. This is application/HTTP validation with synthetic transports, not hosted or complete legacy-CRM isolation acceptance.
+- Published b08f6ab / CI 41237169464 is active; last observation had four successful jobs, with acquisition workflow and contention running. Retain this increment until all six succeed. Continue observing the separate prior workspace suite at session 1315 and /tmp/acquisition-oct31-workspace-investigation.log; it remains live and progressing.
+- Next: guard SQL legacy reservation/finalizer paths and implement transactional scoped receipts, workspace lead bindings, intake/source attribution and fresh-publication checks; then abuse-controlled public endpoints and the four-step seller flow. Preserve the full original PRD and all sequential live activation approvals.
+
 ## 2026-10-31 — Actual public-display gateway checks and corrected guard regression
 
 - Extended the local PostgREST fixture with explicit signed synthetic service-role tokens. Five new gateway checks verify role/signature/expiry rejection, exact selected version and five-field projection, rejection of routing overrides, disabled/expired/suspended/activation gates, and legacy submission isolation. No production token, configuration or grant changed.

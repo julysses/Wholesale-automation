@@ -4,9 +4,9 @@ Updated October 31, 2026 (America/Chicago). This is a navigation and gap invento
 
 ## Latest handoff
 
-Published head d134101 includes the form save/history API and guided internal setup. Its predecessor 320e405 / CI 41234812907 finished with all six successful jobs. Successor 41236036862 has now finished successfully with all six jobs. The tested routing/gateway increments are ready to publish; verify their successor exact-head run before another feature push.
+Published head b08f6ab includes disabled public form routing and 33 actual local gateway checks. Its predecessor d134101 / CI 41236036862 completed with all six successful jobs. Current successor 41237169464 is still running. Verify that exact run before the next feature push.
 
-The next local increment adds disabled, approval-bound public form-version routing and a service-only display projection. No public seller HTTP endpoint or submission path exists yet. No production migration, process, provider or channel was enabled.
+The next local increment adds legacy receipt-list and recovery scope guards, with 72 related offline tests passing. Disabled, approval-bound public routing and its service-only display projection are already published. No public seller HTTP endpoint or submission path exists yet. No production migration, process, provider or channel was enabled.
 
 ## Git and validation
 

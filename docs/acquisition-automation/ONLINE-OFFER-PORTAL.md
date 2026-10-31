@@ -115,3 +115,12 @@ The actual PostgREST fixture now supports explicitly signed synthetic service-ro
 A previous SQL guard regression used nonexistent column answers in lead_form_submissions, which could fail before reaching the intended trigger. Corrected it to raw_answers and require the exact Use acquisition submission workflow rejection. A real gateway POST with that valid column must also reach and receive the same guard rejection. No production guard or migration was changed by this correction.
 
 Final validation passed 52 migrations, 26 probes, 68 workflows and 33 real local gateway checks, preserving 24 historical rows and the prior schema. Evidence: evidence/2026-10-31-public-display-http-result.json. The earlier run passed 32 gateway checks before adding the explicit legacy-guard case; the final run supersedes it. Hosted authentication/acceptance and public HTTP seller endpoints remain unimplemented/unverified as applicable.
+
+
+## Legacy receipt application boundaries — October 31
+
+The shared receipt list now inspects both receipt scope and its joined form scope. Scoped records are excluded regardless of the acquisition flag; unresolved/malformed parents cannot establish legacy ownership. Unlinked historical receipts remain visible. Parent metadata is reduced back to the original name/slug response, and list size is bounded to 1–100. Wildcard parent inspection deliberately avoids requiring new columns in the pre-migration production schema; it does not expose the wildcard payload to callers.
+
+Recovery rejects scoped receipts before parent lookup and scoped forms before scoring/finalization. The internal legacy processor independently rejects scoped configurations before database/provider access. Existing disabled legacy forms remain recoverable with deliver_notifications=false. Listing/recovery responses and explicit rejection paths use no-store. Seventy-two related offline tests passed, including 13 new boundary cases; evidence/2026-10-31-legacy-submission-boundary-result.json records scope.
+
+These application checks prepare for future scoped receipts; they do not replace the required SQL reservation/finalizer guards, atomic portal acceptance, or broader canonical lead binding enforcement. No acquisition receipt is newly admitted and the current rejection trigger remains intact. No public seller route or new channel is enabled.

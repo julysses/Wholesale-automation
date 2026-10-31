@@ -33,7 +33,7 @@ from html import escape
 from typing import Any, Optional
 from uuid import UUID, NAMESPACE_URL, uuid4, uuid5
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -341,6 +341,8 @@ async def _process_form_submission(
     deliver_notifications: bool = True,
 ):
     """Persist lead and task atomically, then attempt optional notifications."""
+    if form_config.get('workspace_id') is not None:
+        raise HTTPException(404, 'Submission not found', headers={'Cache-Control': 'no-store'})
     supabase = _get_supabase()
 
     # Build lead record from answers
@@ -792,20 +794,24 @@ async def update_form(form_id: str, body: dict):
 
 
 @router.post("/api/lead-gen/submissions/{submission_id}/recover")
-async def recover_form_submission(submission_id: UUID, request: Request):
+async def recover_form_submission(submission_id: UUID, request: Request, response: Response = None):
     """Admin recovery creates CRM records only; never replays provider sends."""
+    if response is not None:
+        response.headers['Cache-Control'] = 'no-store'
     supabase = _get_supabase()
     user_id = getattr(request.state, "user_id", None)
     profile = supabase.table("profiles").select("role,status").eq("id", user_id).limit(1).execute().data if user_id else []
     if not profile or profile[0].get("role") != "admin" or profile[0].get("status") != "approved":
-        raise HTTPException(403, "Administrator access required")
+        raise HTTPException(403, "Administrator access required", headers={'Cache-Control': 'no-store'})
     rows = supabase.table("lead_form_submissions").select("*").eq("id", str(submission_id)).limit(1).execute().data
-    if not rows:
-        raise HTTPException(404, "Submission not found")
+    if not rows or rows[0].get('workspace_id') is not None:
+        raise HTTPException(404, "Submission not found", headers={'Cache-Control': 'no-store'})
     receipt = rows[0]
     configs = supabase.table("lead_form_configs").select("*").eq("id", receipt["form_id"]).limit(1).execute().data
     if not configs:
-        raise HTTPException(409, "The saved form definition is missing. Keep this inquiry in manual review; do not infer its intent.")
+        raise HTTPException(409, "The saved form definition is missing. Keep this inquiry in manual review; do not infer its intent.", headers={'Cache-Control': 'no-store'})
+    if configs[0].get('workspace_id') is not None:
+        raise HTTPException(404, 'Submission not found', headers={'Cache-Control': 'no-store'})
     answers = receipt.get("raw_answers") or {}
     # Process the stored, previously validated receipt even if its form was disabled.
     lead_id = await _process_form_submission(configs[0], answers, _compute_scores_from_answers(answers),
@@ -814,15 +820,35 @@ async def recover_form_submission(submission_id: UUID, request: Request):
 
 
 @router.get("/api/lead-gen/submissions")
-async def list_submissions(limit: int = 50, form_id: Optional[str] = None):
+async def list_submissions(limit: int = 50, form_id: Optional[str] = None, response: Response = None):
+    if response is not None:
+        response.headers['Cache-Control'] = 'no-store'
+    if type(limit) is not int or not 1 <= limit <= 100:
+        raise HTTPException(422, 'Submission limit must be between 1 and 100', headers={'Cache-Control': 'no-store'})
     supabase = _get_supabase()
     query = supabase.table("lead_form_submissions").select(
-        "*, lead_form_configs(name, slug), leads(status, priority_tier)"
+        # Select the parent scope without depending on additive columns existing
+        # in production yet. Only its original display fields leave this handler.
+        "*, lead_form_configs(*), leads(status, priority_tier)"
     ).order("created_at", desc=True).limit(limit)
     if form_id:
         query = query.eq("form_id", form_id)
     resp = query.execute()
-    return resp.data or []
+    visible = []
+    for row in resp.data or []:
+        parent = row.get('lead_form_configs')
+        if row.get('workspace_id') is not None:
+            continue
+        if parent is None:
+            # Unlinked historical receipts remain visible; an unresolved parent
+            # cannot establish that a receipt belongs to the legacy workflow.
+            if row.get('form_id') is not None:
+                continue
+        elif not isinstance(parent, dict) or parent.get('workspace_id') is not None:
+            continue
+        visible.append({**row, 'lead_form_configs': None if parent is None else
+                        {'name': parent.get('name'), 'slug': parent.get('slug')}})
+    return visible
 
 
 @router.get("/api/lead-gen/kpis")

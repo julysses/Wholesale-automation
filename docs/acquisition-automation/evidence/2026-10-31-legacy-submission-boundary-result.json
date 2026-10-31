@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-31",
+  "scope": "Offline HTTP and application regression tests with synthetic database transports",
+  "tests_passed": 72,
+  "new_boundary_cases": 13,
+  "coverage": [
+    "scoped receipt and scoped parent excluded with acquisition flag on or off",
+    "parent metadata projected to name and slug only",
+    "missing or malformed parent hidden for linked receipts",
+    "bounded listing before database access",
+    "recovery rejects scoped receipt before parent lookup and scoped parent before processing",
+    "internal legacy processor rejects scoped form before database or provider access",
+    "disabled legacy forms retain recovery without notification replay",
+    "missing receipt and missing definition remain distinct without invented intent",
+    "response no-store headers"
+  ],
+  "limitations": [
+    "No new SQL or hosted schema change",
+    "Legacy SQL reservation/finalizer guards and transactional scoped receipt insertion still required",
+    "Does not certify every service-backed legacy CRM endpoint or canonical lead binding"
+  ],
+  "production_changes": false
+}
