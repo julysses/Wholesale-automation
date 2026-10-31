@@ -1,12 +1,12 @@
 # Acquisition automation — current implementation and release handoff
 
-Latest checkpoint: published fixture-only repair 699d633; exact CI 41238434660 is active. Retain local safeguards, portal transaction and bot adapter until all six repair jobs succeed. See newest PROGRESS.md evidence.
+Latest checkpoint: exact repair 699d633 / CI 41238434660 passed all six jobs. Previously tested safeguards, atomic portal transaction and disabled bot adapter are ready for publication. Verify their exact successor before another feature push; migration 55 admission work remains local and under validation.
 
 Updated October 31, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 
 ## Latest handoff
 
-Published head 699d633 repairs the focused database fixture after b08f6ab CI finished with five successes and one fixture-permission failure. Its exact successor is 41238434660; verify all six jobs before the next feature push.
+Published head 699d633 repairs the focused database fixture after b08f6ab CI finished with five successes and one fixture-permission failure. Its exact successor 41238434660 passed all six jobs. Verify the next published feature head before another feature push.
 
 Retained b63814d adds legacy receipt-list/recovery scope guards (72 related tests passed). Retained ea895ed adds SQL reservation/finalizer safeguards and actual legacy gateway compatibility checks. The latest local rehearsal passed 54 migrations, 26 probes, 74 workflows and 40 gateway checks, plus a separately passed expiry-contention test. Prior interrupted test processes are absent; the replacement rehearsal completed successfully. The retained portal increment implements service-only atomic submission and the existing owner review handoff. A disabled server-only bot adapter also passed 81 related tests. Public HTTP orchestration, durable abuse admission, provider configuration and the four-step seller UI remain outstanding. No production/channel changes.
 
@@ -53,7 +53,7 @@ See [PHASE-1-RELEASE-PACKET.md](PHASE-1-RELEASE-PACKET.md) for the exact candida
 
 ## Next work in order
 
-1. Verify all six jobs of fixture repair 699d633 / CI 41238434660 before publishing retained safeguards, portal transaction and bot adapter. Then inspect the exact-head successor run. Check branch/status and newest PROGRESS.md before resuming.
+1. Repair 699d633 / CI 41238434660 passed all six jobs. Publish the previously tested portal increments and inspect their exact-head successor before publishing the new admission increment. Check branch/status and newest PROGRESS.md before resuming.
 2. Close the shared-foundation and Facebook acceptance gaps against the complete candidate. Assemble a concrete migration/provider acceptance packet before requesting production or live-test authorization. Later mail-document work must not be mistaken for completion of the Phase 1 release gate.
 3. Complete the mail evidence worker and remaining binding acceptance, canonical mailing rules/reservations, vendor sandbox workflow, and inbound provider acceptance. Keep them within the existing campaign/review screens.
 4. Deliver portal, manual human caller, agency and contract/disposition capabilities with the PRD's sequential activation gates. These are still required parts of the goal, not optional enhancements.

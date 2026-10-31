@@ -1,5 +1,11 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Repair gate cleared for retained portal work
+
+- Verified exact repair 699d633892b2cf2410578de7234d0522100c8d4f / CI 41238434660 completed successfully with all six jobs. No cancellation or restart.
+- Publish retained legacy safeguards b63814d/ea895ed, merged repair 8aa53e6, atomic portal transaction eefbf5d and disabled bot adapter 1e464d2. Their local evidence is recorded below; verify all six successor jobs before another feature push.
+- Migration 55 portal admission work is still uncommitted and under local validation; it is excluded from this publication. No production migration, public route, provider, scheduler or channel activation. Full original PRD remains active.
+
 ## 2026-10-31 — Disabled portal bot verification adapter
 
 - Pulled unchanged; predecessor repair 699d633 / CI 41238434660 still has five successful jobs and one live contention job. No feature push, cancellation or restart. Previous portal transaction commit eefbf5d remains local.
