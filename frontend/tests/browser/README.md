@@ -92,3 +92,8 @@ Verified October 28, 2026 in the in-app browser:
 5. Switch simulated role to Operator and refresh. Approval/edit controls remain unavailable and history remains inspectable. No console errors/warnings were recorded.
 
 Reviewed a full-page screenshot at the browser's current viewport. This is not a comprehensive responsive/accessibility audit or live API/provider acceptance. The app-to-real-SQL tests separately cover authority, retry and history behavior.
+
+
+### Offer-form setup
+
+Run `./node_modules/.bin/vite --config tests/browser/offer-forms.vite.config.ts` from frontend and open `/tests/browser/offer-forms.html` on port 5187. This aliases the API to synthetic in-tab records and disables env loading. Use the lost-reply button to verify pending request recovery, reload, exact retry and campaign navigation holds. Wording is synthetic QA input, never production consent copy. No provider or production database calls are made. Close the preview after QA.

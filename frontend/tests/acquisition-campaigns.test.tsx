@@ -101,7 +101,7 @@ it('keeps each unresolved mail step mounted and holds navigation until both exac
       : { id: body.id, workspace_id: workspace, template_id: body.template_id, version: 1, status: 'draft', duplicate: true, execution_authorized: false };
   });
   const pending = vi.fn(); view('user', pending);
-  await screen.findByText(/Finish reconciling the saved mail request/);
+  await screen.findByText(/Finish reconciling the saved preparation request/);
   expect(pending).toHaveBeenLastCalledWith(true);
   expect(screen.getByRole('button', { name: 'Refresh campaigns' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Next campaigns' })).toBeDisabled();
@@ -120,7 +120,7 @@ it('keeps each unresolved mail step mounted and holds navigation until both exac
 });
 it.each([mailKey, destinationKey])('holds campaign and workspace navigation when mail request storage is unreadable (%s)', async storageKey => {
   directMailPage(); sessionStorage.setItem(storageKey, '{broken'); const pending = vi.fn(); view('user', pending);
-  await screen.findByText(/Finish reconciling the saved mail request/);
+  await screen.findByText(/Finish reconciling the saved preparation request/);
   expect(pending).toHaveBeenLastCalledWith(true);
   expect(screen.getByRole('button', { name: 'Refresh campaigns' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Next campaigns' })).toBeDisabled();

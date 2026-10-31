@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-31",
+  "scope": "Synthetic browser preview and local frontend checks; no production or hosted API acceptance",
+  "frontend_tests": 545,
+  "new_offer_form_tests": 23,
+  "focused_related_tests": 62,
+  "build": "passed",
+  "lint": {
+    "new_findings": 0,
+    "existing_findings": 147
+  },
+  "browser": {
+    "route": "http://127.0.0.1:5187/tests/browser/offer-forms.html",
+    "checks": [
+      "three numbered preparation steps within campaign context",
+      "synthetic lost reply keeps exact wording and navigation hold",
+      "reload preserves pending request",
+      "exact retry reconciles to one saved version and releases navigation",
+      "390px mobile viewport has no horizontal overflow",
+      "saved wording and references use progressive disclosure"
+    ],
+    "data": "synthetic fixture only",
+    "screenshot": "2026-10-31-offer-form-setup.jpg",
+    "preview_closed": true
+  },
+  "remaining": [
+    "hosted API and real session acceptance",
+    "public version selection and controlled activation",
+    "transactional seller submission",
+    "rate limiting and bot checks",
+    "four-step seller-facing UI",
+    "original sequential channel release gates"
+  ]
+}
