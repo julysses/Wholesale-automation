@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract lifecycle review foundation (local)
+
+- Pulled unchanged. Exact published candidate 5ca649c / CI 41246949570 remains active; no next feature push until all six terminal successes.
+- Added typed contract evidence/snapshot and pure lifecycle reviewer. Covers normal and exception state transitions, current exact-version evidence, separate direct-purchase/assignment requirements, buyer/structure-bound review and deadline holds. Every result denies execution authority; no API/SQL or app state transition exists yet.
+- 54 focused tests passed in 0.44 seconds, process 11340 exited 0. Added CONTRACTS-AND-DISPOSITION.md with concrete persistence, security, evidence, buyer and guided-screen requirements. This does not satisfy the full DISP requirements or establish legal/provider acceptance.
+- Next: fresh database inventory and additive persisted contract/evidence transition design, reusing existing deals/buyers. Keep the current GitHub job running and inspect its exact result before publication. Full Phase 1 retention/hosted acceptance gaps remain required and are not replaced by this later-phase implementation.
+
+
 ## 2026-10-31 — Retained seller workflow published after repair gate
 
 - All six predecessor repair jobs passed. Merged and pushed `5ca649c0fbcb4247872767b40f71c6717fc5d20b`; normal remote advancement `2f2dbe7` → `5ca649c` confirmed. Worktree was clean after publication.
