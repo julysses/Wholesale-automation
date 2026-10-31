@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Focused database fixture CI repair
+
+- Exact published b08f6ab / CI 41237169464 finished: five jobs passed; acquisition workflow failed only because the focused fixture omitted existing service-role SELECT/INSERT/UPDATE on lead_form_submissions. The full-catalog journey passed. The corrected assertion exposed this fixture gap; no production bypass was demonstrated.
+- Mirrored grants from existing 20261008205313_protect_consent_evidence.sql, including explicit DELETE/TRUNCATE/REFERENCES/TRIGGER revocation. No production schema or permission changes.
+- Reproduced and verified the repaired exact failing test against the published revision in a separate worktree: 1 test passed (8.211s). Four related tests also passed in the retained feature worktree (33.555s).
+- Publish only this CI repair; keep b63814d and proposed migration 53 local until the repair successor has all six successful jobs. No cancellation or production activation. Full original PRD remains incomplete.
+
 ## 2026-10-31 — Actual public-display gateway checks and corrected guard regression
 
 - Extended the local PostgREST fixture with explicit signed synthetic service-role tokens. Five new gateway checks verify role/signature/expiry rejection, exact selected version and five-field projection, rejection of routing overrides, disabled/expired/suspended/activation gates, and legacy submission isolation. No production token, configuration or grant changed.

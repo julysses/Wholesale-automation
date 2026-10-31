@@ -1,5 +1,7 @@
 # Acquisition automation — current implementation and release handoff
 
+Latest checkpoint: b08f6ab CI 41237169464 finished with five passing jobs and one focused-fixture permission failure. A fixture-only repair is being published separately; require all six successor jobs before retained feature publication. See the newest PROGRESS.md entry.
+
 Updated October 31, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 
 ## Latest handoff

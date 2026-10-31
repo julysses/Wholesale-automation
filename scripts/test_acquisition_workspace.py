@@ -122,6 +122,10 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
                 self.sql(f'ALTER TABLE {schema}.{table} ENABLE ROW LEVEL SECURITY; '
                          f'GRANT SELECT,INSERT,UPDATE,DELETE ON {schema}.{table} TO authenticated; '
                          f'CREATE POLICY legacy_approved ON {schema}.{table} TO authenticated USING (true) WITH CHECK (true);')
+        # Mirror the existing production consent-evidence grants. Otherwise a
+        # missing fixture privilege masks the scoped submission trigger/RPC.
+        self.sql('GRANT SELECT,INSERT,UPDATE ON public.lead_form_submissions TO service_role; '
+                 'REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER ON public.lead_form_submissions FROM service_role;')
         install_campaign_fixture(self.sql)
         install_call_fixture(self.sql)
         install_task_fixture(self.sql)
