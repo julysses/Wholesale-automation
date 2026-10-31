@@ -1,5 +1,11 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Reconciled current release handoff
+
+- Replaced stale mixed-era counts and unfinished-portal statements in CURRENT-STATUS.md with verified current scope: 56 migrations, 26 probes, 82 workflows, 49 gateway checks, 220 targeted Python tests, 14 seller UI tests and completed synthetic desktop/phone QA. Historical checkpoints remain in PROGRESS.md/Git history.
+- Recorded exact repair-only checkout/process/log, retained feature head, expected dependency-guard merge and required six-successful-job publication sequence. Full PRD gaps and production/provider approval boundaries remain explicit; no completion claim.
+- Process 69164 verified live, advancing through offer/owner tests without a reported failure. No process restart or CI cancellation. Next action remains inspect its terminal result, publish only the repair after a successful full run, then verify successor CI before feature publication.
+
 ## 2026-10-31 — Desktop and phone seller journey QA
 
 - Used the available browser with the built local page, synthetic API and fake verification widget. Optional gstack browse binary was unavailable; no tooling installed. Inspected desktop and 375×812 phone layouts, walked all four steps, simulated lost confirmation, reloaded the saved request and completed exact recovery. Verified unavailable-form state without sign-in or provider access. Phone document and content widths both 369px (no horizontal overflow).
