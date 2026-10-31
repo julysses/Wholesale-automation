@@ -1,11 +1,16 @@
-"""Authenticated contract document metadata only; no upload, download or approval."""
+"""Authenticated document metadata and separately gated binary uploads; no approval."""
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Path, Response
-from schemas.acquisition_contract_documents import ContractDocumentRegistration, ContractDocumentRegistrationReceipt, ContractDocumentState
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, Request
+from schemas.acquisition_contract_documents import ContractDocumentRegistration, ContractDocumentRegistrationReceipt, ContractDocumentState, ContractDocumentUploadReceipt, DocumentPurpose
 from schemas.acquisition_evidence import EvidenceRevocation, EvidenceRevocationReceipt
-from tools.acquisition_store import acquisition_store
+from tools.acquisition_store import acquisition_store, open_acquisition_store
+from tools.acquisition_evidence import EvidenceUnavailable
+from tools.acquisition_evidence_upload import EvidenceUploadUnconfirmed
+from web.api.acquisition_upload_stream import binary_upload_source
+from starlette.requests import ClientDisconnect
 
 router=APIRouter(prefix='/workspaces/{workspace_id}/contracts/{contract_id}/versions/{contract_version}/documents')
 Version=Annotated[int,Path(ge=1,le=2147483647)]
@@ -69,4 +74,53 @@ async def revoke_document(workspace_id:UUID,contract_id:UUID,contract_version:Ve
             raise ValueError('Document revocation receipt scope changed')
     except (ValueError,TypeError):
         raise uncertain('Document revocation is unconfirmed. Keep the same request and reason for recovery.') from None
+    return receipt.model_dump(mode='json')
+
+
+async def contract_document_upload_store(request: Request):
+    if os.getenv('ACQUISITION_CONTRACT_UPLOAD_ENABLED', '').lower() != 'true':
+        raise HTTPException(404, 'Contract document upload is not enabled', headers={'Cache-Control':'no-store'})
+    try:
+        async with open_acquisition_store(request) as store:
+            yield store
+    except HTTPException as error:
+        error.headers={**(error.headers or {}),'Cache-Control':'no-store'}
+        raise
+
+
+def upload_unconfirmed():
+    return HTTPException(503, {'code':'CONTRACT_DOCUMENT_UPLOAD_UNCONFIRMED',
+        'message':'Upload could not be confirmed. Preserve the same document record and exact file for recovery.'},
+        headers={'Cache-Control':'no-store'})
+
+
+@router.post('/{artifact_id}/bytes')
+async def upload_document(workspace_id:UUID, contract_id:UUID, contract_version:Version, artifact_id:UUID,
+                          purpose:DocumentPurpose, request:Request, response:Response,
+                          store=Depends(contract_document_upload_store)):
+    response.headers['Cache-Control']='no-store'
+    source=binary_upload_source(request)
+    try:
+        result=await store.upload_contract_document_with_admission(artifact_id,source,workspace_id=workspace_id,
+            contract_id=contract_id,contract_version=contract_version,purpose=purpose)
+    except EvidenceUploadUnconfirmed:
+        raise upload_unconfirmed() from None
+    except (EvidenceUnavailable,ClientDisconnect):
+        raise HTTPException(409, {'code':'CONTRACT_DOCUMENT_UPLOAD_NOT_ACCEPTED',
+            'message':'The file or current document state could not be accepted. Check the document record and original file.'},
+            headers={'Cache-Control':'no-store'}) from None
+    except HTTPException as error:
+        error.headers={**(error.headers or {}),'Cache-Control':'no-store'}
+        raise
+    try:
+        receipt=ContractDocumentUploadReceipt.model_validate(result)
+        now=datetime.now(timezone.utc)
+        if ((receipt.workspace_id,receipt.contract_id,receipt.contract_version,receipt.artifact_id,receipt.purpose)
+                != (workspace_id,contract_id,contract_version,artifact_id,purpose)
+                or receipt.retain_until<=now
+                or any(not now-timedelta(seconds=30)<=checked<=now+timedelta(seconds=5)
+                       for checked in (receipt.checked_at,receipt.registry_checked_at))):
+            raise ValueError('Upload receipt scope or freshness mismatch')
+    except (ValueError,TypeError):
+        raise upload_unconfirmed() from None
     return receipt.model_dump(mode='json')

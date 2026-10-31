@@ -1,5 +1,6 @@
 """Contract Storage RLS and bounded transport against disposable real registry data."""
 import asyncio
+import os
 import hashlib
 from uuid import UUID
 import httpx
@@ -110,6 +111,49 @@ class ContractStorageCases:
         with self.assertRaises(HTTPException):self.upload_contract_fixture(token='synthetic-other-session')
         self.assertEqual(getattr(self,'contract_source_reads',0),0);self.assertEqual(self.evidence_uploads,0)
         self.assertFalse(any(path.startswith('/storage/') for path,auth in self.requests))
+
+    def test_contract_storage_api_closed_gate_scope_and_uncertain_recovery(self):
+        self.contract_transport_fixture()
+        path=f'{self.base}/contracts/{DRAFT}/versions/1/documents/{DOCUMENT}/bytes?purpose=purchase_contract'
+        headers={**self.headers,'Content-Type':'application/octet-stream'}
+        self.assertEqual(self.client.post(path,headers=headers,content=self.evidence_body).status_code,404)
+        self.assertEqual(self.requests,[])
+        os.environ['ACQUISITION_CONTRACT_UPLOAD_ENABLED']='true'
+        denied=self.client.post(path,headers={**headers,'Authorization':'Bearer synthetic-other-session'},content=self.evidence_body)
+        self.assertEqual(denied.status_code,403)
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'0')
+        self.lose_evidence_reply_once=True;self.unavailable_evidence_read_once=True
+        uncertain=self.client.post(path,headers=headers,content=self.evidence_body)
+        self.assertEqual(uncertain.status_code,503,uncertain.text)
+        self.assertEqual(uncertain.json()['detail']['code'],'CONTRACT_DOCUMENT_UPLOAD_UNCONFIRMED')
+        self.assertEqual(self.evidence_uploads,1)
+        busy=self.client.post(path,headers=headers,content=self.evidence_body)
+        self.assertEqual(busy.status_code,429);self.assertIn('retry-after',busy.headers)
+        self.expire_slots()
+        recovered=self.client.post(path,headers=headers,content=self.evidence_body)
+        self.assertEqual(recovered.status_code,200,recovered.text)
+        self.assertEqual(recovered.headers['cache-control'],'no-store')
+        data=recovered.json()
+        self.assertEqual(data['status'],'stored_unverified');self.assertEqual(data['contract_version'],1)
+        self.assertFalse(data['verification_persisted']);self.assertFalse(data['legal_review_approved'])
+        self.assertFalse(data['execution_authorized']);self.assertEqual(self.evidence_uploads,1)
+        self.assertEqual(self.document_state()['status'],'pending_verification')
+
+    def test_contract_storage_api_wrong_file_and_revocation_during_verification(self):
+        self.contract_transport_fixture();os.environ['ACQUISITION_CONTRACT_UPLOAD_ENABLED']='true'
+        path=f'{self.base}/contracts/{DRAFT}/versions/1/documents/{DOCUMENT}/bytes?purpose=purchase_contract'
+        headers={**self.headers,'Content-Type':'application/octet-stream'}
+        wrong=self.client.post(path,headers=headers,content=b'wrong file')
+        self.assertEqual(wrong.status_code,409)
+        self.assertEqual(wrong.json()['detail']['code'],'CONTRACT_DOCUMENT_UPLOAD_NOT_ACCEPTED')
+        self.assertEqual(self.evidence_uploads,0)
+        self.expire_slots();self.after_evidence_read=lambda:self.revoke_document()
+        uncertain=self.client.post(path,headers=headers,content=self.evidence_body)
+        self.assertEqual(uncertain.status_code,503,uncertain.text)
+        self.assertEqual(uncertain.json()['detail']['code'],'CONTRACT_DOCUMENT_UPLOAD_UNCONFIRMED')
+        self.assertEqual(self.document_state()['status'],'revoked')
+        self.assertEqual(self.client.post(path,headers=headers,content=self.evidence_body).status_code,403)
+        self.assertEqual(self.evidence_uploads,1)
 
 
 class ContractStorageTests(ContractStorageCases, ContractDocumentTests, WorkflowTests):

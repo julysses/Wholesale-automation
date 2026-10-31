@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract upload endpoint passed local acceptance
+
+- Previous turn made progress: 60ccb27 implemented tested Storage dispatch and 212625a recorded terminal predecessor timeout plus targeted attempt-2 retry. Pulled unchanged. Exact predecessor 173684f / 41250516262 attempt 2 remains live, five jobs successful and schema-upgrade job active. No new feature push or job restart.
+- Added separately default-closed contract binary upload endpoint and strict version-bound receipt. Mail and contract API share lazy raw-stream/header/size checks; neither reads unadmitted bytes. Contract gate is independent of mail. Errors preserve exact file/artifact recovery and distinguish not accepted from unknown outcome. No approval or signing authority, preview or download URL.
+- 750 contract/evidence tests passed in 9.20 seconds. Full rehearsal process 67621 exited 0: 60 migrations / 26 access probes / 109 workflows / 64 actual gateway checks. New mounted API tests use real registry/RLS with synthetic Storage bytes for lost reply, unavailable verification, capacity hold, exact retry, wrong bytes, foreign workspace and revocation during verification. Evidence: evidence/2026-10-31-contract-upload-api-gateway-result.json. All local processes terminal.
+- Next: publish after all six predecessor jobs succeed; document discovery/policy choices, signed scan/review bindings and guided app document step, then immutable terms/transitions and disposition. Full PRD still controlling. No production migration, runtime flag/provider activation, spend, outreach, fulfillment or binding action.
+
+
 ## 2026-10-31 — Predecessor CI installation timeout and targeted retry
 
 - Storage candidate committed as 60ccb27; local full rehearsal passed 60/26/107/64. All local processes terminal.

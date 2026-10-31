@@ -1,12 +1,12 @@
 # Contract document persistence implementation handoff
 
-October 31, 2026. Design and internal transport checkpoint only. No contract upload API, storage authorization, legal review or signing authority is enabled by this document.
+October 31, 2026. Local implementation checkpoint. Production uploads, legal review and signing remain unapproved; no runtime flag is enabled by this document.
 
 ## Current verified starting point
 
 Read-only production inspection still reports migration ledger `20261023221455`, canonical `deals`, and RLS-enabled Storage tables. Candidate acquisition evidence/contract tables are absent. Storage object columns include archive/delete-marker/version flags; no Storage object policies were returned by the fresh catalog query. Exact metadata: `evidence/2026-10-31-contract-document-catalog.json`. Reinspect before writing the next migration; local candidate migrations are the intended additive predecessor, not the live state.
 
-Migration 58 extends the existing `acquisition_evidence_artifacts` registry with mutually exclusive campaign and canonical contract-version targets. The mail interfaces remain campaign-bound. Retention policies and revocations support both targets; signer attestations, scan state, content bindings and Storage upload guards still require further contract-specific work. Do not supply a contract UUID in a campaign parameter or create a fake campaign to store contract documents.
+Migration 58 extends the existing `acquisition_evidence_artifacts` registry with mutually exclusive campaign and canonical contract-version targets. The mail interfaces remain campaign-bound. Retention policies and revocations support both targets; signer attestations, scan state and review bindings still require further contract-specific work. Do not supply a contract UUID in a campaign parameter or create a fake campaign to store contract documents.
 
 `schemas/acquisition_evidence_object.py` now centralizes immutable exact-byte metadata and deterministic object naming. Existing mail descriptors retain required campaign/purpose fields. `ContractDocumentArtifact` separately requires canonical contract ID, contract version and document classification. Both use the same bounded authenticated byte transport, with size/hash/media/retention validation, no redirects, no returned file bytes or URLs, and no approval authority. Internal contract byte observations do not replace registry authorization, scan state or human review.
 
@@ -31,7 +31,7 @@ Do not generalize the existing public mail RPC signatures to optional loosely ch
 
 `admit_contract_document_upload` rechecks current workspace/member/profile/session, activation, exact draft/version, creator, purpose, retention policy and revocation after waiting for capacity serialization. The returned decision grants no Storage or execution authority. Migration 59 grants no Storage authority. The follow-on Storage candidate described below adds exact-reservation dispatch; verification still rechecks authorization after writing.
 
-Validation is tracked in CURRENT-STATUS.md and PROGRESS.md. The internal transport now has strict admission receipt parsing, shared process capacity, bounded source handling and authenticated reconciliation. Its synthetic tests do not establish Storage write authority. Next: guarded Storage dispatch and combined real-registry/Storage acceptance, scan/review binding and guided document UI. No HTTP upload endpoint should be mounted before the complete path passes acceptance.
+Validation is tracked in CURRENT-STATUS.md and PROGRESS.md. The internal transport now has strict admission receipt parsing, shared process capacity, bounded source handling and authenticated reconciliation. Its synthetic tests do not establish Storage write authority. Storage dispatch and combined real-registry/RLS upload acceptance passed locally in migration 60. The separately disabled upload endpoint candidate is described below; scan/review binding and guided document UI remain next.
 
 ## Transaction and failure behavior
 
@@ -76,10 +76,18 @@ The mounted version-scoped contract document API now supports registration, stat
 
 Contract admission rejects wrong target/version, stale timestamps, non-boolean authority flags, unexpected fields and invalid reservations before reading input. Both document types use the same four-slot process semaphore and 90-second outer deadline, in addition to database workspace limits. Cancellation during admission closes input and releases process capacity.
 
-The shared upload engine retains one bounded in-memory source read, exact expected size/hash, conservative file-type precheck, a fresh registry read before one non-overwriting POST, and independent registry/bytes/registry reconciliation. Provider success bodies never prove stored bytes; uncertain writes preserve the artifact identity and exact file. Contract metadata observations remain unpersisted, unscanned and legally unapproved. No contract HTTP upload route is mounted. Migration 60 adds the Storage write guard described below. Full acceptance requires testing this transport against the next guarded Storage migration.
+The shared upload engine retains one bounded in-memory source read, exact expected size/hash, conservative file-type precheck, a fresh registry read before one non-overwriting POST, and independent registry/bytes/registry reconciliation. Provider success bodies never prove stored bytes; uncertain writes preserve the artifact identity and exact file. Contract metadata observations remain unpersisted, unscanned and legally unapproved. Migration 60 supplies the Storage write guard and passed real-registry/RLS transport tests with synthetic object bytes. The next endpoint remains disabled by default; hosted Storage acceptance is separate.
 
 ## Storage authorization candidate (migration 60)
 
 `20261031231025_acquisition_contract_storage_upload.sql` replaces only the existing private access helper. Mail target checks are preserved. Contract writes require the exact current draft/version, creator, workspace and active reservation for that artifact in the shared slots, plus existing MFA/session/role, activation, retention, revocation and private-bucket checks. Existing restrictive object policies retain no listing, signing, replacement/deletion or archived/versioned access. No new bucket or policy grants are added.
 
 Focused SQL and combined bounded-transport cases use real registry/RLS with synthetic object bytes. Full-catalog workflow tests include fresh session/member revocation after admission, scoped preservation of a historical Storage sentinel, lost commit-reply recovery and activation/revocation changes across reads/writes. Hosted Storage behavior and production migration remain unapproved/unverified. Compensation: turn acquisition activation off and preserve all records/objects; do not remove retained evidence to roll back.
+
+## Separately gated binary upload endpoint candidate
+
+`POST /api/acquisition/workspaces/{workspace}/contracts/{contract}/versions/{version}/documents/{artifact}/bytes?purpose=purchase_contract` accepts only the original registered binary stream. `ACQUISITION_CONTRACT_UPLOAD_ENABLED=true` is a separate default-closed gate; the mail upload flag cannot open it. The existing acquisition feature gate, current user JWT and database/Storage authorization also apply. No runtime environment setting was changed.
+
+Mail and contract routes share the same lazy request-stream validation: one purpose, uncompressed application/octet-stream, no caller filename, bounded Content-Length and actual bytes up to 10 MiB. Admission runs before reading the body. Contract receipts validate exact artifact/workspace/contract/version/purpose, retained and fresh timestamps, expected verifier versions, strict booleans and no additional fields. A successful byte match reports stored_unverified, not_scanned, verification_persisted=false, legal_review_approved=false and execution_authorized=false.
+
+`CONTRACT_DOCUMENT_UPLOAD_NOT_ACCEPTED` (409) means the file/current state was not accepted. `CONTRACT_DOCUMENT_UPLOAD_UNCONFIRMED` (503) preserves the same registered artifact and exact file for reconciliation. Capacity denial returns 429 and Retry-After; do not switch identity to evade that hold. No downloadable URL, preview, legal approval or signing action is returned. Endpoint and real-registry/RLS acceptance are recorded in CURRENT-STATUS.md; hosted provider acceptance remains pending.

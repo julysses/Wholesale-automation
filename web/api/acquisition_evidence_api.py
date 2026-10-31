@@ -8,11 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query, Request
 from starlette.requests import ClientDisconnect
 
 from schemas.acquisition_evidence import (
-    MAX_EVIDENCE_BYTES, EvidenceReviewCandidate, EvidenceScanState, EvidenceUploadReceipt, EvidenceCandidates, EvidenceRegistration, EvidenceRegistrationReceipt, EvidenceRevocation, EvidenceRevocationReceipt, EvidenceState,
+    EvidenceReviewCandidate, EvidenceScanState, EvidenceUploadReceipt, EvidenceCandidates, EvidenceRegistration, EvidenceRegistrationReceipt, EvidenceRevocation, EvidenceRevocationReceipt, EvidenceState,
 )
 from tools.acquisition_store import acquisition_store, open_acquisition_store
 from tools.acquisition_evidence import EvidenceUnavailable
 from tools.acquisition_evidence_upload import EvidenceUploadUnconfirmed
+from web.api.acquisition_upload_stream import binary_upload_source
 
 router = APIRouter(prefix='/workspaces/{workspace_id}/campaigns/{campaign_id}/evidence')
 
@@ -159,34 +160,10 @@ async def upload_evidence(workspace_id: UUID, campaign_id: UUID, artifact_id: UU
                           purpose: Literal['mail_content', 'mail_destination'], request: Request,
                           response: Response, store=Depends(evidence_upload_store)):
     response.headers['Cache-Control'] = 'no-store'
-    if set(request.query_params) != {'purpose'} or len(request.query_params.getlist('purpose')) != 1:
-        raise HTTPException(422, 'Only one evidence purpose is accepted', headers={'Cache-Control': 'no-store'})
-    if (request.headers.getlist('content-type') != ['application/octet-stream']
-            or request.headers.getlist('content-encoding') not in ([], ['identity'])
-            or 'content-disposition' in request.headers):
-        raise HTTPException(415, 'Send the original file as an uncompressed binary stream', headers={'Cache-Control': 'no-store'})
-    length_values = request.headers.getlist('content-length')
-    declared = None
-    if length_values:
-        value = length_values[0]
-        if len(length_values)!=1 or len(value)>10 or not value.isascii() or not value.isdigit() or int(value)<1:
-            raise HTTPException(422, 'A valid file size is required', headers={'Cache-Control': 'no-store'})
-        declared = int(value)
-        if declared > MAX_EVIDENCE_BYTES:
-            raise HTTPException(413, 'Evidence files must be no larger than 10 MiB', headers={'Cache-Control': 'no-store'})
-
-    async def source():
-        received = 0
-        async for chunk in request.stream():
-            received += len(chunk)
-            if received > MAX_EVIDENCE_BYTES or declared is not None and received > declared:
-                raise ValueError('Evidence body length exceeded')
-            yield chunk
-        if declared is not None and received != declared:
-            raise ValueError('Evidence body length mismatch')
+    source = binary_upload_source(request)
 
     try:
-        result = await store.upload_evidence_with_admission(artifact_id, source(), workspace_id=workspace_id,
+        result = await store.upload_evidence_with_admission(artifact_id, source, workspace_id=workspace_id,
                                                            campaign_id=campaign_id, purpose=purpose)
     except EvidenceUploadUnconfirmed:
         raise upload_uncertain() from None

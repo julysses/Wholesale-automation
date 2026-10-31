@@ -9,13 +9,21 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 - Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is published in Git; synthetic desktop/mobile browser QA passed. Shared evidence regression rehearsal 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 gateway checks. No local test or preview process is active.
 - Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
+## Contract binary upload endpoint candidate
+
+The version-scoped document `/bytes` route is implemented behind its own default-closed `ACQUISITION_CONTRACT_UPLOAD_ENABLED` gate. It shares lazy bounded request validation with mail, reserves capacity before input reads, and validates exact contract/version/artifact/purpose and fresh strict receipts. Unknown outcomes preserve the same artifact and file; capacity replies carry Retry-After. Uploaded bytes remain unscanned, unpersisted as verification and legally unapproved. No runtime flag was enabled.
+
+750 contract/evidence tests passed in 9.20 seconds. Full rehearsal process 67621 exited 0: 60 migrations, 26 access probes, 109 workflows and 64 actual gateway checks. Mounted API-to-real-registry/RLS tests verified default closure, tenant denial, committed upload followed by lost/unavailable response, bounded retry recovery without duplicate object, bad-file rejection and revocation during verification. Storage bytes remain synthetic, and hosted Storage/Auth acceptance is unverified. Evidence: evidence/2026-10-31-contract-upload-api-gateway-result.json. All local processes terminal.
+
+Next: publish after all six predecessor checks succeed; add document discovery/policy choices, scan and review bindings, and the guided contract-document flow. Retain workspace/property/draft context, show one next action, and distinguish uploaded documents from completed review. Contract transitions, disposition, closing and remaining PRD gates are still incomplete.
+
 ## Contract Storage permission candidate
 
-CLI-created migration 60 adds exact contract-version dispatch to the existing private Storage helper. A contract write requires a current draft, its creator, an active reservation for the exact artifact/version and current workspace/session/retention authority. Mail dispatch, private reads and restrictive no-list/no-replace/no-delete rules are preserved. No HTTP upload action is mounted and no production DDL was applied.
+CLI-created migration 60 adds exact contract-version dispatch to the existing private Storage helper. A contract write requires a current draft, its creator, an active reservation for the exact artifact/version and current workspace/session/retention authority. Mail dispatch, private reads and restrictive no-list/no-replace/no-delete rules are preserved. The separately gated upload endpoint candidate is described above; no production DDL was applied.
 
 Six focused tests passed in process 10837 (26.285 seconds), including real registry/RLS with synthetic Storage bytes and lost-reply recovery. Full rehearsal process 3555 exited 0: 60 migrations, 26 access probes, 107 workflows and 64 actual gateway checks. All seven new workflows passed, including fresh session/member revocation after admission. Evidence: evidence/2026-10-31-contract-storage-gateway-result.json. All local processes terminal. GitHub predecessor 173684f / 41250516262 attempt 1 ended cancelled: five jobs succeeded, full schema job 124682889328 exhausted the 15-minute job limit during slow LLVM/runtime downloads before tests began. Confirmed terminal, inspected logs, and reran only that job on the same commit (attempt 2). Track that retry; do not restart it while live. Continue the all-six publication gate.
 
-Next: publish after the predecessor gate clears, then add the separately disabled upload endpoint with strict bounded receipts and app-facing recovery behavior. Follow with scan/review bindings and the guided document step. Hosted Storage acceptance remains unverified.
+Next: publish after the predecessor gate clears, continue document discovery, scan/review bindings and the guided document step. Hosted Storage acceptance remains unverified.
 
 ## Internal contract upload transport candidate
 
