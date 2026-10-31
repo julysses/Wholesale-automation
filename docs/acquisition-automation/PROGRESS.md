@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Isolated CI repair published; successor checks running
+
+- Full repair workspace suite completed successfully: 217 tests in 1730.570 seconds, process 69164 exited 0. Both originally failing historical-upgrade cases also passed separately. No test restart/cancellation. Published exact log and SHA256 evidence with the repair.
+- Pulled unchanged, then committed/pushed only repair `2f2dbe788e1f090f5888b80d68c95db1d2ac7167` from /tmp/wholesaleos-portal-ci-repair to remote codex/acquisition-foundation. Normal fast-forward push confirmed 09ebd14→2f2dbe7. That checkout is clean. It contains only fixture correction and validation/docs, not retained portal features.
+- Verified exact successor CI `41245920319` is in progress for that full SHA. Do not publish features until all six jobs are terminal successful. GitHub run: https://github.com/julysses/Wholesale-automation/actions/runs/41245920319.
+- Original checkout retains completed portal features and interface at af622cc, with later local handoff docs. Its history now diverges from the published repair by design. After six-success CI, merge repair 2f2dbe7 locally, retaining the equivalent guard covering migrations 54–56 and both documentation histories; validate any substantive merge resolution, then publish retained features and verify their successor checks.
+- No local tests or preview processes remain running. Original PRD, authoritative address verification, hosted acceptance and production/provider/outreach/fulfillment/transaction gates remain incomplete and unchanged.
+
 ## 2026-10-31 — Reconciled current release handoff
 
 - Replaced stale mixed-era counts and unfinished-portal statements in CURRENT-STATUS.md with verified current scope: 56 migrations, 26 probes, 82 workflows, 49 gateway checks, 220 targeted Python tests, 14 seller UI tests and completed synthetic desktop/phone QA. Historical checkpoints remain in PROGRESS.md/Git history.
