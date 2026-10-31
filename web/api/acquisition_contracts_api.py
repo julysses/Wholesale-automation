@@ -71,9 +71,15 @@ async def request(store,*args,**kwargs):
 async def create_contract_draft(workspace_id:UUID,body:ContractDraftRequest,response:Response,
                                 store=Depends(acquisition_store)):
     response.headers['Cache-Control']='no-store'
-    raw=await request(store,'POST','rpc/create_acquisition_contract_draft',body={
-        'p_id':str(body.id),'p_workspace':str(workspace_id),'p_offer':str(body.offer_id),
-        'p_offer_sequence':body.offer_sequence,'p_relationship':str(body.owner_relationship_id),'p_name':body.name})
+    try:
+        raw=await request(store,'POST','rpc/create_acquisition_contract_draft',body={
+            'p_id':str(body.id),'p_workspace':str(workspace_id),'p_offer':str(body.offer_id),
+            'p_offer_sequence':body.offer_sequence,'p_relationship':str(body.owner_relationship_id),'p_name':body.name})
+    except HTTPException as error:
+        # The database rejected this transaction. This does not settle any earlier attempt.
+        if error.status_code in {401,403,409}:
+            error.headers={**(error.headers or {}),'X-Acquisition-Contract-Rejected':'true'}
+        raise
     try:
         receipt=ContractDraftReceipt.model_validate(raw)
         if receipt.deal_id!=body.id:

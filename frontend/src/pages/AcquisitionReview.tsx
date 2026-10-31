@@ -6,6 +6,7 @@ import { InboundRequestQueue } from '@/components/acquisition/InboundRequestQueu
 import { IntakeReview } from '@/components/acquisition/IntakeReview';
 import { CampaignDrafts } from '@/components/acquisition/CampaignDrafts';
 import { InquiryHealth } from '@/components/acquisition/InquiryHealth';
+import { ContractDraft } from '@/components/acquisition/ContractDraft';
 import { ScenarioSummary } from '@/components/acquisition/ScenarioSummary';
 
 type Workspace = { id: string; name: string };
@@ -35,7 +36,7 @@ export function AcquisitionReview({ userId }: { userId: string }) {
     queryFn: ({ signal }) => read<Workspace[]>('/api/acquisition/workspaces', signal), retry: false, gcTime: 0, staleTime: 0 });
   return <main className="max-w-6xl mx-auto p-6 space-y-6">
     <header><h1 className="text-2xl font-bold text-[#1B3A5C]">Acquisition workflow</h1>
-      <p className="text-gray-600 mt-2">Prepare campaigns, review seller inquiries, evaluate the property, and review the proposed amount in one workspace.</p><p className="text-sm text-gray-500 mt-2">These review steps support your existing acquisition process. Amount approval does not send an offer or approve a contract.</p></header>
+      <p className="text-gray-600 mt-2">Prepare campaigns, review seller inquiries, evaluate the property, review the proposed amount, and prepare a contract draft in one workspace.</p><p className="text-sm text-gray-500 mt-2">These review steps support your existing acquisition process. Amount approval does not send an offer or approve a contract.</p></header>
     {spaces.isPending && <p role="status">Loading your workspaces…</p>}
     {spaces.isError && <p role="alert">{message(spaces.error)}</p>}
     {spaces.data && <label className="block max-w-md">Workspace<select className={input} disabled={campaignPending} value={workspace} onChange={e => setWorkspace(e.target.value)}>
@@ -50,6 +51,7 @@ const reviewSteps = [
   { id: 'sellers', title: 'Review seller inquiries', detail: 'Resolve intake issues, review callback requests, and confirm the seller and property information.' },
   { id: 'evaluate', title: 'Evaluate the property', detail: 'Review the evidence and costs, then prepare a proposed amount.' },
   { id: 'decide', title: 'Review the proposed amount', detail: 'Check the supporting analysis and record your decision. Contract approval and delivery are separate steps.' },
+  { id: 'contract', title: 'Prepare a contract draft', detail: 'Carry the selected property and reviewed amount forward, choose the reported seller, and save a draft for document review.' },
 ];
 
 function ReviewStep({ index, children }: { index: number; children: ReactNode }) {
@@ -57,7 +59,7 @@ function ReviewStep({ index, children }: { index: number; children: ReactNode })
   return <section id={`acquisition-${step.id}`} aria-labelledby={`acquisition-${step.id}-title`} tabIndex={-1} className="scroll-mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5 space-y-4 focus:outline-none focus:ring-2 focus:ring-[#E8720C]">
     <header className="flex gap-3 items-start">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1B3A5C] text-[#E8720C] font-bold" aria-hidden="true">{index + 1}</span>
-      <div><p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Review step {index + 1} of 4</p><h2 id={`acquisition-${step.id}-title`} className="text-lg font-bold text-[#1B3A5C]">{step.title}</h2><p className="text-sm text-gray-600 mt-1">{step.detail}</p></div>
+      <div><p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Review step {index + 1} of {reviewSteps.length}</p><h2 id={`acquisition-${step.id}-title`} className="text-lg font-bold text-[#1B3A5C]">{step.title}</h2><p className="text-sm text-gray-600 mt-1">{step.detail}</p></div>
     </header>
     {children}
   </section>;
@@ -66,7 +68,8 @@ function ReviewStep({ index, children }: { index: number; children: ReactNode })
 function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: string; workspace: string; onCampaignPending: (pending: boolean) => void }) {
   const [inboundPending,setInboundPending] = useState(false);
   const [draftPending,setDraftPending] = useState(false);
-  useEffect(()=>{onCampaignPending(inboundPending || draftPending);},[inboundPending,draftPending,onCampaignPending]);
+  const [contractPending,setContractPending] = useState(false);
+  useEffect(()=>{onCampaignPending(inboundPending || draftPending || contractPending);},[inboundPending,draftPending,contractPending,onCampaignPending]);
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [selected, setSelected] = useState<Offer | null>(null);
   const after = cursors[cursors.length - 1];
@@ -76,7 +79,7 @@ function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: str
   return <section className="space-y-6">
     <nav aria-label="Acquisition review steps" className="rounded-xl bg-[#1B3A5C] p-4 sm:p-5 text-white">
       <p className="font-semibold">Your acquisition review path</p><p className="text-sm text-white/80 mt-1">Jump to the work you need. Step numbers show the order of review, not completion or launch approval.</p>
-      <ol className="grid gap-2 mt-4 sm:grid-cols-2 lg:grid-cols-4">{reviewSteps.map((step, index) => <li key={step.id}><a href={`#acquisition-${step.id}`} className="flex gap-2 items-center rounded-lg bg-white/10 p-3 text-sm hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E8720C]"><span className="font-bold text-[#E8720C]">{index + 1}</span>{step.title}</a></li>)}</ol>
+      <ol className="grid gap-2 mt-4 sm:grid-cols-2 lg:grid-cols-5">{reviewSteps.map((step, index) => <li key={step.id}><a href={`#acquisition-${step.id}`} className="flex gap-2 items-center rounded-lg bg-white/10 p-3 text-sm hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E8720C]"><span className="font-bold text-[#E8720C]">{index + 1}</span>{step.title}</a></li>)}</ol>
     </nav>
     <ReviewStep index={0}><CampaignDrafts userId={userId} workspace={workspace} onPending={setDraftPending} /></ReviewStep>
     <ReviewStep index={1}><InquiryHealth userId={userId} workspace={workspace} />
@@ -85,19 +88,20 @@ function WorkspaceReview({ userId, workspace, onCampaignPending }: { userId: str
     <ReviewStep index={2}><AcquisitionUnderwriting userId={userId} workspace={workspace} onProposed={() => { void queue.refetch(); }} /></ReviewStep>
     <ReviewStep index={3}>
     <div className="flex justify-between items-center"><h2 className="text-lg font-semibold">Proposals and review history</h2>
-      <button className={button} disabled={queue.isFetching} onClick={() => { setSelected(null); void queue.refetch(); }}>Refresh queue</button></div>
+      <button className={button} disabled={queue.isFetching || contractPending} onClick={() => { setSelected(null); void queue.refetch(); }}>Refresh queue</button></div>
     {queue.isFetching ? <p role="status">Loading proposals…</p> : queue.isError ? <p role="alert">{message(queue.error)}</p> : <>
       {queue.data?.items.length === 0 && <p>No proposals on this page.</p>}
-      <div className="grid gap-3 md:grid-cols-2">{queue.data?.items.map(offer => <button key={offer.offer_id} className="border rounded-xl bg-white p-4 text-left hover:border-blue-500" onClick={() => setSelected(offer)}>
+      <div className="grid gap-3 md:grid-cols-2">{queue.data?.items.map(offer => <button key={offer.offer_id} disabled={contractPending} className="border rounded-xl bg-white p-4 text-left hover:border-blue-500" onClick={() => setSelected(offer)}>
         <span className="font-semibold text-lg">{money(offer.amount)}</span><span className="block text-sm">Scenario {offer.analysis_revision} · {offer.case} case</span>
         <span className="block text-sm text-gray-600">{offer.historical_status.replaceAll('_', ' ')}{offer.historical_status === 'amount_approved' && !offer.amount_approval_current ? ' · review required' : ''}</span>
         <span className="block text-xs break-all mt-2">Lead {offer.lead_id}</span><span className="block mt-2 text-blue-700">Open review</span>
       </button>)}</div>
     </>}
-    <nav aria-label="Proposal pages" className="flex gap-2"><button className={button} disabled={cursors.length === 1 || queue.isFetching} onClick={() => { setSelected(null); setCursors(c => c.slice(0, -1)); }}>Previous</button>
-      <button className={button} disabled={!queue.data?.next_after || queue.isFetching || queue.isError} onClick={() => { const next = queue.data?.next_after; if (next) { setSelected(null); setCursors(c => [...c, next]); } }}>Next</button></nav>
+    <nav aria-label="Proposal pages" className="flex gap-2"><button className={button} disabled={cursors.length === 1 || queue.isFetching || contractPending} onClick={() => { setSelected(null); setCursors(c => c.slice(0, -1)); }}>Previous</button>
+      <button className={button} disabled={!queue.data?.next_after || queue.isFetching || queue.isError || contractPending} onClick={() => { const next = queue.data?.next_after; if (next) { setSelected(null); setCursors(c => [...c, next]); } }}>Next</button></nav>
     {selected && <OfferReview key={selected.offer_id} userId={userId} workspace={workspace} selected={selected} onSaved={() => { void queue.refetch(); }} />}
     </ReviewStep>
+    <ReviewStep index={4}><ContractDraft key={`${userId}:${workspace}:${selected?.offer_id ?? "recover"}`} userId={userId} workspace={workspace} selected={selected} onPending={setContractPending} /></ReviewStep>
   </section>;
 }
 

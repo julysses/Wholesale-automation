@@ -1,0 +1,71 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ContractDraft } from '../src/components/acquisition/ContractDraft';
+const mock = vi.hoisted(() => ({ fetch: vi.fn(), pending: vi.fn(), fail: false, reject: false, existing: false, approved: true }));
+vi.mock('@/lib/api', () => ({ apiFetch: mock.fetch, ApiError: class extends Error { rejectedContract = true; } }));
+import { ApiError } from '../src/lib/api';
+const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+const selected = { offer_id: id(6), lead_id: id(3), property_id: id(4) };
+const record = { id: id(5), workspace_id: id(2), lead_id: id(3), deal_name: 'Saved property draft', acquisition_status: 'draft', acquisition_version: 1,
+  acquisition_property_id: id(4), acquisition_owner_relationship_id: id(7), acquisition_offer_id: id(6), acquisition_offer_sequence: 2, created_by: id(1), created_at: '2026-10-31T22:00:00Z' };
+beforeEach(() => {
+  sessionStorage.clear(); mock.fetch.mockReset(); mock.pending.mockReset(); mock.fail = false; mock.reject = false; mock.existing = false; mock.approved = true;
+  mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    if (init?.method === 'POST') {
+      if (mock.reject) throw new ApiError('Rejected', 409);
+      if (mock.fail) throw new Error('Lost response');
+      mock.existing = true;
+      return { json: async () => ({ deal_id: JSON.parse(init.body as string).id, version: 1, status: 'draft', duplicate: false, execution_authorized: false }) };
+    }
+    const value = path.endsWith('/state') ? { ...selected, workspace_id: id(2), sequence: 2, amount_approval_current: mock.approved, amount: 140000 }
+      : path.endsWith('/summary') ? { id: id(3), property_id: id(4), property_address: '123 Fixture St', city: 'Dallas' }
+      : path.includes('/sellers?') ? { items: [{ id: id(7), workspace_id: id(2), lead_id: id(3), property_id: id(4), owner_id: id(8), relationship: 'reported_owner', verification_status: 'unverified', seller: { display_name: 'Synthetic Seller' } }], next_after: null, ownership_verified: false, execution_authorized: false }
+      : { items: mock.existing ? [record] : [], next_after: null, execution_authorized: false };
+    return { json: async () => value };
+  });
+});
+function open(selection: typeof selected | null = selected) {
+  return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ContractDraft userId={id(1)} workspace={id(2)} selected={selection} onPending={mock.pending} /></QueryClientProvider>);
+}
+async function fill() {
+  await screen.findByRole('option', { name: /Synthetic Seller/ });
+  fireEvent.change(screen.getByLabelText('Seller relationship'), { target: { value: id(7) } });
+  fireEvent.change(screen.getByLabelText('Draft name'), { target: { value: 'Property draft' } });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Save draft for review' })).toBeEnabled());
+}
+const posts = () => mock.fetch.mock.calls.filter(call => call[1]?.method === 'POST');
+it('carries property, amount and reported seller into a nonbinding draft', async () => {
+  open(); await fill(); expect(screen.getByText('123 Fixture St, Dallas')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft for review' }));
+  await screen.findByText(/Draft saved for review/); expect(posts()).toHaveLength(1);
+  expect(JSON.parse(posts()[0][1].body)).toMatchObject({ offer_id: id(6), offer_sequence: 2, owner_relationship_id: id(7) });
+  expect(sessionStorage.length).toBe(0); await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});
+it('recovers the exact request after reload even without a selected proposal', async () => {
+  mock.fail = true; const view = open(); await fill(); fireEvent.click(screen.getByRole('button', { name: 'Save draft for review' }));
+  await screen.findByText(/Save is unconfirmed/); expect(mock.pending).toHaveBeenLastCalledWith(true); view.unmount();
+  mock.fail = false; mock.approved = false; open(null);
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry same draft' }));
+  await screen.findByText(/Draft saved for review/); expect(posts()).toHaveLength(2); expect(posts()[0][1].body).toBe(posts()[1][1].body);
+});
+it('retains an uncertain request when a later retry is rejected', async () => {
+  mock.fail = true; open(); await fill(); fireEvent.click(screen.getByRole('button', { name: 'Save draft for review' }));
+  await screen.findByText(/Save is unconfirmed/); const original = sessionStorage.getItem(sessionStorage.key(0)!);
+  mock.reject = true; fireEvent.click(screen.getByRole('button', { name: 'Retry same draft' }));
+  await waitFor(() => expect(posts()).toHaveLength(2)); await waitFor(() => expect(screen.getByRole('button', { name: 'Retry same draft' })).toBeEnabled());
+  expect(sessionStorage.getItem(sessionStorage.key(0)!)).toBe(original);
+});
+it('unlocks a first attempt explicitly rejected by the database', async () => {
+  mock.reject = true; open(); await fill(); fireEvent.click(screen.getByRole('button', { name: 'Save draft for review' }));
+  await screen.findByText(/The draft was not saved/); expect(sessionStorage.length).toBe(0);
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});
+it('shows an existing draft after reload and prevents another save', async () => {
+  mock.existing = true; open(); await screen.findByText('Existing draft: Saved property draft');
+  expect(screen.getByRole('button', { name: 'Draft saved' })).toBeDisabled(); expect(posts()).toHaveLength(0);
+});
+it('rechecks an amount approval immediately before saving', async () => {
+  open(); await fill(); mock.approved = false; fireEvent.click(screen.getByRole('button', { name: 'Save draft for review' }));
+  await screen.findByText(/The amount review changed/); expect(posts()).toHaveLength(0); expect(sessionStorage.length).toBe(0);
+});

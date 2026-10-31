@@ -75,6 +75,18 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
     body={'id':draft,'offer_id':offer,'offer_sequence':2,'owner_relationship_id':relation,'name':'Synthetic contract HTTP draft'}
     headers={'Authorization':'Bearer '+token()}
     with TestClient(app) as client:
+        sellers=client.get(path+'/sellers',params={'lead_id':lead,'property_id':prop},headers=headers)
+        if sellers.status_code!=200 or len(sellers.json()['items'])!=1:
+            raise AssertionError('Actual seller relationship join failed')
+        choice=sellers.json()['items'][0]
+        if choice['id']!=relation or choice['owner_id']!=owner or choice['seller']['display_name']!='Synthetic Seller':
+            raise AssertionError('Seller choice lost canonical identity/name')
+        if choice['verification_status']!='unverified' or sellers.json()['ownership_verified'] or sellers.json()['execution_authorized']:
+            raise AssertionError('Seller choices implied verified title or execution')
+        foreign_sellers=client.get(path+'/sellers',params={'lead_id':lead,'property_id':prop},headers={'Authorization':'Bearer '+token(other)})
+        wrong_property=client.get(path+'/sellers',params={'lead_id':lead,'property_id':draft},headers=headers)
+        if foreign_sellers.json().get('items')!=[] or wrong_property.json().get('items')!=[]:
+            raise AssertionError('Seller choices leaked across workspace/property')
         lost=client.post(path,json=body,headers=headers)
         if lost.status_code!=503 or len(commits)!=1 or commits[0]['duplicate']:
             raise AssertionError('Draft response loss did not follow real commit')
@@ -104,4 +116,4 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
                 raise AssertionError('Expired session recovered a draft')
         finally:db.query('UPDATE auth.sessions SET not_after=NULL WHERE id=%s',[admin])
     return ['contract API actual commit loss and exact recovery','contract API canonical draft and immutable audit',
-            'contract API real tenant and anonymous isolation','contract API expired session denied']
+            'contract API real tenant and anonymous isolation','contract API expired session denied','contract seller actual canonical join and property isolation']

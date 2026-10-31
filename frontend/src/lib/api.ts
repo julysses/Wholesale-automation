@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 export class ApiError extends Error {
   status: number;
   rejectedCreate: boolean;
+  rejectedContract = false;
   rejectedCost: boolean;
   retryAfterSeconds?: number;
   constructor(message: string, status: number, rejectedCreate = false, rejectedCost = false, retryAfterSeconds?: number) {
@@ -22,13 +23,18 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   const response = await fetch(path, { ...init, headers });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new ApiError(typeof body?.detail === 'string' ? body.detail : `Request failed (${response.status})`, response.status,
+    const error = new ApiError(typeof body?.detail === 'string' ? body.detail : `Request failed (${response.status})`, response.status,
       response.headers.get('X-Deal-Create-Rejected') === 'true',
       init?.method === 'POST' && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/cost-evidence$/.test(path)
         && [401, 403, 409].includes(response.status) && response.headers.get('X-Acquisition-Cost-Rejected') === 'true',
       response.status === 429 && /^[0-9]{1,3}$/.test(response.headers.get('Retry-After') ?? '')
         && Number(response.headers.get('Retry-After')) >= 1 && Number(response.headers.get('Retry-After')) <= 120
         ? Number(response.headers.get('Retry-After')) : undefined);
+    error.rejectedContract = init?.method === 'POST'
+      && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/drafts$/.test(path)
+      && [401, 403, 409].includes(response.status)
+      && response.headers.get('X-Acquisition-Contract-Rejected') === 'true';
+    throw error;
   }
   return response;
 }

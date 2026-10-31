@@ -6,20 +6,20 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 - Published contract draft candidate: `bbcec81ff9c1451f6849885d9348928c641dd22d` on `codex/acquisition-foundation`. Normal push confirmed `5ca649c` → `bbcec81`; checkout was clean. Exact successor CI `41248426556` is in progress: https://github.com/julysses/Wholesale-automation/actions/runs/41248426556. Require all six terminal successes before another feature push.
 - Predecessor `5ca649c` / CI `41246949570` completed successfully with all six jobs. Prior fixture repair `2f2dbe7` / CI `41245920319` also passed all six. No jobs cancelled or restarted.
-- Contract draft schema/API/rules and seller choices are published in Git, not deployed. Latest local evidence and remaining seller-choice/UI boundaries are below. No local test/preview process is active.
+- Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is now implemented locally; browser visual QA is still pending. No local test/preview process is active.
 - Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
 ## Current contract candidate
 
-Contract draft migration/API passed the full rehearsal: 57 migrations, 26 access probes, 88 full-catalog workflows and 53 local gateway checks. Process 98367 exited 0; evidence/2026-10-31-contract-api-gateway-result.json. Actual contract API commit-loss recovery, one version/audit, tenant/anonymous isolation and expired-session rejection passed. Contract API/auth regressions (483) and three observed lock-wait cases passed separately.
+Contract draft migration/API passed the full rehearsal: 57 migrations, 26 access probes, 88 full-catalog workflows and 54 local gateway checks. Process 55084 exited 0; evidence/2026-10-31-contract-seller-gateway-result.json. Actual contract API commit-loss recovery, one version/audit, tenant/anonymous isolation and expired-session rejection passed. Contract API/auth regressions (483) and three observed lock-wait cases passed separately.
 
-Added bounded seller-choice API scoped to workspace/lead/property, showing reported names without title claims. Its unit/router/rules suite passed 100 tests; the new seller-choice join has not yet received actual gateway acceptance. Draft save/list gateway acceptance above does not prove that new join. The guided draft screen, contract evidence/transitions and all later PRD gates remain incomplete. No local process remains running.
+Added bounded seller-choice API scoped to workspace/lead/property, showing reported names without title claims. Its unit/router/rules suite passed 100 tests; the canonical seller-name join and property isolation now pass the actual local gateway. The guided fifth draft step carries the selected proposal/property, shows existing drafts, preserves an exact uncertain request across reload, and locks workspace/proposal navigation during recovery. An explicit first-attempt database rejection can release the hold; a later rejection never clears an earlier uncertain save. Contract evidence/transitions and all later PRD gates remain incomplete. Frontend regression: 583 tests passed across 73 files, followed by 13 targeted tests including an additional navigation-lock case; 100 contract API/rules tests passed. Typecheck/build passed; lint baseline passed after replacing a control-character regex. Visual browser acceptance for the new fifth step remains pending. No local process remains running.
 
 ## Verified local scope
 
 | Evidence | Latest verified result | Boundary |
 | --- | --- | --- |
-| Full schema and application rehearsal | 57 additive candidate migrations; 26 access probes; 88 application workflows; 53 real local PostgREST checks | Synthetic records and bot responses; no hosted Auth/provider acceptance |
+| Full schema and application rehearsal | 57 additive candidate migrations; 26 access probes; 88 application workflows; 54 real local PostgREST checks | Synthetic records and bot responses; no hosted Auth/provider acceptance |
 | Historical compatibility | 24 historical records preserved across 22 populated tables; 103 historical definitions checked | Disposable production-derived catalog, not a production migration |
 | Portal/backend regression | 220 portal, authentication and webhook tests passed | Targeted suite; not a newly run whole-backend suite |
 | New seller interface | 14 contract/component/journey tests passed; typecheck/build passed | Fake verification widget in tests |
@@ -32,7 +32,7 @@ The portal is disabled by default. Its receiver uses restricted server credentia
 
 ## One app process
 
-`frontend/src/pages/AcquisitionReview.tsx` currently provides four numbered review sections: prepare campaigns, review inquiries, evaluate property, review proposed amount. `CampaignDrafts.tsx` embeds mail templates, response destinations, content review and supporting files within campaign preparation. The internal mail step numbers are not the overall acquisition phase gates. Preserve the navy/orange styling, workspace/property context and exact pending requests through handoffs.
+`frontend/src/pages/AcquisitionReview.tsx` now provides five numbered review sections: prepare campaigns, review inquiries, evaluate property, review proposed amount, and prepare a contract draft. `CampaignDrafts.tsx` embeds mail templates, response destinations, content review and supporting files within campaign preparation. The internal mail step numbers are not the overall acquisition phase gates. Preserve the navy/orange styling, workspace/property context and exact pending requests through handoffs.
 
 User-required acceptance standard for every app-facing increment:
 

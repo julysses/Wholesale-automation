@@ -55,6 +55,7 @@ def test_uncertain_or_unexpected_receipt_requires_same_request(endpoint,change):
     assert response.status_code==503 and 'same saved request' in response.text
     assert 'private-marker' not in response.text and response.headers['cache-control']=='no-store'
     assert store.request.await_count==1
+    assert response.headers.get('X-Acquisition-Contract-Rejected') is None
 
 
 def test_duplicate_receipt_is_recovery_not_execution(endpoint):
@@ -90,6 +91,7 @@ def test_storage_errors_remain_private_noncacheable_and_not_retried(endpoint,sta
     response=client.post(PATH,json=BODY)
     assert response.status_code==status and response.headers['cache-control']=='no-store'
     assert store.request.await_count==1
+    assert (response.headers.get('X-Acquisition-Contract-Rejected')=='true') == (status in {401,403,409})
 
 
 def test_feature_disabled_without_opening_store(monkeypatch):

@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Resumed after app update; guided contract draft candidate
+
+- Refreshed the approved branch with a fast-forward-only pull; already up to date. Predecessor bbcec81 / CI 41248426556 currently has five successful jobs and the real PostgreSQL contention job still running. No feature push until all six finish successfully; do not restart that job.
+- Completed process 55084 without restart: 57 candidate migrations, 26 access probes, 88 workflows, 54 actual local gateway checks. New seller-name canonical join, wrong-property and cross-workspace checks passed. Exact result/log hash: evidence/2026-10-31-contract-seller-gateway-result.json.
+- Implemented fifth navy/orange numbered app step: preserve selected offer/property, choose reported seller by name, carry current reviewed amount, and save only a nonbinding draft. Show existing drafts on reload and prevent another creation. A lost/invalid reply preserves the exact request and locks workspace/proposal navigation. Fresh amount validation precedes a new save; retries retain the original request even if approval later changes.
+- Added explicit database-transaction rejection response marker. The browser clears only a never-uncertain first attempt with that marker; subsequent rejections preserve prior uncertain state. Ordinary failures and invalid receipts never authorize clearing. No server/role policy is bypassed.
+- Validation: full frontend 583/73 passed; 13 follow-up helper/navigation tests passed after adding the parent navigation-lock regression and replacing the control-character regex. Six mounted draft component cases cover save, reload recovery, later rejection, initial rejection, existing draft and stale approval. Contract API/rules 100 passed. Typecheck/build passed. Initial lint found one new control-regex finding; corrected it and lint check passed. Original pytest invocation failed before executing because pytest was not on PATH; corrected invocation used the existing virtualenv interpreter and exited 0. No processes remain active locally.
+- Remaining before UI acceptance: visual desktop/mobile browser QA and matching successor CI after publication. Contract documents, evidence/transitions, retention, mail/voice/caller/agency, hosted acceptance and every original PRD gate remain required. No production migration/deployment/provider activation/spend/outreach/fulfillment/binding action.
+
 ## 2026-10-31 — Contract draft implementation published
 
 - Pushed bbcec81ff9c1451f6849885d9348928c641dd22d after all six exact predecessor jobs passed; confirmed normal remote advance 5ca649c → bbcec81 and clean checkout.
