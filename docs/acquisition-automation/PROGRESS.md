@@ -1,5 +1,11 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract registry/API candidate published
+
+- Normal push confirmed c935460 → 173684f746568d5d96e26020ce78e79efd04fb85 after all six predecessor jobs passed. Exact successor CI 41250516262 is queued for this SHA: https://github.com/julysses/Wholesale-automation/actions/runs/41250516262. No next feature push until all six succeed; do not restart live jobs.
+- Published additive migration 58, shared version-bound registry/current byte observations, scoped metadata API and actual gateway recovery tests. Local acceptance: 681 broader API/auth/evidence tests, eight focused SQL cases and full 58/26/95/62 rehearsal. All local processes are terminal. No production migration/deployment/provider action.
+- Next: aggregate workspace upload admission for contract documents, guarded upload/reconciliation, signed scan/review bindings, immutable terms/transitions and guided document UI. Preserve all original PRD requirements and approval gates. This handoff note remains local until the next publication gate clears.
+
 ## 2026-10-31 — Version-scoped document metadata API passed
 
 - Previous goal turn was progress: b496d0f committed the tested additive registry. Pulled unchanged. Exact predecessor c935460 / CI 41249648671 now completed all six jobs successfully; no cancellation/restart. Publication gate is clear for this accepted candidate.
