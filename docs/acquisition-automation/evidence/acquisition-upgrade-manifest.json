@@ -225,6 +225,10 @@
     {
       "file": "20261031204520_acquisition_portal_verified_acceptance.sql",
       "sha256": "5eb63166c3b3405bfc2241b45c6fe0c4532d6fc4e00760e8e1ed2fc72a9ef4b3"
+    },
+    {
+      "file": "20261031221633_acquisition_contract_drafts.sql",
+      "sha256": "193ee1da84da9bfe58b5b97d1d6f9b6e702f3c04617f51ab23c050b59025f63e"
     }
   ]
 }

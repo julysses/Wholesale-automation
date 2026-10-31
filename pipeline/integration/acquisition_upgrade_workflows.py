@@ -6,6 +6,7 @@ import psycopg2
 from psycopg2 import sql
 
 from test_acquisition_workflow import WorkflowTests
+from acquisition_contract_tests import ContractDraftCases
 from test_acquisition_workspace import ADMIN, OTHER, CALLER, OPERATOR, WORKSPACE, WORKSPACE_B, LEAD, LEAD_B, PROPERTY
 
 
@@ -24,11 +25,19 @@ class FullCatalogWorkflowTests(WorkflowTests):
         self.fixture_aggregate_rows={table:self.sql("SELECT coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb)::text FROM public."+table+' t') for table in ('tasks','app_notifications')}
 
 
+class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
+    def setUp(self):
+        super().setUp()
+        self.prepare_contract_fixture()
+
+
 def run_workflow_probes(db):
     # Include every application journey declared by WorkflowTests, not inherited
     # focused schema-mutation tests from WorkspaceTests.
     names = sorted(name for name, method in WorkflowTests.__dict__.items()
                    if name.startswith('test_') and callable(method))
+    contract_names = sorted(name for name in ContractDraftCases.__dict__ if name.startswith('test_contract_draft_'))
+    names += contract_names
     if not names:
         raise RuntimeError('No application journeys discovered')
     from rehearse_acquisition_upgrade import fingerprints, CATALOG
@@ -46,7 +55,7 @@ def run_workflow_probes(db):
                 cursor.execute(sql.SQL('CREATE DATABASE {} TEMPLATE acquisition_upgrade').format(sql.Identifier(database)))
             try:
                 print(json.dumps({'running_full_catalog_workflow':name}),flush=True)
-                test=FullCatalogWorkflowTests(name)
+                test=(FullCatalogContractTests if name in contract_names else FullCatalogWorkflowTests)(name)
                 test.socket=socket
                 test.database_name=database
                 test.env={'PATH':'/usr/bin:/bin','HOME':socket,'TMPDIR':socket,'LANG':'C','PGCONNECT_TIMEOUT':'5'}

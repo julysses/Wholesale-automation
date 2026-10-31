@@ -9,6 +9,10 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 - The retained disabled admission, verified acceptance, receiver and four-step seller UI are now published in Git. This does not mean deployed or live. The merge preserved the migration 54–56 fixture guard and changed no application/test code relative to the validated retained head. Both documentation histories are retained.
 - No local test or preview process remains running. Branch automatic deployment is disabled in vercel.json. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
+## New local candidate awaiting acceptance
+
+Migration 57 adds controlled contract drafts on canonical deals. Six focused database cases passed; full rehearsal process 8324 is running at /tmp/acquisition-contract-drafts-full.log. API/screens and later contract transitions remain incomplete. The verified results below still describe the prior 56-migration candidate.
+
 ## Verified local scope
 
 | Evidence | Latest verified result | Boundary |

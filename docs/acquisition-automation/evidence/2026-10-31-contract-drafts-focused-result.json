@@ -1,0 +1,9 @@
+{
+  "result": "passed",
+  "tests": 6,
+  "seconds": 50.386,
+  "log_sha256": "f3da0d1597c4fbe6fa3a9b9a9107966cc033daf07829c0d0a2c3b77d2b30b5af",
+  "output": "test_contract_draft_exact_retry_and_atomic_audit (__main__.ContractDraftTests.test_contract_draft_exact_retry_and_atomic_audit) ... ok\ntest_contract_draft_scope_roles_and_session (__main__.ContractDraftTests.test_contract_draft_scope_roles_and_session) ... ok\ntest_contract_draft_stale_amount_and_relationship (__main__.ContractDraftTests.test_contract_draft_stale_amount_and_relationship) ... ok\ntest_contract_draft_concurrent_creations_keep_one_deal (__main__.ContractDraftTests.test_contract_draft_concurrent_creations_keep_one_deal) ... ok\ntest_contract_draft_raw_mutations_and_legacy_behavior (__main__.ContractDraftTests.test_contract_draft_raw_mutations_and_legacy_behavior) ... ok\ntest_contract_draft_does_not_adopt_historical_deal (__main__.ContractDraftTests.test_contract_draft_does_not_adopt_historical_deal) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 50.386s\n\nOK\n",
+  "scope": "Focused disposable PostgreSQL fixture; not hosted acceptance",
+  "production_changes": false
+}

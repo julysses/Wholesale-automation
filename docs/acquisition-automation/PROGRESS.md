@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Persisted contract draft candidate under full rehearsal
+
+- Pulled unchanged; CLI created migration 20261031221633_acquisition_contract_drafts.sql locally. Extends canonical deals with workspace/property/seller/offer references and draft status/version; adds immutable version receipts and audit. No parallel deal/property/buyer parent, signatures, dates inferred, tasks sent or binding approval.
+- Controlled user-JWT RPC requires MFA and current membership/session, serializes against canonical deal and offer locks, pins current authority, rechecks approval/property and session after waits, preserves exact retry receipts and rejects existing legacy deal adoption. Raw acquisition-bound service writes, identity reassignment, history mutation and table-wide bypass privileges are restricted. Legacy unscoped rows remain supported.
+- Six focused database cases passed in 50.386 seconds; process 12551 exited 0. Saved exact output/hash in evidence/2026-10-31-contract-drafts-focused-result.json. Covers retries/audit, roles/session/scope, stale amount/relationship, concurrent drafts, raw mutation rejection and historical deal preservation.
+- Added those cases to the full-catalog workflow runner and candidate manifest (57 migrations; production_apply_approved=false). Full rehearsal process 8324 is running, log /tmp/acquisition-contract-drafts-full.log. It applied all 57 migrations and is executing existing journeys. Do not restart; inspect the terminal result before declaring acceptance or publication.
+- Published predecessor 5ca649c / CI 41246949570 now has five successful jobs and one active database contention job. Require all six successes before pushing retained local increments. The new draft RPC is not yet connected to API/screens; transaction evidence/transitions and remaining PRD work still follow.
+
+
 ## 2026-10-31 — Contract catalog and compatibility design verified
 
 - Read live metadata only: production ledger 20261023221455, existing deals/buyers/preferences/transactions columns, constraints/dependencies/indexes/RLS/grants/triggers and four legacy pipeline functions. Saved exact metadata/function evidence; no business records, secrets or production changes.

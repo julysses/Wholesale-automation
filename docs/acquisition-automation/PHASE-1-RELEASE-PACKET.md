@@ -4,6 +4,8 @@ Updated October 31, 2026 from the current acquisition branch. Status: **not read
 
 ## Exact candidate and evidence
 
+**Pending local candidate:** the manifest now includes contract draft migration 57. Its full rehearsal is running (process 8324, `/tmp/acquisition-contract-drafts-full.log`). The 56-migration evidence and manifest hash below describe the previously verified candidate; they do not approve the enlarged manifest. Reconcile this packet only after the new rehearsal and exact GitHub gate complete.
+
 - Branch: `codex/acquisition-foundation`.
 - Published repair candidate: `2f2dbe788e1f090f5888b80d68c95db1d2ac7167`; CI `41245920319`. All six jobs completed successfully. This clears the repair publication gate, not hosted or provider acceptance. The predecessor failed two historical-upgrade fixture setups; the repair defers the dependent migration until its prerequisites exist. All 217 repair workspace tests passed locally; see `evidence/2026-10-31-portal-fixture-repair-result.json`.
 - Retained implementation checkpoint: `d6b2028` on the local acquisition branch. It includes the disabled seller receiver and four-step seller page. These features have not been published. The repair has now been merged locally with the migration 54–56 guard preserved. Validate the resolution, publish and verify the exact successor CI.

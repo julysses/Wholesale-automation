@@ -280,3 +280,5 @@ Read-only catalog at 2026-10-31 22:12:59 UTC confirmed the production ledger rem
 - Existing Python CRM requests switch to user JWT/RLS in acquisition mode. The legacy pipeline RPCs are service-only, use supplied operator IDs and populate a deals composite row. They are not the new authorization boundary. Composite-row expansion, legacy payload fields, exact retry manifests and task side effects must be covered in compatibility tests when adding columns.
 
 This inventory changes the implementation design but does not claim persisted contracts, isolated buyers or approved disposition already exist. No migration has been created for this increment.
+
+Implementation follow-up: CLI-created migration `20261031221633_acquisition_contract_drafts.sql` now extends deals and adds immutable draft-version receipts using the inspected mapping. Six focused tests passed; the full enlarged-catalog rehearsal is pending in process 8324. No production schema changed.
