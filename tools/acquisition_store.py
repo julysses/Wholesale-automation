@@ -39,6 +39,12 @@ class AcquisitionStore:
         return await scan_registered_evidence(self.client, artifact_id, workspace_id=workspace_id,
                                               campaign_id=campaign_id, purpose=purpose, policy=policy)
 
+    async def verify_contract_document(self, artifact_id, *, workspace_id, contract_id, contract_version, purpose):
+        """Internal current-registry observation; never document or legal approval."""
+        from tools.acquisition_contract_documents import verify_registered_contract_document
+        return await verify_registered_contract_document(self.client, artifact_id, workspace_id=workspace_id,
+            contract_id=contract_id, contract_version=contract_version, purpose=purpose)
+
     async def verify_evidence(self, artifact_id, *, workspace_id, campaign_id, purpose):
         """Resolve protected registry state; callers supply identity only, never expectations."""
         from tools.acquisition_evidence import verify_registered_evidence

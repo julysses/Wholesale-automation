@@ -45,3 +45,14 @@ Do not generalize the existing public mail RPC signatures to optional loosely ch
 - Extend step 5 with document upload and clear pending/verified/review-required states. Carry the same property/seller/contract into title review, exit choice and closing. Never present a saved draft or verified bytes as a signed agreement.
 
 Current official private-bucket access model: https://supabase.com/docs/guides/storage/buckets/fundamentals. Use authenticated user JWT reads under Storage RLS; do not switch evidence retrieval to public objects or service-role fallback.
+
+
+## Implemented registry candidate
+
+Migration `20261031224723_acquisition_contract_document_registry.sql` implements shared artifact/revocation contract targets, exact composite version identity, private retention purposes and authenticated register/revoke/state RPCs. This is local candidate migration 58; it has not run in production. Contract uploads intentionally fail the existing mail-only upload guard until shared admission and upload verification are implemented.
+
+Eight focused SQL cases passed, including populated mail preservation, target constraints and two observed authorization-revocation lock waits. The full catalog/gateway run passed 58 migrations, 26 access checks, 95 workflows and 58 real local gateway checks. Registry registration/revocation/idempotency/RLS were exercised through actual PostgREST; this is not hosted Storage acceptance.
+
+Typed contract registry reads now surround the bounded byte read. Current unverified state, exact contract/version/purpose, retention and policy identity must remain consistent; changed authority, revoked/expired documents, stale state or a different hash cannot yield a receipt. Shared registry transport and 582 related tests passed, followed by a focused store-forwarding check. These before/after byte-stream cases use synthetic HTTP streams; the combined actual registry-plus-Storage path still requires acceptance. No document scan/legal approval or review transition is persisted by the byte verifier.
+
+Next implement the shared workspace upload admission for contract targets, exact upload completion/reconciliation, signed scanning and review bindings. Keep one aggregate workspace capacity and preserve every mail regression. Then add the document review controls beneath the existing draft step; verified metadata or bytes must never appear as a signed contract.

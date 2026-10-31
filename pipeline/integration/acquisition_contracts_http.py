@@ -115,5 +115,35 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             if client.post(path,json=body,headers=headers).status_code!=403:
                 raise AssertionError('Expired session recovered a draft')
         finally:db.query('UPDATE auth.sessions SET not_after=NULL WHERE id=%s',[admin])
+    document='ad900000-0000-4000-8000-000000000001'
+    policy='ad900000-0000-4000-8000-000000000002'
+    revocation='ad900000-0000-4000-8000-000000000003'
+    db.query("INSERT INTO private.acquisition_evidence_policies(id,workspace_id,purpose,version,retention_seconds,valid_from,valid_until,approval_ref,reviewed_by,reviewed_at) VALUES(%s,%s,'purchase_contract',1,86400,'2026-01-01','2099-01-01',%s,%s,'2026-01-01')",[policy,workspace,revocation,admin])
+    registration=scope|{'p_id':document,'p_contract':draft,'p_version':1,'p_purpose':'purchase_contract',
+        'p_sha256':'b'*64,'p_byte_size':123,'p_media_type':'application/pdf','p_policy':policy,
+        'p_note':'Synthetic contract document source; no actual signature.'}
+    first=rpc('register_contract_document',registration)
+    recovered=rpc('register_contract_document',registration)
+    if first['duplicate'] or not recovered['duplicate'] or first['execution_authorized'] or first['bytes_verified']:
+        raise AssertionError('Contract document retry or authority boundary failed')
+    if first['artifact_id']!=document or first['contract_id']!=draft or first['contract_version']!=1:
+        raise AssertionError('Contract document target binding lost')
+    for jwt,body in [(token(other),registration),(token(),registration|{'p_version':2}),(None,registration)]:
+        status,_=request('/rpc/register_contract_document',jwt,body)
+        if status not in (401,403):raise AssertionError('Contract document target/session bypass accepted')
+    state_body=scope|{'p_contract':draft,'p_version':1,'p_artifact':document}
+    if rpc('contract_document_state',state_body)['status']!='pending_verification':
+        raise AssertionError('Contract document metadata implies verification')
+    status,rows=request('/acquisition_evidence_artifacts?select=id&contract_id=eq.'+draft,token(other))
+    if status!=200 or rows!=[]:raise AssertionError('Contract evidence RLS leaked')
+    revoke=state_body|{'p_id':revocation,'p_reason':'Synthetic document withdrawn from current review.'}
+    if rpc('revoke_contract_document',revoke)['duplicate'] or not rpc('revoke_contract_document',revoke)['duplicate']:
+        raise AssertionError('Contract document revocation recovery failed')
+    if rpc('contract_document_state',state_body)['status']!='revoked':
+        raise AssertionError('Contract document revocation missing from state')
+    if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_document' AND entity_id=%s",[document])!=[{'n':2}]:
+        raise AssertionError('Contract document retry duplicated audit')
     return ['contract API actual commit loss and exact recovery','contract API canonical draft and immutable audit',
-            'contract API real tenant and anonymous isolation','contract API expired session denied','contract seller actual canonical join and property isolation']
+            'contract API real tenant and anonymous isolation','contract API expired session denied','contract seller actual canonical join and property isolation',
+            'contract document real registration exact retry','contract document target session and tenant isolation',
+            'contract document revocation exact retry','contract document immutable audit convergence']

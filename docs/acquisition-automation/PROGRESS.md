@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract document registry and current-state verification candidate
+
+- Previous goal turn was progress: c935460 was pushed after its predecessor passed all six. Pulled unchanged; its exact CI 41249648671 is still running (four successful jobs; two active at last observation). Do not push this next candidate until all six succeed.
+- Reinspected live ledger/candidate table absence and local schema/constraints/RLS/grants/history. CLI-created 20261031224723_acquisition_contract_document_registry.sql; no production apply. CLI help initially hit the known local telemetry permission restriction; authorized help/new commands succeeded.
+- Additive shared artifacts/revocations now bind exactly one campaign or canonical contract version, with composite workspace constraints and contract-purpose retention policy scope. Added register/revoke/state RPCs, current actor/session/MFA/role checks, deterministic locks, exact retry receipts and immutable audit. Existing mail signatures and Storage upload rules remain unchanged; contract uploads are denied pending full shared admission/upload controls.
+- Focused SQL process 63515 passed five cases; expanded process 22913 passed eight in 31.689 seconds, including populated mail preservation, target FK/shape rejection, tenant/role boundaries, current Storage reads, raw-write denial and two observed lock-wait session/membership revocations.
+- Full rehearsal 34055 exited 0: 58 migrations, 26 access probes, 95 workflows and 58 actual local gateway checks. Saved exact result/hash in evidence/2026-10-31-contract-registry-gateway-result.json. This proves local registry RPC/RLS/retry behavior, not hosted Storage or new typed registry-to-stream integration.
+- Added typed contract registry-before/after verification, bounded shared JSON reads and an internal user-scoped store method. First new stream tests used pre-consumed JSON mock responses; replaced them with actual async streams. Corrected process 53355 passed 582 related tests in 5.71 seconds. Follow-up contract-document suite including store delegation passed. No transport check was weakened. No local process remains running.
+- Next: shared upload admission/guard/transport completion for contract targets, current signed scan and review bindings, immutable evidence-backed terms/transitions and document UI. Keep the original PRD scope, paused SMS and all approval gates intact. No production/provider/transaction actions.
+
 ## 2026-10-31 — Guided draft and shared document transport published
 
 - Normal push confirmed bbcec81 → c935460b8b05c12b5247382012a463ddc4ffa3c8 on codex/acquisition-foundation after all six predecessor jobs succeeded. Remote CI 41249648671 is queued for that exact SHA: https://github.com/julysses/Wholesale-automation/actions/runs/41249648671. No next feature push until all six successor jobs pass.

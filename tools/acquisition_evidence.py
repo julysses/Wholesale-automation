@@ -47,11 +47,11 @@ def unique_json_object(pairs):
     return result
 
 
-async def load_registry_state(client: httpx.AsyncClient, *, artifact_id: UUID, workspace_id: UUID,
-                              campaign_id: UUID, purpose: str, clock: Callable[[], datetime]) -> EvidenceRegistryState:
-    """Bounded POST with user authority, no redirect/cached state/service fallback."""
-    url = authenticated_origin(client).copy_with(path='/rest/v1/rpc/acquisition_evidence_state')
-    body = {'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id), 'p_artifact': str(artifact_id)}
+async def _read_registry_json(client: httpx.AsyncClient, rpc_name: str, body: dict):
+    """Shared bounded authenticated registry read, restricted to internal RPC names."""
+    if rpc_name not in ('acquisition_evidence_state', 'contract_document_state'):
+        raise EvidenceUnavailable('Evidence registry is unavailable')
+    url = authenticated_origin(client).copy_with(path='/rest/v1/rpc/' + rpc_name)
     data = bytearray()
     try:
         async with asyncio.timeout(5):
@@ -70,7 +70,17 @@ async def load_registry_state(client: httpx.AsyncClient, *, artifact_id: UUID, w
                     await asyncio.sleep(0)  # Small buffered chunks must not starve the deadline.
                 if length is not None and len(data) != int(length):
                     raise EvidenceUnavailable('Evidence registry is unavailable')
-        state = EvidenceRegistryState.model_validate(json.loads(data, object_pairs_hook=unique_json_object))
+        return json.loads(data, object_pairs_hook=unique_json_object)
+    except (httpx.HTTPError, TimeoutError, ValueError, TypeError, RecursionError):
+        raise EvidenceUnavailable('Evidence registry is unavailable') from None
+
+
+async def load_registry_state(client: httpx.AsyncClient, *, artifact_id: UUID, workspace_id: UUID,
+                              campaign_id: UUID, purpose: str, clock: Callable[[], datetime]) -> EvidenceRegistryState:
+    """Bounded POST with user authority, no redirect/cached state/service fallback."""
+    body = {'p_workspace': str(workspace_id), 'p_campaign': str(campaign_id), 'p_artifact': str(artifact_id)}
+    try:
+        state = EvidenceRegistryState.model_validate(await _read_registry_json(client, 'acquisition_evidence_state', body))
         now = clock()
         if (now.utcoffset() is None or (state.id, state.workspace_id, state.campaign_id, state.purpose)
                 != (artifact_id, workspace_id, campaign_id, purpose)

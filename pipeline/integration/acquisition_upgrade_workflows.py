@@ -7,6 +7,7 @@ from psycopg2 import sql
 
 from test_acquisition_workflow import WorkflowTests
 from acquisition_contract_tests import ContractDraftCases
+from acquisition_contract_document_tests import ContractDocumentCases
 from test_acquisition_workspace import ADMIN, OTHER, CALLER, OPERATOR, WORKSPACE, WORKSPACE_B, LEAD, LEAD_B, PROPERTY
 
 
@@ -35,13 +36,20 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
+class FullCatalogDocumentTests(ContractDocumentCases, FullCatalogContractTests):
+    def setUp(self):
+        super().setUp()
+        self.prepare_document_fixture()
+
+
 def run_workflow_probes(db):
     # Include every application journey declared by WorkflowTests, not inherited
     # focused schema-mutation tests from WorkspaceTests.
     names = sorted(name for name, method in WorkflowTests.__dict__.items()
                    if name.startswith('test_') and callable(method))
     contract_names = sorted(name for name in ContractDraftCases.__dict__ if name.startswith('test_contract_draft_'))
-    names += contract_names
+    document_names = sorted(name for name in ContractDocumentCases.__dict__ if name.startswith('test_contract_document_'))
+    names += contract_names + document_names
     if not names:
         raise RuntimeError('No application journeys discovered')
     from rehearse_acquisition_upgrade import fingerprints, CATALOG
@@ -59,7 +67,7 @@ def run_workflow_probes(db):
                 cursor.execute(sql.SQL('CREATE DATABASE {} TEMPLATE acquisition_upgrade').format(sql.Identifier(database)))
             try:
                 print(json.dumps({'running_full_catalog_workflow':name}),flush=True)
-                test=(FullCatalogContractTests if name in contract_names else FullCatalogWorkflowTests)(name)
+                test=(FullCatalogDocumentTests if name in document_names else FullCatalogContractTests if name in contract_names else FullCatalogWorkflowTests)(name)
                 test.socket=socket
                 test.database_name=database
                 test.env={'PATH':'/usr/bin:/bin','HOME':socket,'TMPDIR':socket,'LANG':'C','PGCONNECT_TIMEOUT':'5'}

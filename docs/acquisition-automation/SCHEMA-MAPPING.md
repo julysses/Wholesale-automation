@@ -282,3 +282,12 @@ Read-only catalog at 2026-10-31 22:12:59 UTC confirmed the production ledger rem
 This inventory changes the implementation design but does not claim persisted contracts, isolated buyers or approved disposition already exist. No migration has been created for this increment.
 
 Implementation follow-up: CLI-created migration `20261031221633_acquisition_contract_drafts.sql` now extends deals and adds immutable draft-version receipts using the inspected mapping. Six focused tests passed; the full enlarged-catalog rehearsal is pending in process 8324. No production schema changed.
+
+
+## Contract document registry candidate — October 31
+
+CLI-created migration `20261031224723_acquisition_contract_document_registry.sql` extends the existing evidence artifacts/revocations and reviewed retention policy tables. It does not create a parallel artifact store. Each artifact has exactly one target: unchanged mail campaign/purpose, or canonical contract ID/version with a composite workspace FK to `acquisition_contract_versions`. Revocations bind the exact same target. Existing populated mail records remain byte-for-byte equal on their original columns; the new target columns are null.
+
+Contract registration, revocation and state RPCs derive current actor/session/MFA/workspace role, serialize against canonical deal creation, preserve exact request hashes and immutable audits, and reject legacy mail-route access to contract artifacts. Existing RLS and raw-write restrictions remain. No contract Storage upload is allowed: the unchanged upload guard still requires an actual draft mail campaign. Existing read guards enforce private bucket, exact immutable path, current policy/retention/revocation, membership/session and operator ownership. Document classification is not a signature/title/legal approval.
+
+Fresh live check still shows ledger 20261023221455 and no candidate evidence/contract tables; evidence/2026-10-31-contract-registry-live-check.json. Local candidate manifest now has 58 migrations. Actual rehearsal passed 26 access probes, 95 application workflows and 58 gateway checks; original 24 historical records and 103 definitions preserved. Compensation remains disable activation and retain artifacts/versions/audit history, not a destructive down migration. Upload admission, signed scan bindings, immutable reviewed terms and lifecycle transitions remain required.

@@ -1,6 +1,7 @@
 """Synthetic private storage transport, no registry or production requests."""
 import asyncio
 import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 import httpx
@@ -82,3 +83,76 @@ def test_unvalidated_copy_is_revalidated_before_fetch():
     execute,requests=run(artifact().model_copy(update={'contract_version':True}))
     with pytest.raises(EvidenceUnavailable):asyncio.run(execute())
     assert requests==[]
+
+
+def registry_run(*, first_change=None, second_change=None, final_status=200):
+    from tools.acquisition_contract_documents import verify_registered_contract_document
+    original=artifact().model_dump(mode='json')
+    state={**original,'artifact_id':original['id'],'expected_sha256':original['sha256'],'expected_byte_size':original['byte_size'],
+           'retention_policy_id':str(uid(8)),'status':'pending_verification','bytes_verified':False,
+           'legal_review_approved':False,'execution_authorized':False,'checked_at':NOW.isoformat()}
+    for field in ('id','sha256','byte_size'):state.pop(field)
+    requests=[];reads=0
+    def handler(request):
+        nonlocal reads
+        requests.append(request)
+        if request.method=='POST':
+            assert request.url.path=='/rest/v1/rpc/contract_document_state'
+            reads+=1
+            payload=json.dumps(state|(first_change if reads==1 else second_change or {})).encode()
+            class RegistryStream(httpx.AsyncByteStream):
+                async def __aiter__(self):
+                    yield payload
+            return httpx.Response(final_status if reads==2 else 200,headers={'content-type':'application/json'},stream=RegistryStream())
+        return httpx.Response(200,headers={'content-type':'application/pdf'},stream=Stream())
+    async def execute():
+        async with httpx.AsyncClient(base_url='https://storage.example.test/rest/v1/',headers={'Authorization':'Bearer synthetic-user','apikey':'synthetic-public'},transport=httpx.MockTransport(handler)) as client:
+            return await verify_registered_contract_document(client,uid(1),workspace_id=uid(2),contract_id=uid(3),contract_version=2,purpose='purchase_contract',clock=lambda:NOW)
+    # Normalize before closure use so each request gets an explicit dictionary.
+    first_change=first_change or {}
+    return execute,requests
+
+
+def test_registered_contract_bytes_require_two_current_registry_reads():
+    execute,requests=registry_run()
+    receipt=asyncio.run(execute())
+    assert [r.method for r in requests]==['POST','GET','POST']
+    assert receipt['registry_verifier_version']=='acquisition-contract-document-registry-v1'
+    assert receipt['verification_persisted'] is False and receipt['legal_review_approved'] is False
+    assert receipt['execution_authorized'] is False
+
+
+@pytest.mark.parametrize('change',[{'contract_id':str(uid(9))},{'contract_version':3},{'workspace_id':str(uid(9))},
+    {'status':'revoked'},{'execution_authorized':True},{'legal_review_approved':True},
+    {'checked_at':(NOW-timedelta(minutes=1)).isoformat()},{'bytes_verified':True}])
+def test_untrusted_or_stale_registry_never_reads_contract_bytes(change):
+    execute,requests=registry_run(first_change=change)
+    with pytest.raises(EvidenceUnavailable):asyncio.run(execute())
+    assert [r.method for r in requests]==['POST']
+
+
+@pytest.mark.parametrize('change',[{'status':'revoked','revoked_at':NOW.isoformat()},
+    {'retention_policy_id':str(uid(9))},{'expected_sha256':'0'*64},
+    {'retain_until':NOW.isoformat()},{'contract_version':3},{'status':'policy_review_required'}])
+def test_change_during_stream_does_not_return_a_receipt(change):
+    execute,requests=registry_run(second_change=change)
+    with pytest.raises(EvidenceUnavailable):asyncio.run(execute())
+    assert [r.method for r in requests]==['POST','GET','POST']
+
+
+def test_lost_registry_authority_after_bytes_is_unconfirmed():
+    execute,requests=registry_run(final_status=403)
+    with pytest.raises(EvidenceUnavailable):asyncio.run(execute())
+    assert len(requests)==3
+
+
+def test_user_scoped_store_forwards_exact_contract_identity(monkeypatch):
+    from tools.acquisition_store import AcquisitionStore
+    client=object(); calls=[]
+    async def verify(actual_client, artifact_id, **kwargs):
+        calls.append((actual_client,artifact_id,kwargs))
+        return {'execution_authorized':False,'verification_persisted':False}
+    monkeypatch.setattr('tools.acquisition_contract_documents.verify_registered_contract_document',verify)
+    result=asyncio.run(AcquisitionStore(client).verify_contract_document(uid(1),workspace_id=uid(2),contract_id=uid(3),contract_version=2,purpose='purchase_contract'))
+    assert calls==[(client,uid(1),{'workspace_id':uid(2),'contract_id':uid(3),'contract_version':2,'purpose':'purchase_contract'})]
+    assert result=={'execution_authorized':False,'verification_persisted':False}
