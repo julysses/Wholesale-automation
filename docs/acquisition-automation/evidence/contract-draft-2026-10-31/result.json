@@ -1,0 +1,12 @@
+{
+  "synthetic_only": true,
+  "lost_reply_reload_retry": "passed",
+  "existing_draft_after_reload": "passed",
+  "mobile_viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "mobile_document_width": 369,
+  "hosted_auth_verified": false,
+  "provider_or_database_calls": false
+}

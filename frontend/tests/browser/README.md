@@ -97,3 +97,9 @@ Reviewed a full-page screenshot at the browser's current viewport. This is not a
 ### Offer-form setup
 
 Run `./node_modules/.bin/vite --config tests/browser/offer-forms.vite.config.ts` from frontend and open `/tests/browser/offer-forms.html` on port 5187. This aliases the API to synthetic in-tab records and disables env loading. Use the lost-reply button to verify pending request recovery, reload, exact retry and campaign navigation holds. Wording is synthetic QA input, never production consent copy. No provider or production database calls are made. Close the preview after QA.
+
+### Contract draft step
+
+Run `./node_modules/.bin/vite --config tests/browser/contract-draft.vite.config.ts` from frontend; open port 5188 `/tests/browser/contract-draft.html`. This renders the real fifth-step component with a synthetic tab-persistent ledger and no environment, API proxy or provider calls. Select the reported seller and enter a draft name. Enable the lost-reply fixture and save; reload, verify the held original request, then retry. The existing draft must be shown with navigation available and no second creation form. A second reload retains that draft. Close the preview after QA.
+
+Verified October 31: desktop and 375×812 display, lost-reply/reload/exact recovery and saved-draft reload. Phone document width 369 at viewport 375; no horizontal overflow. No warning/error console entries. Screenshots/results: `docs/acquisition-automation/evidence/contract-draft-2026-10-31`. The fixture checks browser presentation/recovery only; actual local gateway acceptance is separate and hosted Auth remains unverified.

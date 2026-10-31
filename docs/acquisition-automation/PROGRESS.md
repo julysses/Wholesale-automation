@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract draft browser QA and source date precision
+
+- Previous goal turn made concrete progress: committed ed3d466 with the guided fifth step and tests. Current authoritative predecessor CI 41248426556 remains five successes plus one running database job; no new feature push, cancellation or restart.
+- Added reusable synthetic browser fixture on port 5188. Real component passed seller/property/amount display, lost reply after fixture commit, reload with exact pending request, successful same-request recovery and existing draft after another reload. Simplified the saved state by removing the empty disabled creation form.
+- Desktop and 375×812 phone screenshot review passed; document width 369 at viewport 375, no horizontal overflow, zero warning/error console entries. Evidence: evidence/contract-draft-2026-10-31/{desktop.png,mobile.png,result.json}. Browser closed, viewport reset, local server 44755 stopped deliberately (exit 130). Initial fixture setup used the wrong working-directory-relative path and failed before starting; corrected it. First local bind was denied, then the authorized loopback-only preview started successfully. No production/API/provider calls.
+- Browser change regressions: 11 mounted draft/navigation tests passed. Typecheck/build passed. Fixture lint initially required an exported component; corrected, and the rerun passed with zero new findings (147 existing). All local tests are terminal; no preview process remains.
+- Extended pure contract review to v2: preserve source calendar dates, reject mixed/implicitly coerced precision, report instant/date/unknown, hold date-only forward review, allow independently evidenced exceptions without invented cutoff times. This is neither a legal interpretation nor a persisted transition. 109 contract/API tests passed (nine new precision cases).
+- Next: publish only after all six predecessor jobs succeed, then verify exact successor CI. Continue document/evidence-bound immutable terms and transitions, buyer isolation/disposition, and every remaining original PRD requirement. No live transaction authority is introduced.
+
 ## 2026-10-31 — Resumed after app update; guided contract draft candidate
 
 - Refreshed the approved branch with a fast-forward-only pull; already up to date. Predecessor bbcec81 / CI 41248426556 currently has five successful jobs and the real PostgreSQL contention job still running. No feature push until all six finish successfully; do not restart that job.

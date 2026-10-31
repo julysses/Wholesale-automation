@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from schemas.acquisition_contracts import ContractReviewSnapshot
 
-VERSION = 'acquisition-contract-review-v1'
+VERSION = 'acquisition-contract-review-v2'
 NEXT = {
     'draft': {'pending_signature', 'cancelled'},
     'pending_signature': {'executed', 'cancelled', 'expired', 'disputed'},
@@ -46,6 +46,8 @@ def review_contract_transition(snapshot: ContractReviewSnapshot) -> dict:
         if s.target_status in {'executed', 'title_review', 'disposition_review',
                                'assigned_or_direct_close', 'closed'}:
             required.add('executed_contract')
+            if any(value is not None for value in (s.effective_date, s.inspection_deadline_date, s.closing_deadline_date)):
+                reasons.append('DATE_ONLY_CONTRACT_TERMS_REQUIRE_REVIEW')
             if (s.effective_at is None or s.effective_at > s.now
                     or s.inspection_deadline is None or s.closing_deadline is None
                     or s.earnest_money_cents is None):
@@ -98,4 +100,8 @@ def review_contract_transition(snapshot: ContractReviewSnapshot) -> dict:
             'contract_version': s.contract_version, 'current_status': s.status,
             'target_status': s.target_status, 'readiness': 'needs_review' if reasons else 'ready_for_review',
             'reason_codes': reasons, 'required_evidence': sorted(required),
+            'term_precision': {name: 'instant' if getattr(s, instant) is not None else 'date' if getattr(s, calendar) is not None else 'unknown'
+                               for name, instant, calendar in (('effective', 'effective_at', 'effective_date'),
+                                  ('inspection_deadline', 'inspection_deadline', 'inspection_deadline_date'),
+                                  ('closing_deadline', 'closing_deadline', 'closing_deadline_date'))},
             'execution_authorized': False}

@@ -1,8 +1,9 @@
 """Trusted contract-review snapshots; never accept these as client authorization."""
+from datetime import date
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 ContractStatus = Literal['draft', 'pending_signature', 'executed', 'title_review',
                          'disposition_review', 'assigned_or_direct_close', 'closed',
@@ -52,5 +53,29 @@ class ContractReviewSnapshot(BaseModel):
     effective_at: AwareDatetime | None = None
     inspection_deadline: AwareDatetime | None = None
     closing_deadline: AwareDatetime | None = None
+    # Legacy DATE values preserve their source precision; no inferred midnight or timezone.
+    effective_date: date | None = None
+    inspection_deadline_date: date | None = None
+    closing_deadline_date: date | None = None
     earnest_money_cents: int | None = Field(default=None, strict=True, ge=0)
     evidence: tuple[ContractEvidence, ...] = ()
+
+    @field_validator('effective_date', 'inspection_deadline_date', 'closing_deadline_date', mode='before')
+    @classmethod
+    def exact_calendar_date(cls, value):
+        if value is None or type(value) is date:
+            return value
+        if isinstance(value, str) and len(value) == 10:
+            parsed = date.fromisoformat(value)
+            if parsed.isoformat() == value:
+                return parsed
+        raise ValueError('Use an explicit calendar date without an inferred time')
+
+    @model_validator(mode='after')
+    def one_precision_per_term(self):
+        for instant, calendar in (('effective_at', 'effective_date'),
+                                  ('inspection_deadline', 'inspection_deadline_date'),
+                                  ('closing_deadline', 'closing_deadline_date')):
+            if getattr(self, instant) is not None and getattr(self, calendar) is not None:
+                raise ValueError('Contract term cannot claim both date-only and instant precision')
+        return self

@@ -132,3 +132,33 @@ def test_principal_review_is_not_assignment_basis():
     proofs=tuple(e.model_copy(update={'exit_type':'principal_acquisition'}) if e.kind=='assignment_basis' else e for e in s.evidence)
     result=review_contract_transition(s.model_copy(update={'evidence':proofs}))
     assert 'EVIDENCE_REQUIRED:assignment_basis' in result['reason_codes']
+
+
+@pytest.mark.parametrize('instant,calendar', [('effective_at','effective_date'),
+    ('inspection_deadline','inspection_deadline_date'),('closing_deadline','closing_deadline_date')])
+def test_date_only_source_stays_date_only_and_holds_forward_review(instant,calendar):
+    s=snapshot(**{instant:None,calendar:'2026-11-01'})
+    assert getattr(s,instant) is None and getattr(s,calendar).isoformat()=='2026-11-01'
+    result=review_contract_transition(s)
+    assert result['readiness']=='needs_review' and result['execution_authorized'] is False
+    assert 'DATE_ONLY_CONTRACT_TERMS_REQUIRE_REVIEW' in result['reason_codes']
+    assert 'CLOSING_DEADLINE_PASSED' not in result['reason_codes']
+    assert 'date' in result['term_precision'].values()
+    with pytest.raises(ValidationError,match='both date-only and instant'):
+        snapshot(**{calendar:'2026-11-01'})
+
+
+@pytest.mark.parametrize('value',[NOW, '2026-11-01T00:00:00Z', '20261101', 1793491200, True])
+def test_date_only_source_rejects_silent_precision_coercion(value):
+    with pytest.raises(ValidationError):
+        snapshot(closing_deadline=None,closing_deadline_date=value)
+
+
+def test_unknown_date_precision_and_exception_review_do_not_invent_expiration():
+    s=snapshot(closing_deadline=None,closing_deadline_date='2020-01-01',target_status='expired',evidence=[evidence('expiration_review')])
+    result=review_contract_transition(s)
+    assert result['readiness']=='ready_for_review' and result['execution_authorized'] is False
+    assert result['term_precision']['closing_deadline']=='date'
+    result=review_contract_transition(snapshot(closing_deadline=None))
+    assert result['term_precision']['closing_deadline']=='unknown'
+    assert 'CONTRACT_TERMS_INCOMPLETE' in result['reason_codes']
