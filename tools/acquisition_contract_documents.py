@@ -78,7 +78,7 @@ async def verify_registered_contract_document(client: httpx.AsyncClient, artifac
 
 async def upload_registered_contract_document(client, artifact_id, source, *, workspace_id, contract_id,
                                                contract_version, purpose, clock=utcnow):
-    """Internal bounded transport only. Storage still denies contract writes until its guard is implemented."""
+    """Internal bounded transport; writes still require current exact-document Storage authorization."""
     from typing import get_args
     from schemas.acquisition_contract_documents import DocumentPurpose
     from tools.acquisition_evidence_upload import _upload_registered_object

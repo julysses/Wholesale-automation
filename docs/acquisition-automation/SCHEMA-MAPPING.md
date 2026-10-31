@@ -295,3 +295,7 @@ Fresh live check still shows ledger 20261023221455 and no candidate evidence/con
 ## 2026-10-31 shared contract upload admission candidate
 
 Fresh read-only live check: ledger `20261023221455`; `private.acquisition_evidence_upload_slots` and `public.acquisition_contract_versions` absent. Local migration 59 extends existing candidate upload slots with nullable contract ID/version, exclusive target shape and composite artifact identity. Existing private RLS/no direct application grants remain. Mail function signature and aggregate limits are preserved; no new table or Storage grant. Compensation is activation off plus normal reservation expiry, preserving all evidence/history. Validation status is in CURRENT-STATUS.md.
+
+## 2026-10-31 contract Storage authorization candidate
+
+Fresh metadata query reports ledger `20261023221455`, no candidate acquisition_evidence_artifacts and no returned Storage object policies. Migration 60 modifies only private.acquisition_evidence_object_access(text,boolean); its existing function privileges and restrictive Storage policies remain. Contract upload checks canonical draft/version and the exact active shared reservation; existing mail dispatch and retained read semantics remain. No live DDL was issued. See CONTRACT-DOCUMENT-PERSISTENCE.md for compensation and verification boundaries.

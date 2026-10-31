@@ -7,6 +7,7 @@ from psycopg2 import sql
 
 from test_acquisition_workflow import WorkflowTests
 from acquisition_contract_tests import ContractDraftCases
+from acquisition_contract_storage_tests import ContractStorageCases
 from acquisition_contract_document_tests import ContractDocumentCases, ContractUploadAdmissionCases
 from test_acquisition_workspace import ADMIN, OTHER, CALLER, OPERATOR, WORKSPACE, WORKSPACE_B, LEAD, LEAD_B, PROPERTY
 
@@ -36,7 +37,7 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
-class FullCatalogDocumentTests(ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
+class FullCatalogDocumentTests(ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
     def setUp(self):
         super().setUp()
         self.prepare_document_fixture()
@@ -50,6 +51,7 @@ def run_workflow_probes(db):
     contract_names = sorted(name for name in ContractDraftCases.__dict__ if name.startswith('test_contract_draft_'))
     document_names = sorted(name for name in ContractDocumentCases.__dict__ if name.startswith('test_contract_document_'))
     document_names += sorted(name for name in ContractUploadAdmissionCases.__dict__ if name.startswith('test_contract_upload_'))
+    document_names += sorted(name for name in ContractStorageCases.__dict__ if name.startswith('test_contract_storage_'))
     names += contract_names + document_names
     if not names:
         raise RuntimeError('No application journeys discovered')

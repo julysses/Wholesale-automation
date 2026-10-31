@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract Storage dispatch and real RLS upload candidate
+
+- Previous turn made progress: ff919ca committed the shared bounded transport; 700 tests and 59/26/100/64 rehearsal passed. Pulled unchanged. Exact predecessor 173684f / CI 41250516262 now has five terminal successes, one schema-upgrade job active. No jobs restarted or cancelled and no feature push before all six pass.
+- Fresh read-only live metadata: ledger 20261023221455, candidate artifacts absent, no returned Storage object policies. Reviewed official operation-aware Storage access docs. CLI created migration 20261031231025; it changes only the existing private helper and keeps privileges/policies. Contract uploads require exact current shared reservation and draft/version/creator plus existing current session, workspace, activation, retention and private-bucket checks. Mail semantics unchanged; no HTTP upload endpoint or production change.
+- Added SQL and combined transport tests using real registry/RLS and synthetic object bytes. Initial six-case run found fixture issues: broad-policy assertion counted an unrelated historical bucket and contract registry response used a buffered response instead of a raw stream. Corrected scope/stream fixtures; six passed in process 10837, 26.285 seconds. Added a seventh current-session/member-after-admission workflow to full rehearsal. Process 3555 exited 0: 60 migrations / 26 access probes / 107 workflows / 64 actual gateway checks. All seven new workflows passed. Evidence: evidence/2026-10-31-contract-storage-gateway-result.json. All local processes terminal.
+- Next: publish after all-six predecessor success, then separately disabled upload endpoint and strict receipts, signed scan/review bindings, terms/transitions and guided document UI. Original PRD and production/provider approval gates remain controlling.
+
+
 ## 2026-10-31 — Shared bounded document transport candidate
 
 - Previous turn made progress: ab3d8e8 committed shared database admission and passed 59/26/100/64 plus 13 focused SQL cases. Pulled current branch unchanged after authorized network retry. Predecessor 173684f / CI 41250516262 remains live with four successes and two active jobs; no restart or feature push.

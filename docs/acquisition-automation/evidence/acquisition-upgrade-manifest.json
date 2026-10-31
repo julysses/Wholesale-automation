@@ -237,6 +237,10 @@
     {
       "file": "20261031225950_acquisition_contract_upload_admission.sql",
       "sha256": "85606b5c4f078b10e697275326ac14d9d0f8f4a37d1fc222452597ad857944cf"
+    },
+    {
+      "file": "20261031231025_acquisition_contract_storage_upload.sql",
+      "sha256": "ad99ed227baf06061936925d5d3d3553e00d02c5d12adf2865b6ab17045b19e5"
     }
   ]
 }

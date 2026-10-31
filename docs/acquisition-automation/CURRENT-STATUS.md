@@ -9,11 +9,19 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 - Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is published in Git; synthetic desktop/mobile browser QA passed. Shared evidence regression rehearsal 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 gateway checks. No local test or preview process is active.
 - Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
+## Contract Storage permission candidate
+
+CLI-created migration 60 adds exact contract-version dispatch to the existing private Storage helper. A contract write requires a current draft, its creator, an active reservation for the exact artifact/version and current workspace/session/retention authority. Mail dispatch, private reads and restrictive no-list/no-replace/no-delete rules are preserved. No HTTP upload action is mounted and no production DDL was applied.
+
+Six focused tests passed in process 10837 (26.285 seconds), including real registry/RLS with synthetic Storage bytes and lost-reply recovery. Full rehearsal process 3555 exited 0: 60 migrations, 26 access probes, 107 workflows and 64 actual gateway checks. All seven new workflows passed, including fresh session/member revocation after admission. Evidence: evidence/2026-10-31-contract-storage-gateway-result.json. All local processes terminal. GitHub predecessor 173684f / 41250516262 has five successful jobs and one active schema-upgrade job at latest inspection. Continue the all-six publication gate.
+
+Next: publish after the predecessor gate clears, then add the separately disabled upload endpoint with strict bounded receipts and app-facing recovery behavior. Follow with scan/review bindings and the guided document step. Hosted Storage acceptance remains unverified.
+
 ## Internal contract upload transport candidate
 
-Strict contract admission receipts and the shared process semaphore now guard the internal contract upload entry point. Mail and contracts reuse one bounded non-overwriting upload engine, with source-size/hash/type checks, current registry reads and independent authenticated byte reconciliation. Contract receipts retain the exact version and report unpersisted verification, unscanned bytes and no legal/execution approval. No contract HTTP upload route or Storage write authority is enabled.
+Strict contract admission receipts and the shared process semaphore now guard the internal contract upload entry point. Mail and contracts reuse one bounded non-overwriting upload engine, with source-size/hash/type checks, current registry reads and independent authenticated byte reconciliation. Contract receipts retain the exact version and report unpersisted verification, unscanned bytes and no legal/execution approval. No contract HTTP upload route is enabled. The subsequent local Storage permission candidate is described above.
 
-700 contract/evidence API, schema, admission, byte, upload, scan, persistence and journal tests passed in 7.53 seconds. Full shared-path rehearsal process 29868 exited 0: 59 migrations, 26 access probes, 100 workflows, 64 real gateway checks. Evidence: evidence/2026-10-31-contract-shared-upload-gateway-result.json. All local processes are terminal. Next: complete Storage authority dispatch and combined real registry/Storage acceptance before mounting a contract upload endpoint.
+700 contract/evidence API, schema, admission, byte, upload, scan, persistence and journal tests passed in 7.53 seconds. Full shared-path rehearsal process 29868 exited 0: 59 migrations, 26 access probes, 100 workflows, 64 real gateway checks. Evidence: evidence/2026-10-31-contract-shared-upload-gateway-result.json. All local processes are terminal. Next: complete the Storage candidate acceptance above before mounting a contract upload endpoint.
 
 ## Shared contract upload admission candidate
 

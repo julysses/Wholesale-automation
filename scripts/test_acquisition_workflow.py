@@ -35,6 +35,8 @@ ANALYSIS = 'b0000000-0000-4000-8000-000000000001'
 OFFER = 'c0000000-0000-4000-8000-000000000001'
 EVENT = 'd0000000-0000-4000-8000-000000000001'
 RPC_ARGS = {
+ 'contract_document_state':['p_workspace','p_contract','p_version','p_artifact'],
+ 'admit_contract_document_upload':['p_attempt','p_workspace','p_contract','p_version','p_artifact','p_purpose'],
  'save_acquisition_offer_form':['p_id','p_workspace','p_campaign','p_expected_revision','p_definition'],
     'acquisition_evidence_review_candidate': ['p_workspace','p_campaign','p_artifact'],
  'acquisition_evidence_scan_state':['p_workspace','p_campaign','p_artifact'],
@@ -720,8 +722,8 @@ class WorkflowTests(WorkspaceTests):
             args=[]
             for key in RPC_ARGS[name]:
                 value=body[key]
-                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence','p_definition'} else 'uuid' if key in {'p_relationship','p_attempt','p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content','p_artifact','p_policy','p_actor','p_session','p_key'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
-                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of','p_verified_at','p_expires_at'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version','p_byte_size'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
+                kind=('jsonb' if key in {'p_inputs','p_outputs','p_review_notes','p_events','p_prepared','p_data','p_evidence','p_definition'} else 'uuid' if key in {'p_contract','p_relationship','p_attempt','p_id','p_workspace','p_lead','p_analysis','p_offer','p_integration','p_receipt','p_lease','p_after','p_intake','p_target','p_campaign','p_source','p_link_review','p_request','p_task','p_assignee','p_template','p_destination','p_verification_ref','p_creative','p_destination_review','p_content','p_artifact','p_policy','p_actor','p_session','p_key'} or (key=='p_evidence_ref' and name=='review_acquisition_mail_content')
+                      else 'date' if key in {'p_start','p_end'} else 'timestamptz' if key in {'p_expected_updated_at','p_as_of','p_verified_at','p_expires_at'} else 'bytea' if key=='p_raw_body' else 'integer' if key in {'p_version','p_expected_sequence','p_limit','p_lease_seconds','p_agent_version','p_expected_revision','p_intake_revision','p_expected_version','p_byte_size'} else 'bigint' if key=='p_budget_cents' else 'numeric' if key=='p_amount' else 'text')
                 text=json.dumps(value) if kind=='jsonb' else str(value)
                 args.append(f'{key}=>NULL::{kind}' if value is None else f'{key}=>{literal(text)}::{kind}')
             query=f"SELECT public.{name}({','.join(args)})::text;"
@@ -889,7 +891,7 @@ class WorkflowTests(WorkspaceTests):
         if request.url.path.endswith('/'+str(self.lose_facebook_reply)):
             self.lose_facebook_reply=None
             raise httpx.ReadTimeout('Synthetic lost Facebook reply after real commit',request=request)
-        if request.url.path.rsplit('/',1)[-1] in {'acquisition_evidence_state','record_acquisition_evidence_verification'}:
+        if request.url.path.rsplit('/',1)[-1] in {'contract_document_state','acquisition_evidence_state','record_acquisition_evidence_verification'}:
             return httpx.Response(200,headers={'content-type':'application/json'},stream=EvidenceStream(result.stdout.strip().encode()))
         return httpx.Response(200,json=json.loads(result.stdout.strip()))
 
