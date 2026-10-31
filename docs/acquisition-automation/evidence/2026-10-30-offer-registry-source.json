@@ -1,0 +1,137 @@
+{
+  "columns": [
+    {
+      "data_type": "uuid",
+      "column_name": "id",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "column_name": "created_at",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "column_name": "updated_at",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "column_name": "name",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "column_name": "slug",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "column_name": "campaign_id",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "column_name": "headline",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "column_name": "subheadline",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "column_name": "brand_color",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "column_name": "logo_url",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "column_name": "thank_you_message",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "boolean",
+      "column_name": "send_confirmation_sms",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "boolean",
+      "column_name": "send_confirmation_email",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "boolean",
+      "column_name": "active",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "jsonb",
+      "column_name": "questions",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "column_name": "redirect_url",
+      "is_nullable": "YES"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "permissive": "PERMISSIVE",
+      "policyname": "auth_all_lead_form_configs",
+      "with_check": "true"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(active = true)",
+      "roles": [
+        "anon"
+      ],
+      "permissive": "PERMISSIVE",
+      "policyname": "public_read_active_forms",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    }
+  ],
+  "triggers": [
+    "CREATE TRIGGER update_lead_form_configs_updated_at BEFORE UPDATE ON public.lead_form_configs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+  ],
+  "checked_at": "2026-10-30T23:06:46.218162+00:00",
+  "constraints": [
+    {
+      "name": "lead_form_configs_campaign_id_fkey",
+      "definition": "FOREIGN KEY (campaign_id) REFERENCES ad_campaigns(id)"
+    },
+    {
+      "name": "lead_form_configs_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "lead_form_configs_slug_key",
+      "definition": "UNIQUE (slug)"
+    }
+  ],
+  "latest_migration": "20261023221455",
+  "proposed_function": null,
+  "proposed_relation": null
+}

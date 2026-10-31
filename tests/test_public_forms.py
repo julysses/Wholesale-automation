@@ -286,7 +286,7 @@ def test_public_configuration_projects_display_fields_and_hides_internal_routing
     config = {'id': 'form-1', 'name': 'Seller inquiry', 'slug': 'test', 'headline': 'Request a review',
               'subheadline': 'Tell us about the property', 'brand_color': '#1B3A5C', 'logo_url': None,
               'thank_you_message': 'We will review your inquiry.', 'campaign_id': 'private-campaign',
-              'workspace_id': 'private-workspace', 'send_confirmation_sms': True, 'active': True,
+              'workspace_id': None, 'send_confirmation_sms': True, 'active': True,
               'future_internal_setting': {'secret': 'private-marker'},
               'questions': [{'id': 'q1', 'step': 1, 'type': 'radio', 'field_name': 'condition',
                              'label': 'Property condition', 'required': True, 'placeholder': 'Choose',
@@ -325,3 +325,14 @@ def test_public_question_without_options_preserves_legacy_text_rendering(form_se
     response = TestClient(app).get('/api/forms/test')
     assert response.status_code == 200
     assert response.json()['questions'] == [{'field_name': 'name', 'label': 'Name', 'type': 'text'}]
+
+
+@pytest.mark.parametrize('method', ['get', 'post'])
+def test_acquisition_form_never_enters_legacy_public_path(form_service,method):
+    db,process=form_service
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value=SimpleNamespace(
+        data=[{'id':'private','workspace_id':'w','active':True,'questions':QUESTIONS}])
+    response=getattr(TestClient(app),method)('/api/forms/private'+('/submit' if method=='post' else ''),
+                                           **({'json':{'answers':ANSWERS}} if method=='post' else {}))
+    assert response.status_code==404
+    db.table.return_value.insert.assert_not_called();process.assert_not_called()

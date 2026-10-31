@@ -201,6 +201,10 @@
     {
       "file": "20261030220930_acquisition_evidence_review_candidate.sql",
       "sha256": "21cbe9b34a9bbe166891e372daeafac0949f0117cb1bab9f39d78f9bc0c1e253"
+    },
+    {
+      "file": "20261030230704_acquisition_offer_form_versions.sql",
+      "sha256": "f90928af8d9844d7bdd59829b9bb7a4d5330ce6d478b282dcb465e7c3c0f74c8"
     }
   ]
 }

@@ -1,10 +1,10 @@
 # Online offer-request portal — shared intake integration
 
-October 30, 2026. Phase 3 capability under the original sequential activation gates. The request/preparation contract below is implemented; no public route, form, database write or provider is enabled by this increment.
+October 30, 2026. Phase 3 capability under the original sequential activation gates. The request/preparation contract and disabled form-version registry are implemented locally. No public acquisition route, production form/database write or provider is enabled.
 
 ## Existing paths inspected
 
-`frontend/src/pages/LeadForm.tsx` provides a public multi-step form with saved-request recovery, navy styling and form configuration from `/api/forms`. `web/api/lead_forms_api.py` and existing public-intake migrations support the older website workflow, global intake owner configuration and separate follow-up behavior. Those routes must remain unchanged. The acquisition portal cannot inherit that global routing or follow-up behavior as workspace authorization.
+`frontend/src/pages/LeadForm.tsx` provides a public multi-step form with saved-request recovery, navy styling and form configuration from `/api/forms`. `web/api/lead_forms_api.py` and existing public-intake migrations support the older website workflow, global intake owner configuration and separate follow-up behavior. Their legacy submission and follow-up behavior must remain compatible. The acquisition portal cannot inherit that global routing or follow-up behavior as workspace authorization.
 
 The shared `tools/acquisition_intake.py::normalize_seller_fields` already preserves seller assertions, unknown prices, conflicts and preliminary classification without canonical-property, ownership, contact-permission or offer authority. The new preparer reuses it instead of creating a competing qualification engine.
 
@@ -41,3 +41,20 @@ The old public GET returned the entire service-loaded configuration. It now expl
 Before registering acquisition rows in this shared table, implement restrictive workspace/role read/write policies, immutable version/wording evidence and guarded server-owned routing. Ensure legacy authenticated/service-backed CRUD cannot read or mutate new acquisition configurations across workspaces, activate them through the old active flag or attach them to global-owner intake. Both the database and service-backed list/update endpoints need explicit tests. Do not remove the existing acquisition campaign-association guard simply to allow the new form insert.
 
 Validation for the repair: 102 Python tests passed across public forms, online request contract and shared intake; 13 existing frontend outage/recovery/reset tests passed. No frontend code, schema, stored form configuration or production deployment was changed. Registry/persistence, bot/rate controls and new seller UI remain required.
+
+
+## Disabled form-version registry — October 30
+
+CLI-created proposed migration 20261030230704 extends lead_form_configs instead of creating a competing form store. The private acquisition_form_families relation contains only the immutable routing key/workspace/campaign tuple. Its composite foreign key binds each form version to the same campaign forever. The globally unique key cannot be claimed by another workspace or moved to a different campaign. Existing unscoped form rows retain their columns and behavior.
+
+The owner/admin MFA save_acquisition_offer_form RPC accepts a stable request UUID, workspace/campaign, expected revision and exact OfferFormDefinition. It preserves exact wording, assigns an immutable revision and stores a database SHA-256 of jsonb::text (distinct from the preparer's canonical request-evidence hash). It serializes by request and form key; exact retries return the existing version, changed bodies/stale revisions conflict, and reused version labels cannot overwrite history. Session authority is locked and its wall-clock expiry rechecked after serialization waits. A single immutable audit event records each saved version. Saving is preparation only; no wording is certified as legally approved.
+
+Rows require active=false, both confirmation messaging flags=false and no redirect. Anonymous table reads exclude acquisition versions; authenticated reads require actual workspace role/session, and raw writes cannot modify scoped versions. Immutable triggers also deny service-role edits/deletes and legacy form/campaign enrollment. The legacy submission table rejects these form IDs until a dedicated controlled acquisition acceptance path is implemented. The existing creative and lead campaign guards are unchanged.
+
+Service-backed legacy form lists exclude scoped rows even with acquisition flags off. Public legacy GET/submit refuses them. Legacy PATCH accepts only known editable display/behavior fields, checks target scope, and refuses scoped campaign associations; CREATE also checks the campaign. These checks work before additive columns exist by treating absent workspace_id as legacy. Database guards remain authoritative for direct writes and races.
+
+Validation: 98 related Python tests passed. Four new full-catalog registry journeys cover concurrent retry convergence, version history, role/tenant/MFA denial, invalid definitions, cross-campaign/key takeover, disabled activation, session revocation, expiry during a demonstrated advisory-lock wait, raw service mutation/legacy submission denial and preserved active legacy rendering. Full rehearsal passed 51 proposed migrations, 26 access probes, 64 workflows, 24 historical rows across 22 populated tables/103 definitions, and the existing 23 actual local PostgREST checks. The new registry RPC is tested directly against SQL in this increment, not through actual PostgREST or a rendered administration screen. Evidence: evidence/2026-10-30-offer-registry-result.json.
+
+Compensation after any separately approved deployment: revoke authenticated EXECUTE on both public/private save_acquisition_offer_form wrappers through a reviewed forward migration and hide its preparation controls. Keep all existing versions, routing identities and audit history; never re-enable legacy mutable access or drop the added data. No production migration is authorized here.
+
+Next: exact administration API/store response models and guided campaign setup; controlled public version selection/activation; transactional online submission using existing receipt/intake equivalents; rate/bot controls and the four-step seller UI. All original WEB and channel acceptance gates remain required.

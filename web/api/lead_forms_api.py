@@ -175,7 +175,7 @@ def _load_active_form(supabase, form_id: str) -> dict:
         logger.exception("[lead_forms] active configuration lookup failed")
         raise HTTPException(503, "Form service is temporarily unavailable. Please try again.",
                             headers={"Retry-After": "30"}) from None
-    if not response.data:
+    if not response.data or response.data[0].get("workspace_id") is not None:
         raise HTTPException(404, "Form not found or inactive")
     return response.data[0]
 
@@ -747,7 +747,7 @@ async def update_creative(creative_id: str, body: dict):
 async def list_forms():
     supabase = _get_supabase()
     resp = supabase.table("lead_form_configs").select("*").order("created_at", desc=True).execute()
-    return resp.data or []
+    return [row for row in (resp.data or []) if row.get("workspace_id") is None]
 
 
 class CreateFormRequest(BaseModel):
@@ -768,13 +768,25 @@ class CreateFormRequest(BaseModel):
 async def create_form(body: CreateFormRequest):
     supabase = _get_supabase()
     data = body.model_dump(exclude_none=True)
+    if body.campaign_id:
+        _legacy_campaign(supabase, body.campaign_id)
     resp = supabase.table("lead_form_configs").insert(data).execute()
     return resp.data[0] if resp.data else {}
 
 
 @router.patch("/api/lead-gen/forms/{form_id}")
 async def update_form(form_id: str, body: dict):
+    # The service client bypasses RLS: reject scoped records before any write.
+    # The database immutable trigger also covers concurrent/direct writes.
+    allowed = set(CreateFormRequest.model_fields) | {"logo_url", "send_confirmation_email"}
+    if not body or set(body) - allowed:
+        raise HTTPException(422, "Unsupported form settings")
     supabase = _get_supabase()
+    response = supabase.table("lead_form_configs").select("*").eq("id", form_id).limit(1).execute()
+    if not response.data or response.data[0].get("workspace_id") is not None:
+        raise HTTPException(404, "Form not found")
+    if body.get("campaign_id"):
+        _legacy_campaign(supabase, body["campaign_id"])
     resp = supabase.table("lead_form_configs").update(body).eq("id", form_id).execute()
     return resp.data[0] if resp.data else {}
 

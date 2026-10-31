@@ -64,3 +64,45 @@ def test_shared_campaign_kpis_exclude_scoped_spend_with_flag_off(monkeypatch):
     query.execute.return_value=SimpleNamespace(count=0,data=[{'total_spend':100,'leads_count':2},{'workspace_id':'w','total_spend':9000,'leads_count':1}])
     result=asyncio.run(api.get_lead_gen_kpis())
     assert result['total_spend']==100 and result['avg_cpl']==50
+
+
+def test_shared_form_list_excludes_scoped_versions(monkeypatch):
+    database(monkeypatch,[{'id':'old'},{'id':'legacy','workspace_id':None},{'id':'private','workspace_id':'w'}])
+    assert asyncio.run(api.list_forms())==[{'id':'old'},{'id':'legacy','workspace_id':None}]
+
+
+@pytest.mark.parametrize('data',[[],[{'id':'private','workspace_id':'w'}]])
+def test_shared_form_patch_rejects_scoped_and_missing_before_write(monkeypatch,data):
+    query=database(monkeypatch,data);query.limit.return_value=query
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(api.update_form('private',{'active':True}))
+    assert error.value.status_code==404
+    query.update.assert_not_called()
+
+
+@pytest.mark.parametrize('body',[{'workspace_id':'w'},{'acquisition_form_definition':{}},{'id':'replace'},{}])
+def test_shared_form_patch_rejects_authority_and_identity_fields(monkeypatch,body):
+    query=database(monkeypatch,[{'id':'legacy'}])
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(api.update_form('legacy',body))
+    assert error.value.status_code==422
+    query.update.assert_not_called()
+
+
+def test_legacy_form_patch_preserved(monkeypatch):
+    query=database(monkeypatch,[]);query.limit.return_value=query;query.update.return_value=query
+    query.execute.side_effect=[SimpleNamespace(data=[{'id':'legacy'}]),SimpleNamespace(data=[{'id':'legacy','headline':'New heading'}])]
+    assert asyncio.run(api.update_form('legacy',{'headline':'New heading'}))=={'id':'legacy','headline':'New heading'}
+    query.update.assert_called_once_with({'headline':'New heading'})
+
+
+@pytest.mark.parametrize('action',['create','patch'])
+def test_legacy_form_cannot_attach_scoped_campaign(monkeypatch,action):
+    query=database(monkeypatch,{'id':'private','workspace_id':'w'});query.limit.return_value=query
+    if action=='patch':
+        query.execute.side_effect=[SimpleNamespace(data=[{'id':'legacy'}]),SimpleNamespace(data={'id':'private','workspace_id':'w'})]
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(api.create_form(api.CreateFormRequest(name='Test',slug='test',campaign_id='private')) if action=='create'
+                    else api.update_form('legacy',{'campaign_id':'private'}))
+    assert error.value.status_code==404
+    query.insert.assert_not_called();query.update.assert_not_called()

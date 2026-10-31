@@ -138,6 +138,106 @@ class EvidenceStream(httpx.AsyncByteStream):
 
 
 class WorkflowTests(WorkspaceTests):
+    def offer_form_campaign(self, identity='fa000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE):
+        return json.loads(self.sql(f"SELECT public.create_acquisition_campaign('{identity}','{workspace}','Offer requests','online_offer',0,'USD')", user=actor))['id']
+
+    def offer_form_save(self, campaign, identity='fb000000-0000-4000-8000-000000000001', revision=0,
+                        actor=ADMIN, workspace=WORKSPACE, definition=None, fail=False, **kwargs):
+        definition = definition or dict(form_key='synthetic-offer-form', version='v1', privacy_acknowledged='Synthetic privacy wording',
+                                       human_callback_requested='Synthetic optional human callback', email_reply_requested='Synthetic optional email reply')
+        result=self.sql(f"SELECT public.save_acquisition_offer_form('{identity}','{workspace}','{campaign}',{revision},{literal(json.dumps(definition))}::jsonb)",
+                        user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def test_online_form_registry_versions_retry_and_private_scope(self):
+        from concurrent.futures import ThreadPoolExecutor
+        campaign=self.offer_form_campaign()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:self.offer_form_save(campaign),range(3)))
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        saved=results[0]
+        self.assertFalse(saved['public_enabled']); self.assertFalse(saved['execution_authorized'])
+        before=self.sql(f"SELECT to_jsonb(f) FROM lead_form_configs f WHERE id='{saved['id']}'")
+        definition=dict(form_key='synthetic-offer-form',version='v2',privacy_acknowledged='Revised synthetic privacy',
+                        human_callback_requested='Optional human callback',email_reply_requested='Optional email reply')
+        self.offer_form_save(campaign,definition=definition,fail=True)
+        self.offer_form_save(campaign,identity='fb000000-0000-4000-8000-000000000002',definition=definition,fail=True)
+        v2=self.offer_form_save(campaign,identity='fb000000-0000-4000-8000-000000000002',revision=1,definition=definition)
+        self.assertEqual(v2['revision'],2)
+        self.assertTrue(self.offer_form_save(campaign)['duplicate'])
+        self.assertEqual(before,self.sql(f"SELECT to_jsonb(f) FROM lead_form_configs f WHERE id='{saved['id']}'"))
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_offer_form'"),'2')
+        for actor,role in ((OTHER,'authenticated'),(ADMIN,'anon')):
+            self.assertEqual(self.sql("SELECT count(*) FROM lead_form_configs WHERE workspace_id IS NOT NULL",user=actor,role=role),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM lead_form_configs WHERE workspace_id IS NOT NULL",user=ADMIN),'2')
+        self.assertEqual(self.sql("SELECT bool_and(active IS FALSE AND send_confirmation_sms IS FALSE AND send_confirmation_email IS FALSE) FROM lead_form_configs WHERE workspace_id IS NOT NULL"),'t')
+
+    def test_online_form_registry_authority_validation_and_routing(self):
+        from test_acquisition_workspace import WORKSPACE_B
+        campaign=self.offer_form_campaign()
+        self.member(target=OPERATOR,role='operator')
+        for kwargs in ({'actor':OPERATOR},{'aal':'aal1'},{'role':'service_role'},{'session':False},{'actor':OTHER}):
+            self.offer_form_save(campaign,fail=True,**kwargs)
+        for definition in ({'form_key':'bad'},dict(form_key='synthetic-offer-form',version='v1',privacy_acknowledged=' ',human_callback_requested='x',email_reply_requested='y'),
+                           dict(form_key='synthetic-offer-form',version='v1',privacy_acknowledged='x',human_callback_requested=True,email_reply_requested='y')):
+            self.offer_form_save(campaign,definition=definition,fail=True)
+        wrong=self.campaign_draft()['id']; self.offer_form_save(wrong,fail=True)
+        self.offer_form_save(campaign)
+        other=self.offer_form_campaign(identity='fa000000-0000-4000-8000-000000000002',actor=OTHER,workspace=WORKSPACE_B)
+        self.offer_form_save(other,identity='fb000000-0000-4000-8000-000000000002',actor=OTHER,workspace=WORKSPACE_B,fail=True)
+        same=self.offer_form_campaign(identity='fa000000-0000-4000-8000-000000000003')
+        self.offer_form_save(same,identity='fb000000-0000-4000-8000-000000000003',revision=1,fail=True)
+        self.sql("UPDATE private.acquisition_activation SET enabled=false")
+        self.offer_form_save(campaign,fail=True)
+        self.activate()
+        self.sql(f"DELETE FROM auth.sessions WHERE id='{ADMIN}'")
+        self.offer_form_save(campaign,fail=True)
+
+    def test_online_form_registry_session_expiry_during_serialization(self):
+        import psycopg2
+        from concurrent.futures import ThreadPoolExecutor
+        campaign=self.offer_form_campaign()
+        database=getattr(self,'database_name','acquisition_test')
+        blocker=psycopg2.connect(host=self.socket,dbname=database,user='test_admin')
+        try:
+            with blocker.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(hashtextextended('offer-form:synthetic-offer-form',0))")
+            self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()+interval '2 seconds' WHERE id='{ADMIN}'")
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(self.offer_form_save,campaign,fail=True)
+                try:
+                    deadline=time.monotonic()+1.5
+                    while self.sql(f"SELECT count(*) FROM pg_stat_activity WHERE datname={literal(database)} AND wait_event='advisory' AND query LIKE '%public.save_acquisition_offer_form%'")=='0':
+                        if future.done() or time.monotonic()>deadline:raise AssertionError('Form save never reached serialization wait')
+                        time.sleep(.02)
+                    while self.sql(f"SELECT not_after<=clock_timestamp() FROM auth.sessions WHERE id='{ADMIN}'")!='t':
+                        if time.monotonic()>deadline+2:raise AssertionError('Session expiry was not reached')
+                        time.sleep(.02)
+                finally:blocker.rollback()
+                self.assertIn('Form session expired',future.result(timeout=6))
+            self.assertEqual(self.sql("SELECT count(*) FROM lead_form_configs WHERE workspace_id IS NOT NULL"),'0')
+            self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_offer_form'"),'0')
+        finally:
+            blocker.close()
+            self.sql(f"UPDATE auth.sessions SET not_after=NULL WHERE id='{ADMIN}'")
+
+    def test_online_form_registry_blocks_legacy_and_direct_mutations(self):
+        campaign=self.offer_form_campaign(); saved=self.offer_form_save(campaign); identity=saved['id']
+        for statement in (f"UPDATE lead_form_configs SET active=true WHERE id='{identity}'",
+                          f"UPDATE lead_form_configs SET workspace_id=NULL WHERE id='{identity}'",
+                          f"DELETE FROM lead_form_configs WHERE id='{identity}'", 'TRUNCATE lead_form_configs CASCADE',
+                          f"INSERT INTO lead_form_configs(name,slug,campaign_id) VALUES('unsafe','unsafe','{campaign}')",
+                          f"INSERT INTO lead_form_submissions(form_id,answers) VALUES('{identity}','{{}}')",
+                          "UPDATE private.acquisition_form_families SET form_key='changed'"):
+            self.sql(statement,user=ADMIN,role='service_role',fail=True)
+        self.sql(f"UPDATE lead_form_configs SET name='changed' WHERE id='{identity}'",fail=True)
+        self.sql(f"DELETE FROM lead_form_configs WHERE id='{identity}'",user=ADMIN)
+        self.assertEqual(self.sql(f"SELECT count(*) FROM lead_form_configs WHERE id='{identity}'"),'1')
+        self.sql("INSERT INTO lead_form_configs(name,slug,active) VALUES('Legacy test','legacy-registry-test',true)",user=ADMIN,role='service_role')
+        self.sql("UPDATE lead_form_configs SET headline='Legacy update' WHERE slug='legacy-registry-test'",user=ADMIN,role='service_role')
+        self.assertEqual(self.sql("SELECT headline FROM lead_form_configs WHERE slug='legacy-registry-test'",user=ADMIN,role='anon'),'Legacy update')
+
+
     def prepare_database(self):
         super().setUp()
 

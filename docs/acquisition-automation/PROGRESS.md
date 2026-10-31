@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-30 — Disabled online offer form versions and legacy containment
+
+- Pulled unchanged before work. Live metadata at 23:06:46 UTC confirms existing form schema/policies/constraints/triggers and absent routing registry/save function; production ledger remains 20261023221455. Saved metadata-only source evidence. CLI-created proposed migration 20261030230704 extends lead_form_configs with immutable versions and a private immutable workspace/campaign routing key, without replacing existing forms.
+- Owner/admin MFA saves preserve exact definition/revision/hash and one audit per request; serialized retries converge and conflicting/stale versions reject. Authority/session is locked and expiry rechecked after lock waits. Scoped rows stay inactive with confirmation SMS/email disabled. Restrictive RLS, service mutation triggers, campaign guards and legacy-submission rejection prevent the old global-owner path from consuming these versions.
+- Legacy HTTP list/public routes exclude scoped forms; PATCH rejects ownership/version/identity injection and scoped targets/campaigns. Legacy display editing remains available before or after migration. The revised public projection test now uses an unscoped form; separate tests require scoped GET/submit rejection.
+- Validation: 98 related Python tests, 3 initial focused SQL journeys, then full rehearsal with 51 migrations, 26 access probes, 64 workflows including 4 registry journeys and demonstrated session expiry during a serialization wait, 24 historical rows preserved across 22 populated tables/103 definitions, plus 23 existing actual local PostgREST checks. Evidence: evidence/2026-10-30-offer-registry-result.json. Registry tests use direct SQL; actual new RPC transport and guided administration UI remain required.
+- Separately published CI repair 0281b14 fixes an asynchronous test click, with all 522 frontend tests passing locally. Its exact successor 41147496592 is still running and frontend is green. Hold this feature locally until all six pass; do not cancel/restart/bypass. No production/provider/SMS activation.
+- Next: administration API/store response contracts and guided form setup, then durable acquisition submission routing, rate/bot controls and four-step seller flow. Keep the complete Phase 1/2 acceptance and remaining PRD work active. Compensation documented in ONLINE-OFFER-PORTAL.md; production changes still require approval.
+
 ## 2026-10-30 — CI retry test timing repaired
 
 - Published predecessor 2136d97 / CI 41142317415 finished with five successful jobs and one frontend failure. Log identifies acquisition-underwriting.test.tsx: proposal retry clicked as soon as its label appeared, before the first request finished and enabled the button. No backend/database job failed.
