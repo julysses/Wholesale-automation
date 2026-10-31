@@ -556,7 +556,7 @@ def test_intake_queue_and_detail_are_scoped_and_bounded(api):
     assert result.json() == {'items': [{'id': intake}], 'next_after': intake}
     params = state['requests'][-1].url.params
     assert params['workspace_id'] == 'eq.'+W and params['limit'] == '2' and params['order'] == 'id'
-    assert {'source_type','inbound_integration_id','inbound_call_id','inbound_revision'} <= set(params['select'].split(','))
+    assert {'source_type','portal_receipt_id','inbound_integration_id','inbound_call_id','inbound_revision'} <= set(params['select'].split(','))
     state['body'] = []
     assert client.get(base+'?after='+intake, headers=headers).json()['next_after'] is None
     assert state['requests'][-1].url.params['id'] == 'gt.'+intake
@@ -565,7 +565,7 @@ def test_intake_queue_and_detail_are_scoped_and_bounded(api):
     assert client.get(base+'/'+intake, headers=headers).json()['id'] == intake
     params = state['requests'][-1].url.params
     assert params['id'] == 'eq.'+intake and params['workspace_id'] == 'eq.'+W and params['limit'] == '1'
-    assert {'source_type','inbound_integration_id','inbound_call_id','inbound_revision'} <= set(params['select'].split(','))
+    assert {'source_type','portal_receipt_id','inbound_integration_id','inbound_call_id','inbound_revision'} <= set(params['select'].split(','))
 
 
 def test_intake_assessment_is_server_derived_and_scoped(api):
@@ -902,7 +902,7 @@ def test_lead_source_reads_include_call_revision_origin(api):
     assert response.status_code==200
     params=state['requests'][-1].url.params
     assert params['workspace_id']=='eq.'+W and params['lead_id']=='eq.'+U
-    assert {'source_type','external_lead_id','integration_id','inbound_event_id','inbound_revision'} <= set(params['select'].split(','))
+    assert {'source_type','portal_receipt_id','portal_campaign_id','external_lead_id','integration_id','inbound_event_id','inbound_revision'} <= set(params['select'].split(','))
 
 
 def test_inbound_request_read_forwards_only_user_scope(api):

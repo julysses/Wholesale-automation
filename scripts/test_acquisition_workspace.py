@@ -221,6 +221,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.sql((ROOT/"frontend/supabase/migrations/20261030230704_acquisition_offer_form_versions.sql").read_text())
         self.sql((ROOT/"frontend/supabase/migrations/20261031195256_acquisition_offer_publication_routing.sql").read_text())
         self.sql((ROOT/"frontend/supabase/migrations/20261031200935_acquisition_legacy_receipt_guards.sql").read_text())
+        self.sql((ROOT/"frontend/supabase/migrations/20261031202407_acquisition_portal_receipts.sql").read_text())
         install_storage_fixture(self.sql)
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
             self.sql(STORAGE_MIGRATION.read_text())

@@ -182,6 +182,92 @@ class WorkflowTests(WorkspaceTests):
                         user=actor,fail=fail,**kwargs)
         return result if fail else json.loads(result)
 
+    def test_portal_receipt_rechecks_expiry_after_receipt_lock(self):
+        import psycopg2
+        from concurrent.futures import ThreadPoolExecutor
+        self.publication_fixture();self.enable_publication();prepared=self.portal_prepared()
+        database=getattr(self,'database_name','acquisition_test')
+        blocker=psycopg2.connect(host=self.socket,dbname=database,user='test_admin')
+        try:
+            with blocker.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(hashtextextended('form-submission:'||%s,0))",[prepared['submission_id']])
+            self.sql("UPDATE private.acquisition_form_publications SET expires_at=clock_timestamp()+interval '2 seconds'")
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pending=pool.submit(self.portal_accept,prepared,fail=True)
+                try:
+                    deadline=time.monotonic()+1.5
+                    while self.sql(f"SELECT count(*) FROM pg_stat_activity WHERE datname={literal(database)} AND wait_event='advisory' AND query LIKE '%public.accept_acquisition_online_offer%'")=='0':
+                        if pending.done() or time.monotonic()>deadline:raise AssertionError('Portal acceptance never reached receipt lock')
+                        time.sleep(.02)
+                    while self.sql("SELECT expires_at<=clock_timestamp() FROM private.acquisition_form_publications")!='t':
+                        if time.monotonic()>deadline+2:raise AssertionError('Publication expiry not reached')
+                        time.sleep(.02)
+                finally:blocker.rollback()
+                self.assertIn('Form unavailable',pending.result(timeout=6))
+            self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='online_offer_acquisition'"),'0')
+        finally:blocker.close()
+
+    def portal_prepared(self, submission='fd000000-0000-4000-8000-000000000001'):
+        from schemas.acquisition_online_offer import OnlineOfferRequest, OfferFormDefinition
+        from tools.acquisition_online_offer import prepare_online_offer
+        definition=OfferFormDefinition.model_validate(json.loads(self.read_publication()))
+        request=OnlineOfferRequest.model_validate({'submission_id':submission,'form_version':'v1',
+            'seller':{'name':'Synthetic Seller','phone':'2145550100'},
+            'property':{'address':'123 Synthetic St','city':'Dallas','state':'TX','postal_code':'75201',
+                'authority':'owner','condition':'cosmetic_repairs','occupancy':'vacant','timeline':'flexible',
+                'motivation':'Synthetic test','asking_price':None},
+            'selections':{'privacy_acknowledged':True,'human_callback_requested':False}})
+        return prepare_online_offer(request,definition)
+
+    def portal_accept(self, prepared, **kwargs):
+        return self.sql(f"SELECT public.accept_acquisition_online_offer('synthetic-offer-form',{literal(prepared['submission_id'])}::uuid,{literal(json.dumps(prepared))}::jsonb)",
+            user=ADMIN,role=kwargs.pop('role','service_role'),**kwargs)
+
+    def test_portal_receipt_atomic_retry_scope_and_legacy_denial(self):
+        from concurrent.futures import ThreadPoolExecutor
+        self.publication_fixture();self.enable_publication();prepared=self.portal_prepared()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:json.loads(self.portal_accept(prepared)),range(3)))
+        self.assertEqual(sum(not r['duplicate'] for r in results),1)
+        self.assertEqual(set(results[0]),{'submission_id','status','duplicate'})
+        for table in ('lead_form_submissions','seller_intakes','acquisition_lead_sources'):
+            self.assertEqual(self.sql(f"SELECT count(*) FROM {table} WHERE workspace_id='{WORKSPACE}'",user=ADMIN),'1')
+            self.assertEqual(self.sql(f"SELECT count(*) FROM {table} WHERE workspace_id='{WORKSPACE}'",user=OTHER),'0')
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='online_offer_acquisition' AND asking_price IS NULL AND sms_sequence_active=false AND email_sequence_active=false AND ai_calling_paused AND NOT retention_deletable"),'1')
+        receipt=prepared['submission_id']
+        self.assertIn('Use acquisition submission workflow',self.sql(f"SELECT public.finalize_form_submission('{receipt}','{{}}')",user=ADMIN,role='service_role',fail=True))
+        self.assertIn('immutable',self.sql(f"UPDATE lead_form_submissions SET raw_answers='{{}}' WHERE id='{receipt}'",user=ADMIN,role='service_role',fail=True))
+        self.assertIn('immutable',self.sql(f"DELETE FROM lead_form_submissions WHERE id='{receipt}'",fail=True))
+        self.sql('TRUNCATE lead_form_submissions CASCADE',fail=True)
+        changed=dict(prepared,classification='unqualified')
+        self.assertIn('identity conflict',self.portal_accept(changed,fail=True))
+        self.sql('UPDATE private.acquisition_form_publications SET enabled=false')
+        self.assertIn('Form unavailable',self.portal_accept(prepared,fail=True))
+
+    def test_portal_receipt_failure_rolls_back_and_same_phone_never_merges(self):
+        self.publication_fixture();self.enable_publication();prepared=self.portal_prepared()
+        self.sql("CREATE FUNCTION public.synthetic_portal_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic source failure'; END $$; CREATE TRIGGER synthetic_portal_fail BEFORE INSERT ON acquisition_lead_sources FOR EACH ROW EXECUTE FUNCTION public.synthetic_portal_fail();")
+        self.assertIn('synthetic source failure',self.portal_accept(prepared,fail=True))
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='online_offer_acquisition'"),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM lead_form_submissions WHERE workspace_id IS NOT NULL'),'0')
+        self.sql('DROP TRIGGER synthetic_portal_fail ON acquisition_lead_sources')
+        self.portal_accept(prepared)
+        self.portal_accept(self.portal_prepared('fd000000-0000-4000-8000-000000000002'))
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='online_offer_acquisition'"),'2')
+
+    def test_portal_receipt_role_wording_and_authority_validation(self):
+        self.publication_fixture();self.enable_publication();prepared=self.portal_prepared()
+        for role in ('anon','authenticated'):
+            self.portal_accept(prepared,role=role,fail=True)
+        for field in ('property_verified','ownership_verified','contact_permission_granted','outreach_authorized','binding_offer'):
+            self.assertIn('Invalid inquiry authority',self.portal_accept(prepared|{field:True},fail=True))
+        import copy
+        changed=copy.deepcopy(prepared);changed['request_evidence']['form']['privacy_acknowledged']='altered'
+        self.assertIn('Invalid prepared portal inquiry',self.portal_accept(changed,fail=True))
+        changed=copy.deepcopy(prepared);changed['request_evidence']['submission']['selections']['privacy_acknowledged']=False
+        self.assertIn('Privacy acknowledgement required',self.portal_accept(changed,fail=True))
+        self.assertEqual(self.sql('SELECT count(*) FROM lead_form_submissions WHERE workspace_id IS NOT NULL'),'0')
+
     def publication_fixture(self):
         campaign=self.offer_form_campaign(); saved=self.offer_form_save(campaign)
         self.sql(f"INSERT INTO private.acquisition_form_publications(form_key,workspace_id,campaign_id,form_id) VALUES('synthetic-offer-form','{WORKSPACE}','{campaign}','{saved['id']}')")
@@ -487,7 +573,7 @@ class WorkflowTests(WorkspaceTests):
         elif request.url.path in ('/rest/v1/acquisition_lead_sources','/rest/v1/acquisition_source_campaign_reviews'):
             self.assertEqual(request.method,'GET')
             table=request.url.path.rsplit('/',1)[-1]
-            fields=('id,workspace_id,lead_id,receipt_id,integration_id,source_type,preparation_hash,external_lead_id,form_id,external_campaign_id,adset_id,ad_id,submitted_at_raw,utm_data,projection_version,recorded_at,inbound_event_id,inbound_revision'
+            fields=('id,workspace_id,lead_id,receipt_id,integration_id,source_type,preparation_hash,external_lead_id,form_id,external_campaign_id,adset_id,ad_id,submitted_at_raw,utm_data,projection_version,recorded_at,portal_receipt_id,portal_campaign_id,inbound_event_id,inbound_revision'
                     if table=='acquisition_lead_sources' else 'id,workspace_id,source_id,link_review_id,campaign_id,preparation_hash,created_at')
             self.assertEqual(request.url.params['select'],fields)
             relation='lead_id' if table=='acquisition_lead_sources' else 'source_id'
@@ -601,7 +687,7 @@ class WorkflowTests(WorkspaceTests):
             query=f"SELECT coalesce(jsonb_agg(to_jsonb(row)),'[]'::jsonb)::text FROM (SELECT analysis_id,intake_id,assessment_id,evidence_hash FROM public.acquisition_analysis_intakes WHERE {' AND '.join(filters)} LIMIT 1) row;"
         elif request.url.path=='/rest/v1/seller_intakes':
             self.assertEqual(request.method,'GET')
-            allowed={'id','lead_id','classification','created_at','source_type','inbound_integration_id','inbound_call_id','inbound_revision','prepared_answers','preparation_hash','normalization_notes'}
+            allowed={'id','lead_id','classification','created_at','source_type','portal_receipt_id','inbound_integration_id','inbound_call_id','inbound_revision','prepared_answers','preparation_hash','normalization_notes'}
             fields=request.url.params['select'].split(',');self.assertTrue(set(fields)<=allowed)
             self.assertTrue(set(request.url.params)<={'select','workspace_id','id','limit','order'})
             op,workspace=request.url.params['workspace_id'].split('.',1);self.assertEqual(op,'eq')

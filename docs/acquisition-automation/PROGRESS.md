@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Atomic portal inquiry and guided review handoff
+
+- Pulled unchanged; read-only production metadata still shows ledger 20261023221455. CLI-created proposed migration 20261031202407 extends existing receipts and intake/source/binding origins. No production SQL was applied. Source evidence is saved in evidence/2026-10-31-portal-receipt-source.json; migration manifest now has 54 entries.
+- The service-only transaction validates current reviewed form wording/version and authority-denying preparation, serializes receipt retries, rechecks publication after contention, and atomically writes non-sending CRM lead, exact receipt evidence, binding, intake, source and audit. Duplicate requests converge; changed manifests conflict; failed source writes roll back; same phones never auto-merge. Receipt RLS/immutability and raw-write guards preserve workspace boundaries.
+- Portal inquiries appear as Online offer request in the existing intake/property review flow. Receipt/campaign context is preserved, Facebook-only attribution controls stay specific to Facebook, and independent property evidence remains required. No public seller endpoint was activated.
+- Final full rehearsal passed: 54 migrations, 26 access probes, 74 workflows, 40 real local PostgREST checks, 24 historical rows/22 tables/103 definitions preserved. Additional lock-wait publication-expiry test passed separately after that full run started (not counted in 74); three focused transaction tests also passed. Backend API/preparer tests: 393 passed. Related UI tests: 39 passed; build passed; lint zero new findings/147 existing. Evidence: evidence/2026-10-31-portal-receipt-result.json. First full attempt exposed a stale expected field list, corrected before the successful rerun.
+- Published repair remains 699d633 / CI 41238434660: five successes and the real PostgreSQL contention job still running at last observation. Retain all subsequent increments locally until all six succeed; no cancellation/restart. Local test sessions have completed.
+- Next: verify exact repair CI and publish retained commits when green; build public request orchestration with durable rate/bot admission, exact recovery and privacy-aware retention, then the four-step seller UI and address validation. All original PRD channel gates, hosted acceptance, mail/provider selection and legal/execution approvals remain outstanding. Production/SMS/providers unchanged.
+
 ## 2026-10-31 — Legacy SQL receipt safeguards verified locally
 
 - Published only fixture repair 699d633892b2cf2410578de7234d0522100c8d4f; exact successor CI 41238434660 is active. Retain application b63814d and SQL ea895ed until all six repair checks succeed. Merged the repair back into this worktree; only progress prose needed conflict reconciliation.

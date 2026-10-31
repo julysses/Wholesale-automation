@@ -1,0 +1,764 @@
+{
+  "inspection": {
+    "inspected_at": "2026-10-31 20:23:17.077557+00",
+    "migration_head": "20261023221455",
+    "tables": [
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "anon=arwdDxtm/postgres",
+          "authenticated=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "rls": true,
+        "table": "lead_form_configs",
+        "schema": "public",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "notnull": true
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "notnull": false
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "notnull": false
+          },
+          {
+            "name": "name",
+            "type": "text",
+            "notnull": true
+          },
+          {
+            "name": "slug",
+            "type": "text",
+            "notnull": true
+          },
+          {
+            "name": "campaign_id",
+            "type": "uuid",
+            "notnull": false
+          },
+          {
+            "name": "headline",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "subheadline",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "brand_color",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "logo_url",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "thank_you_message",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "send_confirmation_sms",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "send_confirmation_email",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "active",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "questions",
+            "type": "jsonb",
+            "notnull": false
+          },
+          {
+            "name": "redirect_url",
+            "type": "text",
+            "notnull": false
+          }
+        ],
+        "policies": [
+          {
+            "cmd": "ALL",
+            "qual": "true",
+            "roles": [
+              "authenticated"
+            ],
+            "tablename": "lead_form_configs",
+            "permissive": "PERMISSIVE",
+            "policyname": "auth_all_lead_form_configs",
+            "schemaname": "public",
+            "with_check": "true"
+          },
+          {
+            "cmd": "SELECT",
+            "qual": "(active = true)",
+            "roles": [
+              "anon"
+            ],
+            "tablename": "lead_form_configs",
+            "permissive": "PERMISSIVE",
+            "policyname": "public_read_active_forms",
+            "schemaname": "public",
+            "with_check": null
+          },
+          {
+            "cmd": "ALL",
+            "qual": "( SELECT is_approved() AS is_approved)",
+            "roles": [
+              "authenticated"
+            ],
+            "tablename": "lead_form_configs",
+            "permissive": "RESTRICTIVE",
+            "policyname": "require_approved_operator",
+            "schemaname": "public",
+            "with_check": "( SELECT is_approved() AS is_approved)"
+          }
+        ],
+        "triggers": [
+          "CREATE TRIGGER update_lead_form_configs_updated_at BEFORE UPDATE ON public.lead_form_configs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+        ],
+        "constraints": [
+          "FOREIGN KEY (campaign_id) REFERENCES ad_campaigns(id)",
+          "PRIMARY KEY (id)",
+          "UNIQUE (slug)"
+        ]
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "rls": true,
+        "table": "lead_form_submissions",
+        "schema": "public",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "notnull": true
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "notnull": false
+          },
+          {
+            "name": "form_id",
+            "type": "uuid",
+            "notnull": false
+          },
+          {
+            "name": "lead_id",
+            "type": "uuid",
+            "notnull": false
+          },
+          {
+            "name": "ip_address",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "user_agent",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "utm_source",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "utm_medium",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "utm_campaign",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "raw_answers",
+            "type": "jsonb",
+            "notnull": true
+          },
+          {
+            "name": "computed_motivation_tag",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "computed_timeline",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "computed_condition",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "processing_status",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "request_manifest",
+            "type": "jsonb",
+            "notnull": false
+          }
+        ],
+        "policies": [
+          {
+            "cmd": "SELECT",
+            "qual": "true",
+            "roles": [
+              "authenticated"
+            ],
+            "tablename": "lead_form_submissions",
+            "permissive": "PERMISSIVE",
+            "policyname": "authenticated_read_lead_form_submissions",
+            "schemaname": "public",
+            "with_check": null
+          },
+          {
+            "cmd": "ALL",
+            "qual": "( SELECT is_approved() AS is_approved)",
+            "roles": [
+              "authenticated"
+            ],
+            "tablename": "lead_form_submissions",
+            "permissive": "RESTRICTIVE",
+            "policyname": "require_approved_operator",
+            "schemaname": "public",
+            "with_check": "( SELECT is_approved() AS is_approved)"
+          }
+        ],
+        "triggers": null,
+        "constraints": [
+          "FOREIGN KEY (form_id) REFERENCES lead_form_configs(id)",
+          "FOREIGN KEY (lead_id) REFERENCES leads(id)",
+          "PRIMARY KEY (id)"
+        ]
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "anon=arwdDxtm/postgres",
+          "authenticated=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "rls": true,
+        "table": "leads",
+        "schema": "public",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "notnull": true
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "notnull": false
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "notnull": false
+          },
+          {
+            "name": "property_address",
+            "type": "text",
+            "notnull": true
+          },
+          {
+            "name": "city",
+            "type": "text",
+            "notnull": true
+          },
+          {
+            "name": "state",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "zip_code",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "property_type",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "bedrooms",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "bathrooms",
+            "type": "numeric(3,1)",
+            "notnull": false
+          },
+          {
+            "name": "sqft",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "year_built",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "owner_first_name",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "owner_last_name",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "owner_phone_1",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "owner_phone_2",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "owner_phone_3",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "owner_email",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "owner_mailing_address",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "source",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "motivation_tag",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "score_motivation",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "score_timeline",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "score_equity",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "score_condition",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "score_flexibility",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "total_score",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "estimated_arv",
+            "type": "numeric(12,2)",
+            "notnull": false
+          },
+          {
+            "name": "estimated_repairs",
+            "type": "numeric(12,2)",
+            "notnull": false
+          },
+          {
+            "name": "loan_balance",
+            "type": "numeric(12,2)",
+            "notnull": false
+          },
+          {
+            "name": "estimated_equity_pct",
+            "type": "numeric(5,2)",
+            "notnull": false
+          },
+          {
+            "name": "mao",
+            "type": "numeric(12,2)",
+            "notnull": false
+          },
+          {
+            "name": "offer_price",
+            "type": "numeric(12,2)",
+            "notnull": false
+          },
+          {
+            "name": "asking_price",
+            "type": "numeric(12,2)",
+            "notnull": false
+          },
+          {
+            "name": "last_contact_date",
+            "type": "date",
+            "notnull": false
+          },
+          {
+            "name": "next_follow_up_date",
+            "type": "date",
+            "notnull": false
+          },
+          {
+            "name": "contact_attempts",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "sms_sequence_active",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "email_sequence_active",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "dnc",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "seller_notes",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "internal_notes",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "ai_qualification_summary",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "assigned_to",
+            "type": "uuid",
+            "notnull": false
+          },
+          {
+            "name": "apn",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "county",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "absentee_owner",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "out_of_state_owner",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "pre_foreclosure",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "tax_delinquent_flag",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "vacant",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "years_owned",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "seller_score",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "priority_tier",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "skip_traced_at",
+            "type": "timestamp with time zone",
+            "notnull": false
+          },
+          {
+            "name": "skip_trace_provider",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "phones",
+            "type": "jsonb",
+            "notnull": false
+          },
+          {
+            "name": "emails_enriched",
+            "type": "jsonb",
+            "notnull": false
+          },
+          {
+            "name": "dialer_contact_id",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "dialer_campaign_id",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "launch_control_id",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "podio_item_id",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "resimpli_lead_id",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "code_violation_status",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "utility_shutoff_status",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "municipal_lien_status",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "pre_foreclosure_status",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "probate_status",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "lien_amount",
+            "type": "numeric(12,2)",
+            "notnull": false
+          },
+          {
+            "name": "beds",
+            "type": "smallint",
+            "notnull": false
+          },
+          {
+            "name": "baths",
+            "type": "numeric(4,1)",
+            "notnull": false
+          },
+          {
+            "name": "stack_name",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "stack_bonus",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "precision_tier",
+            "type": "smallint",
+            "notnull": false
+          },
+          {
+            "name": "priority_rank",
+            "type": "integer",
+            "notnull": false
+          },
+          {
+            "name": "targeting_batch",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "ai_calling_paused",
+            "type": "boolean",
+            "notnull": false
+          },
+          {
+            "name": "ad_campaign_id",
+            "type": "uuid",
+            "notnull": false
+          },
+          {
+            "name": "ad_creative_id",
+            "type": "uuid",
+            "notnull": false
+          },
+          {
+            "name": "form_submission_id",
+            "type": "uuid",
+            "notnull": false
+          },
+          {
+            "name": "inbound_channel",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "list_id",
+            "type": "uuid",
+            "notnull": false
+          },
+          {
+            "name": "retention_rule",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "retention_action",
+            "type": "text",
+            "notnull": false
+          },
+          {
+            "name": "retention_due_at",
+            "type": "timestamp with time zone",
+            "notnull": false
+          },
+          {
+            "name": "retention_deletable",
+            "type": "boolean",
+            "notnull": true
+          },
+          {
+            "name": "retention_reason",
+            "type": "text",
+            "notnull": false
+          }
+        ],
+        "policies": [
+          {
+            "cmd": "ALL",
+            "qual": "(auth.role() = 'authenticated'::text)",
+            "roles": [
+              "public"
+            ],
+            "tablename": "leads",
+            "permissive": "PERMISSIVE",
+            "policyname": "authenticated_full_access",
+            "schemaname": "public",
+            "with_check": null
+          },
+          {
+            "cmd": "ALL",
+            "qual": "( SELECT is_approved() AS is_approved)",
+            "roles": [
+              "authenticated"
+            ],
+            "tablename": "leads",
+            "permissive": "RESTRICTIVE",
+            "policyname": "require_approved_operator",
+            "schemaname": "public",
+            "with_check": "( SELECT is_approved() AS is_approved)"
+          }
+        ],
+        "triggers": [
+          "CREATE TRIGGER leads_retention BEFORE INSERT OR UPDATE OF status, contact_attempts, last_contact_date, dnc, source, property_type, form_submission_id, inbound_channel ON public.leads FOR EACH ROW EXECUTE FUNCTION lead_retention_row_trigger()",
+          "CREATE TRIGGER leads_updated_at BEFORE UPDATE ON public.leads FOR EACH ROW EXECUTE FUNCTION update_updated_at()"
+        ],
+        "constraints": [
+          "FOREIGN KEY (ad_campaign_id) REFERENCES ad_campaigns(id)",
+          "FOREIGN KEY (ad_creative_id) REFERENCES ad_creatives(id)",
+          "FOREIGN KEY (form_submission_id) REFERENCES lead_form_submissions(id)",
+          "FOREIGN KEY (list_id) REFERENCES lead_lists(id) ON DELETE SET NULL",
+          "PRIMARY KEY (id)",
+          "CHECK ((precision_tier = ANY (ARRAY[1, 2, 3])))",
+          "CHECK ((priority_tier = ANY (ARRAY['A'::text, 'B'::text, 'C'::text, 'D'::text])))",
+          "CHECK (((score_condition >= 1) AND (score_condition <= 3)))",
+          "CHECK (((score_equity >= 1) AND (score_equity <= 3)))",
+          "CHECK (((score_flexibility >= 1) AND (score_flexibility <= 3)))",
+          "CHECK (((score_motivation >= 1) AND (score_motivation <= 3)))",
+          "CHECK (((score_timeline >= 1) AND (score_timeline <= 3)))"
+        ]
+      }
+    ]
+  },
+  "scope": "Read-only production catalog; acquisition tables remain local proposed migrations."
+}

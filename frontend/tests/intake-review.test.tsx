@@ -2,13 +2,13 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { IntakeReview } from '../src/components/acquisition/IntakeReview';
-const mock = vi.hoisted(() => ({ fetch: vi.fn(), post: vi.fn(), role: 'owner', sequence: 0, changed: false, inbound: false }));
+const mock = vi.hoisted(() => ({ fetch: vi.fn(), post: vi.fn(), role: 'owner', sequence: 0, changed: false, inbound: false, portal: false }));
 vi.mock('@/lib/api', () => ({ apiFetch: mock.fetch, ApiError: class extends Error { status = 409; } }));
 const state = { sequence: 0, preparation_hash: 'a'.repeat(64), target_hash: 'b'.repeat(64), target_snapshot: { parcel_id: 'parcel-42', county: 'Dallas' }, latest_review: null, link_current: false };
 beforeEach(() => {
-  mock.fetch.mockReset(); mock.post.mockReset(); mock.role = 'owner'; mock.sequence = 0; mock.changed = false; mock.inbound = false;
+  mock.fetch.mockReset(); mock.post.mockReset(); mock.role = 'owner'; mock.sequence = 0; mock.changed = false; mock.inbound = false; mock.portal = false;
   mock.post.mockImplementation(async (init: RequestInit) => { const body = JSON.parse(init.body as string); return { review_id: body.id, sequence: body.expected_sequence + 1, duplicate: false, outreach_authorized: false }; });
-  const origin = () => mock.inbound ? { source_type: 'retell_inbound', inbound_integration_id: '96000000-0000-4000-8000-000000000001', inbound_call_id: 'call_test', inbound_revision: 2 } : { source_type: 'facebook_native_form', inbound_integration_id: null, inbound_call_id: null, inbound_revision: null };
+  const origin = () => mock.portal ? { source_type: 'online_offer_portal', portal_receipt_id: 'fd000000-0000-4000-8000-000000000001', inbound_integration_id: null, inbound_call_id: null, inbound_revision: null } : mock.inbound ? { source_type: 'retell_inbound', inbound_integration_id: '96000000-0000-4000-8000-000000000001', inbound_call_id: 'call_test', inbound_revision: 2 } : { source_type: 'facebook_native_form', inbound_integration_id: null, inbound_call_id: null, inbound_revision: null };
   mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => ({ json: async () => {
     if (init?.method === 'POST') return mock.post(init);
     if (path.includes('/intakes?')) return { items: [{ ...origin(), id: 'intake', lead_id: 'source', classification: 'incomplete', created_at: '2026-10-26' }], next_after: null };
@@ -137,4 +137,16 @@ it('preserves an unconfirmed identity request across a denied queue refresh and 
   await screen.findByText(/Identity review recorded/);
   expect(mock.post).toHaveBeenCalledTimes(2);
   expect(mock.post.mock.calls[0][0].body).toBe(mock.post.mock.calls[1][0].body);
+});
+
+it('keeps portal inquiries in the same property review handoff with the correct source label', async () => {
+  mock.portal = true;
+  await open();
+  expect(screen.getAllByText('Online offer request').length).toBeGreaterThan(0);
+  expect(screen.queryByRole('button', { name: 'Review campaign attribution' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'View inbound requests' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Record identity review' })).toBeDisabled();
+  fill(); fireEvent.click(screen.getByRole('button', { name: 'Record identity review' }));
+  await screen.findByText(/Identity review recorded/);
+  expect(JSON.parse(mock.post.mock.calls[0][0].body).target_lead_id).toBe('canonical');
 });

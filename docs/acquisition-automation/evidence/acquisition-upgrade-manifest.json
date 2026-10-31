@@ -213,6 +213,10 @@
     {
       "file": "20261031200935_acquisition_legacy_receipt_guards.sql",
       "sha256": "95eb88b3e73bcd848f8df53072736e516592e84867dc76da03a2fc4c8635242d"
+    },
+    {
+      "file": "20261031202407_acquisition_portal_receipts.sql",
+      "sha256": "666843aed4476187fc94ce54f5cb4f7afa52a587a634b49aa32ad7aa7ec50e0f"
     }
   ]
 }

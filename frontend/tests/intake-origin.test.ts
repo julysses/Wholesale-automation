@@ -12,3 +12,11 @@ it.each([{ ...inbound, inbound_revision: 0 }, { ...inbound, inbound_revision: 1.
   { ...facebook, source_type: 'unknown' }, {}])('rejects malformed or mixed origin %j', value => {
   expect(validIntakeOrigin(value as IntakeOrigin)).toBe(false);
 });
+it('requires a portal receipt and labels the offer request without granting another origin', () => {
+  const portal: IntakeOrigin = { ...facebook, source_type: 'online_offer_portal', portal_receipt_id: 'fd000000-0000-4000-8000-000000000001' };
+  expect(validIntakeOrigin(portal)).toBe(true);
+  expect(intakeOriginLabel(portal)).toBe('Online offer request');
+  expect(validIntakeOrigin({ ...portal, portal_receipt_id: undefined })).toBe(false);
+  expect(validIntakeOrigin({ ...portal, inbound_call_id: 'call' })).toBe(false);
+  expect(validIntakeOrigin({ ...facebook, portal_receipt_id: portal.portal_receipt_id })).toBe(false);
+});

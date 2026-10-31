@@ -26,3 +26,14 @@ it('rejects malformed inbound revision metadata',async()=>{
   mock.page.items=[{...touch,source_type:'retell_inbound',inbound_revision:0,inbound_event_id:review,external_lead_id:'call_test',captured_attribution:null}];
   view();open();await screen.findByRole('alert');
 });
+it('shows portal campaign context as recorded evidence without Facebook attribution controls',async()=>{
+  mock.page.items=[{...touch,source_type:'online_offer_portal',portal_receipt_id:review,portal_campaign_id:campaign,integration_id:null,captured_attribution:null,attribution_status:'recorded_portal_campaign'}];
+  view();open();await screen.findByText('Online offer request');
+  expect(screen.getByText('Recorded offer-request campaign')).toBeInTheDocument();
+  expect(screen.getByText('Offer-request campaign')).toBeInTheDocument();
+  expect(screen.queryByText('Facebook inquiry')).not.toBeInTheDocument();
+});
+it('rejects portal evidence with a missing campaign binding',async()=>{
+  mock.page.items=[{...touch,source_type:'online_offer_portal',portal_receipt_id:review,portal_campaign_id:null,integration_id:null,captured_attribution:null,attribution_status:'recorded_portal_campaign'}];
+  view();open();await screen.findByRole('alert');
+});

@@ -252,3 +252,8 @@ Local migration `20261029035546_acquisition_evidence_discovery.sql` maps the gui
 ## Signed scan observation ledger — October 29, 2026
 
 Rechecked production: 95 migration entries, latest 20261023221455; evidence registry/key/verification tables absent; zero Storage buckets; pgcrypto in extensions. Local migration 20261029184129 reuses the artifact/policy/revocation/campaign/workspace/session/audit dependencies and adds private workspace-scoped signing-key configuration plus an immutable public observation ledger. See EVIDENCE-ATTESTATIONS.md for composite relationships, RLS/grants, empty-by-default provisioning, signature contract, preservation tests and forward compensation. This is persistence of a signed observation, not approval or preview clearance. No production DDL ran.
+
+
+### Portal receipt origin extension (proposed migration 20261031202407)
+
+Reuse public.lead_form_submissions for exact portal wording/submission evidence, workspace/campaign and request fingerprint; preserve legacy nullable scope. Composite form/lead foreign keys bind acquisition records. workspace_leads gains a distinct portal receipt origin; seller_intakes and acquisition_lead_sources gain portal receipt references, with the latter retaining the exact originating campaign. Existing Facebook and Retell branches remain explicit. No parallel lead/owner/property store or fabricated integration is introduced. Scope reads use existing workspace role checks; direct service/browser writes cannot create scoped receipts; immutable receipt history and the existing legacy recovery guards protect them. See ONLINE-OFFER-PORTAL.md for compensation and remaining HTTP/abuse/seller-interface work.

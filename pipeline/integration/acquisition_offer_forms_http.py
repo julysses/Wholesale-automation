@@ -51,13 +51,14 @@ def verify_offer_forms_http(db, request, token, other, workspace):
         raise AssertionError('Form HTTP retries duplicated audit')
 
     publication_checks=verify_public_display_http(db,request,token,other,workspace,campaign,identity,definition)
+    portal_checks=verify_portal_receipt_http(db,request,token,other,workspace,definition)
     legacy_checks=verify_legacy_receipt_http(db,request,token,workspace,identity)
 
     def after_session_revocation():
         if request(path,token(),second)[0]!=403 or request(listing,token())!=(200,[]):
             raise AssertionError('Revoked session retains form access')
     return ['form HTTP exact retry and immutable version history','form HTTP conflicting request and stale revision rejected',
-            'form HTTP tenant and anonymous isolation','form HTTP typed paginated history','form HTTP revoked session denied']+publication_checks+legacy_checks,after_session_revocation
+            'form HTTP tenant and anonymous isolation','form HTTP typed paginated history','form HTTP revoked session denied']+publication_checks+legacy_checks+portal_checks,after_session_revocation
 
 
 def verify_legacy_receipt_http(db,request,token,workspace,scoped_form):
@@ -141,3 +142,39 @@ def verify_public_display_http(db,request,token,other,workspace,campaign,identit
     return ['public display HTTP signed service role required','public display HTTP exact selected version and minimal projection',
             'public display HTTP legacy submission reaches and rejects at acquisition guard',
             'public display HTTP rejects routing injection','public display HTTP disabled expired suspended and activation gates']
+
+
+def verify_portal_receipt_http(db,request,token,other,workspace,definition):
+    from schemas.acquisition_online_offer import OnlineOfferRequest, OfferFormDefinition
+    from tools.acquisition_online_offer import prepare_online_offer
+    identity='99700000-0000-4000-8000-000000000001'
+    prepared=prepare_online_offer(OnlineOfferRequest.model_validate({
+        'submission_id':identity,'form_version':'v1','seller':{'name':'Synthetic Portal','email':'synthetic@example.test'},
+        'property':{'address':'123 Synthetic Portal','city':'Dallas','state':'TX','postal_code':'75201','authority':'owner',
+          'condition':'unsure','occupancy':'vacant','timeline':'flexible','motivation':'Synthetic QA','asking_price':None},
+        'selections':{'privacy_acknowledged':True,'email_reply_requested':False}}),OfferFormDefinition.model_validate(definition))
+    body={'p_form_key':definition['form_key'],'p_submission':identity,'p_prepared':prepared}
+    path='/rpc/accept_acquisition_online_offer';service=token(role='service_role')
+    if request(path,service,body)[0]!=403:raise AssertionError('Disabled portal accepted inquiry')
+    db.query("UPDATE private.acquisition_form_publications SET enabled=true,valid_from=clock_timestamp()-interval '1 minute',expires_at=clock_timestamp()+interval '1 hour'")
+    for actor in (None,token(),token(other)):
+        if request(path,actor,body)[0] not in (401,403):raise AssertionError('Browser can call portal persistence directly')
+    for duplicate in (False,True):
+        if request(path,service,body)!=(200,{'submission_id':identity,'status':'received','duplicate':duplicate}):
+            raise AssertionError('Portal HTTP receipt projection or exact retry failed')
+    listing='/lead_form_submissions?id=eq.'+identity+'&select=id,workspace_id,raw_answers'
+    status,rows=request(listing,token())
+    if status!=200 or len(rows)!=1 or rows[0]['workspace_id']!=workspace or rows[0]['raw_answers']!=prepared['request_evidence']:
+        raise AssertionError('Portal evidence changed or owner cannot review it')
+    if request(listing,token(other))!=(200,[]):raise AssertionError('Other workspace can read portal evidence')
+    for actor in (token(),token(other),service):
+        status,_=request('/lead_form_submissions',actor,{'id':'99700000-0000-4000-8000-000000000002','raw_answers':{},'workspace_id':workspace})
+        if status not in (401,403):raise AssertionError('Raw portal receipt insertion accepted')
+    for table in ('seller_intakes','acquisition_lead_sources'):
+        status,rows=request('/'+table+'?portal_receipt_id=eq.'+identity+'&select=lead_id,source_type',token())
+        if status!=200 or len(rows)!=1 or rows[0]['source_type']!='online_offer_portal':
+            raise AssertionError('Portal intake/source handoff missing')
+    db.query('UPDATE private.acquisition_form_publications SET enabled=false')
+    if request(path,service,body)[0]!=403:raise AssertionError('Portal retry ignored revoked publication')
+    return ['portal HTTP exact retry and minimal confirmation','portal HTTP receipt evidence and workspace isolation',
+      'portal HTTP intake attribution and raw-write denial','portal HTTP disabled and revoked publication denied']
