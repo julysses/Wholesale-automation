@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Disabled public seller receiver (local only)
+
+- Mounted gated GET/POST seller routes using the existing verified submission path, bounded upload and restricted bounded service transport. Display consumes capacity before loading the selected definition. Exact public route exceptions preserve sign-in for neighboring acquisition routes. No settings, credentials, production migrations or channels activated.
+- 220 portal/authentication/webhook tests passed in 2.72s; log /tmp/acquisition-portal-api-python.log. Initial real-app smoke test caught operator sign-in blocking seller routes; corrected exact route exceptions and verified neighboring paths remain protected. One attempted regression command used a nonexistent test filename and was corrected before the successful run.
+- Read-only synchronization unchanged. Feature publication is still held: predecessor 09ebd14 CI failed two historical-upgrade setups; isolated repair full-suite process 69164 remains live at /tmp/wholesaleos-portal-ci-repair, log /tmp/acquisition-upgrade-fixture-repair-full.log. Do not restart. Repair-only publication follows its successful completion, then all six successor CI jobs must succeed before these retained features.
+- Next: full real-database HTTP receiver coverage, hosted proxy/key/retention acceptance, address validation and the four-step seller UI. Keep full original PRD and all approval gates intact.
+
 ## 2026-10-31 — Bounded seller request reader (local only)
 
 - Added exact envelope parsing with a 32 KiB cumulative limit, five-second total upload deadline, strict UTF-8 JSON and generic no-store failures. Rejects duplicate keys, hidden routing/proof fields, compressed/ambiguous/mismatched requests and interrupted uploads. No public route, provider call, database change or activation.

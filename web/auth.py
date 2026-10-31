@@ -18,6 +18,8 @@ def require_operator(request: Request) -> None:
         (request.method, route_path) in {
             ("GET", "/api/forms/{form_id}"),
             ("POST", "/api/forms/{form_id}/submit"),
+            ("GET", "/api/acquisition/portal/{form_key}"),
+            ("POST", "/api/acquisition/portal/{form_key}"),
         }
     ):
         return

@@ -137,6 +137,8 @@ app.include_router(analysis_router)
 app.include_router(appointments_router) # POST /api/appointments/*
 from web.api.acquisition_api import router as acquisition_router
 app.include_router(acquisition_router)
+from web.api.acquisition_portal_api import router as acquisition_portal_router
+app.include_router(acquisition_portal_router)
 from web.api.outreach_eligibility_api import router as eligibility_router
 app.include_router(eligibility_router)
 
