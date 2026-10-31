@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Security audit failure repaired without weakening CI
+
+- Verified all six jobs for 0281b14 / CI 41147496592 succeeded, then published registry commit 4201e4e. Its successor 41216134241 passed all five other jobs but failed the frontend dependency audit. This is distinct from the prior proposal test timing race.
+- GitHub advisory GHSA-mrwp-f3q8-3g9p identifies follow-redirects 1.16.0–1.16.1 as vulnerable and 1.16.2 as patched. Updated only that transitive lockfile entry from 1.16.1 to 1.16.2; package.json and audit thresholds are unchanged. Local audit now reports zero high/critical findings; 12 moderate findings in the lint tooling dependency graph remain for compatibility review.
+- Validation: all 522 frontend tests passed, production build passed, and lint reports no new findings (147 pre-existing). Publish this security repair separately and verify all six successor jobs before another feature push.
+- Retained uncommitted form-administration API work passed 44 strict response/request tests and a real SQL-backed API journey (lost response, exact retry, history, role restrictions, session revocation). Full rehearsal passed 51 migrations, 65 workflows, preserved historical rows and 28 actual local PostgREST checks including five new form-registry checks. Initial API test failure was a missing jsonb mapping in the synthetic test adapter, corrected before the successful full run. Next: save detailed evidence/docs and commit the API increment locally, then guided form setup UI. No production/provider/SMS activation.
+
 ## 2026-10-30 — Disabled online offer form versions and legacy containment
 
 - Pulled unchanged before work. Live metadata at 23:06:46 UTC confirms existing form schema/policies/constraints/triggers and absent routing registry/save function; production ledger remains 20261023221455. Saved metadata-only source evidence. CLI-created proposed migration 20261030230704 extends lead_form_configs with immutable versions and a private immutable workspace/campaign routing key, without replacing existing forms.
