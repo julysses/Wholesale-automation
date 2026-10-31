@@ -4,9 +4,9 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 ## Publication and active process
 
-- Published contract draft candidate: `bbcec81ff9c1451f6849885d9348928c641dd22d` on `codex/acquisition-foundation`. Normal push confirmed `5ca649c` → `bbcec81`; checkout was clean. Exact successor CI `41248426556` completed with all six jobs successful: https://github.com/julysses/Wholesale-automation/actions/runs/41248426556. The predecessor publication gate is satisfied; the next pushed candidate requires its own exact successor result.
+- Published candidate: `c935460b8b05c12b5247382012a463ddc4ffa3c8` on `codex/acquisition-foundation`. Normal push confirmed `bbcec81` → `c935460`; checkout was clean. Exact successor CI `41249648671` is queued: https://github.com/julysses/Wholesale-automation/actions/runs/41249648671. Require all six terminal successes before the next feature push. Predecessor `bbcec81` / CI `41248426556` passed all six.
 - Predecessor `5ca649c` / CI `41246949570` completed successfully with all six jobs. Prior fixture repair `2f2dbe7` / CI `41245920319` also passed all six. No jobs cancelled or restarted.
-- Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is now implemented locally; synthetic desktop/mobile browser QA passed. Shared evidence regression rehearsal 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 gateway checks. No local test or preview process is active.
+- Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is published in Git; synthetic desktop/mobile browser QA passed. Shared evidence regression rehearsal 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 gateway checks. No local test or preview process is active.
 - Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
 ## Current contract candidate

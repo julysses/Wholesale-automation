@@ -1,5 +1,11 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Guided draft and shared document transport published
+
+- Normal push confirmed bbcec81 → c935460b8b05c12b5247382012a463ddc4ffa3c8 on codex/acquisition-foundation after all six predecessor jobs succeeded. Remote CI 41249648671 is queued for that exact SHA: https://github.com/julysses/Wholesale-automation/actions/runs/41249648671. No next feature push until all six successor jobs pass.
+- Published guided draft UI/recovery, desktop/mobile evidence, date-only contract precision, and shared bounded private-byte transport with separately version-bound contract descriptors. Local tests: 222 focused and 344 additional regressions; latest full catalog 57/26/88/54 passed. No local process remains running.
+- Next implementation: follow CONTRACT-DOCUMENT-PERSISTENCE.md to extend the existing protected registry and bind immutable source documents/terms/reviews to canonical contract versions. Refresh metadata and CLI-create additive migrations, then actual role/Storage/lock-wait/API gateway tests before exposing document review. Original PRD scope and execution approval gates remain unchanged. No production migration/deployment/provider action occurred. This handoff note is local pending the next publication gate.
+
 ## 2026-10-31 — Predecessor all six successful; shared evidence rehearsal passed
 
 - Exact predecessor bbcec81 / CI 41248426556 is terminal success across all six jobs. Publication gate is clear. No job was restarted or cancelled.
