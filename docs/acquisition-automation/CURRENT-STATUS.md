@@ -1,6 +1,6 @@
 # Acquisition automation — current implementation and release handoff
 
-Latest checkpoint: published fixture-only repair 699d633; exact CI 41238434660 is active. Retain local application/SQL safeguards until all six repair jobs succeed. See newest PROGRESS.md evidence.
+Latest checkpoint: published fixture-only repair 699d633; exact CI 41238434660 is active. Retain local safeguards, portal transaction and bot adapter until all six repair jobs succeed. See newest PROGRESS.md evidence.
 
 Updated October 31, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 
@@ -8,13 +8,13 @@ Updated October 31, 2026 (America/Chicago). This is a navigation and gap invento
 
 Published head 699d633 repairs the focused database fixture after b08f6ab CI finished with five successes and one fixture-permission failure. Its exact successor is 41238434660; verify all six jobs before the next feature push.
 
-Retained b63814d adds legacy receipt-list/recovery scope guards (72 related tests passed). Retained ea895ed adds SQL reservation/finalizer safeguards and actual legacy gateway compatibility checks. Full local rehearsal passed 53 migrations, 26 probes, 71 workflows and 36 gateway checks. Prior interrupted test processes are absent; the replacement rehearsal completed successfully. The retained portal increment implements service-only atomic submission and the existing owner review handoff. Public HTTP orchestration, abuse admission and the four-step seller UI remain outstanding. No production/channel changes.
+Retained b63814d adds legacy receipt-list/recovery scope guards (72 related tests passed). Retained ea895ed adds SQL reservation/finalizer safeguards and actual legacy gateway compatibility checks. The latest local rehearsal passed 54 migrations, 26 probes, 74 workflows and 40 gateway checks, plus a separately passed expiry-contention test. Prior interrupted test processes are absent; the replacement rehearsal completed successfully. The retained portal increment implements service-only atomic submission and the existing owner review handoff. A disabled server-only bot adapter also passed 81 related tests. Public HTTP orchestration, durable abuse admission, provider configuration and the four-step seller UI remain outstanding. No production/channel changes.
 
 ## Git and validation
 
 - Branch: codex/acquisition-foundation. Check PROGRESS.md and live Git/CI before publication.
 - Current local rehearsal: 54 additive migrations, 26 access probes, 74 full-catalog workflows and 40 actual local PostgREST checks. A further receipt-lock expiry test passed separately on the current focused fixture. Three new direct-SQL routing tests cover disabled defaults, exact projection/version selection, role restrictions, closed gates and expiry after a demonstrated lock wait. Five new actual-gateway checks verify signed service access, exact version/projection, injection rejection, expiry/activation/suspension gates and the real legacy-submission guard.
-- Existing frontend suite: 545 passed; registry/legacy API suite: 98 passed; administration API boundary suite: 44 passed. No UI changed in the latest routing increment.
+- Latest portal increment: 393 backend API/preparer tests and 39 related interface tests passed, build passed and lint had zero new findings. Latest bot adapter/preparer suite: 81 passed. Historical full frontend run: 545 passed; it is not a new full-suite run for the portal changes.
 - Hosted CI verifies code and synthetic full-schema rehearsal, not hosted Supabase Auth issuance, provider delivery, persistent worker storage or deployment acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
 
@@ -38,7 +38,7 @@ Amount approval is internal review only. Saving a document or scan observation d
 
 | PRD area | Current source evidence | Required next evidence or implementation |
 | --- | --- | --- |
-| MIG-001–005 shared foundation | Additive acquisition migrations, SCHEMA-MAPPING.md, workspace/role/session RPCs, suppressions, immutable audit and provider idempotency; standalone workspace and workflow harnesses | Full-catalog upgrade passed 52 candidate migrations, 26 access probes and 68 workflows; 33 local PostgREST checks passed. Public routing and its gateway increment are retained locally pending predecessor CI. Hosted Auth issuance, Storage/platform parity and approved deployment remain unverified. Obtain migration approval before production application. |
+| MIG-001–005 shared foundation | Additive acquisition migrations, SCHEMA-MAPPING.md, workspace/role/session RPCs, suppressions, immutable audit and provider idempotency; standalone workspace and workflow harnesses | Full-catalog upgrade passed 54 candidate migrations, 26 access probes and 74 workflows; 40 local PostgREST checks passed, plus separate receipt-lock expiry validation. Subsequent features remain local pending repair CI. Hosted Auth issuance, Storage/platform parity and approved deployment remain unverified. Obtain migration approval before production application. |
 | FB-001–006 | acquisition_webhooks.py, acquisition_facebook_worker.py, acquisition_intake.py; signed batch inbox, leased retrieval, identity/qualification, recovery, attribution and costs; synthetic database journeys | Disabled supervised runner is published; current Meta permissions/version/subscription and credential custody acceptance, deployed supervision/alerts and monitored retention, approved fresh lead through actual provider and actual auth. No publishing or funding authority. |
 | RET-001–006 | acquisition_inbound_webhooks.py, acquisition_inbound_tools.py, inbound intake/restriction/request-review migrations, config/acquisition/inbound draft package | Actual inbound-only Twilio/Retell configuration, approved disclosure/privacy/recording controls, audio/interruption/transfer QA and bilingual acceptance. Draft package and synthetic requests are not live calls. |
 | MAIL-001–006 | acquisition_mail.py preparation rules, acquisition_mail_render.py/proof.py, campaign/template/destination/content review UI and SQL | Canonical postal eligibility and suppression matching, authoritative history and locked budget/cadence reservations, persisted batches/jobs, selected vendor adapter and sandbox/proof reconciliation, separately approved fulfillment. Preparation is not a reservation. |
@@ -53,7 +53,7 @@ See [PHASE-1-RELEASE-PACKET.md](PHASE-1-RELEASE-PACKET.md) for the exact candida
 
 ## Next work in order
 
-1. Verify all six jobs of security repair 320e405 before publishing the retained form-administration API and guided setup. Then inspect its exact-head successor run. Check branch/status and newest PROGRESS.md before resuming.
+1. Verify all six jobs of fixture repair 699d633 / CI 41238434660 before publishing retained safeguards, portal transaction and bot adapter. Then inspect the exact-head successor run. Check branch/status and newest PROGRESS.md before resuming.
 2. Close the shared-foundation and Facebook acceptance gaps against the complete candidate. Assemble a concrete migration/provider acceptance packet before requesting production or live-test authorization. Later mail-document work must not be mistaken for completion of the Phase 1 release gate.
 3. Complete the mail evidence worker and remaining binding acceptance, canonical mailing rules/reservations, vendor sandbox workflow, and inbound provider acceptance. Keep them within the existing campaign/review screens.
 4. Deliver portal, manual human caller, agency and contract/disposition capabilities with the PRD's sequential activation gates. These are still required parts of the goal, not optional enhancements.

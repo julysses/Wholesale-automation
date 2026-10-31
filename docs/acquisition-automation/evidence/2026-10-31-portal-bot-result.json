@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-31",
+  "scope": "Offline synthetic httpx provider transport; no actual provider request",
+  "tests_passed": 81,
+  "command": "scripts/run_offline_tests.py PYTHON -m pytest -q tests/test_acquisition_portal_bot.py tests/test_acquisition_online_offer.py",
+  "provider_documentation": "https://developers.cloudflare.com/turnstile/get-started/server-side-validation/",
+  "enabled": false,
+  "public_route_implemented": false,
+  "durable_admission_implemented": false,
+  "production_changes": false
+}

@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Disabled portal bot verification adapter
+
+- Pulled unchanged; predecessor repair 699d633 / CI 41238434660 still has five successful jobs and one live contention job. No feature push, cancellation or restart. Previous portal transaction commit eefbf5d remains local.
+- Added a server-only Turnstile adapter after checking current official provider documentation. Fixed HTTPS destination, strict exact hostname/action/submission context, fresh challenge, stable hash-bound validation retry identity, bounded streaming/overall deadline, no redirects/retries or inherited credentials. Configuration is disabled/missing by default; no keys, widget, provider request or public activation.
+- 81 offline bot-adapter/preparer tests passed. Tests verify negative provider/context/expiry/transport cases and actual slow-stream/byte bounds; success results omit raw secrets/tokens. Evidence: evidence/2026-10-31-portal-bot-result.json. Database and UI unchanged.
+- Updated ONLINE-OFFER-PORTAL.md with the durable admission/public receiver sequence and precise remaining requirements. Updated stale CURRENT-STATUS.md handoff references to current CI/54-migration evidence. This helper alone is not public admission or a completed seller portal.
+- Next: durable global/form/network budgets, exact verification-to-inquiry binding with fresh expiry, public bounded-body orchestration and four-step seller UI. Preserve all original PRD requirements and production/provider/fulfillment/outreach/transaction approval gates.
+
 ## 2026-10-31 — Atomic portal inquiry and guided review handoff
 
 - Pulled unchanged; read-only production metadata still shows ledger 20261023221455. CLI-created proposed migration 20261031202407 extends existing receipts and intake/source/binding origins. No production SQL was applied. Source evidence is saved in evidence/2026-10-31-portal-receipt-source.json; migration manifest now has 54 entries.
