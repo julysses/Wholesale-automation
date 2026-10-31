@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract upload/discovery increments published
+
+- Predecessor 173684f / CI 41250516262 attempt 2 completed all six successfully. The targeted retry followed confirmed terminal installation timeout; no live job was restarted or cancelled.
+- Pushed `ecca0f47b1df00f5215ab2062051307f37c52c6f` normally: remote confirmed 173684f → ecca0f4, clean checkout. Includes shared upload admission/transport, guarded Storage, default-closed binary endpoint, document discovery and all evidence/handoffs. No production migration, runtime activation or provider action.
+- Exact successor CI 41252309134 is queued for ecca0f4: https://github.com/julysses/Wholesale-automation/actions/runs/41252309134. Require all six successes before next feature push. All local test processes terminal. This publication receipt is a local handoff note to accompany the next gated update.
+- Next: guided document UI within existing saved draft/property context, exact pending-file recovery/navigation holds, signed scan/review bindings, immutable terms/transitions and disposition. Preserve original PRD scope and paused SMS.
+
+
 ## 2026-10-31 — Contract document discovery passed local and real gateway acceptance
 
 - Previous turn made progress: af8441c committed the tested default-closed upload endpoint. Pulled unchanged. Exact predecessor 173684f / 41250516262 attempt 2 remains live with five successful jobs; no restart or feature push.
