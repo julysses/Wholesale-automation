@@ -51,12 +51,49 @@ def verify_offer_forms_http(db, request, token, other, workspace):
         raise AssertionError('Form HTTP retries duplicated audit')
 
     publication_checks=verify_public_display_http(db,request,token,other,workspace,campaign,identity,definition)
+    legacy_checks=verify_legacy_receipt_http(db,request,token,workspace,identity)
 
     def after_session_revocation():
         if request(path,token(),second)[0]!=403 or request(listing,token())!=(200,[]):
             raise AssertionError('Revoked session retains form access')
     return ['form HTTP exact retry and immutable version history','form HTTP conflicting request and stale revision rejected',
-            'form HTTP tenant and anonymous isolation','form HTTP typed paginated history','form HTTP revoked session denied']+publication_checks,after_session_revocation
+            'form HTTP tenant and anonymous isolation','form HTTP typed paginated history','form HTTP revoked session denied']+publication_checks+legacy_checks,after_session_revocation
+
+
+def verify_legacy_receipt_http(db,request,token,workspace,scoped_form):
+    service=token(role='service_role')
+    form='99600000-0000-4000-8000-000000000001';receipt='99600000-0000-4000-8000-000000000002'
+    db.query("INSERT INTO public.lead_form_configs(id,name,slug,active) VALUES(%s,'Synthetic legacy','synthetic-legacy-http',false)",[form])
+    reserve={'p_request_id':receipt,'p_submission':{'form_id':form,'raw_answers':{}},'p_manifest':{'synthetic':True}}
+    status,error=request('/rpc/reserve_form_submission',service,reserve|{'p_submission':{'form_id':scoped_form,'raw_answers':{}}})
+    if status!=403 or error.get('message')!='Use acquisition submission workflow':
+        raise AssertionError('Legacy reservation accepted scoped form')
+    for expected in ('created','replayed'):
+        status,result=request('/rpc/reserve_form_submission',service,reserve)
+        if status!=200 or result.get('status')!=expected or result.get('submission_id')!=receipt:
+            raise AssertionError('Legacy reservation behavior changed')
+    body={'p_submission_id':receipt,'p_lead':{'property_address':'Synthetic legacy gateway address','city':'Dallas',
+        'state':'TX','zip_code':'75201','source':'web_form','inbound_channel':'web_form','status':'qualified_cold',
+        'precision_tier':3,'priority_tier':'C','ai_calling_paused':True,'_intake_recovery_only':True}}
+    lead=None
+    for created in (True,False):
+        status,result=request('/rpc/finalize_form_submission',service,body)
+        if status!=200 or result.get('created') is not created or not result.get('lead_id'):
+            raise AssertionError('Legacy finalization/recovery behavior changed')
+        if lead is not None and result['lead_id']!=lead:raise AssertionError('Legacy recovery duplicated lead')
+        lead=result['lead_id']
+    if db.query('SELECT count(*) AS n FROM public.tasks WHERE id=%s AND lead_id=%s',[receipt,lead])[0]['n']!=1:
+        raise AssertionError('Legacy recovery task was duplicated')
+    if db.query('SELECT count(*) AS n FROM public.app_notifications WHERE lead_id=%s',[lead])[0]['n']!=1:
+        raise AssertionError('Legacy recovery alert was duplicated')
+    status,_=request('/rpc/bind_acquisition_lead',token(),{'p_workspace':workspace,'p_lead':lead,'p_property':None})
+    if status!=200:raise AssertionError('Synthetic legacy lead enrollment failed')
+    for path,payload in (('/rpc/reserve_form_submission',reserve),('/rpc/finalize_form_submission',body)):
+        status,error=request(path,service,payload)
+        if status!=403 or error.get('message')!='Use acquisition submission workflow':
+            raise AssertionError('Legacy retry bypassed enrolled lead scope')
+    return ['legacy receipt HTTP scoped form denied','legacy receipt HTTP reservation and finalization retry preserve one lead task alert',
+            'legacy receipt HTTP enrolled lead recovery denied']
 
 
 def verify_public_display_http(db,request,token,other,workspace,campaign,identity,definition):

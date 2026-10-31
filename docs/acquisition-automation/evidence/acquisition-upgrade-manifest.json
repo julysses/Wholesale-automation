@@ -209,6 +209,10 @@
     {
       "file": "20261031195256_acquisition_offer_publication_routing.sql",
       "sha256": "729981a599e0f316d7fc435828fa9c63913073c25f435e77c1bbc19401443ed7"
+    },
+    {
+      "file": "20261031200935_acquisition_legacy_receipt_guards.sql",
+      "sha256": "95eb88b3e73bcd848f8df53072736e516592e84867dc76da03a2fc4c8635242d"
     }
   ]
 }

@@ -122,6 +122,10 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
                 self.sql(f'ALTER TABLE {schema}.{table} ENABLE ROW LEVEL SECURITY; '
                          f'GRANT SELECT,INSERT,UPDATE,DELETE ON {schema}.{table} TO authenticated; '
                          f'CREATE POLICY legacy_approved ON {schema}.{table} TO authenticated USING (true) WITH CHECK (true);')
+        # Mirror the existing production consent-evidence grants. Otherwise a
+        # missing fixture privilege masks the scoped submission trigger/RPC.
+        self.sql('GRANT SELECT,INSERT,UPDATE ON public.lead_form_submissions TO service_role; '
+                 'REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER ON public.lead_form_submissions FROM service_role;')
         install_campaign_fixture(self.sql)
         install_call_fixture(self.sql)
         install_task_fixture(self.sql)
@@ -216,6 +220,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
             self.sql((ROOT/'frontend/supabase/migrations/20261030220930_acquisition_evidence_review_candidate.sql').read_text())
         self.sql((ROOT/"frontend/supabase/migrations/20261030230704_acquisition_offer_form_versions.sql").read_text())
         self.sql((ROOT/"frontend/supabase/migrations/20261031195256_acquisition_offer_publication_routing.sql").read_text())
+        self.sql((ROOT/"frontend/supabase/migrations/20261031200935_acquisition_legacy_receipt_guards.sql").read_text())
         install_storage_fixture(self.sql)
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
             self.sql(STORAGE_MIGRATION.read_text())

@@ -139,6 +139,38 @@ class EvidenceStream(httpx.AsyncByteStream):
 
 
 class WorkflowTests(WorkspaceTests):
+    def test_legacy_receipt_reservation_rejects_scoped_form_before_write(self):
+        campaign=self.offer_form_campaign();form=self.offer_form_save(campaign)
+        receipt='fc000000-0000-4000-8000-000000000001'
+        body=json.dumps({'form_id':form['id'],'raw_answers':{}})
+        error=self.sql(f"SELECT public.reserve_form_submission('{receipt}',{literal(body)}::jsonb,'{{}}'::jsonb)",user=ADMIN,role='service_role',fail=True)
+        self.assertIn('Use acquisition submission workflow',error)
+        self.assertEqual(self.sql(f"SELECT count(*) FROM lead_form_submissions WHERE id='{receipt}'"),'0')
+
+    def test_legacy_receipt_bound_lead_blocks_recovery_and_retry(self):
+        receipt='fc000000-0000-4000-8000-000000000002'
+        form='fc000000-0000-4000-8000-000000000003'
+        self.sql(f"INSERT INTO lead_form_configs(id,name,slug,active) VALUES('{form}','Synthetic legacy','synthetic-legacy-guard',false)")
+        self.sql(f"INSERT INTO lead_form_submissions(id,form_id,lead_id,raw_answers) VALUES('{receipt}','{form}','{LEAD}','{{}}')")
+        before=self.sql('SELECT count(*) FROM tasks')
+        for call in (f"public.finalize_form_submission('{receipt}','{{}}'::jsonb)",
+                     f"public.reserve_form_submission('{receipt}',jsonb_build_object('form_id','{form}','raw_answers','{{}}'::jsonb),'{{}}'::jsonb)"):
+            error=self.sql('SELECT '+call,user=ADMIN,role='service_role',fail=True)
+            self.assertIn('Use acquisition submission workflow',error)
+        self.assertEqual(self.sql('SELECT count(*) FROM tasks'),before)
+
+    def test_legacy_receipt_concurrent_reservation_preserves_manifest(self):
+        from concurrent.futures import ThreadPoolExecutor
+        receipt='fc000000-0000-4000-8000-000000000004';form='fc000000-0000-4000-8000-000000000005'
+        self.sql(f"INSERT INTO lead_form_configs(id,name,slug,active) VALUES('{form}','Synthetic legacy','synthetic-legacy-retry',false)")
+        statement=f"SELECT public.reserve_form_submission('{receipt}',jsonb_build_object('form_id','{form}','raw_answers','{{}}'::jsonb),'{{\"synthetic\":true}}'::jsonb)"
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            results=list(pool.map(lambda _:json.loads(self.sql(statement,user=ADMIN,role='service_role')),range(3)))
+        self.assertEqual(sorted(r['status'] for r in results),['created','replayed','replayed'])
+        self.assertEqual(self.sql(f"SELECT count(*) FROM lead_form_submissions WHERE id='{receipt}'"),'1')
+        conflict=json.loads(self.sql(statement.replace('true','false'),user=ADMIN,role='service_role'))
+        self.assertEqual(conflict,{'status':'conflict'})
+
     def offer_form_campaign(self, identity='fa000000-0000-4000-8000-000000000001', actor=ADMIN, workspace=WORKSPACE):
         return json.loads(self.sql(f"SELECT public.create_acquisition_campaign('{identity}','{workspace}','Offer requests','online_offer',0,'USD')", user=actor))['id']
 
