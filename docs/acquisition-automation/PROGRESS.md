@@ -1,5 +1,11 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Form administration API and actual gateway verification
+
+- Added private campaign-scoped form save/history routes through caller-token AcquisitionStore. Exact draft and receipt models reject scope drift, injected authority, malformed booleans/revisions and unexpected fields. Bounded history checks workspace/campaign/key, exact definition identity, disabled flags and ordered unique UUID cursors. Responses and database errors are no-store; uncertain saves require the original request.
+- Validation: 44 API boundary tests; one SQL-backed API journey with committed lost response, exact retry, conflicting body, cursor history, operator read-only access and revoked session. Full rehearsal passed 51 migrations, 26 probes, 65 workflows, 24 historical rows preserved across 22 populated tables/103 definitions, and 28 actual local PostgREST checks. Five new gateway checks verify the registry directly with signed synthetic JWTs. Evidence: evidence/2026-10-31-offer-forms-api-result.json. No hosted Supabase acceptance is claimed.
+- Published predecessor 320e405 patches the follow-redirects advisory. Exact-head successor CI 41234812907 is running; wait for all six jobs before publishing this API increment. New feature work stays local while repair checks run. Guided internal form setup is next; public form routing/transactional intake/rate/bot controls and seller UI remain required. Full original PRD remains active. No production migration/deployment/provider/SMS changes.
+
 ## 2026-10-31 — Security audit failure repaired without weakening CI
 
 - Verified all six jobs for 0281b14 / CI 41147496592 succeeded, then published registry commit 4201e4e. Its successor 41216134241 passed all five other jobs but failed the frontend dependency audit. This is distinct from the prior proposal test timing race.
