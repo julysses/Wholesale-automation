@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract API gateway passed; property seller choices added
+
+- Process 98367 exited 0: 57 migrations, 26 access probes, 88 full-catalog workflows and 53 actual local gateway checks. Saved exact result and log hash in evidence/2026-10-31-contract-api-gateway-result.json. Real contract API commit loss/recovery, single version/audit, tenant/anonymous and expired-session rejection passed. No local process remains active.
+- Added GET contract draft seller choices with required lead/property filters, workspace boundary, bounded cursor pages and minimal reported names/relationship type. Malformed joins, drift and false verified-title claims are rejected. 100 API/router/rules tests passed in 2.19 seconds; process 59843 exited 0. Actual gateway coverage for this newly added join remains next, before connecting the guided screen.
+- Pulled unchanged. Exact predecessor 5ca649c / CI 41246949570 now has all six terminal successful jobs. Candidate publication gate is clear; publish retained contract work and inspect its exact successor before another feature push. No production migration/deployment/provider/transaction action.
+
+
 ## 2026-10-31 — Full contract draft rehearsal passed; actual API gateway test running
 
 - Corrected process 57913 exited 0: 57 migrations, 26 access probes, 88 full-catalog workflows and 49 existing real local gateway checks. Preserved 24 historical rows across 22 populated tables and checked 103 historical definitions. Exact result and log hash saved in evidence/2026-10-31-contract-drafts-full-result.json. The corrected historical seed passes without weakening scoped write guards.

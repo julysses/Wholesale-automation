@@ -4,22 +4,22 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 ## Publication and active process
 
-- Published merged candidate: `5ca649c0fbcb4247872767b40f71c6717fc5d20b` on `codex/acquisition-foundation`. Normal push confirmed `2f2dbe7` → `5ca649c`. Exact successor CI `41246949570` was queued at the latest observation: https://github.com/julysses/Wholesale-automation/actions/runs/41246949570. Require all six terminal successes before the next feature push.
+- Published merged candidate: `5ca649c0fbcb4247872767b40f71c6717fc5d20b` on `codex/acquisition-foundation`. Normal push confirmed `2f2dbe7` → `5ca649c`. Exact successor CI `41246949570` completed successfully: https://github.com/julysses/Wholesale-automation/actions/runs/41246949570. All six jobs are now terminal successful; the next candidate can be published after its local acceptance.
 - Predecessor repair `2f2dbe788e1f090f5888b80d68c95db1d2ac7167` / CI `41245920319` completed with all six jobs successful. It corrects historical-upgrade fixture ordering; both originally failing cases also passed after the merge in 14.718 seconds. Evidence: `evidence/2026-10-31-merged-fixture-result.json` and the published full 217-case repair log.
 - The retained disabled admission, verified acceptance, receiver and four-step seller UI are now published in Git. This does not mean deployed or live. The merge preserved the migration 54–56 fixture guard and changed no application/test code relative to the validated retained head. Both documentation histories are retained.
 - No local test or preview process remains running. Branch automatic deployment is disabled in vercel.json. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
 ## Current local contract candidate
 
-Contract draft migration 57 passed the corrected full rehearsal: 57 migrations, 26 access probes, 88 full-catalog workflows and 49 existing local gateway checks. Process 57913 exited 0; evidence/2026-10-31-contract-drafts-full-result.json. Contract API/auth regressions (483) and three lock-wait cases also passed.
+Contract draft migration/API passed the full rehearsal: 57 migrations, 26 access probes, 88 full-catalog workflows and 53 local gateway checks. Process 98367 exited 0; evidence/2026-10-31-contract-api-gateway-result.json. Actual contract API commit-loss recovery, one version/audit, tenant/anonymous isolation and expired-session rejection passed. Contract API/auth regressions (483) and three observed lock-wait cases passed separately.
 
-The expanded actual contract API/gateway journey is now running as process 98367, log /tmp/acquisition-contract-api-gateway.log. It adds real commit-loss recovery, one version/audit, tenant/anonymous isolation and expired-session checks. This new gateway coverage is not yet accepted. The guided draft screen and property-specific seller choices are not implemented yet. No hosted/provider/transaction acceptance is implied.
+Added bounded seller-choice API scoped to workspace/lead/property, showing reported names without title claims. Its unit/router/rules suite passed 100 tests; the new seller-choice join has not yet received actual gateway acceptance. Draft save/list gateway acceptance above does not prove that new join. The guided draft screen, contract evidence/transitions and all later PRD gates remain incomplete. No local process remains running.
 
 ## Verified local scope
 
 | Evidence | Latest verified result | Boundary |
 | --- | --- | --- |
-| Full schema and application rehearsal | 57 additive candidate migrations; 26 access probes; 88 application workflows; 49 real local PostgREST checks | Synthetic records and bot responses; no hosted Auth/provider acceptance |
+| Full schema and application rehearsal | 57 additive candidate migrations; 26 access probes; 88 application workflows; 53 real local PostgREST checks | Synthetic records and bot responses; no hosted Auth/provider acceptance |
 | Historical compatibility | 24 historical records preserved across 22 populated tables; 103 historical definitions checked | Disposable production-derived catalog, not a production migration |
 | Portal/backend regression | 220 portal, authentication and webhook tests passed | Targeted suite; not a newly run whole-backend suite |
 | New seller interface | 14 contract/component/journey tests passed; typecheck/build passed | Fake verification widget in tests |

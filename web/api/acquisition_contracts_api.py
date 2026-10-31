@@ -108,3 +108,47 @@ async def contract_drafts(workspace_id:UUID,response:Response,lead_id:UUID|None=
                             headers={'Cache-Control':'no-store'}) from None
     return {'items':[row.model_dump(mode='json') for row in rows[:limit]],
             'next_after':str(rows[limit-1].id) if len(rows)>limit else None,'execution_authorized':False}
+
+
+class SellerName(Exact):
+    display_name: str=Field(strict=True,min_length=1,max_length=320)
+
+
+class ContractSellerChoice(Exact):
+    id: UUID
+    workspace_id: UUID
+    lead_id: UUID
+    property_id: UUID
+    owner_id: UUID
+    relationship: Literal['reported_owner','reported_representative']
+    verification_status: Literal['unverified']
+    seller: SellerName
+
+
+@router.get('/sellers')
+async def contract_sellers(workspace_id:UUID,lead_id:UUID,property_id:UUID,response:Response,
+                           after:UUID|None=None,limit:int=Query(default=20,ge=1,le=50),
+                           store=Depends(acquisition_store)):
+    response.headers['Cache-Control']='no-store'
+    fields=[name for name in ContractSellerChoice.model_fields if name!='seller']
+    params={'select':','.join(fields)+',seller:acquisition_owners(display_name)',
+            'workspace_id':'eq.'+str(workspace_id),'lead_id':'eq.'+str(lead_id),
+            'property_id':'eq.'+str(property_id),'order':'id','limit':str(limit+1)}
+    if after is not None:params['id']='gt.'+str(after)
+    raw=await request(store,'GET','acquisition_owner_properties',params=params)
+    try:
+        if not isinstance(raw,list) or len(raw)>limit+1:
+            raise ValueError('Unexpected seller page')
+        rows=[ContractSellerChoice.model_validate(row) for row in raw]
+        previous=after
+        for row in rows:
+            if ((row.workspace_id,row.lead_id,row.property_id)!=(workspace_id,lead_id,property_id)
+                    or previous is not None and row.id.int<=previous.int or not row.seller.display_name.strip()):
+                raise ValueError('Seller scope or name mismatch')
+            previous=row.id
+    except (ValueError,TypeError):
+        raise HTTPException(503,'Seller choices could not be confirmed. Refresh before continuing.',
+                            headers={'Cache-Control':'no-store'}) from None
+    return {'items':[row.model_dump(mode='json') for row in rows[:limit]],
+            'next_after':str(rows[limit-1].id) if len(rows)>limit else None,
+            'ownership_verified':False,'execution_authorized':False}

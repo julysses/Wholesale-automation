@@ -98,3 +98,43 @@ def test_feature_disabled_without_opening_store(monkeypatch):
     with TestClient(app) as client:
         assert client.post(PATH,json=BODY).status_code==404
         assert client.get(PATH).status_code==404
+
+
+SELLER={'id':I,'workspace_id':W,'lead_id':L,'property_id':J,'owner_id':L,
+        'relationship':'reported_owner','verification_status':'unverified','seller':{'display_name':'Synthetic Seller'}}
+
+
+def test_seller_choices_keep_property_scope_and_unverified_status(endpoint):
+    client,store=endpoint;store.request.return_value=[SELLER]
+    response=client.get(PATH+'/sellers',params={'lead_id':L,'property_id':J})
+    assert response.status_code==200 and response.json()['items']==[SELLER]
+    assert response.json()['ownership_verified'] is False
+    assert response.json()['execution_authorized'] is False
+    assert response.headers['cache-control']=='no-store'
+    params=store.request.call_args.kwargs['params']
+    assert params['workspace_id']=='eq.'+W and params['lead_id']=='eq.'+L and params['property_id']=='eq.'+J
+    assert 'seller:acquisition_owners(display_name)' in params['select']
+    assert 'source_evidence' not in params['select']
+
+
+@pytest.mark.parametrize('change',[{'workspace_id':J},{'lead_id':J},{'property_id':I},
+    {'seller':None},{'seller':{'display_name':' '}},{'seller':{'display_name':'Name','private_note':'secret'}},
+    {'verification_status':'verified'},{'relationship':'legal_title_holder'}])
+def test_seller_choices_reject_scope_drift_or_title_claim(endpoint,change):
+    client,store=endpoint;store.request.return_value=[SELLER|change]
+    response=client.get(PATH+'/sellers',params={'lead_id':L,'property_id':J})
+    assert response.status_code==503 and 'secret' not in response.text
+
+
+def test_seller_choices_require_property_and_bound_page(endpoint):
+    client,store=endpoint
+    assert client.get(PATH+'/sellers',params={'lead_id':L}).status_code==422
+    assert client.get(PATH+'/sellers',params={'lead_id':L,'property_id':J,'limit':51}).status_code==422
+    store.request.assert_not_awaited()
+    store.request.return_value=[SELLER,SELLER|{'id':J}]
+    response=client.get(PATH+'/sellers',params={'lead_id':L,'property_id':J,'limit':1})
+    assert response.json()['next_after']==I and len(response.json()['items'])==1
+    store.request.return_value=[]
+    response=client.get(PATH+'/sellers',params={'lead_id':L,'property_id':J,'after':I})
+    assert response.json()['items']==[] and response.json()['next_after'] is None
+    assert store.request.call_args.kwargs['params']['id']=='gt.'+I

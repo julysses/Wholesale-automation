@@ -4,7 +4,7 @@ Updated October 31, 2026 from the current acquisition branch. Status: **not read
 
 ## Exact candidate and evidence
 
-**Local contract candidate:** migration 57 passed the full rehearsal with 26 access probes, 88 workflows and 49 existing gateway checks; evidence/2026-10-31-contract-drafts-full-result.json. Expanded actual contract API/gateway checks are running as process 98367 at `/tmp/acquisition-contract-api-gateway.log`. The 56-migration evidence below is historical; neither result approves deployment or Phase 1 activation.
+**Local contract candidate:** migration 57 and its draft API passed the full rehearsal with 26 access probes, 88 workflows and 53 real local gateway checks; evidence/2026-10-31-contract-api-gateway-result.json. Seller-choice API has separate unit tests but its join still requires actual gateway acceptance. Published predecessor 5ca649c / CI 41246949570 passed all six jobs. The older 56-migration evidence below is historical, not the current candidate. None of these results approves deployment or Phase 1 activation.
 
 - Branch: `codex/acquisition-foundation`.
 - Published repair candidate: `2f2dbe788e1f090f5888b80d68c95db1d2ac7167`; CI `41245920319`. All six jobs completed successfully. This clears the repair publication gate, not hosted or provider acceptance. The predecessor failed two historical-upgrade fixture setups; the repair defers the dependent migration until its prerequisites exist. All 217 repair workspace tests passed locally; see `evidence/2026-10-31-portal-fixture-repair-result.json`.
