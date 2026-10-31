@@ -1,5 +1,19 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Predecessor all six successful; shared evidence rehearsal passed
+
+- Exact predecessor bbcec81 / CI 41248426556 is terminal success across all six jobs. Publication gate is clear. No job was restarted or cancelled.
+- Process 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 actual gateway checks; historical 24 rows/22 populated tables/103 definitions preserved. Exact output/hash: evidence/2026-10-31-shared-evidence-gateway-result.json. This validates shared transport compatibility; contract document registry/persistence is still not implemented or accepted.
+- All local test/preview processes are terminal. Publish the accumulated guided UI/date precision/shared transport candidate, then record its exact successor run and retain the all-six gate. No production or provider changes.
+
+## 2026-10-31 — Shared protected document transport and persistence mapping
+
+- Previous goal turn was progress: ec816ee committed browser evidence and explicit date precision. Refreshed the branch; no remote changes. Predecessor bbcec81 / CI 41248426556 remains five completed successful jobs and one live PostgreSQL job; no successor feature push or restart.
+- Read-only production catalog verified live ledger 20261023221455 and absence of candidate acquisition evidence/contract tables. Captured deal constraints, Storage object columns and policy inventory in evidence/2026-10-31-contract-document-catalog.json. Consulted current official private-bucket access documentation; no production changes.
+- Extracted shared immutable retained-object metadata and bounded authenticated byte transport. Mail descriptors retain mandatory campaign scope; new internal contract document descriptors bind workspace, contract and version. Exact bytes do not imply scan safety, legal approval, persistence or execution. No contract document endpoint is exposed.
+- Passed 222 focused contract/mail byte, scan and upload cases; passed 344 evidence API/admission/attestation/journal/persistence and contract regressions. Added scope/version mismatch, invalid copies, path/purpose spoofing, hash/size mismatch, expiration during streaming and redirect/content rejection coverage. Full actual gateway rehearsal is running as process 80922; log /tmp/contract-shared-evidence-gateway.log. Do not restart. No other local process remains running.
+- CONTRACT-DOCUMENT-PERSISTENCE.md maps extension of the existing registry/retention/storage/admission/scan/review controls, exact version binding and acceptance requirements. Next: finish running rehearsal, publish after predecessor all-six success, then implement the additive registry/term/review transactions with the full metadata/migration/test process. All original PRD gates remain required.
+
 ## 2026-10-31 — Contract draft browser QA and source date precision
 
 - Previous goal turn made concrete progress: committed ed3d466 with the guided fifth step and tests. Current authoritative predecessor CI 41248426556 remains five successes plus one running database job; no new feature push, cancellation or restart.

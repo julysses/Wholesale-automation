@@ -17,6 +17,7 @@ from uuid import UUID
 import httpx
 
 from schemas.acquisition_evidence import EvidenceArtifact, EvidenceRegistryState, EVIDENCE_BUCKET
+from schemas.acquisition_evidence_object import RetainedEvidenceObject
 
 
 class EvidenceUnavailable(ValueError):
@@ -123,9 +124,30 @@ async def verify_evidence_bytes(client: httpx.AsyncClient, artifact: EvidenceArt
         artifact = EvidenceArtifact.model_validate(artifact.model_dump())
     except (ValueError, AttributeError, TypeError):
         raise EvidenceUnavailable('Evidence descriptor is invalid') from None
+    if (artifact.workspace_id, artifact.campaign_id, artifact.purpose) != (workspace_id, campaign_id, purpose):
+        raise EvidenceUnavailable('Evidence is unavailable for this review')
+    checked, size = await _verify_retained_object(client, artifact, clock=clock, _observe_chunk=_observe_chunk)
+    return {'status': 'bytes_verified', 'verifier_version': 'acquisition-evidence-bytes-v1',
+            'workspace_id': str(workspace_id), 'campaign_id': str(campaign_id), 'evidence_ref': str(artifact.id),
+            'purpose': purpose, 'sha256': artifact.sha256, 'byte_size': size, 'media_type': artifact.media_type,
+            'checked_at': checked.isoformat(), 'retain_until': artifact.retain_until.isoformat(),
+            'execution_authorized': False, 'content_approved': False}
+
+
+async def _verify_retained_object(client: httpx.AsyncClient, descriptor: RetainedEvidenceObject, *,
+                                  clock: Callable[[], datetime], _observe_chunk=None) -> tuple[datetime, int]:
+    """Shared bounded byte transport; scope/registry checks remain in typed callers.
+
+    Rebuild the base descriptor to prevent overridden paths or unvalidated copies.
+    Never accept a caller URL, bucket or signed link.
+    """
+    try:
+        artifact = RetainedEvidenceObject.model_validate({key: getattr(descriptor, key)
+                    for key in RetainedEvidenceObject.model_fields})
+    except (ValueError, AttributeError, TypeError):
+        raise EvidenceUnavailable('Evidence descriptor is invalid') from None
     started = clock()
-    if ((artifact.workspace_id, artifact.campaign_id, artifact.purpose) != (workspace_id, campaign_id, purpose)
-            or not artifact.available_at(started)):
+    if not artifact.available_at(started):
         raise EvidenceUnavailable('Evidence is unavailable for this review')
     origin = authenticated_origin(client)
     url = origin.copy_with(path=f'/storage/v1/object/authenticated/{EVIDENCE_BUCKET}/{artifact.object_name}')
@@ -159,8 +181,4 @@ async def verify_evidence_bytes(client: httpx.AsyncClient, artifact: EvidenceArt
     if (checked.utcoffset() is None or checked < started or not artifact.available_at(checked) or size != artifact.byte_size
             or not hmac.compare_digest(digest.hexdigest(), artifact.sha256)):
         raise EvidenceUnavailable('Evidence bytes could not be verified')
-    return {'status': 'bytes_verified', 'verifier_version': 'acquisition-evidence-bytes-v1',
-            'workspace_id': str(workspace_id), 'campaign_id': str(campaign_id), 'evidence_ref': str(artifact.id),
-            'purpose': purpose, 'sha256': artifact.sha256, 'byte_size': size, 'media_type': artifact.media_type,
-            'checked_at': checked.isoformat(), 'retain_until': artifact.retain_until.isoformat(),
-            'execution_authorized': False, 'content_approved': False}
+    return checked, size

@@ -4,9 +4,9 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 ## Publication and active process
 
-- Published contract draft candidate: `bbcec81ff9c1451f6849885d9348928c641dd22d` on `codex/acquisition-foundation`. Normal push confirmed `5ca649c` → `bbcec81`; checkout was clean. Exact successor CI `41248426556` is in progress: https://github.com/julysses/Wholesale-automation/actions/runs/41248426556. Require all six terminal successes before another feature push.
+- Published contract draft candidate: `bbcec81ff9c1451f6849885d9348928c641dd22d` on `codex/acquisition-foundation`. Normal push confirmed `5ca649c` → `bbcec81`; checkout was clean. Exact successor CI `41248426556` completed with all six jobs successful: https://github.com/julysses/Wholesale-automation/actions/runs/41248426556. The predecessor publication gate is satisfied; the next pushed candidate requires its own exact successor result.
 - Predecessor `5ca649c` / CI `41246949570` completed successfully with all six jobs. Prior fixture repair `2f2dbe7` / CI `41245920319` also passed all six. No jobs cancelled or restarted.
-- Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is now implemented locally; synthetic desktop/mobile browser QA passed. No local test/preview process is active.
+- Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is now implemented locally; synthetic desktop/mobile browser QA passed. Shared evidence regression rehearsal 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 gateway checks. No local test or preview process is active.
 - Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
 ## Current contract candidate
@@ -14,6 +14,10 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 Contract draft migration/API passed the full rehearsal: 57 migrations, 26 access probes, 88 full-catalog workflows and 54 local gateway checks. Process 55084 exited 0; evidence/2026-10-31-contract-seller-gateway-result.json. Actual contract API commit-loss recovery, one version/audit, tenant/anonymous isolation and expired-session rejection passed. Contract API/auth regressions (483) and three observed lock-wait cases passed separately.
 
 Added bounded seller-choice API scoped to workspace/lead/property, showing reported names without title claims. Its unit/router/rules suite passed 100 tests; the canonical seller-name join and property isolation now pass the actual local gateway. The guided fifth draft step carries the selected proposal/property, shows existing drafts, preserves an exact uncertain request across reload, and locks workspace/proposal navigation during recovery. An explicit first-attempt database rejection can release the hold; a later rejection never clears an earlier uncertain save. Contract evidence/transitions and all later PRD gates remain incomplete. Frontend regression: 583 tests passed across 73 files, followed by 13 targeted tests including an additional navigation-lock case; 109 contract API/rules tests passed after adding explicit date-only source precision and held forward-review semantics. Typecheck/build passed; lint baseline passed after replacing a control-character regex. Synthetic desktop/mobile browser QA for the fifth step passed, including lost reply, reload, exact recovery and saved-draft reload; screenshots/results are in evidence/contract-draft-2026-10-31. Hosted acceptance is not established. No local process remains running.
+
+## Contract document transport follow-up
+
+Internal contract document descriptors now bind workspace, canonical contract ID/version and purpose. They share the existing bounded private byte-verification transport without changing mail scope or returning execution/legal approval. Focused mail/contract byte/scan/upload tests passed 222; additional evidence API/admission/attestation/journal/persistence and contract regressions passed 344. Actual shared-path gateway rehearsal 80922 exited 0; evidence/2026-10-31-shared-evidence-gateway-result.json contains the exact successful result. Registry/Storage extensions, document upload/review endpoints and legal transitions are not implemented. See CONTRACT-DOCUMENT-PERSISTENCE.md for the exact dependency and acceptance map.
 
 ## Verified local scope
 
