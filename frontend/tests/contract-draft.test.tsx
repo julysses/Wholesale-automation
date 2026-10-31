@@ -69,3 +69,16 @@ it('rechecks an amount approval immediately before saving', async () => {
   open(); await fill(); mock.approved = false; fireEvent.click(screen.getByRole('button', { name: 'Save draft for review' }));
   await screen.findByText(/The amount review changed/); expect(posts()).toHaveLength(0); expect(sessionStorage.length).toBe(0);
 });
+it('restores document context without a selected proposal and holds navigation', async () => {
+  mock.existing = true;
+  sessionStorage.setItem(`wholesale.contract.document:v1:${id(1)}:${id(2)}`, JSON.stringify({ version: 1,
+    context: { userId: id(1), workspaceId: id(2), leadId: id(3), propertyId: id(4), offerId: id(6), contractId: id(5), contractVersion: 1 }, stage: 'upload',
+    registration: { id: id(9), purpose: 'purchase_contract', expected_sha256: 'a'.repeat(64), expected_byte_size: 20, media_type: 'text/plain', retention_policy_id: id(8), provenance_note: 'Original seller document for review.' } }));
+  open(null);
+  await screen.findByText('123 Fixture St, Dallas');
+  await screen.findByText('Recover the saved document');
+  expect(mock.pending).toHaveBeenLastCalledWith(true);
+  expect(screen.getByRole('button', { name: 'Draft saved' })).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled();
+  expect(posts()).toHaveLength(0);
+});

@@ -43,7 +43,7 @@ export async function chooseFile(file: File): Promise<FileChoice> {
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return { file, media: kind.data, hash: Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('') };
 }
-export function matchesFile(choice: FileChoice, pending: PendingEvidence) {
+export function matchesFile(choice: FileChoice, pending: { registration: Pick<PendingEvidence['registration'], 'expected_sha256' | 'expected_byte_size' | 'media_type'> }) {
   const r = pending.registration;
   return choice.hash === r.expected_sha256 && choice.file.size === r.expected_byte_size && choice.media === r.media_type;
 }

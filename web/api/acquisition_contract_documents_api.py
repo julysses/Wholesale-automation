@@ -54,10 +54,17 @@ async def document_candidates(workspace_id:UUID, contract_id:UUID, contract_vers
 async def register_document(workspace_id:UUID,contract_id:UUID,contract_version:Version,
                             body:ContractDocumentRegistration,response:Response,store=Depends(acquisition_store)):
     response.headers['Cache-Control']='no-store'
-    raw=await rpc(store,'register_contract_document',{
-        'p_id':str(body.id),'p_workspace':str(workspace_id),'p_contract':str(contract_id),'p_version':contract_version,
-        'p_purpose':body.purpose,'p_sha256':body.expected_sha256,'p_byte_size':body.expected_byte_size,
-        'p_media_type':body.media_type,'p_policy':str(body.retention_policy_id),'p_note':body.provenance_note})
+    try:
+        raw=await rpc(store,'register_contract_document',{
+            'p_id':str(body.id),'p_workspace':str(workspace_id),'p_contract':str(contract_id),'p_version':contract_version,
+            'p_purpose':body.purpose,'p_sha256':body.expected_sha256,'p_byte_size':body.expected_byte_size,
+            'p_media_type':body.media_type,'p_policy':str(body.retention_policy_id),'p_note':body.provenance_note})
+    except HTTPException as error:
+        # Only a definitive database rejection of this attempt, never proof
+        # about an earlier attempt whose reply was lost.
+        if error.status_code in {401,403,409}:
+            error.headers={**(error.headers or {}),'X-Acquisition-Document-Rejected':'true'}
+        raise
     try:
         receipt=ContractDocumentRegistrationReceipt.model_validate(raw)
         if (receipt.artifact_id,receipt.workspace_id,receipt.contract_id,receipt.contract_version)!=(body.id,workspace_id,contract_id,contract_version):

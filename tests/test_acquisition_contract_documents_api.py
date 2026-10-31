@@ -172,3 +172,20 @@ def test_document_choices_rejects_cursor_and_page_inconsistency(endpoint):
     for query in ('purpose=mail_content','purpose=purchase_contract&limit=0','purpose=purchase_contract&limit=51'):
         assert client.get(BASE+'?'+query).status_code==422
     store.request.assert_not_called()
+
+@pytest.mark.parametrize('status,marked',[(401,True),(403,True),(409,True),(422,False),(429,False),(500,False),(503,False)])
+def test_registration_rejection_marker_is_definitive_and_route_specific(endpoint,status,marked):
+    client,store=endpoint;store.request.side_effect=HTTPException(status,'Synthetic rejection')
+    response=client.post(BASE,json=BODY)
+    assert response.status_code==status
+    assert (response.headers.get('x-acquisition-document-rejected')=='true') is marked
+    assert response.headers['cache-control']=='no-store'
+    store.request.side_effect=HTTPException(status,'Independent read rejection')
+    assert 'x-acquisition-document-rejected' not in client.get(BASE+'/'+A).headers
+
+
+def test_malformed_success_never_claims_registration_rejected(endpoint):
+    client,store=endpoint;store.request.return_value={'unconfirmed':True}
+    response=client.post(BASE,json=BODY)
+    assert response.status_code==503
+    assert 'x-acquisition-document-rejected' not in response.headers
