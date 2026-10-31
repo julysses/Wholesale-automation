@@ -20,11 +20,25 @@ class AcquisitionStore:
         return await upload_with_admission(self, artifact_id, source, workspace_id=workspace_id,
                                            campaign_id=campaign_id, purpose=purpose)
 
+    async def persist_contract_attestation(self, signed_request, *, workspace_id, contract_id,
+                                           contract_version, purpose, artifact_id, actor_id, session_id):
+        from tools.acquisition_contract_persistence import persist_contract_attestation
+        return await persist_contract_attestation(self.client, signed_request, workspace_id=workspace_id,
+            contract_id=contract_id, contract_version=contract_version, purpose=purpose,
+            artifact_id=artifact_id, actor_id=actor_id, session_id=session_id)
+
     async def persist_evidence_attestation(self, signed_request, *, workspace_id, campaign_id, artifact_id, actor_id, session_id):
         """One bounded write of the original signed request; never regenerate on retry."""
         from tools.acquisition_evidence_persistence import persist_evidence_attestation
         return await persist_evidence_attestation(self.client, signed_request, workspace_id=workspace_id,
             campaign_id=campaign_id, artifact_id=artifact_id, actor_id=actor_id, session_id=session_id)
+
+    async def persist_journaled_contract_observation(self, journal, request_id, *, workspace_id,
+                                                    contract_id, contract_version, purpose, artifact_id, actor_id, session_id):
+        from tools.acquisition_evidence_journal import persist_journaled_contract_observation
+        return await persist_journaled_contract_observation(self.client, journal, request_id,
+            workspace_id=workspace_id, contract_id=contract_id, contract_version=contract_version,
+            purpose=purpose, artifact_id=artifact_id, actor_id=actor_id, session_id=session_id)
 
     async def persist_journaled_evidence(self, journal, request_id, *, workspace_id, campaign_id, artifact_id, actor_id, session_id):
         """Worker entry point: dispatch only an already durably prepared request."""

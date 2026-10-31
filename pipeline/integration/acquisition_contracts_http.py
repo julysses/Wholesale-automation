@@ -172,8 +172,46 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
     status,_=request('/rpc/record_contract_document_verification',token(),signed)
     if status!=403:raise AssertionError('Unreviewed contract key scope was accepted')
     db.query("INSERT INTO private.acquisition_contract_verification_key_scopes(workspace_id,key_id,purpose,reviewed_by,approval_ref,valid_from,valid_until) VALUES(%s,%s,'purchase_contract',%s,%s,clock_timestamp()-interval '1 hour',clock_timestamp()+interval '1 hour')",[workspace,signing_key,admin,observation_id])
-    first_scan=rpc('record_contract_document_verification',signed)
-    recovered_scan=rpc('record_contract_document_verification',signed)
+    import asyncio
+    import tempfile
+    from pathlib import Path
+    from tools.acquisition_evidence_journal import EvidenceJournal
+    from tools.acquisition_evidence_persistence import EvidencePersistenceUnconfirmed
+    scan_commits=[]; scan_requests=[]
+    class RawScanReply(httpx.AsyncByteStream):
+        def __init__(self, data): self.data=json.dumps(data).encode()
+        async def __aiter__(self): yield self.data
+    def scan_gateway(req):
+        if req.url != httpx.URL('https://contract-gateway.test/rest/v1/rpc/record_contract_document_verification'):
+            raise AssertionError('Unexpected contract observation destination')
+        scan_requests.append(req.content)
+        status,data=request('/rpc/record_contract_document_verification',
+            req.headers['authorization'].removeprefix('Bearer '),json.loads(req.content))
+        if status==200:
+            scan_commits.append(data)
+            if len(scan_commits)==1: raise httpx.ReadTimeout('Synthetic lost reply after actual commit')
+        return httpx.Response(status,stream=RawScanReply(data),headers={'content-type':'application/json'})
+    async def reconcile_contract_scan(directory):
+        journal=EvidenceJournal(directory); journal.prepare(signed)
+        scope=dict(workspace_id=UUID(workspace),contract_id=UUID(draft),contract_version=1,
+            purpose='purchase_contract',artifact_id=UUID(signed['p_artifact']),actor_id=UUID(admin),session_id=UUID(admin))
+        async with httpx.AsyncClient(base_url='https://contract-gateway.test/rest/v1/',trust_env=False,
+                transport=httpx.MockTransport(scan_gateway),headers={'Authorization':'Bearer '+token(),'apikey':'synthetic'}) as client:
+            store=AcquisitionStore(client)
+            try: await store.persist_journaled_contract_observation(journal,UUID(observation_id),**scope)
+            except EvidencePersistenceUnconfirmed: pass
+            else: raise AssertionError('Lost committed scan reply reported confirmed')
+            reopened=EvidenceJournal(directory)
+            if reopened.load(UUID(observation_id)) != (signed,'unconfirmed'):
+                raise AssertionError('Exact signed contract request was not retained')
+            receipt=await store.persist_journaled_contract_observation(reopened,UUID(observation_id),**scope)
+            if reopened.load(UUID(observation_id))[1]!='confirmed': raise AssertionError('Contract recovery not journaled')
+            return receipt
+    with tempfile.TemporaryDirectory(prefix='contract-observation-recovery-') as directory:
+        recovered_scan=asyncio.run(reconcile_contract_scan(Path(directory)))
+    first_scan=scan_commits[0]
+    if len(scan_requests)!=2 or scan_requests[0]!=scan_requests[1]:
+        raise AssertionError('Contract observation retry changed signed request')
     if first_scan['duplicate'] or not recovered_scan['duplicate'] or recovered_scan['contract_id']!=draft or recovered_scan['contract_version']!=1:
         raise AssertionError('Contract observation exact recovery or target failed')
     if any(recovered_scan[k] for k in ('preview_authorized','legal_review_approved','execution_authorized')):
@@ -251,4 +289,5 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract upload admission binding and shared actor cap','contract upload admission scope and session isolation',
             'contract document discovery real policy pagination and retained state','contract document discovery API tenant and version isolation',
             'contract observation real signature and separately reviewed key scope','contract observation exact retry and immutable audit',
-            'contract observation real tenant session and version isolation']
+            'contract observation real tenant session and version isolation',
+            'contract observation typed journal recovery after actual commit loss']

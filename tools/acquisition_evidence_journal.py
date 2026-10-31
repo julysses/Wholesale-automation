@@ -84,7 +84,9 @@ class EvidenceJournal:
     @staticmethod
     def _body(request):
         try:
-            value = SignedObservationRequest.model_validate(request)
+            from tools.acquisition_contract_persistence import SignedContractObservationRequest
+            model = SignedContractObservationRequest if isinstance(request, dict) and 'p_contract' in request else SignedObservationRequest
+            value = model.model_validate(request)
             # Preserve the signed text, regardless of envelope key order.
             body = json.dumps(value.model_dump(mode='json'), sort_keys=True, separators=(',', ':'), ensure_ascii=True)
             if len(body.encode()) > 12288:
@@ -146,8 +148,10 @@ class EvidenceJournal:
                 if (checked_id != identity or body['p_workspace'] != str(workspace_id)
                         or body['p_actor'] != str(actor_id)):
                     raise ValueError('Recovery scope mismatch')
-                items.append({'id': identity, 'campaign_id': body['p_campaign'],
-                              'artifact_id': body['p_artifact'], 'session_id': body['p_session'], 'state': state})
+                target = ({'contract_id': body['p_contract'], 'contract_version': body['p_version'],
+                           'purpose': body['p_purpose']} if 'p_contract' in body else {'campaign_id': body['p_campaign']})
+                items.append({'id': identity, **target, 'artifact_id': body['p_artifact'],
+                              'session_id': body['p_session'], 'state': state})
             return {'items': items[:limit], 'next_after': items[limit-1]['id'] if len(items)>limit else None}
         except (ValueError, TypeError, KeyError, AttributeError, RecursionError, sqlite3.Error):
             raise EvidenceJournalUnavailable('Recovery journal could not be read') from None
@@ -190,13 +194,38 @@ async def persist_journaled_observation(client, journal: EvidenceJournal, identi
     request is reconciled through the database again when deliberately retried.
     """
     body, _ = journal.load(identity)
-    request = SignedObservationRequest.model_validate(body)
+    try:
+        request = SignedObservationRequest.model_validate(body)
+    except (ValueError, TypeError):
+        raise EvidenceJournalUnavailable('Mail journal request required') from None
     expected = dict(workspace_id=request.p_workspace, campaign_id=request.p_campaign,
                     artifact_id=request.p_artifact, actor_id=request.p_actor, session_id=request.p_session)
     if scope != expected:
         raise EvidenceJournalUnavailable('Journal request scope mismatch')
     journal.mark_dispatch(identity, body, str(authenticated_origin(client)))
     receipt = await persist_evidence_attestation(client, body, **scope)
+    try:
+        journal.confirm(identity, body, receipt)
+    except (OSError, sqlite3.Error, EvidenceJournalUnavailable):
+        raise EvidencePersistenceUnconfirmed('Evidence observation persistence is unconfirmed') from None
+    return receipt
+
+
+async def persist_journaled_contract_observation(client, journal: EvidenceJournal, identity: UUID, **scope):
+    """Reconcile the original contract request, never renew or replace its authority."""
+    from tools.acquisition_contract_persistence import SignedContractObservationRequest, persist_contract_attestation
+    body, _ = journal.load(identity)
+    try:
+        request = SignedContractObservationRequest.model_validate(body)
+    except (ValueError, TypeError):
+        raise EvidenceJournalUnavailable('Contract journal request required') from None
+    expected = dict(workspace_id=request.p_workspace, contract_id=request.p_contract,
+                    contract_version=request.p_version, purpose=request.p_purpose,
+                    artifact_id=request.p_artifact, actor_id=request.p_actor, session_id=request.p_session)
+    if scope != expected or type(scope.get('contract_version')) is not int:
+        raise EvidenceJournalUnavailable('Journal request scope mismatch')
+    journal.mark_dispatch(identity, body, str(authenticated_origin(client)))
+    receipt = await persist_contract_attestation(client, body, **scope)
     try:
         journal.confirm(identity, body, receipt)
     except (OSError, sqlite3.Error, EvidenceJournalUnavailable):

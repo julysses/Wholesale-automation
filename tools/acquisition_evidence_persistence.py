@@ -23,11 +23,10 @@ class EvidencePersistenceUnconfirmed(EvidenceUnavailable):
     """A write may have committed. Keep the exact signed request, even on denial."""
 
 
-class SignedObservationRequest(BaseModel):
+class SignedObservationEnvelope(BaseModel):
     model_config = ConfigDict(extra='forbid', frozen=True)
     p_id: UUID
     p_workspace: UUID
-    p_campaign: UUID
     p_artifact: UUID
     p_actor: UUID
     p_session: UUID
@@ -35,7 +34,7 @@ class SignedObservationRequest(BaseModel):
     p_observation: str = Field(strict=True, min_length=2, max_length=4096)
     p_signature: str = Field(strict=True, pattern=r'^[0-9a-f]{64}$')
 
-    @field_validator('p_id','p_workspace','p_campaign','p_artifact','p_actor','p_session','p_key',mode='before')
+    @field_validator('p_id','p_workspace','p_artifact','p_actor','p_session','p_key',mode='before')
     @classmethod
     def canonical_identity(cls,value):
         if not isinstance(value,str) or str(UUID(value)) != value:
@@ -49,6 +48,15 @@ class SignedObservationRequest(BaseModel):
             raise ValueError('Bounded observation required')
         ScanObservation.model_validate(json.loads(value,object_pairs_hook=unique_json_object))
         return value  # The original signed text, never normalized or reserialized.
+
+
+class SignedObservationRequest(SignedObservationEnvelope):
+    p_campaign: UUID
+
+    @field_validator('p_campaign', mode='before')
+    @classmethod
+    def canonical_campaign(cls, value):
+        return cls.canonical_identity(value)
 
 
 class PersistedObservationReceipt(BaseModel):
@@ -92,6 +100,19 @@ async def persist_evidence_attestation(client: httpx.AsyncClient, signed_request
         url=authenticated_origin(client).copy_with(path='/rest/v1/rpc/record_acquisition_evidence_verification')
     except (ValueError,TypeError,AttributeError,RecursionError):
         raise EvidenceUnavailable('Signed evidence request is invalid') from None
+    try:
+        raw = await _post_signed_observation(client, url, body)
+        receipt=PersistedObservationReceipt.model_validate(raw)
+        if (receipt.verification_id,receipt.workspace_id,receipt.artifact_id,receipt.scan_status) != (
+                request.p_id,request.p_workspace,request.p_artifact,observation.scan_status):
+            raise EvidencePersistenceUnconfirmed('Evidence observation persistence is unconfirmed')
+        return receipt.model_dump(mode='json')
+    except (ValueError, TypeError, RecursionError):
+        raise EvidencePersistenceUnconfirmed('Evidence observation persistence is unconfirmed') from None
+
+
+async def _post_signed_observation(client, url, body):
+    """Shared bounded single-attempt transport; callers validate exact receipt scope."""
     data=bytearray()
     try:
         async with asyncio.timeout(PERSIST_SECONDS):
@@ -111,11 +132,7 @@ async def persist_evidence_attestation(client: httpx.AsyncClient, signed_request
                     await asyncio.sleep(0)
                 if length is not None and len(data)!=int(length):
                     raise EvidencePersistenceUnconfirmed('Evidence observation persistence is unconfirmed')
-        receipt=PersistedObservationReceipt.model_validate(json.loads(data,object_pairs_hook=unique_json_object))
-        if (receipt.verification_id,receipt.workspace_id,receipt.artifact_id,receipt.scan_status) != (
-                request.p_id,request.p_workspace,request.p_artifact,observation.scan_status):
-            raise EvidencePersistenceUnconfirmed('Evidence observation persistence is unconfirmed')
-        return receipt.model_dump(mode='json')
+        return json.loads(data, object_pairs_hook=unique_json_object)
     except (httpx.HTTPError,TimeoutError,ValueError,TypeError,RecursionError):
         # Even 401/403/409 on a later attempt does not prove the earlier attempt
         # failed to commit. No source text or signed capability is put in errors.
