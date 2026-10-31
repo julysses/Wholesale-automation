@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Publication gate cleared for guided form preparation
+
+- Verified exact published head 320e405034b7abe9cd78e63f16a1351e8c6549ab / CI 41234812907 completed successfully with all six jobs. The longer workspace/contention job succeeded without cancellation or a CI change. Network observation failures were retried against the same run and were not treated as terminal failures.
+- Retained API f12f195 and guided UI b77faae are ready for publication. Frontend evidence remains 545 passing tests, successful build and zero new lint findings; API and gateway evidence is recorded above. Verify the successor exact-head CI before any further feature push.
+- A separate disposable local workspace-suite comparison started during investigation and is still running under tool session 1315, with output /tmp/acquisition-oct31-workspace-investigation.log and temporary cluster /tmp/acq-ob3q7raa. Initial cases passed; no final result is claimed. Observe that handle rather than restart it. No production connection or provider use.
+- Next implementation remains controlled public form routing, transactional seller intake, abuse controls and the four-step seller UI, plus all original shared-foundation/channel acceptance. No public projection code was added during the investigation. PropStream remains the address/skip-trace source; no mail vendor is selected. Production, SMS and channel activation remain unchanged.
+
 ## 2026-10-31 — Guided offer-form setup inside campaign preparation
 
 - Added OfferForms to online-offer campaign drafts, matching navy/orange cards and existing context. Three internal preparation steps: privacy acknowledgement wording, separate optional human callback/email wording, then version review. Seller journey summary remains property → condition/timing → contact → review. Saving remains a draft; no seller URL, public activation or contact permission is created.
