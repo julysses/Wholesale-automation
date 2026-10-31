@@ -1,6 +1,6 @@
 # Acquisition automation — current implementation and release handoff
 
-Latest checkpoint: published 09ebd1457a60ba2d2ed69042f4bc75e269155e / CI 41239853074 finished with five successful jobs and two historical-upgrade setup failures in the sixth job. Retain features locally pending a fixture repair and six successful checks.
+Latest checkpoint: published 09ebd1457a60ba2d2ed69042f4bc75e26915595e / CI 41239853074 finished with five successful jobs and two historical-upgrade setup failures in the sixth job. Retain features locally pending a fixture repair and six successful checks.
 
 Updated October 31, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 
