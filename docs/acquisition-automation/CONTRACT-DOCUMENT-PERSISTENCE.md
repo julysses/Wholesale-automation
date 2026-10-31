@@ -99,3 +99,10 @@ Mail and contract routes share the same lazy request-stream validation: one purp
 The database RPC validates current MFA workspace role/session, actual canonical version and permitted document purpose. It returns no provenance text, private file path, download URL, verification or legal approval. Strict API validation rejects mixed versions/workspaces, duplicate or unordered rows, malformed cursors, stale states and injected availability. The separate upload_enabled value comes from server configuration only and is not contact, Storage or transaction authorization.
 
 For the app, keep this list inside the saved contract draft context. Present document purpose, creation time, size and plain status, with detailed identifiers hidden from the primary flow. Preserve the exact pending registration/upload identity across reloads and block workspace/draft navigation during uncertain recovery. A stored file must remain visibly awaiting scan/review until those signed evidence bindings are implemented.
+
+
+## Guided UI and internal scan checkpoints
+
+The saved-contract step now includes document upload/discovery with exact pending recovery and parent navigation holds (58bbf32, local until CI publication gate). A definitive rejection of only the first registration attempt can release the hold; unknown or later rejected attempts retain their exact identity. Full frontend regression 607 passed, plus build/lint and synthetic visual/recovery QA.
+
+Internal `scan_registered_contract_document` now uses the shared mail `_scan_registered_object` lifecycle and process capacity. Contract scope/version/purpose remain distinct; no campaign substitution is possible. Current registry checks surround bounded exact bytes and pinned local daemon observation. No detection means only an unpersisted scan observation; no preview, legal or signing authority. Full backend 3287 passed. Next extend signed attestation and persistence with exact contract/version target and shared byte-alias detection. Preserve existing mail signatures and immutable historical receipts. No migration or live scanner configuration is supplied by this checkpoint.

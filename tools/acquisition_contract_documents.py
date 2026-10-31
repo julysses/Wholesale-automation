@@ -10,7 +10,8 @@ from tools.acquisition_evidence import EvidenceUnavailable, _verify_retained_obj
 
 async def verify_contract_document_bytes(client: httpx.AsyncClient, artifact: ContractDocumentArtifact, *,
                                          workspace_id: UUID, contract_id: UUID, contract_version: int,
-                                         purpose: str, clock: Callable[[], datetime] = utcnow) -> dict:
+                                         purpose: str, clock: Callable[[], datetime] = utcnow,
+                                         _observe_chunk: Callable[[bytes], None] | None = None) -> dict:
     try:
         artifact = ContractDocumentArtifact.model_validate(artifact.model_dump())
     except (ValueError, AttributeError, TypeError):
@@ -20,7 +21,7 @@ async def verify_contract_document_bytes(client: httpx.AsyncClient, artifact: Co
             or (artifact.workspace_id, artifact.contract_id, artifact.contract_version, artifact.purpose)
                 != (workspace_id, contract_id, contract_version, purpose)):
         raise EvidenceUnavailable('Contract document scope is invalid')
-    checked, size = await _verify_retained_object(client, artifact, clock=clock)
+    checked, size = await _verify_retained_object(client, artifact, clock=clock, _observe_chunk=_observe_chunk)
     return {'status': 'bytes_verified', 'verifier_version': 'acquisition-contract-document-bytes-v1',
             'workspace_id': str(workspace_id), 'contract_id': str(contract_id), 'contract_version': contract_version,
             'artifact_id': str(artifact.id), 'purpose': purpose, 'sha256': artifact.sha256,
@@ -95,3 +96,28 @@ async def upload_registered_contract_document(client, artifact_id, source, *, wo
         return await verify_registered_contract_document(client, **scope)
     return await _upload_registered_object(client, source, validate=validate, load=load, verify=verify,
         upload_version='acquisition-contract-document-upload-v1', clock=clock)
+
+
+async def scan_registered_contract_document(client, artifact_id, *, workspace_id, contract_id,
+                                            contract_version, purpose, policy, clock=utcnow):
+    """Exact version registry -> verified bytes -> local scan -> registry.
+
+    Internal observation only. No persisted clearance, preview or legal approval.
+    Shares mail scanner capacity, deadlines and local daemon configuration.
+    """
+    from typing import get_args
+    from schemas.acquisition_contract_documents import DocumentPurpose
+    from tools.acquisition_evidence_scan import ClamAVPolicy, _scan_registered_object
+    if (not all(isinstance(value, UUID) for value in (artifact_id, workspace_id, contract_id))
+            or type(contract_version) is not int or not 1 <= contract_version <= 2147483647
+            or purpose not in get_args(DocumentPurpose) or type(policy) is not ClamAVPolicy):
+        raise EvidenceUnavailable('Contract document scan identity is invalid')
+    async def load():
+        return await load_contract_document_state(client, artifact_id=artifact_id, workspace_id=workspace_id,
+            contract_id=contract_id, contract_version=contract_version, purpose=purpose, clock=clock)
+    async def verify(state, observe):
+        return await verify_contract_document_bytes(client, state.descriptor(), workspace_id=workspace_id,
+            contract_id=contract_id, contract_version=contract_version, purpose=purpose, clock=clock,
+            _observe_chunk=observe)
+    return await _scan_registered_object(load=load, verify=verify, policy=policy, clock=clock,
+        registry_version='acquisition-contract-document-registry-v1')

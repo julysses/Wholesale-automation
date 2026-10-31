@@ -122,6 +122,19 @@ async def scan_registered_evidence(client, artifact_id, *, workspace_id, campaig
     if (not all(isinstance(value, UUID) for value in (artifact_id, workspace_id, campaign_id))
             or purpose not in ('mail_content', 'mail_destination') or type(policy) is not ClamAVPolicy):
         raise EvidenceUnavailable('Evidence scan identity is invalid')
+    async def load():
+        return await load_registry_state(client, artifact_id=artifact_id, workspace_id=workspace_id,
+                                        campaign_id=campaign_id, purpose=purpose, clock=clock)
+    async def verify(state, observe):
+        return await verify_evidence_bytes(client, state.descriptor(), workspace_id=workspace_id,
+                                          campaign_id=campaign_id, purpose=purpose, clock=clock,
+                                          _observe_chunk=observe)
+    return await _scan_registered_object(load=load, verify=verify, policy=policy, clock=clock,
+                                         registry_version='acquisition-evidence-registry-v1')
+
+
+async def _scan_registered_object(*, load, verify, policy, clock, registry_version):
+    """Shared bounded scan lifecycle; typed entry points retain distinct targets."""
     started = clock()
     policy.check(started)
     if not _CAPACITY.acquire(blocking=False):
@@ -129,21 +142,16 @@ async def scan_registered_evidence(client, artifact_id, *, workspace_id, campaig
     body = bytearray()
     try:
         async with asyncio.timeout(TOTAL_SECONDS):
-            before = await load_registry_state(client, artifact_id=artifact_id, workspace_id=workspace_id,
-                                               campaign_id=campaign_id, purpose=purpose, clock=clock)
-            receipt = await verify_evidence_bytes(client, before.descriptor(), workspace_id=workspace_id,
-                                                  campaign_id=campaign_id, purpose=purpose, clock=clock,
-                                                  _observe_chunk=body.extend)
-            current = await load_registry_state(client, artifact_id=artifact_id, workspace_id=workspace_id,
-                                                campaign_id=campaign_id, purpose=purpose, clock=clock)
+            before = await load()
+            receipt = await verify(before, body.extend)
+            current = await load()
             if (before.model_dump(exclude={'checked_at'}) != current.model_dump(exclude={'checked_at'})
                     or current.checked_at < before.checked_at
                     or current.checked_at < datetime.fromisoformat(receipt['checked_at']) - timedelta(seconds=5)):
                 raise EvidenceUnavailable('Evidence changed before scanning')
             scan = await scan_bytes(bytes(body), policy, clock=clock)
             body.clear()
-            after = await load_registry_state(client, artifact_id=artifact_id, workspace_id=workspace_id,
-                                              campaign_id=campaign_id, purpose=purpose, clock=clock)
+            after = await load()
             completed = clock()
             policy.check(completed)
             if (before.model_dump(exclude={'checked_at'}) != after.model_dump(exclude={'checked_at'})
@@ -155,7 +163,7 @@ async def scan_registered_evidence(client, artifact_id, *, workspace_id, campaig
                     or (scan['sha256'], scan['byte_size']) != (receipt['sha256'], receipt['byte_size'])):
                 raise EvidenceUnavailable('Evidence changed during scanning')
             return {**receipt, **scan, 'status': 'scan_observed',
-                    'registry_verifier_version': 'acquisition-evidence-registry-v1',
+                    'registry_verifier_version': registry_version,
                     'retention_policy_id': str(after.retention_policy_id), 'registry_checked_at': after.checked_at.isoformat(),
                     'verification_persisted': False, 'scan_persisted': False, 'preview_authorized': False}
     except TimeoutError:

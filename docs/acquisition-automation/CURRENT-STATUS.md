@@ -17,6 +17,14 @@ Unpublished document interface work: `ContractDocuments.tsx`, `contract-document
 
 Next: complete the isolated CI repair publication; publish the locally verified document interface only after all six repair-successor jobs pass, then scan/review bindings, immutable terms/transitions and disposition. No production migration, deployment, upload flag, provider, outreach or fulfillment activation occurred.
 
+## Internal contract scan checkpoint
+
+The contract scanner now shares the existing mail scanner's two process slots, bounded exact-byte collection, pinned local ClamAV protocol and time limits. Typed contract entry points require workspace/contract/version/purpose and current registry authority before bytes, before the scan and after the scan. Cancellation clears the collected mutable buffer and releases capacity. The result remains unpersisted and explicitly denies preview, legal and execution authority. No scanner is installed, enabled or exposed through an endpoint.
+
+123 focused contract/mail scanner and byte-transport tests passed. Full CI-equivalent backend suite passed: 3,287 tests, 10 skipped, six subtests in 23.93 seconds; log `/tmp/contract-scan-backend.log`, process 90240 terminal success. This is synthetic daemon and transport evidence, not hosted Storage or installed-scanner acceptance. The next requirement is target-bound signed observations and durable persistence with cross-target alias detection, followed by human document/title review and immutable terms/transitions.
+
+Publication order remains: wait for terminal CI 41252309134 job 124688164617, push isolated timing repair f793a05, require all six successor successes, then publish guided document interface 58bbf32 and the reviewed internal scan checkpoint. Do not push HEAD while the predecessor is live; the workflow would cancel it. All local test/preview processes are terminal. No production change or activation.
+
 ## Guided document discovery candidate
 
 Migration 61 and the version-scoped GET documents endpoint provide bounded ordered metadata and currently reviewed retention-policy choices, without raw provenance, private file paths, download URLs or approval authority. Exact workspace/contract/version/purpose, fresh state, pagination and server-owned upload availability are validated. Missing or expired policies remain unavailable; retained revoked/expired history remains visible while activation is paused.
