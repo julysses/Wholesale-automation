@@ -1,0 +1,17 @@
+{
+  "inspected_at": "2026-10-31 20:45:13.202537+00",
+  "migration_head": "20261023221455",
+  "production_admission_policy": null,
+  "production_verification_ledger": null,
+  "production_portal_acceptance": null,
+  "uuid_extension": [
+    {
+      "inspected_at": "2026-10-31 20:48:10.117448+00",
+      "extname": "uuid-ossp",
+      "schema": "extensions",
+      "extversion": "1.1",
+      "definition": "CREATE OR REPLACE FUNCTION extensions.uuid_generate_v5(namespace uuid, name text)\n RETURNS uuid\n LANGUAGE c\n IMMUTABLE PARALLEL SAFE STRICT\nAS '$libdir/uuid-ossp', $function$uuid_generate_v5$function$\n"
+    }
+  ],
+  "scope": "Read-only production metadata; proposed portal objects inspected in local migrations 54 and 55."
+}

@@ -153,15 +153,35 @@ def verify_portal_receipt_http(db,request,token,other,workspace,definition):
         'property':{'address':'123 Synthetic Portal','city':'Dallas','state':'TX','postal_code':'75201','authority':'owner',
           'condition':'unsure','occupancy':'vacant','timeline':'flexible','motivation':'Synthetic QA','asking_price':None},
         'selections':{'privacy_acknowledged':True,'email_reply_requested':False}}),OfferFormDefinition.model_validate(definition))
-    body={'p_form_key':definition['form_key'],'p_submission':identity,'p_prepared':prepared}
-    path='/rpc/accept_acquisition_online_offer';service=token(role='service_role')
-    if request(path,service,body)[0]!=403:raise AssertionError('Disabled portal accepted inquiry')
+    from uuid import uuid4,uuid5
+    from datetime import datetime,timedelta,timezone
+    service=token(role='service_role')
+    legacy={'p_form_key':definition['form_key'],'p_submission':identity,'p_prepared':prepared}
+    if request('/rpc/accept_acquisition_online_offer',service,legacy)[0]!=403:
+        raise AssertionError('Unverified portal bypass remains callable')
     db.query("UPDATE private.acquisition_form_publications SET enabled=true,valid_from=clock_timestamp()-interval '1 minute',expires_at=clock_timestamp()+interval '1 hour'")
+    db.query("UPDATE private.acquisition_portal_admission_policy SET enabled=true,bot_hostname='seller.example.test',approval_ref='synthetic-completion',valid_from=clock_timestamp()-interval '1 minute',expires_at=clock_timestamp()+interval '1 hour'")
+    now=datetime.now(timezone.utc);token_hash='e'*64
+    proof=dict(provider='turnstile',hostname='seller.example.test',action='acquisition_offer',submission_id=identity,
+        request_hash=prepared['request_hash'],token_hash=token_hash,
+        verification_id=str(uuid5(UUID('32c074f8-362c-4d9a-a84c-1851f32e67b4'),identity+':'+prepared['request_hash']+':'+token_hash)),
+        challenged_at=now.isoformat(),verified_at=now.isoformat(),expires_at=(now+timedelta(seconds=300)).isoformat())
+    def ticket():
+        attempt=str(uuid4())
+        status,row=request('/rpc/admit_acquisition_portal_request',service,{'p_attempt':attempt,'p_form_key':definition['form_key'],
+            'p_network_hash':'b'*64,'p_purpose':'submit','p_submission':identity,'p_request_hash':prepared['request_hash']})
+        if status!=200 or row.get('admitted') is not True:raise AssertionError('Completion admission unavailable')
+        return {'p_attempt':attempt,'p_prepared':prepared,'p_bot':proof|{'verified_at':datetime.now(timezone.utc).isoformat()}}
+    path='/rpc/complete_acquisition_portal_request';body=ticket()
     for actor in (None,token(),token(other)):
-        if request(path,actor,body)[0] not in (401,403):raise AssertionError('Browser can call portal persistence directly')
+        if request(path,actor,body)[0] not in (401,403):raise AssertionError('Browser can complete portal persistence directly')
     for duplicate in (False,True):
+        if duplicate:body=ticket()
         if request(path,service,body)!=(200,{'submission_id':identity,'status':'received','duplicate':duplicate}):
-            raise AssertionError('Portal HTTP receipt projection or exact retry failed')
+            raise AssertionError('Verified portal HTTP receipt projection or retry failed')
+        if request(path,service,body)[0]!=403:raise AssertionError('Consumed admission was reused')
+    if request('/rpc/accept_acquisition_online_offer',service,legacy)[0]!=403:
+        raise AssertionError('Enabled policy restored legacy bypass')
     listing='/lead_form_submissions?id=eq.'+identity+'&select=id,workspace_id,raw_answers'
     status,rows=request(listing,token())
     if status!=200 or len(rows)!=1 or rows[0]['workspace_id']!=workspace or rows[0]['raw_answers']!=prepared['request_evidence']:
@@ -175,10 +195,12 @@ def verify_portal_receipt_http(db,request,token,other,workspace,definition):
         if status!=200 or len(rows)!=1 or rows[0]['source_type']!='online_offer_portal':
             raise AssertionError('Portal intake/source handoff missing')
     admission_checks=verify_portal_admission_http(db,request,token,definition['form_key'],identity,prepared['request_hash'])
+    db.query('UPDATE private.acquisition_portal_admission_policy SET enabled=true,network_per_minute=5')
+    body=ticket()
     db.query('UPDATE private.acquisition_form_publications SET enabled=false')
     if request(path,service,body)[0]!=403:raise AssertionError('Portal retry ignored revoked publication')
     return ['portal HTTP exact retry and minimal confirmation','portal HTTP receipt evidence and workspace isolation',
-      'portal HTTP intake attribution and raw-write denial','portal HTTP disabled and revoked publication denied']+admission_checks
+      'portal HTTP intake attribution and raw-write denial','portal HTTP disabled and revoked publication denied','verified portal HTTP legacy bypass revoked','verified portal HTTP consumed admission denied']+admission_checks
 
 
 def verify_portal_admission_http(db,request,token,form_key,submission,request_hash):
@@ -187,6 +209,7 @@ def verify_portal_admission_http(db,request,token,form_key,submission,request_ha
     service=token(role='service_role');path='/rpc/admit_acquisition_portal_request'
     body={'p_attempt':str(uuid4()),'p_form_key':form_key,'p_network_hash':'a'*64,'p_purpose':'submit',
           'p_submission':submission,'p_request_hash':request_hash}
+    db.query('UPDATE private.acquisition_portal_admission_policy SET enabled=false')
     if request(path,service,body)[0]!=403:raise AssertionError('Disabled admission policy accepted')
     db.query("UPDATE private.acquisition_portal_admission_policy SET enabled=true,network_per_minute=1,approval_ref='synthetic-http-policy',valid_from=clock_timestamp()-interval '1 minute',expires_at=clock_timestamp()+interval '1 hour'")
     for caller in (None,token()):

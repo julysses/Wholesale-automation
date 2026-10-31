@@ -91,6 +91,12 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
                  "CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$; "
                  "CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT (auth.jwt()->>'sub')::uuid $$; "
                  "CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT auth.jwt()->>'role' $$;")
+        # The focused fixture installs uuid-ossp in public for legacy defaults;
+        # expose its actual v5 implementation under the inspected Supabase schema.
+        self.sql('CREATE SCHEMA IF NOT EXISTS extensions; '
+                 'CREATE OR REPLACE FUNCTION extensions.uuid_generate_v5(uuid,text) RETURNS uuid '
+                 'LANGUAGE sql IMMUTABLE STRICT AS $$ SELECT public.uuid_generate_v5($1,$2) $$; '
+                 'GRANT USAGE ON SCHEMA extensions TO authenticated,service_role;')
         catalog = json.loads(CATALOG.read_text())
         # Recreate exact inspected column types/defaults for touched legacy tables.
         for schema, table in (('public','profiles'), ('public','audit_logs'), ('public','leads'), ('public','webhook_jobs'),
@@ -223,6 +229,7 @@ class WorkspaceTests(StorageTests, unittest.TestCase):
         self.sql((ROOT/"frontend/supabase/migrations/20261031200935_acquisition_legacy_receipt_guards.sql").read_text())
         self.sql((ROOT/"frontend/supabase/migrations/20261031202407_acquisition_portal_receipts.sql").read_text())
         self.sql((ROOT/"frontend/supabase/migrations/20261031203609_acquisition_portal_admission.sql").read_text())
+        self.sql((ROOT/"frontend/supabase/migrations/20261031204520_acquisition_portal_verified_acceptance.sql").read_text())
         install_storage_fixture(self.sql)
         if self._testMethodName not in ('test_evidence_registry_populated_upgrade','test_evidence_storage_populated_upgrade','test_evidence_storage_bucket_collision_rolls_back'):
             self.sql(STORAGE_MIGRATION.read_text())

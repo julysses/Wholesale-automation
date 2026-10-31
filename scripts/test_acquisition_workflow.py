@@ -196,7 +196,7 @@ class WorkflowTests(WorkspaceTests):
                 pending=pool.submit(self.portal_accept,prepared,fail=True)
                 try:
                     deadline=time.monotonic()+1.5
-                    while self.sql(f"SELECT count(*) FROM pg_stat_activity WHERE datname={literal(database)} AND wait_event='advisory' AND query LIKE '%public.accept_acquisition_online_offer%'")=='0':
+                    while self.sql(f"SELECT count(*) FROM pg_stat_activity WHERE datname={literal(database)} AND wait_event='advisory' AND query LIKE '%public.complete_acquisition_portal_request%'")=='0':
                         if pending.done() or time.monotonic()>deadline:raise AssertionError('Portal acceptance never reached receipt lock')
                         time.sleep(.02)
                     while self.sql("SELECT expires_at<=clock_timestamp() FROM private.acquisition_form_publications")!='t':
@@ -301,6 +301,11 @@ class WorkflowTests(WorkspaceTests):
     def portal_prepared(self, submission='fd000000-0000-4000-8000-000000000001'):
         from schemas.acquisition_online_offer import OnlineOfferRequest, OfferFormDefinition
         from tools.acquisition_online_offer import prepare_online_offer
+        if self.sql('SELECT bot_hostname IS NULL FROM private.acquisition_portal_admission_policy')=='t':
+            self.enable_portal_admission(global_per_minute=100,form_per_minute=100,network_per_minute=20)
+            self.sql("UPDATE private.acquisition_portal_admission_policy SET bot_hostname='seller.example.test'")
+        from datetime import datetime, timezone
+        self._portal_challenge_time=getattr(self,'_portal_challenge_time',datetime.now(timezone.utc))
         definition=OfferFormDefinition.model_validate(json.loads(self.read_publication()))
         request=OnlineOfferRequest.model_validate({'submission_id':submission,'form_version':'v1',
             'seller':{'name':'Synthetic Seller','phone':'2145550100'},
@@ -310,9 +315,68 @@ class WorkflowTests(WorkspaceTests):
             'selections':{'privacy_acknowledged':True,'human_callback_requested':False}})
         return prepare_online_offer(request,definition)
 
-    def portal_accept(self, prepared, **kwargs):
-        return self.sql(f"SELECT public.accept_acquisition_online_offer('synthetic-offer-form',{literal(prepared['submission_id'])}::uuid,{literal(json.dumps(prepared))}::jsonb)",
+    def test_portal_verified_acceptance_blocks_bypass_and_consumes_once(self):
+        self.publication_fixture();self.enable_publication();prepared=self.portal_prepared()
+        for schema in ('public','private'):
+            self.assertIn('permission denied',self.sql(f"SELECT {schema}.accept_acquisition_online_offer('synthetic-offer-form','{prepared['submission_id']}',{literal(json.dumps(prepared))}::jsonb)",user=ADMIN,role='service_role',fail=True))
+        attempt,bot=self.portal_ticket(prepared)
+        self.assertIn('does not match',self.portal_complete('fe000000-0000-4000-8000-000000000001',prepared,bot,fail=True))
+        first=json.loads(self.portal_complete(attempt,prepared,bot));self.assertFalse(first['duplicate'])
+        self.assertIn('does not match',self.portal_complete(attempt,prepared,bot,fail=True))
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_portal_verifications'),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_portal_admissions WHERE consumed_at IS NOT NULL'),'1')
+        self.assertTrue(json.loads(self.portal_accept(prepared))['duplicate'])
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_portal_verifications'),'1')
+        self.sql('SELECT * FROM private.acquisition_portal_verifications',user=ADMIN,role='service_role',fail=True)
+
+    def test_portal_verified_acceptance_rejects_context_expiry_and_policy_revision(self):
+        from datetime import datetime, timedelta, timezone
+        self.publication_fixture();self.enable_publication();prepared=self.portal_prepared();attempt,bot=self.portal_ticket(prepared)
+        for patch in ({'hostname':'elsewhere.example.test'},{'submission_id':'fe000000-0000-4000-8000-000000000001'},
+                      {'request_hash':'f'*64},{'verification_id':'fe000000-0000-4000-8000-000000000001'}):
+            self.assertIn('does not match',self.portal_complete(attempt,prepared,bot|patch,fail=True))
+        self.assertIn('Invalid portal verification',self.portal_complete(attempt,prepared,bot|{'action':'login'},fail=True))
+        expired=datetime.now(timezone.utc)-timedelta(seconds=301)
+        self.assertIn('expired',self.portal_complete(attempt,prepared,bot|{'challenged_at':expired.isoformat(),'expires_at':(expired+timedelta(seconds=300)).isoformat()},fail=True))
+        self.assertIn('Invalid portal verification',self.portal_complete(attempt,prepared,bot|{'verified_at':'2026-10-31T12:00:00'},fail=True))
+        self.sql("UPDATE private.acquisition_portal_admission_policy SET approval_ref='changed review'")
+        self.assertIn('does not match',self.portal_complete(attempt,prepared,bot,fail=True))
+        self.assertEqual(self.sql('SELECT count(*) FROM lead_form_submissions WHERE workspace_id IS NOT NULL'),'0')
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_portal_verifications'),'0')
+
+    def test_portal_verified_acceptance_token_cannot_move_to_another_inquiry(self):
+        from uuid import uuid5
+        self.publication_fixture();self.enable_publication();prepared=self.portal_prepared();attempt,bot=self.portal_ticket(prepared)
+        self.portal_complete(attempt,prepared,bot)
+        second=self.portal_prepared('fd000000-0000-4000-8000-000000000002');other,proof=self.portal_ticket(second)
+        proof['token_hash']=bot['token_hash'];proof['verification_id']=str(uuid5(UUID('32c074f8-362c-4d9a-a84c-1851f32e67b4'),f"{second['submission_id']}:{second['request_hash']}:{proof['token_hash']}"))
+        self.assertIn('already belongs',self.portal_complete(other,second,proof,fail=True))
+        self.assertEqual(self.sql("SELECT count(*) FROM leads WHERE source='online_offer_acquisition'"),'1')
+        self.assertEqual(self.sql(f"SELECT (consumed_at IS NULL)::text FROM private.acquisition_portal_admissions WHERE attempt_id='{other}'"),'true')
+
+    def portal_ticket(self, prepared):
+        from uuid import uuid4, uuid5
+        from datetime import datetime, timedelta, timezone
+        attempt=str(uuid4()); key=prepared['form_key']; submission=prepared['submission_id']; digest=prepared['request_hash']
+        query=f"SELECT public.admit_acquisition_portal_request('{attempt}',{literal(key)},'{ 'b'*64 }','submit','{submission}','{digest}')"
+        admitted=json.loads(self.sql(query,user=ADMIN,role='service_role'))
+        self.assertTrue(admitted['admitted'])
+        token_hash=hashlib.sha256(json.dumps(prepared,sort_keys=True).encode()).hexdigest()
+        challenged=self._portal_challenge_time
+        bot=dict(provider='turnstile',action='acquisition_offer',hostname='seller.example.test',submission_id=submission,
+            request_hash=digest,token_hash=token_hash,verification_id=str(uuid5(UUID('32c074f8-362c-4d9a-a84c-1851f32e67b4'),f'{submission}:{digest}:{token_hash}')),
+            challenged_at=challenged.isoformat(),verified_at=datetime.now(timezone.utc).isoformat(),expires_at=(challenged+timedelta(seconds=300)).isoformat())
+        return attempt,bot
+
+    def portal_complete(self, attempt, prepared, bot, **kwargs):
+        return self.sql(f"SELECT public.complete_acquisition_portal_request('{attempt}',{literal(json.dumps(prepared))}::jsonb,{literal(json.dumps(bot))}::jsonb)",
             user=ADMIN,role=kwargs.pop('role','service_role'),**kwargs)
+
+    def portal_accept(self, prepared, **kwargs):
+        if kwargs.get('fail') and self.sql("SELECT enabled FROM private.acquisition_form_publications WHERE form_key='synthetic-offer-form'")=='f':
+            return self.portal_admit(fail=True)
+        attempt,bot=self.portal_ticket(prepared)
+        return self.portal_complete(attempt,prepared,bot,**kwargs)
 
     def test_portal_receipt_atomic_retry_scope_and_legacy_denial(self):
         from concurrent.futures import ThreadPoolExecutor

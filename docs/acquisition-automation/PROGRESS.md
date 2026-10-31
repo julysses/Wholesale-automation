@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Resumed: verified acceptance saved; CI repair required
+
+- Verified local rehearsal completed: 56 migrations, 26 access probes, 82 workflows and 45 PostgREST checks. Saved exact output in evidence/2026-10-31-portal-verified-result.json. Python submission/admission/bot/preparer suite passed 117 tests. Prior process handle 8244 is absent; completed output inspected without restarting it.
+- Migration 56 binds one-use admission and fresh server bot verification to the exact submission; revokes direct application access to the old receipt function, preserves atomic retry and immutable evidence, and expires private operational records. Internal orchestration exposes only a minimal receipt and preserves uncertain exact submissions. Public HTTP receiver and seller UI remain outstanding; nothing activated.
+- Pulled unchanged. Published 09ebd1457a60ba2d2ed69042f4bc75e26915595e / CI 41239853074 finished with five successful jobs and one failed job. The workspace suite ran 217 tests; two historical-upgrade setups failed because migration 54 was applied before deliberately deferred source/intake prerequisites. Other 215 passed. This is a fixture dependency-order defect, not evidence of production failure.
+- Keep admission and verified-acceptance features local. Next: isolate a repair on the published head, preserve populated-upgrade assertions, verify both regression cases and the workspace suite, then push only that repair. Wait for six successful repair checks before publishing retained features. No production migrations, providers, spend, outreach or fulfillment.
+
 ## 2026-10-31 — Durable portal capacity and private operational retention
 
 - Published exact checkpoint 09ebd1457a60ba2d2ed69042f4bc75e26915595e after predecessor 699d633 / CI 41238434660 passed all six jobs. Successor 41239853074 is active: four jobs successful; acquisition workflow and contention running at last observation. Hold this new admission increment until all six successor jobs succeed.

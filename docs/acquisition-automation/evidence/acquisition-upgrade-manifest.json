@@ -221,6 +221,10 @@
     {
       "file": "20261031203609_acquisition_portal_admission.sql",
       "sha256": "d5649de6b29d4ab559e7247bed81d1eac04825b405687cc7199304d0806c9625"
+    },
+    {
+      "file": "20261031204520_acquisition_portal_verified_acceptance.sql",
+      "sha256": "5eb63166c3b3405bfc2241b45c6fe0c4532d6fc4e00760e8e1ed2fc72a9ef4b3"
     }
   ]
 }

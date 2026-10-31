@@ -1,14 +1,14 @@
 # Acquisition automation — current implementation and release handoff
 
-Latest checkpoint: published 09ebd1457a60ba2d2ed69042f4bc75e26915595e after all six repair checks passed. Exact successor CI 41239853074 is active; retain the new admission increment locally until all six succeed.
+Latest checkpoint: published 09ebd1457a60ba2d2ed69042f4bc75e269155e / CI 41239853074 finished with five successful jobs and two historical-upgrade setup failures in the sixth job. Retain features locally pending a fixture repair and six successful checks.
 
 Updated October 31, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 
 ## Latest handoff
 
-Published head 09ebd14 includes legacy safeguards, atomic portal inquiry saving, guided owner review labels and the disabled bot adapter. Its predecessor repair 699d633 / CI 41238434660 passed all six checks. The exact successor 41239853074 remains active.
+Published head 09ebd14 includes legacy safeguards, atomic portal inquiry saving, guided owner review labels and the disabled bot adapter. Its predecessor repair 699d633 / CI 41238434660 passed all six checks. The exact successor 41239853074 failed two historical-upgrade fixture setups; repair publication is next.
 
-The new local admission increment adds disabled rolling-minute limits, private short-lived reservations, policy audit, cleanup and a validated client/network hashing helper. Full rehearsal passed 55 migrations, 26 probes, 78 workflows and 43 gateway checks; a policy-expiry lock-wait test passed separately. Python admission/bot/preparer suite passed 107 tests. Public HTTP orchestration, enforced admission/bot-to-receipt binding, hosted retention/proxy/provider acceptance and the four-step seller UI remain outstanding. No production/channel changes.
+The new local admission increment adds disabled rolling-minute limits, private short-lived reservations, policy audit, cleanup and a validated client/network hashing helper. Full rehearsal passed 55 migrations, 26 probes, 78 workflows and 43 gateway checks; a policy-expiry lock-wait test passed separately. Python admission/bot/preparer suite passed 107 tests. The additional local verified-acceptance increment enforces admission/bot-to-receipt binding and internal orchestration; its full rehearsal passed 56 migrations, 26 probes, 82 workflows, 45 gateway checks and 117 Python tests. Public HTTP transport, hosted retention/proxy/provider acceptance and the four-step seller UI remain outstanding. No production/channel changes.
 
 ## Git and validation
 

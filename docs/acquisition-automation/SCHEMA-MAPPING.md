@@ -262,3 +262,7 @@ Reuse public.lead_form_submissions for exact portal wording/submission evidence,
 ### Portal operational admission (proposed migration 20261031203609)
 
 No existing production equivalent was found in the inspected catalog. Private policy, short-lived admissions and aggregate denial totals support cross-process abuse limits; they do not replace receipts, leads, owners or contact eligibility. Admission identity binds the existing immutable form/workspace/campaign plus purpose/request digest. Policy revisions use the existing audit master with an additional immutability guard and tenant-browser read exclusion for global policy events. Operational digests have five-minute retention with explicit disabled-policy cleanup; live monitored cleanup remains a release requirement.
+
+## Local verified portal acceptance (migration 20261031204520)
+
+Extends private admission records with consumption identity and the policy with exact bot hostname. Adds private short-lived verification bindings; no duplicate CRM entity. Old receipt RPC access is revoked for application roles; service completion requires fresh matching admission, server verification and publication, with atomic receipt creation and audit. Browser/raw service ledger access is denied. Operational cleanup includes expired verification rows; no cleanup schedule or production migration is activated.
