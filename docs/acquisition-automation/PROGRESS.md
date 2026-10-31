@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+
+## 2026-10-31 — Resumed after GPT app update
+
+- User clarified the pause was for the GPT app update, not a revised product plan. Resume the original PRD and guided navy/orange app process.
+- Repair checkout pulled successfully and remains current at `2f2dbe7`. Exact CI `41245920319` has five successful jobs; the database contention/workspace job remains running. Do not restart/cancel it or publish retained features before all six succeed.
+- Reconciled PHASE-1-RELEASE-PACKET.md with the retained implementation, 56-migration manifest file hash and current local acceptance evidence. The older 50-migration candidate is no longer presented as the release candidate. This documentation change does not approve production or hosted/provider activity.
+- Next: verify the exact repair result, merge into the retained branch preserving the migration 54–56 fixture guard, validate any resolution, publish retained work and verify successor CI. Complete the remaining Phase 1 readiness gaps before proposing activation; all later PRD work remains required.
+
 ## 2026-10-31 — Isolated CI repair published; successor checks running
 
 - Full repair workspace suite completed successfully: 217 tests in 1730.570 seconds, process 69164 exited 0. Both originally failing historical-upgrade cases also passed separately. No test restart/cancellation. Published exact log and SHA256 evidence with the repair.
