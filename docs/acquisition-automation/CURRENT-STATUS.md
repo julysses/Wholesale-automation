@@ -4,10 +4,10 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 ## Publication and active process
 
-- Published repair: `2f2dbe788e1f090f5888b80d68c95db1d2ac7167`. Exact successor CI `41245920319` is running. The predecessor `09ebd14` / CI `41239853074` failed two historical-upgrade fixture setups; this repair addresses that dependency order.
+- Published repair: `2f2dbe788e1f090f5888b80d68c95db1d2ac7167`. Exact successor CI `41245920319` completed successfully with all six jobs. The predecessor `09ebd14` / CI `41239853074` failed two historical-upgrade fixture setups; this repair addresses that dependency order.
 - Repair checkout: `/tmp/wholesaleos-portal-ci-repair`, branch `codex/repair-portal-upgrade-fixtures`, based exactly on that published head. The repair defers the dependent portal migration until historical prerequisites exist. Both original cases pass, and all **217 workspace tests passed in 1730.570 seconds**; process 69164 exited 0. Published evidence includes the exact log and SHA256. No local test remains running.
-- Main checkout: `app`, branch `codex/acquisition-foundation`, latest feature checkpoint `af622cc`. Admission, verified acceptance, public receiver and seller UI remain local. Main fixture already includes the equivalent dependency guard for migrations 54–56.
-- Publication order: repair-only push is complete; verify all six exact successor CI 41245920319 jobs succeed. Merge that repair into the retained feature branch, preserving the guard for migrations 54–56, and resolve documentation history carefully. Only then publish retained features and verify their successor CI.
+- Main checkout: `app`, branch `codex/acquisition-foundation`, latest pre-merge checkpoint `0e1c8fe`. Admission, verified acceptance, public receiver and seller UI remain local. Main fixture already includes the equivalent dependency guard for migrations 54–56.
+- Publication order: repair CI passed all six jobs; repair merged locally, preserving the migration 54–56 fixture guard and both documentation histories. Both historical regression cases passed (14.718 seconds); publish retained features and verify their exact successor CI before another feature push.
 - No production migration, deployment, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
 ## Verified local scope
@@ -58,7 +58,7 @@ Amount approval is internal review only. Saving a document or scan observation d
 
 ## Next work in order
 
-1. Complete the exact repair CI and publication sequence above. Do not push retained features while predecessor checks fail or remain live.
+1. Complete the merged-candidate validation and publication sequence above. Do not push retained features while predecessor checks fail or remain live.
 2. Close shared-foundation and Facebook release acceptance gaps against the complete candidate. Prepare a concrete, reviewable migration/provider acceptance packet before requesting any production or live-test authorization. Portal/mail work does not satisfy the Phase 1 gate.
 3. Continue authoritative property/postal verification, suppression/budget/cadence integration, persisted proposed mail batches and vendor reconciliation. PropStream is the existing verification/skip-trace source; no mail vendor is selected. No purchases or provider activation are authorized.
 4. Complete remaining inbound/human-caller/agency, contracts/disposition and underwriting-delivery requirements shown above, preserving one guided app process and sequential activation gates.

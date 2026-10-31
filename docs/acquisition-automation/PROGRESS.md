@@ -1,5 +1,19 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Repair CI passed; retained features merged
+
+- Exact repair `2f2dbe788e1f090f5888b80d68c95db1d2ac7167`, CI `41245920319`, completed successfully with all six jobs. Pulled and merged that repair into the retained feature branch.
+- Resolved the workspace fixture conflict by preserving the existing migration 54–56 guard; no application code changed in the resolution. Preserved both documentation histories and imported the repair evidence. Both focused historical regressions passed in 14.718 seconds; process 91739 exited 0. Evidence: evidence/2026-10-31-merged-fixture-result.json. Staged comparison confirmed no application/test code changes relative to the already-tested retained head. Branch automatic deployment remains disabled. Publish this merged candidate and verify all six successor jobs before another feature push.
+- Production migrations, deployment, providers and outreach remain unapproved.
+
+## 2026-10-31 — Isolated historical-upgrade fixture repair (validation passed)
+
+- Based exactly on published 09ebd1457a60ba2d2ed69042f4bc75e26915595e. CI 41239853074 completed with five successful jobs; the workspace suite failed two of 217 cases during setup.
+- Cause: two populated-upgrade tests intentionally defer source/intake migrations until after inserting historical records. Setup incorrectly applied dependent portal migration 20261031202407 first, failing on missing acquisition_lead_sources or seller_intakes_origin. Defer that dependent migration for those two cases. Their existing historical preservation and backfill assertions are unchanged; normal workspace/workflow tests still apply the portal migration.
+- Both original failures now pass: 2 tests, 15.133 seconds; log /tmp/acquisition-upgrade-fixture-repair-focused.log. Full workspace suite passed all 217 tests in 1730.570 seconds; process 69164 exited 0. Exact log and SHA256 result are saved under evidence/2026-10-31-portal-fixture-repair-*. No test cancelled or restarted.
+- Repair checkout: /tmp/wholesaleos-portal-ci-repair, branch codex/repair-portal-upgrade-fixtures. Publish only this validated repair; admission/verified portal features remain in the original checkout at 54c638f and must wait for all six repair CI jobs to succeed. No production migration, channel activation or outreach.
+
+
 
 ## 2026-10-31 — Resumed after GPT app update
 

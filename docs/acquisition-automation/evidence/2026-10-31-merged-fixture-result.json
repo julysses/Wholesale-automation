@@ -1,0 +1,17 @@
+{
+  "repair_commit": "2f2dbe788e1f090f5888b80d68c95db1d2ac7167",
+  "repair_ci": 41245920319,
+  "repair_ci_six_jobs": "success",
+  "retained_premerge_commit": "0e1c8fe",
+  "application_and_test_code_unchanged_from_retained_head": true,
+  "tests": [
+    "test_source_migration_backfills_without_changing_intakes",
+    "test_inbound_intake_migration_preserves_populated_facebook"
+  ],
+  "result": "passed",
+  "count": 2,
+  "seconds": 14.718,
+  "log_sha256": "b416da3056e38a01a303398ab4b141d01a0bdf67cb89f15133bf4a6d0472fe90",
+  "output": "test_source_migration_backfills_without_changing_intakes (__main__.WorkspaceTests.test_source_migration_backfills_without_changing_intakes) ... ok\ntest_inbound_intake_migration_preserves_populated_facebook (__main__.WorkspaceTests.test_inbound_intake_migration_preserves_populated_facebook) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 14.718s\n\nOK\n",
+  "production_changes": false
+}
