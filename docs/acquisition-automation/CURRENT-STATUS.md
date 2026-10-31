@@ -4,12 +4,12 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 ## Publication and active process
 
-- Published merged candidate: `5ca649c0fbcb4247872767b40f71c6717fc5d20b` on `codex/acquisition-foundation`. Normal push confirmed `2f2dbe7` → `5ca649c`. Exact successor CI `41246949570` completed successfully: https://github.com/julysses/Wholesale-automation/actions/runs/41246949570. All six jobs are now terminal successful; the next candidate can be published after its local acceptance.
-- Predecessor repair `2f2dbe788e1f090f5888b80d68c95db1d2ac7167` / CI `41245920319` completed with all six jobs successful. It corrects historical-upgrade fixture ordering; both originally failing cases also passed after the merge in 14.718 seconds. Evidence: `evidence/2026-10-31-merged-fixture-result.json` and the published full 217-case repair log.
-- The retained disabled admission, verified acceptance, receiver and four-step seller UI are now published in Git. This does not mean deployed or live. The merge preserved the migration 54–56 fixture guard and changed no application/test code relative to the validated retained head. Both documentation histories are retained.
-- No local test or preview process remains running. Branch automatic deployment is disabled in vercel.json. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
+- Published contract draft candidate: `bbcec81ff9c1451f6849885d9348928c641dd22d` on `codex/acquisition-foundation`. Normal push confirmed `5ca649c` → `bbcec81`; checkout was clean. Exact successor CI `41248426556` is in progress: https://github.com/julysses/Wholesale-automation/actions/runs/41248426556. Require all six terminal successes before another feature push.
+- Predecessor `5ca649c` / CI `41246949570` completed successfully with all six jobs. Prior fixture repair `2f2dbe7` / CI `41245920319` also passed all six. No jobs cancelled or restarted.
+- Contract draft schema/API/rules and seller choices are published in Git, not deployed. Latest local evidence and remaining seller-choice/UI boundaries are below. No local test/preview process is active.
+- Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
-## Current local contract candidate
+## Current contract candidate
 
 Contract draft migration/API passed the full rehearsal: 57 migrations, 26 access probes, 88 full-catalog workflows and 53 local gateway checks. Process 98367 exited 0; evidence/2026-10-31-contract-api-gateway-result.json. Actual contract API commit-loss recovery, one version/audit, tenant/anonymous isolation and expired-session rejection passed. Contract API/auth regressions (483) and three observed lock-wait cases passed separately.
 
