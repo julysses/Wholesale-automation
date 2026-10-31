@@ -1,0 +1,1558 @@
+{
+  "grants": [
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "DELETE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRUNCATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "REFERENCES",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRIGGER",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "DELETE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRUNCATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "REFERENCES",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRIGGER",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "DELETE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRUNCATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "REFERENCES",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyer_preferences",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRIGGER",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "DELETE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRUNCATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "REFERENCES",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRIGGER",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "DELETE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRUNCATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "REFERENCES",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRIGGER",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "DELETE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRUNCATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "REFERENCES",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "buyers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRIGGER",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "anon",
+      "grantor": "postgres",
+      "table_name": "deals",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "deals",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "deals",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "deals",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "deals",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "deals",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "DELETE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "deals",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRUNCATE",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "deals",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "REFERENCES",
+      "with_hierarchy": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "grantor": "postgres",
+      "table_name": "deals",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "TRIGGER",
+      "with_hierarchy": "NO"
+    }
+  ],
+  "indexes": [
+    {
+      "indexdef": "CREATE UNIQUE INDEX buyer_preferences_pkey ON public.buyer_preferences USING btree (id)",
+      "indexname": "buyer_preferences_pkey",
+      "tablename": "buyer_preferences",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX buyer_preferences_buyer_id_key ON public.buyer_preferences USING btree (buyer_id)",
+      "indexname": "buyer_preferences_buyer_id_key",
+      "tablename": "buyer_preferences",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX buyers_pkey ON public.buyers USING btree (id)",
+      "indexname": "buyers_pkey",
+      "tablename": "buyers",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX idx_buyers_tier ON public.buyers USING btree (tier)",
+      "indexname": "idx_buyers_tier",
+      "tablename": "buyers",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX idx_buyers_land_type ON public.buyers USING btree (land_buyer_type) WHERE (land_buyer_type IS NOT NULL)",
+      "indexname": "idx_buyers_land_type",
+      "tablename": "buyers",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX idx_buyers_buys_land ON public.buyers USING btree (buys_land) WHERE (buys_land = true)",
+      "indexname": "idx_buyers_buys_land",
+      "tablename": "buyers",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX idx_buyers_import_log_id ON public.buyers USING btree (import_log_id)",
+      "indexname": "idx_buyers_import_log_id",
+      "tablename": "buyers",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX deals_pkey ON public.deals USING btree (id)",
+      "indexname": "deals_pkey",
+      "tablename": "deals",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX idx_deals_stage ON public.deals USING btree (stage)",
+      "indexname": "idx_deals_stage",
+      "tablename": "deals",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX idx_deals_closing_date ON public.deals USING btree (closing_date)",
+      "indexname": "idx_deals_closing_date",
+      "tablename": "deals",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX deals_one_active_lead ON public.deals USING btree (lead_id) WHERE (stage <> ALL (ARRAY['closed'::text, 'cancelled'::text]))",
+      "indexname": "deals_one_active_lead",
+      "tablename": "deals",
+      "schemaname": "public",
+      "tablespace": null
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "buyer_preferences",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_full_access",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "buyer_preferences",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "buyer_transactions",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_full_access",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "buyer_transactions",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "buyers",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_full_access",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "buyers",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "deals",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_full_access",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "deals",
+      "permissive": "RESTRICTIVE",
+      "policyname": "require_approved_operator",
+      "schemaname": "public",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    }
+  ],
+  "triggers": [
+    {
+      "table": "buyers",
+      "definition": "CREATE TRIGGER buyers_updated_at BEFORE UPDATE ON public.buyers FOR EACH ROW EXECUTE FUNCTION update_updated_at()"
+    },
+    {
+      "table": "deals",
+      "definition": "CREATE TRIGGER deals_updated_at BEFORE UPDATE ON public.deals FOR EACH ROW EXECUTE FUNCTION update_updated_at()"
+    },
+    {
+      "table": "buyer_preferences",
+      "definition": "CREATE TRIGGER update_buyer_preferences_updated_at BEFORE UPDATE ON public.buyer_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+    }
+  ],
+  "constraints": [
+    {
+      "name": "deals_created_by_fkey",
+      "table": "deals",
+      "definition": "FOREIGN KEY (created_by) REFERENCES profiles(id)"
+    },
+    {
+      "name": "buyers_pkey",
+      "table": "buyers",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "deals_pkey",
+      "table": "deals",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "deals_lead_id_fkey",
+      "table": "deals",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id)"
+    },
+    {
+      "name": "deals_buyer_id_fkey",
+      "table": "deals",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id)"
+    },
+    {
+      "name": "tasks_deal_id_fkey",
+      "table": "tasks",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "tasks_buyer_id_fkey",
+      "table": "tasks",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "ai_agent_log_deal_id_fkey",
+      "table": "ai_agent_log",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id)"
+    },
+    {
+      "name": "app_notifications_deal_id_fkey",
+      "table": "app_notifications",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "buyer_transactions_buyer_id_fkey",
+      "table": "buyer_transactions",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "buyer_preferences_pkey",
+      "table": "buyer_preferences",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "buyer_preferences_buyer_id_key",
+      "table": "buyer_preferences",
+      "definition": "UNIQUE (buyer_id)"
+    },
+    {
+      "name": "buyer_preferences_buyer_id_fkey",
+      "table": "buyer_preferences",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "deal_matches_deal_id_fkey",
+      "table": "deal_matches",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "deal_matches_buyer_id_fkey",
+      "table": "deal_matches",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "buyer_outreach_log_buyer_id_fkey",
+      "table": "buyer_outreach_log",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "buyer_outreach_log_deal_id_fkey",
+      "table": "buyer_outreach_log",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "buyers_import_log_id_fkey",
+      "table": "buyers",
+      "definition": "FOREIGN KEY (import_log_id) REFERENCES buyer_import_log(id) ON DELETE SET NULL"
+    }
+  ],
+  "inspected_at": "2026-10-31T22:12:59.034553+00:00",
+  "latest_migration": "20261023221455",
+  "columns": [
+    {
+      "relname": "buyer_preferences",
+      "relrowsecurity": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "not_null": true
+        },
+        {
+          "name": "buyer_id",
+          "type": "uuid",
+          "not_null": true
+        },
+        {
+          "name": "min_price",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "max_price",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "preferred_property_types",
+          "type": "text[]",
+          "not_null": false
+        },
+        {
+          "name": "preferred_condition",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "preferred_zips",
+          "type": "text[]",
+          "not_null": false
+        },
+        {
+          "name": "preferred_counties",
+          "type": "text[]",
+          "not_null": false
+        },
+        {
+          "name": "target_roi",
+          "type": "numeric(5,2)",
+          "not_null": false
+        },
+        {
+          "name": "max_days_to_close",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "requires_seller_finance",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "requires_subject_to",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "pays_above_market",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "contact_method",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "preferred_contact_time",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "do_not_contact_before",
+          "type": "time without time zone",
+          "not_null": false
+        },
+        {
+          "name": "do_not_contact_after",
+          "type": "time without time zone",
+          "not_null": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "not_null": false
+        }
+      ]
+    },
+    {
+      "relname": "buyer_transactions",
+      "relrowsecurity": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "not_null": true
+        },
+        {
+          "name": "buyer_id",
+          "type": "uuid",
+          "not_null": true
+        },
+        {
+          "name": "property_address",
+          "type": "text",
+          "not_null": true
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "zip_code",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "county",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "purchase_price",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "purchase_date",
+          "type": "date",
+          "not_null": false
+        },
+        {
+          "name": "cash_transaction",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "lender_name",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "loan_amount",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "property_type",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "sqft",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "bedrooms",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "bathrooms",
+          "type": "numeric(3,1)",
+          "not_null": false
+        },
+        {
+          "name": "year_built",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "resale_date",
+          "type": "date",
+          "not_null": false
+        },
+        {
+          "name": "resale_price",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "flip_detected",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "apn",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "deed_book",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "deed_page",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "grantor",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "grantee",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "raw_data",
+          "type": "jsonb",
+          "not_null": false
+        }
+      ]
+    },
+    {
+      "relname": "buyers",
+      "relrowsecurity": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "not_null": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "not_null": false
+        },
+        {
+          "name": "first_name",
+          "type": "text",
+          "not_null": true
+        },
+        {
+          "name": "last_name",
+          "type": "text",
+          "not_null": true
+        },
+        {
+          "name": "company",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "target_zips",
+          "type": "text[]",
+          "not_null": false
+        },
+        {
+          "name": "min_price",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "max_price",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "property_types",
+          "type": "text[]",
+          "not_null": false
+        },
+        {
+          "name": "min_beds",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "min_baths",
+          "type": "numeric(3,1)",
+          "not_null": false
+        },
+        {
+          "name": "max_repairs",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "strategy",
+          "type": "text[]",
+          "not_null": false
+        },
+        {
+          "name": "close_speed_days",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "tier",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "deals_closed",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "pof_verified",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "pof_amount",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "email_opt_in",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "sms_opt_in",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "last_contact_date",
+          "type": "date",
+          "not_null": false
+        },
+        {
+          "name": "buyer_type",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "land_buyer_type",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "target_acres_min",
+          "type": "numeric(10,4)",
+          "not_null": false
+        },
+        {
+          "name": "target_acres_max",
+          "type": "numeric(10,4)",
+          "not_null": false
+        },
+        {
+          "name": "preferred_zoning",
+          "type": "text[]",
+          "not_null": false
+        },
+        {
+          "name": "buys_land",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "buys_infill",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "entity_name",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "market",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "ibie_score",
+          "type": "numeric(5,2)",
+          "not_null": false
+        },
+        {
+          "name": "ibie_tier",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "buyer_type_ibie",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "ai_classified_at",
+          "type": "timestamp with time zone",
+          "not_null": false
+        },
+        {
+          "name": "tags",
+          "type": "text[]",
+          "not_null": false
+        },
+        {
+          "name": "cash_buyer",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "repeat_buyer",
+          "type": "boolean",
+          "not_null": false
+        },
+        {
+          "name": "total_purchases_12mo",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "properties_owned",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "avg_purchase_price",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "last_purchase_date",
+          "type": "date",
+          "not_null": false
+        },
+        {
+          "name": "lender_used",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "engagement_delta",
+          "type": "numeric(5,2)",
+          "not_null": false
+        },
+        {
+          "name": "outreach_ignore_count",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "last_scored_at",
+          "type": "timestamp with time zone",
+          "not_null": false
+        },
+        {
+          "name": "score_version",
+          "type": "integer",
+          "not_null": false
+        },
+        {
+          "name": "import_log_id",
+          "type": "uuid",
+          "not_null": false
+        }
+      ]
+    },
+    {
+      "relname": "deals",
+      "relrowsecurity": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "not_null": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "not_null": false
+        },
+        {
+          "name": "lead_id",
+          "type": "uuid",
+          "not_null": true
+        },
+        {
+          "name": "deal_name",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "stage",
+          "type": "text",
+          "not_null": true
+        },
+        {
+          "name": "contract_price",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "arv",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "repair_estimate",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "assignment_fee",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "buyer_price",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "earnest_money",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "contract_date",
+          "type": "date",
+          "not_null": false
+        },
+        {
+          "name": "inspection_deadline",
+          "type": "date",
+          "not_null": false
+        },
+        {
+          "name": "closing_date",
+          "type": "date",
+          "not_null": false
+        },
+        {
+          "name": "actual_close_date",
+          "type": "date",
+          "not_null": false
+        },
+        {
+          "name": "seller_name",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "buyer_id",
+          "type": "uuid",
+          "not_null": false
+        },
+        {
+          "name": "title_company",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "title_contact",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "title_phone",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "psa_doc_url",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "assignment_doc_url",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "assigned_to",
+          "type": "uuid",
+          "not_null": false
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "not_null": false
+        },
+        {
+          "name": "creation_manifest",
+          "type": "jsonb",
+          "not_null": false
+        }
+      ]
+    },
+    {
+      "relname": "offer_recommendations",
+      "relrowsecurity": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true
+        },
+        {
+          "name": "lead_id",
+          "type": "uuid",
+          "not_null": false
+        },
+        {
+          "name": "deal_analysis_id",
+          "type": "uuid",
+          "not_null": false
+        },
+        {
+          "name": "qual_result_id",
+          "type": "uuid",
+          "not_null": false
+        },
+        {
+          "name": "opening_offer",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "target_offer",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "ceiling_offer",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "assignment_fee",
+          "type": "numeric(12,2)",
+          "not_null": false
+        },
+        {
+          "name": "pain_points",
+          "type": "text[]",
+          "not_null": false
+        },
+        {
+          "name": "motivation_level",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "primary_exit",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "secondary_exit",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "exit_rationale",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "opening_script",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "closing_notes",
+          "type": "text",
+          "not_null": false
+        },
+        {
+          "name": "objection_handlers",
+          "type": "jsonb",
+          "not_null": false
+        },
+        {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "not_null": false
+        }
+      ]
+    }
+  ],
+  "scope": "Read-only catalog metadata; no business records or secrets",
+  "production_changes": false
+}

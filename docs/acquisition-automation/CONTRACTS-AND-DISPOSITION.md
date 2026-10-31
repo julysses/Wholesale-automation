@@ -27,3 +27,15 @@ Fifty-four local tests cover terminal/exception transitions, review ordering, st
 Continue the current acquisition review page after proposed-amount review: contract documents → title review → choose direct purchase or assignment → closing. Preserve property/seller context and the navy/orange numbered cards. Show missing evidence/deadlines and one next action in plain language. Put document/version details behind supporting detail controls. Saving a review must not appear to sign an agreement, clear title or distribute a package.
 
 No production migrations, signatures, marketing, seller/assignee communication, money movement or closing changes are authorized by this implementation. The original PRD and all sequential channel release gates remain controlling.
+
+## Verified persistence design checkpoint
+
+Fresh metadata is now captured in SCHEMA-MAPPING.md and the October 31 contract catalog/function evidence. The next migration must extend canonical deals, not create an acquisition_contracts parent with a second deal identity.
+
+First persisted slice: a disabled workspace-bound draft contract attached to the existing lead/property/owner and reviewed-offer identity, with immutable version and exact creation receipt. Explicit nullable acquisition fields must leave all legacy rows unchanged. Define composite parent keys so a deal cannot combine workspace, lead, property, seller or offer from different contexts. Draft creation must not imply the internal amount approval authorized a binding offer.
+
+Use existing application identity/session/MFA helpers, owner/admin/operator draft permissions and narrower owner/admin approval permissions. Lock the canonical lead/deal and recheck after contention; reconcile exact request identity before issuing another draft. Preserve one active deal per lead across acquisition and legacy creation. Hold conflicting existing legacy deals for review instead of auto-adopting their claimed contract state. Restrict raw service-role writes on acquisition-bound rows and guard the old/new parent on reassignment.
+
+Store contract terms with their source precision and immutable document evidence. Extend the current timestamp-only pure reviewer before adapting legacy date-only terms; unknown cutoff times must remain unknown. Project acquisition state into legacy stage only through an explicit mapping: review is not buyer marketing, principal closing is not assignment, and disputed is not closed/cancelled. Preserve legacy validators unchanged for unscoped records, and make the acquisition path enforce its own complete rules.
+
+Required first-slice tests: exact create retry/conflicting reuse, two simultaneous drafts for one lead, legacy/acquisition creation contention, mismatched seller/property/offer, current/revoked session and membership, caller/agency denial, direct/legacy service-role write denial, no implicit historical adoption, and unchanged populated legacy deal/task behavior. Follow with evidence registries and transitions, buyer isolation/matching, disclosures/packages and actual app journeys; the draft alone does not close DISP-001–010.

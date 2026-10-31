@@ -86,6 +86,8 @@ def review_contract_transition(snapshot: ContractReviewSnapshot) -> dict:
         if e.kind in BUYER_BOUND and (e.buyer_id != s.buyer_id or e.buyer_id is None
                                       or e.exit_type != s.exit_type):
             continue
+        if e.kind == 'assignment_basis' and e.exit_type != 'wholesale_assignment':
+            continue
         if e.kind in {'structure_approval', 'closing_confirmation'} and (
                 e.exit_type != s.exit_type or e.exit_type is None or e.buyer_id != s.buyer_id):
             continue

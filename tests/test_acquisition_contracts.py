@@ -74,7 +74,7 @@ def test_exception_paths_require_evidence_even_after_deadline(target,kind):
 
 
 def test_disposition_review_precedes_buyer_selection():
-    proofs=[evidence(kind,n) for n,kind in enumerate(['executed_contract','contract_review','title_review','assignment_basis'],10)]
+    proofs=[evidence(kind,n,exit_type='wholesale_assignment' if kind=='assignment_basis' else None) for n,kind in enumerate(['executed_contract','contract_review','title_review','assignment_basis'],10)]
     result=review_contract_transition(snapshot(status='title_review',target_status='disposition_review',
         exit_type='wholesale_assignment',assignment_allowed=True,evidence=proofs))
     assert result['readiness']=='ready_for_review'
@@ -125,3 +125,10 @@ def test_stale_snapshot_and_deadlines_hold_progress(change,reason):
 def test_invalid_assertion_shape_rejected(change):
     with pytest.raises(ValidationError):
         snapshot(**change)
+
+
+def test_principal_review_is_not_assignment_basis():
+    s=assignment()
+    proofs=tuple(e.model_copy(update={'exit_type':'principal_acquisition'}) if e.kind=='assignment_basis' else e for e in s.evidence)
+    result=review_contract_transition(s.model_copy(update={'evidence':proofs}))
+    assert 'EVIDENCE_REQUIRED:assignment_basis' in result['reason_codes']

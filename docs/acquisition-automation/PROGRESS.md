@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract catalog and compatibility design verified
+
+- Read live metadata only: production ledger 20261023221455, existing deals/buyers/preferences/transactions columns, constraints/dependencies/indexes/RLS/grants/triggers and four legacy pipeline functions. Saved exact metadata/function evidence; no business records, secrets or production changes.
+- Confirmed canonical deals already supplies the contract/disposition parent. Identified principal-close validation conflict, date-only deadline precision, active-lead terminal-state projection and buyer-dependent tenant isolation requirements. Updated SCHEMA-MAPPING.md and CONTRACTS-AND-DISPOSITION.md with the concrete next persisted slice and compatibility tests. No contract migration created yet.
+- Tightened pure review so a principal-acquisition review cannot serve as assignment-basis evidence. All 55 focused tests passed in 0.35 seconds; process 92065 exited 0. No execution authority added.
+- Exact successor CI 41246949570 remains the publication gate. Do not restart/cancel jobs or push this increment before all six succeed. Retention/hosted Phase 1 acceptance and all original PRD work remain required.
+
+
 ## 2026-10-31 — Contract lifecycle review foundation (local)
 
 - Pulled unchanged. Exact published candidate 5ca649c / CI 41246949570 remains active; no next feature push until all six terminal successes.
