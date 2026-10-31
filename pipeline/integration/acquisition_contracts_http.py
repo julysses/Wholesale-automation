@@ -47,6 +47,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
         'p_review_notes':{key:'Synthetic unresolved review, not verified facts' for key in ('title','liens','occupancy','valuation','repairs','financing','downside')}})
 
     drop_reply=[True];commits=[]
+    document_drops={'rpc/register_contract_document':True,'rpc/revoke_contract_document':True}
     class Store(AcquisitionStore):
         async def request(self,method,path,**kwargs):
             result=await super().request(method,path,**kwargs)
@@ -55,6 +56,9 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
                 if drop_reply[0]:
                     drop_reply[0]=False
                     raise HTTPException(503,'Synthetic response lost after commit')
+            if document_drops.get(path):
+                document_drops[path]=False
+                raise HTTPException(503,'Synthetic document response lost after commit')
             return result
 
     def gateway(req):
@@ -143,7 +147,44 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
         raise AssertionError('Contract document revocation missing from state')
     if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_document' AND entity_id=%s",[document])!=[{'n':2}]:
         raise AssertionError('Contract document retry duplicated audit')
+    api_document='ad900000-0000-4000-8000-000000000004'
+    api_revocation='ad900000-0000-4000-8000-000000000005'
+    api_path=f'/api/acquisition/workspaces/{workspace}/contracts/{draft}/versions/1/documents'
+    api_body={'id':api_document,'purpose':'purchase_contract','expected_sha256':'b'*64,'expected_byte_size':123,
+        'media_type':'application/pdf','retention_policy_id':policy,'provenance_note':'Synthetic document metadata API provenance.'}
+    with TestClient(app) as client:
+        if client.post(api_path,json=api_body,headers=headers).status_code!=503:
+            raise AssertionError('Document registration commit loss was not preserved')
+        retry=client.post(api_path,json=api_body,headers=headers)
+        if retry.status_code!=200 or not retry.json()['duplicate'] or retry.json()['execution_authorized']:
+            raise AssertionError('Document API exact registration recovery failed')
+        if client.post(api_path,json=api_body|{'expected_byte_size':124},headers=headers).status_code!=409:
+            raise AssertionError('Document API conflicting request accepted')
+        state=client.get(api_path+'/'+api_document,headers=headers)
+        if state.status_code!=200 or state.json()['status']!='pending_verification' or state.json()['legal_review_approved']:
+            raise AssertionError('Document API state or approval boundary failed')
+        if state.headers.get('cache-control')!='no-store':raise AssertionError('Document API state cacheable')
+        for identity in ({'Authorization':'Bearer '+token(other)},{}):
+            if client.get(api_path+'/'+api_document,headers=identity).status_code not in (401,403):
+                raise AssertionError('Document API tenant/anonymous read accepted')
+        if client.get(api_path.replace('/versions/1/','/versions/2/')+'/'+api_document,headers=headers).status_code!=403:
+            raise AssertionError('Document API wrong version accepted')
+        revoke_body={'id':api_revocation,'reason':'Synthetic document withdrawn through actual API.'}
+        revoke_path=api_path+'/'+api_document+'/revocations'
+        if client.post(revoke_path,json=revoke_body,headers=headers).status_code!=503:
+            raise AssertionError('Document revocation commit loss was not preserved')
+        recovered=client.post(revoke_path,json=revoke_body,headers=headers)
+        if recovered.status_code!=200 or not recovered.json()['duplicate']:
+            raise AssertionError('Document API revocation recovery failed')
+        if client.get(api_path+'/'+api_document,headers=headers).json()['status']!='revoked':
+            raise AssertionError('Document API lost revoked state')
+        if client.post(api_path+'/'+api_document+'/bytes',headers=headers,content=b'not accepted').status_code not in (404,405):
+            raise AssertionError('Contract document upload unexpectedly enabled')
+    if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_document' AND entity_id=%s",[api_document])!=[{'n':2}]:
+        raise AssertionError('Document API recovery duplicated immutable audits')
     return ['contract API actual commit loss and exact recovery','contract API canonical draft and immutable audit',
             'contract API real tenant and anonymous isolation','contract API expired session denied','contract seller actual canonical join and property isolation',
             'contract document real registration exact retry','contract document target session and tenant isolation',
-            'contract document revocation exact retry','contract document immutable audit convergence']
+            'contract document revocation exact retry','contract document immutable audit convergence',
+            'contract document API committed registration recovery','contract document API committed revocation recovery',
+            'contract document API fresh state and scope isolation','contract document API immutable audit and upload hold']

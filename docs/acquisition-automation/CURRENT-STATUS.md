@@ -4,7 +4,7 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 ## Publication and active process
 
-- Published candidate: `c935460b8b05c12b5247382012a463ddc4ffa3c8` on `codex/acquisition-foundation`. Normal push confirmed `bbcec81` → `c935460`; checkout was clean. Exact successor CI `41249648671` is running: https://github.com/julysses/Wholesale-automation/actions/runs/41249648671. Require all six terminal successes before the next feature push. Predecessor `bbcec81` / CI `41248426556` passed all six.
+- Published candidate: `c935460b8b05c12b5247382012a463ddc4ffa3c8` on `codex/acquisition-foundation`. Normal push confirmed `bbcec81` → `c935460`; checkout was clean. Exact successor CI `41249648671` passed all six jobs: https://github.com/julysses/Wholesale-automation/actions/runs/41249648671. The predecessor publication gate is clear; the next candidate requires its own successor CI. Predecessor `bbcec81` / CI `41248426556` passed all six.
 - Predecessor `5ca649c` / CI `41246949570` completed successfully with all six jobs. Prior fixture repair `2f2dbe7` / CI `41245920319` also passed all six. No jobs cancelled or restarted.
 - Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is published in Git; synthetic desktop/mobile browser QA passed. Shared evidence regression rehearsal 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 gateway checks. No local test or preview process is active.
 - Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
@@ -19,15 +19,19 @@ Added bounded seller-choice API scoped to workspace/lead/property, showing repor
 
 Internal contract document descriptors now bind workspace, canonical contract ID/version and purpose. They share the existing bounded private byte-verification transport without changing mail scope or returning execution/legal approval. Focused mail/contract byte/scan/upload tests passed 222; additional evidence API/admission/attestation/journal/persistence and contract regressions passed 344. Actual shared-path gateway rehearsal 80922 exited 0; evidence/2026-10-31-shared-evidence-gateway-result.json contains the exact successful result. The next local registry candidate is described below; document uploads/review endpoints and legal transitions remain incomplete. See CONTRACT-DOCUMENT-PERSISTENCE.md for the exact dependency and acceptance map.
 
-## New local registry candidate (not pushed)
+## Contract document registry/API candidate
 
-CLI-created migration 20261031224723 extends the existing evidence registry with mutually exclusive campaign/contract-version targets and authenticated registration/revocation/state RPCs. Existing mail records and private Storage controls are preserved. Contract uploads remain denied. Eight focused SQL cases passed, including populated mail preservation and observed wait-time authority changes. Full candidate rehearsal: 58 migrations, 26 access probes, 95 workflows, 58 actual local gateway checks; evidence/2026-10-31-contract-registry-gateway-result.json. Typed current-registry-before/after byte verification passed synthetic-stream regressions (582 related tests), with a separate store-forwarding check. Hosted and combined real Storage verification remain unproven. No local process remains active. Hold publication until c935460 / CI 41249648671 has all six terminal successes.
+CLI-created migration 20261031224723 extends the existing evidence registry with mutually exclusive campaign/contract-version targets and authenticated registration/revocation/state RPCs. Existing mail records and private Storage controls are preserved. Contract uploads remain denied. Eight focused SQL cases passed, including populated mail preservation and observed wait-time authority changes. Full candidate rehearsal: 58 migrations, 26 access probes, 95 workflows, 58 actual local gateway checks; evidence/2026-10-31-contract-registry-gateway-result.json. Typed current-registry-before/after byte verification passed synthetic-stream regressions (582 related tests), with a separate store-forwarding check. Hosted and combined real Storage verification remain unproven. No local process remains active. c935460 / CI 41249648671 has all six terminal successes. The next candidate may be published after its local acceptance.
+
+## Metadata API acceptance
+
+Mounted `/contracts/{contract_id}/versions/{contract_version}/documents` routes register metadata, read current unavailable/held states and revoke records through the existing user-JWT store. Exact path scope, strict unconfirmed receipts and current timestamps are checked; stale/wrong-version replies and claimed approval are rejected. There are no document upload/download/signing/approval routes. 259 focused tests and 681 broader API/auth/evidence regressions passed. Actual mounted API-to-PostgREST registration/revocation lost-response recovery, immutable audits and scope denial passed in process 51089: 58 migrations, 26 access probes, 95 workflows, 62 gateway checks. Evidence: evidence/2026-10-31-contract-document-api-gateway-result.json. All local processes are terminal; no production/hosted acceptance is implied.
 
 ## Verified local scope
 
 | Evidence | Latest verified result | Boundary |
 | --- | --- | --- |
-| Full schema and application rehearsal | 58 additive candidate migrations; 26 access probes; 95 application workflows; 58 real local PostgREST checks | Synthetic records and bot responses; no hosted Auth/provider acceptance |
+| Full schema and application rehearsal | 58 additive candidate migrations; 26 access probes; 95 application workflows; 62 real local PostgREST checks | Synthetic records and bot responses; no hosted Auth/provider acceptance |
 | Historical compatibility | 24 historical records preserved across 22 populated tables; 103 historical definitions checked | Disposable production-derived catalog, not a production migration |
 | Portal/backend regression | 220 portal, authentication and webhook tests passed | Targeted suite; not a newly run whole-backend suite |
 | New seller interface | 14 contract/component/journey tests passed; typecheck/build passed | Fake verification widget in tests |

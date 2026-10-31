@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Version-scoped document metadata API passed
+
+- Previous goal turn was progress: b496d0f committed the tested additive registry. Pulled unchanged. Exact predecessor c935460 / CI 41249648671 now completed all six jobs successfully; no cancellation/restart. Publication gate is clear for this accepted candidate.
+- Added mounted authenticated contract/version document metadata routes for registration, current state and revocation. Reused current user-JWT store and existing bounded evidence schemas; separated unavailable display states from pending-only byte-verification state. Strict path scope, freshness, receipt identity and no authority assertions; no upload/download/sign/approval endpoint.
+- Process 50975 passed 259 focused tests. Broader process 29375 passed 681 API/auth/evidence tests in 16.11 seconds. Actual gateway process 51089 exited 0: 58 migrations, 26 access probes, 95 workflows, 62 checks. Registration/revocation committed then lost replies recovered the same record and exactly two audit events; wrong-version, foreign and anonymous access failed; uploads remained unavailable. Exact result/hash: evidence/2026-10-31-contract-document-api-gateway-result.json.
+- All local processes are terminal. Publish registry/API candidate then record exact successor CI, retaining all-six gate. Next: aggregate workspace upload admission for contract documents, guarded upload/reconciliation, signed scan and review bindings, immutable terms/transitions and guided document UI. No production migration, deployment, provider activation, spend, outreach, fulfillment or binding action occurred.
+
 ## 2026-10-31 — Contract document registry and current-state verification candidate
 
 - Previous goal turn was progress: c935460 was pushed after its predecessor passed all six. Pulled unchanged; its exact CI 41249648671 is still running (four successful jobs; two active at last observation). Do not push this next candidate until all six succeed.
