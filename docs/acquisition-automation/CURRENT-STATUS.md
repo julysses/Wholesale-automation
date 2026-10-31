@@ -2,7 +2,15 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
-## Publication and active process
+## Resumed checkpoint — contract observations and CI repair
+
+Published isolated CI repair `e687fd6b841c3a57abccfe50d2b9497fff562240` to `codex/acquisition-foundation`. It includes deterministic clock tests and bounded PostgreSQL package setup using the Ubuntu HTTPS archive. Predecessor 41252309134 is terminal: four successes, backend timing failure, PostgreSQL setup timeout. No manual cancellation/restart. Successor [41254289589](https://github.com/julysses/Wholesale-automation/actions/runs/41254289589) is pending; require all six terminal successes before publishing retained features. Main and remote intentionally diverged to isolate the repair; merge the repair after committing the local candidate, without rewriting history.
+
+Candidate migration 62 now persists contract-specific signed observations in the shared evidence ledger. Separately reviewed key purposes are required; existing mail keys receive no automatic authority. Exact retries preserve one immutable observation/audit, role/session/key scope are rechecked after lock waits, and detected matching bytes hold mail aliases too. Seven focused SQL cases passed. Full disposable rehearsal passed **62 migrations, 26 access probes, 119 application workflows and 69 real local gateway checks**, preserving 24 historical rows in 22 tables and checking 103 historical definitions. Evidence: `evidence/2026-10-31-contract-observation-gateway-result.json`. The completed result log was recovered; its process handle is no longer available. No production acceptance is implied.
+
+Next implementation: typed contract observation transport and durable exact-request journal/recovery, current scan state and human review bindings, then terms/transitions and disposition. The UI remains one numbered acquisition journey with retained seller/property/contract context; uploaded or scanned files do not imply review, signing or transaction approval. Production migrations, provider activation, paid activity and paused SMS remain unchanged.
+
+## Earlier publication checkpoint (superseded by resumed checkpoint)
 
 - Published candidate: `ecca0f47b1df00f5215ab2062051307f37c52c6f` on `codex/acquisition-foundation`. Normal push confirmed `173684f` → `ecca0f4`; checkout was clean. Exact successor CI `41252309134` has four successful jobs, one backend failure, and the PostgreSQL contention job still running: https://github.com/julysses/Wholesale-automation/actions/runs/41252309134. Require all six terminal successes before another feature push. Predecessor 173684f / CI 41250516262 attempt 2 completed all six successfully after one runtime-install timeout. No live job was restarted.
 - Predecessor `5ca649c` / CI `41246949570` completed successfully with all six jobs. Prior fixture repair `2f2dbe7` / CI `41245920319` also passed all six. No jobs cancelled or restarted.

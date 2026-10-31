@@ -119,3 +119,10 @@ The future database migration must independently verify this domain and exact or
 200 combined contract/mail scan, signing and byte-verification tests passed, including actual internal scan output -> contract signature, context changes, missing/foreign fields, stale or approving observations, expired/mismatched keys and mail-key rejection. Keys and daemon responses are synthetic. No production credentials, scanner, migration or policy were activated.
 
 Read-only hosted metadata was refreshed after the signing checkpoint: migration ledger remains 20261023221455; shared artifact/verification and contract-version candidate tables remain absent. Evidence: evidence/2026-10-31-contract-attestation-catalog.json. Inspect local predecessor definitions, constraints, indexes, RLS and latest function overrides before creating the additive persistence migration. No hosted SQL mutation was performed.
+
+
+## Candidate database persistence implemented (migration 62)
+
+The database requirements above are now implemented by `20261031234409_acquisition_contract_observations.sql`, with separately reviewed private contract-purpose key scopes and an extension to the shared immutable observation ledger. Actual Python signatures were accepted by local PostgREST; exact concurrent retries converge, cross-tenant/version/session writes fail, and matching-byte detections block mail aliases. Seven focused SQL cases and the 62-migration rehearsal (119 workflows, 69 gateway checks) passed. This supersedes the earlier statement that no candidate persistence RPC exists.
+
+Typed application transport, durable journal dispatch/recovery and current review bindings remain unimplemented. No public scan endpoint, signing key provisioning, scanner activation, hosted migration or legal approval is supplied. Preserve exact request bytes on uncertain writes and retain observations/audits when compensating by revoking reviewed key scopes.

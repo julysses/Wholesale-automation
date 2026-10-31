@@ -153,6 +153,38 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
         if status not in (401,403):raise AssertionError('Contract admission target/session bypass accepted')
     status,rows=request('/acquisition_evidence_artifacts?select=id&contract_id=eq.'+draft,token(other))
     if status!=200 or rows!=[]:raise AssertionError('Contract evidence RLS leaked')
+    from datetime import datetime, timedelta, timezone
+    from uuid import UUID
+    from tools.acquisition_contract_attestation import ContractVerificationSigningKey, build_contract_scan_attestation
+    signing_key='ae900000-0000-4000-8000-000000000001'
+    observation_id='ae900000-0000-4000-8000-000000000002'
+    scanner_version='ClamAV 1.4.3/12345/Thu Oct 29 00:00:00 2026'
+    db.query("INSERT INTO private.acquisition_evidence_verification_keys(id,workspace_id,secret,scanner_version,scan_policy_version,valid_from,valid_until,reviewed_by,approval_ref) VALUES(%s,%s,decode(repeat('ab',32),'hex'),%s,'synthetic-v1',clock_timestamp()-interval '1 hour',clock_timestamp()+interval '1 hour',%s,%s)",[signing_key,workspace,scanner_version,admin,observation_id])
+    state=rpc('contract_document_state',state_body)
+    now=datetime.now(timezone.utc)
+    key=ContractVerificationSigningKey(UUID(signing_key),UUID(workspace),bytes.fromhex('ab'*32),frozenset({'purchase_contract'}),scanner_version,'synthetic-v1',now-timedelta(hours=1),now+timedelta(hours=1))
+    observed={k:state[k] for k in ('workspace_id','contract_id','contract_version','artifact_id','purpose','media_type','retain_until','retention_policy_id','checked_at')}
+    observed.update(status='scan_observed',sha256=state['expected_sha256'],byte_size=state['expected_byte_size'],scan_checked_at=state['checked_at'],registry_checked_at=state['checked_at'],
+        scanner='clamav-instream-v1',scanner_version=scanner_version,scan_policy_version='synthetic-v1',scan_status='no_detection',
+        verifier_version='acquisition-contract-document-bytes-v1',registry_verifier_version='acquisition-contract-document-registry-v1',
+        verification_persisted=False,scan_persisted=False,preview_authorized=False,legal_review_approved=False,execution_authorized=False)
+    signed=build_contract_scan_attestation(observed,request_id=UUID(observation_id),actor_id=UUID(admin),session_id=UUID(admin),key=key,clock=lambda:now)
+    status,_=request('/rpc/record_contract_document_verification',token(),signed)
+    if status!=403:raise AssertionError('Unreviewed contract key scope was accepted')
+    db.query("INSERT INTO private.acquisition_contract_verification_key_scopes(workspace_id,key_id,purpose,reviewed_by,approval_ref,valid_from,valid_until) VALUES(%s,%s,'purchase_contract',%s,%s,clock_timestamp()-interval '1 hour',clock_timestamp()+interval '1 hour')",[workspace,signing_key,admin,observation_id])
+    first_scan=rpc('record_contract_document_verification',signed)
+    recovered_scan=rpc('record_contract_document_verification',signed)
+    if first_scan['duplicate'] or not recovered_scan['duplicate'] or recovered_scan['contract_id']!=draft or recovered_scan['contract_version']!=1:
+        raise AssertionError('Contract observation exact recovery or target failed')
+    if any(recovered_scan[k] for k in ('preview_authorized','legal_review_approved','execution_authorized')):
+        raise AssertionError('Persisted scan implied approval')
+    for jwt,body in [(token(other),signed),(token(),signed|{'p_version':2}),(None,signed)]:
+        status,_=request('/rpc/record_contract_document_verification',jwt,body)
+        if status not in (401,403):raise AssertionError('Contract observation scope/session bypass accepted')
+    status,rows=request('/acquisition_evidence_verifications?select=id&contract_id=eq.'+draft,token(other))
+    if status!=200 or rows!=[]:raise AssertionError('Contract observation RLS leaked')
+    if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_evidence_verification' AND entity_id=%s",[observation_id])!=[{'n':1}]:
+        raise AssertionError('Contract observation retry duplicated audit')
     revoke=state_body|{'p_id':revocation,'p_reason':'Synthetic document withdrawn from current review.'}
     if rpc('revoke_contract_document',revoke)['duplicate'] or not rpc('revoke_contract_document',revoke)['duplicate']:
         raise AssertionError('Contract document revocation recovery failed')
@@ -217,4 +249,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract document API committed registration recovery','contract document API committed revocation recovery',
             'contract document API fresh state and scope isolation','contract document API immutable audit and upload hold',
             'contract upload admission binding and shared actor cap','contract upload admission scope and session isolation',
-            'contract document discovery real policy pagination and retained state','contract document discovery API tenant and version isolation']
+            'contract document discovery real policy pagination and retained state','contract document discovery API tenant and version isolation',
+            'contract observation real signature and separately reviewed key scope','contract observation exact retry and immutable audit',
+            'contract observation real tenant session and version isolation']
