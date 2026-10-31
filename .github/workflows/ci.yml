@@ -194,6 +194,10 @@ jobs:
         run: |
           set -o pipefail
           python scripts/run_offline_tests.py --acquisition-postgrest 2>&1 | tee acquisition-full-upgrade.log
+      - name: Contract draft lock-wait authorization
+        env:
+          PG_BIN: /usr/lib/postgresql/17/bin
+        run: python scripts/acquisition_contract_contention_tests.py
       - name: Retain synthetic rehearsal diagnostics
         if: always()
         uses: actions/upload-artifact@v4

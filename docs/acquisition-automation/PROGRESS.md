@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract draft API and lock-wait checks
+
+- Added and mounted authenticated draft-save/list endpoints on the acquisition router, using the existing user-JWT store and activation gate. Request accepts identities/expected amount-review sequence/name only. Exact minimal receipts reject mismatches, extra fields or execution claims; uncertain saves retain original-request recovery. List uses workspace/lead filters, bounded cursor pagination and strict returned-row validation. No provider or signing path.
+- 483 combined API/auth/contract regressions passed in 24.24 seconds (65483 exited 0); 90 mounted-router/rules tests passed after mounting verification in 3.51 seconds (76130 exited 0). Three observed database lock-wait tests passed in 25.478 seconds (86515 exited 0): session expiry, approval revocation and membership revocation each prevented a waiting draft write. Added that contention suite to the existing full-upgrade CI job.
+- First full rehearsal 8324 exited 1 at a synthetic historical-deal setup: the test inserted its historical row after workspace binding, and the new scoped-write guard correctly rejected it. Corrected fixtures to seed through the actual legacy write role before binding; no guard weakened. Corrected full rehearsal is running as process 57913, log /tmp/acquisition-contract-drafts-full-v2.log. Do not restart until terminal.
+- Exact published predecessor CI 41246949570 still has five successes and one live database contention job. Hold publication until that job and the corrected local rehearsal succeed. Contract UI, actual gateway/API persistence acceptance, document evidence and later transitions remain open alongside the original PRD.
+
+
 ## 2026-10-31 — Persisted contract draft candidate under full rehearsal
 
 - Pulled unchanged; CLI created migration 20261031221633_acquisition_contract_drafts.sql locally. Extends canonical deals with workspace/property/seller/offer references and draft status/version; adds immutable version receipts and audit. No parallel deal/property/buyer parent, signatures, dates inferred, tasks sent or binding approval.

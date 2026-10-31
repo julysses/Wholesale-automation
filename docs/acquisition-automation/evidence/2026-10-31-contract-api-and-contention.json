@@ -1,0 +1,18 @@
+{
+  "production_changes": false,
+  "scope": "Local API fixtures and disposable lock-wait database tests, not hosted Auth or real gateway acceptance",
+  "results": {
+    "contention": {
+      "output": "test_contract_wait_session_expiration (__main__.ContractContentionTests.test_contract_wait_session_expiration) ... ok\ntest_contract_wait_approval_revocation (__main__.ContractContentionTests.test_contract_wait_approval_revocation) ... ok\ntest_contract_wait_membership_revocation (__main__.ContractContentionTests.test_contract_wait_membership_revocation) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 25.478s\n\nOK\n",
+      "sha256": "e9f0951bf49654afed055f504a4aec906448cf749f5355cf1ede39ecbebf05fc"
+    },
+    "regression": {
+      "output": "........................................................................ [ 14%]\n........................................................................ [ 29%]\n........................................................................ [ 44%]\n........................................................................ [ 59%]\n........................................................................ [ 74%]\n........................................................................ [ 89%]\n...................................................                      [100%]\n483 passed in 24.24s\n",
+      "sha256": "ffce2fe50f4977aa45c22f65712f492e76000734369a12e3e2ffdc87c5deaff8"
+    },
+    "mounted_api": {
+      "output": "........................................................................ [ 80%]\n..................                                                       [100%]\n90 passed in 3.51s\n",
+      "sha256": "223322cc750dd970bcd8428efbff50db557ffaaa614c78ffcb921f13a6cf6e8d"
+    }
+  }
+}

@@ -26,6 +26,10 @@ class FullCatalogWorkflowTests(WorkflowTests):
 
 
 class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
+    def prepare_database(self):
+        super().prepare_database()
+        self.seed_historical_contract()
+
     def setUp(self):
         super().setUp()
         self.prepare_contract_fixture()

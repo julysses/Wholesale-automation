@@ -11,7 +11,7 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 ## New local candidate awaiting acceptance
 
-Migration 57 adds controlled contract drafts on canonical deals. Six focused database cases passed; full rehearsal process 8324 is running at /tmp/acquisition-contract-drafts-full.log. API/screens and later contract transitions remain incomplete. The verified results below still describe the prior 56-migration candidate.
+Migration 57 adds controlled contract drafts on canonical deals. Six focused database cases passed; corrected full rehearsal process 57913 is running at /tmp/acquisition-contract-drafts-full-v2.log (8324 failed a historical fixture setup; guard preserved). Authenticated API save/list and 483 regression checks plus three lock-wait cases pass locally; actual gateway acceptance, screens and later transitions remain incomplete. The verified results below still describe the prior 56-migration candidate.
 
 ## Verified local scope
 

@@ -12,6 +12,12 @@ RELATION='70000000-0000-4000-8000-000000000001'
 
 
 class ContractDraftCases:
+    def seed_historical_contract(self):
+        if self._testMethodName=='test_contract_draft_does_not_adopt_historical_deal':
+            # Seed the legacy record before workspace binding, through its actual
+            # existing write role. Do not bypass the new scoped-write guard.
+            self.sql(f"INSERT INTO public.deals(id,lead_id,stage,deal_name) VALUES('{SECOND}','{LEAD}','offer_made','Historical')",user=ADMIN,role='service_role')
+
     def prepare_contract_fixture(self):
         self.ready_offer(); self.propose_offer(); self.review_offer()
         self.sql(f"UPDATE public.leads SET owner_first_name='Synthetic',owner_last_name='Seller' WHERE id='{LEAD}';")
@@ -75,8 +81,6 @@ class ContractDraftCases:
         self.assertEqual(self.sql(f"SELECT workspace_id IS NULL FROM public.deals WHERE id='{SECOND}'"),'t')
 
     def test_contract_draft_does_not_adopt_historical_deal(self):
-        # Privileged synthetic seed represents an already-existing historical deal.
-        self.sql(f"INSERT INTO public.deals(id,lead_id,stage,deal_name) VALUES('{SECOND}','{LEAD}','offer_made','Historical')")
         self.draft(fail=True)
         self.assertEqual(self.sql(f"SELECT workspace_id IS NULL AND deal_name='Historical' FROM public.deals WHERE id='{SECOND}'"),'t')
         self.assertEqual(self.sql('SELECT count(*) FROM public.acquisition_contract_versions'),'0')
@@ -87,6 +91,7 @@ class ContractDraftTests(ContractDraftCases, WorkspaceTests):
         super().setUp()
         self.sql("CREATE UNIQUE INDEX IF NOT EXISTS deals_one_active_lead ON public.deals(lead_id) WHERE stage NOT IN ('closed','cancelled'); GRANT ALL ON public.deals TO service_role;")
         self.sql(MIGRATION.read_text())
+        self.seed_historical_contract()
         self.prepare_contract_fixture()
 
 
