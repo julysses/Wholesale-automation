@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Shared contract upload admission passed local acceptance
+
+- Resumed after the GPT app update; pulled unchanged. Predecessor published 173684f / CI 41250516262 remains active (four successes at latest observation). No next feature push until all six finish successfully.
+- Reinspected live ledger 20261023221455; candidate slots/contract versions remain absent. Filled CLI-created migration 20261031225950. Existing private slots now support exclusive contract/version targets with composite artifact FK; unchanged shared workspace/actor limits, fresh attempts and post-wait authority checks. Mail reuse clears contract columns and contract reuse clears campaign. Contract Storage uploads remain denied.
+- Initial isolated invocation exited before startup because local shared-memory permissions were unavailable; authorized retry ran normally. First focused run: 12/13 passed; the fixture incorrectly attempted to mutate immutable draft status/version. Corrected it to verify rejection. Final focused process 25764: 13 passed in 57.341 seconds, including populated upload-slot preservation. Full process 5656: exit 0, 59 migrations / 26 access probes / 100 workflows / 64 real gateway checks. Evidence: evidence/2026-10-31-contract-upload-gateway-result.json. All local processes terminal.
+- Next: typed contract admission and shared process upload limits, Storage authority dispatch, complete bounded upload/reconciliation, scan and review bindings, terms/transitions and guided document interface. No production migration, deployment, activation, spend, outreach, fulfillment or signing.
+
+
 ## 2026-10-31 — Contract registry/API candidate published
 
 - Normal push confirmed c935460 → 173684f746568d5d96e26020ce78e79efd04fb85 after all six predecessor jobs passed. Exact successor CI 41250516262 is queued for this SHA: https://github.com/julysses/Wholesale-automation/actions/runs/41250516262. No next feature push until all six succeed; do not restart live jobs.

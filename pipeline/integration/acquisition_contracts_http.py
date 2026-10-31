@@ -138,6 +138,19 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
     state_body=scope|{'p_contract':draft,'p_version':1,'p_artifact':document}
     if rpc('contract_document_state',state_body)['status']!='pending_verification':
         raise AssertionError('Contract document metadata implies verification')
+    admission=state_body|{'p_attempt':'ad900000-0000-4000-8000-000000000010','p_purpose':'purchase_contract'}
+    # Other gateway probes may have reserved mail capacity; use expired reservations,
+    # not a second quota or deletion, to exercise the shared contract RPC.
+    db.query("UPDATE private.acquisition_evidence_upload_slots SET started_at=started_at-interval '121 seconds',expires_at=expires_at-interval '121 seconds'")
+    admitted=rpc('admit_contract_document_upload',admission)
+    if not admitted['admitted'] or admitted['contract_id']!=draft or admitted['contract_version']!=1 or admitted['execution_authorized']:
+        raise AssertionError('Contract admission binding or authority failed')
+    throttled=rpc('admit_contract_document_upload',admission|{'p_attempt':'ad900000-0000-4000-8000-000000000011'})
+    if throttled['admitted'] or not 1<=throttled['retry_after_seconds']<=120:
+        raise AssertionError('Contract actor admission cap bypassed')
+    for jwt,body in [(token(other),admission),(token(),admission|{'p_version':2}),(None,admission)]:
+        status,_=request('/rpc/admit_contract_document_upload',jwt,body)
+        if status not in (401,403):raise AssertionError('Contract admission target/session bypass accepted')
     status,rows=request('/acquisition_evidence_artifacts?select=id&contract_id=eq.'+draft,token(other))
     if status!=200 or rows!=[]:raise AssertionError('Contract evidence RLS leaked')
     revoke=state_body|{'p_id':revocation,'p_reason':'Synthetic document withdrawn from current review.'}
@@ -187,4 +200,5 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract document real registration exact retry','contract document target session and tenant isolation',
             'contract document revocation exact retry','contract document immutable audit convergence',
             'contract document API committed registration recovery','contract document API committed revocation recovery',
-            'contract document API fresh state and scope isolation','contract document API immutable audit and upload hold']
+            'contract document API fresh state and scope isolation','contract document API immutable audit and upload hold',
+            'contract upload admission binding and shared actor cap','contract upload admission scope and session isolation']

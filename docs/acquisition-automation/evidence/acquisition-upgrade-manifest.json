@@ -233,6 +233,10 @@
     {
       "file": "20261031224723_acquisition_contract_document_registry.sql",
       "sha256": "85924fc865b3ecb8ecbf8e62503d95ee76cd5e28b2ba41b96fa4494e6abc0dbc"
+    },
+    {
+      "file": "20261031225950_acquisition_contract_upload_admission.sql",
+      "sha256": "85606b5c4f078b10e697275326ac14d9d0f8f4a37d1fc222452597ad857944cf"
     }
   ]
 }

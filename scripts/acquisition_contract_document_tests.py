@@ -3,6 +3,7 @@ import json
 import select
 import subprocess
 import time
+from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor
 from acquisition_contract_tests import ContractDraftTests, DRAFT, SECOND
 from test_acquisition_workspace import main, ROOT, PG, ADMIN, OTHER, OPERATOR, CALLER, WORKSPACE, WORKSPACE_B, literal
@@ -126,7 +127,92 @@ class ContractDocumentCases:
     def test_contract_document_wait_rechecks_membership(self):
         self.blocked_document(lambda:self.sql(f"UPDATE workspace_memberships SET status='revoked' WHERE user_id='{ADMIN}'"))
 
-class ContractDocumentTests(ContractDocumentCases,ContractDraftTests):
+class ContractUploadAdmissionCases:
+    def contract_admission(self, actor=ADMIN, attempt=None, workspace=WORKSPACE, contract=DRAFT,
+                           version=1, artifact=DOCUMENT, purpose='purchase_contract', fail=False, **kwargs):
+        result=self.sql(f"SELECT public.admit_contract_document_upload('{attempt or uuid4()}','{workspace}','{contract}',{version},'{artifact}',{literal(purpose)})",user=actor,fail=fail,**kwargs)
+        return result if fail else json.loads(result)
+
+    def expire_slots(self):
+        self.sql("UPDATE private.acquisition_evidence_upload_slots SET started_at=started_at-interval '121 seconds',expires_at=expires_at-interval '121 seconds'")
+
+    def test_contract_upload_mixed_capacity_and_bidirectional_reuse(self):
+        self.document();self.mail_campaign();self.evidence_policy();self.evidence_register()
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            results=list(pool.map(lambda n:self.contract_admission() if n%2 else self.upload_admission(),range(6)))
+        self.assertEqual(sum(r['admitted'] for r in results),1)
+        self.assertTrue(all(r['execution_authorized'] is False for r in results))
+        first=next(r for r in results if r['admitted'])
+        self.contract_admission(attempt=first['attempt_id'],fail=True)
+        self.member();self.document(actor=OPERATOR,identity=SECOND)
+        self.assertTrue(self.contract_admission(actor=OPERATOR,artifact=SECOND)['admitted'])
+        third='ad000000-0000-4000-8000-000000000009'
+        self.member(target=OTHER);self.evidence_register(actor=OTHER,request=third)
+        self.assertFalse(self.upload_admission(actor=OTHER,artifact=third)['admitted'])
+        self.expire_slots();self.assertTrue(self.contract_admission()['admitted'])
+        self.assertEqual(self.sql("SELECT count(*) FROM private.acquisition_evidence_upload_slots WHERE slot=1 AND campaign_id IS NULL AND contract_id IS NOT NULL"),'1')
+        self.expire_slots();self.assertTrue(self.upload_admission()['admitted'])
+        self.assertEqual(self.sql("SELECT count(*) FROM private.acquisition_evidence_upload_slots WHERE slot=1 AND campaign_id IS NOT NULL AND contract_id IS NULL AND contract_version IS NULL"),'1')
+        self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'2')
+        path=f'{WORKSPACE}/{DOCUMENT}/'+('b'*64)
+        self.assertEqual(self.sql(f"SET storage.operation='object.upload'; SELECT private.acquisition_evidence_object_access('{path}',true)",user=ADMIN),'f')
+
+    def test_contract_upload_current_authority_and_private_capacity(self):
+        self.document();self.member()
+        for change in ({'actor':OTHER},{'actor':OPERATOR},{'workspace':WORKSPACE_B},{'contract':SECOND},
+                       {'version':2},{'version':0},{'artifact':SECOND},{'purpose':'mail_content'},
+                       {'aal':'aal1'},{'session':False},{'role':'anon'},{'role':'service_role'}):
+            self.contract_admission(fail=True,**change)
+        for column,value in (('acquisition_version','2'),('acquisition_status',"'pending_signature'")):
+            # The current draft-only schema itself rejects these future states.
+            self.sql(f"UPDATE deals SET {column}={value} WHERE id='{DRAFT}'",fail=True)
+        self.sql('UPDATE private.acquisition_activation SET enabled=false');self.contract_admission(fail=True);self.activate()
+        self.sql(f"UPDATE private.acquisition_evidence_policies SET revoked_at=clock_timestamp() WHERE id='{DOC_POLICY}'")
+        self.contract_admission(fail=True)
+        self.sql(f"UPDATE private.acquisition_evidence_policies SET revoked_at=NULL WHERE id='{DOC_POLICY}'")
+        self.assertTrue(self.contract_admission()['admitted'])
+        self.revoke_document();self.contract_admission(fail=True)
+        for role in ('authenticated','service_role'):
+            for command in ('SELECT * FROM','DELETE FROM','TRUNCATE'):
+                self.sql(command+' private.acquisition_evidence_upload_slots',user=ADMIN,role=role,fail=True)
+
+    def blocked_contract_admission(self, change):
+        self.document()
+        holder=subprocess.Popen([str(PG/'psql'),'-X','-qAt','-v','ON_ERROR_STOP=1','-h',self.socket,
+            '-U','test_admin','-d',getattr(self,'database_name','acquisition_test')],stdin=subprocess.PIPE,stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,text=True,env=self.env)
+        try:
+            holder.stdin.write(f"BEGIN; DO $$ BEGIN PERFORM pg_advisory_xact_lock(hashtextextended('evidence-upload-admission:{WORKSPACE}',0)); END $$;\n\\echo locked\n")
+            holder.stdin.flush()
+            self.assertTrue(select.select([holder.stdout],[],[],5)[0]);self.assertEqual(holder.stdout.readline().strip(),'locked')
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(self.contract_admission,fail=True)
+                try:
+                    end=time.monotonic()+5;waiting='0'
+                    while time.monotonic()<end:
+                        waiting=self.sql("SELECT count(*) FROM pg_stat_activity WHERE wait_event='advisory' AND query LIKE '%public.admit_contract_document_upload%'")
+                        if waiting!='0':break
+                        time.sleep(.02)
+                    self.assertNotEqual(waiting,'0','Admission must actually wait before authority changes')
+                    change()
+                finally:
+                    holder.stdin.write('COMMIT;\n');holder.stdin.flush()
+                error=future.result(timeout=5)
+            self.assertIn('Current evidence upload authority required',error)
+            self.assertEqual(self.sql('SELECT count(*) FROM private.acquisition_evidence_upload_slots'),'0')
+        finally:
+            holder.communicate('\\q\n',timeout=5)
+
+    def test_contract_upload_wait_rechecks_session(self):
+        self.blocked_contract_admission(lambda:self.sql(f"UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 second' WHERE user_id='{ADMIN}'"))
+
+    def test_contract_upload_wait_rechecks_membership(self):
+        self.blocked_contract_admission(lambda:self.sql(f"UPDATE workspace_memberships SET status='revoked' WHERE user_id='{ADMIN}'"))
+
+    def test_contract_upload_wait_rechecks_retention(self):
+        self.blocked_contract_admission(lambda:self.sql(f"UPDATE private.acquisition_evidence_policies SET revoked_at=clock_timestamp() WHERE id='{DOC_POLICY}'"))
+
+class ContractDocumentTests(ContractUploadAdmissionCases,ContractDocumentCases,ContractDraftTests):
     def setUp(self):
         super().setUp()
         if self._testMethodName=='test_contract_document_populated_mail_upgrade':
@@ -134,8 +220,16 @@ class ContractDocumentTests(ContractDocumentCases,ContractDraftTests):
             self.saved_mail=self.sql("SELECT row_to_json(a)::text FROM acquisition_evidence_artifacts a")
         self.sql(MIGRATION.read_text())
         self.prepare_document_fixture()
+        if self._testMethodName=='test_contract_document_populated_mail_upgrade':
+            self.upload_admission()
+            self.saved_slot=json.loads(self.sql('SELECT row_to_json(s) FROM private.acquisition_evidence_upload_slots s'))
+        self.sql((ROOT/'frontend/supabase/migrations/20261031225950_acquisition_contract_upload_admission.sql').read_text())
 
     def test_contract_document_populated_mail_upgrade(self):
+        slot=json.loads(self.sql('SELECT row_to_json(s) FROM private.acquisition_evidence_upload_slots s'))
+        self.assertEqual({key:slot[key] for key in self.saved_slot},self.saved_slot)
+        self.assertIsNone(slot['contract_id']);self.assertIsNone(slot['contract_version'])
+        self.assertFalse(self.upload_admission()['admitted'])
         before=json.loads(self.saved_mail)
         after=json.loads(self.sql("SELECT row_to_json(a)::text FROM acquisition_evidence_artifacts a WHERE campaign_id IS NOT NULL"))
         self.assertEqual({key:after[key] for key in before},before)
@@ -148,4 +242,4 @@ class ContractDocumentTests(ContractDocumentCases,ContractDraftTests):
             self.sql(f"INSERT INTO acquisition_evidence_artifacts SELECT (jsonb_populate_record(NULL::acquisition_evidence_artifacts,to_jsonb(a)||{literal(json.dumps(patch))}::jsonb)).* FROM acquisition_evidence_artifacts a WHERE id='{DOCUMENT}'",fail=True)
 
 if __name__=='__main__':
-    raise SystemExit(main(ContractDocumentTests,test_names=[name for name in ContractDocumentCases.__dict__ if name.startswith('test_contract_document_')]+['test_contract_document_populated_mail_upgrade']))
+    raise SystemExit(main(ContractDocumentTests,test_names=[name for name in ContractDocumentCases.__dict__ if name.startswith('test_contract_document_')]+[name for name in ContractUploadAdmissionCases.__dict__ if name.startswith('test_contract_upload_')]+['test_contract_document_populated_mail_upgrade']))

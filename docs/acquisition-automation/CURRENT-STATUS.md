@@ -4,10 +4,18 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 
 ## Publication and active process
 
-- Published candidate: `173684f746568d5d96e26020ce78e79efd04fb85` on `codex/acquisition-foundation`. Normal push confirmed `c935460` → `173684f`; checkout was clean. Exact successor CI `41250516262` is queued: https://github.com/julysses/Wholesale-automation/actions/runs/41250516262. Require all six terminal successes before another feature push. Predecessor c935460 / CI 41249648671 passed all six.
+- Published candidate: `173684f746568d5d96e26020ce78e79efd04fb85` on `codex/acquisition-foundation`. Normal push confirmed `c935460` → `173684f`; checkout was clean. Exact successor CI `41250516262` is in progress: https://github.com/julysses/Wholesale-automation/actions/runs/41250516262. Require all six terminal successes before another feature push. Predecessor c935460 / CI 41249648671 passed all six.
 - Predecessor `5ca649c` / CI `41246949570` completed successfully with all six jobs. Prior fixture repair `2f2dbe7` / CI `41245920319` also passed all six. No jobs cancelled or restarted.
 - Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is published in Git; synthetic desktop/mobile browser QA passed. Shared evidence regression rehearsal 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 gateway checks. No local test or preview process is active.
 - Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
+
+## Shared contract upload admission candidate
+
+Migration 59 extends the existing private upload reservations across mail and contract-version targets, preserving two workspace slots and one active slot per actor. Both RPCs share the same lock and clear the alternate target when expired slots are reused. Current role/session/activation/retention and exact draft/version/creator checks run after waiting. Storage contract uploads remain denied; admission is not upload or review authority.
+
+Thirteen focused database tests passed (process 25764, 57.341 seconds), including populated mail-slot preservation, mixed concurrent capacity, bidirectional reuse, raw privilege denial and observed session/member/policy changes during lock waits. Full rehearsal process 5656 exited 0: 59 migrations, 26 access probes, 100 workflows, 64 actual gateway checks. Evidence: evidence/2026-10-31-contract-upload-gateway-result.json. All local processes are terminal. The first focused run found a fixture attempting an immutable draft mutation; the corrected test verifies that rejection. No production change.
+
+Next: strict contract admission receipts, shared bounded process transport, guarded Storage dispatch and upload reconciliation, signed scan/review binding, then guided document UI. Preserve all-six predecessor CI gate before publication.
 
 ## Current contract candidate
 

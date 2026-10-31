@@ -6,7 +6,7 @@ October 31, 2026. Design and internal transport checkpoint only. No contract upl
 
 Read-only production inspection still reports migration ledger `20261023221455`, canonical `deals`, and RLS-enabled Storage tables. Candidate acquisition evidence/contract tables are absent. Storage object columns include archive/delete-marker/version flags; no Storage object policies were returned by the fresh catalog query. Exact metadata: `evidence/2026-10-31-contract-document-catalog.json`. Reinspect before writing the next migration; local candidate migrations are the intended additive predecessor, not the live state.
 
-The existing candidate evidence registry is `acquisition_evidence_artifacts`, keyed by workspace/campaign/artifact, with mail-only purposes. Retention policies, revocations, upload slots, signer attestations, scan state, content bindings and restrictive Storage guards all depend on that scope. Do not supply a contract UUID in a campaign parameter or create a fake campaign to store contract documents.
+Migration 58 extends the existing `acquisition_evidence_artifacts` registry with mutually exclusive campaign and canonical contract-version targets. The mail interfaces remain campaign-bound. Retention policies and revocations support both targets; signer attestations, scan state, content bindings and Storage upload guards still require further contract-specific work. Do not supply a contract UUID in a campaign parameter or create a fake campaign to store contract documents.
 
 `schemas/acquisition_evidence_object.py` now centralizes immutable exact-byte metadata and deterministic object naming. Existing mail descriptors retain required campaign/purpose fields. `ContractDocumentArtifact` separately requires canonical contract ID, contract version and document classification. Both use the same bounded authenticated byte transport, with size/hash/media/retention validation, no redirects, no returned file bytes or URLs, and no approval authority. Internal contract byte observations do not replace registry authorization, scan state or human review.
 
@@ -24,6 +24,14 @@ The existing candidate evidence registry is `acquisition_evidence_artifacts`, ke
 | Contract review bindings | Exact document IDs/hashes/verification observations, actor/role and contract version | A byte match or document classification never becomes legal approval |
 
 Do not generalize the existing public mail RPC signatures to optional loosely checked targets. Keep their required campaign inputs and mail-only purpose validation. Add typed contract entry points that resolve the target server-side and share the underlying protected artifact lifecycle. All new contract version references require enforced workspace identity; an application filter alone is insufficient.
+
+## Shared upload admission candidate (migration 59)
+
+`20261031225950_acquisition_contract_upload_admission.sql` extends the existing private upload-slot table with an exclusive contract/version target and a composite foreign key to the registered artifact. Mail and contract RPCs use the same workspace advisory lock, two workspace slots, one active reservation per actor, fresh attempts and 120-second expiry. Expired slot reuse clears the alternate target in both directions. No release endpoint or extra contract quota exists.
+
+`admit_contract_document_upload` rechecks current workspace/member/profile/session, activation, exact draft/version, creator, purpose, retention policy and revocation after waiting for capacity serialization. The returned decision grants no Storage or execution authority. The unchanged Storage guard still denies contract uploads; a later complete upload path must recheck authorization immediately before writing and after verification.
+
+Validation is tracked in CURRENT-STATUS.md and PROGRESS.md. Next: strict admission receipt parsing and shared process capacity in the internal transport, guarded Storage dispatch, upload reconciliation, scan/review binding and guided document UI. No HTTP upload endpoint should be mounted before the complete path passes acceptance.
 
 ## Transaction and failure behavior
 
