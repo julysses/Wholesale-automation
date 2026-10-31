@@ -49,11 +49,30 @@ def test_exact_provider_retry_preserves_identity_without_sharing_seller_or_ip_da
 @pytest.mark.parametrize('patch', [
     {'success': False, 'error-codes': ['timeout-or-duplicate']}, {'success': False, 'error-codes': ['invalid-input-response']},
     {'hostname': 'different.example.test'}, {'hostname': 'seller.example.test.evil.test'}, {'action': 'login'},
-    {'cdata': str(UUID(int=1))}, {'challenge_ts': (datetime.now(timezone.utc)-timedelta(seconds=301)).isoformat()},
-    {'challenge_ts': (datetime.now(timezone.utc)+timedelta(seconds=60)).isoformat()},
+    {'cdata': str(UUID(int=1))},
 ])
 def test_rejects_unverified_wrong_context_or_stale_challenge(patch):
     with pytest.raises(BotRejected):run(lambda _:httpx.Response(200,json=success(**patch)))
+
+
+@pytest.mark.parametrize('offset,accepted', [(-301, False), (-300, False), (-299, True), (5, True), (6, False), (60, False)])
+def test_challenge_age_boundaries_use_verification_time(monkeypatch, offset, accepted):
+    import tools.acquisition_portal_bot as adapter
+    now = datetime(2026, 10, 31, 12, tzinfo=timezone.utc)
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now.astimezone(tz)
+
+    monkeypatch.setattr(adapter, 'datetime', Clock)
+    challenge = (now + timedelta(seconds=offset)).isoformat()
+    handler = lambda _: httpx.Response(200, json=success(challenge_ts=challenge))
+    if accepted:
+        assert run(handler).verified_at == now
+    else:
+        with pytest.raises(BotRejected):
+            run(handler)
 
 
 @pytest.mark.parametrize('value', [None, [], {}, {'success': 1}, {'success': 'true'},

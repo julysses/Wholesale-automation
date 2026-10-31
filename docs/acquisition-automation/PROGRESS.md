@@ -1899,3 +1899,8 @@ Their relationship to the deployed baseline has not been verified. Do not recons
 ## Validation and external effects
 
 Implementation is local and tested as recorded above; migration files are proposals for later approval. No production database, provider configuration, scheduling, advertising, outreach, mail, offer transmission or contract execution changed. No production rollout is claimed. Git commit/push completion is reported separately after verification; inspect branch upstream and latest log when resuming.
+
+
+## October 31 — deterministic bot challenge test repair
+
+Run 41252309134 backend job 124688164887 failed because a future challenge timestamp was created at pytest collection, not verification. Replaced time-dependent parameters with a fixed adapter clock and six exact expiry/skew cases. Focused 46 tests and the full CI-equivalent local backend suite (3242 passed, 10 skipped, six subtests) pass. Runtime rules unchanged. One incorrect local broad collection was interrupted explicitly; no live GitHub job was restarted. Four GitHub jobs passed; contention remains running. Pending local UI changes and acceptance gaps are recorded in CURRENT-STATUS.md. Publish only this repair after remaining predecessor job is terminal; keep feature changes local until all successor checks pass.
