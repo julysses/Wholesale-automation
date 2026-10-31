@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Predecessor CI installation timeout and targeted retry
+
+- Storage candidate committed as 60ccb27; local full rehearsal passed 60/26/107/64. All local processes terminal.
+- Exact predecessor run 41250516262 / 173684f attempt 1 reached terminal cancelled. Five jobs succeeded; full schema job 124682889328 spent its 15-minute limit downloading PostgreSQL build dependencies/LLVM, before any rehearsal. Inspected /tmp/acquisition-ci-41250516262-cancelled.log and workflow timeout. No test assertion failed in that job.
+- Only after confirming terminal state, ran `gh run rerun 41250516262 --job 124682889328`. This starts attempt 2 on the same commit and preserves five successful jobs. Follow that exact run/attempt; never restart while confirmed live. New feature commits remain local until all six prerequisite jobs succeed.
+
+
 ## 2026-10-31 — Contract Storage dispatch and real RLS upload candidate
 
 - Previous turn made progress: ff919ca committed the shared bounded transport; 700 tests and 59/26/100/64 rehearsal passed. Pulled unchanged. Exact predecessor 173684f / CI 41250516262 now has five terminal successes, one schema-upgrade job active. No jobs restarted or cancelled and no feature push before all six pass.
