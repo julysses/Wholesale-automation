@@ -39,7 +39,7 @@ def run_postgrest(db, binary, pg):
         clone=object.__new__(DisposableDatabase)
         clone.connection=psycopg2.connect(host=str(folder),dbname='acquisition_http',user='test_admin')
         clone.connection.autocommit=True
-        clone.query('CREATE ROLE acquisition_http_authenticator LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS; GRANT anon,authenticated TO acquisition_http_authenticator')
+        clone.query('CREATE ROLE acquisition_http_authenticator LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS; GRANT anon,authenticated,service_role TO acquisition_http_authenticator')
         clone.query('INSERT INTO auth.users(id) VALUES(%s); INSERT INTO auth.sessions(id,user_id) VALUES(%s,%s)',[OTHER,OTHER,OTHER])
         clone.query("INSERT INTO public.profiles(id,email,role,status) VALUES(%s,'synthetic-http@example.test','admin','approved')",[OTHER])
         clone.query("UPDATE private.acquisition_activation SET enabled=true,approval_ref='synthetic local HTTP test',application_revision=repeat('a',40),verified_at=now()")
@@ -57,9 +57,10 @@ def run_postgrest(db, binary, pg):
             'jwt-secret = '+json.dumps(secret),'server-unix-socket = '+json.dumps(str(sock)),
             'server-unix-socket-mode = "600"','db-channel-enabled = false']))
         config.chmod(0o600)
-        def token(user=ADMIN, key=secret, expiry=None):
+        def token(user=ADMIN, key=secret, expiry=None, *, role='authenticated'):
+            if role not in ('authenticated','service_role'):raise ValueError('Unsupported synthetic JWT role')
             def part(value):return base64.urlsafe_b64encode(json.dumps(value,separators=(',',':')).encode()).rstrip(b'=')
-            body=part({'alg':'HS256','typ':'JWT'})+b'.'+part({'sub':user,'session_id':user,'aal':'aal2','role':'authenticated','exp':expiry or int(time.time())+300})
+            body=part({'alg':'HS256','typ':'JWT'})+b'.'+part({'sub':user,'session_id':user,'aal':'aal2','role':role,'exp':expiry or int(time.time())+300})
             return (body+b'.'+base64.urlsafe_b64encode(hmac.new(key.encode(),body,hashlib.sha256).digest()).rstrip(b'=')).decode()
         def request(path, jwt=None, payload=None):
             if not path.startswith('/') or '://' in path:raise ValueError('Local API path required')

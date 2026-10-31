@@ -50,8 +50,57 @@ def verify_offer_forms_http(db, request, token, other, workspace):
     if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_offer_form'")[0]['n']!=2:
         raise AssertionError('Form HTTP retries duplicated audit')
 
+    publication_checks=verify_public_display_http(db,request,token,other,workspace,campaign,identity,definition)
+
     def after_session_revocation():
         if request(path,token(),second)[0]!=403 or request(listing,token())!=(200,[]):
             raise AssertionError('Revoked session retains form access')
     return ['form HTTP exact retry and immutable version history','form HTTP conflicting request and stale revision rejected',
-            'form HTTP tenant and anonymous isolation','form HTTP typed paginated history','form HTTP revoked session denied'],after_session_revocation
+            'form HTTP tenant and anonymous isolation','form HTTP typed paginated history','form HTTP revoked session denied']+publication_checks,after_session_revocation
+
+
+def verify_public_display_http(db,request,token,other,workspace,campaign,identity,definition):
+    """Privileged synthetic configuration, then real signed service RPC calls."""
+    path='/rpc/read_acquisition_public_form'
+    body={'p_form_key':definition['form_key']}
+    service=token(role='service_role')
+    db.query('INSERT INTO private.acquisition_form_publications(form_key,workspace_id,campaign_id,form_id) VALUES(%s,%s,%s,%s)',
+             [definition['form_key'],workspace,campaign,identity])
+
+    def unavailable(payload=body):
+        status,result=request(path,service,payload)
+        if status!=403 or result.get('code')!='42501' or result.get('message')!='Form unavailable':
+            raise AssertionError('Unavailable form did not fail closed without routing details')
+    unavailable();unavailable({'p_form_key':'missing-form'})
+    for jwt in (None,token(),token(other)):
+        if request(path,jwt,body)[0] not in (401,403):
+            raise AssertionError('Browser JWT can call service-only display RPC')
+    for jwt in (token(role='service_role',key='wrong-synthetic-signing-key-of-sufficient-length'),
+                token(role='service_role',expiry=1)):
+        if request(path,jwt,body)[0]!=401:raise AssertionError('Invalid service JWT accepted')
+    db.query("UPDATE private.acquisition_form_publications SET enabled=true,phase_one_approval_ref='synthetic-phase-1',phase_two_approval_ref='synthetic-phase-2',wording_approval_ref='synthetic-wording',publication_approval_ref='synthetic-display',valid_from=clock_timestamp()-interval '1 minute',expires_at=clock_timestamp()+interval '1 hour'")
+    if request(path,service,body)!=(200,definition):
+        raise AssertionError('Service display RPC changed exact wording or exposed extra fields')
+    status,error=request('/lead_form_submissions',service,{'id':'99500000-0000-4000-8000-000000000004',
+        'form_id':identity,'raw_answers':{'synthetic':'test'}})
+    if status!=403 or error.get('code')!='42501' or error.get('message')!='Use acquisition submission workflow':
+        raise AssertionError('Legacy submission did not reach the acquisition guard')
+    # A second saved version already exists. Publication must still select v1.
+    for injection in ({'p_workspace':workspace},{'p_version':'v2'},{'p_definition':definition}):
+        if request(path,service,body|injection)[0]==200:
+            raise AssertionError('Public lookup accepted caller-controlled routing or wording')
+    db.query("UPDATE public.workspaces SET status='suspended' WHERE id=%s",[workspace])
+    unavailable()
+    db.query("UPDATE public.workspaces SET status='active' WHERE id=%s",[workspace])
+    db.query('UPDATE private.acquisition_activation SET enabled=false')
+    unavailable()
+    db.query('UPDATE private.acquisition_activation SET enabled=true')
+    db.query("UPDATE private.acquisition_form_publications SET expires_at=clock_timestamp()+interval '50 milliseconds'")
+    db.query('SELECT pg_sleep(0.06)')
+    unavailable()
+    db.query('UPDATE private.acquisition_form_publications SET enabled=false')
+    if request('/lead_form_configs?select=id&workspace_id=eq.'+workspace,None)!=(200,[]):
+        raise AssertionError('Publication exposed private form rows anonymously')
+    return ['public display HTTP signed service role required','public display HTTP exact selected version and minimal projection',
+            'public display HTTP legacy submission reaches and rejects at acquisition guard',
+            'public display HTTP rejects routing injection','public display HTTP disabled expired suspended and activation gates']

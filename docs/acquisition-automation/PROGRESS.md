@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Actual public-display gateway checks and corrected guard regression
+
+- Extended the local PostgREST fixture with explicit signed synthetic service-role tokens. Five new gateway checks verify role/signature/expiry rejection, exact selected version and five-field projection, rejection of routing overrides, disabled/expired/suspended/activation gates, and legacy submission isolation. No production token, configuration or grant changed.
+- Corrected an older regression that inserted nonexistent answers instead of raw_answers into lead_form_submissions. It now asserts the acquisition guard's exact rejection; a real PostgREST insert verifies the same. This repairs a weak test, not a newly demonstrated production bypass. The first gateway run passed 32 checks; the final rerun with the corrected regression and additional gateway case passed all 33.
+- Full final rehearsal: 52 migrations, 26 access probes, 68 application workflows, 24 historical rows across 22 tables/103 definitions preserved; all temporary rehearsal databases removed. Evidence in evidence/2026-10-31-public-display-http-result.json. No SQL or UI change in this increment.
+- Source-verified next intake mapping added to ONLINE-OFFER-PORTAL.md: reuse lead_form_submissions/raw_answers, guard service-backed legacy listing/recovery/finalizers, extend workspace binding and intake/source origin constraints explicitly for portal receipts, then atomic persistence and abuse-protected public endpoints. No fabricated provider identity or new competing CRM.
+- Publication prerequisite verified: exact head d134101a96f746448bb86d56f8bc1dff43716b45 / CI 41236036862 completed successfully with all six jobs. Retained a354694 and this gateway increment are ready for publication; verify their successor exact-head run before another feature push. Separate prior workspace comparison remains live under session 1315; its log is /tmp/acquisition-oct31-workspace-investigation.log. Full PRD remains active; no production or channel activation.
+
 ## 2026-10-31 — Disabled public form-version routing
 
 - Pulled unchanged. Live metadata-only inspection at 19:51:42 UTC confirms production ledger 20261023221455. CLI-created proposed migration 20261031195256 adds private publication policy over existing immutable form versions, with composite tenant/campaign/key constraints. No production SQL write or publication row was created.

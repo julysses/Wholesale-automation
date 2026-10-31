@@ -347,9 +347,10 @@ class WorkflowTests(WorkspaceTests):
                           f"UPDATE lead_form_configs SET workspace_id=NULL WHERE id='{identity}'",
                           f"DELETE FROM lead_form_configs WHERE id='{identity}'", 'TRUNCATE lead_form_configs CASCADE',
                           f"INSERT INTO lead_form_configs(name,slug,campaign_id) VALUES('unsafe','unsafe','{campaign}')",
-                          f"INSERT INTO lead_form_submissions(form_id,answers) VALUES('{identity}','{{}}')",
                           "UPDATE private.acquisition_form_families SET form_key='changed'"):
             self.sql(statement,user=ADMIN,role='service_role',fail=True)
+        error=self.sql(f"INSERT INTO lead_form_submissions(form_id,raw_answers) VALUES('{identity}','{{}}')",user=ADMIN,role='service_role',fail=True)
+        self.assertIn('Use acquisition submission workflow',error)
         self.sql(f"UPDATE lead_form_configs SET name='changed' WHERE id='{identity}'",fail=True)
         self.sql(f"DELETE FROM lead_form_configs WHERE id='{identity}'",user=ADMIN)
         self.assertEqual(self.sql(f"SELECT count(*) FROM lead_form_configs WHERE id='{identity}'"),'1')
