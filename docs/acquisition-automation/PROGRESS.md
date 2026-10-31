@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Disabled public form-version routing
+
+- Pulled unchanged. Live metadata-only inspection at 19:51:42 UTC confirms production ledger 20261023221455. CLI-created proposed migration 20261031195256 adds private publication policy over existing immutable form versions, with composite tenant/campaign/key constraints. No production SQL write or publication row was created.
+- Default disabled; only privileged reviewed configuration can supply Phase 1/2 acceptance, wording/publication approval references and a finite validity window. References are trusted reviewer evidence pointers, not automatic certification. Disabled-first version changes clear prior approval evidence/dates. All configuration changes are audited and identity/deletion protected. Browser and service roles cannot configure the policy.
+- Service-only display RPC locks current activation/workspace/campaign/publication/form state, rechecks expiry after waits and explicitly returns only five wording/identity fields. No private owner/routing IDs, price or authority is returned. Anonymous/user calls reject; source versions retain inactive legacy messaging flags. Public HTTP receiver, transactional intake/attribution, bot/rate controls and seller UI remain next.
+- Three focused SQL tests passed. Full rehearsal passed 52 migrations, 26 access probes, 68 workflows, 24 historical rows across 22 tables/103 definitions, and the existing 28 actual PostgREST checks. New RPC actual-gateway verification remains required. Evidence saved in evidence/2026-10-31-online-routing-result.json; compensation described in ONLINE-OFFER-PORTAL.md. All test cluster copies from this rehearsal were removed.
+- Current published d134101 / CI 41236036862 has five successful jobs and one live contention job. Retain this increment locally until all six succeed. Prior separate workspace comparison remains live at session 1315 and /tmp/acquisition-oct31-workspace-investigation.log; observe it rather than restart. This is not a publication blocker separate from the exact GitHub gate, nor a claimed completed result.
+- Full original PRD remains active. No production migration, deployment, provider, mail, outreach, SMS or binding-transaction activation.
+
 ## 2026-10-31 — Publication gate cleared for guided form preparation
 
 - Verified exact published head 320e405034b7abe9cd78e63f16a1351e8c6549ab / CI 41234812907 completed successfully with all six jobs. The longer workspace/contention job succeeded without cancellation or a CI change. Network observation failures were retried against the same run and were not treated as terminal failures.

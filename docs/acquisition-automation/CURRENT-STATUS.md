@@ -1,19 +1,20 @@
 # Acquisition automation — current implementation and release handoff
 
-Updated October 30, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
+Updated October 31, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 
 ## Latest handoff
 
-Published head 320e405 patches follow-redirects to 1.16.2 after the previous registry run failed only its dependency security audit. Local audit has zero high/critical findings; frontend tests/build/lint passed. Exact successor 41234812907 last had five successful jobs and contention in progress. Verify the exact-head successor CI before publishing the retained form API increment. Check PROGRESS.md and live Git/CI before publication.
+Published head d134101 includes the form save/history API and guided internal setup. Its predecessor 320e405 / CI 41234812907 finished with all six successful jobs. Current successor 41236036862 last had five successes and the real PostgreSQL contention job still active. Verify that exact run before the next feature push.
 
-The disabled form-version registry is published. Form save/history administration API and actual local gateway acceptance are implemented in the retained increment; guided internal setup is now implemented locally; public seller routing/submissions remain required. No hosted process, scheduler, alert destination, provider or production migration was enabled.
+The next local increment adds disabled, approval-bound public form-version routing and a service-only display projection. No public seller HTTP endpoint or submission path exists yet. No production migration, process, provider or channel was enabled.
 
 ## Git and validation
 
-- Branch: codex/acquisition-foundation. Latest all-six prerequisite before the current security repair: 0281b14 / CI 41147496592. Verify security repair 320e405 successor before another feature push.
-- Current local rehearsal: 51 additive migrations, 26 access probes, 65 full-catalog workflows and 28 actual local PostgREST checks, including five real form-registry gateway checks. Existing frontend suite: 545 passed including guided form setup; registry/legacy API suite: 98 passed; new administration API boundary suite: 44 passed.
-- Hosted CI verifies code and synthetic full-schema rehearsal. It does not verify hosted Supabase Auth issuance, live provider delivery, persistent worker storage or deployment acceptance.
-- No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior. Older chronological sections below remain historical.
+- Branch: codex/acquisition-foundation. Check PROGRESS.md and live Git/CI before publication.
+- Current local rehearsal: 52 additive migrations, 26 access probes, 68 full-catalog workflows and 28 actual local PostgREST checks. Three new direct-SQL routing tests cover disabled defaults, exact projection/version selection, role restrictions, closed gates and expiry after a demonstrated lock wait. The new display RPC has not yet been tested through PostgREST; the existing 28 gateway checks passed unchanged.
+- Existing frontend suite: 545 passed; registry/legacy API suite: 98 passed; administration API boundary suite: 44 passed. No UI changed in the latest routing increment.
+- Hosted CI verifies code and synthetic full-schema rehearsal, not hosted Supabase Auth issuance, provider delivery, persistent worker storage or deployment acceptance.
+- No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
 
 ## One app process
 

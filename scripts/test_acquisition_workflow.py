@@ -150,6 +150,90 @@ class WorkflowTests(WorkspaceTests):
                         user=actor,fail=fail,**kwargs)
         return result if fail else json.loads(result)
 
+    def publication_fixture(self):
+        campaign=self.offer_form_campaign(); saved=self.offer_form_save(campaign)
+        self.sql(f"INSERT INTO private.acquisition_form_publications(form_key,workspace_id,campaign_id,form_id) VALUES('synthetic-offer-form','{WORKSPACE}','{campaign}','{saved['id']}')")
+        return campaign,saved
+
+    def enable_publication(self):
+        self.sql("UPDATE private.acquisition_form_publications SET enabled=true,phase_one_approval_ref='synthetic-phase-1',phase_two_approval_ref='synthetic-phase-2',wording_approval_ref='synthetic-wording',publication_approval_ref='synthetic-publication',valid_from=clock_timestamp()-interval '1 minute',expires_at=clock_timestamp()+interval '1 hour'")
+
+    def read_publication(self, key='synthetic-offer-form', **kwargs):
+        return self.sql(f'SELECT public.read_acquisition_public_form({literal(key)})',user=ADMIN,role='service_role',**kwargs)
+
+    def test_online_publication_disabled_defaults_projection_and_version_selection(self):
+        campaign,saved=self.publication_fixture()
+        self.assertIn('Form unavailable',self.read_publication(fail=True))
+        self.sql('UPDATE private.acquisition_form_publications SET enabled=true',fail=True)
+        self.enable_publication()
+        display=json.loads(self.read_publication())
+        self.assertEqual(set(display),{'form_key','version','privacy_acknowledged','human_callback_requested','email_reply_requested'})
+        self.assertEqual(display['version'],'v1')
+        self.assertEqual(display['privacy_acknowledged'],'Synthetic privacy wording')
+        newer=self.offer_form_save(campaign,identity='fb000000-0000-4000-8000-000000000002',revision=1,
+            definition={**display,'version':'v2','privacy_acknowledged':'New synthetic wording'})
+        self.assertEqual(json.loads(self.read_publication()),display)
+        self.sql(f"UPDATE private.acquisition_form_publications SET form_id='{newer['id']}'",fail=True)
+        self.sql('UPDATE private.acquisition_form_publications SET enabled=false')
+        self.sql(f"UPDATE private.acquisition_form_publications SET form_id='{newer['id']}'")
+        self.assertEqual(self.sql('SELECT wording_approval_ref IS NULL AND publication_approval_ref IS NULL AND expires_at IS NULL FROM private.acquisition_form_publications'),'t')
+        self.sql('UPDATE private.acquisition_form_publications SET enabled=true',fail=True)
+        self.enable_publication()
+        self.assertEqual(json.loads(self.read_publication())['privacy_acknowledged'],'New synthetic wording')
+        self.assertEqual(self.sql("SELECT count(*) FROM audit_logs WHERE entity_type='acquisition_form_publication'"),'5')
+        self.assertEqual(self.sql('SELECT count(*) FROM seller_intakes'),'0')
+        self.assertEqual(self.sql("SELECT bool_and(active IS FALSE AND send_confirmation_sms IS FALSE AND send_confirmation_email IS FALSE) FROM lead_form_configs WHERE workspace_id IS NOT NULL"),'t')
+
+    def test_online_publication_scope_permissions_and_closed_gates(self):
+        campaign,saved=self.publication_fixture();self.enable_publication()
+        for role in ('authenticated','anon','service_role'):
+            for sql in ('SELECT * FROM private.acquisition_form_publications',
+                        'UPDATE private.acquisition_form_publications SET enabled=true',
+                        'DELETE FROM private.acquisition_form_publications','TRUNCATE private.acquisition_form_publications'):
+                self.sql(sql,user=ADMIN,role=role,fail=True)
+        for actor,role in ((ADMIN,'authenticated'),(OTHER,'authenticated'),(ADMIN,'anon')):
+            self.sql("SELECT public.read_acquisition_public_form('synthetic-offer-form')",user=actor,role=role,fail=True)
+        for sql in ("UPDATE private.acquisition_form_publications SET form_key='other'",
+                    f"UPDATE private.acquisition_form_publications SET workspace_id='{OTHER}'",
+                    'DELETE FROM private.acquisition_form_publications',
+                    "UPDATE private.acquisition_form_publications SET phase_two_approval_ref=NULL",
+                    "UPDATE private.acquisition_form_publications SET wording_approval_ref=' '",
+                    "UPDATE private.acquisition_form_publications SET expires_at='infinity'"):
+            self.sql(sql,fail=True)
+        for key in ('missing','invalid key'):
+            self.assertIn('Form unavailable',self.read_publication(key,fail=True))
+        self.sql("UPDATE private.acquisition_form_publications SET valid_from=clock_timestamp()+interval '1 minute'")
+        self.assertIn('Form unavailable',self.read_publication(fail=True));self.enable_publication()
+        self.sql(f"UPDATE workspaces SET status='suspended' WHERE id='{WORKSPACE}'")
+        self.assertIn('Form unavailable',self.read_publication(fail=True))
+        self.sql(f"UPDATE workspaces SET status='active' WHERE id='{WORKSPACE}'")
+        self.sql('UPDATE private.acquisition_activation SET enabled=false')
+        self.assertIn('Form unavailable',self.read_publication(fail=True))
+
+    def test_online_publication_rechecks_expiry_after_row_lock_wait(self):
+        import psycopg2
+        from concurrent.futures import ThreadPoolExecutor
+        self.publication_fixture();self.enable_publication()
+        self.sql("UPDATE private.acquisition_form_publications SET expires_at=clock_timestamp()+interval '2 seconds'")
+        database=getattr(self,'database_name','acquisition_test')
+        blocker=psycopg2.connect(host=self.socket,dbname=database,user='test_admin')
+        try:
+            with blocker.cursor() as cursor:
+                cursor.execute('SELECT * FROM private.acquisition_form_publications FOR UPDATE')
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(self.read_publication,fail=True)
+                try:
+                    deadline=time.monotonic()+1.5
+                    while self.sql(f"SELECT count(*) FROM pg_stat_activity WHERE datname={literal(database)} AND wait_event_type='Lock' AND query LIKE '%public.read_acquisition_public_form%'")=='0':
+                        if future.done() or time.monotonic()>deadline:raise AssertionError('Public form did not reach row lock wait')
+                        time.sleep(.02)
+                    while self.sql('SELECT expires_at<=clock_timestamp() FROM private.acquisition_form_publications')!='t':
+                        if time.monotonic()>deadline+2:raise AssertionError('Publication expiry was not reached')
+                        time.sleep(.02)
+                finally:blocker.rollback()
+                self.assertIn('Form unavailable',future.result(timeout=6))
+        finally:blocker.close()
+
     def test_online_form_http_commit_loss_retry_history_and_revocation(self):
         campaign=self.offer_form_campaign()
         path=self.base+'/campaigns/'+campaign+'/offer-forms'

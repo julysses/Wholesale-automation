@@ -205,6 +205,10 @@
     {
       "file": "20261030230704_acquisition_offer_form_versions.sql",
       "sha256": "f90928af8d9844d7bdd59829b9bb7a4d5330ce6d478b282dcb465e7c3c0f74c8"
+    },
+    {
+      "file": "20261031195256_acquisition_offer_publication_routing.sql",
+      "sha256": "729981a599e0f316d7fc435828fa9c63913073c25f435e77c1bbc19401443ed7"
     }
   ]
 }
