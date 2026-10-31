@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Bounded seller request reader (local only)
+
+- Added exact envelope parsing with a 32 KiB cumulative limit, five-second total upload deadline, strict UTF-8 JSON and generic no-store failures. Rejects duplicate keys, hidden routing/proof fields, compressed/ambiguous/mismatched requests and interrupted uploads. No public route, provider call, database change or activation.
+- 24 new transport tests and existing submission/admission/bot/preparer tests pass together: 141 passed in 0.61s, log /tmp/acquisition-portal-transport-python.log. Initial test import failed collection, corrected to package-qualified import before the successful run. Both test processes completed.
+- Isolated CI repair remains at /tmp/wholesaleos-portal-ci-repair. Full workspace process 69164 verified running; /tmp/acquisition-upgrade-fixture-repair-full.log is advancing without reported failure. Do not restart it. Publish only that repair after completion, then require all six successor CI jobs before retained features.
+- Remaining public receiver work: disabled route/configuration, trusted network identity, bounded service transport, display admission, exact inquiry orchestration and recovery; then address validation and four-step seller interface. Full PRD scope and production approvals remain unchanged.
+
 ## 2026-10-31 — Resumed: verified acceptance saved; CI repair required
 
 - Verified local rehearsal completed: 56 migrations, 26 access probes, 82 workflows and 45 PostgREST checks. Saved exact output in evidence/2026-10-31-portal-verified-result.json. Python submission/admission/bot/preparer suite passed 117 tests. Prior process handle 8244 is absent; completed output inspected without restarting it.
