@@ -212,3 +212,13 @@ Validation: 220 portal, authentication and webhook regression tests passed, incl
 ## Browser inquiry contract and recovery preparation
 
 `frontend/src/lib/sellerOfferRequest.ts` validates public display, seller inquiry and the exact received receipt. Pending session recovery stores only the original inquiry, displayed definition and timestamp; bot tokens and routing authority are excluded. An unconfirmed inquiry cannot be overwritten or cleared by an invalid receipt. Storage failure/corruption holds submission instead of silently generating a replacement identity. Null price and explicit false preferences are preserved. Seven contract/recovery tests and frontend typecheck/build passed. The helpers still require integration into the four-step page and browser QA; they do not constitute a released seller UI.
+
+## Four-step seller page — local, pending visual QA
+
+`/offer/:formKey` now uses property → plans → contact → review, matching the app's navy/orange numbered process. It loads only the selected public definition, displays exact reviewed wording and unselected optional channels, summarizes every entered category, and submits the bounded inquiry/token envelope. Unknown price remains missing. The success page confirms review receipt and explicitly does not promise a purchase offer.
+
+The original inquiry is saved before dispatch. A lost/malformed/wrong receipt preserves the same request through reload; confirmed exact or duplicate receipts clear it. Pending inquiries cannot be edited into new submissions. Changed form wording, corrupt browser storage and unavailable forms show a hold rather than bypassing controls. Repeated submissions require deliberate action and a new challenge after an uncertain result.
+
+The widget loads only at the available review step, binds action and inquiry ID, handles expiry/errors and removes obsolete instances. Implementation references: [Cloudflare explicit rendering](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/) and [widget configuration](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/widget-configurations/), checked October 31, 2026. No production settings or real provider calls.
+
+Validation: 14 new UI/recovery tests, final typecheck/build, and no new lint findings. Actual visual/mobile browser QA and end-to-end hosted challenge acceptance remain pending. Current address checks validate input shape only; authoritative address verification remains an explicit WEB-001 gap.

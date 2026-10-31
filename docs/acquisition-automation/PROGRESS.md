@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Guided seller page implemented locally
+
+- Added lazy public `/offer/:formKey` page with four numbered steps: property, plans, contact, review. Uses existing navy/orange palette, clear primary actions, accessible labels/status/errors, server-reviewed consent wording, optional channel selections and review summary. Defaults to a review request, never a price or binding offer. Backend publication/runtime gates remain closed.
+- Connected bounded verification widget only after the form is available and reaches review. Exact inquiry ID/action binding, expiry/error handling and cleanup follow current official Cloudflare documentation. No real widget/provider request was made during tests. React best-practices checklist applied.
+- Browser session recovery is integrated: persist original inquiry before sending, prevent edits/new identity after uncertain save, preserve original wording and optional values on reload, require fresh challenge for deliberate retry, and confirm only a matching minimal receipt. Changed form wording and corrupt storage hold new submissions. No automatic retries.
+- 14 browser contract/component/interaction tests pass, including all four steps, lost reply/reload/exact recovery, wrong receipt, form revision change, corruption and disabled page. Final typecheck/build passed; lint has zero new findings and 147 existing findings. Initial test-only assertion type/unused-mock issues corrected. Logs /tmp/acquisition-seller-page-tests-final.log, /tmp/acquisition-seller-page-build-final.log, /tmp/acquisition-seller-page-lint.log. Processes 29513/96401 completed successfully.
+- Visual/mobile browser QA remains pending. Address shape validation is implemented, but authoritative address verification is not complete; page explicitly says property details are verified during review. No hosted acceptance, provider activation or deployment claimed.
+- Repair-only full workspace process 69164 remains active at /tmp/wholesaleos-portal-ci-repair. No next feature push until its repair is published and all six successor CI jobs succeed. Next: visual/interaction QA, then remaining address validation and original PRD work.
+
 ## 2026-10-31 — Real seller receiver acceptance passed locally
 
 - Process 26752 completed successfully: 56 migrations, 26 access probes, 82 full-catalog workflows and 49 actual local gateway checks. Preserved 24 historical records across 22 populated tables and checked 103 historical definitions. Evidence: evidence/2026-10-31-portal-receiver-result.json; log /tmp/acquisition-portal-receiver-full-v3.log.

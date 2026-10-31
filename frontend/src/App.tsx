@@ -31,6 +31,7 @@ const BuyerIntelligence = lazy(() => import('@/pages/BuyerIntelligence').then(m 
 const LeadGenEngine = lazy(() => import('@/pages/LeadGenEngine').then(m => ({ default: m.LeadGenEngine })));
 const MasterListBuilder = lazy(() => import('@/pages/MasterListBuilder').then(m => ({ default: m.MasterListBuilder })));
 const LeadForm = lazy(() => import('@/pages/LeadForm').then(m => ({ default: m.LeadForm })));
+const SellerOffer = lazy(() => import('@/pages/SellerOffer').then(m => ({ default: m.SellerOffer })));
 const FacebookAdsCommandCenter = lazy(() => import('@/pages/FacebookAdsCommandCenter').then(m => ({ default: m.FacebookAdsCommandCenter })));
 const DevelopmentCommandCenter = lazy(() => import('@/pages/DevelopmentCommandCenter').then(m => ({ default: m.DevelopmentCommandCenter })));
 
@@ -315,6 +316,7 @@ export default function App() {
         <Suspense fallback={<Spinner />}>
           <Routes>
             <Route path="/form/:formId" element={<LeadForm />} />
+            <Route path="/offer/:formKey" element={<SellerOffer />} />
             <Route path="*" element={<OperatorApp />} />
           </Routes>
         </Suspense>
