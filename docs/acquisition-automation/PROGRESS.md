@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Isolated historical-upgrade fixture repair (validation passed)
+
+- Based exactly on published 09ebd1457a60ba2d2ed69042f4bc75e26915595e. CI 41239853074 completed with five successful jobs; the workspace suite failed two of 217 cases during setup.
+- Cause: two populated-upgrade tests intentionally defer source/intake migrations until after inserting historical records. Setup incorrectly applied dependent portal migration 20261031202407 first, failing on missing acquisition_lead_sources or seller_intakes_origin. Defer that dependent migration for those two cases. Their existing historical preservation and backfill assertions are unchanged; normal workspace/workflow tests still apply the portal migration.
+- Both original failures now pass: 2 tests, 15.133 seconds; log /tmp/acquisition-upgrade-fixture-repair-focused.log. Full workspace suite passed all 217 tests in 1730.570 seconds; process 69164 exited 0. Exact log and SHA256 result are saved under evidence/2026-10-31-portal-fixture-repair-*. No test cancelled or restarted.
+- Repair checkout: /tmp/wholesaleos-portal-ci-repair, branch codex/repair-portal-upgrade-fixtures. Publish only this validated repair; admission/verified portal features remain in the original checkout at 54c638f and must wait for all six repair CI jobs to succeed. No production migration, channel activation or outreach.
+
 ## 2026-10-31 — Repair gate cleared for retained portal work
 
 - Verified exact repair 699d633892b2cf2410578de7234d0522100c8d4f / CI 41238434660 completed successfully with all six jobs. No cancellation or restart.

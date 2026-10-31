@@ -1,6 +1,6 @@
 # Acquisition automation — current implementation and release handoff
 
-Latest checkpoint: exact repair 699d633 / CI 41238434660 passed all six jobs. Previously tested safeguards, atomic portal transaction and disabled bot adapter are ready for publication. Verify their exact successor before another feature push; migration 55 admission work remains local and under validation.
+Latest checkpoint: published 09ebd1457a60ba2d2ed69042f4bc75e26915595e / CI 41239853074 completed with five successful jobs and two historical-upgrade setup failures in the workspace job. This isolated checkout contains only the fixture repair and its release notes; later admission/verified-receiver/UI features remain in the original feature checkout. Full repair suite passed 217 tests in 1730.570 seconds, plus both original failing cases passed separately. Publish only this repair and verify all six exact successor jobs before retained features; see PROGRESS.md.
 
 Updated October 31, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 

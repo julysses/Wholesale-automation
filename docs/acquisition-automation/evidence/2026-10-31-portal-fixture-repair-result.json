@@ -1,0 +1,14 @@
+{
+  "base_commit": "09ebd1457a60ba2d2ed69042f4bc75e26915595e",
+  "failed_ci": 41239853074,
+  "root_cause": "Dependent portal migration applied during historical-upgrade fixtures before intentionally deferred source/intake prerequisites",
+  "repair": "Defer portal migration only in the two historical-upgrade fixtures; preserve existing assertions and normal current-schema setup",
+  "focused_tests_passed": 2,
+  "focused_seconds": 15.133,
+  "workspace_tests_passed": 217,
+  "workspace_seconds": 1730.57,
+  "process_exit_code": 0,
+  "workspace_log_sha256": "ebe806e7696596622c6fa3433b3f5688d2c38d763cdeddde2b56c4b447b8d470",
+  "production_changed": false,
+  "retained_feature_commits_included": false
+}
