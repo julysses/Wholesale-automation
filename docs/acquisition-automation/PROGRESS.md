@@ -1,5 +1,20 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Legacy SQL receipt safeguards verified locally
+
+- Published only fixture repair 699d633892b2cf2410578de7234d0522100c8d4f; exact successor CI 41238434660 is active. Retain application b63814d and SQL ea895ed until all six repair checks succeed. Merged the repair back into this worktree; only progress prose needed conflict reconciliation.
+- Proposed migration 53 preserves inspected legacy reservation/finalization behavior while denying scoped forms, scoped receipts and enrolled leads under shared identity locks. Source definitions/ACL/dependencies captured read-only; production ledger remained 20261023221455. Compensation is documented in ONLINE-OFFER-PORTAL.md.
+- Four focused tests passed. Complete resumed rehearsal exited 0: 53 migrations, 26 access probes, 71 full-catalog workflows and 36 real local PostgREST checks. Preserved 24 synthetic historical rows across 22 tables and checked 103 historical definitions. Evidence: evidence/2026-10-31-legacy-receipt-guards-result.json. No hosted/provider acceptance is claimed.
+- On resume, prior handles 1315/19797 were absent and process inspection confirmed no old test process remained. Their logs were incomplete; no success is claimed. Only then reran the full current rehearsal; it completed at session 41728, log /tmp/acquisition-legacy-sql-full-resumed.log. No local tests remain running.
+- Next: observe exact repair CI, publish retained increments only after six successes, then implement transactional scoped portal receipt/lead/intake/source persistence with fresh publication checks, followed by abuse controls and the four-step seller flow. Preserve navy/orange guided app handoffs and all remaining PRD phases. No production migration, deployment, provider, outreach, mail or transaction activation.
+
+## 2026-10-31 — Focused database fixture CI repair
+
+- Exact published b08f6ab / CI 41237169464 finished: five jobs passed; acquisition workflow failed only because the focused fixture omitted existing service-role SELECT/INSERT/UPDATE on lead_form_submissions. The full-catalog journey passed. The corrected assertion exposed this fixture gap; no production bypass was demonstrated.
+- Mirrored grants from existing 20261008205313_protect_consent_evidence.sql, including explicit DELETE/TRUNCATE/REFERENCES/TRIGGER revocation. No production schema or permission changes.
+- Reproduced and verified the repaired exact failing test against the published revision in a separate worktree: 1 test passed (8.211s). Four related tests also passed in the retained feature worktree (33.555s).
+- Publish only this CI repair; keep b63814d and proposed migration 53 local until the repair successor has all six successful jobs. No cancellation or production activation. Full original PRD remains incomplete.
+
 ## 2026-10-31 — Legacy receipt listing and recovery boundaries
 
 - Pulled unchanged. Added explicit receipt/form scope exclusion to shared submission listing, preserving legacy name/slug projection and unlinked history. Parent inspection works before additive scope columns exist. Missing/malformed linked parents are hidden, limits are bounded, and responses use no-store.

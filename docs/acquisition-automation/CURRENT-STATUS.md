@@ -1,17 +1,19 @@
 # Acquisition automation — current implementation and release handoff
 
+Latest checkpoint: published fixture-only repair 699d633; exact CI 41238434660 is active. Retain local application/SQL safeguards until all six repair jobs succeed. See newest PROGRESS.md evidence.
+
 Updated October 31, 2026 (America/Chicago). This is a navigation and gap inventory based on the current source, not a completion certification. The original PRD and IMPLEMENTATION-PLAN.md remain controlling. Older sections in feature documents are chronological checkpoints; do not interpret an old “next” list as current implementation state.
 
 ## Latest handoff
 
-Published head b08f6ab includes disabled public form routing and 33 actual local gateway checks. Its predecessor d134101 / CI 41236036862 completed with all six successful jobs. Current successor 41237169464 is still running. Verify that exact run before the next feature push.
+Published head 699d633 repairs the focused database fixture after b08f6ab CI finished with five successes and one fixture-permission failure. Its exact successor is 41238434660; verify all six jobs before the next feature push.
 
-The next local increment adds legacy receipt-list and recovery scope guards, with 72 related offline tests passing. Disabled, approval-bound public routing and its service-only display projection are already published. No public seller HTTP endpoint or submission path exists yet. No production migration, process, provider or channel was enabled.
+Retained b63814d adds legacy receipt-list/recovery scope guards (72 related tests passed). Retained ea895ed adds SQL reservation/finalizer safeguards and actual legacy gateway compatibility checks. Full local rehearsal passed 53 migrations, 26 probes, 71 workflows and 36 gateway checks. Prior interrupted test processes are absent; the replacement rehearsal completed successfully. No public seller HTTP endpoint or transactional submission path exists yet. No production/channel changes.
 
 ## Git and validation
 
 - Branch: codex/acquisition-foundation. Check PROGRESS.md and live Git/CI before publication.
-- Current local rehearsal: 52 additive migrations, 26 access probes, 68 full-catalog workflows and 33 actual local PostgREST checks. Three new direct-SQL routing tests cover disabled defaults, exact projection/version selection, role restrictions, closed gates and expiry after a demonstrated lock wait. Five new actual-gateway checks verify signed service access, exact version/projection, injection rejection, expiry/activation/suspension gates and the real legacy-submission guard.
+- Current local rehearsal: 53 additive migrations, 26 access probes, 71 full-catalog workflows and 36 actual local PostgREST checks. Three new direct-SQL routing tests cover disabled defaults, exact projection/version selection, role restrictions, closed gates and expiry after a demonstrated lock wait. Five new actual-gateway checks verify signed service access, exact version/projection, injection rejection, expiry/activation/suspension gates and the real legacy-submission guard.
 - Existing frontend suite: 545 passed; registry/legacy API suite: 98 passed; administration API boundary suite: 44 passed. No UI changed in the latest routing increment.
 - Hosted CI verifies code and synthetic full-schema rehearsal, not hosted Supabase Auth issuance, provider delivery, persistent worker storage or deployment acceptance.
 - No production migration or acquisition activation is authorized by these commits. Preserve paused SMS and all existing county/CRM behavior.
