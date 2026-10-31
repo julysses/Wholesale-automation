@@ -1,5 +1,20 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Seller browser contract and exact recovery preparation
+
+- Added typed public definition/inquiry/receipt validation and browser session recovery. Preserves submission identity, exact saved wording, explicit false and missing price. Refuses overwrite of an unconfirmed inquiry, corrupted storage, unknown routing/token fields and mismatched receipts. Clears only after an exact minimal received confirmation, including after a duplicate recovery.
+- Seven meaningful browser-contract tests passed; frontend typecheck/build passed with existing chunk-size warnings. Logs /tmp/acquisition-seller-recovery-ui.log and /tmp/acquisition-seller-recovery-build.log. Processes 44746 and 51653 completed. These helpers are not yet connected to the seller screens; no public UI acceptance claimed.
+- Receiver rehearsal remains pending in process 26752 after the test transport/anonymous-denial corrections below. Repair-only workspace process 69164 remains live. No feature push until repair publication and all six successor checks succeed.
+- Next UI work: connect four guided steps (property, condition/timing, contact/preferences, review), reviewed wording and challenge, exact pending recovery, accessible errors and unavailable states, then visual/interaction QA. Address verification and all remaining original PRD gates remain required.
+
+## 2026-10-31 — Actual seller receiver journey validation in progress
+
+- Added gateway rehearsal of the actual app route, bounded service client and disposable PostgREST database. Synthetic bot responses only; receipt writes are real local transactions. Cases cover public display, invalid input before verification, a deliberately lost response after actual commit, exact recovery with fresh admission, one intake/source handoff, workspace isolation and publication revocation before provider work.
+- Original process 55785 exited with the offline Python socket guard. Replaced direct Python socket transport with the existing harness socket-only curl bridge, retaining actual PostgREST status/JSON and real database transactions. Process 24632 then exited at an overly strict anonymous-empty-list assertion after actual save/recovery succeeded; existing consent-evidence grants deny anonymous reads. Corrected the assertion to accept 401/403 or an empty result, while still requiring the other workspace to see no receipt. Final rehearsal is running as process 26752, log /tmp/acquisition-portal-receiver-full-v3.log. Do not restart it; final result remains pending.
+- Applied the historical-upgrade dependency guard to retained migrations 54–56. Both original historical cases pass against the current local fixture: 2 tests in 14.472s; log /tmp/acquisition-portal-current-fixture-focused.log; process 5490 completed successfully.
+- Separate repair-only 217-case workspace suite still runs as process 69164 in /tmp/wholesaleos-portal-ci-repair; log /tmp/acquisition-upgrade-fixture-repair-full.log. Keep repair publication separate from retained features. After successful repair-only publication, verify all six successor jobs before any feature push.
+- Next: inspect both exact process results, record evidence and commit the receiver verification once it passes; publish repair only when its suite passes. Then continue address validation and the four-step seller UI, preserving current exact-submission recovery and the original full PRD.
+
 ## 2026-10-31 — Disabled public seller receiver (local only)
 
 - Mounted gated GET/POST seller routes using the existing verified submission path, bounded upload and restricted bounded service transport. Display consumes capacity before loading the selected definition. Exact public route exceptions preserve sign-in for neighboring acquisition routes. No settings, credentials, production migrations or channels activated.
