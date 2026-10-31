@@ -1,5 +1,12 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Real seller receiver acceptance passed locally
+
+- Process 26752 completed successfully: 56 migrations, 26 access probes, 82 full-catalog workflows and 49 actual local gateway checks. Preserved 24 historical records across 22 populated tables and checked 103 historical definitions. Evidence: evidence/2026-10-31-portal-receiver-result.json; log /tmp/acquisition-portal-receiver-full-v3.log.
+- Actual app receiver saved a receipt, deliberately lost the response after database commit, and recovered the exact inquiry with a fresh admission and one intake/source handoff. Other workspace/anonymous reads revealed no receipt. Publication revocation stopped provider verification. Bot responses/runtime are synthetic; HTTPX transport bridges to the real socket-only gateway, without relaxing offline network guards. Not hosted/provider acceptance.
+- Historical fixture dependency correction passed its two focused regressions; source migration assertions remain unchanged. Separate repair-only full workspace process 69164 is still running. Keep feature publication held until repair-only validation/publication and all six CI checks succeed.
+- Four-step seller UI is now in local worktree: 14 browser-contract/interaction tests pass. Final build/lint and visual QA are pending; its code is not included in this receiver-validation commit. All production/channel approval gates remain closed.
+
 ## 2026-10-31 — Seller browser contract and exact recovery preparation
 
 - Added typed public definition/inquiry/receipt validation and browser session recovery. Preserves submission identity, exact saved wording, explicit false and missing price. Refuses overwrite of an unconfirmed inquiry, corrupted storage, unknown routing/token fields and mismatched receipts. Clears only after an exact minimal received confirmation, including after a duplicate recovery.

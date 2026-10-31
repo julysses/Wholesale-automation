@@ -53,12 +53,14 @@ def verify_offer_forms_http(db, request, token, other, workspace):
     publication_checks=verify_public_display_http(db,request,token,other,workspace,campaign,identity,definition)
     portal_checks=verify_portal_receipt_http(db,request,token,other,workspace,definition)
     legacy_checks=verify_legacy_receipt_http(db,request,token,workspace,identity)
+    from acquisition_portal_http import verify_portal_receiver_http
+    receiver_checks=verify_portal_receiver_http(db,request,token,other,workspace,definition)
 
     def after_session_revocation():
         if request(path,token(),second)[0]!=403 or request(listing,token())!=(200,[]):
             raise AssertionError('Revoked session retains form access')
     return ['form HTTP exact retry and immutable version history','form HTTP conflicting request and stale revision rejected',
-            'form HTTP tenant and anonymous isolation','form HTTP typed paginated history','form HTTP revoked session denied']+publication_checks+legacy_checks+portal_checks,after_session_revocation
+            'form HTTP tenant and anonymous isolation','form HTTP typed paginated history','form HTTP revoked session denied']+publication_checks+legacy_checks+portal_checks+receiver_checks,after_session_revocation
 
 
 def verify_legacy_receipt_http(db,request,token,workspace,scoped_form):
