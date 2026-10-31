@@ -1,0 +1,9 @@
+{
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "inspection": "read-only metadata before contract attestation persistence",
+  "latest_migration": "20261023221455",
+  "artifacts": null,
+  "verifications": null,
+  "contract_versions": null,
+  "production_mutation": false
+}
