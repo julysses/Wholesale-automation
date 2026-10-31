@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Full contract draft rehearsal passed; actual API gateway test running
+
+- Corrected process 57913 exited 0: 57 migrations, 26 access probes, 88 full-catalog workflows and 49 existing real local gateway checks. Preserved 24 historical rows across 22 populated tables and checked 103 historical definitions. Exact result and log hash saved in evidence/2026-10-31-contract-drafts-full-result.json. The corrected historical seed passes without weakening scoped write guards.
+- Added actual contract API-to-PostgREST journey with synthetic data/JWTs and the existing private socket transport: construct a reviewed proposal through real RPCs, save through the mounted API, lose its reply after actual commit, reconcile the same request, reject conflicting retry, list canonical scoped draft, deny foreign/anonymous/expired-session saves, and assert one version/audit. This exercises the mounted router and real AcquisitionStore; it does not establish hosted Auth acceptance.
+- Expanded full rehearsal is running as process 98367, log /tmp/acquisition-contract-api-gateway.log. Do not restart; new gateway results remain pending. No other local process is active.
+- Predecessor CI 41246949570 remains at five successful jobs and one live database contention job. No feature push until all six terminal successes and current local acceptance passes.
+- UI source inspection found no read endpoint for seller/property relationship choices. Before wiring a guided fifth contract-draft step, add bounded scoped choices by selected lead/property so users choose a name instead of technical IDs. Preserve selected offer/property context and exact pending-save recovery. All later contract, retention, hosted and original PRD requirements remain open.
+
+
 ## 2026-10-31 — Contract draft API and lock-wait checks
 
 - Added and mounted authenticated draft-save/list endpoints on the acquisition router, using the existing user-JWT store and activation gate. Request accepts identities/expected amount-review sequence/name only. Exact minimal receipts reject mismatches, extra fields or execution claims; uncertain saves retain original-request recovery. List uses workspace/lead filters, bounded cursor pagination and strict returned-row validation. No provider or signing path.

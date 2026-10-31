@@ -1,0 +1,107 @@
+"""Draft API through actual local PostgREST; all records and JWTs synthetic.
+
+The test injects only the socket transport into the existing user-scoped store.
+Database writes, RLS, receipts and returned JSON are real. Hosted Auth is not tested.
+"""
+import json
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.testclient import TestClient
+import httpx
+
+
+def verify_contracts_http(db, request, token, admin, other, workspace):
+    from tools.acquisition_store import AcquisitionStore, acquisition_store
+    from web.api.acquisition_api import router
+
+    lead='ac900000-0000-4000-8000-000000000001'
+    prop='ac900000-0000-4000-8000-000000000002'
+    owner='ac900000-0000-4000-8000-000000000003'
+    relation='ac900000-0000-4000-8000-000000000004'
+    analysis='ac900000-0000-4000-8000-000000000005'
+    offer='ac900000-0000-4000-8000-000000000006'
+    approval='ac900000-0000-4000-8000-000000000007'
+    draft='ac900000-0000-4000-8000-000000000008'
+    db.query("INSERT INTO public.leads(id,property_address,city,owner_first_name,owner_last_name) VALUES(%s,'901 Draft Fixture','Dallas','Synthetic','Seller')",[lead])
+    db.query("INSERT INTO wholesale_ingest.properties(id,state,county,parcel_id,lead_id) VALUES(%s,'TX','Dallas','synthetic-contract-http',%s)",[prop,lead])
+
+    def rpc(name,body,*,service=False):
+        status,data=request('/rpc/'+name,token(role='service_role') if service else token(),body)
+        if status!=200:raise AssertionError(f'Contract HTTP fixture {name} failed: {status} {data}')
+        return data
+
+    scope={'p_workspace':workspace}
+    rpc('bind_acquisition_lead',scope|{'p_lead':lead,'p_property':prop})
+    rpc('create_acquisition_owner',scope|{'p_id':owner,'p_lead':lead})
+    rpc('associate_acquisition_owner',scope|{'p_id':relation,'p_owner':owner,'p_lead':lead,
+        'p_relationship':'reported_owner','p_note':'Synthetic reported ownership, not verified title'})
+    rpc('reserve_acquisition_analysis',scope|{'p_id':analysis,'p_lead':lead,
+        'p_inputs':{'cases':{case:{'strategy':'fix_and_flip'} for case in ('base','downside','upside')}}})
+    snapshot=rpc('read_acquisition_calculation',scope|{'p_id':analysis},service=True)
+    outputs={'status':'calculated','calculation_version':'acquisition-underwriting-v1','strategy':'fix_and_flip',
+        'cases':{case:{'status':'calculated','mao':'150000.00','proposed_offer_range':{'low':'120000.00','high':'150000.00'}} for case in ('base','downside','upside')},
+        'binding_offer':False,'human_approval_required':True}
+    rpc('complete_acquisition_calculation',scope|{'p_id':analysis,'p_input_hash':snapshot['input_hash'],'p_outputs':outputs},service=True)
+    rpc('propose_acquisition_offer',scope|{'p_id':offer,'p_analysis':analysis,'p_case':'base','p_amount':140000,'p_note':'Synthetic amount only'})
+    rpc('review_acquisition_offer',scope|{'p_id':approval,'p_offer':offer,'p_expected_sequence':1,
+        'p_status':'amount_approved','p_note':'Synthetic internal review',
+        'p_review_notes':{key:'Synthetic unresolved review, not verified facts' for key in ('title','liens','occupancy','valuation','repairs','financing','downside')}})
+
+    drop_reply=[True];commits=[]
+    class Store(AcquisitionStore):
+        async def request(self,method,path,**kwargs):
+            result=await super().request(method,path,**kwargs)
+            if path=='rpc/create_acquisition_contract_draft':
+                commits.append(result)
+                if drop_reply[0]:
+                    drop_reply[0]=False
+                    raise HTTPException(503,'Synthetic response lost after commit')
+            return result
+
+    def gateway(req):
+        if req.url.host!='localhost' or req.method not in ('GET','POST'):
+            raise AssertionError('Unexpected gateway destination or method')
+        path=req.url.path+('?' + req.url.query.decode() if req.url.query else '')
+        jwt=req.headers.get('authorization','').removeprefix('Bearer ') or None
+        status,data=request(path,jwt,json.loads(req.content) if req.method=='POST' else None)
+        return httpx.Response(status,json=data)
+
+    async def store(incoming:Request):
+        async with httpx.AsyncClient(base_url='http://localhost/',trust_env=False,
+                transport=httpx.MockTransport(gateway),headers={'Authorization':incoming.headers.get('authorization','')}) as client:
+            yield Store(client)
+
+    app=FastAPI();app.include_router(router);app.dependency_overrides[acquisition_store]=store
+    path=f'/api/acquisition/workspaces/{workspace}/contracts/drafts'
+    body={'id':draft,'offer_id':offer,'offer_sequence':2,'owner_relationship_id':relation,'name':'Synthetic contract HTTP draft'}
+    headers={'Authorization':'Bearer '+token()}
+    with TestClient(app) as client:
+        lost=client.post(path,json=body,headers=headers)
+        if lost.status_code!=503 or len(commits)!=1 or commits[0]['duplicate']:
+            raise AssertionError('Draft response loss did not follow real commit')
+        retry=client.post(path,json=body,headers=headers)
+        if retry.status_code!=200 or retry.json()!={'deal_id':draft,'version':1,'status':'draft','duplicate':True,'execution_authorized':False}:
+            raise AssertionError('Draft exact recovery failed')
+        changed=client.post(path,json=body|{'name':'Changed request'},headers=headers)
+        if changed.status_code!=409:raise AssertionError('Conflicting draft retry accepted')
+        listed=client.get(path,params={'lead_id':lead},headers=headers)
+        if listed.status_code!=200 or len(listed.json()['items'])!=1 or listed.json()['items'][0]['id']!=draft:
+            raise AssertionError('Draft API canonical record missing')
+        if listed.headers.get('cache-control')!='no-store':raise AssertionError('Draft page cacheable')
+        foreign={'Authorization':'Bearer '+token(other)}
+        if client.get(path,params={'lead_id':lead},headers=foreign).json().get('items')!=[]:
+            raise AssertionError('Draft leaked across workspaces')
+        if client.post(path,json=body,headers=foreign).status_code!=403:
+            raise AssertionError('Foreign draft retry accepted')
+        if client.post(path,json=body).status_code not in (401,403):
+            raise AssertionError('Anonymous draft accepted')
+        if db.query('SELECT count(*) AS n FROM public.acquisition_contract_versions WHERE deal_id=%s',[draft])!=[{'n':1}]:
+            raise AssertionError('Draft recovery duplicated versions')
+        if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract' AND entity_id=%s",[draft])!=[{'n':1}]:
+            raise AssertionError('Draft recovery duplicated audit')
+        db.query('UPDATE auth.sessions SET not_after=clock_timestamp()-interval \'1 second\' WHERE id=%s',[admin])
+        try:
+            if client.post(path,json=body,headers=headers).status_code!=403:
+                raise AssertionError('Expired session recovered a draft')
+        finally:db.query('UPDATE auth.sessions SET not_after=NULL WHERE id=%s',[admin])
+    return ['contract API actual commit loss and exact recovery','contract API canonical draft and immutable audit',
+            'contract API real tenant and anonymous isolation','contract API expired session denied']

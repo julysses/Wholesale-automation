@@ -9,15 +9,17 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 - The retained disabled admission, verified acceptance, receiver and four-step seller UI are now published in Git. This does not mean deployed or live. The merge preserved the migration 54–56 fixture guard and changed no application/test code relative to the validated retained head. Both documentation histories are retained.
 - No local test or preview process remains running. Branch automatic deployment is disabled in vercel.json. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
-## New local candidate awaiting acceptance
+## Current local contract candidate
 
-Migration 57 adds controlled contract drafts on canonical deals. Six focused database cases passed; corrected full rehearsal process 57913 is running at /tmp/acquisition-contract-drafts-full-v2.log (8324 failed a historical fixture setup; guard preserved). Authenticated API save/list and 483 regression checks plus three lock-wait cases pass locally; actual gateway acceptance, screens and later transitions remain incomplete. The verified results below still describe the prior 56-migration candidate.
+Contract draft migration 57 passed the corrected full rehearsal: 57 migrations, 26 access probes, 88 full-catalog workflows and 49 existing local gateway checks. Process 57913 exited 0; evidence/2026-10-31-contract-drafts-full-result.json. Contract API/auth regressions (483) and three lock-wait cases also passed.
+
+The expanded actual contract API/gateway journey is now running as process 98367, log /tmp/acquisition-contract-api-gateway.log. It adds real commit-loss recovery, one version/audit, tenant/anonymous isolation and expired-session checks. This new gateway coverage is not yet accepted. The guided draft screen and property-specific seller choices are not implemented yet. No hosted/provider/transaction acceptance is implied.
 
 ## Verified local scope
 
 | Evidence | Latest verified result | Boundary |
 | --- | --- | --- |
-| Full schema and application rehearsal | 56 additive candidate migrations; 26 access probes; 82 application workflows; 49 real local PostgREST checks | Synthetic records and bot responses; no hosted Auth/provider acceptance |
+| Full schema and application rehearsal | 57 additive candidate migrations; 26 access probes; 88 application workflows; 49 real local PostgREST checks | Synthetic records and bot responses; no hosted Auth/provider acceptance |
 | Historical compatibility | 24 historical records preserved across 22 populated tables; 103 historical definitions checked | Disposable production-derived catalog, not a production migration |
 | Portal/backend regression | 220 portal, authentication and webhook tests passed | Targeted suite; not a newly run whole-backend suite |
 | New seller interface | 14 contract/component/journey tests passed; typecheck/build passed | Fake verification widget in tests |
