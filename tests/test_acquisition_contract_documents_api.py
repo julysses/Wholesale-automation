@@ -120,3 +120,55 @@ def test_disabled_acquisition_never_opens_document_store(monkeypatch):
         assert client.post(BASE,json=BODY).status_code==404
         assert client.get(BASE+'/'+A).status_code==404
         assert client.post(BASE+'/'+A+'/revocations',json={'id':R,'reason':'Synthetic withdrawal reason for review.'}).status_code==404
+
+
+def choices():
+    now=stamp();row=state();row['checked_at']=now
+    return {'workspace_id':W,'contract_id':C,'contract_version':1,'purpose':'purchase_contract',
+        'current_policy':{'id':P,'workspace_id':W,'purpose':'purchase_contract','version':1,
+            'retention_seconds':86400,'valid_from':stamp(-60),'valid_until':stamp(86400)},
+        'items':[row],'next_after':None,'checked_at':now,'execution_authorized':False}
+
+
+def test_document_choices_scope_policy_and_server_owned_gate(endpoint,monkeypatch):
+    client,store=endpoint;store.request.return_value=choices()
+    monkeypatch.delenv('ACQUISITION_CONTRACT_UPLOAD_ENABLED',raising=False)
+    response=client.get(BASE+'?purpose=purchase_contract&limit=1')
+    assert response.status_code==200 and response.headers['cache-control']=='no-store'
+    assert response.json()['upload_enabled'] is False
+    assert store.request.call_args.args==('POST','rpc/contract_document_candidates')
+    assert store.request.call_args.kwargs['body']=={'p_workspace':W,'p_contract':C,'p_version':1,
+        'p_purpose':'purchase_contract','p_after':None,'p_limit':1}
+    monkeypatch.setenv('ACQUISITION_CONTRACT_UPLOAD_ENABLED','true')
+    assert client.get(BASE+'?purpose=purchase_contract').json()['upload_enabled'] is True
+    store.request.return_value=choices()|{'current_policy':None,'items':[]}
+    assert client.get(BASE+'?purpose=purchase_contract').json()['current_policy'] is None
+
+
+@pytest.mark.parametrize('target,change',[
+    ('root',{'workspace_id':C}),('root',{'contract_id':W}),('root',{'contract_version':2}),
+    ('root',{'contract_version':True}),('root',{'purpose':'title_report'}),('root',{'execution_authorized':True}),
+    ('root',{'checked_at':stamp(-60)}),('root',{'next_after':P}),('root',{'upload_enabled':True}),
+    ('policy',{'purpose':'title_report'}),('policy',{'workspace_id':C}),('policy',{'valid_until':stamp(-1)}),
+    ('item',{'contract_version':2}),('item',{'workspace_id':C}),('item',{'purpose':'title_report'}),
+    ('item',{'legal_review_approved':True}),('item',{'checked_at':stamp(-1)}),('item',{'download_url':'private'})])
+def test_document_choices_rejects_untrusted_projection(endpoint,target,change):
+    client,store=endpoint;raw=choices()
+    (raw if target=='root' else raw['current_policy'] if target=='policy' else raw['items'][0]).update(change)
+    store.request.return_value=raw
+    response=client.get(BASE+'?purpose=purchase_contract')
+    assert response.status_code==503 and response.headers['cache-control']=='no-store'
+    assert 'private' not in response.text
+
+
+def test_document_choices_rejects_cursor_and_page_inconsistency(endpoint):
+    client,store=endpoint;raw=choices();raw['next_after']=A;store.request.return_value=raw
+    assert client.get(BASE+'?purpose=purchase_contract&limit=2').status_code==503
+    raw['next_after']=None
+    assert client.get(BASE+f'?purpose=purchase_contract&after={A}').status_code==503
+    raw['items']=[raw['items'][0],raw['items'][0]]
+    assert client.get(BASE+'?purpose=purchase_contract').status_code==503
+    store.request.reset_mock()
+    for query in ('purpose=mail_content','purpose=purchase_contract&limit=0','purpose=purchase_contract&limit=51'):
+        assert client.get(BASE+'?'+query).status_code==422
+    store.request.assert_not_called()

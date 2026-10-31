@@ -3,8 +3,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Path, Response, Request
-from schemas.acquisition_contract_documents import ContractDocumentRegistration, ContractDocumentRegistrationReceipt, ContractDocumentState, ContractDocumentUploadReceipt, DocumentPurpose
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, Request, Query
+from schemas.acquisition_contract_documents import ContractDocumentRegistration, ContractDocumentRegistrationReceipt, ContractDocumentState, ContractDocumentUploadReceipt, ContractDocumentCandidates, DocumentPurpose
 from schemas.acquisition_evidence import EvidenceRevocation, EvidenceRevocationReceipt
 from tools.acquisition_store import acquisition_store, open_acquisition_store
 from tools.acquisition_evidence import EvidenceUnavailable
@@ -25,6 +25,29 @@ async def rpc(store,name,body):
 
 def uncertain(message):
     return HTTPException(503,message,headers={'Cache-Control':'no-store'})
+
+
+@router.get('')
+async def document_candidates(workspace_id:UUID, contract_id:UUID, contract_version:Version,
+                              response:Response, purpose:DocumentPurpose,
+                              limit:int=Query(20,ge=1,le=50), after:UUID|None=None,
+                              store=Depends(acquisition_store)):
+    response.headers['Cache-Control']='no-store'
+    raw=await rpc(store,'contract_document_candidates',{
+        'p_workspace':str(workspace_id),'p_contract':str(contract_id),'p_version':contract_version,
+        'p_purpose':purpose,'p_after':str(after) if after else None,'p_limit':limit})
+    try:
+        page=ContractDocumentCandidates.model_validate(raw)
+        now=datetime.now(timezone.utc)
+        if ((page.workspace_id,page.contract_id,page.contract_version,page.purpose)!=(workspace_id,contract_id,contract_version,purpose)
+                or not now-timedelta(seconds=30)<=page.checked_at<=now+timedelta(seconds=5)
+                or len(page.items)>limit or page.next_after is not None and len(page.items)!=limit
+                or after is not None and any(item.id.int<=after.int for item in page.items)
+                or page.current_policy is not None and page.current_policy.valid_until<=now):
+            raise ValueError('Document choices scope, freshness or pagination changed')
+    except (ValueError,TypeError):
+        raise uncertain('Current contract document choices could not be confirmed.') from None
+    return {**raw,'upload_enabled':os.getenv('ACQUISITION_CONTRACT_UPLOAD_ENABLED','').lower()=='true'}
 
 
 @router.post('')

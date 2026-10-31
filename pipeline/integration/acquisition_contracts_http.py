@@ -191,6 +191,21 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             raise AssertionError('Document API revocation recovery failed')
         if client.get(api_path+'/'+api_document,headers=headers).json()['status']!='revoked':
             raise AssertionError('Document API lost revoked state')
+        listing=client.get(api_path+'?purpose=purchase_contract&limit=1',headers=headers)
+        if listing.status_code!=200:raise AssertionError('Document discovery API unavailable')
+        page=listing.json()
+        if page['current_policy']['id']!=policy or page['items'][0]['artifact_id']!=document or page['next_after']!=document or page['upload_enabled']:
+            raise AssertionError('Document discovery policy/page/gate binding failed')
+        next_page=client.get(api_path+'?purpose=purchase_contract&limit=1&after='+document,headers=headers)
+        if next_page.status_code!=200 or next_page.json()['items'][0]['artifact_id']!=api_document or next_page.json()['next_after'] is not None:
+            raise AssertionError('Document discovery cursor continuity failed')
+        if page['items'][0]['status']!='revoked' or next_page.json()['items'][0]['status']!='revoked':
+            raise AssertionError('Document discovery erased retained revocation history')
+        for identity in ({'Authorization':'Bearer '+token(other)},{}):
+            if client.get(api_path+'?purpose=purchase_contract',headers=identity).status_code not in (401,403):
+                raise AssertionError('Document discovery tenant/session bypass')
+        if client.get(api_path.replace('/versions/1/','/versions/2/')+'?purpose=purchase_contract',headers=headers).status_code!=403:
+            raise AssertionError('Document discovery wrong-version bypass')
         if client.post(api_path+'/'+api_document+'/bytes',headers=headers,content=b'not accepted').status_code not in (404,405):
             raise AssertionError('Contract document upload unexpectedly enabled')
     if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_document' AND entity_id=%s",[api_document])!=[{'n':2}]:
@@ -201,4 +216,5 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract document revocation exact retry','contract document immutable audit convergence',
             'contract document API committed registration recovery','contract document API committed revocation recovery',
             'contract document API fresh state and scope isolation','contract document API immutable audit and upload hold',
-            'contract upload admission binding and shared actor cap','contract upload admission scope and session isolation']
+            'contract upload admission binding and shared actor cap','contract upload admission scope and session isolation',
+            'contract document discovery real policy pagination and retained state','contract document discovery API tenant and version isolation']

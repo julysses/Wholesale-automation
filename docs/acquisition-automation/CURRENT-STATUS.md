@@ -9,6 +9,14 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 - Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is published in Git; synthetic desktop/mobile browser QA passed. Shared evidence regression rehearsal 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 gateway checks. No local test or preview process is active.
 - Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
+## Guided document discovery candidate
+
+Migration 61 and the version-scoped GET documents endpoint provide bounded ordered metadata and currently reviewed retention-policy choices, without raw provenance, private file paths, download URLs or approval authority. Exact workspace/contract/version/purpose, fresh state, pagination and server-owned upload availability are validated. Missing or expired policies remain unavailable; retained revoked/expired history remains visible while activation is paused.
+
+Three focused SQL cases passed in 12.875 seconds, including preservation of populated artifacts/audits. 167 focused API/transport tests and 770 broader contract/evidence regressions passed (9.97 seconds for the broader suite). Full rehearsal process 83996 exited 0: 61 migrations / 26 access probes / 112 workflows / 66 actual gateway checks. Real API discovery verified policy choices, cursor continuity, retained revoked state and tenant/version denial. Evidence: evidence/2026-10-31-contract-discovery-gateway-result.json. All local processes terminal.
+
+Next: integrate these capabilities into the existing saved-contract step with exact pending-file recovery and navigation holds, then finish signed scan/review bindings, immutable terms/transitions and disposition. Do not label uploaded documents reviewed or expose private file previews. Publish only after all six predecessor jobs succeed; hosted Auth/Storage/provider acceptance remains pending.
+
 ## Contract binary upload endpoint candidate
 
 The version-scoped document `/bytes` route is implemented behind its own default-closed `ACQUISITION_CONTRACT_UPLOAD_ENABLED` gate. It shares lazy bounded request validation with mail, reserves capacity before input reads, and validates exact contract/version/artifact/purpose and fresh strict receipts. Unknown outcomes preserve the same artifact and file; capacity replies carry Retry-After. Uploaded bytes remain unscanned, unpersisted as verification and legally unapproved. No runtime flag was enabled.

@@ -299,3 +299,7 @@ Fresh read-only live check: ledger `20261023221455`; `private.acquisition_eviden
 ## 2026-10-31 contract Storage authorization candidate
 
 Fresh metadata query reports ledger `20261023221455`, no candidate acquisition_evidence_artifacts and no returned Storage object policies. Migration 60 modifies only private.acquisition_evidence_object_access(text,boolean); its existing function privileges and restrictive Storage policies remain. Contract upload checks canonical draft/version and the exact active shared reservation; existing mail dispatch and retained read semantics remain. No live DDL was issued. See CONTRACT-DOCUMENT-PERSISTENCE.md for compensation and verification boundaries.
+
+## 2026-10-31 contract document discovery candidate
+
+Live read-only verification still reports ledger 20261023221455 and no acquisition_evidence_artifacts or acquisition_contract_versions. CLI-created migration 61 adds private-definer/public-invoker contract_document_candidates RPCs only, with authenticated-only execution. It reuses canonical versions, shared retained artifacts and private reviewed retention policies; no new entity, table privilege, runtime setting or evidence record. Compensation: keep activation disabled and preserve all history; omit the read-only feature if necessary.

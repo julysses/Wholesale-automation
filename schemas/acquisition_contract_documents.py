@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, AwareDatetime, StrictBool, field_validator, model_validator
 from schemas.acquisition_evidence_object import MAX_EVIDENCE_BYTES
 from schemas.acquisition_evidence_object import RetainedEvidenceObject
-from schemas.acquisition_evidence import EvidenceRegistration, EvidenceRegistrationReceipt, UploadCapacityAdmission
+from schemas.acquisition_evidence import EvidenceRegistration, EvidenceRegistrationReceipt, UploadCapacityAdmission, EvidencePolicyChoice
 
 
 DocumentPurpose = Literal['purchase_contract', 'title_report', 'assignment_agreement',
@@ -118,4 +118,47 @@ class ContractDocumentUploadReceipt(BaseModel):
         if (self.retain_until <= max(self.checked_at, self.registry_checked_at)
                 or (self.checked_at-self.registry_checked_at).total_seconds()>5):
             raise ValueError('Current retained evidence required')
+        return self
+
+
+class ContractDocumentPolicyChoice(EvidencePolicyChoice):
+    purpose: DocumentPurpose
+
+
+class ContractDocumentCandidates(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    workspace_id: UUID
+    contract_id: UUID
+    contract_version: int = Field(strict=True, ge=1, le=2147483647)
+    purpose: DocumentPurpose
+    current_policy: ContractDocumentPolicyChoice | None
+    items: list[ContractDocumentState] = Field(max_length=50)
+    next_after: UUID | None
+    checked_at: AwareDatetime
+    execution_authorized: StrictBool
+
+    @field_validator('checked_at', mode='before')
+    @classmethod
+    def timestamp_string(cls, value):
+        if not isinstance(value, str):
+            raise ValueError('Timestamp string required')
+        return value
+
+    @model_validator(mode='after')
+    def scoped_current_candidates(self):
+        if self.execution_authorized:
+            raise ValueError('Discovery grants no execution')
+        if self.current_policy and (
+                (self.current_policy.workspace_id, self.current_policy.purpose) != (self.workspace_id, self.purpose)
+                or not self.current_policy.valid_from <= self.checked_at < self.current_policy.valid_until):
+            raise ValueError('Current policy required')
+        previous = None
+        for item in self.items:
+            if ((item.workspace_id, item.contract_id, item.contract_version, item.purpose, item.checked_at)
+                    != (self.workspace_id, self.contract_id, self.contract_version, self.purpose, self.checked_at)
+                    or previous is not None and item.id.int <= previous):
+                raise ValueError('Scoped ordered current evidence required')
+            previous = item.id.int
+        if self.next_after is not None and (not self.items or self.next_after != self.items[-1].id):
+            raise ValueError('Last returned artifact cursor required')
         return self

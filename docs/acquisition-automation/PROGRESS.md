@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Contract document discovery passed local and real gateway acceptance
+
+- Previous turn made progress: af8441c committed the tested default-closed upload endpoint. Pulled unchanged. Exact predecessor 173684f / 41250516262 attempt 2 remains live with five successful jobs; no restart or feature push.
+- Fresh read-only production ledger still 20261023221455; acquisition artifact/version tables absent. CLI-created migration 20261031231924 adds scoped private-definer/public-invoker discovery, using retained version identity and shared reviewed policies. No live DDL, new table or invented policy.
+- Added strict page/policy schemas and mounted metadata list endpoint: exact target, bounded keyset pages, ordered unique rows, matching timestamps, current policy or null, no approval and server-owned upload availability. Retained unavailable states remain visible while paused. Existing property/draft context and one guided next action are documented for UI integration.
+- Three focused SQL cases passed in process 65765 (12.875 seconds); 167 focused API/transport cases passed (4.39 seconds). Broader process 69486 passed 770 contract/evidence regressions in 9.97 seconds. Full process 83996 exited 0: 61 migrations / 26 access probes / 112 workflows / 66 actual gateway checks. Evidence: evidence/2026-10-31-contract-discovery-gateway-result.json. All local processes terminal.
+- Next: publish after all-six predecessor success; guided contract-document UI with exact registration/upload recovery and navigation holds, signed scan/review evidence, terms/transitions and disposition. Original PRD scope remains incomplete. No production/provider changes, spend, outreach, fulfillment or binding actions.
+
+
 ## 2026-10-31 — Contract upload endpoint passed local acceptance
 
 - Previous turn made progress: 60ccb27 implemented tested Storage dispatch and 212625a recorded terminal predecessor timeout plus targeted attempt-2 retry. Pulled unchanged. Exact predecessor 173684f / 41250516262 attempt 2 remains live, five jobs successful and schema-upgrade job active. No new feature push or job restart.
