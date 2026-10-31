@@ -1,0 +1,33 @@
+{
+  "scope": "Built application in local browser with synthetic API and fake verification widget",
+  "desktop_viewport": "default browser size, approximately 1280x720",
+  "mobile_viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "mobile_document_width": 369,
+  "mobile_scroll_width": 369,
+  "checks": [
+    "four-step navigation",
+    "unselected optional contact preferences",
+    "review summary and exact wording disclosure",
+    "disabled submission before fake verification",
+    "lost response holds original request",
+    "reload restores original inquiry",
+    "retry confirms matching synthetic receipt",
+    "unavailable form displays retry without sign-in",
+    "desktop and mobile layout inspected"
+  ],
+  "corrections": [
+    "larger checkbox hit targets",
+    "multiline seller notes",
+    "explicit selected and not-selected wording in disclosure",
+    "omit empty contact rows"
+  ],
+  "real_provider_used": false,
+  "real_database_used_in_visual_preview": false,
+  "hosted_acceptance": false,
+  "preview_server_stopped": true,
+  "browser_tab_closed": true,
+  "viewport_override_reset": true
+}

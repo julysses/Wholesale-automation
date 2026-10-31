@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Desktop and phone seller journey QA
+
+- Used the available browser with the built local page, synthetic API and fake verification widget. Optional gstack browse binary was unavailable; no tooling installed. Inspected desktop and 375×812 phone layouts, walked all four steps, simulated lost confirmation, reloaded the saved request and completed exact recovery. Verified unavailable-form state without sign-in or provider access. Phone document and content widths both 369px (no horizontal overflow).
+- Corrected visual findings: larger checkbox targets, multiline seller notes, explicit selected/not-selected wording inside an expandable acknowledgement section, and removal of empty contact rows. Rebuilt and rechecked updated contact/review screens. Fourteen interface/recovery tests and final typecheck/build pass. Initial redundant motivation length branch caused a TypeScript narrowing error after textarea conversion; removed it before the passing build. Final lint check passed with zero new findings (147 existing); process 68497 completed, log /tmp/acquisition-seller-visual-lint.log.
+- Screenshots and scope saved under evidence/seller-portal-2026-10-31/. They are synthetic previews, not real seller/provider acceptance. The local preview server (73740) was stopped, temporary browser tab closed, and phone viewport override reset. Full recovery was observed before layout-only refinements; updated navigation and preference disclosure were rechecked after rebuild.
+- Pulled unchanged. Separate repair-only full workspace process 69164 remains live and has advanced into offer tests without a reported failure. Do not restart; log /tmp/acquisition-upgrade-fixture-repair-full.log. Feature publication remains held until repair-only validation/publication and all six successor CI checks pass.
+- Remaining: authoritative address verification, hosted proxy/key/retention/challenge acceptance, and all original PRD phases/approval gates. Local UI verification is not production launch approval.
+
 ## 2026-10-31 — Guided seller page implemented locally
 
 - Added lazy public `/offer/:formKey` page with four numbered steps: property, plans, contact, review. Uses existing navy/orange palette, clear primary actions, accessible labels/status/errors, server-reviewed consent wording, optional channel selections and review summary. Defaults to a review request, never a price or binding offer. Backend publication/runtime gates remain closed.

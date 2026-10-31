@@ -73,7 +73,8 @@ export function SellerOfferForm({ formKey }: { formKey: string }) {
   const field = (name: keyof Answers, label: string, options?: [string, string][], type = 'text') => <label className="block text-sm font-medium text-[#1B3A5C]" key={name}>
     {label}{options ? <select className={inputClass} value={answers[name]} required onChange={event => setAnswers(value => ({ ...value, [name]: name === 'state' ? event.target.value.toUpperCase() : event.target.value }))}>
       <option value="">Select an option</option>{options.map(([value, text]) => <option value={value} key={value}>{text}</option>)}
-    </select> : <input className={inputClass} type={type} value={answers[name]} required={!['asking_price', 'phone', 'email'].includes(name)} maxLength={name === 'motivation' ? 2000 : name === 'email' ? 254 : name === 'state' ? 2 : name === 'postal_code' ? 10 : name === 'phone' ? 40 : 200}
+    </select> : name === 'motivation' ? <textarea className={inputClass} rows={3} required maxLength={2000} value={answers.motivation}
+      onChange={event => setAnswers(value => ({ ...value, motivation: event.target.value }))} /> : <input className={inputClass} type={type} value={answers[name]} required={!['asking_price', 'phone', 'email'].includes(name)} maxLength={name === 'email' ? 254 : name === 'state' ? 2 : name === 'postal_code' ? 10 : name === 'phone' ? 40 : 200}
       onChange={event => setAnswers(value => ({ ...value, [name]: name === 'state' ? event.target.value.toUpperCase() : event.target.value }))} />}
   </label>;
 
@@ -159,9 +160,9 @@ export function SellerOfferForm({ formKey }: { formKey: string }) {
                   {field('motivation', 'What would you like us to know?')}{field('asking_price', 'Asking price (optional, without commas)')}</>}
                 {step === 3 && <>{field('name', 'Your name')}{field('phone', 'Phone number (optional)', undefined, 'tel')}{field('email', 'Email address (optional)', undefined, 'email')}
                   <p className="text-sm text-slate-500">Provide at least one way to reach you.</p>
-                  <label className="flex gap-3 text-sm"><input type="checkbox" required checked={privacy} onChange={event => setPrivacy(event.target.checked)} />{definition?.privacy_acknowledged}</label>
-                  <label className="flex gap-3 text-sm"><input type="checkbox" checked={callback} onChange={event => setCallback(event.target.checked)} />{definition?.human_callback_requested}</label>
-                  <label className="flex gap-3 text-sm"><input type="checkbox" checked={emailReply} onChange={event => setEmailReply(event.target.checked)} />{definition?.email_reply_requested}</label></>}
+                  <label className="flex cursor-pointer items-start gap-3 py-2 text-sm"><input className="mt-0.5 h-5 w-5 shrink-0 accent-[#1B3A5C]" type="checkbox" required checked={privacy} onChange={event => setPrivacy(event.target.checked)} />{definition?.privacy_acknowledged}</label>
+                  <label className="flex cursor-pointer items-start gap-3 py-2 text-sm"><input className="mt-0.5 h-5 w-5 shrink-0 accent-[#1B3A5C]" type="checkbox" checked={callback} onChange={event => setCallback(event.target.checked)} />{definition?.human_callback_requested}</label>
+                  <label className="flex cursor-pointer items-start gap-3 py-2 text-sm"><input className="mt-0.5 h-5 w-5 shrink-0 accent-[#1B3A5C]" type="checkbox" checked={emailReply} onChange={event => setEmailReply(event.target.checked)} />{definition?.email_reply_requested}</label></>}
                 <div className="flex justify-between gap-3 pt-4">{step > 1 ? <button type="button" className="flex items-center gap-1 px-3 py-3" onClick={() => { setError(''); setStep(value => value - 1); }}><ChevronLeft size={18} />Back</button> : <span />}
                   <button className={primary} type="submit">{step === 3 ? 'Review request' : 'Continue'}<ChevronRight size={18} /></button></div>
               </form> : <div className="space-y-5">
@@ -169,10 +170,15 @@ export function SellerOfferForm({ formKey }: { formKey: string }) {
                 {review && <dl className="space-y-3 rounded-xl bg-slate-50 p-4 text-sm">
                   <div><dt className="font-semibold">Property</dt><dd>{review.property.address}, {review.property.city}, {review.property.state} {review.property.postal_code}</dd><dd>{labels[review.property.authority]}</dd></div>
                   <div><dt className="font-semibold">Your plans</dt><dd>{labels[review.property.condition]} · {labels[review.property.occupancy]}</dd><dd>Timing: {labels[review.property.timeline]}</dd><dd>{review.property.motivation}</dd><dd>Asking price: {review.property.asking_price ?? 'Not provided'}</dd></div>
-                  <div><dt className="font-semibold">Contact</dt><dd>{review.seller.name}</dd><dd>{review.seller.phone}</dd><dd>{review.seller.email}</dd></div>
+                  <div><dt className="font-semibold">Contact</dt><dd>{review.seller.name}</dd>{review.seller.phone && <dd>{review.seller.phone}</dd>}{review.seller.email && <dd>{review.seller.email}</dd>}</div>
                   <div><dt className="font-semibold">Selected preferences</dt><dd>Human callback: {review.selections.human_callback_requested ? 'Requested' : 'Not requested'}</dd><dd>Email reply: {review.selections.email_reply_requested ? 'Requested' : 'Not requested'}</dd></div>
                 </dl>}
-                {definition && <div className="space-y-2 text-sm text-slate-600"><p>Acknowledged: {definition.privacy_acknowledged}</p><p>{definition.human_callback_requested}</p><p>{definition.email_reply_requested}</p></div>}
+                {definition && review && <details className="rounded-lg border border-slate-200 p-3 text-sm text-slate-600">
+                  <summary className="cursor-pointer py-1 font-medium text-[#1B3A5C]">Review acknowledgement and preferences</summary>
+                  <div className="mt-3 space-y-3"><p>Acknowledged: {definition.privacy_acknowledged}</p>
+                    <p><strong>{review.selections.human_callback_requested ? 'Selected' : 'Not selected'}:</strong> {definition.human_callback_requested}</p>
+                    <p><strong>{review.selections.email_reply_requested ? 'Selected' : 'Not selected'}:</strong> {definition.email_reply_requested}</p></div>
+                </details>}
                 <p className="text-sm text-slate-600">Submitting asks Hilltop to review this property. Any purchase offer requires further review.</p>
                 {!busy && <SellerChallenge key={challenge} siteKey={display.bot_site_key} inquiryId={inquiryId} onToken={onToken} />}
                 <div className="flex justify-between gap-3">{!pending && <button type="button" className="flex items-center gap-1 px-3 py-3" onClick={() => { setToken(null); setStep(3); }}><ChevronLeft size={18} />Edit details</button>}
