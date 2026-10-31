@@ -74,3 +74,24 @@ async def verify_registered_contract_document(client: httpx.AsyncClient, artifac
                     'retention_policy_id': str(after.retention_policy_id), 'registry_checked_at': after.checked_at.isoformat()}
     except TimeoutError:
         raise EvidenceUnavailable('Contract document verification timed out') from None
+
+
+async def upload_registered_contract_document(client, artifact_id, source, *, workspace_id, contract_id,
+                                               contract_version, purpose, clock=utcnow):
+    """Internal bounded transport only. Storage still denies contract writes until its guard is implemented."""
+    from typing import get_args
+    from schemas.acquisition_contract_documents import DocumentPurpose
+    from tools.acquisition_evidence_upload import _upload_registered_object
+    scope = dict(artifact_id=artifact_id, workspace_id=workspace_id, contract_id=contract_id,
+                 contract_version=contract_version, purpose=purpose, clock=clock)
+    def validate():
+        if (not all(isinstance(value, UUID) for value in (artifact_id, workspace_id, contract_id))
+                or type(contract_version) is not int or not 1 <= contract_version <= 2147483647
+                or purpose not in get_args(DocumentPurpose)):
+            raise EvidenceUnavailable('Contract document upload identity is invalid')
+    async def load():
+        return await load_contract_document_state(client, **scope)
+    async def verify():
+        return await verify_registered_contract_document(client, **scope)
+    return await _upload_registered_object(client, source, validate=validate, load=load, verify=verify,
+        upload_version='acquisition-contract-document-upload-v1', clock=clock)

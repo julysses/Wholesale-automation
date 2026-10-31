@@ -9,6 +9,12 @@ Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-
 - Contract draft schema/API/rules and seller choices are published in Git, not deployed. The fifth guided draft step is published in Git; synthetic desktop/mobile browser QA passed. Shared evidence regression rehearsal 80922 exited 0: 57 migrations, 26 access probes, 88 workflows, 54 gateway checks. No local test or preview process is active.
 - Branch automatic deployment is disabled. No production migration, provider setting, spend, outreach, fulfillment or binding transaction was performed. Preserve paused SMS and existing county/CRM behavior.
 
+## Internal contract upload transport candidate
+
+Strict contract admission receipts and the shared process semaphore now guard the internal contract upload entry point. Mail and contracts reuse one bounded non-overwriting upload engine, with source-size/hash/type checks, current registry reads and independent authenticated byte reconciliation. Contract receipts retain the exact version and report unpersisted verification, unscanned bytes and no legal/execution approval. No contract HTTP upload route or Storage write authority is enabled.
+
+700 contract/evidence API, schema, admission, byte, upload, scan, persistence and journal tests passed in 7.53 seconds. Full shared-path rehearsal process 29868 exited 0: 59 migrations, 26 access probes, 100 workflows, 64 real gateway checks. Evidence: evidence/2026-10-31-contract-shared-upload-gateway-result.json. All local processes are terminal. Next: complete Storage authority dispatch and combined real registry/Storage acceptance before mounting a contract upload endpoint.
+
 ## Shared contract upload admission candidate
 
 Migration 59 extends the existing private upload reservations across mail and contract-version targets, preserving two workspace slots and one active slot per actor. Both RPCs share the same lock and clear the alternate target when expired slots are reused. Current role/session/activation/retention and exact draft/version/creator checks run after waiting. Storage contract uploads remain denied; admission is not upload or review authority.

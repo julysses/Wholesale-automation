@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## 2026-10-31 — Shared bounded document transport candidate
+
+- Previous turn made progress: ab3d8e8 committed shared database admission and passed 59/26/100/64 plus 13 focused SQL cases. Pulled current branch unchanged after authorized network retry. Predecessor 173684f / CI 41250516262 remains live with four successes and two active jobs; no restart or feature push.
+- Added strict version-bound contract admission using the existing reservation model and shared process semaphore. Extracted bounded upload core used by existing mail and internal contract transport; exact fresh state before one POST, no overwrite, independent authenticated reconciliation, unchanged uncertainty semantics and no legal approval. Added internal store forwarding, no HTTP endpoint or Storage change.
+- Existing transport regression passed 106. New tests initially had an incorrect test-module import and an overrestrictive fake-provider assertion on intentionally mismatched requests; corrected those fixtures. An attempted broader command named a nonexistent test file and ran no tests; corrected discovery then passed 700 tests in 7.53 seconds. Full rehearsal process 29868 exited 0: 59 migrations / 26 access probes / 100 workflows / 64 actual gateway checks. Evidence: evidence/2026-10-31-contract-shared-upload-gateway-result.json. All local processes terminal. No production action.
+- Next: publish tested transport only after all six predecessor jobs succeed, then implement and verify guarded Storage dispatch, full upload API, scan/review bindings and guided document flow. Full original PRD remains incomplete.
+
+
 ## 2026-10-31 — Shared contract upload admission passed local acceptance
 
 - Resumed after the GPT app update; pulled unchanged. Predecessor published 173684f / CI 41250516262 remains active (four successes at latest observation). No next feature push until all six finish successfully.

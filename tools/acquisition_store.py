@@ -39,6 +39,16 @@ class AcquisitionStore:
         return await scan_registered_evidence(self.client, artifact_id, workspace_id=workspace_id,
                                               campaign_id=campaign_id, purpose=purpose, policy=policy)
 
+    async def upload_contract_document_with_admission(self, artifact_id, source, *, workspace_id, contract_id, contract_version, purpose):
+        from tools.acquisition_evidence_admission import upload_contract_document_with_admission
+        return await upload_contract_document_with_admission(self, artifact_id, source, workspace_id=workspace_id,
+            contract_id=contract_id, contract_version=contract_version, purpose=purpose)
+
+    async def upload_contract_document(self, artifact_id, source, *, workspace_id, contract_id, contract_version, purpose):
+        from tools.acquisition_contract_documents import upload_registered_contract_document
+        return await upload_registered_contract_document(self.client, artifact_id, source, workspace_id=workspace_id,
+            contract_id=contract_id, contract_version=contract_version, purpose=purpose)
+
     async def verify_contract_document(self, artifact_id, *, workspace_id, contract_id, contract_version, purpose):
         """Internal current-registry observation; never document or legal approval."""
         from tools.acquisition_contract_documents import verify_registered_contract_document

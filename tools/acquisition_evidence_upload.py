@@ -38,6 +38,20 @@ def plausible_media(body: bytearray, media_type: str) -> bool:
 async def upload_registered_evidence(client: httpx.AsyncClient, artifact_id: UUID, source: AsyncIterator[bytes], *,
                                      workspace_id: UUID, campaign_id: UUID, purpose: str,
                                      clock: Callable[[], datetime] = utcnow) -> dict:
+    scope = dict(artifact_id=artifact_id, workspace_id=workspace_id, campaign_id=campaign_id, purpose=purpose, clock=clock)
+    def validate():
+        if (not all(isinstance(value, UUID) for value in (artifact_id, workspace_id, campaign_id))
+                or purpose not in ('mail_content','mail_destination')):
+            raise EvidenceUnavailable('Evidence upload identity is invalid')
+    async def load():
+        return await load_registry_state(client, **scope)
+    async def verify():
+        return await verify_registered_evidence(client, **scope)
+    return await _upload_registered_object(client, source, validate=validate, load=load, verify=verify,
+        upload_version='acquisition-evidence-upload-v1', clock=clock)
+
+
+async def _upload_registered_object(client, source, *, validate, load, verify, upload_version, clock):
     """Validate whole bounded input before one POST, then independently reconcile exact bytes.
 
     No retry, upsert, signed URL, DELETE or filename from the caller. The source is
@@ -48,16 +62,15 @@ async def upload_registered_evidence(client: httpx.AsyncClient, artifact_id: UUI
     body = bytearray()
     attempted = False
     try:
-        if (not all(isinstance(value, UUID) for value in (artifact_id, workspace_id, campaign_id))
-                or purpose not in ('mail_content','mail_destination') or not hasattr(source, '__anext__')):
+        validate()
+        if not hasattr(source, '__anext__'):
             raise EvidenceUnavailable('Evidence upload identity or stream is invalid')
         origin = authenticated_origin(client)
         started = clock()
         if started.utcoffset() is None:
             raise EvidenceUnavailable('Evidence upload clock is invalid')
         async with asyncio.timeout(60):
-            before = await load_registry_state(client, artifact_id=artifact_id, workspace_id=workspace_id,
-                                               campaign_id=campaign_id, purpose=purpose, clock=clock)
+            before = await load()
             digest = hashlib.sha256()
             async with asyncio.timeout(10):
                 async for chunk in source:
@@ -70,8 +83,7 @@ async def upload_registered_evidence(client: httpx.AsyncClient, artifact_id: UUI
             if (len(body) != before.byte_size or not hmac.compare_digest(digest.hexdigest(), before.sha256)
                     or not plausible_media(body, before.media_type)):
                 raise EvidenceUnavailable('File does not match registered evidence')
-            current = await load_registry_state(client, artifact_id=artifact_id, workspace_id=workspace_id,
-                                                campaign_id=campaign_id, purpose=purpose, clock=clock)
+            current = await load()
             now = clock()
             if (before.model_dump(exclude={'checked_at'}) != current.model_dump(exclude={'checked_at'})
                     or current.checked_at < before.checked_at or now.utcoffset() is None or now < started
@@ -95,15 +107,14 @@ async def upload_registered_evidence(client: httpx.AsyncClient, artifact_id: UUI
                             raise EvidenceUploadUnconfirmed('Evidence upload was not confirmed')
             except (httpx.HTTPError, TimeoutError):
                 pass  # Reconcile once via a fresh registry + authenticated byte read; never repeat POST.
-            receipt = await verify_registered_evidence(client, artifact_id, workspace_id=workspace_id,
-                                                       campaign_id=campaign_id, purpose=purpose, clock=clock)
+            receipt = await verify()
             completed = clock()
             if (receipt['sha256'] != current.sha256 or receipt['byte_size'] != current.byte_size
                     or receipt['media_type'] != current.media_type or receipt['retention_policy_id'] != str(current.retention_policy_id)
                     or datetime.fromisoformat(receipt['retain_until']) != current.retain_until
                     or completed.utcoffset() is None or completed < now or not current.available_at(completed)):
                 raise EvidenceUploadUnconfirmed('Evidence upload was not confirmed')
-            return {**receipt, 'status': 'stored_unverified', 'upload_version': 'acquisition-evidence-upload-v1',
+            return {**receipt, 'status': 'stored_unverified', 'upload_version': upload_version,
                     'write_outcome': 'stored_or_existing', 'byte_match_observed': True}
     except (EvidenceUnavailable, httpx.HTTPError, TimeoutError, OSError, TypeError, ValueError, RuntimeError):
         if attempted:

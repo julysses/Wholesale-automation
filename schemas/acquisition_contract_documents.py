@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import Field, AwareDatetime, StrictBool, field_validator, model_validator
 from schemas.acquisition_evidence_object import MAX_EVIDENCE_BYTES
 from schemas.acquisition_evidence_object import RetainedEvidenceObject
-from schemas.acquisition_evidence import EvidenceRegistration, EvidenceRegistrationReceipt
+from schemas.acquisition_evidence import EvidenceRegistration, EvidenceRegistrationReceipt, UploadCapacityAdmission
 
 
 DocumentPurpose = Literal['purchase_contract', 'title_report', 'assignment_agreement',
@@ -71,3 +71,9 @@ class ContractDocumentState(ContractDocumentArtifact):
 class ContractDocumentRegistryState(ContractDocumentState):
     """Only current unverified metadata may enter the byte-observation transport."""
     status: Literal['pending_verification']
+
+
+class ContractDocumentUploadAdmission(UploadCapacityAdmission):
+    contract_id: UUID
+    contract_version: int = Field(strict=True, ge=1, le=2147483647)
+    purpose: DocumentPurpose

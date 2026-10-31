@@ -188,13 +188,11 @@ class EvidenceCandidates(BaseModel):
         return self
 
 
-class EvidenceUploadAdmission(BaseModel):
+class UploadCapacityAdmission(BaseModel):
     model_config = ConfigDict(extra='forbid')
     attempt_id: UUID
     workspace_id: UUID
-    campaign_id: UUID
     artifact_id: UUID
-    purpose: Literal['mail_content', 'mail_destination']
     admitted: StrictBool
     checked_at: AwareDatetime
     expires_at: AwareDatetime | None
@@ -218,6 +216,11 @@ class EvidenceUploadAdmission(BaseModel):
         elif self.expires_at is not None or self.retry_after_seconds<1:
             raise ValueError('Bounded retry required')
         return self
+
+
+class EvidenceUploadAdmission(UploadCapacityAdmission):
+    campaign_id: UUID
+    purpose: Literal['mail_content', 'mail_destination']
 
 
 class EvidenceUploadReceipt(BaseModel):
