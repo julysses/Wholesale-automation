@@ -365,6 +365,10 @@
     {
       "file": "20261101061021_acquisition_title_source_resolution.sql",
       "sha256": "ee2cd00cb8484a7c52aa83e7ddfcb53a494c7aac62e5166bff4c783ff1875279"
+    },
+    {
+      "file": "20261101061744_acquisition_title_review_write.sql",
+      "sha256": "1e7b4425012689c42e516cfad8b75cec9d1fe82a9257fde176e4ef18b6bb5adf"
     }
   ]
 }

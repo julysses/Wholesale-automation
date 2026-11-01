@@ -310,7 +310,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             from acquisition_contract_transition_http import verify_executed_transition_http
             verify_executed_transition_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft)
             from acquisition_deadline_review_http import verify_deadline_http
-            verify_deadline_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,admin,rpc,policy,key,observed,review_policy)
+            verify_deadline_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,admin,rpc,policy,key,observed,review_policy,request,token,other)
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
             verify_execution_revocation_http(db,app,document_drops,headers,execution_path,execution_body)
             verify_source_review_revocation_http(db,app,document_drops,headers,source_review_path,source_review_body)
@@ -485,4 +485,8 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'title-review completed choice removes repeated action',
             'title document API committed-response recovery preserves one source and audit',
             'title document API scope and provenance conflict rejected without clearance',
-            'title document current-version upload admission remains non-executing']
+            'title document current-version upload admission remains non-executing',
+            'title review real gateway exact committed-reply recovery and current evidence',
+            'title review gateway role tenant and changed-request isolation',
+            'title review resolution hold removes prior approval authority',
+            'title review paused original withdrawal retains one audit per decision']

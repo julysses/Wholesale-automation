@@ -8,7 +8,7 @@ from tools.acquisition_contract_attestation import build_contract_scan_attestati
 def identity(n):return f'af990000-0000-4000-8000-{n:012d}'
 
 
-def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retention_policy,key,observed,review_policy):
+def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retention_policy,key,observed,review_policy,request,token,other):
     contract,document,scan,terms_id,basis,signature_policy,signature,transition,policy,review,withdrawal=[identity(n) for n in range(1,12)]
     lead,prop,owner,relationship,analysis,offer,approval=[identity(n) for n in range(20,27)]
     db.query("INSERT INTO public.leads(id,property_address,city,owner_first_name,owner_last_name) VALUES(%s,'902 Deadline Fixture','Dallas','Synthetic','Seller')",[lead])
@@ -221,6 +221,8 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         if not admitted['admitted'] or admitted['execution_authorized']:raise AssertionError('Title document upload admission failed or granted execution')
         if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_document' AND entity_id=%s",[title_file])!=[{'n':1}]:
             raise AssertionError('Title document retries duplicated metadata audit')
+        from acquisition_title_review_http import verify_title_review_http
+        verify_title_review_http(db,rpc,request,token,workspace,contract,title_file,admin,other,key,observed,review_policy,expiry)
         db.query('UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id=%s',[new_policy])
         state=client.get(execution_path,headers=headers)
         if state.status_code!=200 or state.json()['approval_current']:raise AssertionError('Bound execution retained revoked interpretation authority')
