@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## October 31 — sourced execution findings boundary (candidate75 preparation)
+
+Implemented strict returned-agreement findings and an assessment against the prepared contract terms. Separate sourced findings cover both parties' signatures, signing authority and agreement completeness. Unconfirmed findings cannot be approved; withdrawal cannot replace findings. Known prepared terms cannot silently change or disappear, while unknown values may be filled from cited returned documents. Original date precision and unknown money are preserved; date-only, inconsistent, future-effective and elapsed-deadline cases remain review items. Results never grant execution authority.
+
+Full offline backend exited0:3939 passed,10 skipped,6 subtests in40.31s, including21 new execution-boundary tests. Log:/tmp/execution-findings-backend.log. No UI or SQL change in this increment. The boundary is not mounted: protected persistence, server-loaded prepared terms/source verification, current reviewer authority, immutable decisions and exact retry remain next, followed by choice discovery and the guided review. Detailed integration requirements are in CONTRACTS-AND-DISPOSITION.md. Full PRD remains incomplete.
+
+Pulled current branch unchanged. Candidate74 is committed locally as d378e41. Published predecessor d111736 / run41267084107 has five successful jobs and one live real-PostgreSQL job at last check. Keep these increments local until all six jobs succeed, then push and verify successor CI. No live job cancelled/restarted. No production migration, activation, policy provisioning, outreach, fulfillment or binding action.
+
+
 ## October 31 — returned contract document capture (candidate74)
 
 Contracts awaiting signature can now retain returned documents using the same registration, upload reservation and guarded Storage path as draft documents. Migration `20261101025323_acquisition_pending_contract_documents.sql` extends the three current guards to pending_signature while preserving current-version, workspace, role, MFA, session, retention, admission and exact-retry requirements. No term edit, scan approval or lifecycle change is implied. Existing original documents remain immutable. No production migration was applied; the last read-only hosted ledger is 20261023221455.
