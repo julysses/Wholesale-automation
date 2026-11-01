@@ -99,3 +99,44 @@ def test_withdrawal_receipt_cannot_redirect_to_another_original(endpoint):
     store.request.return_value=receipt(body)|{'interpretation_review_id':WORKSPACE}
     response=client.post(BASE,json=body)
     assert response.status_code==503 and 'x-acquisition-deadline-review-rejected' not in response.headers
+
+
+@pytest.mark.parametrize('status',['approved','requires_review','withdrawn','not_reviewed'])
+def test_current_term_state_keeps_shared_and_selected_sequences_distinct(endpoint,status):
+    from tests.test_acquisition_deadline_resolution import deadline_state
+    client,store=endpoint;value=deadline_state()|dict(status=status,approval_current=status=='approved')
+    if status!='approved':value['expires_at']=None
+    if status=='withdrawn':value.update(review_id=OTHER,review_sequence=3)
+    if status=='not_reviewed':value.update(review_id=None,review_sequence=None,interpretation_review_id=None,resolution=None)
+    store.request.return_value=value
+    result=client.get(BASE+'/closing_deadline')
+    assert result.status_code==200 and result.headers['cache-control']=='no-store'
+    assert result.json()['sequence']==3 and result.json()['status']==status
+    store.request.assert_awaited_once_with('POST','rpc/deadline_review_state',body={
+        'p_workspace':WORKSPACE,'p_contract':CONTRACT,'p_version':2,'p_term':'closing_deadline'})
+
+
+@pytest.mark.parametrize('change',[
+    {'workspace_id':OTHER},{'contract_id':OTHER},{'contract_version':1},{'term':'effective'},
+    {'checked_at':'2020-01-01T00:00:00Z'},{'checked_at':'2099-01-01T00:00:00Z'},
+    {'approval_current':False},{'review_sequence':4},{'private':'secret-marker'},
+])
+def test_stale_or_mixed_term_read_never_clears_saved_write(endpoint,change):
+    from tests.test_acquisition_deadline_resolution import deadline_state
+    client,store=endpoint;store.request.return_value=deadline_state()|change
+    result=client.get(BASE+'/closing_deadline')
+    assert result.status_code==503 and 'secret-marker' not in result.text
+    assert 'x-acquisition-deadline-review-rejected' not in result.headers
+
+
+@pytest.mark.parametrize('status',[401,403,409,429,503])
+def test_read_error_does_not_authorize_discarding_pending_write(endpoint,status):
+    client,store=endpoint;store.request.side_effect=HTTPException(status,'Unavailable')
+    result=client.get(BASE+'/closing_deadline')
+    assert result.status_code==status and 'x-acquisition-deadline-review-rejected' not in result.headers
+
+
+def test_invalid_term_is_rejected_without_store_access(endpoint):
+    client,store=endpoint
+    assert client.get(BASE+'/purchase_price').status_code==422
+    store.request.assert_not_awaited()

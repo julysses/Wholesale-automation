@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 from schemas.acquisition_contract_terms import ContractTermsDraft
 from schemas.acquisition_deadline_resolution import (
-    ContractDeadlineResolutionRequest, DeadlineResolutionReviewRequest, DeadlineResolutionReviewReceipt,
+    ContractDeadlineResolutionRequest, DeadlineResolutionReviewRequest, DeadlineResolutionReviewReceipt, DeadlineResolutionReviewState,
 )
 from tools.acquisition_deadline_resolution import assess_deadline_resolution
 
@@ -165,3 +165,39 @@ def test_historical_receipt_never_asserts_current_authority_and_retains_original
     assert DeadlineResolutionReviewReceipt.model_validate(withdrawn).interpretation_review_id == UUID(int=3)
     with pytest.raises(ValidationError):
         DeadlineResolutionReviewReceipt.model_validate(dict(withdrawn,interpretation_review_id=str(UUID(int=9))))
+
+
+def deadline_state():
+    from datetime import datetime,timedelta,timezone
+    now=datetime.now(timezone.utc)
+    return dict(workspace_id=str(UUID(int=10)),contract_id=str(UUID(int=11)),contract_version=2,
+        kind='deadline_resolution',term='closing_deadline',sequence=3,review_sequence=1,
+        review_id=str(UUID(int=2)),interpretation_review_id=str(UUID(int=2)),
+        original_term={'precision':'date','calendar_date':'2026-11-20'},resolution=body()['resolution'],
+        status='approved',approval_current=True,expires_at=(now+timedelta(minutes=5)).isoformat(),
+        checked_at=now.isoformat(),execution_authorized=False)
+
+
+def test_term_state_retains_shared_sequence_without_borrowing_other_term_review():
+    value=deadline_state()
+    assert DeadlineResolutionReviewState.model_validate(value).review_sequence==1
+    empty=dict(value,status='not_reviewed',approval_current=False,expires_at=None,review_id=None,
+        interpretation_review_id=None,review_sequence=None,resolution=None)
+    assert DeadlineResolutionReviewState.model_validate(empty).sequence==3
+    removed=dict(value,status='withdrawn',approval_current=False,expires_at=None,review_id=str(UUID(int=3)),review_sequence=3)
+    parsed=DeadlineResolutionReviewState.model_validate(removed)
+    assert parsed.interpretation_review_id==UUID(int=2) and parsed.resolution==DeadlineResolutionReviewState.model_validate(value).resolution
+
+
+@pytest.mark.parametrize('change',[
+    {'sequence':0},{'review_sequence':4},{'review_sequence':None},{'review_id':None},
+    {'interpretation_review_id':None},{'interpretation_review_id':str(UUID(int=5))},
+    {'term':'effective'},{'resolution':None},{'original_term':{'precision':'unknown'}},
+    {'original_term':{'precision':'date','calendar_date':'2026-11-21'}},
+    {'approval_current':False},{'execution_authorized':True},{'expires_at':None},
+    {'expires_at':'2020-01-01T00:00:00Z'},{'checked_at':1},{'sequence':True},
+    {'status':'withdrawn','approval_current':False,'expires_at':None},
+    {'status':'not_reviewed','approval_current':False,'expires_at':None},
+])
+def test_term_state_rejects_mixed_history_or_false_current_authority(change):
+    with pytest.raises(ValidationError):DeadlineResolutionReviewState.model_validate(deadline_state()|change)

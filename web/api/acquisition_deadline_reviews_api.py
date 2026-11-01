@@ -1,7 +1,8 @@
 """Authenticated deadline decisions; signed dates and lifecycle remain unchanged."""
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
-from schemas.acquisition_deadline_resolution import DeadlineResolutionReviewRequest, DeadlineResolutionReviewReceipt
+from schemas.acquisition_deadline_resolution import DeadlineResolutionReviewRequest, DeadlineResolutionReviewReceipt, DeadlineResolutionReviewState, DeadlineTerm
 from tools.acquisition_store import acquisition_store
 from web.api.acquisition_contract_documents_api import Version, rpc, uncertain
 
@@ -40,3 +41,22 @@ async def record_deadline_resolution_review(workspace_id: UUID, contract_id: UUI
         raise uncertain('Deadline review save is unconfirmed. Keep the same request and interpretation for recovery.') from None
     return receipt.model_dump(mode='json')
 
+
+
+@router.get('/{term}')
+async def deadline_review_state(workspace_id: UUID, contract_id: UUID, contract_version: Version,
+                                term: DeadlineTerm, response: Response, store=Depends(acquisition_store)):
+    response.headers['Cache-Control'] = 'no-store'
+    raw = await rpc(store, 'deadline_review_state', {'p_workspace': str(workspace_id),
+        'p_contract': str(contract_id), 'p_version': contract_version, 'p_term': term})
+    try:
+        state = DeadlineResolutionReviewState.model_validate(raw)
+        now = datetime.now(timezone.utc)
+        if ((state.workspace_id, state.contract_id, state.contract_version, state.term)
+                != (workspace_id, contract_id, contract_version, term)
+                or not now-timedelta(seconds=30) <= state.checked_at <= now+timedelta(seconds=5)
+                or state.approval_current and state.expires_at <= now):
+            raise ValueError('Fresh exact deadline state required')
+    except (ValueError, TypeError):
+        raise uncertain('Current deadline review could not be confirmed. Refresh before proceeding.') from None
+    return state.model_dump(mode='json')

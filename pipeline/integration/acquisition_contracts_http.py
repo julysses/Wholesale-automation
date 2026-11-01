@@ -471,4 +471,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'executed transition tenant conflict checks and unchanged terms with visible history',
             'deadline API actual approval commit loss and exact historical recovery',
             'deadline API original withdrawal recovery after policy revocation',
-            'deadline API workspace conflicts and unchanged calendar terms status and audit']
+            'deadline API workspace conflicts and unchanged calendar terms status and audit',
+            'deadline state exact term identity shared sequence and independent unreviewed term',
+            'deadline state policy revocation and original withdrawal history']

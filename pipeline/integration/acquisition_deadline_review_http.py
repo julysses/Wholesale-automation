@@ -75,7 +75,12 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
             source=dict(term='closing_deadline',artifact_id=document,artifact_version=1,sha256='d'*64,locator='Synthetic closing clause')))
     history=db.query('SELECT version,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract])
     with TestClient(app) as client:
+        initial=client.get(path+'/closing_deadline',headers=headers)
+        if initial.status_code!=200 or initial.json()['status']!='not_reviewed' or initial.json()['sequence']!=0:
+            raise AssertionError('Deadline initial current state unavailable')
         for auth in (foreign,{}):
+            if client.get(path+'/closing_deadline',headers=auth).status_code not in (401,403):
+                raise AssertionError('Deadline state crossed workspace or session')
             if client.post(path,json=body,headers=auth).status_code not in (401,403):
                 raise AssertionError('Deadline review crossed workspace or session')
         drops['rpc/record_deadline_resolution_review']=True
@@ -84,10 +89,19 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
             raise AssertionError(f'Deadline committed-response recovery failed: {lost.status_code} {retry.status_code} {retry.text}')
         if lost.headers.get('X-Acquisition-Deadline-Review-Rejected') or retry.json()['interpretation_review_id']!=review or retry.json()['approval_current'] or retry.json()['execution_authorized']:
             raise AssertionError('Deadline historical receipt lost identity or claimed authority')
+        current=client.get(path+'/closing_deadline',headers=headers)
+        empty=client.get(path+'/effective',headers=headers)
+        if current.status_code!=200 or not current.json()['approval_current'] or current.json()['review_sequence']!=1 or current.json()['interpretation_review_id']!=review:
+            raise AssertionError('Deadline current state lost exact interpretation')
+        if empty.status_code!=200 or empty.json()['status']!='not_reviewed' or empty.json()['sequence']!=1 or empty.json()['review_sequence'] is not None:
+            raise AssertionError('Deadline state borrowed another term review')
         conflict=client.post(path,json=body|{'note':'Changed original request must not replace the persisted interpretation.'},headers=headers)
         if conflict.status_code!=409 or conflict.headers.get('X-Acquisition-Deadline-Review-Rejected')!='true':
             raise AssertionError('Deadline conflicting retry was not definitively rejected')
         db.query('UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id=%s',[policy])
+        held=client.get(path+'/closing_deadline',headers=headers)
+        if held.status_code!=200 or held.json()['status']!='requires_review' or held.json()['approval_current'] or held.json()['expires_at'] is not None:
+            raise AssertionError('Deadline state retained revoked policy authority')
         if not client.post(path,json=body,headers=headers).json()['duplicate']:
             raise AssertionError('Deadline historical recovery disappeared after policy revocation')
         removed=body|dict(id=withdrawal,expected_sequence=1,status='withdrawn',original_review_id=review,resolution=None,personally_reviewed=False,expires_at=None)
@@ -95,6 +109,9 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         lost=client.post(path,json=removed,headers=headers);retry=client.post(path,json=removed,headers=headers)
         if lost.status_code!=503 or retry.status_code!=200 or not retry.json()['duplicate'] or retry.json()['interpretation_review_id']!=review:
             raise AssertionError('Deadline withdrawal lost its original identity during exact recovery')
+        state=client.get(path+'/closing_deadline',headers=headers)
+        if state.status_code!=200 or state.json()['status']!='withdrawn' or state.json()['interpretation_review_id']!=review or state.json()['resolution']!=body['resolution'] or state.json()['review_sequence']!=2:
+            raise AssertionError('Deadline withdrawn state lost original interpretation history')
     if history!=db.query('SELECT version,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract]):
         raise AssertionError('Deadline API rewrote signed calendar precision or history')
     if db.query('SELECT acquisition_status,acquisition_version FROM public.deals WHERE id=%s',[contract])!=[dict(acquisition_status='pending_signature',acquisition_version=2)]:

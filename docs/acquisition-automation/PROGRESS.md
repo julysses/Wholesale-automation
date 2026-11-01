@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## October 31 — deadline current-state API verified (candidate85)
+
+Added CLI-created20261101043729 private current-interpretation predicate and authenticated read-only state RPC, plus GET deadline-reviews/{term}. Current authority requires the exact latest approval for that term, unchanged original date/current version, active workspace/status, both bound original sources and current reviewer/scanner/policy/session authority. The shared concurrency sequence is separate from the selected-term review sequence. A different term can remain unreviewed despite nonzero shared sequence; withdrawal retains original interpretation/date without current expiry. Read errors never clear an unresolved saved write.
+
+118 focused model/API cases passed2.72s; six focused SQL cases passed30.285s. Full backend4140 passed,10 skipped,6 subtests48.08s. Full disposable rehearsal27590 exited0:83 migrations,26 access probes,223 workflows,119 actual PostgREST/API checks;24 historical rows/22 populated tables/103 definitions and Storage preserved. Actual API verifies unreviewed/current/revoked/withdrawn state with exact shared and selected-term identities. Evidence:evidence/2026-10-31-deadline-state-result.json. Logs:/tmp/deadline-state-sql.log,/tmp/deadline-state-backend.log,/tmp/deadline-state-upgrade.log. All local test processes are terminal.
+
+Git pull was current before implementation. Published5c821fc/run41273417902 still has five terminal successes and one live Real PostgreSQL ingestion/tracing/scoring check. Local1b20481 and candidate85 remain unpublished pending all six terminal successes. Do not cancel/restart the run; pull/push validated checkpoints once the gate passes and verify the exact successor. No production migration, provider/policy activation, outreach, fulfillment or transaction action.
+
+Next: read-only approval/source/policy discovery and independent original withdrawal for the selected deadline, using the shared concurrency cursor even when its review is older. Then bind exact interpretation IDs into execution review without changing calendar precision, integrate the guided source-backed interpretation screen and browser recovery, and continue amendments/full PRD lifecycle/channel/hosted acceptance. Current-state reads grant no execution permission; existing date-only execution holds remain. Goal active/incomplete.
+
 ## October 31 — deadline-review API and exact recovery verified (candidate84)
 
 Mounted POST deadline-reviews in the existing acquisition router/authenticated store. Requests retain exact term, interpretation/source and original withdrawal identity; receipts must match workspace/contract/version/request/sequence/status/term/original approval. Definite rejection is distinguished from uncertain saves; malformed or mismatched receipts never clear the saved request or trigger automatic retries. No-store is explicit, including path-version rejection. Current-state/discovery and guided UI are still pending; the write receipt grants no current or execution authority.

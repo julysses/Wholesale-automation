@@ -7,8 +7,8 @@ from datetime import date, datetime, time
 from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from pydantic import AwareDatetime, Field, field_validator, model_validator
-from schemas.acquisition_contract_terms import Exact, ContractTermSource
+from pydantic import AwareDatetime, StrictBool, Field, field_validator, model_validator
+from schemas.acquisition_contract_terms import Exact, ContractTermSource, ContractDateTerm
 from schemas.acquisition_contract_reviews import ContractReviewRequest, ContractReviewReceipt
 
 DeadlineTerm = Literal['effective', 'inspection_deadline', 'closing_deadline']
@@ -112,4 +112,55 @@ class DeadlineResolutionReviewReceipt(ContractReviewReceipt):
     def exact_interpretation_identity(self):
         if ((self.status == 'approved') != (self.interpretation_review_id == self.review_id)):
             raise ValueError('Preserve the approval identity separately from its withdrawal')
+        return self
+
+
+class DeadlineResolutionReviewState(Exact):
+    """Selected-term history and shared concurrency cursor are distinct."""
+    workspace_id: UUID
+    contract_id: UUID
+    contract_version: int = Field(strict=True, ge=1, le=2147483647)
+    kind: Literal['deadline_resolution']
+    term: DeadlineTerm
+    sequence: int = Field(strict=True, ge=0, le=2147483647)
+    review_sequence: int | None = Field(strict=True, ge=1, le=2147483647)
+    review_id: UUID | None
+    interpretation_review_id: UUID | None
+    original_term: ContractDateTerm
+    resolution: ContractDeadlineResolution | None
+    status: Literal['not_reviewed', 'approved', 'withdrawn', 'requires_review']
+    approval_current: StrictBool
+    expires_at: AwareDatetime | None
+    checked_at: AwareDatetime
+    execution_authorized: StrictBool
+
+    @field_validator('expires_at', 'checked_at', mode='before')
+    @classmethod
+    def explicit_state_timestamp(cls, value):
+        if value is not None and (not isinstance(value, str) or 'T' not in value):
+            raise ValueError('Explicit state timestamp required')
+        return value
+
+    @model_validator(mode='after')
+    def coherent_term_history(self):
+        if self.execution_authorized or self.approval_current != (self.status == 'approved'):
+            raise ValueError('Interpretation state cannot infer execution authority')
+        if self.status == 'not_reviewed':
+            if any(value is not None for value in (self.review_id, self.review_sequence, self.interpretation_review_id, self.resolution)):
+                raise ValueError('Unreviewed term cannot carry another term decision')
+        else:
+            if (self.review_id is None or self.review_sequence is None or self.review_sequence > self.sequence
+                    or self.interpretation_review_id is None or self.resolution is None):
+                raise ValueError('Exact selected-term history required')
+            if (self.status == 'withdrawn') == (self.review_id == self.interpretation_review_id):
+                raise ValueError('Preserve original interpretation and distinct withdrawal identities')
+            if (self.resolution.term != self.term or self.resolution.source.artifact_version > self.contract_version
+                    or self.original_term.precision != 'date'
+                    or self.original_term.calendar_date != self.resolution.calendar_date):
+                raise ValueError('Preserve the original calendar date and term source')
+        if self.approval_current:
+            if self.expires_at is None or self.expires_at <= self.checked_at:
+                raise ValueError('Current interpretation requires a future expiry')
+        elif self.expires_at is not None:
+            raise ValueError('Historical interpretation cannot expose current expiry')
         return self
