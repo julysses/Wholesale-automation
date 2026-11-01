@@ -12,11 +12,11 @@ import { parseContractReview, reviewIsFresh, reviewKinds, reviewLabels, type Rev
 const button = 'rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed';
 const input = 'block w-full rounded-lg border border-gray-300 bg-white p-2';
 const statuses = { pending_verification: 'Registered · Review pending', revoked: 'Withdrawn', expired: 'Retention expired', policy_review_required: 'Retention review needed' };
-type Props = { context: DocumentContext; disabled?: boolean; onPending: (pending: boolean) => void };
+type Props = { context: DocumentContext; disabled?: boolean; disabledReason?: string; onPending: (pending: boolean) => void };
 export function ContractDocuments(props: Props) {
   return <DocumentEditor key={`${props.context.userId}:${props.context.workspaceId}:${props.context.contractId}:${props.context.contractVersion}`} {...props}/>;
 }
-function DocumentEditor({ context, disabled = false, onPending }: Props) {
+function DocumentEditor({ context, disabled = false, disabledReason, onPending }: Props) {
   const { userId, workspaceId: workspace, contractId: contract, contractVersion: version } = context;
   const path = `/api/acquisition/workspaces/${workspace}/contracts/${contract}/versions/${version}/documents`;
   const [initial] = useState(() => {
@@ -110,7 +110,7 @@ function DocumentEditor({ context, disabled = false, onPending }: Props) {
   return <section aria-label="Contract documents" className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 space-y-3 text-[#1B3A5C]">
     <div><h3 className="font-semibold">Add documents for review</h3><p className="text-sm text-gray-600">Choose the document type, attach the original file, then complete verification and review. Uploading does not change the draft’s status or sign an agreement.</p></div>
     {blocked && <p role="alert">Saved document recovery is unavailable or unreadable. Keep the original file and reconcile this browser tab before creating another record.</p>}
-    {disabled && <p role="alert">The saved contract context could not be confirmed. Refresh draft information before continuing.</p>}
+    {disabled && <p role="alert">{disabledReason ?? 'The saved contract context could not be confirmed. Refresh draft information before continuing.'}</p>}
     <label className="block text-sm font-medium">Document type<select className={input} value={kind} disabled={held || disabled} onChange={event => {
       setKind(event.target.value as keyof typeof purposes); setCursors([null]); setChoice(null); setNote(''); setMessage(''); if (fileInput.current) fileInput.current.value = '';
     }}>{Object.entries(purposes).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

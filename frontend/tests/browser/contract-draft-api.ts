@@ -28,14 +28,38 @@ export async function apiFetch(path: string, init?: RequestInit) {
     value = { deal_id: request.id, version: 1, status: 'draft', duplicate: !!ledger, execution_authorized: false };
   } else if (path.endsWith('/memberships')) value = [{ workspace_id: ids.workspace, user_id: ids.user, status: 'active', role: 'owner' }];
   else if (path.includes('/reviews/')) {
-    if (!ledger || init?.method === 'POST') throw new Error('Read-only synthetic review fixture');
-    const kind = path.split('/').at(-1);
-    if (!['contract_review', 'title_review', 'assignment_basis'].includes(kind ?? '')) throw new Error('Unknown review kind');
-    const approved = kind === 'contract_review';
-    value = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: 1, kind,
-      sequence: approved ? 1 : 0, review_id: approved ? id(12) : null, status: approved ? 'approved' : 'not_reviewed',
-      approval_current: approved, expires_at: approved ? new Date(Date.now() + 60000).toISOString() : null,
-      checked_at: new Date().toISOString(), execution_authorized: false };
+    if (!ledger) throw new Error('Save the synthetic draft first');
+    const kind = path.split('/reviews/')[1].split('/')[0];
+    if (!['contract_review', 'title_review', 'assignment_basis'].includes(kind)) throw new Error('Unknown review kind');
+    const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: 1, kind };
+    const key = 'contract-review-local-qa-ledger:'+kind;
+    const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as { request: Record<string, unknown>; receipt: Record<string, unknown> }[];
+    const last = entries.at(-1), checked = new Date().toISOString();
+    const current = last?.request.status === 'approved' && Date.parse(String(last.request.expires_at)) > Date.now();
+    const state = { ...scope, sequence: entries.length, review_id: last?.request.id ?? null,
+      status: !last ? 'not_reviewed' : last.request.status === 'withdrawn' ? 'withdrawn' : current ? 'approved' : 'requires_review',
+      approval_current: current, expires_at: current ? last!.request.expires_at : null, checked_at: checked, execution_authorized: false };
+    if (init?.method === 'POST') {
+      const request = JSON.parse(init.body as string);
+      const prior = entries.find(entry => entry.request.id === request.id);
+      if (prior && JSON.stringify(prior.request) !== JSON.stringify(request)) throw new Error('Conflicting synthetic review retry');
+      if (!prior && request.expected_sequence !== entries.length) throw new Error('Synthetic review sequence changed');
+      const receipt = prior?.receipt ?? { ...scope, review_id: request.id, sequence: entries.length + 1, status: request.status,
+        duplicate: false, review_recorded: true, approval_current: false, execution_authorized: false };
+      if (!prior) { entries.push({ request, receipt }); sessionStorage.setItem(key, JSON.stringify(entries)); }
+      if (lose) { lose = false; throw new Error('Synthetic review reply lost after commit'); }
+      value = { ...receipt, duplicate: !!prior };
+    } else if (path.endsWith('/candidate')) {
+      const artifact = path.split('/documents/')[1]?.split('/')[0];
+      const document = JSON.parse(sessionStorage.getItem('contract-document-local-qa-ledger') ?? 'null');
+      if (!document || artifact !== document.request.id) throw new Error('Exact synthetic document required');
+      value = { ...scope, artifact_id: artifact, purpose: kind === 'title_review' ? 'title_report' : 'purchase_contract',
+        status: 'ready_for_human_review', candidate: { artifact_id: artifact, verification_id: id(9), sha256: document.request.expected_sha256,
+          policy_id: id(13), expected_sequence: entries.length, max_expires_at: new Date(Date.now()+300000).toISOString() },
+        withdrawal: last?.request.status === 'approved' ? { review_id: last.request.id, artifact_id: artifact,
+          verification_id: last.request.verification_id, policy_id: last.request.policy_id, expected_sequence: entries.length } : null,
+        current_review: state, checked_at: checked, execution_authorized: false };
+    } else value = state;
   }
   else if (path.includes('/documents')) {
     if (!ledger) throw new Error('Save the synthetic draft first');

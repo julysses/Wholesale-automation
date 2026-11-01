@@ -1,0 +1,26 @@
+{
+  "scope": "Synthetic local presentation and response-loss fixture; no production, legal, provider or hosted acceptance",
+  "desktop": true,
+  "mobile": {
+    "width": 375,
+    "height": 812,
+    "clientWidth": 369,
+    "scrollWidth": 369
+  },
+  "browserChecks": [
+    "exact saved review retry after synthetic committed reply loss",
+    "navigation held until confirmed retry",
+    "withdrawal without renewed personal attestation",
+    "current card reports Review withdrawn",
+    "no horizontal overflow",
+    "no browser warnings/errors"
+  ],
+  "reloadRecovery": "Covered by automated component tests; browser reload attempt was not independently confirmed",
+  "fixes": [
+    "explain document lock as pending review recovery",
+    "clear prior success when editing a new decision",
+    "label expiry as approval validity",
+    "singular minute label"
+  ],
+  "recovery_screenshot": "recovery-before-copy-fix.png documents the initial discovery; desktop/mobile show the revised form"
+}

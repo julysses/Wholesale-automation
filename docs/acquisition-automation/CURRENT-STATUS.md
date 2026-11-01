@@ -2,6 +2,16 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — recording form browser QA and backend fixture repair
+
+Local synthetic desktop/375x812 phone QA passed approval preparation, committed-reply-loss recovery, navigation locking/unlocking, withdrawal without renewed attestation and current status changing to Review withdrawn. Client/scroll widths were 369/369; no browser warnings/errors. Evidence: evidence/contract-review-form-2026-10-31. Browser reload was attempted but not independently confirmed; automated component tests establish reload recovery. This fixture is not hosted or legal acceptance. Preview73970 stopped exit130; viewport reset and tab closed.
+
+QA corrected misleading document-lock copy: pending review recovery is now explained explicitly instead of implying lost contract context. Editing a new decision clears the prior success message. Expiry is labeled Approval validity and 1 minute uses singular text. Fourteen focused form/draft/status tests, build/typecheck and lint baseline passed after these fixes. No production changes.
+
+Successor CI 41257089916 failed backend job124702445359: a parameterized max-expiry fixture used collection-time now+86410 seconds, which became <24 hours by execution. Application expiry validation correctly accepted it. Isolated repair worktree /tmp/wholesale-ci-repair-20261031 is based on published2a5690e and changes test timestamps to execution-time generation; production rules stay unchanged. Full offline backend repair session37300 is running (/tmp/contract-review-clock-repair-backend.log). Other predecessor CI jobs remain live; do not cancel/restart or publish until they finish. Form/QA work remains local.
+
+Next: finish isolated repair validation/publication and actual workflow evidence, then continue immutable contract terms and controlled transitions, buyer/disposition/closing and remaining full PRD acceptance gates.
+
 ## October 31 — guided human review form and exact recovery
 
 All six repair jobs passed in 41256126531 on b92ba6b. Published tested checkpoint 2a5690e5652d0f867588bc4d1dbfacfa9864cc69; successor 41257089916 is running. Mounted candidate API full rehearsal 45433 exited 0: 65 migrations, 26 access probes, 138 workflows and 80 gateway checks, preserving historical records/definitions and Storage. Evidence: evidence/2026-10-31-contract-review-candidate-api-gateway-result.json.

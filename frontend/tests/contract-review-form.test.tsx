@@ -43,6 +43,8 @@ it('requires personal review and records an exact decision without execution', a
   await screen.findByText(/Review decision recorded/);
   expect(posts()).toHaveLength(1); expect(JSON.parse(posts()[0][1].body)).toMatchObject({ artifact_id: id(7), verification_id: id(8), policy_id: id(9), expected_sequence: 0, personally_reviewed: true });
   expect(sessionStorage.length).toBe(0); await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+  fireEvent.change(screen.getByLabelText('Review notes'), { target: { value: 'Start another decision without the previous success message.' } });
+  expect(screen.queryByText(/Review decision recorded/)).not.toBeInTheDocument();
 });
 it('recovers exactly after reload and does not discard an uncertain save after later rejection', async () => {
   mock.lose = true; const view = open(); await prepare(); fireEvent.click(screen.getByRole('button', { name: 'Record reviewed approval' }));

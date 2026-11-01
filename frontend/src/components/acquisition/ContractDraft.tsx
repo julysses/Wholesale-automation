@@ -126,7 +126,7 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
         <label className="block text-sm">Draft name<input className={input} value={name} maxLength={500} onChange={event => setName(event.target.value)} placeholder="Property address or review name" /></label>
       </fieldset> : null}
       <button className={`${button} bg-[#1B3A5C] text-white`} disabled={busy || documentPending || reviewPending || (!pending && !canSave)} onClick={() => { void save(); }}>{busy ? 'Saving…' : pending ? 'Retry same draft' : existing || savedOffer === offerId ? 'Draft saved' : 'Save draft for review'}</button>
-      {!pending && documentTarget && <ContractDocuments context={documentTarget} disabled={!documentContextReady || busy || reviewPending} onPending={setDocumentPending} />}
+      {!pending && documentTarget && <ContractDocuments context={documentTarget} disabled={!documentContextReady || busy || reviewPending} disabledReason={reviewPending ? 'Finish recovery of the saved review below before changing documents.' : undefined} onPending={setDocumentPending} />}
       {!pending && documentTarget && <ContractReviewForm context={documentTarget} disabled={!documentContextReady || busy || documentPending} onPending={setReviewPending} />}
     </>}
     {message && <p role="status" className="text-sm">{message}</p>}
