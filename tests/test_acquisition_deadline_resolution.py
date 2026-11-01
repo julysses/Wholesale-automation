@@ -5,7 +5,9 @@ from uuid import UUID
 import pytest
 from pydantic import ValidationError
 from schemas.acquisition_contract_terms import ContractTermsDraft
-from schemas.acquisition_deadline_resolution import ContractDeadlineResolutionRequest
+from schemas.acquisition_deadline_resolution import (
+    ContractDeadlineResolutionRequest, DeadlineResolutionReviewRequest, DeadlineResolutionReviewReceipt,
+)
 from tools.acquisition_deadline_resolution import assess_deadline_resolution
 
 
@@ -94,3 +96,72 @@ def test_stale_version_remains_held_and_actor_assertions_are_rejected():
     for field in ('workspace_id','actor_id','approved_by','policy_id','execution_authorized'):
         value=deepcopy(body());value[field]=str(UUID(int=3))
         with pytest.raises(ValidationError):ContractDeadlineResolutionRequest.model_validate(value)
+
+
+# These transport contracts are not mounted until the controlled writer exists.
+
+
+def review_body():
+    proposal = body()
+    return dict(id=proposal['id'], expected_version=2, expected_sequence=3,
+        status='approved', term='closing_deadline', resolution=proposal['resolution'],
+        original_review_id=None, artifact_id=source()['artifact_id'],
+        verification_id=str(UUID(int=3)), policy_id=str(UUID(int=4)),
+        expires_at='2026-11-20T18:00:00-06:00', personally_reviewed=True,
+        note='I reviewed the cited source and the explicit time interpretation.')
+
+
+def test_review_preserves_exact_proposal_and_separate_withdrawal_identity():
+    approved = review_body()
+    parsed = DeadlineResolutionReviewRequest.model_validate(approved)
+    assert parsed.resolution.model_dump(mode='json') == approved['resolution']
+    withdrawn = dict(approved, id=str(UUID(int=5)), status='withdrawn', resolution=None,
+        original_review_id=approved['id'], personally_reviewed=False, expires_at=None,
+        expected_sequence=8)
+    # Other terms may have advanced the shared ledger since the original review.
+    saved = DeadlineResolutionReviewRequest.model_validate(withdrawn)
+    assert str(saved.original_review_id) == approved['id'] and saved.expected_sequence == 8
+    assert saved.term == parsed.term and saved.resolution is None
+
+
+@pytest.mark.parametrize('change', [
+    {'term':'effective'}, {'artifact_id':str(UUID(int=9))}, {'resolution':None},
+    {'original_review_id':str(UUID(int=9))}, {'personally_reviewed':False},
+    {'expires_at':None}, {'expected_version':0}, {'expected_sequence':True},
+    {'actor_id':str(UUID(int=9))}, {'execution_authorized':True}, {'note':'x'*20+'\x00'},
+])
+def test_review_rejects_mixed_identity_and_inferred_authority(change):
+    value=review_body();value.update(change)
+    with pytest.raises(ValidationError):DeadlineResolutionReviewRequest.model_validate(value)
+
+
+@pytest.mark.parametrize('change', [
+    {'original_review_id':None}, {'original_review_id':str(UUID(int=5))},
+    {'resolution':body()['resolution']}, {'expected_sequence':0},
+    {'personally_reviewed':True}, {'expires_at':'2026-11-20T18:00:00-06:00'},
+])
+def test_withdrawal_cannot_replace_or_renew_interpretation(change):
+    value=dict(review_body(),id=str(UUID(int=5)),status='withdrawn',resolution=None,
+        original_review_id=str(UUID(int=2)),personally_reviewed=False,expires_at=None)
+    value.update(change)
+    with pytest.raises(ValidationError):DeadlineResolutionReviewRequest.model_validate(value)
+
+
+def test_review_rejects_future_source_version():
+    value=review_body();value['resolution']['source']['artifact_version']=3
+    with pytest.raises(ValidationError):DeadlineResolutionReviewRequest.model_validate(value)
+
+
+def test_historical_receipt_never_asserts_current_authority_and_retains_original():
+    value=dict(workspace_id=str(UUID(int=1)),contract_id=str(UUID(int=2)),contract_version=2,
+        kind='deadline_resolution',execution_authorized=False,review_id=str(UUID(int=3)),
+        sequence=4,status='approved',duplicate=True,review_recorded=True,approval_current=False,
+        term='closing_deadline',interpretation_review_id=str(UUID(int=3)))
+    assert DeadlineResolutionReviewReceipt.model_validate(value).duplicate
+    for change in ({'approval_current':True},{'execution_authorized':True},
+                   {'interpretation_review_id':str(UUID(int=9))},{'kind':'executed_contract'}):
+        with pytest.raises(ValidationError):DeadlineResolutionReviewReceipt.model_validate(dict(value,**change))
+    withdrawn=dict(value,status='withdrawn',review_id=str(UUID(int=9)),sequence=8)
+    assert DeadlineResolutionReviewReceipt.model_validate(withdrawn).interpretation_review_id == UUID(int=3)
+    with pytest.raises(ValidationError):
+        DeadlineResolutionReviewReceipt.model_validate(dict(withdrawn,interpretation_review_id=str(UUID(int=9))))

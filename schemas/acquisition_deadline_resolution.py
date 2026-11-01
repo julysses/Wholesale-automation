@@ -9,6 +9,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import AwareDatetime, Field, field_validator, model_validator
 from schemas.acquisition_contract_terms import Exact, ContractTermSource
+from schemas.acquisition_contract_reviews import ContractReviewRequest, ContractReviewReceipt
 
 DeadlineTerm = Literal['effective', 'inspection_deadline', 'closing_deadline']
 
@@ -68,4 +69,47 @@ class ContractDeadlineResolutionRequest(Exact):
     def retained_source(self):
         if self.resolution.source.artifact_version > self.expected_version:
             raise ValueError('A future contract document cannot establish this deadline')
+        return self
+
+
+class DeadlineResolutionReviewRequest(ContractReviewRequest):
+    """A term-specific human decision, pending controlled server persistence.
+
+    Sequence is the shared deadline-review ledger sequence, not a per-term
+    counter. Withdrawal names the original approval independently of that
+    sequence so reviewing another term cannot redirect a withdrawal.
+    """
+    expected_version: int = Field(strict=True, ge=1, le=2147483647)
+    term: DeadlineTerm
+    resolution: ContractDeadlineResolution | None
+    original_review_id: UUID | None
+
+    @model_validator(mode='after')
+    def exact_interpretation_decision(self):
+        if '\x00' in self.note:
+            raise ValueError('Document the review without NUL characters')
+        if self.status == 'approved':
+            proposal = self.resolution
+            if proposal is None or self.original_review_id is not None:
+                raise ValueError('Approval requires a new explicit interpretation')
+            if proposal.term != self.term or proposal.source.artifact_id != self.artifact_id:
+                raise ValueError('Review must identify the exact term and interpretation source')
+            if proposal.source.artifact_version > self.expected_version:
+                raise ValueError('Interpretation source must be a retained contract version')
+        elif (self.resolution is not None or self.original_review_id is None
+              or self.original_review_id == self.id or self.expected_sequence == 0):
+            raise ValueError('Withdrawal must identify an original approval without replacing its interpretation')
+        return self
+
+
+class DeadlineResolutionReviewReceipt(ContractReviewReceipt):
+    """Historical persistence only; never a fresh execution permission."""
+    kind: Literal['deadline_resolution']
+    term: DeadlineTerm
+    interpretation_review_id: UUID
+
+    @model_validator(mode='after')
+    def exact_interpretation_identity(self):
+        if ((self.status == 'approved') != (self.interpretation_review_id == self.review_id)):
+            raise ValueError('Preserve the approval identity separately from its withdrawal')
         return self

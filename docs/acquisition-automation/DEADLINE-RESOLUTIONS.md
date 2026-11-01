@@ -1,6 +1,6 @@
 # Reviewed calendar-date resolution
 
-Status: typed input and pure comparison implemented locally; persistence, current authority and UI remain unfinished. This does not remove the current execution hold on date-only terms.
+Status: typed proposal, term-specific review/withdrawal requests, historical receipts and pure comparison implemented locally; persistence, current authority and UI remain unfinished. This does not remove the current execution hold on date-only terms.
 
 ## User process
 
@@ -27,3 +27,11 @@ Separate proposal, human interpretation approval, and execution review. Showing 
 ## Separate amendment path
 
 Changing a signed date, price, earnest money or assignment provision must not be routed through this interpretation mechanism. A separate sourced amendment proposal, authorized review and immutable version advancement are required. It must preserve signed history, current lifecycle state, original approvals and unresolved external commitments while invalidating superseded current authority. That path remains open work under the full PRD.
+
+## Review transport checkpoint — October 31
+
+Added `DeadlineResolutionReviewRequest` on the existing review request contract. Each approval carries one exact deadline, retained interpretation source and explicit proposal. Each withdrawal names the original approval and term, carries no replacement interpretation, and cannot renew expiry or personal approval. The shared ledger sequence may advance through other terms without changing the original withdrawal target. Server persistence must still verify that the named original belongs to the exact workspace/contract/version/term and that the supplied source/policy identities match it. Client validation is not that verification.
+
+`DeadlineResolutionReviewReceipt` distinguishes the historical approval identity from the later withdrawal identity and rejects current-approval or execution claims. No route or SQL writer consumes these models yet. Forty-five focused cases pass, including mixed source/term identity, future version, invalid withdrawal, original identity preservation and historical receipt authority rejection.
+
+Schema inspection confirms existing review SELECT RLS and immutable trigger; policy kind/purpose constraints are named `acquisition_review_policy_kind` and `acquisition_review_policy_purpose`. Existing execution-findings and execution-sources constraints require NULL for non-execution kinds, so retain them unchanged when adding deadline storage. Existing original artifact/verification foreign keys use generated `source_version` backed by `evidence_version`; preserve that source-version mechanism. Add a term-specific original approval reference with workspace/contract/version/kind/term integrity and a latest-per-term lookup index while keeping the existing shared sequence uniqueness.

@@ -1,5 +1,13 @@
 # Acquisition automation — current implementation and release handoff
 
+## October 31 — term-specific deadline review boundary verified
+
+Added strict deadline-resolution approval/withdrawal requests and historical receipts. Approval binds one exact term and retained interpretation source; withdrawal retains the original approval identity independently of the shared ledger sequence, prohibits replacement interpretations and cannot renew approval. Server ownership, original-term identity, source and policy verification remain required in the pending controlled writer. These models are not mounted; existing date-only execution holds remain unchanged.
+
+Validation:45 focused tests passed0.17s; full backend4067 passed,10 skipped,6 subtests42.36s. Log:/tmp/deadline-review-boundary-backend.log. Diff whitespace check passed. DEADLINE-RESOLUTIONS.md records reviewed schema constraints and next persistence steps. No production database or provider action.
+
+Published repair180ba10/run41271347320 currently has five terminal successes and one live Real PostgreSQL ingestion/tracing/scoring job. Revalidated the exact live run after a transient network failure; do not cancel or restart it. Feature checkpoint e8e5837 and this follow-up remain local until all six terminal successes. Then pull/push and verify the exact successor. Next implementation: CLI-created additive deadline-review storage, controlled writer/current-state/discovery, execution binding, guided screen and full database/API/browser acceptance. Full PRD goal remains active and incomplete.
+
 ## October 31 — executed flow validated; CI repair published; date interpretation boundary
 
 Executed-flow candidate80/81 is verified locally end to end. Final rehearsal2158 exited0:80 migrations,26 access probes,208 workflows and114 real PostgREST/API checks. Historical24 rows/22 populated tables/103 table definitions and Storage remain intact. Evidence:evidence/2026-10-31-executed-choice-result.json; log/tmp/executed-choice-upgrade.log. Guided desktop/mobile status/recovery and original review withdrawal evidence remains in evidence/executed-status-ui-2026-10-31/. Frontend795 tests/90 files passed, build passed and no new lint findings. There are no remaining live local validation sessions.
