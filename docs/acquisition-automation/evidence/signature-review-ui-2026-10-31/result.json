@@ -1,0 +1,27 @@
+{
+  "syntheticOnly": true,
+  "results": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "approvalAndWithdrawalRecovery": "passed",
+      "records": 2,
+      "sourceUnchanged": true,
+      "status": "draft",
+      "pending": 0,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "approvalAndWithdrawalRecovery": "passed",
+      "records": 2,
+      "sourceUnchanged": true,
+      "status": "draft",
+      "pending": 0,
+      "errors": []
+    }
+  ]
+}

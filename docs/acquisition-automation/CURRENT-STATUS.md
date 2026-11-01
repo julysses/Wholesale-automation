@@ -2,6 +2,16 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — guided signature-release review in step 5
+
+Added the collapsed “Review before signing” form after ordinary contract review, using the existing navy/orange style and linked property/contract context. Read-only discovery provides the exact original source and reviewer policy; the user supplies notes, personal-review acknowledgement and bounded validity. Approval and withdrawal preserve their separate original basis. This records a review only and sends/signs nothing.
+
+Opening the form holds sibling document, terms and review actions plus workspace navigation. Closing discards only unsaved edits. Uncertain saves retain the exact request across reload, expiry and historical-version recovery; malformed storage or conflicting pending operations remain held. Definitive first-attempt rejection alone releases that request. Current state is revalidated by the existing server when recording decisions.
+
+Validation: 738 frontend tests across 86 files passed in 9.55s; typecheck/build passed (2.78s Vite build); lint has no new findings against 147 existing. Desktop 1280x900 and mobile 375x812 synthetic browser checks passed approval and withdrawal committed-response-loss/reload/retry, exactly two ledger entries, original source unchanged, no pending recovery and unchanged draft status. Screenshots and result: evidence/signature-review-ui-2026-10-31/. Phone view visually inspected; no horizontal overflow. Initial parent test incorrectly expected terms editing to enable without its own valid history fixture; corrected to assert the independent Refresh terms control and navigation release, preserving the edit prerequisite.
+
+Publication hold: predecessor eec42ff run 41265182816 has five terminal successes and the real PostgreSQL ingestion/tracing/scoring job still running. Keep this validated UI checkpoint local until all six terminally pass; do not cancel or restart that job. Then pull, push this checkpoint, and verify its exact successor. All production migrations, policy provisioning, signing, outreach, provider activation, paid activity and fulfillment remain inactive. Next implementation work: controlled lifecycle transitions and executed/exception/closing evidence, followed by disposition and remaining full PRD/channel/hosted acceptance. The full goal is incomplete.
+
 ## October31 — signature-review choice discovery (candidate71)
 
 CLI-created20261101022040 adds read-only signature_review_candidate RPC and mounted GET signature-review/candidate. Discovery binds the current contract-review decision, original document/version/hash and existing exact reviewer policy, with expiry limited by all relevant source/policy/session deadlines. Named holds prevent offering an approval choice when paused, unavailable, sequence-exhausted or missing current basis/policy. Original withdrawal identity remains independent when a later basis is available or authority is revoked. Repeated discovery writes no reviews, policies or audits. Strict API validation checks nested state scope/time, expected sequence, source version and expiry; saves still revalidate SQL authority.

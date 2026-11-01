@@ -23,6 +23,11 @@ beforeEach(() => {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ request_id: body.id, workspace_id: id(2), contract_id: id(5), version: body.expected_version + 1, status: 'draft', duplicate: true, execution_authorized: false }) };
       }
+      if (path.endsWith('/signature-review')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: 1, review_id: body.id,
+          sequence: body.expected_sequence + 1, status: body.status, duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
+      }
       if (path.includes('/reviews/')) {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: 1, kind: 'contract_review', review_id: body.id,
@@ -160,4 +165,46 @@ it('recovers an original reference after the canonical version advances without 
   fireEvent.click(screen.getByRole('button', { name: 'Retry saved reference' })); await waitFor(() => expect(sessionStorage.length).toBe(0));
   expect(posts()).toHaveLength(1); expect(posts()[0][0]).toContain('/versions/2/document-links'); expect(JSON.parse(posts()[0][1].body)).toEqual(request);
   expect(screen.getByText('Current contract version 3.')).toBeVisible(); await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});
+
+const signatureContext = { userId: id(1), workspaceId: id(2), leadId: id(3), propertyId: id(4), offerId: id(6), contractId: id(5), contractVersion: 1 };
+const signatureRequest = { id: id(40), expected_sequence: 0, status: 'approved' as const, basis_review_id: id(41), policy_id: id(42), expires_at: '2020-01-01T00:00:00Z', personally_reviewed: true, note: 'Original signature decision preserved after version advancement.' };
+it('recovers a historical signature decision without a selected proposal and restores the current version', async () => {
+  const { preserveSignature } = await import('../src/lib/acquisition/signature-review');
+  preserveSignature(sessionStorage, { version: 1, context: signatureContext, request: signatureRequest });
+  record.acquisition_version = 2; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Retry saved signature review' })).toBeEnabled());
+  expect(screen.getByLabelText('Document type')).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Edit draft terms' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Refresh draft information' })).toBeDisabled();
+  expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry saved signature review' }));
+  await waitFor(() => expect(sessionStorage.length).toBe(0));
+  expect(posts()).toHaveLength(1); expect(posts()[0][0]).toContain('/versions/1/signature-review');
+  expect(JSON.parse(posts()[0][1].body)).toEqual(signatureRequest);
+  expect(screen.getByText('Current contract version 2.')).toBeVisible();
+  await waitFor(() => expect(mock.fetch.mock.calls.some(([path]) => path.includes('/versions/2/references?'))).toBe(true));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});
+it('holds adjacent edits while signature review is open and releases unsaved edits on close', async () => {
+  mock.existing = true; open();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Open signature-release review' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Open signature-release review' }));
+  expect(screen.getByLabelText('Document type')).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Edit draft terms' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Refresh draft information' })).toBeDisabled();
+  expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Close without saving' }));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+  expect(screen.getByRole('button', { name: 'Refresh terms' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Refresh draft information' })).toBeEnabled();
+  expect(posts()).toHaveLength(0); expect(sessionStorage.length).toBe(0);
+});
+it('preserves conflicting signature and terms recoveries without selecting either', async () => {
+  const { preserveSignature } = await import('../src/lib/acquisition/signature-review');
+  const { preserveTerms, emptyTerms } = await import('../src/lib/acquisition/contract-terms');
+  preserveSignature(sessionStorage, { version: 1, context: signatureContext, request: signatureRequest });
+  preserveTerms(sessionStorage, { version: 1, context: signatureContext, request: { id: id(30), expected_version: 1, terms: { ...emptyTerms(), note: 'Original terms retained across a lost save reply.' } } });
+  open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile the existing request');
+  expect(mock.fetch).not.toHaveBeenCalled(); expect(mock.pending).toHaveBeenLastCalledWith(true); expect(sessionStorage.length).toBe(2);
 });

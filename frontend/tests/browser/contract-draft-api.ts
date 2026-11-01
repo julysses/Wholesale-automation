@@ -1,3 +1,4 @@
+import { signatureChoice } from '../fixtures/signature-review';
 import { emptyTerms } from '../../src/lib/acquisition/contract-terms';
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 export const ids = { user: id(1), workspace: id(2) };
@@ -7,11 +8,12 @@ let lose = false;
 export function loseNextReply() { lose = true; }
 const ledgerKey = 'contract-draft-local-qa-ledger';
 // Explicit local presentation fixture; no production imports or network calls.
+const signatureFixture = new URLSearchParams(location.search).get('signatureFixture') === 'true';
 const linkFixture = new URLSearchParams(location.search).get('linkFixture') === 'true';
 const referenceFixture = new URLSearchParams(location.search).get('referenceFixture') === 'true';
-if ((linkFixture || referenceFixture || new URLSearchParams(location.search).get('scanFixture') === 'true') && !sessionStorage.getItem(ledgerKey)) {
+if ((signatureFixture || linkFixture || referenceFixture || new URLSearchParams(location.search).get('scanFixture') === 'true') && !sessionStorage.getItem(ledgerKey)) {
   sessionStorage.setItem(ledgerKey, JSON.stringify({ request: {}, row: { id: id(10), workspace_id: ids.workspace,
-    lead_id: id(3), deal_name: 'Synthetic document review', acquisition_status: 'draft', acquisition_version: referenceFixture || linkFixture ? 2 : 1,
+    lead_id: id(3), deal_name: 'Synthetic document review', acquisition_status: 'draft', acquisition_version: signatureFixture || referenceFixture || linkFixture ? 2 : 1,
     acquisition_property_id: id(4), acquisition_owner_relationship_id: id(7), acquisition_offer_id: id(6),
     acquisition_offer_sequence: 2, created_by: ids.user, created_at: new Date().toISOString() } }));
   sessionStorage.setItem('contract-document-local-qa-ledger', JSON.stringify({ sourceVersion: 1, created: new Date().toISOString(), request: {
@@ -85,6 +87,32 @@ export async function apiFetch(path: string, init?: RequestInit) {
       value = { ...scope, link_id: request.id, source_version: request.source_version, artifact_id: request.artifact_id, duplicate: !!prior, review_approved: false, execution_authorized: false };
     }
     if (lose) { lose = false; throw new Error('Synthetic reference reply lost after commit'); }
+  }
+  else if (path.includes('/signature-review')) {
+    if (!signatureFixture || !ledger) throw new Error('Signature fixture required');
+    const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion };
+    const key = 'contract-signature-local-qa-ledger';
+    const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as { request: Record<string, unknown>; receipt: Record<string, unknown> }[];
+    const last = entries.at(-1);
+    if (init?.method === 'POST') {
+      const request = JSON.parse(init.body as string), prior = entries.find(entry => entry.request.id === request.id);
+      if (prior && JSON.stringify(prior.request) !== JSON.stringify(request)) throw new Error('Signature retry changed');
+      if (!prior && request.expected_sequence !== entries.length) throw new Error('Signature sequence changed');
+      const receipt = prior?.receipt ?? { ...scope, review_id: request.id, sequence: entries.length + 1, status: request.status,
+        duplicate: false, review_recorded: true, approval_current: false, execution_authorized: false };
+      if (!prior) { entries.push({ request, receipt }); sessionStorage.setItem(key, JSON.stringify(entries)); }
+      if (lose) { lose = false; throw new Error('Synthetic signature reply lost after commit'); }
+      value = { ...receipt, duplicate: !!prior };
+    } else {
+      const choice = signatureChoice();
+      const approved = last?.request.status === 'approved', current = approved && Date.parse(String(last.request.expires_at)) > Date.now();
+      value = { ...choice, ...scope,
+        candidate: { ...choice.candidate!, expected_sequence: entries.length },
+        withdrawal: approved ? { review_id: last.request.id, basis_review_id: last.request.basis_review_id, policy_id: last.request.policy_id, expected_sequence: entries.length } : null,
+        current_review: { ...choice.current_review, ...scope, review_id: last?.request.id ?? null, basis_review_id: last?.request.basis_review_id ?? null, sequence: entries.length,
+          status: !last ? 'not_reviewed' : current ? 'approved' : approved ? 'requires_review' : 'withdrawn', approval_current: !!current,
+          expires_at: current ? last!.request.expires_at : null } };
+    }
   }
   else if (path.includes('/reviews/')) {
     if (!ledger) throw new Error('Save the synthetic draft first');

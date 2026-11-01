@@ -2,11 +2,15 @@
 
 October 31, 2026. Local implementation checkpoint, not legal approval or execution authority.
 
+## Guided review checkpoint
+
+Step 5 now includes a collapsed signature-release review after ordinary contract review. Candidate discovery supplies source/version and policy; approval requires personal acknowledgement, notes and bounded expiry. Independent withdrawal and exact saved-request recovery preserve original basis and target version. Adjacent edits and navigation stay held until unsaved edits are closed or the exact saved decision is confirmed. Desktop/mobile synthetic QA and 738 frontend tests passed; see CURRENT-STATUS.md for publication gate and evidence. No signing or lifecycle transition is exposed.
+
 ## Implemented review rules
 
 The current pure reviewer is `acquisition-contract-review-v3`. Lifecycle snapshots now carry sourced purchase-price cents as well as earnest money. Normal progress requires a known positive purchase price and holds earnest money above price for review. The pending-signature step requires both contract review and the distinct signature-release evidence, plus known earnest money; explicit zero remains valid. Cancellation, expiration and dispute review can still proceed on their own evidence when price is unknown, without inventing terms. These rules must be enforced independently by the forthcoming SQL transition path; the pure reviewer is not execution authority.
 
-Before persisting signature-release decisions, pin and revalidate the exact underlying contract-review identity, source artifact/hash/scan, policy, reviewer membership/session and expiry after all lock waits. A contract review on different bytes must not satisfy release of a selected signing document. Store this dependency so withdrawing/replacing the basis removes current release authority rather than resurrecting an old release. Plan deterministic identity/evidence locks across both reviewers; do not merely call the existing STABLE review-state function (which uses statement_timestamp) after a long wait and treat it as a fresh authorization check. None of these dependencies is persisted yet.
+Before persisting signature-release decisions, pin and revalidate the exact underlying contract-review identity, source artifact/hash/scan, policy, reviewer membership/session and expiry after all lock waits. A contract review on different bytes must not satisfy release of a selected signing document. Store this dependency so withdrawing/replacing the basis removes current release authority rather than resurrecting an old release. Plan deterministic identity/evidence locks across both reviewers; do not merely call the existing STABLE review-state function (which uses statement_timestamp) after a long wait and treat it as a fresh authorization check. These dependencies are now persisted by migration 20261101020154; candidate discovery is supplied by 20261101022040. Both remain local/rehearsed implementation, not hosted execution authority.
 
 `schemas/acquisition_contracts.py` and `tools/acquisition_contracts.py` define a typed, pure review of a trusted repository snapshot. No endpoint accepts these assertions, no SQL is changed, no contract state is persisted, and no agreement/package is sent. The result always sets execution_authorized=false. A ready_for_review result is an internal review outcome only.
 
