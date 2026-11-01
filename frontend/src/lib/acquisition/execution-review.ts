@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { id } from './mail-content';
 import { contextSchema, type DocumentContext } from './contract-documents';
 import { termsSchema } from './contract-terms';
+import { deadlineTerm, deadlineTerms } from './deadline-review';
 const timestamp = z.string().datetime({ offset: true });
 const version = z.number().int().min(1).max(2147483647);
 const sequence = z.number().int().min(0).max(2147483647);
@@ -10,7 +11,14 @@ export const findingNames = ['seller_signatures', 'buyer_signatures', 'signing_a
 const finding = z.object({ finding: z.enum(['confirmed', 'not_confirmed', 'unknown']),
   locator: z.string().max(1000).refine(v => !!v.trim() && !Array.from(v).some(c => c.charCodeAt(0) < 32)), note }).strict();
 export const findingsSchema = z.object({ seller_signatures: finding, buyer_signatures: finding,
-  signing_authority: finding, complete_agreement: finding, terms: termsSchema }).strict();
+  signing_authority: finding, complete_agreement: finding, terms: termsSchema,
+  deadline_reviews: z.array(z.object({ term: deadlineTerm, review_id: id }).strict()).min(1).max(3).optional() }).strict().superRefine((v, ctx) => {
+    if (v.deadline_reviews === undefined) return; // Preserve original requests and fingerprints.
+    const required = deadlineTerms.filter(name => v.terms[name].precision === 'date');
+    const names = v.deadline_reviews.map(review => review.term), ids = v.deadline_reviews.map(review => review.review_id);
+    if (names.length !== required.length || new Set(names).size !== names.length || new Set(ids).size !== ids.length
+      || required.some(name => !names.includes(name))) ctx.addIssue({ code: 'custom', message: 'Each calendar date needs its exact reviewed interpretation.' });
+  });
 export const executionRequestSchema = z.object({ id, expected_version: version, expected_sequence: sequence.max(2147483646),
   status: z.enum(['approved', 'withdrawn']), artifact_id: id, verification_id: id, policy_id: id,
   expires_at: timestamp.nullable(), personally_reviewed: z.boolean(), note, findings: findingsSchema.nullable() }).strict()

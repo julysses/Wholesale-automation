@@ -1,5 +1,35 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — execution deadline integration and client recovery verified (candidates88–89)
+
+Final full rehearsal63130 exited0:86 migrations,26 access probes,237 application workflows,124 real local PostgREST/API checks. Historical24rows/22populatedtables/103definitions and Storage preserved. Evidence:evidence/2026-11-01-execution-deadline-authority-result.json. Ten focused SQL cases passed59.847s. Exact date reviews now participate in execution saves/current-state and executed transitions under complete source/reviewer locks. Mounted API validates lost-response recovery for both writes, exact term IDs/calendar precision, revocation and one audit each. Earlier UTC fixture failure is retained below; final run supersedes it.
+
+Client date-review schemas, exact pending-request recovery and scoped rejection transport are implemented. Original withdrawal stays separate from the shared cursor and selected source. Named time-zone checks reject DST gaps/mismatched offsets; both explicitly specified repeated times are valid. Execution findings preserve optional exact review bindings and legacy serialization. Full frontend822tests/91files passed14.43s; final typecheck/build3.28s; no new lint findings against147 existing. Logs:/tmp/deadline-client-full-tests.log,/tmp/deadline-client-final-build.log,/tmp/deadline-client-lint.log. All local validation processes are terminal.
+
+Published626c44a/run41275553285 still requires terminal success of all six checks before the next push; do not cancel/restart it. Git pull was current before edits. No production migrations, policy provisioning, provider activation, outreach, fulfillment or binding actions occurred. This local test/status recording is not a live signed agreement.
+
+Next: implement the visible date-interpretation form in step5 and integrate exact pending recovery into the parent, then consume current deadline IDs in execution review. Preserve navy/orange styling, source/property context, original withdrawal and one clear next action. Full desktop/mobile/lost-response QA remains required. Detailed handoff:DEADLINE-CLIENT-WORKFLOW.md. Remaining full PRD/lifecycle/disposition/channel/hosted acceptance stays active and incomplete.
+
+## November 1 — exact deadline execution acceptance expanded (candidate88, final rehearsal live)
+
+Ten focused disposable SQL cases passed59.847s (process71436 terminal0; /tmp/execution-deadline-authority-final-sql.log). Coverage includes original-source retention when every returned term and the main agreement use a separate file, revocation of that original source, execution-writer and transition waits followed by deadline-policy revocation, unchanged dates/versions, exact retries and withdrawal/expiry holds.
+
+The mounted API journey now creates fresh exact closing/effective approvals under a separate synthetic policy, binds both IDs into the execution review, completes the controlled executed transition, and simulates committed-response loss/recovery for both writes. It checks original calendar precision, immutable versions, one audit each, workspace/session denial and historical receipts after revoking the deadline policy. Fixture dates are relative to test time; no fixed future cutoff can silently expire.
+
+Earlier process43008 is terminal1: its86-migration/26-access/235-workflow portion passed, but the updated API test compared UTC `+00:00` input text with normalized `Z` output. Corrected the fixture's UTC spelling and explicit original calendar assertions without changing production code. Earlier log:/tmp/execution-deadline-authority-upgrade.log. Final full rehearsal63130 is LIVE at /tmp/execution-deadline-authority-final-upgrade.log; resume that exact handle. Expected final coverage:86 migrations,237 workflows,124 actual API checks. Do not claim those totals passed until terminal output proves them.
+
+Git pull is current. Published626c44aac931a40a5954d1c40aaf9903f53deed2/run41275553285 was last read with three successful checks and three running. Candidate88 remains uncommitted pending complete validation. After success retain structured evidence, update these notes, commit, and push only after all six predecessor checks pass. No production schema/policy/provider activation or outreach/fulfillment occurred. Next UI: guided source-backed date interpretation within existing navy/orange step5, personal decisions, exact review bindings, independent withdrawal and original-request recovery; full remaining PRD stays active.
+
+## November 1 — execution authority integration underway (candidate88)
+
+All six predecessor checks41274555808 passed. Verified checkpoints4a806d5 and626c44aac931a40a5954d1c40aaf9903f53deed2 were pushed. Exact successor41275553285 is running; do not push further changes until all six checks succeed.
+
+Local CLI-created20261101050425 integrates exact deadline reviews into the existing execution writer, current predicate and status transition, preserving original dates and historical request fingerprints. The source journal includes up to13 distinct evidence artifacts; all deadline reviewers/policies/sessions are locked and rechecked, expiry is capped, and exact original scans must be retained. No production migration or policy/provider/outreach/fulfillment activation.
+
+Eight focused disposable SQL cases passed44.728s, including reviewed execution, unchanged history, exact retries, missing/mixed references, withdrawal and expiry holds, and observed policy revocation during a transition lock wait. Log:/tmp/execution-deadline-authority-sql.log; process36644 terminal0. Full upgrade/application rehearsal43008 remains live at /tmp/execution-deadline-authority-upgrade.log. Resume that exact handle, not a replacement. Candidate88 remains uncommitted pending validation. No frontend changes in this increment.
+
+Next: finish full rehearsal and retain structured evidence; add dedicated independent-source, execution-writer lock-wait and actual mounted API date-only execution journeys. Then extend the existing step5 navy/orange review flow with explicit date interpretation, personal approval, independent withdrawal and original-request recovery. All remaining PRD/channel/hosted acceptance work stays in scope; goal active/incomplete.
+
 ## November 1 — execution deadline binding comparison verified (candidate87)
 
 Optional exact deadline-review references now travel with execution findings. Legacy omitted references retain the original five-field serialization and request fingerprints; supplied references must uniquely cover each date-only term. The private comparison checks the exact current review, workspace/version/term, unchanged original date and valid ordering using temporary derived instants. Original signed terms remain unchanged. The execution writer and status transition still hold calendar-only execution until the complete source/policy locking integration is implemented; this checkpoint does not authorize execution.

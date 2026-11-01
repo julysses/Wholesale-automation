@@ -341,6 +341,10 @@
     {
       "file": "20261101045444_acquisition_execution_deadline_binding.sql",
       "sha256": "2156d17b70c137fedb4c46d050642cc86d65ff69cb2df86a0900f9d1efbd6a5c"
+    },
+    {
+      "file": "20261101050425_acquisition_execution_deadline_authority.sql",
+      "sha256": "ec93c89e84894e86496b30013d7f238fd129b837062c532f29b210c9bf182fbb"
     }
   ]
 }

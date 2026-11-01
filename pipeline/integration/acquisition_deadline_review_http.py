@@ -39,9 +39,12 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
     evidence.update(sha256='d'*64,byte_size=123,scan_checked_at=state['checked_at'],registry_checked_at=state['checked_at'])
     signed=build_contract_scan_attestation(evidence,request_id=UUID(scan),actor_id=UUID(admin),session_id=UUID(admin),key=key,clock=lambda:datetime.now(timezone.utc))
     rpc('record_contract_document_verification',signed)
+    now=datetime.now(timezone.utc)
+    effective_day=(now-timedelta(days=1)).date().isoformat()
+    closing_day=(now+timedelta(days=20)).date().isoformat()
     terms=dict(purchase_price_cents=14000000,earnest_money_cents=0,assignment_allowed=False,
-        assignment_provisions='Synthetic written consent requirement.',effective={'precision':'date','calendar_date':'2026-11-01'},
-        inspection_deadline={'precision':'unknown'},closing_deadline={'precision':'date','calendar_date':'2026-11-20'},
+        assignment_provisions='Synthetic written consent requirement.',effective={'precision':'date','calendar_date':effective_day},
+        inspection_deadline={'precision':'unknown'},closing_deadline={'precision':'date','calendar_date':closing_day},
         sources=[dict(term=name,artifact_id=document,artifact_version=1,sha256='d'*64,locator='Synthetic original clause')
                  for name in ('purchase_price','earnest_money','assignment','effective','closing_deadline')],
         note='Synthetic original calendar dates remain unchanged during reviewed interpretation.')
@@ -69,8 +72,8 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
     path=f'/api/acquisition/workspaces/{workspace}/contracts/{contract}/versions/2/deadline-reviews'
     body=dict(id=review,expected_version=2,expected_sequence=0,status='approved',artifact_id=document,verification_id=scan,
         policy_id=policy,expires_at=expiry,personally_reviewed=True,note='Synthetic personal review of the original date and cited explicit time.',
-        term='closing_deadline',original_review_id=None,resolution=dict(term='closing_deadline',calendar_date='2026-11-20',
-            local_time='17:00:00',time_zone='America/Chicago',resolved_instant='2026-11-20T17:00:00-06:00',
+        term='closing_deadline',original_review_id=None,resolution=dict(term='closing_deadline',calendar_date=closing_day,
+            local_time='17:00:00',time_zone='UTC',resolved_instant=closing_day+'T17:00:00Z',
             basis='explicit_document_time',rationale='Synthetic source explicitly states this time for the preserved calendar date.',
             source=dict(term='closing_deadline',artifact_id=document,artifact_version=1,sha256='d'*64,locator='Synthetic closing clause')))
     history=db.query('SELECT version,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract])
@@ -133,3 +136,60 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
     for request_id in (review,withdrawal):
         if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_review' AND entity_id=%s",[request_id])!=[{'n':1}]:
             raise AssertionError('Deadline API recovery duplicated immutable audit')
+
+    # A new, separately provisioned fixture policy does not reactivate the revoked
+    # approval. Bind fresh exact reviews through the mounted execution API.
+    new_policy,closing_review,effective_review,execution_policy,execution_review,executed=[identity(n) for n in range(30,36)]
+    for policy_id,kind in ((new_policy,'deadline_resolution'),(execution_policy,'executed_contract')):
+        db.query("""INSERT INTO private.acquisition_contract_review_policies(id,workspace_id,kind,purpose,reviewer_id,
+            max_review_seconds,valid_from,valid_until,reviewed_by,approval_ref)
+            SELECT %s,workspace_id,%s,purpose,reviewer_id,max_review_seconds,valid_from,valid_until,reviewed_by,approval_ref
+            FROM private.acquisition_contract_review_policies WHERE id=%s""",[policy_id,kind,review_policy])
+    renewed=body|dict(id=closing_review,expected_sequence=2,policy_id=new_policy)
+    effective_resolution=body['resolution']|dict(term='effective',calendar_date=effective_day,local_time='00:00:00',
+        resolved_instant=effective_day+'T00:00:00Z',source=body['resolution']['source']|{'term':'effective'})
+    effective_body=renewed|dict(id=effective_review,expected_sequence=3,term='effective',resolution=effective_resolution)
+    returned_terms=terms|dict(inspection_deadline={'precision':'instant','instant':(now+timedelta(days=5)).isoformat()},
+        sources=terms['sources']+[dict(term='inspection_deadline',artifact_id=document,artifact_version=1,sha256='d'*64,locator='Synthetic returned inspection clause')])
+    findings={name:dict(finding='confirmed',locator='Synthetic returned agreement',note='Synthetic independent personal review of returned agreement.')
+        for name in ('seller_signatures','buyer_signatures','signing_authority','complete_agreement')}
+    findings.update(terms=returned_terms,deadline_reviews=[dict(term='closing_deadline',review_id=closing_review),dict(term='effective',review_id=effective_review)])
+    execution_body=dict(id=execution_review,expected_version=2,expected_sequence=0,status='approved',artifact_id=document,
+        verification_id=scan,policy_id=execution_policy,expires_at=expiry,personally_reviewed=True,
+        note='Synthetic returned findings bind exact reviewed original dates.',findings=findings)
+    execution_path=path.rsplit('/',1)[0]+'/execution-review'
+    transition_path=f'/api/acquisition/workspaces/{workspace}/contracts/{contract}/transitions'
+    transition_body=dict(id=executed,expected_version=2,expected_sequence=1,expected_status='pending_signature',
+        target_status='executed',reason='Synthetic exact human-reviewed execution with preserved original calendar terms.')
+    with TestClient(app) as client:
+        for approval_body in (renewed,effective_body):
+            response=client.post(path,json=approval_body,headers=headers)
+            if response.status_code!=200:raise AssertionError('Fresh exact deadline approval failed: '+response.text)
+        for auth in (foreign,{}):
+            if client.post(execution_path,json=execution_body,headers=auth).status_code not in (401,403):
+                raise AssertionError('Bound execution crossed workspace or session')
+        drops['rpc/record_execution_review']=True
+        lost=client.post(execution_path,json=execution_body,headers=headers)
+        recovered=client.post(execution_path,json=execution_body,headers=headers)
+        if lost.status_code!=503 or lost.headers.get('X-Acquisition-Execution-Review-Rejected') or recovered.status_code!=200 or not recovered.json()['duplicate']:
+            raise AssertionError(f'Bound execution recovery failed: {lost.status_code} {recovered.status_code} {recovered.text}')
+        saved=db.query('SELECT execution_findings FROM public.acquisition_contract_reviews WHERE id=%s',[execution_review])[0]['execution_findings']
+        if saved['deadline_reviews']!=findings['deadline_reviews'] or saved['terms']['effective']['precision']!='date' or saved['terms']['effective']['calendar_date']!=effective_day or saved['terms']['effective'].get('instant') is not None or saved['terms']['closing_deadline']['precision']!='date' or saved['terms']['closing_deadline']['calendar_date']!=closing_day or saved['terms']['closing_deadline'].get('instant') is not None:
+            raise AssertionError('Bound execution lost exact references or calendar dates')
+        state=client.get(execution_path,headers=headers)
+        if state.status_code!=200 or not state.json()['approval_current']:raise AssertionError('Bound execution not current')
+        drops['rpc/record_contract_transition']=True
+        lost=client.post(transition_path,json=transition_body,headers=headers)
+        recovered=client.post(transition_path,json=transition_body,headers=headers)
+        if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate'] or recovered.json()['recorded_status']!='executed':
+            raise AssertionError(f'Bound transition recovery failed: {lost.status_code} {recovered.status_code} {recovered.text}')
+        db.query('UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id=%s',[new_policy])
+        state=client.get(execution_path,headers=headers)
+        if state.status_code!=200 or state.json()['approval_current']:raise AssertionError('Bound execution retained revoked interpretation authority')
+        if not client.post(execution_path,json=execution_body,headers=headers).json()['duplicate'] or not client.post(transition_path,json=transition_body,headers=headers).json()['duplicate']:
+            raise AssertionError('Historical bound execution or transition recovery disappeared')
+    if history!=db.query('SELECT version,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract]):
+        raise AssertionError('Bound execution changed original contract versions')
+    for entity,request_id in (('acquisition_contract_review',execution_review),('acquisition_contract_transition',executed)):
+        if db.query('SELECT count(*) AS n FROM public.audit_logs WHERE entity_type=%s AND entity_id=%s',[entity,request_id])!=[{'n':1}]:
+            raise AssertionError('Bound execution recovery duplicated audit')

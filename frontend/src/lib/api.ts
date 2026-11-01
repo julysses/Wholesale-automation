@@ -10,6 +10,7 @@ export class ApiError extends Error {
   rejectedLink = false;
   rejectedSignature = false;
   rejectedExecution = false;
+  rejectedDeadline = false;
   rejectedTransition = false;
   rejectedCost: boolean;
   retryAfterSeconds?: number;
@@ -65,6 +66,10 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/[a-f0-9-]{36}\/versions\/[1-9][0-9]*\/execution-review$/.test(path)
       && [401, 403, 409].includes(response.status)
       && response.headers.get('X-Acquisition-Execution-Review-Rejected') === 'true';
+    error.rejectedDeadline = init?.method === 'POST'
+      && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/[a-f0-9-]{36}\/versions\/[1-9][0-9]*\/deadline-reviews$/.test(path)
+      && [401, 403, 409].includes(response.status)
+      && response.headers.get('X-Acquisition-Deadline-Review-Rejected') === 'true';
     error.rejectedTransition = init?.method === 'POST'
       && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/[a-f0-9-]{36}\/transitions$/.test(path)
       && [401, 403, 409].includes(response.status)

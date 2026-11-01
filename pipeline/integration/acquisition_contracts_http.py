@@ -475,4 +475,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'deadline state exact term identity shared sequence and independent unreviewed term',
             'deadline state policy revocation and original withdrawal history',
             'deadline choices exact original source selected policy and scoped access',
-            'deadline choices retain original withdrawal under policy hold and remove it after withdrawal']
+            'deadline choices retain original withdrawal under policy hold and remove it after withdrawal',
+            'bound deadline execution API commit-loss recovery preserves exact calendar terms and identities',
+            'bound deadline executed transition API recovery and immutable original history',
+            'bound deadline policy revocation removes current authority but preserves historical receipts']

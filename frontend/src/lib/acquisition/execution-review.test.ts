@@ -84,3 +84,16 @@ it('holds unknown, date-only, changed and elapsed returned terms without inventi
   expect(executionTermsHold(prepared, prepared, Date.parse(prepared.closing_deadline.instant!) + 1)).toMatch(/deadlines/);
   expect(executionTermsHold(prepared, prepared, Date.parse(prepared.effective.instant!) - 1)).toMatch(/effective time/);
 });
+
+it('preserves legacy findings and exact optional date-review references', () => {
+  expect(pendingExecutionSchema.parse(saved).request.findings).not.toHaveProperty('deadline_reviews');
+  const value = structuredClone(saved), findings = value.request.findings!;
+  findings.terms.effective = { precision: 'date', calendar_date: '2026-11-01', instant: null };
+  findings.terms.sources = [{ term: 'effective', artifact_id: id(8), artifact_version: 1, sha256: 'b'.repeat(64), locator: 'Original effective clause' }];
+  findings.deadline_reviews = [{ term: 'effective', review_id: id(21) }];
+  preserveExecution(sessionStorage, value);
+  expect(readPendingExecution(sessionStorage, id(1), id(2))?.request.findings?.deadline_reviews).toEqual(findings.deadline_reviews);
+  for (const refs of [null, [], [{ term: 'closing_deadline', review_id: id(21) }], [findings.deadline_reviews[0], findings.deadline_reviews[0]]])
+    expect(() => pendingExecutionSchema.parse({ ...value, request: { ...value.request, findings: { ...findings, deadline_reviews: refs } } })).toThrow();
+  expect(() => preserveExecution(sessionStorage, { ...value, request: { ...value.request, findings: { ...findings, deadline_reviews: [{ term: 'effective', review_id: id(22) }] } } })).toThrow();
+});

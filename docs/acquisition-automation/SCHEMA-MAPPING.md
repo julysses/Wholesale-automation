@@ -431,3 +431,8 @@ Compensation: omit/disable the discovery UI while retaining sources and review h
 `20261101045444_acquisition_execution_deadline_binding.sql` replaces `private.valid_execution_findings` to admit an optional exact calendar-review reference list while preserving legacy five-field shapes. Adds ungranted `private.execution_findings_match` to compare source-bound dates through temporary derived instants. No tables, RLS policies, writer grants, source-journal bounds or execution transitions are changed. Current writer still holds calendar-only findings.
 
 Compensation: retain legacy execution path and calendar hold; preserve references and original calendar terms. Five focused SQL cases pass; full upgrade/API rehearsal pending. Final integration must expand the source union to13 and add deadline reviewer/policy/source locking to execution review and transition before activation.
+
+
+### Candidate88 — bound deadline execution authority
+
+`20261101050425_acquisition_execution_deadline_authority.sql` reuses the existing contract/review/source/status tables and public RPC signatures. The sole constraint expansion permits1–13 execution source entries instead of1–7. Existing RLS, immutable triggers, unique identities, foreign keys and grants remain intact. A new private invoker locking helper has no public/anon/authenticated/service grant. Existing controlled private definer writers retain fixed empty search paths and actual workspace/session/MFA checks. No new parent records or policy seeds. Compensation: pause acquisition/revoke reviewed authority while retaining immutable historical findings and transitions; do not delete review history or silently reset a recorded status. Local verification is in progress; no production application authorized.
