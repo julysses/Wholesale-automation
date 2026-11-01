@@ -37,3 +37,24 @@ Compensation is forward-only: pause acquisition or withdraw a saved personal pro
 - Isolate existing buyers and dependent routes/tables before matching or package generation; do not clone a separate buyer CRM.
 - Implement buyer verification, accurate contractual-interest packages, required reviewed disclosures, distribution approval, assignment agreement/deposit, closing milestones and gross/expense/net accounting.
 - Complete hosted/platform and operator acceptance separately from local tests. Preserve the full PRD's channel and provider gates.
+
+## Post-execution findings input (candidate105)
+
+`schemas/acquisition_disposition_review.py` defines separate principal/assignment input shapes. Common findings cover contractual interest, closing structure and remaining obligations. Assignment adds assignment provisions, legal basis, seller-disclosure requirements and assignee-disclosure requirements. This records a human review of the applicable requirements; it does not encode or invent legal requirements. Each satisfactory finding requires original citations; every unknown/unresolved finding requires an explicit next action. Original artifact versions/hashes must agree across findings. Client-supplied title/execution/reviewer authority is rejected.
+
+Review requests select the saved proposal and reviewer policy. The controlled writer must derive and check the exact live bindings; IDs in a request are selectors, not authorization. Approval-shaped inputs require satisfactory findings and expiry; held findings have no expiry. Withdrawal identifies the original review and cannot supply replacement findings or renew authority. The pure assessment always returns false for legal/disposition/marketing/execution authority, even with complete inputs. No route, persistence or new approval capability is enabled by candidate105.
+
+### Required next persistence and execution boundary
+
+Inventory the current review ledger, policies, constraints, indexes, grants/RLS, source-reference helpers and migrations before writing SQL. Extend the existing immutable review ledger with a distinct post-execution disposition-findings kind; do not reuse draft preparation kinds or create another CRM.
+
+The new controlled writer/state path must:
+
+- Bind the current exact proposal and exit type, recorded execution/title-entry transitions, current post-execution title decision and original execution/deadline authority. A superseding/withdrawn proposal or title decision invalidates current disposition approval without rewriting the historical receipt.
+- Resolve every cited original document and clause to its retained contract version/hash, current verification/scanner/retention authority and applicable reviewed policy. Assignment legal-basis evidence needs a distinct counsel-approved policy; generic preparation assignment reviews are insufficient. Do not provision that policy automatically.
+- Pin actual workspace/member/session, contract/version, proposal/title/execution/deadline and reviewer/source/policy authority under the existing lock order; recheck expirations after waits. Cap approval expiry by all bound authority lifetimes.
+- Preserve exact actor/session/request retries, immutable originals, explicit resolution holds, independent original withdrawal after pause, and one audit per saved review. Historical receipts grant no current authority.
+- Expose typed user-JWT application routes, bounded current choices and original history, with strict receipt/context checks and uncertain-save recovery. Add the findings form inside the same guided contract step.
+- Only then add the separately controlled transition into disposition review. Buyer distribution, agreement execution, changed closing structure and closing remain separate approvals.
+
+Acceptance must include real full-catalog migration/RLS tests, observed revocation during waits, superseded proposal/title binding, mixed versions and original sources, lost-response replay through the mounted API, and desktop/phone parent-recovery QA. Domain input tests alone do not satisfy this persistence or release gate.

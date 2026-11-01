@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — disposition findings input (candidate105, locally verified)
+
+Added strict post-execution disposition findings and human review requests for principal purchase and assignment. Common findings cover contractual interest, closing structure and remaining obligations; assignment adds original provisions, legal basis and both disclosure-requirement reviews. Reuses the validated original-citation/finding value types without borrowing title approval authority. Unknown/unresolved findings require concrete next actions and cannot become approved inputs; conflicting/future original sources are rejected. Original withdrawal cannot replace findings or renew expiry. Pure assessment always denies legal/disposition/marketing/execution authority.
+
+Forty focused tests passed0.24s. Full backend4462 tests passed,10 skipped,6 subtests56.38s; session89685 terminal0, log `/tmp/disposition-findings-backend.log`. No API, database or approval capability is activated by this input increment. The precise next ledger/writer/state/API/UI/transition work and required verification are recorded in `DISPOSITION-WORKFLOW.md`; do not mistake input validation for completed disposition review.
+
+The guided proposal UI remains locally committed as9284c52 with930 frontend tests, build/lint and desktop/phone QA passed. Published predecessor007cb77 / run41285050627 now has five terminal successes; Real PostgreSQL ingestion/tracing/scoring is still running. Wait for all six before the next push, without cancelling/restarting. Full PRD remains active/incomplete; retain all channel, hosted, provider, legal, buyer, closing and exception work. Production and live activity remain unchanged.
+
 ## November 1 — guided purchase path (candidate104, locally verified)
 
 Added the Purchase path card within existing ContractDraft step5 after title findings/history. It follows Choose path → Explain → Save internal proposal, retains navy/orange styling, defaults to no selection, and distinguishes principal purchase from proposed assignment. Displayed proposals grant no title, marketing, assignment or closing authority. Independent original withdrawal remains available after pause.
