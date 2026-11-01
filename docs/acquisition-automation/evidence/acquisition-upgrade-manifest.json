@@ -377,6 +377,10 @@
     {
       "file": "20261101071737_acquisition_disposition_plans.sql",
       "sha256": "c6eb933d88ec064a1ab5c830e20d51c2825492b691b940ffc73b27b3a1189ad0"
+    },
+    {
+      "file": "20261101074125_acquisition_disposition_findings_storage.sql",
+      "sha256": "2361cc3c5402d151aa592ce2b962c2c31b3280a25d2412e0a51fee745dafb34d"
     }
   ]
 }
