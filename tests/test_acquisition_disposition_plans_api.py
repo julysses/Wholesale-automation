@@ -109,11 +109,32 @@ def test_read_and_original_withdrawal_after_pause(endpoint):
     {'workspace_id':OTHER},{'contract_id':OTHER},{'contract_version':1},{'current_version':1},
     {'sequence':1},{'current_status':'draft'},{'readiness':'history_limit_reached'},
     {'execution_authorized':True},{'disposition_approved':True},{'checked_at':12345},
-    {'checked_at':(datetime.now(timezone.utc)-timedelta(minutes=2)).isoformat()},
-    {'checked_at':(datetime.now(timezone.utc)+timedelta(minutes=2)).isoformat()},
+    {'checked_at':'stale'},
+    {'checked_at':'future'},
     {'withdrawal':dict(plan_id=ID,exit_type='principal_acquisition',expected_sequence=1)},
 ])
 def test_inconsistent_state_is_unavailable(endpoint,change):
-    client,store=endpoint;store.request.return_value=state()|change
+    client,store=endpoint
+    # Build time-relative cases at execution, not collection: slower runners may
+    # reach this test more than two minutes after importing the module.
+    if change.get('checked_at') in {'stale','future'}:
+        offset=-120 if change['checked_at']=='stale' else 120
+        change=change|{'checked_at':(datetime.now(timezone.utc)+timedelta(seconds=offset)).isoformat()}
+    store.request.return_value=state()|change
     response=client.get(BASE)
     assert response.status_code==503 and MARKER not in response.headers
+
+
+@pytest.mark.parametrize('offset,expected',[(-31,503),(-30,200),(5,200),(6,503)])
+def test_state_freshness_boundaries_use_request_time(endpoint,monkeypatch,offset,expected):
+    from web.api import acquisition_disposition_plans_api as api
+    checked=datetime(2026,11,1,12,tzinfo=timezone.utc)
+    class RequestClock(datetime):
+        @classmethod
+        def now(cls,tz=None):
+            return checked.astimezone(tz) if tz is not None else checked.replace(tzinfo=None)
+    monkeypatch.setattr(api,'datetime',RequestClock)
+    client,store=endpoint
+    store.request.return_value=state()|{'checked_at':(checked+timedelta(seconds=offset)).isoformat()}
+    response=client.get(BASE)
+    assert response.status_code==expected and MARKER not in response.headers

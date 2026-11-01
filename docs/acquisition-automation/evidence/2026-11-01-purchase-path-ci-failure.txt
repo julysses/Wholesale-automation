@@ -1,0 +1,28 @@
+GitHub run 41286088592, job 124787565744, head 1e83e4f57287d0a042762d677783b95d2d7df790.
+2026-11-01T07:49:32.9302116Z =================================== FAILURES ===================================
+2026-11-01T07:49:32.9302881Z _______________ test_inconsistent_state_is_unavailable[change11] _______________
+2026-11-01T07:49:32.9303383Z 
+2026-11-01T07:49:32.9304128Z endpoint = (<starlette.testclient.TestClient object at 0x782b9cf20e90>, <AsyncMock id='132128703308880'>)
+2026-11-01T07:49:32.9305038Z change = {'checked_at': '2026-11-01T07:48:36.196792+00:00'}
+2026-11-01T07:49:32.9305381Z 
+2026-11-01T07:49:32.9305540Z     @pytest.mark.parametrize('change',[
+2026-11-01T07:49:32.9306103Z         {'workspace_id':OTHER},{'contract_id':OTHER},{'contract_version':1},{'current_version':1},
+2026-11-01T07:49:32.9306811Z         {'sequence':1},{'current_status':'draft'},{'readiness':'history_limit_reached'},
+2026-11-01T07:49:32.9307488Z         {'execution_authorized':True},{'disposition_approved':True},{'checked_at':12345},
+2026-11-01T07:49:32.9308182Z         {'checked_at':(datetime.now(timezone.utc)-timedelta(minutes=2)).isoformat()},
+2026-11-01T07:49:32.9308828Z         {'checked_at':(datetime.now(timezone.utc)+timedelta(minutes=2)).isoformat()},
+2026-11-01T07:49:32.9309520Z         {'withdrawal':dict(plan_id=ID,exit_type='principal_acquisition',expected_sequence=1)},
+2026-11-01T07:49:32.9310038Z     ])
+2026-11-01T07:49:32.9310366Z     def test_inconsistent_state_is_unavailable(endpoint,change):
+2026-11-01T07:49:32.9310909Z         client,store=endpoint;store.request.return_value=state()|change
+2026-11-01T07:49:32.9311386Z         response=client.get(BASE)
+2026-11-01T07:49:32.9311828Z >       assert response.status_code==503 and MARKER not in response.headers
+2026-11-01T07:49:32.9312289Z E       assert (200 == 503)
+2026-11-01T07:49:32.9312613Z E        +  where 200 = <Response [200 OK]>.status_code
+2026-11-01T07:49:32.9312880Z 
+2026-11-01T07:49:32.9313115Z tests/test_acquisition_disposition_plans_api.py:119: AssertionError
+2026-11-01T07:49:32.9313876Z =========================== short test summary info ============================
+2026-11-01T07:49:32.9314831Z FAILED tests/test_acquisition_disposition_plans_api.py::test_inconsistent_state_is_unavailable[change11] - assert (200 == 503)
+2026-11-01T07:49:32.9315452Z  +  where 200 = <Response [200 OK]>.status_code
+2026-11-01T07:49:32.9315863Z 1 failed, 4461 passed, 10 skipped, 6 subtests passed in 179.82s (0:02:59)
+
