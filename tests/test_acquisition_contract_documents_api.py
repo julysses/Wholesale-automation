@@ -27,6 +27,19 @@ def endpoint():
     with TestClient(app) as client:yield client,store
 
 
+@pytest.fixture
+def late_test_clock(monkeypatch):
+    """Model slow CI after collection without sleeping or widening API tolerances."""
+    from web.api import acquisition_contract_documents_api
+    instant=datetime.now(timezone.utc)+timedelta(seconds=60)
+    class LaterDatetime(datetime):
+        @classmethod
+        def now(cls,tz=None):
+            return instant.astimezone(tz) if tz else instant.replace(tzinfo=None)
+    monkeypatch.setitem(globals(),'datetime',LaterDatetime)
+    monkeypatch.setattr(acquisition_contract_documents_api,'datetime',LaterDatetime)
+
+
 def test_registration_derives_path_scope_and_never_accepts_actor_override(endpoint):
     client,store=endpoint;store.request.return_value=receipt()
     response=client.post(BASE,json=BODY)
@@ -76,11 +89,12 @@ def test_read_reports_unavailable_states_without_approval(endpoint,status):
     assert response.status_code==200 and response.json()==value and response.headers['cache-control']=='no-store'
     store.request.assert_awaited_once_with('POST','rpc/contract_document_state',body={'p_workspace':W,'p_contract':C,'p_version':1,'p_artifact':A})
 
+@pytest.mark.usefixtures('late_test_clock')
 @pytest.mark.parametrize('change',[{'artifact_id':R},{'workspace_id':R},{'contract_id':R},{'contract_version':2},
-    {'checked_at':stamp(-60)},{'checked_at':stamp(60)},{'bytes_verified':True},{'legal_review_approved':True},
+    {'checked_at':lambda:stamp(-60)},{'checked_at':lambda:stamp(60)},{'bytes_verified':True},{'legal_review_approved':True},
     {'execution_authorized':True},{'status':'revoked'},{'status':'expired'},{'private':'secret-marker'}])
 def test_changed_stale_or_false_authority_state_is_rejected(endpoint,change):
-    client,store=endpoint;store.request.return_value=state()|change
+    client,store=endpoint;store.request.return_value=state()|{k:v() if callable(v) else v for k,v in change.items()}
     response=client.get(BASE+'/'+A)
     assert response.status_code==503 and 'secret-marker' not in response.text
 
@@ -148,13 +162,13 @@ def test_document_choices_scope_policy_and_server_owned_gate(endpoint,monkeypatc
 @pytest.mark.parametrize('target,change',[
     ('root',{'workspace_id':C}),('root',{'contract_id':W}),('root',{'contract_version':2}),
     ('root',{'contract_version':True}),('root',{'purpose':'title_report'}),('root',{'execution_authorized':True}),
-    ('root',{'checked_at':stamp(-60)}),('root',{'next_after':P}),('root',{'upload_enabled':True}),
-    ('policy',{'purpose':'title_report'}),('policy',{'workspace_id':C}),('policy',{'valid_until':stamp(-1)}),
+    ('root',{'checked_at':lambda:stamp(-60)}),('root',{'next_after':P}),('root',{'upload_enabled':True}),
+    ('policy',{'purpose':'title_report'}),('policy',{'workspace_id':C}),('policy',{'valid_until':lambda:stamp(-1)}),
     ('item',{'contract_version':2}),('item',{'workspace_id':C}),('item',{'purpose':'title_report'}),
-    ('item',{'legal_review_approved':True}),('item',{'checked_at':stamp(-1)}),('item',{'download_url':'private'})])
+    ('item',{'legal_review_approved':True}),('item',{'checked_at':lambda:stamp(-1)}),('item',{'download_url':'private'})])
 def test_document_choices_rejects_untrusted_projection(endpoint,target,change):
     client,store=endpoint;raw=choices()
-    (raw if target=='root' else raw['current_policy'] if target=='policy' else raw['items'][0]).update(change)
+    (raw if target=='root' else raw['current_policy'] if target=='policy' else raw['items'][0]).update({k:v() if callable(v) else v for k,v in change.items()})
     store.request.return_value=raw
     response=client.get(BASE+'?purpose=purchase_contract')
     assert response.status_code==503 and response.headers['cache-control']=='no-store'
@@ -207,12 +221,13 @@ def test_current_scan_endpoint_derives_exact_scope_and_cannot_start_scan(endpoin
     assert client.post(BASE+'/'+A+'/scan-state?purpose=purchase_contract').status_code==405
 
 
+@pytest.mark.usefixtures('late_test_clock')
 @pytest.mark.parametrize('change',[{'workspace_id':R},{'contract_id':R},{'contract_version':2},{'artifact_id':R},
-    {'purpose':'title_report'},{'checked_at':stamp(-60)},{'checked_at':stamp(60)},{'checked_at':0},
+    {'purpose':'title_report'},{'checked_at':lambda:stamp(-60)},{'checked_at':lambda:stamp(60)},{'checked_at':0},
     {'legal_review_approved':True},{'preview_authorized':True},{'execution_authorized':True},
     {'observation_id':None},{'quarantined':True},{'status':'not_scanned'},{'private':'secret-marker'}])
 def test_current_scan_endpoint_rejects_stale_foreign_or_approving_state(endpoint,change):
-    client,store=endpoint;store.request.return_value=scan_state()|change
+    client,store=endpoint;store.request.return_value=scan_state()|{k:v() if callable(v) else v for k,v in change.items()}
     response=client.get(BASE+'/'+A+'/scan-state?purpose=purchase_contract')
     assert response.status_code==503 and response.headers['cache-control']=='no-store'
     assert 'secret-marker' not in response.text

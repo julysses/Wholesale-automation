@@ -1,0 +1,7 @@
+# CI timestamp fixture repair — October 31, 2026
+
+Published commit `4a4f393deb618aa51517f70a51c85be9ef3956a8` started GitHub run `41270303090`. Its completed backend job `124741537734` failed two cases in `tests/test_acquisition_contract_documents_api.py`: future document-state and scan-state timestamps were computed during test collection. The suite took 161.91 seconds; by execution, a timestamp generated 60 seconds ahead during collection could fall inside the API's legitimate freshness window. This is a nondeterministic fixture error, not evidence that the API should reject a currently fresh timestamp.
+
+Repair: compute parameterized time values at execution, consistent with the existing signature/review API tests. A test-only clock advanced by 60 seconds reproduces delayed execution without sleeping; both affected parameter groups use it. API tolerances and production behavior are unchanged. All 113 document API tests pass in 4.57 seconds, including the shifted-clock checks. Log: `/tmp/acquisition-ci-time-fixture-fix.log`. Remote log: `/tmp/acquisition-ci-41270303090-backend.log`.
+
+Publication is pending completion of the still-live real-PostgreSQL job. The workflow has `cancel-in-progress: true`, so an early push would cancel that run. Publish this isolated repair after the current run is terminal, then verify its successor. Do not include the uncommitted executed-transition feature until the repaired predecessor passes all six checks. No job was cancelled/restarted, production migration applied, or provider activated.
