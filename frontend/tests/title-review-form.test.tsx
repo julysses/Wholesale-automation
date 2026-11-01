@@ -22,7 +22,8 @@ beforeEach(() => {
     return { json: async () => mock.withdraw ? { ...c, status: 'paused', candidate: null, resolution: null, withdrawal: { review_id: id(20), artifact_id: id(8), source_version: 2, verification_id: id(9), policy_id: id(10), expected_sequence: 1, original_status: 'requires_resolution' }, current_review: { ...c.current_review, review_id: id(20), sequence: 1, status: 'requires_resolution' } } : c };
   });
 });
-function open(disabled = false) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><TitleReviewForm context={context} disabled={disabled} onPending={mock.pending} onSaved={mock.saved} /></QueryClientProvider>); }
+function open(disabled = false, withdrawalOnly = false) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><TitleReviewForm withdrawalOnly={withdrawalOnly} context={context} disabled={disabled} onPending={mock.pending} onSaved={mock.saved} /></QueryClientProvider>); }
+const posts = () => mock.fetch.mock.calls.filter(c => c[1]?.method === 'POST');
 async function start() {
   const view = open(); fireEvent.click(screen.getByText('Open title review')); await screen.findByRole('option', { name: /Original version 2/ });
   fireEvent.change(screen.getByLabelText('Title report'), { target: { value: id(8) } });
@@ -87,4 +88,26 @@ it('blocks corrupt recovery and adjacent pending work without requests', async (
 it('retains original version recovery without any new candidate request', async () => {
   const saved: PendingTitle = { version: 1, context, request: { id: id(7), expected_version: 2, expected_sequence: 1, status: 'withdrawn', artifact_id: id(8), verification_id: id(9), policy_id: id(10), expires_at: null, personally_reviewed: false, findings: null, note: 'Withdraw the exact original title decision.' } };
   preserveTitle(sessionStorage, saved); open(); fireEvent.click(screen.getByText('Retry saved title decision')); await screen.findByText(/Title decision recorded/); expect(mock.fetch).toHaveBeenCalledTimes(1); expect(mock.fetch.mock.calls[0][0]).toMatch(/versions\/2\/title-review$/);
+});
+
+
+it('withdraws the original title decision after handoff without loading new reports and recovers its exact request', async () => {
+  mock.withdraw = true; mock.lose = true;
+  const view = open(false, true); fireEvent.click(screen.getByText('Open title review'));
+  fireEvent.click(await screen.findByText('Withdraw my previous title decision'));
+  expect(screen.getByText('Record your withdrawal')).toBeVisible();
+  expect(screen.queryByLabelText('Title report')).not.toBeInTheDocument();
+  expect(screen.queryByText('Start title findings')).not.toBeInTheDocument();
+  expect(mock.fetch.mock.calls.some(([path]) => path.includes('/references'))).toBe(false);
+  fireEvent.change(screen.getByLabelText('Title decision notes'), { target: { value: 'Withdraw original title findings after the disposition handoff.' } });
+  fireEvent.click(screen.getByText('Record title withdrawal')); await screen.findByText(/Save is unconfirmed/);
+  const original = posts()[0][1].body; view.unmount(); mock.lose = false;
+  open(false, true); fireEvent.click(screen.getByText('Retry saved title decision')); await screen.findByText(/Title decision recorded/);
+  expect(posts()).toHaveLength(2); expect(posts()[1][1].body).toBe(original); expect(sessionStorage.length).toBe(0);
+});
+it('offers no new title findings in withdrawal-only mode without an original decision', async () => {
+  open(false, true); fireEvent.click(screen.getByText('Open title review'));
+  await screen.findByText('No original title decision is available for you to withdraw.');
+  expect(screen.queryByText('Start title findings')).not.toBeInTheDocument(); expect(screen.queryByLabelText('Title report')).not.toBeInTheDocument();
+  expect(posts()).toHaveLength(0);
 });

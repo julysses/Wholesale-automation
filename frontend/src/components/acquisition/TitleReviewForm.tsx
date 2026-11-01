@@ -16,11 +16,11 @@ function blankFindings(): TitleFindings {
   return { report_as_of: { precision: 'unknown', calendar_date: null, instant: null }, report_as_of_source: null, report_note: '',
     ownership: item(), legal_description: item(), liens_and_payoffs: item(), exceptions_and_encumbrances: item(), occupancy_and_possession: item() };
 }
-type Props = { context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
+type Props = { withdrawalOnly?: boolean; context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
 export function TitleReviewForm(props: Props) {
   return <TitleEditor key={`${props.context.userId}:${props.context.workspaceId}:${props.context.contractId}:${props.context.contractVersion}`} {...props} />;
 }
-function TitleEditor({ context, disabled, onPending, onSaved }: Props) {
+function TitleEditor({ context, disabled, onPending, onSaved, withdrawalOnly = false }: Props) {
   const [initial] = useState(() => { try { const saved = readPendingTitle(sessionStorage, context.userId, context.workspaceId);
     if (saved && Object.entries(saved.context).some(([k, v]) => context[k as keyof DocumentContext] !== v)) throw new Error('Title context changed');
     return { saved, blocked: false }; } catch { return { saved: null, blocked: true }; } });
@@ -41,7 +41,7 @@ function TitleEditor({ context, disabled, onPending, onSaved }: Props) {
   useEffect(() => { if (!held) return; const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
     window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn); }, [held]);
   const options = { enabled: expanded && !disabled && !blocked && !pending, retry: false, gcTime: 0, staleTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false } as const;
-  const documents = useQuery({ ...options, queryKey: ['title-documents', ...scope, after], queryFn: async ({ signal }) => parseReferences(await (await apiFetch(`${base}/references?purpose=title_report&limit=20${after ? `&after=${after}` : ''}`, { signal, cache: 'no-store' })).json(), context, 'title_report', after) });
+  const documents = useQuery({ ...options, enabled: options.enabled && !withdrawalOnly, queryKey: ['title-documents', ...scope, after], queryFn: async ({ signal }) => parseReferences(await (await apiFetch(`${base}/references?purpose=title_report&limit=20${after ? `&after=${after}` : ''}`, { signal, cache: 'no-store' })).json(), context, 'title_report', after) });
   const candidate = useQuery({ ...options, queryKey: ['title-choice', ...scope, artifact], queryFn: async ({ signal }) => parseTitleCandidate(await (await apiFetch(`${base}/title-review/candidate${artifact ? `?artifact_id=${artifact}` : ''}`, { signal, cache: 'no-store' })).json(), context, artifact || null) });
   const supporting = useQuery({ ...options, enabled: options.enabled && !!mode && mode !== 'withdrawn' && stage === 2,
     queryKey: ['title-support', ...scope, supportPurpose, supportAfter], queryFn: async ({ signal }) => parseReferences(await (await apiFetch(`${base}/references?purpose=${supportPurpose}&limit=20${supportAfter ? `&after=${supportAfter}` : ''}`, { signal, cache: 'no-store' })).json(), context, supportPurpose, supportAfter) });
@@ -50,7 +50,7 @@ function TitleEditor({ context, disabled, onPending, onSaved }: Props) {
     queryKey: ['title-originals', ...scope, originalIds.join(',')], queryFn: async ({ signal }) => Promise.all(originalIds.map(async id => parseReference(await (await apiFetch(`${base}/references/${id}`, { signal, cache: 'no-store' })).json(), context, id))) });
   const isFresh = (date: string) => now - Date.parse(date) <= 30000 && now - Date.parse(date) >= -5000;
   const fresh = !disabled && !blocked && !candidate.isError && !candidate.isFetching && candidate.data && isFresh(candidate.data.checked_at);
-  const resolution = fresh ? candidate.data!.resolution : null, choice = fresh ? candidate.data!.candidate : null, withdrawal = fresh ? candidate.data!.withdrawal : null;
+  const resolution = fresh && !withdrawalOnly ? candidate.data!.resolution : null, choice = fresh && !withdrawalOnly ? candidate.data!.candidate : null, withdrawal = fresh ? candidate.data!.withdrawal : null;
   const selected = documents.data?.items.find(row => row.artifact_id === artifact);
   const sourceMatches = !!resolution && !!selected && !documents.isError && !documents.isFetching && selected.status === 'available_for_review'
     && selected.sha256 === resolution.sha256 && selected.verification_id === resolution.verification_id && selected.source_version === resolution.source_version
@@ -73,7 +73,7 @@ function TitleEditor({ context, disabled, onPending, onSaved }: Props) {
   const canRecord = mode === 'withdrawn' ? !!withdrawal && validNote(note) : !!mode && sourceMatches && originalsCurrent && parsed.success && reviewed && validNote(note) && (mode !== 'approved' || maxExpiry !== null);
   function change(value: TitleFindings) { setFindings(value); setReviewed(false); }
   function close() { if (busy || pending || blocked) return; setExpanded(false); setMode(null); setFindings(blankFindings()); setReviewed(false); setNote(''); }
-  function refresh() { if (disabled || busy || pending || blocked) return; setReviewed(false); setNow(Date.now()); void documents.refetch(); void candidate.refetch(); if (mode && mode !== 'withdrawn') void originals.refetch(); if (stage === 2) void supporting.refetch(); }
+  function refresh() { if (disabled || busy || pending || blocked) return; setReviewed(false); setNow(Date.now()); if (!withdrawalOnly) void documents.refetch(); void candidate.refetch(); if (mode && mode !== 'withdrawn') void originals.refetch(); if (stage === 2) void supporting.refetch(); }
   async function save() {
     if (lock.current || disabled || blocked || Date.now() < retryAt || (!pending && !canRecord)) return;
     lock.current = true; setBusy(true); const firstAttempt = !pending; let saved = pending, sent = false;
@@ -104,19 +104,20 @@ function TitleEditor({ context, disabled, onPending, onSaved }: Props) {
     } finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
   return <section aria-label="Title findings review" className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 space-y-3 text-[#1B3A5C] min-w-0">
-    <h3 className="font-semibold">Review title findings</h3><p className="text-sm text-gray-600">Follow the report, findings and decision steps. Record unresolved issues with a specific next action.</p>
+    <h3 className="font-semibold">{withdrawalOnly ? 'Manage the original title decision' : 'Review title findings'}</h3><p className="text-sm text-gray-600">{withdrawalOnly ? 'Withdraw your original title decision if it can no longer support the purchase path. The original findings and handoff remain in history.' : 'Follow the report, findings and decision steps. Record unresolved issues with a specific next action.'}</p>
     {blocked && <p role="alert">Saved title details could not be read safely. Reconcile the original request before continuing.</p>}
     {!expanded && !blocked && <button type="button" className={button} disabled={disabled} onClick={() => setExpanded(true)}>Open title review</button>}
     {expanded && !pending && !blocked && <>
       {disabled && <p role="alert">Confirm the contract and finish the adjacent pending step first.</p>}
       <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={busy || disabled || candidate.isFetching || documents.isFetching || originals.isFetching} onClick={refresh}>Refresh title checks</button><button type="button" className={button} disabled={busy} onClick={close}>Close without saving</button></div>
       {(documents.isError || candidate.isError) && <p role="alert">Current title documents or choices could not be confirmed.</p>}
-      {fresh && candidate.data && <p role="status" className="text-sm">{holds[candidate.data.status]} Current decision: {candidate.data.current_review.status.replaceAll('_', ' ')}.</p>}
+      {fresh && candidate.data && <p role="status" className="text-sm">{withdrawalOnly && candidate.data.status === 'contract_unavailable' ? 'New title findings are unavailable at this stage.' : holds[candidate.data.status]} Current decision: {candidate.data.current_review.status.replaceAll('_', ' ')}.</p>}
       {!fresh && !candidate.isFetching && <p role="status">Refresh title checks before saving.</p>}
-      {!mode && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-medium">Choose the original title report</legend>
-        <label className="block text-sm">Title report<select className={input} value={artifact} onChange={e => { setArtifact(e.target.value); setReviewed(false); }}><option value="">Choose a retained title report</option>{documents.data?.items.map((row, i) => <option key={row.artifact_id} value={row.artifact_id}>{i + 1}. {new Date(row.source_created_at).toLocaleDateString()} · Original version {row.source_version} · {row.status === 'available_for_review' ? 'Available' : 'Needs verification'}</option>)}</select></label>
+      {!mode && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-medium">{withdrawalOnly ? 'Your original title decision' : 'Choose the original title report'}</legend>
+        {!withdrawalOnly && <><label className="block text-sm">Title report<select className={input} value={artifact} onChange={e => { setArtifact(e.target.value); setReviewed(false); }}><option value="">Choose a retained title report</option>{documents.data?.items.map((row, i) => <option key={row.artifact_id} value={row.artifact_id}>{i + 1}. {new Date(row.source_created_at).toLocaleDateString()} · Original version {row.source_version} · {row.status === 'available_for_review' ? 'Available' : 'Needs verification'}</option>)}</select></label>
         <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={documents.isFetching || cursors.length === 1} onClick={() => { setCursors(c => c.slice(0, -1)); setArtifact(''); }}>Previous title reports</button><button type="button" className={button} disabled={documents.isFetching || documents.isError || !documents.data?.next_after} onClick={() => { setCursors(c => [...c, documents.data!.next_after]); setArtifact(''); }}>More title reports</button></div>
-        <button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={!sourceMatches} onClick={() => { setMode('requires_resolution'); setStage(1); setFindings(blankFindings()); setReviewed(false); setNote(''); }}>Start title findings</button>
+        <button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={!sourceMatches} onClick={() => { setMode('requires_resolution'); setStage(1); setFindings(blankFindings()); setReviewed(false); setNote(''); }}>Start title findings</button></>}
+        {withdrawalOnly && fresh && !withdrawal && <p className="text-sm">No original title decision is available for you to withdraw.</p>}
         {withdrawal && <button type="button" className={button} onClick={() => { setMode('withdrawn'); setStage(3); setNote(''); }}>Withdraw my previous title decision</button>}
       </fieldset>}
       {mode && mode !== 'withdrawn' && <ol aria-label="Title review steps" className="flex flex-wrap gap-3 text-sm">{['Report', 'Findings', 'Decision'].map((label, i) => <li key={label} aria-current={stage === i + 1 ? 'step' : undefined} className={stage === i + 1 ? 'font-semibold text-orange-700' : 'text-gray-600'}>{i + 1}. {label}</li>)}</ol>}
@@ -139,7 +140,7 @@ function TitleEditor({ context, disabled, onPending, onSaved }: Props) {
         {report && <TitleFindingsFields value={findings} onChange={change} report={report} supplemental={supplemental} />}
         <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => setStage(1)}>Back to report</button><button type="button" className={button} disabled={!parsed.success} onClick={() => setStage(3)}>Next: title decision</button></div>
       </fieldset>}
-      {mode && stage === 3 && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-semibold">3. Record your title decision</legend>
+      {mode && stage === 3 && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-semibold">{mode === 'withdrawn' ? 'Record your withdrawal' : '3. Record your title decision'}</legend>
         {mode !== 'withdrawn' ? <><label className="block text-sm">Title decision<select className={input} value={mode} onChange={e => { setMode(e.target.value as typeof mode); setReviewed(false); }}><option value="requires_resolution">Keep on hold for resolution</option><option value="approved" disabled={maxExpiry === null}>Approve the reviewed findings</option></select></label>
           {titleFindingNames.filter(name => findings[name].finding !== 'satisfactory').map(name => <p key={name} className="text-sm break-words"><strong>{titleLabels[name]}:</strong> {findings[name].required_action}</p>)}
           {approvalHold && <p role="status" className="text-sm">{approvalHold}</p>}{(!sourceMatches || !originalsCurrent) && <p role="status" className="text-sm">Refresh the original document checks before saving.</p>}

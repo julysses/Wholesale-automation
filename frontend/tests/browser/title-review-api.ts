@@ -5,6 +5,13 @@ export class ApiError extends Error { rejectedTitle = false; }
 const key = 'synthetic-title-decisions';
 let lose = false;
 export function loseNextReply() { lose = true; }
+export function prepareOriginalWithdrawal() {
+  if (sessionStorage.getItem(key) !== null) return;
+  const original = titleHistoryRecord(1, 'requires_resolution');
+  sessionStorage.setItem(key, JSON.stringify([{ id: original.id, expected_version: 2, expected_sequence: 0, status: 'requires_resolution',
+    artifact_id: original.artifact_id, verification_id: original.verification_id, policy_id: titleId(10), expires_at: null,
+    personally_reviewed: true, note: original.note, findings: original.title_findings }]));
+}
 export async function apiFetch(path: string, init?: RequestInit) {
   const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as PendingTitle['request'][];
   const stamp = new Date().toISOString(), last = entries.at(-1);
@@ -37,6 +44,7 @@ export async function apiFetch(path: string, init?: RequestInit) {
   const c = titleChoice(path.includes('artifact_id=') ? titleId(8) : null);
   if (c.resolution) c.resolution.expected_sequence = entries.length;
   if (c.candidate) c.candidate.expected_sequence = entries.length;
-  return { json: async () => ({ ...c, withdrawal: last && last.status !== 'withdrawn' ? { review_id: last.id, artifact_id: last.artifact_id, source_version: 2, verification_id: last.verification_id, policy_id: last.policy_id, expected_sequence: entries.length, original_status: last.status } : null,
+  const held = new URLSearchParams(location.search).has('withdrawal') ? { status: 'contract_unavailable', candidate: null, resolution: null } : {};
+  return { json: async () => ({ ...c, ...held, withdrawal: last && last.status !== 'withdrawn' ? { review_id: last.id, artifact_id: last.artifact_id, source_version: 2, verification_id: last.verification_id, policy_id: last.policy_id, expected_sequence: entries.length, original_status: last.status } : null,
     current_review: { ...c.current_review, review_id: last?.id ?? null, sequence: entries.length, status: last?.status ?? 'not_reviewed', approval_current: last?.status === 'approved', expires_at: last?.status === 'approved' ? last.expires_at : null } }) };
 }

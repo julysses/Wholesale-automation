@@ -1,5 +1,17 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — original title withdrawal after disposition handoff (candidate124)
+
+Parent step5 now keeps TitleReviewForm reachable in withdrawal-only mode after disposition_review, alongside original title history. The mode suppresses new report selection/loading and findings, including cached ready choices, while retaining exact original uncertain-request recovery. Original withdrawal requires fresh server choices and notes; parent holds adjacent disposition/handoff/navigation while it is open. Native labelled controls and existing navy/orange styling remain. No SQL, new policy, runtime API or source-renewal permission changed.
+
+Actual local API verification passed163 checks with102-migration re-upgrade/access and the prior316 database workflows explicitly reused: paused original title withdrawal after handoff, commit-loss/exact recovery, retained original approved findings, then original disposition withdrawal and retained handoff receipt. Session43687 terminal0; `/tmp/title-post-handoff-gateway.log`; evidence `evidence/2026-11-01-post-handoff-title-withdrawal-api-result.json`.
+
+Full frontend1021 tests100 files passed13.62s; build/typecheck/lint passed with no new findings (147 existing). Sessions84242/11425/86365 terminal0; final synthetic-fixture build44638/lint25734 terminal0. Logs `/tmp/title-post-handoff-ui-{all,build-final,lint-final}.log`. Initial focused tests failed only because the new tests omitted their posts helper; corrected before full success. Synthetic desktop1280x900/phone375x812 browser56897 passed exact lost-reply/reload/retry, one withdrawal, no fresh findings/repeated withdrawal, no console errors or overflow. Evidence `evidence/2026-11-01-post-handoff-title-withdrawal-browser-result.json`; phone screenshot visually inspected. Preview21761 stopped. Prior4646 backend tests remain relevant because runtime Python and SQL are unchanged.
+
+Previous update00f5489aee8f5e7dbbf726f1eeaec71e2c9a97af was pushed successfully. Exact successor [41292882111](https://github.com/julysses/Wholesale-automation/actions/runs/41292882111) is running; Frontend and Pipeline passed at latest check, four other jobs running. Require all six before next push, preserve current jobs. Candidate124 is ready for its local commit.
+
+Next complete execution/deadline original-withdrawal usability after handoff, then design and implement renewal of current review authority without rewriting original execution/title/disposition identities. Full source refresh/new-review workflows remain incomplete; withdrawal-only UI is an explicit intermediate state, not final lifecycle completion. Preserve full buyer/disclosure/distribution/deposit/closing/exceptions/channel/provider/hosted/legal requirements. Goal remains active/incomplete; no production migration or live action.
+
 ## November 1 — original disposition withdrawal remains available after handoff (candidate123)
 
 Parent step5 now exposes the original disposition review in withdrawal-only mode after disposition_review. Users can withdraw their own earlier decision and recover an uncertain original save while the parent holds adjacent actions/navigation. Fresh findings/approval are hidden and blocked even if a cached response contains a ready candidate. No source/renewal authority or new database grants were added. Original review, plan and handoff records remain immutable. Source/review renewals, title/execution/date withdrawal usability and later transaction steps remain open.

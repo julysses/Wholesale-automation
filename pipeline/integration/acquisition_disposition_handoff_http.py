@@ -50,6 +50,24 @@ def verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contrac
             paused=client.get(path+'/candidate',params={'contract_version':2},headers=headers)
             if paused.status_code!=200 or paused.json()['status']!='paused' or paused.json()['candidate'] is not None:raise AssertionError('Paused handoff offered execution')
             if not client.post(path,json=body,headers=headers).json()['duplicate']:raise AssertionError('Pause erased original handoff recovery')
+            title_path=f'/api/acquisition/workspaces/{workspace}/contracts/{contract}/versions/2/title-review'
+            title_options=client.get(title_path+'/candidate',headers=headers)
+            if title_options.status_code!=200 or title_options.json()['candidate'] is not None or title_options.json()['resolution'] is not None:
+                raise AssertionError('Post-handoff original title choices unavailable')
+            title_original=title_options.json()['withdrawal']
+            if not title_original or title_original['review_id']!=roots['disposition_title_review_id']:
+                raise AssertionError('Post-handoff title withdrawal changed the original')
+            title_withdrawal=dict(id='af124000-0000-4000-8000-000000000001',expected_version=2,
+                expected_sequence=title_original['expected_sequence'],status='withdrawn',artifact_id=title_original['artifact_id'],
+                verification_id=title_original['verification_id'],policy_id=title_original['policy_id'],expires_at=None,
+                personally_reviewed=False,findings=None,note='Withdraw the original title findings after disposition handoff.')
+            drops['rpc/record_title_review']=True
+            lost=client.post(title_path,json=title_withdrawal,headers=headers);recovered=client.post(title_path,json=title_withdrawal,headers=headers)
+            if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate']:
+                raise AssertionError('Post-handoff title withdrawal recovery failed')
+            if client.get(title_path,headers=headers).json()['status']!='withdrawn':raise AssertionError('Title withdrawal not current')
+            title_history=client.get(title_path+'/history/'+title_original['review_id'],headers=headers)
+            if title_history.status_code!=200 or title_history.json()['record']['status']!='approved':raise AssertionError('Title withdrawal rewrote original findings')
             options=client.get(review_path+'/candidate',headers=headers)
             if options.status_code!=200 or options.json()['withdrawal']['review_id']!=review or options.json()['candidate'] is not None or options.json()['resolution'] is not None:
                 raise AssertionError('Post-handoff pause lost independent original withdrawal')
