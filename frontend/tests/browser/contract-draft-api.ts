@@ -1,3 +1,4 @@
+import { emptyTerms } from '../../src/lib/acquisition/contract-terms';
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 export const ids = { user: id(1), workspace: id(2) };
 export const selected = { offer_id: id(6), lead_id: id(3), property_id: id(4) };
@@ -29,6 +30,33 @@ export async function apiFetch(path: string, init?: RequestInit) {
     if (lose) { lose = false; throw new Error('Synthetic lost reply after commit'); }
     value = { deal_id: request.id, version: 1, status: 'draft', duplicate: !!ledger, execution_authorized: false };
   } else if (path.endsWith('/memberships')) value = [{ workspace_id: ids.workspace, user_id: ids.user, status: 'active', role: 'owner' }];
+  else if (path.endsWith('/terms') || path.includes('/versions?')) {
+    if (!ledger) throw new Error('Save the synthetic draft first');
+    const key = 'contract-terms-local-qa-ledger';
+    const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as { request: Record<string, unknown>; created: string }[];
+    if (init?.method === 'POST') {
+      const request = JSON.parse(init.body as string);
+      const prior = entries.find(entry => entry.request.id === request.id);
+      if (prior && JSON.stringify(prior.request) !== JSON.stringify(request)) throw new Error('Synthetic terms retry changed');
+      if (!prior) {
+        if (request.expected_version !== ledger.row.acquisition_version) throw new Error('Synthetic contract version changed');
+        entries.push({ request, created: new Date().toISOString() }); sessionStorage.setItem(key, JSON.stringify(entries));
+        ledger.row.acquisition_version += 1; sessionStorage.setItem(ledgerKey, JSON.stringify(ledger));
+      }
+      if (lose) { lose = false; throw new Error('Synthetic terms reply lost after commit'); }
+      value = { request_id: request.id, workspace_id: ids.workspace, contract_id: ledger.row.id, version: request.expected_version + 1,
+        status: 'draft', duplicate: !!prior, execution_authorized: false };
+    } else {
+      const requested = Number(new URL(path, 'http://localhost').searchParams.get('after') ?? 0) + 1;
+      const entry = entries.find(row => Number(row.request.expected_version) + 1 === requested);
+      value = { workspace_id: ids.workspace, contract_id: ledger.row.id, execution_authorized: false,
+        next_after: ledger.row.acquisition_version > requested ? requested : null,
+        items: requested <= ledger.row.acquisition_version ? [{ id: id(100 + requested), workspace_id: ids.workspace, deal_id: ledger.row.id,
+          version: requested, status: 'draft', previous_version: requested > 1 ? requested - 1 : null,
+          terms: requested === 1 ? null : entry?.request.terms ?? { ...emptyTerms(), note: 'Synthetic initial terms retained for browser preview.' },
+          actor_id: ids.user, created_at: entry?.created ?? ledger.row.created_at }] : [] };
+    }
+  }
   else if (path.includes('/reviews/')) {
     if (!ledger) throw new Error('Save the synthetic draft first');
     const kind = path.split('/reviews/')[1].split('/')[0];

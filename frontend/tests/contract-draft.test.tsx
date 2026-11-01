@@ -15,6 +15,10 @@ beforeEach(() => {
     if (init?.method === 'POST') {
       if (mock.reject) throw new ApiError('Rejected', 409);
       if (mock.fail) throw new Error('Lost response');
+      if (path.endsWith('/terms')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ request_id: body.id, workspace_id: id(2), contract_id: id(5), version: body.expected_version + 1, status: 'draft', duplicate: true, execution_authorized: false }) };
+      }
       if (path.includes('/reviews/')) {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: 1, kind: 'contract_review', review_id: body.id,
@@ -113,4 +117,30 @@ it('recovers the exact historical review after the canonical contract advances',
   expect(screen.getByText('Current contract version 2.')).toBeVisible();
   await waitFor(() => expect(mock.fetch.mock.calls.some(([path]) => path.includes('/versions/2/references?'))).toBe(true));
   await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});
+
+
+it('recovers historical terms without a selected offer and returns to the current version', async () => {
+  const { preserveTerms, emptyTerms } = await import('../src/lib/acquisition/contract-terms');
+  const request = { id: id(30), expected_version: 1, terms: { ...emptyTerms(), note: 'Original unknown terms retained across a lost save reply.' } };
+  preserveTerms(sessionStorage, { version: 1, context: { userId: id(1), workspaceId: id(2), leadId: id(3), propertyId: id(4), offerId: id(6), contractId: id(5), contractVersion: 1 }, request });
+  record.acquisition_version = 2; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Retry saved terms' })).toBeEnabled());
+  expect(screen.getByLabelText('Document type')).toBeDisabled(); expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry saved terms' }));
+  await waitFor(() => expect(sessionStorage.length).toBe(0));
+  expect(posts()).toHaveLength(1); expect(posts()[0][0]).toMatch(/\/contracts\/[^/]+\/terms$/);
+  expect(JSON.parse(posts()[0][1].body)).toEqual(request);
+  expect(screen.getByText('Current contract version 2.')).toBeVisible();
+  await waitFor(() => expect(mock.fetch.mock.calls.some(([path]) => path.includes('/versions/2/references?'))).toBe(true));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});
+it('blocks conflicting saved term and document requests instead of choosing one', async () => {
+  const { preserveTerms, emptyTerms } = await import('../src/lib/acquisition/contract-terms');
+  const context = { userId: id(1), workspaceId: id(2), leadId: id(3), propertyId: id(4), offerId: id(6), contractId: id(5), contractVersion: 1 };
+  preserveTerms(sessionStorage, { version: 1, context, request: { id: id(30), expected_version: 1, terms: { ...emptyTerms(), note: 'Original terms retained across a lost save reply.' } } });
+  sessionStorage.setItem(`wholesale.contract.document:v1:${id(1)}:${id(2)}`, JSON.stringify({ version: 1, context, stage: 'upload',
+    registration: { id: id(9), purpose: 'purchase_contract', expected_sha256: 'a'.repeat(64), expected_byte_size: 20, media_type: 'text/plain', retention_policy_id: id(8), provenance_note: 'Original seller document for review.' } }));
+  open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile the existing request');
+  expect(mock.fetch).not.toHaveBeenCalled(); expect(mock.pending).toHaveBeenLastCalledWith(true); expect(sessionStorage.length).toBe(2);
 });

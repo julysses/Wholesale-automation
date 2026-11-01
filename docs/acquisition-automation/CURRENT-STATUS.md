@@ -2,6 +2,18 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — guided draft terms editor
+
+Added ContractTermsForm inside existing acquisition step5, between original document preparation and human review. The collapsed view shows the six current terms. Editing preserves unknowns, exact cents, calendar-date versus explicit-zone timestamp precision, original assignment provision text, and per-term original document/version/hash/clause references. The source chooser is purpose-filtered and paginated; only currently available references can be attached. Existing immutable save_contract_terms remains the final source/session/version authority; no schema or production changes in this increment.
+
+Every save is preserved before transmission and can only clear on an exact non-executing receipt or an explicit first-attempt rejection. Historical request recovery stays bound to its original contract/offer/property context even after the canonical version advances. Conflicting saved workflows block rather than selecting one. Unsaved term editing holds navigation and sibling document/review actions until saved or discarded. The parent does not automatically refresh its version during editing. A completed save refreshes canonical history and requires new review.
+
+Validation: initial full frontend suite690 passed across82 files; typecheck/build passed. Lint found three new issues (hook dependency and control-character expressions); corrected them and lint now reports no new findings against147 existing. Final affected tests67 passed before the unsaved-edit hold refinement; the hold/recovery suite17 passed afterward. Final affected suite83 passed across6 files after the copy/fixture/hold refinements; final typecheck/build passed2.67s and lint again reported no new findings. API transport tests verify the terms rejection header is accepted only for the exact POST route and definitive statuses. Backend/database behavior is unchanged from candidate69's completed isolated rehearsal.
+
+Synthetic local browser QA: source-backed $140000.29 save, reply lost after synthetic commit, reload with canonical version2, exact original retry, no version3, retained original sourceversion1, populated edit values, terms summary, sibling controls held during edit and released on discard. No browser errors/warnings. Desktop navy/orange styling inspected; mobile viewport verification remains outstanding. Preview stopped after QA. This is local presentation evidence, not hosted/provider/legal acceptance.
+
+Predecessor e86fa003fbbe652ee58a52a6e0ee6c873b3437de was pushed; GitHub run41261287159 currently has five terminal successes and one live real-PostgreSQL contention job. Do not push this editor until all six are terminal successes. Next: explicit source-link API/UI controls, then controlled lifecycle/disposition and remaining PRD channel/hosted acceptance. Full goal remains active; no outreach, fulfillment, signing or production migration authorized by these tests.
+
 ## October 31 — guided original-document review (candidate 69)
 
 Added bounded, workspace-authorized source-reference discovery and mounted read-only list/detail endpoints. Review choices now retain original document dates/versions while explicitly identifying the contract version being reviewed. Native document history clarifies that carried-forward sources appear in the review section. Existing navy/orange step 5 styling is retained. No approval carries forward automatically.
