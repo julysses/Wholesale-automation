@@ -25,6 +25,7 @@ from web.api.acquisition_contract_terms_api import router as contract_terms_rout
 from web.api.acquisition_contract_references_api import router as contract_references_router
 
 from web.api.acquisition_contract_links_api import router as contract_links_router
+from web.api.acquisition_signature_reviews_api import router as signature_reviews_router
 
 router = APIRouter(prefix='/api/acquisition', tags=['Acquisition'])
 router.include_router(evidence_router)
@@ -36,6 +37,7 @@ router.include_router(contract_reviews_router)
 router.include_router(contract_terms_router)
 router.include_router(contract_references_router)
 router.include_router(contract_links_router)
+router.include_router(signature_reviews_router)
 
 
 class WorkspaceCreate(BaseModel):

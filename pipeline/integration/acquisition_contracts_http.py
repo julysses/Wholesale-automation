@@ -299,10 +299,13 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             source_review_path,source_review_body=verify_source_review_http(db,app,document_drops,headers,workspace,draft,review_request,{'Authorization':'Bearer '+token(other)})
             from acquisition_contract_links_http import verify_links_http,verify_link_withdrawal_http
             link_path,link_body=verify_links_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,api_document,linked_observation_id,observed['sha256'])
+            from acquisition_signature_review_http import verify_signature_http,verify_signature_revocation_http
+            signature_path,signature_body=verify_signature_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,terms_body,source_review_body)
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
             verify_source_review_revocation_http(db,app,document_drops,headers,source_review_path,source_review_body)
             verify_terms_revocation_http(app,token,terms_path,terms_body)
             verify_link_withdrawal_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},link_path,link_body)
+            verify_signature_revocation_http(db,app,document_drops,headers,signature_path,signature_body)
             reference=rpc('contract_reference_state',reference_args)
             if reference['status']!='requires_review' or reference['verification_id'] is not None:
                 raise AssertionError('Original source reference retained revoked verification authority')
@@ -337,7 +340,8 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
         raise AssertionError('Contract observation exact recovery or target failed')
     if any(recovered_scan[k] for k in ('preview_authorized','legal_review_approved','execution_authorized')):
         raise AssertionError('Persisted scan implied approval')
-    for jwt,body in [(token(other),signed),(token(),signed|{'p_version':3}),(None,signed)]:
+    # Signature preparation now creates version3; version4 remains nonexistent.
+    for jwt,body in [(token(other),signed),(token(),signed|{'p_version':4}),(None,signed)]:
         status,_=request('/rpc/record_contract_document_verification',jwt,body)
         if status not in (401,403):raise AssertionError('Contract observation scope/session bypass accepted')
     status,rows=request('/acquisition_evidence_verifications?select=id&contract_id=eq.'+draft,token(other))
@@ -393,7 +397,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
         for identity in ({'Authorization':'Bearer '+token(other)},{}):
             if client.get(api_path+'?purpose=purchase_contract',headers=identity).status_code not in (401,403):
                 raise AssertionError('Document discovery tenant/session bypass')
-        if client.get(api_path.replace('/versions/1/','/versions/3/')+'?purpose=purchase_contract',headers=headers).status_code!=403:
+        if client.get(api_path.replace('/versions/1/','/versions/4/')+'?purpose=purchase_contract',headers=headers).status_code!=403:
             raise AssertionError('Document discovery wrong-version bypass')
         if client.post(api_path+'/'+api_document+'/bytes',headers=headers,content=b'not accepted').status_code not in (404,405):
             raise AssertionError('Contract document upload unexpectedly enabled')
@@ -434,4 +438,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'mounted source reference revocation removes current verification',
             'document link API actual commit loss and exact original source recovery',
             'document link API workspace session target and conflict isolation',
-            'document link withdrawal after revoked source while paused preserves original audit']
+            'document link withdrawal after revoked source while paused preserves original audit',
+            'signature review API committed reply loss exact retry and independent basis',
+            'signature review API tenant session target and request conflict denial',
+            'signature review API revoked source and paused withdrawal recovery without legal transition']
