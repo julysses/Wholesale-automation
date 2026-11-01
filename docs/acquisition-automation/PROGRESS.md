@@ -1,5 +1,33 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — effective review checks fully verified locally
+
+Full108 rehearsal95784 completed0 with26 access checks,341 application workflows and164 actual PostgREST API checks passed. Preserved24 historical rows across22 populated tables,103 historical definitions and Storage fixture. Evidence `evidence/2026-11-01-effective-reviews-108-result.json`; log `/tmp/review-effective-108-upgrade.log`. This includes final widened expiry-test windows and the all-instant suspended-workspace regression. No local verification session remains running.
+
+The batch adds private execution/title/disposition effective predicates and execution comparison. Original roots/findings/transition receipts remain intact; every renewed decision must bind its current supporting reviews, with recursive evidence/policy/session checks and expiry caps. Current public workflows are intentionally not switched yet. No renewal writer/API/UI or live activation is claimed complete.
+
+All six exact predecessor8618917/run41296241976 checks are now confirmed successful. Ready for commit and push. After push verify the exact successor. Next prove/reuse existing retained-byte scanning/attestation paths after handoff (see source inspection in REVIEW-RENEWAL.md), implement combined source/policy/session/dependency locking and controlled human renewal writer, then discovery/API/guided UI and remaining PRD work. Full goal remains active/incomplete; no production or provider changes.
+
+## November 1 — private title/disposition effective support verified locally (candidate134)
+
+Added CLI-created migration20261101101358 with private root-aware title/disposition current predicates. They preserve original transition/plan/root IDs, require exact direct dependency snapshots, recursively validate effective execution/deadline authority, enforce effective expiry caps, retain title report freshness and exact current policy/source checks, and require the original latest disposition plan/exit/legal scope. Renewing an upstream dependency never silently refreshes downstream approval. Existing public/current paths remain unchanged; controlled renewal writer/API/UI are still absent.
+
+Five downstream focused cases passed34.548s (90159 terminal0, `/tmp/downstream-effective.log`): ordered personal rebinding with transitive invalidation, effective expiry caps, superseded plan rejection, report-freshness policy requirements, private access and scope/deadline revocation. Subsequently widened synthetic expiry-test windows from20/10/5 to30/20/10 seconds to reduce scheduling sensitivity; final full rehearsal covers that test-only change. Prior final five execution cases passed32.378s.
+
+Manifest108/full-catalog runner includes ten new effective execution/title/disposition cases beyond published106. Full populated108 upgrade/access/application/API rehearsal95784 is live in `/tmp/review-effective-108-upgrade.log`; expected341 workflow registrations, but no completed108 acceptance claimed yet. This is the only local verification session running. Freeze this batch until verification and publication; no new migration additions before push. On completion save exact evidence and commit/push after all six predecessor8618917/run41296241976 checks succeed. Latest predecessor:four successful jobs, two database jobs running.
+
+Next after publication: same-byte scan refresh at post-handoff stages, source/policy/session/dependency lock union and fresh rechecks, controlled personal renewal writer, discovery/read API, guided UI with original findings and recovery, then completion of remaining PRD requirements. No production migration or provider activation. Full goal remains active/incomplete.
+
+## November 1 — recursive execution review support verified locally (candidate133)
+
+Previous foundation batch86189176dd048a904b3163e4e8b2f272ebe2c6c8 was pushed and remote verified. Exact successor run41296241976 is in progress; Pipeline and Frontend passed at latest check. Preserve that run and require all six successes before the next push.
+
+Local CLI-created migration20261101101024 adds private `execution_findings_effective_match` and `execution_review_effective_current`. They preserve original date-precision findings/root IDs, resolve effective deadline interpretations, require the execution decision's exact supporting-review bindings, validate recursive deadline authority, cap expiry to effective deadlines, and require the exact source union/current scans plus reviewer policy/session/membership and active workspace. Existing public/current paths remain unchanged; no renewal writer or live action is enabled.
+
+Initial four cases passed26.903s (74482 terminal0). Review then identified the need for explicit workspace-active checking on contracts with no separate deadline reviews. Added that check and an all-instant regression case. Final five cases passed32.378s (90885 terminal0, `/tmp/execution-effective-final.log`): no silent approval carryover, renewed expiry cap, source/policy rejection, role/pause/session controls, and suspended-workspace rejection without deadline dependencies. No local verification sessions remain live.
+
+Manifest107/full-catalog runner include the five new cases and correct instant-date fixture initialization. Full107 populated upgrade/API has not run yet; do not claim acceptance from prior106 evidence. Changes remain local/uncommitted. Next implement matching private title/disposition effective checks, then run combined focused/full verification and publish behind predecessor CI. Follow with source refresh/combined locks/controlled human renewal writer/discovery/API/UI. Full PRD remains active/incomplete; production and paused SMS unchanged.
+
 ## November 1 — renewal foundation batch fully verified locally, ready to publish
 
 Final frozen106 rehearsal81318 completed0: all26 access checks,331 application workflows and164 actual PostgREST checks passed. Preserved24 historical rows across22 populated tables,103 historical definitions and Storage fixture. Evidence `evidence/2026-11-01-review-renewal-106-result.json`; log `/tmp/review-renewal-106-upgrade-final.log`. No local verification session remains running. All six exact predecessor4960ad2/run41293917867 CI checks succeeded.

@@ -425,6 +425,14 @@
     {
       "file": "20261101095505_acquisition_deadline_effective_review.sql",
       "sha256": "2af9676426e84900d3bfc8d8726eb5ec08557137f383a20e000f6006a6ec1e09"
+    },
+    {
+      "file": "20261101101024_acquisition_execution_effective_review.sql",
+      "sha256": "8d61cdb8fcabd31ae5ef3169ed4b45a80cda42da7fc96524cd5efa779242460b"
+    },
+    {
+      "file": "20261101101358_acquisition_downstream_effective_reviews.sql",
+      "sha256": "43b42472a8d946bd4ef1cfb283f081c70ca073701661a32aea39e96552404306"
     }
   ]
 }

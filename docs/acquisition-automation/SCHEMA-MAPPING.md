@@ -511,3 +511,7 @@ Extend `acquisition_contract_reviews`, retaining `deals`, `acquisition_contract_
 ## Renewal supporting-review bindings — candidate131, local verification pending
 
 Migration20261101095023 extends `acquisition_contract_reviews.renewal_dependencies` only; no new CRM table. Server-derived direct dependency root/effective IDs are recorded after lineage validation under existing deal serialization. Client snapshots are rejected, legacy rows stay null, existing immutable trigger protects the binding. New private functions have no anonymous/authenticated/service-role execution grants. Fresh104 inventory: `evidence/2026-11-01-review-dependencies-local-catalog.json`. Compensation retains history and leaves renewal execution disabled; current-authority integration remains incomplete.
+
+## Effective execution/title/disposition predicates — candidates133–134
+
+Migrations20261101101024 and20261101101358 add private read-only effective-support functions, using existing immutable review/transition/plan/source entities and the renewal dependency snapshots. No table grants, public endpoints, legacy predicates or current writers are replaced. Explicit active-workspace checks cover execution with no date-review dependencies. Compensation retains history and leaves renewal execution unavailable. Full108 rehearsal pending.
