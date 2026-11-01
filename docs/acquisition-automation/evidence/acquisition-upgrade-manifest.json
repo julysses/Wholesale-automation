@@ -297,6 +297,10 @@
     {
       "file": "20261101025323_acquisition_pending_contract_documents.sql",
       "sha256": "15319d631674963993e0e2639c540e6af7c4892da4d4943d6d87a05653c650fe"
+    },
+    {
+      "file": "20261101030340_acquisition_execution_findings_storage.sql",
+      "sha256": "aa37d86abddf0a3c9f3372ee3db6af09493fda4d7d4e3db90dca314fec5cf0b5"
     }
   ]
 }
