@@ -2,6 +2,14 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — typed contract term preparation
+
+Added schemas/acquisition_contract_terms.py and tools/acquisition_contract_terms.py. Required nullable monetary/provision fields preserve unknown values; strict integer cents avoid float/string/bool coercion and remain within browser exact-integer range. Explicit unknown/date/instant types reject inferred midnight/timezones or mixed precision. Each entered term requires an original artifact/version/hash and clause locator. Assignment interpretation retains its source provision. Requests bind expected current version and reject future-version sources. These are structural input checks, not verified facts.
+
+Pure preparation assessment flags missing terms, date-only cutoff review, comparable-date contradictions and earnest money above purchase amount. It never converts dates, fills missing values, establishes legal sufficiency or grants execution. Source verification is always required. 85 focused terms/existing transition tests passed in0.20s. No API route or database persistence is added by this increment.
+
+Next: immutable term/version persistence and audited same-contract document carry-forward, preserving existing registry/verification/review keys and denying automatic approval carry-over. Add authorized source resolution, expected-version concurrency, exact retries, audit and populated-upgrade tests before exposing save controls. CI repair57e57af is still retained locally pending the final live predecessor job in41257089916; form31c111b and terms remain unpublished. No production change.
+
 ## October 31 — isolated CI repair validated and terms mapping inspected
 
 Isolated repair57e57af on published2a5690e now generates parameterized review timestamps at test execution and separates PostgreSQL/Python installation into individually bounded setup steps. Actual CI evidence: backend124702445359 failed a collection-time expiry assumption; full-upgrade124702445313 timed out after PostgreSQL completed but before pip finished. No application expiry rules or acceptance tests removed. Full offline backend:3565 passed,10 skipped,six subtests in28.81s; all30 inline workflow shell steps and YAML parsing passed. First local repair run exposed one accidentally deferred runtime request field; corrected it before successful full rerun. Repair committed in /tmp/wholesale-ci-repair-20261031 and merged into main locally.
