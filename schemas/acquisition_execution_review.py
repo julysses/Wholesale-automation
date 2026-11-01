@@ -6,7 +6,7 @@ under the current workspace, version, scanner and reviewer policy locks.
 from typing import Literal
 from pydantic import Field, model_validator
 
-from schemas.acquisition_contract_reviews import ContractReviewRequest, Exact
+from schemas.acquisition_contract_reviews import ContractReviewRequest, ContractReviewReceipt, Exact
 from schemas.acquisition_contract_terms import ContractTermsDraft
 
 
@@ -54,3 +54,8 @@ class ExecutionReviewRequest(ContractReviewRequest):
         elif self.findings is not None:
             raise ValueError('Withdrawal preserves the original findings without replacing them')
         return self
+
+
+# Reuse historical receipt invariants while keeping the old review-kind API closed.
+class ExecutionReviewReceipt(ContractReviewReceipt):
+    kind: Literal['executed_contract']

@@ -301,6 +301,10 @@
     {
       "file": "20261101030340_acquisition_execution_findings_storage.sql",
       "sha256": "aa37d86abddf0a3c9f3372ee3db6af09493fda4d7d4e3db90dca314fec5cf0b5"
+    },
+    {
+      "file": "20261101030913_acquisition_execution_review_write.sql",
+      "sha256": "5e0b61039da586eeeb653b8feb7ba2c6e3a8dac3c994438adad2de02105338df"
     }
   ]
 }

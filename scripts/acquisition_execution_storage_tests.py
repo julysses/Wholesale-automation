@@ -58,6 +58,8 @@ class ExecutionStorageCases:
         columns=self.sql("SELECT string_agg(quote_ident(attname),',' ORDER BY attnum) FROM pg_attribute WHERE attrelid='public.acquisition_contract_reviews'::regclass AND attnum>0 AND NOT attisdropped AND attgenerated=''")
         original=json.loads(self.sql('SELECT to_jsonb(r) FROM acquisition_contract_reviews r WHERE contract_version=2'))
         original.update(id=review_id,kind='executed_contract',policy_id=policy_id,execution_findings=self.execution_findings())
+        if 'execution_sources' in original:
+            original['execution_sources']=[{'artifact_id':original['artifact_id'],'source_version':original['source_version'],'verification_id':original['verification_id'],'sha256':original['sha256'],'purpose':original['purpose'],'expires_at':original['expires_at']}]
         def insert(value,fail=False):
             self.sql(f"INSERT INTO acquisition_contract_reviews({columns}) SELECT {columns} FROM jsonb_populate_record(NULL::acquisition_contract_reviews,{literal(json.dumps(value))}::jsonb)",fail=fail)
         insert(original|{'execution_findings':None},fail=True)

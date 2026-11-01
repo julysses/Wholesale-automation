@@ -20,6 +20,7 @@ from acquisition_contract_reference_discovery_tests import ContractReferenceDisc
 from acquisition_signature_review_tests import SignatureReviewCases
 from acquisition_pending_document_tests import PendingDocumentCases
 from acquisition_execution_storage_tests import ExecutionStorageCases
+from acquisition_execution_review_tests import ExecutionReviewCases
 from acquisition_transition_choice_tests import TransitionChoiceCases
 from acquisition_contract_transition_tests import ContractTransitionCases
 from acquisition_signature_candidate_tests import SignatureCandidateCases
@@ -52,7 +53,7 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
-class FullCatalogDocumentTests(ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
+class FullCatalogDocumentTests(ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
     def setUp(self):
         super().setUp()
         self.prepare_document_fixture()
@@ -60,6 +61,8 @@ class FullCatalogDocumentTests(ExecutionStorageCases, PendingDocumentCases, Tran
             self.prepare_observation_fixture()
         if self._testMethodName.startswith(('test_contract_review_', 'test_terms_', 'test_contract_link_', 'test_source_review_', 'test_reference_discovery_', 'test_signature_')):
             self.prepare_review_fixture()
+        if self._testMethodName.startswith('test_signature_execution_write_'):
+            self.terms=self.execution_prepared_terms
         if self._testMethodName.startswith('test_signature_'):
             self.prepare_signature()
 
@@ -88,6 +91,7 @@ def run_workflow_probes(db):
     document_names += sorted(name for name in TransitionChoiceCases.__dict__ if name.startswith('test_signature_transition_choice_'))
     document_names += sorted(name for name in PendingDocumentCases.__dict__ if name.startswith('test_signature_pending_document_'))
     document_names += sorted(name for name in ExecutionStorageCases.__dict__ if name.startswith('test_signature_execution_storage_'))
+    document_names += sorted(name for name in ExecutionReviewCases.__dict__ if name.startswith('test_signature_execution_write_'))
     names += contract_names + document_names
     if not names:
         raise RuntimeError('No application journeys discovered')

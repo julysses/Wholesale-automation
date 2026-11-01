@@ -20,6 +20,7 @@ from web.api.acquisition_contract_transitions_api import router as contract_tran
 from web.api.acquisition_contracts_api import router as contracts_router
 from web.api.acquisition_contract_documents_api import router as contract_documents_router
 from web.api.acquisition_contract_reviews_api import router as contract_reviews_router
+from web.api.acquisition_execution_reviews_api import router as execution_reviews_router
 
 from web.api.acquisition_contract_terms_api import router as contract_terms_router
 
@@ -36,6 +37,7 @@ router.include_router(contracts_router)
 router.include_router(contract_transitions_router)
 router.include_router(contract_documents_router)
 router.include_router(contract_reviews_router)
+router.include_router(execution_reviews_router)
 router.include_router(contract_terms_router)
 router.include_router(contract_references_router)
 router.include_router(contract_links_router)
