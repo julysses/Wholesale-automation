@@ -97,3 +97,32 @@ def test_choice_rejects_inconsistent_nested_target_and_expiry(endpoint,field,val
 def test_held_choice_has_no_available_transition(endpoint,status):
     client,store=endpoint;store.request.return_value=choice()|{'status':status,'candidate':None}
     assert client.get(PATH+'/candidate',params={'contract_version':2}).json()['candidate'] is None
+
+
+def executed_choice():
+    value=choice()
+    expiry=value['candidate']['expires_at']
+    return value|dict(current_status='pending_signature',sequence=1,candidate=dict(expected_version=2,
+        expected_sequence=1,expected_status='pending_signature',target_status='executed',execution_review_id=R,expires_at=expiry))
+
+
+def test_executed_choice_requires_exact_review_kind_and_current_lifecycle(endpoint):
+    client,store=endpoint
+    store.request.return_value=executed_choice()
+    response=client.get(PATH+'/candidate',params={'contract_version':2})
+    assert response.status_code==200
+    assert response.json()['candidate']['execution_review_id']==R
+    assert 'signature_review_id' not in response.json()['candidate']
+    for patch in ({'expected_sequence':0},{'expected_status':'draft'},{'signature_review_id':R},{'target_status':'title_review'}):
+        value=executed_choice();value['candidate'].update(patch);store.request.return_value=value
+        assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==503
+
+
+@pytest.mark.parametrize('status,current,sequence', [('execution_review_required','pending_signature',1),('execution_recorded','executed',2)])
+def test_executed_holds_preserve_exact_status_without_new_action(endpoint,status,current,sequence):
+    client,store=endpoint
+    value=executed_choice()|dict(current_status=current,sequence=sequence,status=status,candidate=None)
+    store.request.return_value=value
+    assert client.get(PATH+'/candidate',params={'contract_version':2}).json()['candidate'] is None
+    store.request.return_value=value|{'sequence':sequence+1}
+    assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==503

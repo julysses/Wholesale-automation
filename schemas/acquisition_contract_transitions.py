@@ -86,17 +86,34 @@ class PendingSignatureChoice(BaseModel):
         return value
 
 
+class ExecutedContractChoice(BaseModel):
+    model_config = ConfigDict(extra='forbid', frozen=True)
+    expected_version: int = Field(strict=True, ge=1, le=2147483647)
+    expected_sequence: int = Field(strict=True, ge=0, lt=2147483647)
+    expected_status: Literal['pending_signature']
+    target_status: Literal['executed']
+    execution_review_id: UUID
+    expires_at: AwareDatetime
+
+    @field_validator('expires_at', mode='before')
+    @classmethod
+    def explicit_timestamp(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit expiry timestamp required')
+        return value
+
+
 class ContractTransitionChoice(BaseModel):
     model_config = ConfigDict(extra='forbid', frozen=True)
     workspace_id: UUID
     contract_id: UUID
     contract_version: int = Field(strict=True, ge=1, le=2147483647)
     current_version: int = Field(strict=True, ge=1, le=2147483647)
-    current_status: Literal['draft', 'pending_signature']
+    current_status: Literal['draft', 'pending_signature', 'executed']
     sequence: int = Field(strict=True, ge=0, le=2147483647)
     status: Literal['version_changed', 'paused', 'awaiting_signature', 'history_requires_review',
-                    'signature_review_required', 'ready_for_human_review']
-    candidate: PendingSignatureChoice | None
+                    'signature_review_required', 'execution_review_required', 'execution_recorded', 'ready_for_human_review']
+    candidate: PendingSignatureChoice | ExecutedContractChoice | None
     checked_at: AwareDatetime
     execution_authorized: StrictBool
 
@@ -117,8 +134,13 @@ class ContractTransitionChoice(BaseModel):
             raise ValueError('Held state cannot offer a transition')
         if self.status == 'awaiting_signature' and (self.current_status != 'pending_signature' or self.sequence != 1):
             raise ValueError('Recorded lifecycle required')
+        if self.status == 'execution_recorded' and (self.current_status != 'executed' or self.sequence != 2):
+            raise ValueError('Recorded execution lifecycle required')
+        if self.status == 'execution_review_required' and (self.current_status != 'pending_signature' or self.sequence != 1):
+            raise ValueError('Awaiting-signature lifecycle required')
         choice = self.candidate
         if choice and (choice.expected_version != self.contract_version or choice.expected_sequence != self.sequence
-                or self.current_status != choice.expected_status or self.sequence != 0 or choice.expires_at <= self.checked_at):
+                or self.current_status != choice.expected_status
+                or self.sequence != (1 if choice.target_status == 'executed' else 0) or choice.expires_at <= self.checked_at):
             raise ValueError('Exact current transition choice required')
         return self

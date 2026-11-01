@@ -82,7 +82,7 @@ export function clearRejectedContractDraft(storage: Storage, pending: PendingCon
 
 const draftRecord = z.object({
   id: uuid, workspace_id: uuid, lead_id: uuid, deal_name: name,
-  acquisition_status: z.enum(['draft', 'pending_signature']), acquisition_version: z.number().int().min(1).max(2147483647),
+  acquisition_status: z.enum(['draft', 'pending_signature', 'executed']), acquisition_version: z.number().int().min(1).max(2147483647),
   acquisition_property_id: uuid, acquisition_owner_relationship_id: uuid,
   acquisition_offer_id: uuid, acquisition_offer_sequence: z.number().int().positive(),
   created_by: uuid, created_at: z.string().datetime({ offset: true }),

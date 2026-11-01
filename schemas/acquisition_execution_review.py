@@ -1,7 +1,8 @@
 """Sourced execution findings, not trusted facts or authorization.
 
-This boundary is not mounted until persistence can resolve every referenced original
-under the current workspace, version, scanner and reviewer policy locks.
+The mounted API uses controlled persistence to resolve every referenced original
+under current workspace, version, scanner and reviewer policy locks. The pure
+assessment alone does not approve a contract or authorize a status transition.
 """
 from typing import Literal
 from uuid import UUID

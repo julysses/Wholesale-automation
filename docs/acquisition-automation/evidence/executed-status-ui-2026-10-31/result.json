@@ -1,0 +1,29 @@
+{
+  "syntheticOnly": true,
+  "results": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "approvedReviewCount": 1,
+      "withdrawalCount": 1,
+      "exactReloadRecovery": true,
+      "executedStatusRecorded": true,
+      "exactStatusReloadRecovery": true,
+      "noOverflow": true,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "approvedReviewCount": 1,
+      "withdrawalCount": 1,
+      "exactReloadRecovery": true,
+      "executedStatusRecorded": true,
+      "exactStatusReloadRecovery": true,
+      "noOverflow": true,
+      "errors": []
+    }
+  ]
+}

@@ -20,7 +20,7 @@ beforeEach(() => {
 function open(disabled = false) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ContractTransitionForm context={context} disabled={disabled} onPending={mock.held} onSaved={mock.saved} /></QueryClientProvider>); }
 async function fill() {
   fireEvent.click(screen.getByRole('button', { name: 'Review next contract status' }));
-  await screen.findByText('Current review checks passed. You can record that this version is awaiting signature.');
+  await screen.findByText('Current review checks passed. Confirm the proposed status below.');
   fireEvent.change(screen.getByLabelText('Reason for the status change'), { target: { value: '  Reviewed contract is ready for the separate signature handoff.  ' } });
   fireEvent.click(screen.getByRole('checkbox'));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Record awaiting signature' })).toBeEnabled());
@@ -68,4 +68,30 @@ it('rechecks elapsed time before sending even if the last render was fresh', asy
   open(); await fill(); const current = Date.now(); vi.spyOn(Date, 'now').mockReturnValue(current + 31000);
   fireEvent.click(screen.getByRole('button', { name: 'Record awaiting signature' }));
   await screen.findByText(/Status preparation could not be confirmed/); expect(posts()).toHaveLength(0); expect(sessionStorage.length).toBe(0);
+});
+
+
+it('records executed status only from its discovered review and recovers the exact request', async () => {
+  const previous = mock.fetch.getMockImplementation()!;
+  mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    if (init?.method === 'POST') return previous(path, init);
+    const old = transitionChoice();
+    return { json: async () => ({ ...old, current_status: 'pending_signature', sequence: 1,
+      candidate: { expected_version: 2, expected_sequence: 1, expected_status: 'pending_signature', target_status: 'executed',
+        execution_review_id: old.candidate.signature_review_id, expires_at: old.candidate.expires_at } }) };
+  });
+  mock.lose = true; const view = open();
+  fireEvent.click(screen.getByText('Review next contract status'));
+  await screen.findByText('Record reviewed execution');
+  expect(screen.getByText('Record executed status')).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Reason for the status change'), { target: { value: 'Record the independently reviewed returned agreement as executed.' } });
+  fireEvent.click(screen.getByRole('checkbox')); fireEvent.click(screen.getByText('Record executed status'));
+  await screen.findByText(/Save is unconfirmed/); view.unmount(); mock.lose = false; open();
+  expect(screen.getByText('Contract version 2 · Executed')).toBeVisible();
+  fireEvent.click(screen.getByText('Retry saved status change'));
+  await screen.findByText('Executed status recorded. Title and disposition review remain separate steps.');
+  expect(posts()).toHaveLength(2); expect(posts()[0][1].body).toBe(posts()[1][1].body);
+  expect(JSON.parse(posts()[0][1].body)).toMatchObject({ expected_status: 'pending_signature', target_status: 'executed', expected_sequence: 1 });
+  expect(JSON.parse(posts()[0][1].body)).not.toHaveProperty('execution_review_id');
+  expect(sessionStorage.length).toBe(0);
 });

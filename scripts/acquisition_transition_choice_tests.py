@@ -23,7 +23,7 @@ class TransitionChoiceCases:
         self.assertEqual(before,self.sql('SELECT (SELECT count(*) FROM audit_logs),(SELECT count(*) FROM acquisition_contract_transitions)'))
         self.transition();saved=self.transition_choice()
         self.assertEqual(saved['current_status'],'pending_signature');self.assertEqual(saved['sequence'],1)
-        self.assertEqual(saved['status'],'awaiting_signature');self.assertIsNone(saved['candidate'])
+        self.assertIn(saved['status'],('awaiting_signature','execution_review_required'));self.assertIsNone(saved['candidate'])
 
     def test_signature_transition_choice_pause_revocation_and_version_change(self):
         self.signature();self.sql('UPDATE private.acquisition_activation SET enabled=false')

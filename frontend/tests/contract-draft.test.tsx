@@ -282,3 +282,14 @@ it('retains the original execution target with no selection and a newer contract
   expect(screen.getByText('Refresh draft information')).toBeDisabled();
   expect(mock.pending).toHaveBeenLastCalledWith(true); expect(sessionStorage.length).toBe(1);
 });
+
+
+it('shows executed history without reopening draft edits or document capture', async () => {
+  record.acquisition_status = 'executed'; mock.existing = true; open();
+  await screen.findByText('Executed contract: Saved property draft');
+  expect(screen.getByText(/Execution has been recorded/)).toBeVisible();
+  expect(screen.getByText('Edit draft terms')).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled();
+  expect(screen.getByText('Open signature-release review')).toBeDisabled();
+  expect(screen.getByText('Draft saved')).toBeDisabled(); expect(posts()).toHaveLength(0);
+});

@@ -5,10 +5,14 @@ const version = z.number().int().min(1).max(2147483647);
 const sequence = z.number().int().min(0).max(2147483646);
 const timestamp = z.string().datetime({ offset: true });
 const choiceSchema = z.object({ workspace_id: id, contract_id: id, contract_version: version, current_version: version,
-  current_status: z.enum(['draft', 'pending_signature']), sequence: sequence.max(2147483647),
-  status: z.enum(['version_changed', 'paused', 'awaiting_signature', 'history_requires_review', 'signature_review_required', 'ready_for_human_review']),
-  candidate: z.object({ expected_version: version, expected_sequence: sequence, expected_status: z.literal('draft'),
-    target_status: z.literal('pending_signature'), signature_review_id: id, expires_at: timestamp }).strict().nullable(),
+  current_status: z.enum(['draft', 'pending_signature', 'executed']), sequence: sequence.max(2147483647),
+  status: z.enum(['version_changed', 'paused', 'awaiting_signature', 'history_requires_review', 'signature_review_required', 'execution_review_required', 'execution_recorded', 'ready_for_human_review']),
+  candidate: z.discriminatedUnion('target_status', [
+    z.object({ expected_version: version, expected_sequence: sequence, expected_status: z.literal('draft'),
+      target_status: z.literal('pending_signature'), signature_review_id: id, expires_at: timestamp }).strict(),
+    z.object({ expected_version: version, expected_sequence: sequence, expected_status: z.literal('pending_signature'),
+      target_status: z.literal('executed'), execution_review_id: id, expires_at: timestamp }).strict(),
+  ]).nullable(),
   checked_at: timestamp, execution_authorized: z.literal(false) }).strict();
 export function parseTransitionChoice(raw: unknown, context: DocumentContext, now = Date.now()) {
   const value = choiceSchema.parse(raw), c = value.candidate;
@@ -17,14 +21,17 @@ export function parseTransitionChoice(raw: unknown, context: DocumentContext, no
     || value.current_version < value.contract_version || (value.status === 'version_changed') !== (value.current_version !== value.contract_version)
     || (value.status === 'ready_for_human_review') !== (c !== null)
     || value.status === 'awaiting_signature' && (value.current_status !== 'pending_signature' || value.sequence !== 1)
-    || c && (c.expected_version !== value.contract_version || c.expected_sequence !== value.sequence || value.sequence !== 0
+    || value.status === 'execution_recorded' && (value.current_status !== 'executed' || value.sequence !== 2)
+    || value.status === 'execution_review_required' && (value.current_status !== 'pending_signature' || value.sequence !== 1)
+    || c && (c.expected_version !== value.contract_version || c.expected_sequence !== value.sequence || value.sequence !== (c.target_status === 'executed' ? 1 : 0)
       || c.expected_status !== value.current_status || Date.parse(c.expires_at) <= Math.max(now, Date.parse(value.checked_at))))
     throw new Error('Fresh exact contract status choice required');
   return value;
 }
 export const transitionRequestSchema = z.object({ id, expected_version: version, expected_sequence: sequence,
-  expected_status: z.literal('draft'), target_status: z.literal('pending_signature'),
-  reason: z.string().max(4000).refine(v => v.trim().length >= 20 && !v.includes('\0')) }).strict();
+  expected_status: z.enum(['draft', 'pending_signature']), target_status: z.enum(['pending_signature', 'executed']),
+  reason: z.string().max(4000).refine(v => v.trim().length >= 20 && !v.includes('\0')) }).strict()
+  .refine(v => v.expected_status === 'draft' ? v.target_status === 'pending_signature' : v.target_status === 'executed');
 export const pendingTransitionSchema = z.object({ version: z.literal(1), context: contextSchema,
   request: transitionRequestSchema }).strict().refine(v => v.request.expected_version === v.context.contractVersion);
 export type PendingTransition = z.infer<typeof pendingTransitionSchema>;
@@ -51,7 +58,7 @@ function clear(storage: Storage, saved: PendingTransition) {
 }
 export function clearConfirmedTransition(storage: Storage, saved: PendingTransition, raw: unknown) {
   const r = z.object({ workspace_id: id, contract_id: id, contract_version: version, request_id: id,
-    sequence: z.number().int().min(1).max(2147483647), previous_status: z.literal('draft'), recorded_status: z.literal('pending_signature'),
+    sequence: z.number().int().min(1).max(2147483647), previous_status: z.enum(['draft', 'pending_signature']), recorded_status: z.enum(['pending_signature', 'executed']),
     duplicate: z.boolean(), transition_recorded: z.literal(true), execution_authorized: z.literal(false) }).strict().parse(raw);
   const c = saved.context, request = saved.request;
   if (r.workspace_id !== c.workspaceId || r.contract_id !== c.contractId || r.contract_version !== c.contractVersion

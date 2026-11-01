@@ -90,6 +90,29 @@ export async function apiFetch(path: string, init?: RequestInit) {
     }
     if (lose) { lose = false; throw new Error('Synthetic reference reply lost after commit'); }
   }
+  else if (executionFixture && path.includes('/transitions')) {
+    if (!ledger) throw new Error('Execution fixture required');
+    const key = 'contract-executed-transition-local-qa-ledger', prior = JSON.parse(sessionStorage.getItem(key) ?? 'null');
+    const reviews = JSON.parse(sessionStorage.getItem('contract-execution-local-qa-ledger') ?? '[]'), review = reviews.at(-1)?.request;
+    const current = review?.status === 'approved' && Date.parse(review.expires_at) > Date.now();
+    if (init?.method === 'POST') {
+      const request = JSON.parse(init.body as string);
+      if (prior && JSON.stringify(prior.request) !== JSON.stringify(request)) throw new Error('Executed retry changed');
+      if (!prior && (!current || ledger.row.acquisition_status !== 'pending_signature' || request.expected_sequence !== 1 || request.expected_status !== 'pending_signature' || request.target_status !== 'executed')) throw new Error('Current execution review required');
+      const receipt = prior?.receipt ?? { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: ledger.row.acquisition_version,
+        request_id: request.id, sequence: 2, previous_status: 'pending_signature', recorded_status: 'executed', transition_recorded: true, execution_authorized: false };
+      if (!prior) { sessionStorage.setItem(key, JSON.stringify({ request, receipt })); ledger.row.acquisition_status = 'executed'; sessionStorage.setItem(ledgerKey, JSON.stringify(ledger)); }
+      if (lose) { lose = false; throw new Error('Synthetic executed status reply lost after commit'); }
+      value = { ...receipt, duplicate: !!prior };
+    } else {
+      const target = Number(new URL(path, 'http://localhost').searchParams.get('contract_version'));
+      const ready = current && !prior && target === ledger.row.acquisition_version;
+      value = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: target, current_version: ledger.row.acquisition_version,
+        current_status: ledger.row.acquisition_status, sequence: prior ? 2 : 1, checked_at: new Date().toISOString(), execution_authorized: false,
+        status: target !== ledger.row.acquisition_version ? 'version_changed' : prior ? 'execution_recorded' : ready ? 'ready_for_human_review' : 'execution_review_required',
+        candidate: ready ? { expected_version: target, expected_sequence: 1, expected_status: 'pending_signature', target_status: 'executed', execution_review_id: review.id, expires_at: review.expires_at } : null };
+    }
+  }
   else if (path.includes('/transitions')) {
     if (!signatureFixture || !ledger) throw new Error('Lifecycle fixture required');
     const key = 'contract-transition-local-qa-ledger', prior = JSON.parse(sessionStorage.getItem(key) ?? 'null');
@@ -191,7 +214,10 @@ export async function apiFetch(path: string, init?: RequestInit) {
       if (!prior) { entries.push({ request, receipt }); sessionStorage.setItem(key, JSON.stringify(entries)); }
       if (lose) { lose = false; throw new Error('Synthetic execution reply lost after commit'); }
       value = { ...receipt, duplicate: !!prior };
-    } else value = executionChoice(context, id(11), terms, entries.at(-1)?.request, entries.length);
+    } else {
+      const choice = executionChoice(context, id(11), terms, entries.at(-1)?.request, entries.length);
+      value = ledger.row.acquisition_status === 'executed' ? { ...choice, status: 'contract_unavailable', candidate: null } : choice;
+    }
   }
   else if (path.includes('/references')) {
     if (!ledger) throw new Error('Save the synthetic draft first');

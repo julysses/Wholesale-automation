@@ -307,6 +307,8 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             verify_pending_document_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,policy,rpc)
             from acquisition_execution_review_http import verify_execution_http,verify_execution_revocation_http
             execution_path,execution_body=verify_execution_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,source_review_body)
+            from acquisition_contract_transition_http import verify_executed_transition_http
+            verify_executed_transition_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft)
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
             verify_execution_revocation_http(db,app,document_drops,headers,execution_path,execution_body)
             verify_source_review_revocation_http(db,app,document_drops,headers,source_review_path,source_review_body)
@@ -462,4 +464,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'execution review API tenant session conflict and immutable lifecycle boundaries',
             'execution review current source revocation and paused withdrawal recovery',
             'execution candidate exact returned source and scoped reviewer policy',
-            'execution candidate paused hold preserves original withdrawal']
+            'execution candidate paused hold preserves original withdrawal',
+            'executed transition actual commit loss and exact historical recovery',
+            'executed transition tenant conflict checks and unchanged terms with visible history']

@@ -1,5 +1,16 @@
 # Acquisition contracts and disposition
 
+## October 31 — executed flow validated; CI repair published; date interpretation boundary
+
+Executed-flow candidate80/81 is verified locally end to end. Final rehearsal2158 exited0:80 migrations,26 access probes,208 workflows and114 real PostgREST/API checks. Historical24 rows/22 populated tables/103 table definitions and Storage remain intact. Evidence:evidence/2026-10-31-executed-choice-result.json; log/tmp/executed-choice-upgrade.log. Guided desktop/mobile status/recovery and original review withdrawal evidence remains in evidence/executed-status-ui-2026-10-31/. Frontend795 tests/90 files passed, build passed and no new lint findings. There are no remaining live local validation sessions.
+
+The prior GitHub run41270303090 is terminal: five jobs succeeded, backend failed only the collection-time timestamp fixtures. Pulled and published isolated repair180ba1047e4847c7385b5d37c0ae382ebf5f1839. Exact successor41271347320 is live. Wait for all six terminal successes before pushing the feature checkpoint; do not cancel/restart it. CI-TIMESTAMP-REPAIR.md contains root cause and delayed-clock regression evidence. Production migrations/providers/outreach/fulfillment/transactions remain untouched.
+
+Added an isolated date-only resolution boundary: preserve original date, require explicit local time/named zone/UTC offset and original source, reject DST gaps and inconsistent offsets, distinguish repeated times, and hold changed dates/unknown dates/explicit existing instants/stale versions. Assessment requires source and reviewer-policy checks and never authorizes execution.25 focused cases passed0.16s; full backend4047 passed,10 skipped,6 subtests42.84s. Logs:/tmp/deadline-resolution-tests.log,/tmp/deadline-resolution-backend.log. No SQL or mounted route consumes these proposals yet, so existing date-only execution holds remain intact. DEADLINE-RESOLUTIONS.md records the implementation plan for reviewed persistence, withdrawal/current-state checks, server-derived execution deadlines and guided UI.
+
+Next: verify exact repair run41271347320, then publish the local executed-flow checkpoint and verify its successor. Continue the deadline-resolution integration using the saved plan, then separate reviewed amendments, title/disposition/closing/exception paths and remaining full PRD/channel/hosted acceptance. Full goal remains active and incomplete. Do not interpret local tests or recorded execution as legal title, marketing permission or live acceptance.
+
+
 ## October 31 — guided execution review verified locally (candidate79)
 
 Step 5 now exposes a three-stage returned-agreement review: signature/authority findings, separately sourced term comparison, and a personal decision. Existing navy/orange styling, responsive controls and navigation holds are preserved. No finding/source/approval is inherited from preparation. Unknown/date-only, changed prepared terms and invalid deadlines stay held. Original independent withdrawal and exact saved-request recovery are supported; review recording never advances status.

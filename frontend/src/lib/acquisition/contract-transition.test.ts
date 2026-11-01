@@ -35,3 +35,16 @@ it('holds the old version and already recorded status without offering another t
   expect(parseTransitionChoice({ ...transitionChoice(), current_version: 3, status: 'version_changed', candidate: null }, context).candidate).toBeNull();
   expect(parseTransitionChoice({ ...transitionChoice(), current_status: 'pending_signature', sequence: 1, status: 'awaiting_signature', candidate: null }, context).candidate).toBeNull();
 });
+
+it('accepts only the matching execution review choice and lifecycle sequence', async () => {
+  const { transitionChoice, transitionContext } = await import('../../../tests/fixtures/contract-transition');
+  const original = transitionChoice();
+  const value = { ...original, current_status: 'pending_signature', sequence: 1,
+    candidate: { expected_version: 2, expected_sequence: 1, expected_status: 'pending_signature', target_status: 'executed',
+      execution_review_id: original.candidate.signature_review_id, expires_at: original.candidate.expires_at } };
+  expect(parseTransitionChoice(value, transitionContext).candidate?.target_status).toBe('executed');
+  for (const patch of [{ expected_sequence: 0 }, { expected_status: 'draft' }, { signature_review_id: original.candidate.signature_review_id }, { target_status: 'title_review' }])
+    expect(() => parseTransitionChoice({ ...value, candidate: { ...value.candidate, ...patch } }, transitionContext)).toThrow();
+  expect(() => parseTransitionChoice({ ...value, status: 'execution_recorded', candidate: null }, transitionContext)).toThrow();
+  expect(parseTransitionChoice({ ...value, current_status: 'executed', sequence: 2, status: 'execution_recorded', candidate: null }, transitionContext).candidate).toBeNull();
+});

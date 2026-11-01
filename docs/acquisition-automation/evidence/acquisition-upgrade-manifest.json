@@ -313,6 +313,14 @@
     {
       "file": "20261101032437_acquisition_execution_review_choices.sql",
       "sha256": "5cf107aa85806ecae5708f23ecf520b3194b1391b5f2e551315bdd979c7ca7ca"
+    },
+    {
+      "file": "20261101034450_acquisition_executed_contract_transition.sql",
+      "sha256": "7ee4d7f20de8483c9c7cae49fbd1b130151affce5f8856abb2ee395be3b6f172"
+    },
+    {
+      "file": "20261101035403_acquisition_executed_transition_choices.sql",
+      "sha256": "e83fabb1f2058678bd97883aed676659e2a47330135460140f600ceb2de3bac7"
     }
   ]
 }
