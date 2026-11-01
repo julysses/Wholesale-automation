@@ -226,6 +226,26 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             current_review=rpc('contract_review_state',review_scope)
             if human_review['duplicate'] or not replay['duplicate'] or replay['approval_current'] or replay['execution_authorized'] or not current_review['approval_current']:
                 raise AssertionError('Contract human review persistence/current distinction failed')
+            review_path=f'/api/acquisition/workspaces/{workspace}/contracts/{draft}/versions/1/reviews/contract_review'
+            review_request={'id':review_id,'expected_sequence':0,'status':'approved','artifact_id':signed['p_artifact'],
+                'verification_id':observation_id,'policy_id':review_policy,'expires_at':review_body['p_expires'],
+                'personally_reviewed':True,'note':review_body['p_note']}
+            document_drops['rpc/record_contract_review']=True
+            with TestClient(app) as review_client:
+                lost=review_client.post(review_path,json=review_request,headers=headers)
+                recovered=review_client.post(review_path,json=review_request,headers=headers)
+                if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate'] or recovered.json()['approval_current']:
+                    raise AssertionError('Mounted human review exact response-loss recovery failed')
+                current_api=review_client.get(review_path,headers=headers)
+                if current_api.status_code!=200 or not current_api.json()['approval_current'] or current_api.headers.get('cache-control')!='no-store':
+                    raise AssertionError('Mounted current human review unavailable')
+                for identity in ({'Authorization':'Bearer '+token(other)},{}):
+                    if review_client.get(review_path,headers=identity).status_code not in (401,403):
+                        raise AssertionError('Mounted human review read scope bypass')
+                    if review_client.post(review_path,json=review_request,headers=identity).status_code not in (401,403):
+                        raise AssertionError('Mounted human review write scope bypass')
+                if review_client.get(review_path.replace('/versions/1/','/versions/2/'),headers=headers).status_code!=403:
+                    raise AssertionError('Mounted human review version bypass')
             for jwt,wrong in [(token(other),review_body),(None,review_body),(token(),review_body|{'p_version':2})]:
                 status,_=request('/rpc/record_contract_review',jwt,wrong)
                 if status not in (401,403):raise AssertionError('Contract human review scope bypass')
@@ -235,6 +255,10 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
                 raise AssertionError('Revoked contract scope retained current scan authority')
             if rpc('contract_review_state',review_scope)['approval_current']:
                 raise AssertionError('Human review survived revoked scan authority')
+            with TestClient(app) as review_client:
+                held=review_client.get(review_path,headers=headers)
+                if held.status_code!=200 or held.json()['approval_current'] or held.json()['status']!='requires_review':
+                    raise AssertionError('Mounted review retained revoked scan authority')
             withdrawal=review_body|dict(p_id=withdrawal_id,p_expected_sequence=1,p_status='withdrawn',p_expires=None,p_personally_reviewed=False)
             if rpc('record_contract_review',withdrawal)['status']!='withdrawn' or not rpc('record_contract_review',withdrawal)['duplicate']:
                 raise AssertionError('Human review withdrawal exact recovery failed')
@@ -340,4 +364,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract scan mounted API retained state and tenant version purpose isolation',
             'contract human review exact gateway retry and immutable audit',
             'contract human review gateway tenant session and version isolation',
-            'contract human review current scan revocation and withdrawal recovery']
+            'contract human review current scan revocation and withdrawal recovery',
+            'mounted human review exact retry after response loss',
+            'mounted human review scope isolation and fresh revoked state']

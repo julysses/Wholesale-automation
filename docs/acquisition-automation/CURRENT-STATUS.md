@@ -2,6 +2,14 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — mounted human-review API validation in progress
+
+Committed migration 64 and its completed evidence as b67d092. Published isolated CI repair b92ba6b after predecessor 41255050827 finished with five successes and one package-download timeout. Repair successor 41256126531 is running; merged the repair into the local implementation branch. Feature publication remains held until all six repair checks pass.
+
+Added strict request, historical receipt and current-state models plus authenticated GET/POST contract-version review routes. Scope comes from the path; actor/session authority remains database-controlled. Review receipt does not imply current approval. Exact retries retain expired input and unchanged notes; withdrawal cannot renew authority. Current reads reject mismatched/stale/inconsistent data and expired approvals. Invalid or lost replies remain unconfirmed with the same request preserved. No provider, signing, transition or production action.
+
+Focused mounted review/document API suite: 173 passed in 6.19s. Full backend session 92947 exited successfully: 3,541 passed, 10 skipped and six subtests in 29.59s (/tmp/contract-review-api-backend.log). Full disposable gateway rehearsal session 72993 (/tmp/contract-review-api-upgrade.log) remains live at this checkpoint; poll this exact handle before any restart. Added actual gateway coverage for mounted recovery, tenant/version isolation and current-state loss after scan authority revocation. Do not claim these new gateway checks passed until the process exits successfully. Next: finish validation and record evidence, guided human-review candidates/interface and persisted contract terms/transitions, then disposition and remaining PRD scope.
+
 ## October 31 — exact human contract reviews (local candidate 64)
 
 Added immutable contract, title and assignment-basis reviews bound to the canonical contract version, exact retained artifact/hash and latest verification. Explicit reviewer policies are private, workspace-scoped and empty by default. Owner/admin MFA, active membership/session, approved reviewer authority, fresh evidence and bounded expiry are required. Historical retries preserve one decision and audit without returning current approval. Withdrawal remains available to the original reviewer after policy/evidence expiry or acquisition pause; cross-reviewer withdrawal is not implemented. Current-state reads recheck authority and shared matching-byte detection holds. No signing or transition authority is returned.
