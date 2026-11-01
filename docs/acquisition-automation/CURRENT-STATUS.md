@@ -1,5 +1,21 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — disposition policy extension verified (candidate108)
+
+Full97-migration rehearsal passed:26 access checks,288 workflow checks and148 actual API checks, with24 historical rows,22 populated tables,103 definitions and Storage preserved. Session99245 completed with exit0. Evidence: `evidence/2026-11-01-disposition-policy-result.json`; log `/tmp/disposition-policy-upgrade.log`. Four focused policy tests also passed24.781s. Candidate108 is ready for a separate local commit. Candidate109 writer work remains separate and requires its final focused result, manifest/runner registration and98-migration rehearsal. Published repair successor41287270262 still awaits its last database job; retain the feature-publication gate.
+
+## November 1 — controlled disposition writer (candidate109, verification in progress)
+
+Implemented original-bound disposition write/current-state SQL with exact retry, resolution holds, independent withdrawal, current proposal/title/execution/deadline/source and reviewer-policy checks. No contract transition or live policy is enabled. Inventory and implementation details are in DISPOSITION-WORKFLOW.md. Initial7 tests had6 passes and one incorrect legacy-title-policy fixture; corrected it and added title/deadline revocation-during-wait coverage. Final9 focused tests are running in session91928, log `/tmp/disposition-write-focused-final.log`.
+
+Candidate108's97-migration rehearsal remains running in session99245, `/tmp/disposition-policy-upgrade.log`; preserve that run. After it passes, record its evidence and commit candidate108 separately, then register candidate109/hash/cases and run the98-migration full rehearsal. Writer files are presently uncommitted and absent from that earlier manifest by design. Repair-successor41287270262 has five successes; the Real PostgreSQL ingestion/tracing/scoring job remains live. No feature push until all six succeed. Full PRD remains active/incomplete; mounted disposition API/UI, transitions and the broader PRD requirements remain open.
+
+## November 1 — disposition policy scope (candidate108, tests in progress)
+
+Implemented a private exit-specific extension of the existing reviewer policy, preserving historical title-policy snapshots. Assignment scopes require a workspace-owned legal-source reference; exact reviewer/workspace/kind/purpose, finite dates and revocation remain enforced. Added a private exact-snapshot policy predicate and nullable disposition snapshot; no live policy or disposition writer is enabled. Mapping, compensation and precise writer/API/UI continuation are in DISPOSITION-WORKFLOW.md and SCHEMA-MAPPING.md.
+
+Four focused SQL tests passed24.781s. Full97-migration populated-upgrade/application rehearsal is running in session99245, log `/tmp/disposition-policy-upgrade.log`. Changes remain uncommitted pending this result. Exact repair-successor41287270262 has passed backend, frontend and pipeline; its three database jobs were still running at last authoritative check. Do not cancel/restart either run or push pending features until all required checks pass. Full PRD remains active/incomplete; no production migration or live action occurred.
+
 ## November 1 — app-update resume and published CI repair
 
 Confirmed the app update is complete and resumed the existing goal. Fresh inspection found a clean main checkout at9392cb0. All six jobs in predecessor41286088592 are now terminal: five passed; only the confirmed test-clock backend failure remained. Pulled the remote branch and published isolated repair fedc5af606c806313243472f61da60e3948d204c from `/tmp/acquisition-ci-fix-41286088592`; push confirmed. Exact successor: https://github.com/julysses/Wholesale-automation/actions/runs/41287270262 (queued at initial verification). No checks were cancelled or restarted. Existing repair evidence remains55 focused and4466 full backend tests passed; these were verified from the retained log, not rerun this turn.

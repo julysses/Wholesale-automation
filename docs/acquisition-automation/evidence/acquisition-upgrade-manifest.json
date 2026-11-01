@@ -385,6 +385,10 @@
     {
       "file": "20261101074845_acquisition_disposition_source_resolution.sql",
       "sha256": "7e310e85d4b57b8700c6924a17c975715d64140c80dc7b0e8010f20313d9a323"
+    },
+    {
+      "file": "20261101080541_acquisition_disposition_policy_scope.sql",
+      "sha256": "53213007d1f25d506ad5840b9bd0fe99c880088278efebc594c7b35fcb5177d8"
     }
   ]
 }
