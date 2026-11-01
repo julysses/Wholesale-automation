@@ -223,3 +223,15 @@ Migration20261101052408 extends existing deals and transition history, with no r
 Compensation: pause acquisition or revoke relevant authority; preserve recorded history. Corrections require a later controlled exception/amendment, not deleting ledger rows or silently reversing status. No production migration is authorized by this checkpoint.
 
 Next required: read-only title-entry choice and intentional guided handoff; original title/contract evidence capture after execution; source-backed title findings and reviewed legal assignment basis; controlled disposition review, buyer matching/packages/disclosures, deposits and closing; amendments and cancelled/expired/disputed paths. Existing title-entry status alone fulfills none of those downstream approvals.
+
+
+## Guided title-entry handoff — candidate93
+
+The existing collapsed step5 status form now offers “Begin title review” after recorded execution. Fresh scope/version/sequence choices retain the exact current execution review; missing or revoked authority holds the action. The operator supplies the handoff reason and personal confirmation. The server independently validates all execution sources and authority at save time. Starting review does not claim clear title or authorize marketing, assignment or closing.
+
+The existing exact-request recovery supports the new edge without rewriting saved versions/reasons. Lost responses, reload and absent proposal selection preserve the original request. Completed title review entry returns no repeated action. Original execution/date withdrawal remains accessible, with other changes/navigation held while a request is open. No outbound provider/signing/transaction is invoked.
+
+Next: title-stage capture and verification of retained original title documents, sourced lien/ownership/occupancy/exception findings and reviewed assignment basis; preserve distinction between draft preparation reviews and post-execution title conclusions. Reuse existing title_report documents and logical review records; inspect the current generic-review status restrictions before extending them. Approval of a title report alone must not authorize distribution, assignment or settlement. Remaining disposition/buyer/disclosure/closing and exception/amendment work stays open.
+
+
+Next-step inspection: document registration/upload admission remain restricted to current draft/pending_signature by20261101025323. Generic contract/title/assignment-basis review source/current/candidate functions in20261101010937 already allow nonterminal current versions; the present UI holds them after draft preparation. Post-execution title conclusions therefore need an explicit binding to the recorded execution/current source context before disposition can consume them. Do not carry a generic pre-execution approval into disposition merely because its expiry has not elapsed. Extend the equivalent review entity rather than introducing a disconnected title system.

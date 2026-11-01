@@ -1,0 +1,13 @@
+{
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "read_only": true,
+  "latest_hosted_migration": "20261023221455",
+  "hosted_transitions_table": null,
+  "hosted_reviews_table": null,
+  "hosted_choice_function": null,
+  "local_existing_choice_migration": "20261101035403_acquisition_executed_transition_choices.sql",
+  "local_extension": "20261101053450_acquisition_title_review_choices.sql",
+  "new_tables": false,
+  "new_grants": false,
+  "production_apply_approved": false
+}

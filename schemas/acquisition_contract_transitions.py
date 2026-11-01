@@ -103,6 +103,11 @@ class ExecutedContractChoice(BaseModel):
         return value
 
 
+class TitleReviewChoice(ExecutedContractChoice):
+    expected_status: Literal['executed']
+    target_status: Literal['title_review']
+
+
 class ContractTransitionChoice(BaseModel):
     model_config = ConfigDict(extra='forbid', frozen=True)
     workspace_id: UUID
@@ -112,8 +117,8 @@ class ContractTransitionChoice(BaseModel):
     current_status: Literal['draft', 'pending_signature', 'executed', 'title_review']
     sequence: int = Field(strict=True, ge=0, le=2147483647)
     status: Literal['version_changed', 'paused', 'awaiting_signature', 'history_requires_review',
-                    'signature_review_required', 'execution_review_required', 'execution_recorded', 'ready_for_human_review']
-    candidate: PendingSignatureChoice | ExecutedContractChoice | None
+                    'signature_review_required', 'execution_review_required', 'execution_recorded', 'title_review_required', 'title_review_started', 'ready_for_human_review']
+    candidate: PendingSignatureChoice | ExecutedContractChoice | TitleReviewChoice | None
     checked_at: AwareDatetime
     execution_authorized: StrictBool
 
@@ -138,9 +143,13 @@ class ContractTransitionChoice(BaseModel):
             raise ValueError('Recorded execution lifecycle required')
         if self.status == 'execution_review_required' and (self.current_status != 'pending_signature' or self.sequence != 1):
             raise ValueError('Awaiting-signature lifecycle required')
+        if self.status in {'title_review_required', 'title_review_started'}:
+            status, sequence = ('executed', 2) if self.status == 'title_review_required' else ('title_review', 3)
+            if self.current_status != status or self.sequence != sequence:
+                raise ValueError('Exact title-review lifecycle required')
         choice = self.candidate
         if choice and (choice.expected_version != self.contract_version or choice.expected_sequence != self.sequence
                 or self.current_status != choice.expected_status
-                or self.sequence != (1 if choice.target_status == 'executed' else 0) or choice.expires_at <= self.checked_at):
+                or self.sequence != ({'pending_signature': 0, 'executed': 1, 'title_review': 2}[choice.target_status]) or choice.expires_at <= self.checked_at):
             raise ValueError('Exact current transition choice required')
         return self

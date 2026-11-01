@@ -1,5 +1,15 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — guided title-review handoff (candidate93, local)
+
+Step5 now presents “Begin title review” after recorded execution, with a fresh exact choice, reason and personal confirmation. It retains the existing navy/orange form and exact uncertain-save recovery. The current original execution review is required; title-review-started removes the repeated action. Starting review makes no title-clearance/marketing/assignment/closing claim. Original execution/date review withdrawal remains accessible.
+
+Focused SQL3 passed17.447s; API53 passed2.18s; form10 passed716ms; full backend4189passed/10skipped/6subtests60.46s; final frontend839tests/92files11.42s; parent recovery parameterization passed38 focused tests1.35s. Build3.44s and lint no new findings against147 existing passed. Desktop1280x900/mobile375x812 full synthetic date→execution→title journey passed committed-response-loss/reload/exact retries, duplicate-action hold, withdrawal after title entry, unchanged calendar sources and no overflow/page errors. Mobile title-ready screenshot visually inspected. Evidence:evidence/title-review-handoff-ui-2026-11-01/. Preview67709 intentionally stopped; browser91447 terminal0.
+
+Full catalog candidate93 run57593 completed terminal0:88migrations,26access checks,245workflows and128actualAPI;24historicalrows/22populatedtables/103definitions/Storage preserved. Evidence:evidence/2026-11-01-title-choice-result.json; log/tmp/title-choice-upgrade.log. All local validation processes terminal. Candidate93 is verified and being committed locally; publication waits for the predecessor gate. Published verified predecessor67a91ffe88afd0bba2468114957db6341742057e includes date integration, title entry and final evidence. Exact successor41277565234 is running; require all six terminal successes before next feature push.
+
+Next: finish full rehearsal and publish this handoff after its gate, then title-stage original-document capture/findings and controlled disposition, buyer/disclosure/closing/exceptions. Hosted migrations, legal/provider/fresh-lead acceptance and all other PRD channels remain required. Production unchanged; full goal active.
+
 ## November 1 — title-review entry under validation (candidate92)
 
 The next additive migration extends the existing contract and immutable transition ledger with executed → title_review. It requires the exact execution review that recorded execution, current original source and deadline authority, and fresh checks after lock waits. Exact retries retain their original receipt after pause. Entry changes only acquisition status; it does not claim clear title, authorize distribution, change terms, attach a buyer, or close a transaction.

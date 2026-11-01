@@ -126,3 +126,28 @@ def test_executed_holds_preserve_exact_status_without_new_action(endpoint,status
     assert client.get(PATH+'/candidate',params={'contract_version':2}).json()['candidate'] is None
     store.request.return_value=value|{'sequence':sequence+1}
     assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==503
+
+
+def title_choice():
+    value=executed_choice()
+    return value|dict(current_status='executed',sequence=2,candidate=value['candidate']|dict(
+        expected_sequence=2,expected_status='executed',target_status='title_review'))
+
+
+def test_title_choice_retains_original_review_and_exact_lifecycle(endpoint):
+    client,store=endpoint;store.request.return_value=title_choice()
+    response=client.get(PATH+'/candidate',params={'contract_version':2})
+    assert response.status_code==200 and response.json()['candidate']['execution_review_id']==R
+    for patch in ({'expected_sequence':1},{'expected_status':'pending_signature'},{'signature_review_id':R},{'expected_version':1}):
+        value=title_choice();value['candidate'].update(patch);store.request.return_value=value
+        assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==503
+
+
+@pytest.mark.parametrize('status,current,sequence',[('title_review_required','executed',2),('title_review_started','title_review',3)])
+def test_title_holds_require_exact_current_status(endpoint,status,current,sequence):
+    client,store=endpoint
+    value=title_choice()|dict(status=status,current_status=current,sequence=sequence,candidate=None)
+    store.request.return_value=value
+    assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==200
+    store.request.return_value=value|dict(sequence=sequence-1)
+    assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==503

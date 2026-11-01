@@ -24,7 +24,12 @@ class ExecutedChoiceCases:
         self.assertNotIn('signature_review_id',ready['candidate']);self.assertFalse(ready['execution_authorized'])
         self.assertEqual(before,self.sql('SELECT count(*) FROM audit_logs'))
         self.transition(self.executed_args())
-        done=self.executed_choice();self.assertEqual(done['status'],'execution_recorded');self.assertEqual(done['sequence'],2);self.assertIsNone(done['candidate'])
+        done=self.executed_choice();self.assertEqual(done['sequence'],2)
+        if getattr(self,'supports_title_choice',False):
+            self.assertEqual(done['status'],'ready_for_human_review');self.assertEqual(done['candidate']['target_status'],'title_review')
+            self.assertEqual(done['candidate']['execution_review_id'],EXEC_REVIEW)
+        else:
+            self.assertEqual(done['status'],'execution_recorded');self.assertIsNone(done['candidate'])
 
     def test_signature_executed_choice_revocation_and_pause_remove_ready_state(self):
         self.prepare_execution();self.execution_review()

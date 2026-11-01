@@ -480,4 +480,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'bound deadline executed transition API recovery and immutable original history',
             'bound deadline policy revocation removes current authority but preserves historical receipts',
             'title-review transition API exact committed-response recovery retains execution evidence',
-            'title-review contract remains visible in guided scoped contract list']
+            'title-review contract remains visible in guided scoped contract list',
+            'title-review choice retains original execution authority and exact cursor',
+            'title-review completed choice removes repeated action']

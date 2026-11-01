@@ -349,6 +349,10 @@
     {
       "file": "20261101052408_acquisition_title_review_transition.sql",
       "sha256": "703165c55f3c833f051891d2468e093eea6832f0b47c8c51bf7a804ee41254b0"
+    },
+    {
+      "file": "20261101053450_acquisition_title_review_choices.sql",
+      "sha256": "20e35248fd1dcb04950e1df1ff30c5f5b12844e8b99878f97f0ce5125982b62d"
     }
   ]
 }

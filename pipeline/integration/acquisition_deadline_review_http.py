@@ -183,6 +183,9 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         recovered=client.post(transition_path,json=transition_body,headers=headers)
         if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate'] or recovered.json()['recorded_status']!='executed':
             raise AssertionError(f'Bound transition recovery failed: {lost.status_code} {recovered.status_code} {recovered.text}')
+        choice=client.get(transition_path+'/candidate',params={'contract_version':2},headers=headers)
+        if choice.status_code!=200 or choice.json()['candidate']['target_status']!='title_review' or choice.json()['candidate']['execution_review_id']!=execution_review or choice.json()['candidate']['expected_sequence']!=2:
+            raise AssertionError('Title entry did not retain the exact current execution review')
         title_body=transition_body|dict(id=identity(36),expected_sequence=2,expected_status='executed',target_status='title_review',
             reason='Begin synthetic title review without claiming clear title or authorizing disposition.')
         drops['rpc/record_contract_transition']=True
@@ -190,6 +193,9 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         recovered=client.post(transition_path,json=title_body,headers=headers)
         if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate'] or recovered.json()['recorded_status']!='title_review':
             raise AssertionError(f'Title-review transition recovery failed: {lost.status_code} {recovered.status_code} {recovered.text}')
+        done=client.get(transition_path+'/candidate',params={'contract_version':2},headers=headers)
+        if done.status_code!=200 or done.json()['status']!='title_review_started' or done.json()['candidate'] is not None:
+            raise AssertionError('Started title review offered a repeated action')
         listing=client.get(f'/api/acquisition/workspaces/{workspace}/contracts/drafts?lead_id={lead}&limit=50',headers=headers)
         if listing.status_code!=200 or not any(item['id']==contract and item['acquisition_status']=='title_review' for item in listing.json()['items']):
             raise AssertionError('Title-review contract disappeared from the guided list')

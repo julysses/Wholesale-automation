@@ -232,10 +232,13 @@ it('keeps a contract awaiting signature visible and enables document capture whi
 });
 
 const transitionRequest = { id: id(50), expected_version: 1, expected_sequence: 0, expected_status: 'draft' as const, target_status: 'pending_signature' as const, reason: 'Original reviewed status handoff kept after a lost response.' };
-it('recovers a committed status change after reload without a selected proposal', async () => {
+it.each([
+  ['draft', 'pending_signature', 0], ['pending_signature', 'executed', 1], ['executed', 'title_review', 2],
+] as const)('recovers committed %s → %s after reload without a selected proposal', async (expected_status, target_status, expected_sequence) => {
+  const original = { ...transitionRequest, expected_status, target_status, expected_sequence };
   const { preserveTransition } = await import('../src/lib/acquisition/contract-transition');
-  preserveTransition(sessionStorage, { version: 1, context: signatureContext, request: transitionRequest });
-  record.acquisition_status = 'pending_signature'; mock.existing = true; open(null);
+  preserveTransition(sessionStorage, { version: 1, context: signatureContext, request: original });
+  record.acquisition_status = target_status; mock.existing = true; open(null);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Retry saved status change' })).toBeEnabled());
   expect(screen.getByRole('button', { name: 'Open signature-release review' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Refresh draft information' })).toBeDisabled();
@@ -243,7 +246,7 @@ it('recovers a committed status change after reload without a selected proposal'
   fireEvent.click(screen.getByRole('button', { name: 'Retry saved status change' }));
   await waitFor(() => expect(sessionStorage.length).toBe(0));
   expect(posts()).toHaveLength(1); expect(posts()[0][0]).toMatch(/\/contracts\/[^/]+\/transitions$/);
-  expect(JSON.parse(posts()[0][1].body)).toEqual(transitionRequest);
+  expect(JSON.parse(posts()[0][1].body)).toEqual(original);
   await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
 });
 it('holds sibling signature and draft actions during unsaved status review', async () => {

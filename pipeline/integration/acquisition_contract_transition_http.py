@@ -74,8 +74,8 @@ def verify_executed_transition_http(db,app,drops,headers,foreign,workspace,contr
         if listed.status_code!=200 or not any(row['id']==contract and row['acquisition_status']=='executed' for row in listed.json()['items']):
             raise AssertionError('Executed contract disappeared from scoped history')
         held=client.get(path+'/candidate',params={'contract_version':3},headers=headers)
-        if held.status_code!=200 or held.json()['current_status']!='executed' or held.json()['status']!='execution_recorded' or held.json()['candidate'] is not None:
-            raise AssertionError('Executed status offered unsupported next action')
+        if held.status_code!=200 or held.json()['current_status']!='executed' or held.json()['status']!='ready_for_human_review' or held.json()['candidate']['target_status']!='title_review' or held.json()['candidate']['expected_sequence']!=2:
+            raise AssertionError('Executed status did not offer the controlled title-review handoff')
     if history!=db.query('SELECT version,status,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract]):
         raise AssertionError('Executed transition rewrote terms')
     if db.query('SELECT acquisition_status,stage FROM public.deals WHERE id=%s',[contract])!=[{'acquisition_status':'executed','stage':'offer_made'}]:

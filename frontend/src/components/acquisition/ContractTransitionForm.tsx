@@ -8,6 +8,8 @@ const button = 'rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity
 const holds = { version_changed: 'The contract version changed. Refresh the draft information above.', paused: 'Acquisition review is paused.',
   awaiting_signature: 'This contract is already awaiting signature. A signed agreement still needs separate confirmation.',
   execution_review_required: 'Complete a current returned-agreement execution review above.',
+  title_review_required: 'The recorded execution review is no longer current. Resolve its evidence or review hold before beginning title review.',
+  title_review_started: 'Title review has started. Review the title evidence before any disposition decision.',
   execution_recorded: 'Execution is already recorded. Title and disposition review are separate next steps.',
   history_requires_review: 'The contract history needs administrator review.', signature_review_required: 'Complete a current signature-release review above.',
   ready_for_human_review: 'Current review checks passed. Confirm the proposed status below.' };
@@ -40,7 +42,8 @@ function TransitionEditor({ context, disabled, onPending, onSaved, currentStatus
     && (!choice.data.candidate || Date.parse(choice.data.candidate.expires_at) > now)
     && now - Date.parse(choice.data.checked_at) <= 30000 && now - Date.parse(choice.data.checked_at) >= -5000;
   const candidate = fresh && choice.data?.candidate && Date.parse(choice.data.candidate.expires_at) > now ? choice.data.candidate : null;
-  const executionStep = (pending?.request.target_status ?? candidate?.target_status ?? (currentStatus === 'draft' ? 'pending_signature' : 'executed')) === 'executed';
+  const targetStatus = pending?.request.target_status ?? candidate?.target_status ?? (currentStatus === 'draft' ? 'pending_signature' : currentStatus === 'pending_signature' ? 'executed' : 'title_review');
+  const executionStep = targetStatus === 'executed', titleStep = targetStatus === 'title_review';
   const canSave = !!candidate && confirmed && reason.trim().length >= 20 && reason.length <= 4000 && !reason.includes('\0');
   function close() { if (pending || busy || blocked) return; setExpanded(false); setReason(''); setConfirmed(false); setMessage(''); }
   async function save() {
@@ -59,7 +62,7 @@ function TransitionEditor({ context, disabled, onPending, onSaved, currentStatus
       const response = await apiFetch(base, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(saved.request), signal: AbortSignal.timeout(30000) });
       const receipt = await response.json(); if (!mounted.current) return;
       clearConfirmedTransition(sessionStorage, saved, receipt); setPending(null); setExpanded(false); setReason(''); setConfirmed(false);
-      setMessage(saved.request.target_status === 'executed' ? 'Executed status recorded. Title and disposition review remain separate steps.' : 'Contract recorded as awaiting signature. No agreement was sent or signed.');
+      setMessage(saved.request.target_status === 'title_review' ? 'Title review started. Clear title, marketing and assignment still require separate review.' : saved.request.target_status === 'executed' ? 'Executed status recorded. Title and disposition review remain separate steps.' : 'Contract recorded as awaiting signature. No agreement was sent or signed.');
       void client.invalidateQueries({ queryKey: ['contract-transition-choice', context.userId, context.workspaceId, context.contractId] }); onSaved();
     } catch (error) {
       if (!mounted.current) return;
@@ -72,12 +75,12 @@ function TransitionEditor({ context, disabled, onPending, onSaved, currentStatus
     } finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
   return <section aria-label="Contract status handoff" className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 space-y-3 text-[#1B3A5C]">
-    <h3 className="font-semibold">{executionStep ? 'Record reviewed execution' : 'Move to awaiting signature'}</h3>
-    <p className="text-sm text-gray-600">{executionStep ? 'After review of the returned agreement, record its executed status. This does not sign an agreement or authorize marketing or assignment.' : 'After signature-release review, record the next contract status. This does not send or sign an agreement.'}</p>
+    <h3 className="font-semibold">{titleStep ? 'Begin title review' : executionStep ? 'Record reviewed execution' : 'Move to awaiting signature'}</h3>
+    <p className="text-sm text-gray-600">{titleStep ? 'Begin reviewing title for this recorded contract. Starting review does not confirm clear title or authorize marketing, assignment or closing.' : executionStep ? 'After review of the returned agreement, record its executed status. This does not sign an agreement or authorize marketing or assignment.' : 'After signature-release review, record the next contract status. This does not send or sign an agreement.'}</p>
     {blocked && <p role="alert">Saved status-change details could not be read or preserved. Reconcile this tab before starting another request.</p>}
     {disabled && <p className="text-sm">Finish the current document, terms or review step before continuing.</p>}
     {!expanded && !pending ? <button type="button" className={button} disabled={disabled || blocked} onClick={() => { setNow(Date.now()); setExpanded(true); setMessage(''); }}>Review next contract status</button> : <>
-      {pending ? <div className="rounded-lg border bg-white p-3 space-y-2"><h4 className="font-semibold">Recover the saved status change</h4><p>Contract version {context.contractVersion} · {pending.request.target_status === 'executed' ? 'Executed' : 'Awaiting signature'}</p><p className="whitespace-pre-wrap break-words">{pending.request.reason}</p><p className="text-sm">The original version, status and reason remain fixed until confirmed.</p></div>
+      {pending ? <div className="rounded-lg border bg-white p-3 space-y-2"><h4 className="font-semibold">Recover the saved status change</h4><p>Contract version {context.contractVersion} · {pending.request.target_status === 'title_review' ? 'Title review' : pending.request.target_status === 'executed' ? 'Executed' : 'Awaiting signature'}</p><p className="whitespace-pre-wrap break-words">{pending.request.reason}</p><p className="text-sm">The original version, status and reason remain fixed until confirmed.</p></div>
         : <fieldset disabled={disabled || busy || blocked} className="space-y-3">
           <button type="button" className={button} disabled={choice.isFetching} onClick={() => { setConfirmed(false); setNow(Date.now()); void choice.refetch(); }}>Refresh contract status checks</button>
           {choice.isFetching && <p role="status">Checking this contract version and current review…</p>}
@@ -86,9 +89,9 @@ function TransitionEditor({ context, disabled, onPending, onSaved, currentStatus
           {choice.data && !fresh && !choice.isFetching && !choice.isError && <p>These checks are out of date. Refresh before continuing.</p>}
           <div hidden={!candidate}><label className="block text-sm font-medium">Reason for the status change<textarea className="block w-full rounded-lg border border-gray-300 bg-white p-2" value={reason} maxLength={4000} onChange={event => setReason(event.target.value)} /></label>
           <p className="text-xs text-gray-600">Explain the handoff in at least 20 characters.</p>
-          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />{executionStep ? 'I am recording execution based on the reviewed returned agreement. Title and disposition require separate review.' : 'I am recording this reviewed version as awaiting signature. This does not confirm a signed agreement.'}</label></div>
+          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />{titleStep ? 'I am starting title review for this recorded contract. Title clearance and disposition need separate review.' : executionStep ? 'I am recording execution based on the reviewed returned agreement. Title and disposition require separate review.' : 'I am recording this reviewed version as awaiting signature. This does not confirm a signed agreement.'}</label></div>
         </fieldset>}
-      <div className="flex flex-wrap gap-2"><button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={disabled || busy || blocked || now < retryAt || (!pending && !canSave)} onClick={() => { void save(); }}>{pending ? 'Retry saved status change' : executionStep ? 'Record executed status' : 'Record awaiting signature'}</button>
+      <div className="flex flex-wrap gap-2"><button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={disabled || busy || blocked || now < retryAt || (!pending && !canSave)} onClick={() => { void save(); }}>{pending ? 'Retry saved status change' : titleStep ? 'Record title-review start' : executionStep ? 'Record executed status' : 'Record awaiting signature'}</button>
         {!pending && <button type="button" className={button} disabled={busy || blocked} onClick={close}>Close status review without saving</button>}</div>
     </>}
     {now < retryAt && <p role="status">Retry available in {Math.ceil((retryAt - now) / 1000)} seconds.</p>}

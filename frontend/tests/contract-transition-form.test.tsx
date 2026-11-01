@@ -95,3 +95,36 @@ it('records executed status only from its discovered review and recovers the exa
   expect(JSON.parse(posts()[0][1].body)).not.toHaveProperty('execution_review_id');
   expect(sessionStorage.length).toBe(0);
 });
+
+it('intentionally begins title review and recovers the same request after reload', async () => {
+  const previous = mock.fetch.getMockImplementation()!;
+  mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    if (init?.method === 'POST') return previous(path, init);
+    const old = transitionChoice();
+    return { json: async () => ({ ...old, current_status: 'executed', sequence: 2,
+      candidate: { expected_version: 2, expected_sequence: 2, expected_status: 'executed', target_status: 'title_review',
+        execution_review_id: old.candidate.signature_review_id, expires_at: old.candidate.expires_at } }) };
+  });
+  mock.lose = true; const view = open(); fireEvent.click(screen.getByText('Review next contract status'));
+  await screen.findByText('Begin title review');
+  expect(screen.getByText('Record title-review start')).toBeDisabled();
+  expect(screen.getByText(/Starting review does not confirm clear title/)).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Reason for the status change'), { target: { value: 'Begin title examination of this independently reviewed executed contract.' } });
+  fireEvent.click(screen.getByRole('checkbox')); fireEvent.click(screen.getByText('Record title-review start'));
+  await screen.findByText(/Save is unconfirmed/); view.unmount(); mock.lose = false; open();
+  expect(screen.getByText('Contract version 2 · Title review')).toBeVisible();
+  fireEvent.click(screen.getByText('Retry saved status change'));
+  await screen.findByText('Title review started. Clear title, marketing and assignment still require separate review.');
+  expect(posts()).toHaveLength(2); expect(posts()[0][1].body).toBe(posts()[1][1].body);
+  expect(JSON.parse(posts()[0][1].body)).toMatchObject({ expected_status: 'executed', target_status: 'title_review', expected_sequence: 2 });
+  expect(JSON.parse(posts()[0][1].body)).not.toHaveProperty('execution_review_id');
+  expect(sessionStorage.length).toBe(0);
+});
+
+it('holds title entry when recorded execution authority is no longer current', async () => {
+  mock.fetch.mockImplementation(async () => ({ json: async () => ({ ...transitionChoice(), current_status: 'executed', sequence: 2,
+    status: 'title_review_required', candidate: null }) }));
+  open(); fireEvent.click(screen.getByText('Review next contract status'));
+  await screen.findByText(/recorded execution review is no longer current/);
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument(); expect(posts()).toHaveLength(0);
+});

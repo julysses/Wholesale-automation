@@ -129,25 +129,28 @@ export async function apiFetch(path: string, init?: RequestInit) {
   }
   else if (executionFixture && path.includes('/transitions')) {
     if (!ledger) throw new Error('Execution fixture required');
-    const key = 'contract-executed-transition-local-qa-ledger', prior = JSON.parse(sessionStorage.getItem(key) ?? 'null');
+    const executedKey = 'contract-executed-transition-local-qa-ledger', titleKey = 'contract-title-transition-local-qa-ledger';
+    const executed = JSON.parse(sessionStorage.getItem(executedKey) ?? 'null'), title = JSON.parse(sessionStorage.getItem(titleKey) ?? 'null');
     const reviews = JSON.parse(sessionStorage.getItem('contract-execution-local-qa-ledger') ?? '[]'), review = reviews.at(-1)?.request;
     const current = review?.status === 'approved' && Date.parse(review.expires_at) > Date.now();
     if (init?.method === 'POST') {
-      const request = JSON.parse(init.body as string);
-      if (prior && JSON.stringify(prior.request) !== JSON.stringify(request)) throw new Error('Executed retry changed');
-      if (!prior && (!current || ledger.row.acquisition_status !== 'pending_signature' || request.expected_sequence !== 1 || request.expected_status !== 'pending_signature' || request.target_status !== 'executed')) throw new Error('Current execution review required');
+      const request = JSON.parse(init.body as string), enteringTitle = request.target_status === 'title_review';
+      const key = enteringTitle ? titleKey : executedKey, prior = enteringTitle ? title : executed;
+      const from = enteringTitle ? 'executed' : 'pending_signature', to = enteringTitle ? 'title_review' : 'executed', sequence = enteringTitle ? 2 : 1;
+      if (prior && JSON.stringify(prior.request) !== JSON.stringify(request)) throw new Error('Transition retry changed');
+      if (!prior && (!current || ledger.row.acquisition_status !== from || request.expected_sequence !== sequence || request.expected_status !== from || request.target_status !== to)) throw new Error('Current execution review required');
       const receipt = prior?.receipt ?? { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: ledger.row.acquisition_version,
-        request_id: request.id, sequence: 2, previous_status: 'pending_signature', recorded_status: 'executed', transition_recorded: true, execution_authorized: false };
-      if (!prior) { sessionStorage.setItem(key, JSON.stringify({ request, receipt })); ledger.row.acquisition_status = 'executed'; sessionStorage.setItem(ledgerKey, JSON.stringify(ledger)); }
-      if (lose) { lose = false; throw new Error('Synthetic executed status reply lost after commit'); }
+        request_id: request.id, sequence: sequence + 1, previous_status: from, recorded_status: to, transition_recorded: true, execution_authorized: false };
+      if (!prior) { sessionStorage.setItem(key, JSON.stringify({ request, receipt })); ledger.row.acquisition_status = to; sessionStorage.setItem(ledgerKey, JSON.stringify(ledger)); }
+      if (lose) { lose = false; throw new Error('Synthetic status reply lost after commit'); }
       value = { ...receipt, duplicate: !!prior };
     } else {
       const target = Number(new URL(path, 'http://localhost').searchParams.get('contract_version'));
-      const ready = current && !prior && target === ledger.row.acquisition_version;
+      const ready = current && !title && target === ledger.row.acquisition_version, enteringTitle = !!executed;
       value = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: target, current_version: ledger.row.acquisition_version,
-        current_status: ledger.row.acquisition_status, sequence: prior ? 2 : 1, checked_at: new Date().toISOString(), execution_authorized: false,
-        status: target !== ledger.row.acquisition_version ? 'version_changed' : prior ? 'execution_recorded' : ready ? 'ready_for_human_review' : 'execution_review_required',
-        candidate: ready ? { expected_version: target, expected_sequence: 1, expected_status: 'pending_signature', target_status: 'executed', execution_review_id: review.id, expires_at: review.expires_at } : null };
+        current_status: ledger.row.acquisition_status, sequence: title ? 3 : executed ? 2 : 1, checked_at: new Date().toISOString(), execution_authorized: false,
+        status: target !== ledger.row.acquisition_version ? 'version_changed' : title ? 'title_review_started' : ready ? 'ready_for_human_review' : executed ? 'title_review_required' : 'execution_review_required',
+        candidate: ready ? { expected_version: target, expected_sequence: enteringTitle ? 2 : 1, expected_status: enteringTitle ? 'executed' : 'pending_signature', target_status: enteringTitle ? 'title_review' : 'executed', execution_review_id: review.id, expires_at: review.expires_at } : null };
     }
   }
   else if (path.includes('/transitions')) {
