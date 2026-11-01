@@ -28,3 +28,15 @@ export function parseReferences(raw: unknown, context: DocumentContext, selected
   if (value.next_after !== null && value.next_after.toLowerCase() !== previous) throw new Error('Reference cursor changed');
   return value;
 }
+
+export function parseReference(raw: unknown, context: DocumentContext, artifact: string, now = Date.now()) {
+  const row = reference.parse(raw), checked = Date.parse(row.checked_at);
+  if (row.workspace_id !== context.workspaceId || row.contract_id !== context.contractId || row.contract_version !== context.contractVersion
+    || row.artifact_id !== artifact || !Number.isFinite(now) || checked < now - 30000 || checked > now + 5000
+    || Date.parse(row.source_created_at) > checked || row.source_version > row.contract_version
+    || (row.reference_type === 'native') !== (row.source_version === row.contract_version)
+    || (row.reference_type === 'linked') !== (row.link_id !== null)
+    || row.status === 'reference_withdrawn' && row.reference_type !== 'linked'
+    || (row.status === 'available_for_review') !== (row.verification_id !== null)) throw new Error('Current exact original reference required');
+  return row;
+}

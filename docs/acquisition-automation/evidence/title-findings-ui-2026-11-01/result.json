@@ -1,0 +1,27 @@
+{
+  "synthetic_only": true,
+  "browser_results": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "decisions": 2,
+      "exactRecovery": true,
+      "pageErrors": [],
+      "overflow": false
+    },
+    {
+      "name": "phone",
+      "width": 375,
+      "height": 812,
+      "decisions": 2,
+      "exactRecovery": true,
+      "pageErrors": [],
+      "overflow": false
+    }
+  ],
+  "visual_inspection": "Phone decision screenshot inspected; numbered steps, navy/orange style, readable actions and no overflow.",
+  "predecessor_head": "e9901bf79305f31b07bd66b47e35050d3d7b95b6",
+  "predecessor_run": 41282197874,
+  "predecessor_all_six_success": true
+}

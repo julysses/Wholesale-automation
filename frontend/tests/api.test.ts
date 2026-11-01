@@ -130,3 +130,11 @@ it.each([[403, 'true', 'POST', true], [409, 'true', 'POST', true], [401, 'true',
   for (const other of ['/api/buyers/import', `${path}/documents/40000000-0000-4000-8000-000000000001/candidate`, `${path}?other=true`, path.replace('deadline-reviews', 'signature-review')])
     await expect(apiFetch(other, { method: String(method) })).rejects.toMatchObject({ rejectedDeadline: false });
 });
+
+it.each([['POST', 401, 'true', true], ['POST', 403, 'true', true], ['POST', 409, 'true', true], ['POST', 503, 'true', false], ['POST', 429, 'true', false], ['POST', 409, 'false', false], ['GET', 409, 'true', false]])('recognizes only definite title writes %s %s %s', async (method, status, header, rejected) => {
+  getSession.mockResolvedValue({ data: { session: { access_token: 'test-token' } } });
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response('{}', { status: Number(status), headers: { 'X-Acquisition-Title-Review-Rejected': String(header) } })));
+  const base = '/api/acquisition/workspaces/00000000-0000-4000-8000-000000000001/contracts/00000000-0000-4000-8000-000000000002/versions/2/title-review';
+  await expect(apiFetch(base, { method: String(method) })).rejects.toMatchObject({ rejectedTitle: rejected });
+  for (const path of [base + '/candidate', base + '/other', '/api/buyers/import']) await expect(apiFetch(path, { method: String(method) })).rejects.toMatchObject({ rejectedTitle: false });
+});

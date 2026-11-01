@@ -1,5 +1,17 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — guided title findings and exact recovery (candidate101)
+
+Added the three-part Report → Findings → Decision form in ContractDraft step5, matching the existing navy/orange styling. Five finding categories default to unknown; each unresolved finding requires a specific next action. Satisfactory findings require original document citations. Report dates retain their original precision; approval expiry is bounded by the explicit report-age policy, including calendar-day rules across DST. The default decision is a resolution hold. Original withdrawal is available without selecting a new report.
+
+Bounded source pages and individual original checks retain source version/hash/current scan. The parent contract step holds sibling edits and workspace navigation while title review is open or a save remains uncertain. Requests are stored before sending; lost replies, later denials and reloads retry the exact original version and payload. Only an exact confirmed receipt or definite first-attempt write rejection can clear recovery. Corrupt/conflicting requests remain held.
+
+Validation: full frontend870 tests passed; focused form/parent39 passed after the shared-label cleanup; final full frontend rerun passed after correcting synthetic page/item timestamps. Build/typecheck passed; lint gate passed with no new findings (147 existing tracked findings). Synthetic desktop1280x900 and phone375x812 browser journeys passed: unknown defaults, required actions, resolution hold, committed-response loss, reload/exact retry, independent withdrawal, two total decisions, no page errors or overflow. Phone decision screenshot visually inspected. Evidence: `evidence/title-findings-ui-2026-11-01/`. Earlier browser attempts exposed selector/readiness and synthetic timestamp inconsistencies; corrected test data/selectors without weakening app checks. Preview90880 stopped intentionally; browser16891 terminal0. No backend or SQL changes in this increment.
+
+All six exact published predecessor e9901bf / run41282197874 checks now passed, including the formerly failing pipeline SQL job. Fresh pull was already current. This verified increment is ready to commit/push; verify its exact successor before the next feature push. Logs: `/tmp/title-ui-{all-tests-final,build-final,lint-final,browser,final-focused}.log`.
+
+Next: bounded title decision history/details with original findings, actions and citations; bind disposition review to current title/execution and assignment legal basis. Continue remaining buyer matching/packages/disclosures/closing/exceptions and all shared-channel/hosted/provider/legal acceptance gaps. Full PRD remains active/incomplete. No production migration, authority policy, outreach, provider activation, paid fulfillment or binding transaction was performed.
+
 ## November 1 — title report and reviewer choices (candidate100)
 
 Added read-only `title_review_candidate` and mounted GET `/title-review/candidate?artifact_id=…` over the existing current-state service. The report selection is optional so original approved/held withdrawal is available without a selected document, including after pause or policy revocation. Selected reports remain scoped to original contract references and purpose, with the exact current scan and reviewer policy. No policy or review is created by discovery.

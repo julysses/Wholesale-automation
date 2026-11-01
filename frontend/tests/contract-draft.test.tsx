@@ -35,6 +35,10 @@ beforeEach(() => {
           kind: 'deadline_resolution', term: body.term, review_id: body.id, interpretation_review_id: body.original_review_id ?? body.id,
           sequence: body.expected_sequence + 1, status: body.status, duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
       }
+      if (path.endsWith('/title-review')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: body.expected_version, kind: 'title_findings', review_id: body.id, sequence: body.expected_sequence + 1, status: body.status, duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
+      }
       if (path.endsWith('/signature-review')) {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: 1, review_id: body.id,
@@ -342,4 +346,27 @@ it('keeps title-review contracts visible without claiming clearance or enabling 
   expect(screen.getByText('Open execution review')).toBeEnabled();
   expect(screen.getByText('Open date review')).toBeEnabled();
   expect(screen.getByRole('button', { name: 'Draft saved' })).toBeDisabled();
+});
+
+it('holds sibling steps while title findings are open and releases on close', async () => {
+  record.acquisition_status = 'title_review'; mock.existing = true; open();
+  await waitFor(() => expect(screen.getByText('Open title review')).toBeEnabled()); fireEvent.click(screen.getByText('Open title review'));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true));
+  for (const name of ['Open execution review', 'Open date review', 'Refresh draft information']) expect(screen.getByText(name)).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled(); fireEvent.click(screen.getByText('Close without saving'));
+  await waitFor(() => expect(screen.getByText('Open execution review')).toBeEnabled()); expect(screen.getByLabelText('Document type')).toBeEnabled();
+});
+it('recovers original title version without a proposal and then restores current context', async () => {
+  const { preserveTitle } = await import('../src/lib/acquisition/title-review');
+  const request = { id: id(96), expected_version: 1, expected_sequence: 1, status: 'withdrawn' as const, artifact_id: id(91), verification_id: id(92), policy_id: id(93), expires_at: null, personally_reviewed: false, note: 'Withdraw the original title decision after lost response.', findings: null };
+  preserveTitle(sessionStorage, { version: 1, context: signatureContext, request });
+  record.acquisition_status = 'title_review'; record.acquisition_version = 2; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByText('Retry saved title decision')).toBeEnabled()); expect(screen.getByText('Open execution review')).toBeDisabled();
+  fireEvent.click(screen.getByText('Retry saved title decision')); await waitFor(() => expect(sessionStorage.length).toBe(0));
+  expect(posts()).toHaveLength(1); expect(posts()[0][0]).toContain('/versions/1/title-review'); expect(JSON.parse(posts()[0][1].body)).toEqual(request);
+  await waitFor(() => expect(screen.getByText('Open title review')).toBeEnabled()); expect(screen.getByText('Open execution review')).toBeEnabled();
+});
+it('blocks corrupt title recovery before reading the current contract', async () => {
+  const { titleKey } = await import('../src/lib/acquisition/title-review'); sessionStorage.setItem(titleKey(id(1), id(2)), '{broken');
+  open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled();
 });
