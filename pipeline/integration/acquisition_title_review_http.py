@@ -48,6 +48,9 @@ def verify_title_review_http(db,rpc,request,token,workspace,contract,document,ad
         verification_id=scan,policy_id=policy,expires_at=expiry,personally_reviewed=True,
         note='Synthetic mounted title findings, with exact committed-response recovery.',findings=findings)
     with TestClient(app) as client:
+        choice=client.get(path+'/candidate',params={'artifact_id':document},headers=headers)
+        if choice.status_code!=200 or choice.json()['status']!='ready_for_human_review' or choice.json()['candidate']['expected_sequence']!=3 or choice.json()['candidate']['report_policy']['timezone']!='UTC':raise AssertionError('Mounted title choices missing current original policy')
+        if client.get(path+'/candidate',params={'artifact_id':document},headers={'Authorization':'Bearer '+token(other)}).status_code!=403:raise AssertionError('Mounted title choices leaked across workspaces')
         drops['rpc/record_title_review']=True
         lost=client.post(path,json=api_body,headers=headers)
         retry=client.post(path,json=api_body,headers=headers)
@@ -70,6 +73,8 @@ def verify_title_review_http(db,rpc,request,token,workspace,contract,document,ad
         db.query('UPDATE private.acquisition_activation SET enabled=false')
         try:
             if not client.post(path,json=api_body,headers=headers).json()['duplicate']:raise AssertionError('Mounted historical title receipt lost after pause')
+            choice=client.get(path+'/candidate',headers=headers)
+            if choice.status_code!=200 or choice.json()['status']!='paused' or choice.json()['candidate'] is not None or choice.json()['resolution'] is not None or choice.json()['withdrawal']['review_id']!=api_hold or choice.json()['withdrawal']['original_status']!='requires_resolution':raise AssertionError('Mounted original title withdrawal depends on selected report')
             withdrawn=held|dict(id=api_withdrawal,expected_sequence=5,status='withdrawn',personally_reviewed=False,findings=None)
             drops['rpc/record_title_review']=True
             lost=client.post(path,json=withdrawn,headers=headers);retry=client.post(path,json=withdrawn,headers=headers)

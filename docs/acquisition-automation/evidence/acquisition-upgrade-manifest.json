@@ -369,6 +369,10 @@
     {
       "file": "20261101061744_acquisition_title_review_write.sql",
       "sha256": "1e7b4425012689c42e516cfad8b75cec9d1fe82a9257fde176e4ef18b6bb5adf"
+    },
+    {
+      "file": "20261101063735_acquisition_title_review_choices.sql",
+      "sha256": "49fdca062c80e0b1237ffa58e34e0fb6892fc6720ea4070575d0445981868616"
     }
   ]
 }

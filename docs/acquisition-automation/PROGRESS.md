@@ -1,5 +1,16 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — title report and reviewer choices (candidate100)
+
+Added read-only `title_review_candidate` and mounted GET `/title-review/candidate?artifact_id=…` over the existing current-state service. The report selection is optional so original approved/held withdrawal is available without a selected document, including after pause or policy revocation. Selected reports remain scoped to original contract references and purpose, with the exact current scan and reviewer policy. No policy or review is created by discovery.
+
+Choices distinguish current approval preparation from resolution-only entry. Missing original execution authority or supported report-age policy removes approval while retaining a bounded resolution choice when source/reviewer authority permits it. Missing/revoked source, policy, session or contract context removes both. Approval and resolution must share the exact report, scan, policy, source version and sequence. Supported report precision is explicit; invalid calendar zones cannot become calendar approval policy. All choice results remain non-executing and the writer independently rechecks authority and actual findings.
+
+Four focused SQL tests passed23.120s;135 focused domain/API tests passed3.86s. Full backend passed4324 tests/10 skipped/6 subtests53.96s. Full upgrade passed93 migrations,26 access checks,270 workflows and142 actual API checks;24 historical rows/22 populated tables/103 definitions/Storage preserved. Evidence: `evidence/2026-11-01-title-candidate-result.json`; backend78242 and upgrade12520 terminal0. Inventory: `evidence/2026-11-01-title-choice-local-catalog.json`. All six published80d00df / run41281031467 jobs passed. Candidate99 commit7d85dec and this verified increment are ready for publication; verify the exact successor before the next feature push.
+
+Next: implement the guided title findings form and exact browser recovery in existing ContractDraft step5, with unknown defaults, required next actions, explicit report precision and independent original withdrawal. Preserve the navy/orange presentation and shared navigation holds. Full PRD remains active/incomplete; no production migration, policy provisioning, outreach, paid fulfillment or binding transaction occurred.
+
+
 ## November 1 — mounted title-review application API (candidate99)
 
 Added GET/POST `/api/acquisition/workspaces/{workspace_id}/contracts/{contract_id}/versions/{contract_version}/title-review` using the existing user-JWT store. Request/receipt/current-state models keep title findings separate from preparation reviews, preserve required actions and source precision, and accept explicit resolution holds without approval expiry. Exact response scope, version, request identity, sequence, status and non-executing receipt invariants are validated. Current state requires a fresh explicit timestamp and current unexpired approval; stale/malformed/mixed responses remain unavailable. No service-role fallback or client-supplied execution/source authority.

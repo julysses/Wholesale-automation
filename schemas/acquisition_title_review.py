@@ -153,3 +153,115 @@ class TitleReviewState(ContractReviewState):
         if value is not None and (not isinstance(value, str) or 'T' not in value):
             raise ValueError('Explicit current title timestamp required')
         return value
+
+
+class TitleReportPolicy(Exact):
+    max_age_seconds: int | None = Field(strict=True, ge=1, le=31536000)
+    max_age_days: int | None = Field(strict=True, ge=0, le=365)
+    timezone: str | None = Field(strict=True, min_length=1, max_length=100)
+
+    @model_validator(mode='after')
+    def explicit_supported_precision(self):
+        if self.max_age_seconds is None and self.max_age_days is None:
+            raise ValueError('At least one report precision must be explicitly supported')
+        if (self.max_age_days is None) != (self.timezone is None):
+            raise ValueError('Calendar report age requires an explicit named timezone')
+        if self.timezone is not None:
+            from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+            try:
+                ZoneInfo(self.timezone)
+            except (ValueError, ZoneInfoNotFoundError):
+                raise ValueError('Named report policy timezone required') from None
+        return self
+
+
+class TitleResolutionChoice(Exact):
+    artifact_id: UUID
+    source_version: int = Field(strict=True, ge=1, le=2147483647)
+    verification_id: UUID
+    sha256: str = Field(strict=True, pattern=r'^[0-9a-f]{64}$')
+    policy_id: UUID
+    expected_sequence: int = Field(strict=True, ge=0, lt=2147483647)
+    available_until: AwareDatetime
+
+    @field_validator('available_until', mode='before')
+    @classmethod
+    def explicit_availability(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit choice availability required')
+        return value
+
+
+class TitleApprovalChoice(TitleResolutionChoice):
+    max_expires_at: AwareDatetime
+    report_policy: TitleReportPolicy
+
+    @field_validator('max_expires_at', mode='before')
+    @classmethod
+    def explicit_maximum(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit approval expiry bound required')
+        return value
+
+
+class TitleWithdrawalChoice(Exact):
+    review_id: UUID
+    artifact_id: UUID
+    source_version: int = Field(strict=True, ge=1, le=2147483647)
+    verification_id: UUID
+    policy_id: UUID
+    expected_sequence: int = Field(strict=True, ge=1, lt=2147483647)
+    original_status: Literal['approved', 'requires_resolution']
+
+
+class TitleReviewCandidate(Exact):
+    workspace_id: UUID
+    contract_id: UUID
+    contract_version: int = Field(strict=True, ge=1, le=2147483647)
+    artifact_id: UUID | None
+    status: Literal['paused', 'contract_unavailable', 'history_limit_reached', 'document_required',
+                    'reviewer_policy_required', 'evidence_review_required', 'execution_review_required',
+                    'report_freshness_policy_required', 'ready_for_human_review']
+    candidate: TitleApprovalChoice | None
+    resolution: TitleResolutionChoice | None
+    withdrawal: TitleWithdrawalChoice | None
+    current_review: TitleReviewState
+    checked_at: AwareDatetime
+    execution_authorized: StrictBool
+
+    @field_validator('checked_at', mode='before')
+    @classmethod
+    def explicit_checked_time(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit choice check timestamp required')
+        return value
+
+    @model_validator(mode='after')
+    def exact_choices(self):
+        state = self.current_review
+        if self.execution_authorized or ((state.workspace_id, state.contract_id, state.contract_version, state.checked_at)
+                != (self.workspace_id, self.contract_id, self.contract_version, self.checked_at)):
+            raise ValueError('Exact current title scope required')
+        if (self.status == 'ready_for_human_review') != (self.candidate is not None):
+            raise ValueError('Held title choice cannot offer approval')
+        if (self.status in {'ready_for_human_review', 'execution_review_required', 'report_freshness_policy_required'}) != (self.resolution is not None):
+            raise ValueError('Resolution choice must match current source and reviewer availability')
+        if self.resolution:
+            choice = self.resolution
+            if (choice.artifact_id != self.artifact_id or choice.source_version > self.contract_version
+                    or choice.expected_sequence != state.sequence
+                    or not 0 < (choice.available_until-self.checked_at).total_seconds() <= 86400):
+                raise ValueError('Current original source and bounded choice required')
+        if self.candidate:
+            choice = self.candidate
+            if (choice.model_dump(exclude={'max_expires_at', 'report_policy'}) != self.resolution.model_dump()
+                    or not self.checked_at < choice.max_expires_at <= choice.available_until):
+                raise ValueError('Approval and resolution choices must share exact source and policy')
+        if self.withdrawal:
+            choice = self.withdrawal
+            expected_status = 'requires_resolution' if state.status == 'requires_resolution' else 'approved'
+            if (choice.source_version > self.contract_version or choice.review_id != state.review_id
+                    or choice.expected_sequence != state.sequence or state.status not in {'approved', 'requires_review', 'requires_resolution'}
+                    or choice.original_status != expected_status):
+                raise ValueError('Original title withdrawal identity required')
+        return self
