@@ -245,7 +245,7 @@ it('keeps a contract awaiting signature visible and enables document capture whi
 
 const transitionRequest = { id: id(50), expected_version: 1, expected_sequence: 0, expected_status: 'draft' as const, target_status: 'pending_signature' as const, reason: 'Original reviewed status handoff kept after a lost response.' };
 it.each([
-  ['draft', 'pending_signature', 0], ['pending_signature', 'executed', 1], ['executed', 'title_review', 2],
+  ['draft', 'pending_signature', 0], ['pending_signature', 'executed', 1], ['executed', 'title_review', 2], ['title_review', 'disposition_review', 3],
 ] as const)('recovers committed %s → %s after reload without a selected proposal', async (expected_status, target_status, expected_sequence) => {
   const original = { ...transitionRequest, expected_status, target_status, expected_sequence };
   const { preserveTransition } = await import('../src/lib/acquisition/contract-transition');
@@ -432,4 +432,18 @@ it('blocks corrupt or conflicting disposition recovery before any current contra
   preserveDisposition(sessionStorage, { version: 1, context: signatureContext, request: { id: id(96), expected_version: 1, expected_sequence: 1, status: 'withdrawn', plan_id: id(91), original_review_id: id(92), policy_id: id(93), expires_at: null, personally_reviewed: false, note: 'Withdraw the original disposition decision after lost response.', findings: null } });
   const { preserveDeadline } = await import('../src/lib/acquisition/deadline-review'); preserveDeadline(sessionStorage, { version: 1, context: signatureContext, request: deadlineRequest });
   open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled(); expect(sessionStorage.length).toBe(2);
+});
+
+
+it('retains original review history after disposition handoff while keeping preparation frozen', async () => {
+  record.acquisition_status = 'disposition_review'; mock.existing = true; open();
+  await screen.findByText('Disposition review in progress: Saved property draft');
+  expect(screen.getByText(/The reviewed purchase path has entered disposition review/)).toBeVisible();
+  for (const name of ['View title history', 'View disposition history', 'Review next contract status'])
+    expect(screen.getByRole('button', { name })).toBeEnabled();
+  for (const name of ['Edit draft terms', 'Open signature-release review'])
+    expect(screen.getByRole('button', { name })).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled();
+  expect(screen.queryByText('Open purchase path')).not.toBeInTheDocument();
+  expect(posts()).toHaveLength(0);
 });

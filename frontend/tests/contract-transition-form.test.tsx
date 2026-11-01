@@ -128,3 +128,40 @@ it('holds title entry when recorded execution authority is no longer current', a
   await screen.findByText(/recorded execution review is no longer current/);
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument(); expect(posts()).toHaveLength(0);
 });
+
+it('shows the reviewed purchase path and recovers only the exact disposition handoff after reload', async () => {
+  const previous = mock.fetch.getMockImplementation()!;
+  mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    if (init?.method === 'POST') return previous(path, init);
+    const original = transitionChoice();
+    return { json: async () => ({ ...original, current_status: 'title_review', sequence: 3,
+      candidate: { expected_version: 2, expected_sequence: 3, expected_status: 'title_review', target_status: 'disposition_review',
+        disposition_review_id: context.contractId, plan_id: context.offerId, exit_type: 'wholesale_assignment',
+        title_review_id: context.propertyId, execution_review_id: context.leadId, expires_at: original.candidate.expires_at } }) };
+  });
+  mock.lose = true; const view = open();
+  fireEvent.click(screen.getByText('Review next contract status'));
+  await screen.findByText('Contract assignment');
+  expect(screen.getByRole('heading', { name: 'Disposition review handoff' })).toBeInTheDocument();
+  const save = screen.getByRole('button', { name: 'Record disposition-review start' });
+  expect(save).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Reason for the status change'), { target: { value: '  Review the original assignment proposal for disposition.  ' } });
+  fireEvent.click(screen.getByRole('checkbox')); fireEvent.click(save);
+  await screen.findByText(/Save is unconfirmed/); const original = posts()[0][1].body; view.unmount();
+  mock.lose = false; open();
+  expect(screen.getByText(/Contract version 2 · Disposition review/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry saved status change' }));
+  await screen.findByText('Disposition review started. Buyer distribution, agreements and closing still require separate approval.');
+  expect(posts()).toHaveLength(2); expect(posts()[1][1].body).toBe(original);
+  expect(JSON.parse(original)).toMatchObject({ expected_status: 'title_review', target_status: 'disposition_review', expected_sequence: 3 });
+  expect(JSON.parse(original)).not.toHaveProperty('plan_id'); expect(JSON.parse(original)).not.toHaveProperty('disposition_review_id');
+  expect(sessionStorage.length).toBe(0);
+});
+it.each(['disposition_review_required', 'disposition_review_started'])('offers no handoff for %s', async status => {
+  mock.fetch.mockImplementation(async () => ({ json: async () => ({ ...transitionChoice(), status, candidate: null,
+    current_status: status === 'disposition_review_required' ? 'title_review' : 'disposition_review',
+    sequence: status === 'disposition_review_required' ? 3 : 4 }) }));
+  open(); fireEvent.click(screen.getByText('Review next contract status'));
+  await screen.findByText(status === 'disposition_review_required' ? /Complete a current disposition review/ : /Disposition review has started/);
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument(); expect(posts()).toHaveLength(0);
+});
