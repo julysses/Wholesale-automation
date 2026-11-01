@@ -212,10 +212,34 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             current=await store.contract_document_scan_state(scope['artifact_id'],**read_scope)
             if current.status!='no_detection_observed' or current.observation_id!=UUID(observation_id) or current.legal_review_approved:
                 raise AssertionError('Contract current scan state binding failed')
+            review_policy='af900000-0000-4000-8000-000000000001'
+            review_id='af900000-0000-4000-8000-000000000002'
+            withdrawal_id='af900000-0000-4000-8000-000000000003'
+            db.query("INSERT INTO private.acquisition_contract_review_policies(id,workspace_id,kind,purpose,reviewer_id,max_review_seconds,valid_from,valid_until,reviewed_by,approval_ref) VALUES(%s,%s,'contract_review','purchase_contract',%s,1800,clock_timestamp()-interval '1 hour',clock_timestamp()+interval '1 hour',%s,%s)",[review_policy,workspace,admin,admin,review_id])
+            review_body=dict(p_id=review_id,p_workspace=workspace,p_contract=draft,p_version=1,p_kind='contract_review',p_expected_sequence=0,
+                p_status='approved',p_artifact=signed['p_artifact'],p_verification=observation_id,p_policy=review_policy,
+                p_expires=(datetime.now(timezone.utc)+timedelta(minutes=5)).isoformat(),p_personally_reviewed=True,
+                p_note='Synthetic authorized human review of exact contract document contents.')
+            human_review=rpc('record_contract_review',review_body)
+            replay=rpc('record_contract_review',review_body)
+            review_scope=dict(p_workspace=workspace,p_contract=draft,p_version=1,p_kind='contract_review')
+            current_review=rpc('contract_review_state',review_scope)
+            if human_review['duplicate'] or not replay['duplicate'] or replay['approval_current'] or replay['execution_authorized'] or not current_review['approval_current']:
+                raise AssertionError('Contract human review persistence/current distinction failed')
+            for jwt,wrong in [(token(other),review_body),(None,review_body),(token(),review_body|{'p_version':2})]:
+                status,_=request('/rpc/record_contract_review',jwt,wrong)
+                if status not in (401,403):raise AssertionError('Contract human review scope bypass')
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
             stale=await store.contract_document_scan_state(scope['artifact_id'],**read_scope)
             if stale.status!='requires_review' or stale.observation_id is not None or stale.execution_authorized:
                 raise AssertionError('Revoked contract scope retained current scan authority')
+            if rpc('contract_review_state',review_scope)['approval_current']:
+                raise AssertionError('Human review survived revoked scan authority')
+            withdrawal=review_body|dict(p_id=withdrawal_id,p_expected_sequence=1,p_status='withdrawn',p_expires=None,p_personally_reviewed=False)
+            if rpc('record_contract_review',withdrawal)['status']!='withdrawn' or not rpc('record_contract_review',withdrawal)['duplicate']:
+                raise AssertionError('Human review withdrawal exact recovery failed')
+            if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_review' AND entity_id=%s",[review_id])!=[{'n':1}]:
+                raise AssertionError('Human review retry duplicated immutable audit')
             return receipt
     with tempfile.TemporaryDirectory(prefix='contract-observation-recovery-') as directory:
         recovered_scan=asyncio.run(reconcile_contract_scan(Path(directory)))
@@ -313,4 +337,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract observation typed journal recovery after actual commit loss',
             'contract scan current typed gateway state and exact observation',
             'contract scan purpose scope revocation removes current observation',
-            'contract scan mounted API retained state and tenant version purpose isolation']
+            'contract scan mounted API retained state and tenant version purpose isolation',
+            'contract human review exact gateway retry and immutable audit',
+            'contract human review gateway tenant session and version isolation',
+            'contract human review current scan revocation and withdrawal recovery']

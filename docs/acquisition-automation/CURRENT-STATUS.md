@@ -2,6 +2,16 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — exact human contract reviews (local candidate 64)
+
+Added immutable contract, title and assignment-basis reviews bound to the canonical contract version, exact retained artifact/hash and latest verification. Explicit reviewer policies are private, workspace-scoped and empty by default. Owner/admin MFA, active membership/session, approved reviewer authority, fresh evidence and bounded expiry are required. Historical retries preserve one decision and audit without returning current approval. Withdrawal remains available to the original reviewer after policy/evidence expiry or acquisition pause; cross-reviewer withdrawal is not implemented. Current-state reads recheck authority and shared matching-byte detection holds. No signing or transition authority is returned.
+
+Validation completed: nine focused database tests passed in 46.607s. Full rehearsal exited 0: 64 candidate migrations, 26 access probes, 134 workflows and 76 actual local gateway checks. All 24 historical rows in 22 tables, 103 definitions and the Storage fixture were preserved. Evidence: `evidence/2026-10-31-contract-human-review-gateway-result.json`. An earlier contention test missed a buffered lock marker; its synchronization now emits a single marker, and the corrected focused suite passes. Authorization rules were not weakened.
+
+This is database foundation only: typed human-review API, guided review interface, policy provisioning, immutable terms, persisted transitions and disposition remain unfinished. No production migration or activation. Compensation keeps history intact: revoke review-policy authority or pause acquisition; do not delete decisions/audits.
+
+Publication: c3b91a7 remains remote; local interface commit 69dc0ef is unpublished. CI 41255050827 has four successes, one dependency-setup timeout and one still-live contention job. Isolated repair b92ba6b is committed in /tmp/wholesale-ci-repair-20261031, with workflow parsing and 28 shell syntax checks passing. Wait for the live predecessor to terminate before publishing the repair; require all six successor checks before feature publication.
+
 ## Latest publication and document-status interface
 
 All six repair checks completed successfully in CI 41254289589 on e687fd6. Published the verified candidate through c3b91a75538c1a13ffa3ee6376ebbec203b59779 with a normal push. Exact successor CI [41255050827](https://github.com/julysses/Wholesale-automation/actions/runs/41255050827) is running. This supersedes older wait/publication statements below. No deployment or production migration was performed.
