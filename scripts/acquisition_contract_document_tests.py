@@ -18,8 +18,8 @@ class ContractDocumentCases:
         self.draft()
         self.sql(f"INSERT INTO private.acquisition_evidence_policies(id,workspace_id,purpose,version,retention_seconds,valid_from,valid_until,approval_ref,reviewed_by,reviewed_at) VALUES('{DOC_POLICY}','{WORKSPACE}','purchase_contract',1,86400,'2026-01-01','2099-01-01','{REVOCATION}','{ADMIN}','2026-01-01')")
 
-    def document(self, actor=ADMIN, identity=DOCUMENT, workspace=WORKSPACE, contract=DRAFT, version=1, purpose='purchase_contract', note='Synthetic contract source document provenance.', fail=False, **kwargs):
-        result=self.sql(f"SELECT public.register_contract_document('{identity}','{workspace}','{contract}',{version},{literal(purpose)},'{ 'b'*64 }',123,'application/pdf','{DOC_POLICY}',{literal(note)})",user=actor,fail=fail,**kwargs)
+    def document(self, actor=ADMIN, identity=DOCUMENT, workspace=WORKSPACE, contract=DRAFT, version=1, purpose='purchase_contract', note='Synthetic contract source document provenance.', fail=False, policy=DOC_POLICY, **kwargs):
+        result=self.sql(f"SELECT public.register_contract_document('{identity}','{workspace}','{contract}',{version},{literal(purpose)},'{ 'b'*64 }',123,'application/pdf','{policy}',{literal(note)})",user=actor,fail=fail,**kwargs)
         return result if fail else json.loads(result)
 
     def document_state(self, actor=ADMIN, workspace=WORKSPACE, contract=DRAFT, version=1, fail=False, **kwargs):

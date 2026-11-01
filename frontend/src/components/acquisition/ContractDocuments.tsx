@@ -12,11 +12,11 @@ import { parseContractReview, reviewIsFresh, reviewKinds, reviewLabels, type Rev
 const button = 'rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed';
 const input = 'block w-full rounded-lg border border-gray-300 bg-white p-2';
 const statuses = { pending_verification: 'Registered · Review pending', revoked: 'Withdrawn', expired: 'Retention expired', policy_review_required: 'Retention review needed' };
-type Props = { context: DocumentContext; disabled?: boolean; disabledReason?: string; awaitingSignature?: boolean; onPending: (pending: boolean) => void };
+type Props = { context: DocumentContext; disabled?: boolean; disabledReason?: string; awaitingSignature?: boolean; titleReview?: boolean; onPending: (pending: boolean) => void };
 export function ContractDocuments(props: Props) {
-  return <DocumentEditor key={`${props.context.userId}:${props.context.workspaceId}:${props.context.contractId}:${props.context.contractVersion}`} {...props}/>;
+  return <DocumentEditor key={`${props.context.userId}:${props.context.workspaceId}:${props.context.contractId}:${props.context.contractVersion}:${props.titleReview ? 'title' : props.awaitingSignature ? 'signature' : 'draft'}`} {...props}/>;
 }
-function DocumentEditor({ context, disabled = false, disabledReason, awaitingSignature = false, onPending }: Props) {
+function DocumentEditor({ context, disabled = false, disabledReason, awaitingSignature = false, titleReview = false, onPending }: Props) {
   const { userId, workspaceId: workspace, contractId: contract, contractVersion: version } = context;
   const path = `/api/acquisition/workspaces/${workspace}/contracts/${contract}/versions/${version}/documents`;
   const [initial] = useState(() => {
@@ -26,7 +26,7 @@ function DocumentEditor({ context, disabled = false, disabledReason, awaitingSig
     } catch { return { saved: null, invalid: true }; }
   });
   const [pending, setPending] = useState<PendingDocument | null>(initial.saved), [blocked, setBlocked] = useState(initial.invalid);
-  const [kind, setKind] = useState<keyof typeof purposes>(initial.saved?.registration.purpose ?? 'purchase_contract');
+  const [kind, setKind] = useState<keyof typeof purposes>(initial.saved?.registration.purpose ?? (titleReview ? 'title_report' : 'purchase_contract'));
   const [choice, setChoice] = useState<FileChoice | null>(null), [note, setNote] = useState('');
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [now, setNow] = useState(Date.now());
   const [retryAt, setRetryAt] = useState(0), [cursors, setCursors] = useState<(string | null)[]>([null]);
@@ -108,7 +108,7 @@ function DocumentEditor({ context, disabled = false, disabledReason, awaitingSig
   }
   const retrySeconds = Math.max(0, Math.ceil((retryAt - now) / 1000));
   return <section aria-label="Contract documents" className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 space-y-3 text-[#1B3A5C]">
-    <div><h3 className="font-semibold">Add documents for review</h3><p className="text-sm text-gray-600">Choose the document type, attach the original file, then complete verification and review. Uploading does not change the contract’s status or sign an agreement.</p></div>
+    <div><h3 className="font-semibold">{titleReview ? 'Add title-review documents' : 'Add documents for review'}</h3><p className="text-sm text-gray-600">Choose the document type, attach the original file, then complete verification and review. Uploading does not change the contract’s status or sign an agreement.</p></div>
     {blocked && <p role="alert">Saved document recovery is unavailable or unreadable. Keep the original file and reconcile this browser tab before creating another record.</p>}
     {disabled && <p role="alert">{disabledReason ?? 'The saved contract context could not be confirmed. Refresh draft information before continuing.'}</p>}
     <label className="block text-sm font-medium">Document type<select className={input} value={kind} disabled={held || disabled} onChange={event => {
@@ -141,7 +141,7 @@ function DocumentEditor({ context, disabled = false, disabledReason, awaitingSig
         <button className={button} disabled={held || disabled || records.isFetching || records.isError || !records.data?.next_after} onClick={() => setCursors(values => [...values, records.data!.next_after])}>Next documents</button></nav>
     </div>
     <div className="border-t border-orange-200 pt-3 space-y-3">
-      {awaitingSignature ? <div><h4 className="font-semibold">Next: confirm the signed document</h4><p className="text-sm text-gray-600">A file scan does not establish signatures or matching terms. The contract stays awaiting signature until an authorized execution review is recorded.</p></div> : <>
+      {titleReview ? <div><h4 className="font-semibold">Next: verify the title evidence</h4><p className="text-sm text-gray-600">Upload the original title report and supporting documents. File verification and a separate review of title findings are still required. Existing preparation reviews do not establish clear title or authorize marketing, assignment or closing.</p></div> : awaitingSignature ? <div><h4 className="font-semibold">Next: confirm the signed document</h4><p className="text-sm text-gray-600">A file scan does not establish signatures or matching terms. The contract stays awaiting signature until an authorized execution review is recorded.</p></div> : <>
       <div><h4 className="font-semibold">Next: terms and human review</h4><p className="text-sm text-gray-600">Prepare the terms below, then check purchase contract and title reviews for the saved version. Assignment review applies when Hilltop plans to assign its contractual interest.</p></div>
       <div className="grid gap-3 sm:grid-cols-3">{(Object.keys(reviewKinds) as ReviewKind[]).map(reviewKind =>
         <ContractReviewStatus key={reviewKind} context={context} kind={reviewKind} now={now} disabled={disabled || held || !ready || !current} />)}</div>

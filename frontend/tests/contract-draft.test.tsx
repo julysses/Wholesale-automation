@@ -334,6 +334,9 @@ it('holds conflicting date and execution recovery requests without selecting eit
 it('keeps title-review contracts visible without claiming clearance or enabling signing', async () => {
   record.acquisition_status = 'title_review'; mock.existing = true; open();
   await screen.findByText('Title review in progress: Saved property draft');
+  expect(screen.getByLabelText('Document type')).toBeEnabled();
+  expect(screen.getByLabelText('Document type')).toHaveValue('title_report');
+  expect(screen.getByRole('heading', { name: 'Next: verify the title evidence' })).toBeVisible();
   expect(screen.getByText(/Title review is underway/)).toHaveTextContent('does not confirm clear title');
   expect(screen.getByText('Open signature-release review')).toBeDisabled();
   expect(screen.getByText('Open execution review')).toBeEnabled();

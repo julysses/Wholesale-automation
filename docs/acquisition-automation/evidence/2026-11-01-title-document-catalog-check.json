@@ -1,0 +1,13 @@
+{
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "read_only": true,
+  "latest_hosted_migration": "20261023221455",
+  "hosted_artifacts_table": null,
+  "hosted_registration_function": null,
+  "hosted_upload_admission_function": null,
+  "local_existing_functions": "20261101025323_acquisition_pending_contract_documents.sql",
+  "local_extension": "20261101054305_acquisition_title_contract_documents.sql",
+  "new_tables": false,
+  "new_grants": false,
+  "production_apply_approved": false
+}

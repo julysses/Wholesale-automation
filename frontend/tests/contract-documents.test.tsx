@@ -11,8 +11,8 @@ const context = { userId: U, workspaceId: W, contractId: C, contractVersion: 1, 
 const key = `wholesale.contract.document:v1:${U}:${W}`, path = `/api/acquisition/workspaces/${W}/contracts/${C}/versions/1/documents`;
 const body = 'Synthetic original file contents', digest = createHash('sha256').update(body).digest('hex');
 function pending(stage: 'register' | 'upload' = 'upload') { return { version: 1, context, stage, registration: { id: '50000000-0000-4000-8000-000000000001', purpose: 'purchase_contract', expected_sha256: digest, expected_byte_size: body.length, media_type: 'text/plain', retention_policy_id: P, provenance_note: 'Synthetic reviewed source for this content.' } }; }
-function candidates() { const checked = new Date().toISOString(); return { workspace_id: mock.wrongScope ? C : W, contract_id: C, contract_version: 1, purpose: 'purchase_contract', current_policy: mock.policy ? { id: P, workspace_id: W, purpose: 'purchase_contract', version: 1, retention_seconds: 86400, valid_from: '2026-01-01T00:00:00Z', valid_until: '2099-01-01T00:00:00Z' } : null, items: mock.rows ? [{ workspace_id: W, contract_id: C, contract_version: 1, artifact_id: P, purpose: 'purchase_contract', expected_sha256: digest, expected_byte_size: body.length, media_type: 'text/plain', retention_policy_id: P, created_at: '2026-01-01T00:00:00Z', retain_until: '2099-01-01T00:00:00Z', revoked_at: null, status: 'pending_verification', bytes_verified: false, legal_review_approved: false, execution_authorized: false, checked_at: checked }] : [], next_after: null, checked_at: checked, execution_authorized: false, upload_enabled: mock.enabled }; }
-function uploaded() { const saved = JSON.parse(sessionStorage.getItem(key)!), r = saved.registration, now = new Date().toISOString(); return { workspace_id: W, contract_id: C, contract_version: 1, artifact_id: r.id, purpose: 'purchase_contract', sha256: r.expected_sha256, byte_size: r.expected_byte_size, media_type: r.media_type, retention_policy_id: r.retention_policy_id, checked_at: now, registry_checked_at: now, retain_until: '2099-01-01T00:00:00Z', status: 'stored_unverified', verifier_version: 'acquisition-contract-document-bytes-v1', registry_verifier_version: 'acquisition-contract-document-registry-v1', upload_version: 'acquisition-contract-document-upload-v1', write_outcome: 'stored_or_existing', scan_status: 'not_scanned', byte_match_observed: true, verification_persisted: false, legal_review_approved: false, execution_authorized: false }; }
+function candidates(purpose = 'purchase_contract') { const checked = new Date().toISOString(); return { workspace_id: mock.wrongScope ? C : W, contract_id: C, contract_version: 1, purpose, current_policy: mock.policy ? { id: P, workspace_id: W, purpose, version: 1, retention_seconds: 86400, valid_from: '2026-01-01T00:00:00Z', valid_until: '2099-01-01T00:00:00Z' } : null, items: mock.rows ? [{ workspace_id: W, contract_id: C, contract_version: 1, artifact_id: P, purpose, expected_sha256: digest, expected_byte_size: body.length, media_type: 'text/plain', retention_policy_id: P, created_at: '2026-01-01T00:00:00Z', retain_until: '2099-01-01T00:00:00Z', revoked_at: null, status: 'pending_verification', bytes_verified: false, legal_review_approved: false, execution_authorized: false, checked_at: checked }] : [], next_after: null, checked_at: checked, execution_authorized: false, upload_enabled: mock.enabled }; }
+function uploaded() { const saved = JSON.parse(sessionStorage.getItem(key)!), r = saved.registration, now = new Date().toISOString(); return { workspace_id: W, contract_id: C, contract_version: 1, artifact_id: r.id, purpose: r.purpose, sha256: r.expected_sha256, byte_size: r.expected_byte_size, media_type: r.media_type, retention_policy_id: r.retention_policy_id, checked_at: now, registry_checked_at: now, retain_until: '2099-01-01T00:00:00Z', status: 'stored_unverified', verifier_version: 'acquisition-contract-document-bytes-v1', registry_verifier_version: 'acquisition-contract-document-registry-v1', upload_version: 'acquisition-contract-document-upload-v1', write_outcome: 'stored_or_existing', scan_status: 'not_scanned', byte_match_observed: true, verification_persisted: false, legal_review_approved: false, execution_authorized: false }; }
 function file(value = body) {
   const f = new File([value], 'evidence.txt', { type: 'text/plain' });
   // Node 20 WebCrypto rejects jsdom-realm ArrayBuffers. Preserve real hashing
@@ -31,12 +31,12 @@ beforeEach(() => {
   mock.upload.mockImplementation(uploaded);
   mock.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
     const result = init?.method === 'POST' ? url === path ? await mock.register(JSON.parse(String(init.body))) : await mock.upload(url, init)
-      : url.includes('/scan-state?') ? await mock.scan() : url.endsWith('/memberships') ? [{ workspace_id: W, user_id: U, status: 'active', role: mock.role }] : candidates();
+      : url.includes('/scan-state?') ? await mock.scan() : url.endsWith('/memberships') ? [{ workspace_id: W, user_id: U, status: 'active', role: mock.role }] : candidates(new URL(url, 'http://localhost').searchParams.get('purpose') ?? 'purchase_contract');
     return new Response(JSON.stringify(result));
   });
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
-function view(held = vi.fn()) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ContractDocuments context={context} onPending={held}/></QueryClientProvider>); }
+function view(held = vi.fn(), titleReview = false) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ContractDocuments context={context} titleReview={titleReview} onPending={held}/></QueryClientProvider>); }
 async function open() { view(); await waitFor(() => expect(screen.getByLabelText('Original document')).toBeEnabled()); }
 async function select(value = body) { fireEvent.change(screen.getByLabelText('Original document'), { target: { files: [file(value)] } }); await screen.findByText(/File checked locally/); }
 async function prepare() { await open(); await select(); fireEvent.change(screen.getByLabelText('Where did this document come from?'), { target: { value: 'Original source supplied for the content review.' } }); }
@@ -122,4 +122,28 @@ it('expires displayed scan state without keeping a stale clean status', async ()
   vi.spyOn(Date, 'now').mockReturnValue(later);
   await waitFor(() => expect(screen.getByText(/Verification status is out of date/)).toBeInTheDocument(), { timeout: 2500 });
   expect(screen.queryByText('Scan completed · Human review pending')).toBeNull();
+});
+
+
+it('guides title evidence intake without showing draft preparation approvals', async () => {
+  view(vi.fn(), true);
+  expect(screen.getByRole('heading', { name: 'Add title-review documents' })).toBeVisible();
+  expect(screen.getByLabelText('Document type')).toHaveValue('title_report');
+  expect(screen.getByRole('heading', { name: 'Next: verify the title evidence' })).toBeVisible();
+  expect(screen.queryByRole('heading', { name: 'Next: terms and human review' })).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.getByLabelText('Original document')).toBeEnabled());
+  await select(); fireEvent.change(screen.getByLabelText('Where did this document come from?'), { target: { value: 'Original title report supplied by the synthetic title reviewer.' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save and upload document' }));
+  await screen.findByText(/Upload confirmed/);
+  expect(mock.register.mock.calls[0][0].purpose).toBe('title_report');
+  expect(mock.upload.mock.calls[0][0]).toContain('purpose=title_report');
+  expect(sessionStorage.getItem(key)).toBeNull();
+});
+
+it('retains an original purchase-document recovery when title intake is opened', async () => {
+  sessionStorage.setItem(key, JSON.stringify(pending())); view(vi.fn(), true);
+  expect(screen.getByLabelText('Document type')).toHaveValue('purchase_contract');
+  await select(); fireEvent.click(screen.getByRole('button', { name: 'Retry saved document upload' }));
+  await screen.findByText(/Upload confirmed/);
+  expect(mock.register).not.toHaveBeenCalled(); expect(mock.upload.mock.calls[0][0]).toContain('purpose=purchase_contract');
 });

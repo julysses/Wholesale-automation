@@ -1,5 +1,15 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — title-document intake verified (candidate94, local)
+
+Step5 now permits original evidence capture at current title_review. The existing card defaults to Title report and explicitly separates upload, verification and title findings. Draft-preparation approval cards are hidden in this stage; no clear-title/disposition authority is implied. Historical pending documents retain their original purpose. Registration/admission/Storage reuse existing tenant/session/MFA/role/retention/capacity checks, with only title_review added to the current-status gates. No new grants or entities; existing mail behavior unchanged.
+
+Validation:4focusedSQL22.289s;45focused UI1.75s;841frontendtests/92files12.86s;build3.08s;lintno new147existing. Full rehearsal22212 terminal0:89migrations,26access,249workflows,131actualAPI, preserved24historicalrows/22populatedtables/103definitions/Storage. Evidence:evidence/2026-11-01-title-document-result.json. Real mounted API tests registration response loss/retry, provenance conflict/tenant rejection, non-executing state and current upload admission; SQL tests actual Storage RLS/reservations. Hosted Storage/provider acceptance remains unproven.
+
+Desktop1280x900/mobile375x812 synthetic browser journey passed title registration and upload response-loss/reload/exact recovery, rejection of changed bytes, one synthetic object, preserved original purchase document, later execution withdrawal and no overflow/page errors. Mobile screenshot visually inspected. Evidence:evidence/title-document-intake-ui-2026-11-01/. Browser81275 terminal0; preview71628 intentionally stopped. Earlier browser44027/82383 stopped on test selector/control-readiness issues; the corrected harness waits for enabled file selection and completed local hashing. No product safeguard was weakened. All local validations terminal.
+
+Published predecessor remains67a91ffe88afd0bba2468114957db6341742057e /run41277565234 with five success/one live PostgreSQL job at last read. Keep verifiedf133c2d and candidate94 local until all six pass; then pull/push and confirm exact successor. Next: post-execution title findings bound to original executed context/source/authority, reviewed assignment basis, disposition/buyer/disclosures/closing/exceptions, all other remaining PRD channels and hosted/legal/provider acceptance. Production unchanged; full goal active/incomplete.
+
 ## November 1 — guided title-review handoff (candidate93, local)
 
 Step5 now presents “Begin title review” after recorded execution, with a fresh exact choice, reason and personal confirmation. It retains the existing navy/orange form and exact uncertain-save recovery. The current original execution review is required; title-review-started removes the repeated action. Starting review makes no title-clearance/marketing/assignment/closing claim. Original execution/date review withdrawal remains accessible.

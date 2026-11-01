@@ -235,3 +235,10 @@ Next: title-stage capture and verification of retained original title documents,
 
 
 Next-step inspection: document registration/upload admission remain restricted to current draft/pending_signature by20261101025323. Generic contract/title/assignment-basis review source/current/candidate functions in20261101010937 already allow nonterminal current versions; the present UI holds them after draft preparation. Post-execution title conclusions therefore need an explicit binding to the recorded execution/current source context before disposition can consume them. Do not carry a generic pre-execution approval into disposition merely because its expiry has not elapsed. Extend the equivalent review entity rather than introducing a disconnected title system.
+
+
+## Original title documents in step5 — candidate94
+
+At current title_review status, the existing document card becomes “Add title-review documents” and starts with Title report selected. Original pending requests retain their prior purpose and identity. The next-step text calls for file verification and separate review of title findings; draft-preparation approval cards are not presented as title clearance. Source files remain separate from prepared/signed terms, recorded execution and title/disposition decisions. Executed status still directs the user through the explicit title-entry handoff before new capture.
+
+Registration, upload admission and Storage insert now permit this current stage under existing scope/role/session/MFA/retention/capacity controls. No scan, title finding, legal ownership or permission to distribute is inferred from metadata or bytes. Operator capture does not grant review, lifecycle or bulk-export access. New title originals cannot rewrite previous contract versions or execution sources. The review decision must still be bound to the recorded execution and exact source context before disposition consumes it.

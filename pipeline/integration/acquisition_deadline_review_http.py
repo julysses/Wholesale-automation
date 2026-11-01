@@ -199,6 +199,28 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         listing=client.get(f'/api/acquisition/workspaces/{workspace}/contracts/drafts?lead_id={lead}&limit=50',headers=headers)
         if listing.status_code!=200 or not any(item['id']==contract and item['acquisition_status']=='title_review' for item in listing.json()['items']):
             raise AssertionError('Title-review contract disappeared from the guided list')
+        title_file,title_retention=identity(40),identity(41)
+        db.query("INSERT INTO private.acquisition_evidence_policies(id,workspace_id,purpose,version,retention_seconds,valid_from,valid_until,approval_ref,reviewed_by,reviewed_at) SELECT %s,workspace_id,'title_report',1,retention_seconds,valid_from,valid_until,approval_ref,reviewed_by,reviewed_at FROM private.acquisition_evidence_policies WHERE id=%s",[title_retention,retention_policy])
+        document_path=f'/api/acquisition/workspaces/{workspace}/contracts/{contract}/versions/2/documents'
+        document_body=dict(id=title_file,purpose='title_report',expected_sha256='b'*64,expected_byte_size=123,
+            media_type='application/pdf',retention_policy_id=title_retention,provenance_note='Original synthetic title report supplied for separate verification and title review.')
+        drops['rpc/register_contract_document']=True
+        lost=client.post(document_path,json=document_body,headers=headers)
+        recovered=client.post(document_path,json=document_body,headers=headers)
+        if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate'] or recovered.json()['bytes_verified'] or recovered.json()['execution_authorized']:
+            raise AssertionError(f'Title document registration recovery failed: {lost.status_code} {recovered.status_code} {recovered.text}')
+        if client.post(document_path,json=document_body|dict(provenance_note='Changed source cannot replace the registered original title evidence.'),headers=headers).status_code!=409:
+            raise AssertionError('Title document changed provenance was accepted')
+        if client.post(document_path,json=document_body,headers=foreign).status_code not in (401,403,404):
+            raise AssertionError('Foreign workspace could register title evidence')
+        state=client.get(document_path+'/'+title_file,headers=headers)
+        if state.status_code!=200 or state.json()['bytes_verified'] or state.json()['legal_review_approved'] or state.json()['execution_authorized']:
+            raise AssertionError('Title document metadata implied verification or clearance')
+        db.query("UPDATE private.acquisition_evidence_upload_slots SET started_at=started_at-interval '121 seconds',expires_at=expires_at-interval '121 seconds'")
+        admitted=rpc('admit_contract_document_upload',dict(p_attempt=identity(42),p_workspace=workspace,p_contract=contract,p_version=2,p_artifact=title_file,p_purpose='title_report'))
+        if not admitted['admitted'] or admitted['execution_authorized']:raise AssertionError('Title document upload admission failed or granted execution')
+        if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_document' AND entity_id=%s",[title_file])!=[{'n':1}]:
+            raise AssertionError('Title document retries duplicated metadata audit')
         db.query('UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id=%s',[new_policy])
         state=client.get(execution_path,headers=headers)
         if state.status_code!=200 or state.json()['approval_current']:raise AssertionError('Bound execution retained revoked interpretation authority')

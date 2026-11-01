@@ -482,4 +482,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'title-review transition API exact committed-response recovery retains execution evidence',
             'title-review contract remains visible in guided scoped contract list',
             'title-review choice retains original execution authority and exact cursor',
-            'title-review completed choice removes repeated action']
+            'title-review completed choice removes repeated action',
+            'title document API committed-response recovery preserves one source and audit',
+            'title document API scope and provenance conflict rejected without clearance',
+            'title document current-version upload admission remains non-executing']

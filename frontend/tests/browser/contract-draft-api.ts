@@ -260,7 +260,7 @@ export async function apiFetch(path: string, init?: RequestInit) {
       value = { ...receipt, duplicate: !!prior };
     } else {
       const choice = executionChoice(context, id(11), terms, entries.at(-1)?.request, entries.length);
-      value = ledger.row.acquisition_status === 'executed' ? { ...choice, status: 'contract_unavailable', candidate: null } : choice;
+      value = ['executed', 'title_review'].includes(ledger.row.acquisition_status) ? { ...choice, status: 'contract_unavailable', candidate: null } : choice;
     }
   }
   else if (path.includes('/references')) {
@@ -284,7 +284,7 @@ export async function apiFetch(path: string, init?: RequestInit) {
   else if (path.includes('/documents')) {
     if (!ledger) throw new Error('Save the synthetic draft first');
     const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion };
-    const documentsKey = ledger.row.acquisition_status === 'pending_signature' ? 'contract-pending-document-local-qa-ledger' : 'contract-document-local-qa-ledger';
+    const documentsKey = ledger.row.acquisition_status === 'title_review' ? 'contract-title-document-local-qa-ledger' : ledger.row.acquisition_status === 'pending_signature' ? 'contract-pending-document-local-qa-ledger' : 'contract-document-local-qa-ledger';
     const saved = JSON.parse(sessionStorage.getItem(documentsKey) ?? 'null');
     const now = new Date().toISOString();
     if (init?.method === 'POST' && path.endsWith('/documents')) {
@@ -298,6 +298,8 @@ export async function apiFetch(path: string, init?: RequestInit) {
       const r = saved.request;
       const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await init.body.arrayBuffer())), b => b.toString(16).padStart(2, '0')).join('');
       if (digest !== r.expected_sha256 || init.body.size !== r.expected_byte_size) throw new Error('Synthetic file changed');
+      sessionStorage.setItem(`contract-document-local-qa-object:${r.id}`, digest);
+      if (lose) { lose = false; throw new Error('Synthetic upload reply lost after commit'); }
       value = { ...scope, artifact_id: r.id, purpose: r.purpose, sha256: digest, byte_size: r.expected_byte_size, media_type: r.media_type,
         retention_policy_id: r.retention_policy_id, checked_at: now, registry_checked_at: now, retain_until: '2099-01-01T00:00:00Z', status: 'stored_unverified',
         verifier_version: 'acquisition-contract-document-bytes-v1', registry_verifier_version: 'acquisition-contract-document-registry-v1', upload_version: 'acquisition-contract-document-upload-v1',
