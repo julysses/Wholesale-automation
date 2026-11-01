@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — resumed checkpoint and verified publication gate
+
+The GPT app update is complete; resumed the existing implementation goal. Pulled `codex/acquisition-foundation` successfully (already current). All six checks for published `2f58c7b` / run [41290490110](https://github.com/julysses/Wholesale-automation/actions/runs/41290490110) are now terminal success, including Pipeline contracts and isolated SQL. Candidate118 storage is locally committed `d52d048`, with the previously recorded full100-migration verification complete; it may now be pushed with this checkpoint.
+
+Candidate119 is registered in the 101-migration manifest and full runner, with eight focused tests passed. Its exact full rehearsal remains running in session35695, log `/tmp/disposition-transition-upgrade.log`; preserve it without restart. Candidate120 read-only handoff choices passed three focused SQL tests in22.997s, session84276 terminal0, log `/tmp/disposition-handoff-choice-focused.log`. Candidate120 is not yet registered in the full manifest. Both candidate119/120 implementation files remain uncommitted pending their full validation.
+
+Next: finish101, save exact result evidence, commit119 separately; register120 with the intended stage-aware title-choice fixture expectation and run102; then extend typed API and the existing numbered contract-step UI, preserving saved-request recovery and navy/orange styling. Source renewal after disposition entry remains unfinished. Full PRD remains active/incomplete. No production migration, provider activation, paid action, outreach, fulfillment or binding transaction occurred. PropStream remains the address/skip-trace provider; no mail vendor is selected; paused SMS remains untouched.
+
 ## November 1 — disposition client validation and recovery (candidate114)
 
 Added frontend disposition findings/request/current-choice validation and exact saved-request recovery. Principal and assignment findings remain distinct; unknown findings require concrete next actions and cannot approve. Original citations retain versions/hashes; conflicting/duplicate/future sources are rejected. Choice parsing checks fresh scope, sequence, original executed/legal sources, expiry, matching approval/hold context and independent original withdrawal. Uncertain/reloaded/later-denied requests retain the exact original context/payload; only a matching receipt or definite first-attempt rejection can clear them. No visible form has been mounted yet.

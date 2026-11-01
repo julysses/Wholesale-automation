@@ -1,5 +1,13 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — resumed checkpoint and verified publication gate
+
+The GPT app update is complete; resumed the existing implementation goal. Pulled `codex/acquisition-foundation` successfully (already current). All six checks for published `2f58c7b` / run [41290490110](https://github.com/julysses/Wholesale-automation/actions/runs/41290490110) are now terminal success, including Pipeline contracts and isolated SQL. Candidate118 storage is locally committed `d52d048`, with the previously recorded full100-migration verification complete; it may now be pushed with this checkpoint.
+
+Candidate119 is registered in the 101-migration manifest and full runner, with eight focused tests passed. Its exact full rehearsal remains running in session35695, log `/tmp/disposition-transition-upgrade.log`; preserve it without restart. Candidate120 read-only handoff choices passed three focused SQL tests in22.997s, session84276 terminal0, log `/tmp/disposition-handoff-choice-focused.log`. Candidate120 is not yet registered in the full manifest. Both candidate119/120 implementation files remain uncommitted pending their full validation.
+
+Next: finish101, save exact result evidence, commit119 separately; register120 with the intended stage-aware title-choice fixture expectation and run102; then extend typed API and the existing numbered contract-step UI, preserving saved-request recovery and navy/orange styling. Source renewal after disposition entry remains unfinished. Full PRD remains active/incomplete. No production migration, provider activation, paid action, outreach, fulfillment or binding transaction occurred. PropStream remains the address/skip-trace provider; no mail vendor is selected; paused SMS remains untouched.
+
 ## November 1 — disposition handoff storage verified (candidate118)
 
 Full100-migration rehearsal passed26 access checks,305 workflow tests and158 actual API checks, preserving24 historical rows across22 populated tables,103 definitions and Storage. Session55025 terminal0; log `/tmp/disposition-transition-storage-upgrade.log`; evidence `evidence/2026-11-01-disposition-transition-storage-result.json`. Three focused storage tests passed19.182s. Candidate118 is ready for its separate local commit. Candidate119 writer remains uncommitted, with8 focused tests passed58.829s; next register and rehearse101 migrations, then current choices/API/UI and renewal paths. Published2f58c7b/run41290490110 remains the all-six-success push gate. Full goal active/incomplete; no production migration or live action.
