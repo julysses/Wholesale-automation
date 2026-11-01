@@ -41,6 +41,7 @@ from acquisition_disposition_plan_tests import DispositionPlanCases
 from acquisition_disposition_storage_tests import DispositionStorageCases
 from acquisition_disposition_source_tests import DispositionSourceCases
 from acquisition_disposition_policy_tests import DispositionPolicyCases
+from acquisition_disposition_review_tests import DispositionReviewCases
 from acquisition_transition_choice_tests import TransitionChoiceCases
 from acquisition_contract_transition_tests import ContractTransitionCases
 from acquisition_signature_candidate_tests import SignatureCandidateCases
@@ -73,7 +74,7 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
-class FullCatalogDocumentTests(DispositionPolicyCases, DispositionSourceCases, DispositionStorageCases, DispositionPlanCases, TitleCandidateCases, TitleReviewCases, TitleSourceCases, TitleStorageCases, TitleDocumentCases, TitleChoiceCases, TitleTransitionCases, ExecutionDeadlineCases, DeadlineChoiceCases, DeadlineStateCases, DeadlineReviewCases, DeadlineStorageCases, ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
+class FullCatalogDocumentTests(DispositionReviewCases, DispositionPolicyCases, DispositionSourceCases, DispositionStorageCases, DispositionPlanCases, TitleCandidateCases, TitleReviewCases, TitleSourceCases, TitleStorageCases, TitleDocumentCases, TitleChoiceCases, TitleTransitionCases, ExecutionDeadlineCases, DeadlineChoiceCases, DeadlineStateCases, DeadlineReviewCases, DeadlineStorageCases, ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
     supports_title_choice = True
 
     def setUp(self):
@@ -87,7 +88,7 @@ class FullCatalogDocumentTests(DispositionPolicyCases, DispositionSourceCases, D
             self.terms=self.execution_prepared_terms
         if self._testMethodName.startswith(('test_signature_deadline_write_','test_signature_deadline_state_','test_signature_deadline_choice_')):
             self.terms=self.deadline_prepared_terms
-        if self._testMethodName.startswith(('test_signature_execution_deadline_', 'test_signature_title_transition_', 'test_signature_title_choice_', 'test_signature_title_document_', 'test_signature_title_storage_', 'test_signature_title_sources_', 'test_signature_title_write_', 'test_signature_title_candidate_', 'test_signature_disposition_plan_', 'test_signature_disposition_storage_', 'test_signature_disposition_sources_', 'test_signature_disposition_policy_')):
+        if self._testMethodName.startswith(('test_signature_execution_deadline_', 'test_signature_title_transition_', 'test_signature_title_choice_', 'test_signature_title_document_', 'test_signature_title_storage_', 'test_signature_title_sources_', 'test_signature_title_write_', 'test_signature_title_candidate_', 'test_signature_disposition_plan_', 'test_signature_disposition_storage_', 'test_signature_disposition_sources_', 'test_signature_disposition_policy_', 'test_signature_disposition_write_')):
             self.terms=self.binding_prepared_terms
             self.deadline_proposal=self.binding_deadline_proposal
         if self._testMethodName.startswith('test_signature_'):
@@ -136,6 +137,7 @@ def run_workflow_probes(db):
     document_names += sorted(name for name in DispositionStorageCases.__dict__ if name.startswith('test_signature_disposition_storage_'))
     document_names += sorted(name for name in DispositionSourceCases.__dict__ if name.startswith('test_signature_disposition_sources_'))
     document_names += sorted(name for name in DispositionPolicyCases.__dict__ if name.startswith('test_signature_disposition_policy_'))
+    document_names += sorted(name for name in DispositionReviewCases.__dict__ if name.startswith('test_signature_disposition_write_'))
     document_names += sorted(name for name in TitleChoiceCases.__dict__ if name.startswith('test_signature_title_choice_'))
     document_names += sorted(name for name in TitleTransitionCases.__dict__ if name.startswith('test_signature_title_transition_'))
     document_names += sorted(name for name in ExecutionDeadlineCases.__dict__ if name.startswith('test_signature_execution_deadline_'))

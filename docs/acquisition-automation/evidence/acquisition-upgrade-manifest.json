@@ -389,6 +389,10 @@
     {
       "file": "20261101080541_acquisition_disposition_policy_scope.sql",
       "sha256": "53213007d1f25d506ad5840b9bd0fe99c880088278efebc594c7b35fcb5177d8"
+    },
+    {
+      "file": "20261101080958_acquisition_disposition_review_write.sql",
+      "sha256": "1ab959eac5ebfa98a82a40133b9a12288dee530b1aeb1d4d47977cdaea57f0a5"
     }
   ]
 }
