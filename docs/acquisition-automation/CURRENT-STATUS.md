@@ -2,6 +2,14 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October31 — lifecycle money and signature prerequisites corrected
+
+Pre-persistence inspection found the pure lifecycle snapshot omitted purchase price and pending_signature required only signature_release evidence. Reviewer v3 now receives exact sourced purchase-price cents, requires known positive price for normal progression, flags earnest money above price, and requires contract_review separately from signature_release before pending_signature (with known earnest money; zero remains valid). Evidence-supported exception review preserves unknown amounts. Strict browser-safe integer bounds match the persisted terms schema. No SQL, endpoint or execution authority added.
+
+Validation: full offline backend3781 passed,10 skipped,6 subtests,32.39s, terminal exit0 (/tmp/acquisition-lifecycle-money-backend.log). Final focused161 passed after adding an exact14000029-cent projection regression; its first run caught a tuple/list mistake in the test fixture, corrected before final pass. Diff check passed. Existing lifecycle command/snapshot commits remain local. Successor41262891275 has five terminal successes and a live real-PostgreSQL contention job; retain the all-six-success publication gate.
+
+The next SQL work must record a signature-release dependency on the exact current contract-review and source bytes, pin authority in deterministic order, and recheck expiry after waits using current time. A fresh inspection of existing STABLE review-state functions shows statement_timestamp must not substitute for post-lock authorization. See CONTRACTS-AND-DISPOSITION.md. Supabase function privilege guidance was checked at https://supabase.com/docs/guides/database/functions. No new migration was written or applied; signature/exception/closing evidence persistence and full lifecycle/disposition still remain required alongside the full PRD.
+
 ## October 31 — lifecycle repository projection and fresh inventory
 
 Read-only hosted catalog captured at2026-11-01T01:56:26Z (October31 local), saved in evidence/2026-10-31-lifecycle-catalog.json:100 columns,9 constraints,72 grants plus indexes/policies/triggers for canonical deals/buyers/preferences. Hosted ledger remains20261023221455; acquisition contract tables remain undeployed. Current local draft/terms migrations were inspected together: canonical status is still constrained to draft, the write guard only permits term-version advances, and immutable version rows keep their historical draft status. Lifecycle state therefore must come from canonical deals and a separate transition ledger, never by rewriting version status.

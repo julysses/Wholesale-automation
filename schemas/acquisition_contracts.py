@@ -67,7 +67,8 @@ class ContractReviewSnapshot(BaseModel):
     effective_date: date | None = None
     inspection_deadline_date: date | None = None
     closing_deadline_date: date | None = None
-    earnest_money_cents: int | None = Field(default=None, strict=True, ge=0)
+    purchase_price_cents: int | None = Field(default=None, strict=True, ge=1, le=9007199254740991)
+    earnest_money_cents: int | None = Field(default=None, strict=True, ge=0, le=9007199254740991)
     evidence: tuple[ContractEvidence, ...] = ()
 
     @field_validator('effective_date', 'inspection_deadline_date', 'closing_deadline_date', mode='before')

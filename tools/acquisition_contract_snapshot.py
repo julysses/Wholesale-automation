@@ -73,5 +73,6 @@ def prepare_transition_snapshot(*, workspace_id: UUID, contract_id: UUID,
         contract_version=version.version, status=deal.acquisition_status,
         target_status=request.target_status, now=now, snapshot_at=snapshot_at,
         assignment_allowed=terms.assignment_allowed if terms else None,
+        purchase_price_cents=terms.purchase_price_cents if terms else None,
         earnest_money_cents=terms.earnest_money_cents if terms else None,
         evidence=evidence, exit_type=exit_type, buyer_id=buyer_id, **dates)

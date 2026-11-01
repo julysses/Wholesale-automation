@@ -17,7 +17,7 @@ def snapshot(**changes):
         workspace_id=uid(1), contract_id=uid(2), contract_version=2,
         status='executed', target_status='title_review', now=NOW, snapshot_at=NOW,
         effective_at=NOW-timedelta(days=1), inspection_deadline=NOW+timedelta(days=3),
-        closing_deadline=NOW+timedelta(days=20), earnest_money_cents=0,
+        closing_deadline=NOW+timedelta(days=20), earnest_money_cents=0, purchase_price_cents=14000000,
         evidence=[evidence('executed_contract')]) | changes)
 
 
@@ -33,6 +33,37 @@ def test_review_entry_preserves_unknowns_and_never_authorizes():
     assert result['execution_authorized'] is False
     assert 'reviewed_by' not in str(result)
     assert 'CONTRACT_TERMS_INCOMPLETE' in review_contract_transition(snapshot(earnest_money_cents=None))['reason_codes']
+
+
+def test_signature_release_alone_cannot_replace_contract_review_or_known_price():
+    s = snapshot(status='draft', target_status='pending_signature', purchase_price_cents=None,
+                 evidence=[evidence('signature_release')])
+    result = review_contract_transition(s)
+    assert 'PURCHASE_PRICE_REQUIRED' in result['reason_codes']
+    assert 'EVIDENCE_REQUIRED:contract_review' in result['reason_codes']
+    proofs = [evidence('signature_release'), evidence('contract_review', 11)]
+    ready = review_contract_transition(snapshot(status='draft', target_status='pending_signature', evidence=proofs))
+    assert ready['readiness'] == 'ready_for_review' and not ready['execution_authorized']
+    missing = review_contract_transition(snapshot(status='draft', target_status='pending_signature',
+                                                  evidence=proofs, earnest_money_cents=None))
+    assert 'EARNEST_MONEY_REQUIRED' in missing['reason_codes']
+
+
+def test_executed_progress_requires_known_price_and_sensible_earnest_money():
+    assert 'PURCHASE_PRICE_REQUIRED' in review_contract_transition(snapshot(purchase_price_cents=None))['reason_codes']
+    assert 'EARNEST_MONEY_EXCEEDS_PURCHASE_PRICE' in review_contract_transition(snapshot(earnest_money_cents=14000001))['reason_codes']
+
+
+def test_exception_can_be_reviewed_without_inventing_missing_money():
+    result = review_contract_transition(snapshot(target_status='cancelled', purchase_price_cents=None,
+        earnest_money_cents=None, evidence=[evidence('cancellation_review')]))
+    assert result['readiness'] == 'ready_for_review' and not result['execution_authorized']
+
+
+@pytest.mark.parametrize('value', [True, '14000000', 14000000.5, 0, -1, 9007199254740992])
+def test_lifecycle_price_rejects_coercions_and_inexact_transport_values(value):
+    with pytest.raises(ValidationError):
+        snapshot(purchase_price_cents=value)
 
 
 @pytest.mark.parametrize('field,value',[

@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from schemas.acquisition_contracts import CONTRACT_TRANSITIONS, ContractReviewSnapshot
 
-VERSION = 'acquisition-contract-review-v2'
+VERSION = 'acquisition-contract-review-v3'
 NEXT = CONTRACT_TRANSITIONS
 BUYER_BOUND = {'seller_disclosure', 'assignee_disclosure',
                'buyer_verification', 'assignment_agreement', 'deposit_confirmation'}
@@ -32,8 +32,15 @@ def review_contract_transition(snapshot: ContractReviewSnapshot) -> dict:
     if s.target_status in EXCEPTIONS:
         required.add(EXCEPTIONS[s.target_status])
     else:
+        if s.purchase_price_cents is None:
+            reasons.append('PURCHASE_PRICE_REQUIRED')
+        if (s.purchase_price_cents is not None and s.earnest_money_cents is not None
+                and s.earnest_money_cents > s.purchase_price_cents):
+            reasons.append('EARNEST_MONEY_EXCEEDS_PURCHASE_PRICE')
         if s.target_status == 'pending_signature':
-            required.add('signature_release')
+            required.update({'contract_review', 'signature_release'})
+            if s.earnest_money_cents is None:
+                reasons.append('EARNEST_MONEY_REQUIRED')
         if s.target_status in {'executed', 'title_review', 'disposition_review',
                                'assigned_or_direct_close', 'closed'}:
             required.add('executed_contract')

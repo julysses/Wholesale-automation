@@ -39,10 +39,21 @@ def test_preserves_source_precision_unknowns_and_explicit_zero_without_authority
     assert snapshot.inspection_deadline is None and snapshot.inspection_deadline_date is None
     assert snapshot.closing_deadline.utcoffset().total_seconds() == -21600
     assert snapshot.earnest_money_cents == 0 and snapshot.assignment_allowed is None
+    assert snapshot.purchase_price_cents is None
     reviewed = review_contract_transition(snapshot)
     assert 'DATE_ONLY_CONTRACT_TERMS_REQUIRE_REVIEW' in reviewed['reason_codes']
     assert 'EVIDENCE_REQUIRED:executed_contract' in reviewed['reason_codes']
     assert reviewed['readiness'] == 'needs_review' and not reviewed['execution_authorized']
+
+
+def test_projects_exact_sourced_price_without_dollar_conversion():
+    args = inputs()
+    row = args['version'].model_dump()
+    row['terms']['purchase_price_cents'] = 14000029
+    row['terms']['sources'] += ({'term': 'purchase_price', 'artifact_id': C,
+        'artifact_version': 1, 'sha256': 'a' * 64, 'locator': 'Synthetic purchase clause'},)
+    args['version'] = LifecycleTermsVersion.model_validate(row)
+    assert prepare_transition_snapshot(**args).purchase_price_cents == 14000029
 
 
 @pytest.mark.parametrize('field,value', [('workspace_id', C), ('id', W),
