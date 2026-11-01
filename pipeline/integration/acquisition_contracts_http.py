@@ -441,4 +441,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'document link withdrawal after revoked source while paused preserves original audit',
             'signature review API committed reply loss exact retry and independent basis',
             'signature review API tenant session target and request conflict denial',
-            'signature review API revoked source and paused withdrawal recovery without legal transition']
+            'signature review API revoked source and paused withdrawal recovery without legal transition',
+            'signature candidate API exact original document basis and scoped reviewer policy',
+            'signature candidate API paused hold preserves independent original withdrawal']

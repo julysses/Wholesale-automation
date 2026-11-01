@@ -35,6 +35,13 @@ def verify_signature_http(db,app,drops,headers,foreign,workspace,contract,terms_
         expires_at=(datetime.now(timezone.utc)+timedelta(seconds=60)).isoformat(),personally_reviewed=True,
         note='Synthetic signature release review only; no contract sent or signed.')
     with TestClient(app) as client:
+        choices=client.get(path+'/candidate',headers=headers)
+        if choices.status_code!=200 or choices.headers.get('cache-control')!='no-store' or choices.json()['status']!='ready_for_human_review':
+            raise AssertionError('Mounted signature choices unavailable')
+        choice=choices.json()['candidate']
+        if choice['basis_review_id']!=BASIS or choice['artifact_id']!=basis['artifact_id'] or choice['source_version']!=1 or choice['policy_id']!=POLICY:
+            raise AssertionError('Mounted signature choices lost original source or basis')
+        body.update(basis_review_id=choice['basis_review_id'],policy_id=choice['policy_id'],expected_sequence=choice['expected_sequence'])
         initial=client.get(path,headers=headers)
         if initial.status_code!=200 or initial.json()['status']!='not_reviewed':
             raise AssertionError('Signature initial state unavailable')
@@ -49,6 +56,8 @@ def verify_signature_http(db,app,drops,headers,foreign,workspace,contract,terms_
         if current.status_code!=200 or not current.json()['approval_current'] or current.json()['basis_review_id']!=BASIS:
             raise AssertionError('Signature current exact basis unavailable')
         for identity in (foreign,{}):
+            if client.get(path+'/candidate',headers=identity).status_code not in (401,403):
+                raise AssertionError('Signature choices crossed workspace/session')
             for method in ('get','post'):
                 response=getattr(client,method)(path,headers=identity,**({'json':body} if method=='post' else {}))
                 if response.status_code not in (401,403):raise AssertionError('Signature workspace/session bypass')
@@ -71,6 +80,9 @@ def verify_signature_revocation_http(db,app,drops,headers,path,body):
             current=client.get(path,headers=headers)
             if current.status_code!=200 or current.json()['approval_current'] or current.json()['status']!='requires_review':
                 raise AssertionError('Signature approval survived revoked source or pause')
+            choices=client.get(path+'/candidate',headers=headers)
+            if choices.status_code!=200 or choices.json()['status']!='paused' or choices.json()['candidate'] is not None or choices.json()['withdrawal']['basis_review_id']!=BASIS or choices.json()['withdrawal']['review_id']!=RELEASE:
+                raise AssertionError('Signature choices lost independent original withdrawal during hold')
             if not client.post(path,json=body,headers=headers).json()['duplicate']:
                 raise AssertionError('Signature historical retry lost after pause')
             withdrawal=body|dict(id=WITHDRAW,expected_sequence=1,status='withdrawn',expires_at=None,personally_reviewed=False)

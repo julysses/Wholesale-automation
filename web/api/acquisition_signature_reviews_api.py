@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
-from schemas.acquisition_signature_reviews import SignatureReviewRequest, SignatureReviewReceipt, SignatureReviewState
+from schemas.acquisition_signature_reviews import SignatureReviewRequest, SignatureReviewReceipt, SignatureReviewState, SignatureReviewCandidate
 from tools.acquisition_store import acquisition_store
 from web.api.acquisition_contract_documents_api import Version, rpc, uncertain
 
@@ -11,6 +11,25 @@ router = APIRouter(prefix='/workspaces/{workspace_id}/contracts/{contract_id}/ve
 
 def same_scope(value, workspace_id, contract_id, contract_version):
     return (value.workspace_id, value.contract_id, value.contract_version) == (workspace_id, contract_id, contract_version)
+
+
+@router.get('/candidate')
+async def signature_candidate(workspace_id: UUID, contract_id: UUID, contract_version: Version,
+                              response: Response, store=Depends(acquisition_store)):
+    response.headers['Cache-Control'] = 'no-store'
+    raw = await rpc(store, 'signature_review_candidate', {'p_workspace': str(workspace_id),
+        'p_contract': str(contract_id), 'p_version': contract_version})
+    try:
+        choice = SignatureReviewCandidate.model_validate(raw)
+        now = datetime.now(timezone.utc)
+        if (not same_scope(choice, workspace_id, contract_id, contract_version)
+                or not now-timedelta(seconds=30) <= choice.checked_at <= now+timedelta(seconds=5)
+                or choice.candidate is not None and choice.candidate.max_expires_at <= now
+                or choice.current_review.approval_current and choice.current_review.expires_at <= now):
+            raise ValueError('Fresh exact signature choices required')
+    except (ValueError, TypeError):
+        raise uncertain('Signature review choices could not be confirmed. Refresh before continuing.') from None
+    return choice.model_dump(mode='json')
 
 
 @router.get('')

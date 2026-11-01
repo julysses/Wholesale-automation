@@ -1,5 +1,6 @@
 """Signature-release review transport, never a signing request or execution permit."""
 from typing import Literal
+from datetime import timedelta
 from uuid import UUID
 from pydantic import AwareDatetime, Field, StrictBool, field_validator, model_validator
 from schemas.acquisition_contract_reviews import Exact
@@ -92,4 +93,64 @@ class SignatureReviewState(SignatureReviewScope):
                 raise ValueError('Current expiry required')
         elif self.expires_at is not None:
             raise ValueError('Historical decision cannot expose current expiry')
+        return self
+
+
+class SignatureApprovalChoice(Exact):
+    basis_review_id: UUID
+    artifact_id: UUID
+    source_version: int = Field(strict=True, ge=1, le=2147483647)
+    sha256: str = Field(strict=True, pattern=r'^[0-9a-f]{64}$')
+    reviewed_at: AwareDatetime
+    policy_id: UUID
+    expected_sequence: int = Field(strict=True, ge=0, lt=2147483647)
+    max_expires_at: AwareDatetime
+
+    @field_validator('reviewed_at', 'max_expires_at', mode='before')
+    @classmethod
+    def timestamp_string(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit timestamp required')
+        return value
+
+
+class SignatureWithdrawalChoice(Exact):
+    review_id: UUID
+    basis_review_id: UUID
+    policy_id: UUID
+    expected_sequence: int = Field(strict=True, ge=1, lt=2147483647)
+
+
+class SignatureReviewCandidate(SignatureReviewScope):
+    status: Literal['paused', 'contract_unavailable', 'history_limit_reached',
+                    'contract_review_required', 'reviewer_policy_required', 'ready_for_human_review']
+    candidate: SignatureApprovalChoice | None
+    withdrawal: SignatureWithdrawalChoice | None
+    current_review: SignatureReviewState
+    checked_at: AwareDatetime
+
+    @field_validator('checked_at', mode='before')
+    @classmethod
+    def timestamp_string(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit timestamp required')
+        return value
+
+    @model_validator(mode='after')
+    def coherent_choices(self):
+        current = self.current_review
+        if (current.workspace_id, current.contract_id, current.contract_version, current.checked_at) != (
+                self.workspace_id, self.contract_id, self.contract_version, self.checked_at):
+            raise ValueError('Exact current review context required')
+        if (self.status == 'ready_for_human_review') != (self.candidate is not None):
+            raise ValueError('Hold cannot carry an approval choice')
+        choice = self.candidate
+        if choice and (choice.expected_sequence != current.sequence or choice.source_version > self.contract_version
+                or choice.reviewed_at > self.checked_at or not self.checked_at < choice.max_expires_at <= self.checked_at+timedelta(days=1)):
+            raise ValueError('Current source, sequence and deadline required')
+        withdrawal = self.withdrawal
+        if withdrawal and (current.status not in {'approved', 'requires_review'}
+                or withdrawal.review_id != current.review_id or withdrawal.basis_review_id != current.basis_review_id
+                or withdrawal.expected_sequence != current.sequence):
+            raise ValueError('Exact original withdrawal identity required')
         return self

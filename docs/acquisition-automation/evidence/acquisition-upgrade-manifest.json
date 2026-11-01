@@ -281,6 +281,10 @@
     {
       "file": "20261101020154_acquisition_signature_reviews.sql",
       "sha256": "5eb4e05870fe5d071914fbb1d3b4e2b95fc8856aebc828a019d6c8a702361aed"
+    },
+    {
+      "file": "20261101022040_acquisition_signature_candidates.sql",
+      "sha256": "23131839e6e022b44a3d1c39d43d73834b53eae26c6c91f9f2fb50d822406744"
     }
   ]
 }
