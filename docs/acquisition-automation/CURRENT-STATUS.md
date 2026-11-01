@@ -2,6 +2,14 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — lifecycle command boundary
+
+Published979b3d16d739d3174b2eb66b82fdbdfcff8762cd after all six predecessor checks passed. Successor run41262891275 is still running (isolated SQL passed at latest observation); require all six terminal successes before another feature push. Worktree pull was already current. Do not cancel or restart the live run.
+
+Added strict lifecycle request/receipt schemas and shared the transition graph with the pure reviewer. Terms version and lifecycle sequence remain separate, exact reason text survives serialization, and requests cannot provide evidence or approval assertions. Historical receipts must match request/workspace/contract/version/sequence/statuses and cannot grant execution authority. Tests cover coercion, skipped/terminal paths, exception recovery structure, foreign/mismatched receipts and retry identity. Focused130 passed; full offline backend3751 passed,10 skipped,6 subtests in32.65s, exit0; log /tmp/acquisition-transition-boundary-backend.log. No SQL, mounted endpoint or UI state-changing control is added yet.
+
+Next: fresh schema inventory and persisted evidence/policy/lifecycle authority, canonical-deal transition ledger with independent lifecycle sequence, exact-request hash/locks and post-wait revalidation, then mounted API and guided controls. The evidence prerequisites and concurrency design are recorded in CONTRACTS-AND-DISPOSITION.md. All remaining PRD/channel/hosted acceptance work remains open. No production migration, outreach, fulfillment, signature or closing action occurred.
+
 ## October 31 — guided original-document reference controls
 
 ContractLinksForm now follows document preparation and precedes terms/review within existing step5. An operator selects an earlier saved version, document purpose and original file, adds a reason, and records a reference without copying the file or carrying approval. Version/document choices are bounded and paginated, scope checked and refreshed; newly revoked or stale sources cannot be selected for a new link. Withdrawal is limited to explicit links and remains possible when source verification is revoked. Term-source references remain managed by new terms versions.

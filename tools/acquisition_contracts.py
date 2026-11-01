@@ -5,19 +5,10 @@ then lock and recheck the current version/evidence before persisting any transit
 """
 from datetime import timedelta
 
-from schemas.acquisition_contracts import ContractReviewSnapshot
+from schemas.acquisition_contracts import CONTRACT_TRANSITIONS, ContractReviewSnapshot
 
 VERSION = 'acquisition-contract-review-v2'
-NEXT = {
-    'draft': {'pending_signature', 'cancelled'},
-    'pending_signature': {'executed', 'cancelled', 'expired', 'disputed'},
-    'executed': {'title_review', 'cancelled', 'expired', 'disputed'},
-    'title_review': {'disposition_review', 'cancelled', 'expired', 'disputed'},
-    'disposition_review': {'assigned_or_direct_close', 'cancelled', 'expired', 'disputed'},
-    'assigned_or_direct_close': {'closed', 'cancelled', 'expired', 'disputed'},
-    'disputed': {'title_review', 'cancelled', 'expired'},
-    'closed': set(), 'cancelled': set(), 'expired': set(),
-}
+NEXT = CONTRACT_TRANSITIONS
 BUYER_BOUND = {'seller_disclosure', 'assignee_disclosure',
                'buyer_verification', 'assignment_agreement', 'deposit_confirmation'}
 EXCEPTIONS = {'cancelled': 'cancellation_review', 'expired': 'expiration_review',

@@ -8,6 +8,16 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validato
 ContractStatus = Literal['draft', 'pending_signature', 'executed', 'title_review',
                          'disposition_review', 'assigned_or_direct_close', 'closed',
                          'cancelled', 'expired', 'disputed']
+CONTRACT_TRANSITIONS = {
+    'draft': frozenset({'pending_signature', 'cancelled'}),
+    'pending_signature': frozenset({'executed', 'cancelled', 'expired', 'disputed'}),
+    'executed': frozenset({'title_review', 'cancelled', 'expired', 'disputed'}),
+    'title_review': frozenset({'disposition_review', 'cancelled', 'expired', 'disputed'}),
+    'disposition_review': frozenset({'assigned_or_direct_close', 'cancelled', 'expired', 'disputed'}),
+    'assigned_or_direct_close': frozenset({'closed', 'cancelled', 'expired', 'disputed'}),
+    'disputed': frozenset({'title_review', 'cancelled', 'expired'}),
+    'closed': frozenset(), 'cancelled': frozenset(), 'expired': frozenset(),
+}
 EvidenceKind = Literal['signature_release', 'executed_contract', 'contract_review',
                        'title_review', 'assignment_basis', 'seller_disclosure',
                        'assignee_disclosure', 'buyer_verification', 'structure_approval',
