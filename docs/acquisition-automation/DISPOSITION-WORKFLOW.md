@@ -6,7 +6,7 @@ The canonical contract remains `deals`. The additive `acquisition_disposition_pl
 
 A plan may be prepared while title findings remain unresolved. This grants no execution authority. Subsequent disposition review must independently require the exact current post-execution `title_findings`, current execution/deadline authority and, for an assignment, a reviewed legal basis tied to the executed contract. Draft preparation `title_review` or generic `assignment_basis` must not substitute for those checks.
 
-## App journey to implement next
+## Guided app journey (candidate104)
 
 Keep the existing numbered acquisition journey and navy/orange controls. In contract step 5, after original documents and title findings, show a compact **Purchase path** card:
 
@@ -17,7 +17,7 @@ Keep the existing numbered acquisition journey and navy/orange controls. In cont
 
 The form must share ContractDraft's existing navigation and sibling-edit holds. Store the exact request before sending. A lost reply, reload or later denial retains the original version and payload until an exact receipt confirms it. Corrupt/conflicting recovery must remain held. Clear a new request only for a definite first-attempt rejection; GET failures never clear a pending save.
 
-The UI is not implemented in candidate103. Its mounted API and database foundation passed local verification; this document is the exact next implementation checklist, not a release claim.
+The guided card is implemented in candidate104 with exact original recovery and parent navigation/sibling holds. Full frontend930 tests, build/typecheck, lint and synthetic desktop/phone browser journeys passed. API/database foundation was verified separately in candidate103. These are local checks, not hosted or live acceptance.
 
 ## Persistence and API
 
@@ -31,7 +31,7 @@ Compensation is forward-only: pause acquisition or withdraw a saved personal pro
 
 ## Remaining full disposition work
 
-- Implement and browser-test the guided proposal card and exact parent recovery.
+- Guided proposal card and exact parent recovery are locally verified; hosted/operator acceptance remains open.
 - Add versioned post-execution legal/disposition review bound to current execution, deadlines, title findings, proposed exit and approved original legal evidence. Do not seed authority policies.
 - Implement controlled lifecycle transitions, amendments and cancelled/expired/disputed handling without breaking legacy contract constraints.
 - Isolate existing buyers and dependent routes/tables before matching or package generation; do not clone a separate buyer CRM.

@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — guided purchase path (candidate104, locally verified)
+
+Added the Purchase path card within existing ContractDraft step5 after title findings/history. It follows Choose path → Explain → Save internal proposal, retains navy/orange styling, defaults to no selection, and distinguishes principal purchase from proposed assignment. Displayed proposals grant no title, marketing, assignment or closing authority. Independent original withdrawal remains available after pause.
+
+Pending requests are preserved before sending, bound to the original user/workspace/contract/version and retried exactly after lost replies, reloads or later denials. Only an exact receipt or definite first-attempt write rejection clears recovery. The parent includes plan recovery in navigation/sibling holds, original-version restoration and corrupt/conflicting request blocking. State reads validate scope, sequence, timestamp freshness and withdrawal identity.
+
+Validation: full frontend930 tests passed across97 files9.94s, including original-version parent recovery without a selected offer, conflicting recovery holds and scoped rejection markers. Build/typecheck passed; lint gate passed with no new findings (147 tracked existing findings). Synthetic desktop1280x900 and phone375x812 journeys passed intentional selection, lost-response/reload/exact retry, paused original withdrawal, two saved records, zero page errors and no overflow. Phone screenshot visually inspected. Evidence: `evidence/purchase-path-ui-2026-11-01/`. Browser77082 and final build11096 terminal0; logs `/tmp/purchase-path-{ui-all,build-final,lint,browser}.log`. No backend or database changes in this increment; previous backend/database results are not new runs.
+
+Published predecessor007cb77ad8736cb170a528dd605c37e7a08e0e53 / run41285050627 remains in progress at last check; pipeline, frontend and backend passed. Keep this verified increment local until all six predecessor jobs are terminal success. Do not cancel or restart checks. Next: original post-execution disposition/legal review binding current title, execution/deadlines and the proposed exit, followed by controlled lifecycle transitions and existing-buyer isolation/matching/packages/disclosures/deposits/closing. Preserve full PRD and hosted/provider/channel/legal/exception acceptance. No production migration, policy provisioning, provider activation, outreach, paid fulfillment or binding transaction occurred.
+
 ## November 1 — internal purchase-path API and persistence (candidate103, locally verified)
 
 Resumed after the app update. Fresh pull is current. All six exact predecessor f7f0c2e7dbd4904eb1e9793d6f5b6d490f3a8d71 / run41283957816 jobs passed, including the previously reported Pipeline contracts and isolated SQL job. Do not cancel or restart successor CI.

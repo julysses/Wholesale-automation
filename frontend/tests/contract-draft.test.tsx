@@ -35,6 +35,10 @@ beforeEach(() => {
           kind: 'deadline_resolution', term: body.term, review_id: body.id, interpretation_review_id: body.original_review_id ?? body.id,
           sequence: body.expected_sequence + 1, status: body.status, duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
       }
+      if (path.endsWith('/disposition-plan')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: body.expected_version, plan_id: body.id, sequence: body.expected_sequence + 1, status: body.status, exit_type: body.exit_type, original_plan_id: body.original_plan_id, duplicate: true, plan_recorded: true, disposition_approved: false, execution_authorized: false }) };
+      }
       if (path.endsWith('/title-review')) {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: body.expected_version, kind: 'title_findings', review_id: body.id, sequence: body.expected_sequence + 1, status: body.status, duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
@@ -369,4 +373,31 @@ it('recovers original title version without a proposal and then restores current
 it('blocks corrupt title recovery before reading the current contract', async () => {
   const { titleKey } = await import('../src/lib/acquisition/title-review'); sessionStorage.setItem(titleKey(id(1), id(2)), '{broken');
   open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled();
+});
+
+it('holds sibling contract steps while purchase-path planning is open', async () => {
+  record.acquisition_status = 'title_review'; mock.existing = true; open();
+  await waitFor(() => expect(screen.getByText('Open purchase path')).toBeEnabled()); fireEvent.click(screen.getByText('Open purchase path'));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true));
+  for (const name of ['Open title review', 'View title history', 'Open execution review', 'Open date review', 'Refresh draft information']) expect(screen.getByText(name)).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled(); fireEvent.click(screen.getByText('Close without saving'));
+  await waitFor(() => expect(screen.getByText('Open title review')).toBeEnabled()); expect(screen.getByLabelText('Document type')).toBeEnabled();
+});
+it('recovers original purchase-path version without selecting an offer', async () => {
+  const { preservePlan } = await import('../src/lib/acquisition/disposition-plan');
+  const request = { id: id(96), expected_version: 1, expected_sequence: 1, status: 'withdrawn' as const, exit_type: 'wholesale_assignment' as const, original_plan_id: id(95), note: 'Withdraw the original purchase-path proposal after lost response.' };
+  preservePlan(sessionStorage, { version: 1, context: signatureContext, request });
+  record.acquisition_status = 'title_review'; record.acquisition_version = 2; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByText('Retry saved proposal')).toBeEnabled()); expect(screen.getByText('Open title review')).toBeDisabled();
+  fireEvent.click(screen.getByText('Retry saved proposal')); await waitFor(() => expect(sessionStorage.length).toBe(0));
+  expect(posts()).toHaveLength(1); expect(posts()[0][0]).toContain('/versions/1/disposition-plan'); expect(JSON.parse(posts()[0][1].body)).toEqual(request);
+  await waitFor(() => expect(screen.getByText('Open purchase path')).toBeEnabled()); expect(screen.getByText('Open title review')).toBeEnabled();
+});
+it('blocks corrupt or conflicting purchase-path recovery before current contract reads', async () => {
+  const { planKey, preservePlan } = await import('../src/lib/acquisition/disposition-plan');
+  sessionStorage.setItem(planKey(id(1), id(2)), '{broken'); const view = open(null);
+  expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled(); view.unmount(); sessionStorage.clear();
+  preservePlan(sessionStorage, { version: 1, context: signatureContext, request: { id: id(96), expected_version: 1, expected_sequence: 0, status: 'proposed', exit_type: 'principal_acquisition', original_plan_id: null, note: 'Internal proposal requiring separate disposition review.' } });
+  const { preserveDeadline } = await import('../src/lib/acquisition/deadline-review'); preserveDeadline(sessionStorage, { version: 1, context: signatureContext, request: deadlineRequest });
+  open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled(); expect(sessionStorage.length).toBe(2);
 });
