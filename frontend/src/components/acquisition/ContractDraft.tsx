@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
+import { ContractLinksForm } from './ContractLinksForm';
+import { readPendingLink } from '@/lib/acquisition/contract-links';
 import { ContractTermsForm } from './ContractTermsForm';
 import { readPendingTerms } from '@/lib/acquisition/contract-terms';
 import { ContractReviewForm } from './ContractReviewForm';
@@ -27,6 +29,18 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
     catch { return { saved: null, invalid: true }; } });
   const [reviewInitial] = useState(() => { try { return { saved: readPendingReview(sessionStorage, userId, workspace), invalid: false }; }
     catch { return { saved: null, invalid: true }; } });
+  const [linkInitial] = useState(() => { try { return { saved: readPendingLink(sessionStorage, userId, workspace), invalid: false }; }
+    catch { return { saved: null, invalid: true }; } });
+  const [linkPending, setLinkPending] = useState(!!linkInitial.saved);
+  const [linkRecoveryContext, setLinkRecoveryContext] = useState<DocumentContext | null>(linkInitial.saved?.context ?? null);
+  const handleLinkPending = useCallback((value: boolean) => {
+    setLinkPending(value);
+    if (!value) { setLinkRecoveryContext(null); return; }
+    try {
+      const saved = readPendingLink(sessionStorage, userId, workspace);
+      if (saved) setLinkRecoveryContext(previous => previous && Object.entries(saved.context).every(([key, field]) => previous[key as keyof DocumentContext] === field) ? previous : saved.context);
+    } catch { /* The reference editor keeps unsafe recovery held. */ }
+  }, [userId, workspace]);
   const [termsInitial] = useState(() => { try { return { saved: readPendingTerms(sessionStorage, userId, workspace), invalid: false }; }
     catch { return { saved: null, invalid: true }; } });
   const [termsPending, setTermsPending] = useState(!!termsInitial.saved);
@@ -50,8 +64,8 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
     } catch { /* The review editor preserves its blocked recovery state. */ }
   }, [userId, workspace]);
   const [documentPending, setDocumentPending] = useState(!!documentInitial.saved);
-  const invalid = initial.invalid || documentInitial.invalid || reviewInitial.invalid || termsInitial.invalid
-    || [initial.request, documentInitial.saved, reviewInitial.saved, termsInitial.saved].filter(Boolean).length > 1;
+  const invalid = initial.invalid || documentInitial.invalid || reviewInitial.invalid || termsInitial.invalid || linkInitial.invalid
+    || [initial.request, documentInitial.saved, reviewInitial.saved, termsInitial.saved, linkInitial.saved].filter(Boolean).length > 1;
   const [pending, setPending] = useState<PendingContractDraft | null>(initial.request);
   const [relationship, setRelationship] = useState('');
   const [name, setName] = useState('');
@@ -60,11 +74,11 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
   const [savedOffer, setSavedOffer] = useState('');
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const lock = useRef(false);
-  const context = pending?.context ?? termsInitial.saved?.context ?? reviewInitial.saved?.context ?? documentInitial.saved?.context ?? (selected ? { userId, workspaceId: workspace, leadId: selected.lead_id, propertyId: selected.property_id } : null);
-  const offerId = pending?.request.offer_id ?? termsInitial.saved?.context.offerId ?? reviewInitial.saved?.context.offerId ?? documentInitial.saved?.context.offerId ?? selected?.offer_id;
+  const context = pending?.context ?? linkInitial.saved?.context ?? termsInitial.saved?.context ?? reviewInitial.saved?.context ?? documentInitial.saved?.context ?? (selected ? { userId, workspaceId: workspace, leadId: selected.lead_id, propertyId: selected.property_id } : null);
+  const offerId = pending?.request.offer_id ?? linkInitial.saved?.context.offerId ?? termsInitial.saved?.context.offerId ?? reviewInitial.saved?.context.offerId ?? documentInitial.saved?.context.offerId ?? selected?.offer_id;
   const after = cursors.at(-1) ?? null;
   const base = `/api/acquisition/workspaces/${workspace}`;
-  useEffect(() => { onPending(busy || !!pending || invalid || documentPending || reviewPending || termsPending); }, [busy, pending, invalid, documentPending, reviewPending, termsPending, onPending]);
+  useEffect(() => { onPending(busy || !!pending || invalid || documentPending || reviewPending || termsPending || linkPending); }, [busy, pending, invalid, documentPending, reviewPending, termsPending, linkPending, onPending]);
   const state = useQuery({ queryKey: ['contract-draft', userId, workspace, offerId, 'state'], enabled: !!offerId && !invalid,
     queryFn: async ({ signal }) => {
       const value = offerState.parse(await read(`${base}/offers/${offerId}/state`, signal));
@@ -89,7 +103,7 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
   const refreshHistory = history.refetch;
   const handleTermsSaved = useCallback(() => { void refreshHistory(); }, [refreshHistory]);
   const existing = history.data?.items[0];
-  const documentTarget: DocumentContext | null = (termsPending ? termsRecoveryContext : null) ?? (reviewPending ? reviewRecoveryContext : null) ?? (documentPending ? documentInitial.saved?.context : null) ?? (existing && context ? {
+  const documentTarget: DocumentContext | null = (linkPending ? linkRecoveryContext : null) ?? (termsPending ? termsRecoveryContext : null) ?? (reviewPending ? reviewRecoveryContext : null) ?? (documentPending ? documentInitial.saved?.context : null) ?? (existing && context ? {
     userId, workspaceId: workspace, leadId: context.leadId, propertyId: context.propertyId,
     offerId: existing.acquisition_offer_id, contractId: existing.id, contractVersion: existing.acquisition_version,
   } : null);
@@ -100,8 +114,10 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
     && existing!.acquisition_version >= reviewRecoveryContext.contractVersion);
   const termsContextReady = documentContextReady || (documentIdentityReady && termsPending && !!termsRecoveryContext
     && existing!.acquisition_version >= termsRecoveryContext.contractVersion);
+  const linkContextReady = documentContextReady || (documentIdentityReady && linkPending && !!linkRecoveryContext
+    && existing!.acquisition_version >= linkRecoveryContext.contractVersion);
   const currentSeller = sellers.data?.items.find(row => row.id === relationship);
-  const canSave = !termsPending && !documentPending && !reviewPending && !!context && !!currentSeller && !!state.data?.amount_approval_current && !state.isError && !sellers.isError && !property.isError
+  const canSave = !linkPending && !termsPending && !documentPending && !reviewPending && !!context && !!currentSeller && !!state.data?.amount_approval_current && !state.isError && !sellers.isError && !property.isError
     && !!property.data && !!history.data && !history.isError && !existing && !!name.trim()
     && contractDraftRequestSchema.shape.name.safeParse(name.trim()).success && ![state, sellers, property, history].some(query => query.isFetching) && savedOffer !== offerId;
 
@@ -147,7 +163,7 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
       {state.data && !state.isError && <p>Reviewed amount: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(state.data.amount)}</p>}
       {!pending && state.data && !state.data.amount_approval_current && <p role="alert">Complete the current amount review in step 4 before creating a draft.</p>}
       {(state.isError || sellers.isError || history.isError) && <p role="alert">Current review or seller choices could not be confirmed. Refresh to try again.</p>}
-      <button className={button} disabled={busy || termsPending} onClick={() => { void state.refetch(); void property.refetch(); void history.refetch(); if (!pending) void sellers.refetch(); }}>Refresh draft information</button>
+      <button className={button} disabled={busy || termsPending || linkPending} onClick={() => { void state.refetch(); void property.refetch(); void history.refetch(); if (!pending) void sellers.refetch(); }}>Refresh draft information</button>
       {!pending && existing && <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-3"><h3 className="font-semibold">Existing draft: {existing.deal_name}</h3><p className="text-sm">Current contract version {existing.acquisition_version}.</p><p className="text-sm">Continue with document and title review before any agreement is signed or sent. Another draft cannot be created for this lead.</p></div>}
       {pending ? <div className="rounded-lg border border-amber-300 bg-amber-50 p-3"><h3 className="font-semibold">Recover your saved request</h3><p>{pending.request.name}</p><p className="text-sm">The original property, seller selection and offer review stay fixed until the save is confirmed.</p></div> : !existing && savedOffer !== offerId ? <fieldset disabled={busy} className="space-y-3">
         <legend className="font-semibold mb-2">Choose the reported seller</legend>
@@ -157,10 +173,11 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
         <nav aria-label="Seller relationship pages" className="flex gap-2"><button className={button} disabled={cursors.length === 1 || sellers.isFetching} onClick={() => { setRelationship(''); setCursors(values => values.slice(0, -1)); }}>Previous sellers</button><button className={button} disabled={!sellers.data?.next_after || sellers.isFetching || sellers.isError} onClick={() => { const next = sellers.data?.next_after; if (next) { setRelationship(''); setCursors(values => [...values, next]); } }}>More sellers</button></nav>
         <label className="block text-sm">Draft name<input className={input} value={name} maxLength={500} onChange={event => setName(event.target.value)} placeholder="Property address or review name" /></label>
       </fieldset> : null}
-      <button className={`${button} bg-[#1B3A5C] text-white`} disabled={busy || documentPending || reviewPending || termsPending || (!pending && !canSave)} onClick={() => { void save(); }}>{busy ? 'Saving…' : pending ? 'Retry same draft' : existing || savedOffer === offerId ? 'Draft saved' : 'Save draft for review'}</button>
-      {!pending && documentTarget && <ContractDocuments context={documentTarget} disabled={!documentContextReady || busy || reviewPending || termsPending} disabledReason={termsPending ? 'Finish the terms step below before changing documents.' : reviewPending ? 'Finish recovery of the saved review below before changing documents.' : undefined} onPending={setDocumentPending} />}
-      {!pending && documentTarget && <ContractTermsForm context={documentTarget} disabled={!termsContextReady || busy || documentPending || reviewPending} onPending={handleTermsPending} onSaved={handleTermsSaved} />}
-      {!pending && documentTarget && <ContractReviewForm context={documentTarget} disabled={!reviewContextReady || busy || documentPending || termsPending} onPending={handleReviewPending} />}
+      <button className={`${button} bg-[#1B3A5C] text-white`} disabled={busy || documentPending || reviewPending || termsPending || linkPending || (!pending && !canSave)} onClick={() => { void save(); }}>{busy ? 'Saving…' : pending ? 'Retry same draft' : existing || savedOffer === offerId ? 'Draft saved' : 'Save draft for review'}</button>
+      {!pending && documentTarget && <ContractDocuments context={documentTarget} disabled={!documentContextReady || busy || reviewPending || termsPending || linkPending} disabledReason={linkPending ? 'Finish the document reference step below before changing documents.' : termsPending ? 'Finish the terms step below before changing documents.' : reviewPending ? 'Finish recovery of the saved review below before changing documents.' : undefined} onPending={setDocumentPending} />}
+      {!pending && documentTarget && <ContractLinksForm context={documentTarget} disabled={!linkContextReady || busy || documentPending || reviewPending || termsPending} onPending={handleLinkPending} onSaved={handleTermsSaved} />}
+      {!pending && documentTarget && <ContractTermsForm context={documentTarget} disabled={!termsContextReady || busy || documentPending || reviewPending || linkPending} onPending={handleTermsPending} onSaved={handleTermsSaved} />}
+      {!pending && documentTarget && <ContractReviewForm context={documentTarget} disabled={!reviewContextReady || busy || documentPending || termsPending || linkPending} onPending={handleReviewPending} />}
     </>}
     {message && <p role="status" className="text-sm">{message}</p>}
   </section>;

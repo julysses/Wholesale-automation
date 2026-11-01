@@ -1,0 +1,12 @@
+{
+  "scope": "Synthetic local phone-sized terms and source review QA only",
+  "dimensions": {
+    "width": 375,
+    "scrollWidth": 375
+  },
+  "termsRecovery": "passed",
+  "savedTermVersions": 1,
+  "canonicalVersion": 3,
+  "originalSourceVersion": 1,
+  "errors": []
+}

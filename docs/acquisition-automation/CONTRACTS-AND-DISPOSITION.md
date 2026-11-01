@@ -91,3 +91,7 @@ The guided contract step should show the recorded terms and original source toge
 ### Guided draft terms entry (October31)
 
 Step5 now presents source-document preparation, current terms summary/editing, and human review in sequence. Saving sourced terms creates the next draft version and refreshes the existing contract context; it does not transmit an offer, execute a contract, grant assignment rights, or carry existing approval forward. Browser storage preserves exact uncertain requests for recovery; unsaved editing can be discarded without a write. Explicit reference-link management and controlled legal lifecycle transitions remain outstanding.
+
+### Original document reference controls (October31)
+
+Existing step5 now includes a discovered-version/document selector for explicit original-document references, plus withdrawal that retains the source and audit history. Term citations are automatically represented through immutable term sources; the interface does not create duplicate explicit links for them. Exact uncertain requests stay recoverable across canonical version changes. These are preparation controls, not legal lifecycle transitions or disposition authority. Desktop/mobile synthetic browser QA and current test results are in CURRENT-STATUS.md.

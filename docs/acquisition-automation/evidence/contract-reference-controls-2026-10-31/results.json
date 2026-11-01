@@ -1,0 +1,33 @@
+{
+  "scope": "Synthetic local UI only; no real provider or database",
+  "results": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "dimensions": {
+        "width": 1280,
+        "scrollWidth": 1280
+      },
+      "linkAndWithdrawalRecovery": "passed",
+      "originalDocumentVersion": 1,
+      "linkRecords": 1,
+      "pendingRequests": 0,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "dimensions": {
+        "width": 375,
+        "scrollWidth": 375
+      },
+      "linkAndWithdrawalRecovery": "passed",
+      "originalDocumentVersion": 1,
+      "linkRecords": 1,
+      "pendingRequests": 0,
+      "errors": []
+    }
+  ]
+}

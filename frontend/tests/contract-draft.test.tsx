@@ -15,6 +15,10 @@ beforeEach(() => {
     if (init?.method === 'POST') {
       if (mock.reject) throw new ApiError('Rejected', 409);
       if (mock.fail) throw new Error('Lost response');
+      if (path.includes('/document-links')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ link_id: body.id, workspace_id: id(2), contract_id: id(5), contract_version: 2, source_version: 1, artifact_id: id(32), duplicate: true, review_approved: false, execution_authorized: false }) };
+      }
       if (path.endsWith('/terms')) {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ request_id: body.id, workspace_id: id(2), contract_id: id(5), version: body.expected_version + 1, status: 'draft', duplicate: true, execution_authorized: false }) };
@@ -143,4 +147,17 @@ it('blocks conflicting saved term and document requests instead of choosing one'
     registration: { id: id(9), purpose: 'purchase_contract', expected_sha256: 'a'.repeat(64), expected_byte_size: 20, media_type: 'text/plain', retention_policy_id: id(8), provenance_note: 'Original seller document for review.' } }));
   open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile the existing request');
   expect(mock.fetch).not.toHaveBeenCalled(); expect(mock.pending).toHaveBeenLastCalledWith(true); expect(sessionStorage.length).toBe(2);
+});
+
+it('recovers an original reference after the canonical version advances without a selected proposal', async () => {
+  const { preserveLink } = await import('../src/lib/acquisition/contract-links');
+  const request = { id: id(31), source_version: 1, artifact_id: id(32), verification_id: id(33), sha256: 'a'.repeat(64), note: 'Original title document retained for the prior contract version.' };
+  preserveLink(sessionStorage, { version: 1, kind: 'link', context: { userId: id(1), workspaceId: id(2), leadId: id(3), propertyId: id(4), offerId: id(6), contractId: id(5), contractVersion: 2 }, request });
+  record.acquisition_version = 3; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Retry saved reference' })).toBeEnabled());
+  expect(screen.getByLabelText('Document type')).toBeDisabled(); expect(screen.getByRole('button', { name: 'Edit draft terms' })).toBeDisabled();
+  expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry saved reference' })); await waitFor(() => expect(sessionStorage.length).toBe(0));
+  expect(posts()).toHaveLength(1); expect(posts()[0][0]).toContain('/versions/2/document-links'); expect(JSON.parse(posts()[0][1].body)).toEqual(request);
+  expect(screen.getByText('Current contract version 3.')).toBeVisible(); await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
 });

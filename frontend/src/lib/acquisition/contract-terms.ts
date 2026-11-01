@@ -61,6 +61,17 @@ export function clearRejectedTerms(storage: Storage, saved: PendingTerms, defini
 const versionRecord = z.object({ id, workspace_id: id, deal_id: id, version, status: z.literal('draft'), previous_version: version.nullable(),
   terms: termsSchema.nullable(), actor_id: id, created_at: date }).strict().refine(v => v.version === 1 ? v.previous_version === null && v.terms === null
     : v.previous_version === v.version - 1 && v.terms !== null && v.terms.sources.every(s => s.artifact_version < v.version));
+export function parseContractVersions(raw: unknown, context: DocumentContext, after: number | null = null) {
+  const page = z.object({ workspace_id: id, contract_id: id, items: z.array(versionRecord).max(20), next_after: version.nullable(), execution_authorized: z.literal(false) }).strict().parse(raw);
+  if (page.workspace_id !== context.workspaceId || page.contract_id !== context.contractId) throw new Error('Contract history scope changed.');
+  let previous = after ?? 0; const seen = new Set<string>();
+  for (const row of page.items) {
+    if (row.workspace_id !== context.workspaceId || row.deal_id !== context.contractId || row.version <= previous || row.version > context.contractVersion || seen.has(row.id)) throw new Error('Refresh the current contract history.');
+    previous = row.version; seen.add(row.id);
+  }
+  if (page.next_after !== null && (page.items.length !== 20 || page.next_after !== previous)) throw new Error('Contract history cursor changed.');
+  return page;
+}
 export function parseTermsVersion(raw: unknown, context: DocumentContext) {
   const page = z.object({ workspace_id: id, contract_id: id, items: z.array(versionRecord).length(1), next_after: version.nullable(), execution_authorized: z.literal(false) }).strict().parse(raw);
   const row = page.items[0];

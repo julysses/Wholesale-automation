@@ -7,10 +7,11 @@ let lose = false;
 export function loseNextReply() { lose = true; }
 const ledgerKey = 'contract-draft-local-qa-ledger';
 // Explicit local presentation fixture; no production imports or network calls.
+const linkFixture = new URLSearchParams(location.search).get('linkFixture') === 'true';
 const referenceFixture = new URLSearchParams(location.search).get('referenceFixture') === 'true';
-if ((referenceFixture || new URLSearchParams(location.search).get('scanFixture') === 'true') && !sessionStorage.getItem(ledgerKey)) {
+if ((linkFixture || referenceFixture || new URLSearchParams(location.search).get('scanFixture') === 'true') && !sessionStorage.getItem(ledgerKey)) {
   sessionStorage.setItem(ledgerKey, JSON.stringify({ request: {}, row: { id: id(10), workspace_id: ids.workspace,
-    lead_id: id(3), deal_name: 'Synthetic document review', acquisition_status: 'draft', acquisition_version: referenceFixture ? 2 : 1,
+    lead_id: id(3), deal_name: 'Synthetic document review', acquisition_status: 'draft', acquisition_version: referenceFixture || linkFixture ? 2 : 1,
     acquisition_property_id: id(4), acquisition_owner_relationship_id: id(7), acquisition_offer_id: id(6),
     acquisition_offer_sequence: 2, created_by: ids.user, created_at: new Date().toISOString() } }));
   sessionStorage.setItem('contract-document-local-qa-ledger', JSON.stringify({ sourceVersion: 1, created: new Date().toISOString(), request: {
@@ -47,15 +48,43 @@ export async function apiFetch(path: string, init?: RequestInit) {
       value = { request_id: request.id, workspace_id: ids.workspace, contract_id: ledger.row.id, version: request.expected_version + 1,
         status: 'draft', duplicate: !!prior, execution_authorized: false };
     } else {
-      const requested = Number(new URL(path, 'http://localhost').searchParams.get('after') ?? 0) + 1;
-      const entry = entries.find(row => Number(row.request.expected_version) + 1 === requested);
+      const params = new URL(path, 'http://localhost').searchParams;
+      const requested = Number(params.get('after') ?? 0) + 1, limit = Number(params.get('limit') ?? 20);
+      const last = Math.min(ledger.row.acquisition_version, requested + limit - 1);
       value = { workspace_id: ids.workspace, contract_id: ledger.row.id, execution_authorized: false,
-        next_after: ledger.row.acquisition_version > requested ? requested : null,
-        items: requested <= ledger.row.acquisition_version ? [{ id: id(100 + requested), workspace_id: ids.workspace, deal_id: ledger.row.id,
-          version: requested, status: 'draft', previous_version: requested > 1 ? requested - 1 : null,
-          terms: requested === 1 ? null : entry?.request.terms ?? { ...emptyTerms(), note: 'Synthetic initial terms retained for browser preview.' },
-          actor_id: ids.user, created_at: entry?.created ?? ledger.row.created_at }] : [] };
+        next_after: last < ledger.row.acquisition_version ? last : null,
+        items: Array.from({ length: Math.max(0, last - requested + 1) }, (_, index) => {
+          const version = requested + index, entry = entries.find(row => Number(row.request.expected_version) + 1 === version);
+          return { id: id(100 + version), workspace_id: ids.workspace, deal_id: ledger.row.id,
+            version, status: 'draft', previous_version: version > 1 ? version - 1 : null,
+            terms: version === 1 ? null : entry?.request.terms ?? { ...emptyTerms(), note: 'Synthetic initial terms retained for browser preview.' },
+            actor_id: ids.user, created_at: entry?.created ?? ledger.row.created_at };
+        }) };
+
     }
+  }
+  else if (path.includes('/document-links')) {
+    if (!ledger || init?.method !== 'POST') throw new Error('Synthetic link write required');
+    const key = 'contract-link-local-qa-ledger';
+    const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as { target: number; request: Record<string, unknown>; withdrawal?: Record<string, unknown> }[];
+    const request = JSON.parse(init.body as string);
+    const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion };
+    if (path.endsWith('/withdrawals')) {
+      const linkId = path.split('/document-links/')[1].split('/')[0];
+      const linked = entries.find(row => row.target === requestedVersion && row.request.id === linkId);
+      if (!linked || linked.withdrawal && JSON.stringify(linked.withdrawal) !== JSON.stringify(request)) throw new Error('Synthetic link withdrawal conflict');
+      const duplicate = !!linked.withdrawal; linked.withdrawal = request; sessionStorage.setItem(key, JSON.stringify(entries));
+      value = { ...scope, link_id: linkId, revocation_id: request.id, duplicate, execution_authorized: false };
+    } else {
+      const prior = entries.find(row => row.request.id === request.id);
+      if (prior && (prior.target !== requestedVersion || JSON.stringify(prior.request) !== JSON.stringify(request))) throw new Error('Synthetic link retry conflict');
+      if (!prior) {
+        if (requestedVersion !== ledger.row.acquisition_version || entries.some(row => row.target === requestedVersion && row.request.artifact_id === request.artifact_id)) throw new Error('Synthetic link target conflict');
+        entries.push({ target: requestedVersion, request }); sessionStorage.setItem(key, JSON.stringify(entries));
+      }
+      value = { ...scope, link_id: request.id, source_version: request.source_version, artifact_id: request.artifact_id, duplicate: !!prior, review_approved: false, execution_authorized: false };
+    }
+    if (lose) { lose = false; throw new Error('Synthetic reference reply lost after commit'); }
   }
   else if (path.includes('/reviews/')) {
     if (!ledger) throw new Error('Save the synthetic draft first');
@@ -98,11 +127,15 @@ export async function apiFetch(path: string, init?: RequestInit) {
     const checked = new Date().toISOString();
     const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion };
     const sourceVersion = saved?.sourceVersion ?? 1;
+    const links = JSON.parse(sessionStorage.getItem('contract-link-local-qa-ledger') ?? '[]') as { target: number; request: Record<string, unknown>; withdrawal?: unknown }[];
+    const linked = links.find(row => row.target === requestedVersion && row.request.artifact_id === saved?.request.id);
+    const terms = JSON.parse(sessionStorage.getItem('contract-terms-local-qa-ledger') ?? '[]') as { request: { expected_version: number; terms: { sources: { artifact_id: string }[] } } }[];
+    const termSource = referenceFixture || terms.some(row => row.request.expected_version + 1 === requestedVersion && row.request.terms.sources.some(source => source.artifact_id === saved?.request.id));
     value = { ...scope, purpose, checked_at: checked, next_after: null, execution_authorized: false,
-      items: saved && saved.request.purpose === purpose && sourceVersion <= requestedVersion ? [{ ...scope,
+      items: saved && saved.request.purpose === purpose && sourceVersion <= requestedVersion && (sourceVersion === requestedVersion || termSource || linked) ? [{ ...scope,
         artifact_id: saved.request.id, source_version: sourceVersion,
-        reference_type: sourceVersion === requestedVersion ? 'native' : 'term_source', link_id: null,
-        status: 'available_for_review', purpose, sha256: saved.request.expected_sha256, verification_id: id(9),
+        reference_type: sourceVersion === requestedVersion ? 'native' : termSource ? 'term_source' : 'linked', link_id: linked?.request.id ?? null,
+        status: linked?.withdrawal ? 'reference_withdrawn' : 'available_for_review', purpose, sha256: saved.request.expected_sha256, verification_id: linked?.withdrawal ? null : id(9),
         source_created_at: saved.created, checked_at: checked, review_approved: false, execution_authorized: false }] : [] };
   }
   else if (path.includes('/documents')) {

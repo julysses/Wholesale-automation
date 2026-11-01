@@ -7,6 +7,7 @@ export class ApiError extends Error {
   rejectedDocument = false;
   rejectedReview = false;
   rejectedTerms = false;
+  rejectedLink = false;
   rejectedCost: boolean;
   retryAfterSeconds?: number;
   constructor(message: string, status: number, rejectedCreate = false, rejectedCost = false, retryAfterSeconds?: number) {
@@ -49,6 +50,10 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/[a-f0-9-]{36}\/terms$/.test(path)
       && [401, 403, 409].includes(response.status)
       && response.headers.get('X-Acquisition-Terms-Rejected') === 'true';
+    error.rejectedLink = init?.method === 'POST'
+      && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/[a-f0-9-]{36}\/versions\/[1-9][0-9]*\/document-links(?:\/[a-f0-9-]{36}\/withdrawals)?$/.test(path)
+      && [401, 403, 409].includes(response.status)
+      && response.headers.get('X-Acquisition-Link-Rejected') === 'true';
     throw error;
   }
   return response;
