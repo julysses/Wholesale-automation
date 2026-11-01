@@ -1,5 +1,11 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — app-update resume and published CI repair
+
+Confirmed the app update is complete and resumed the existing goal. Fresh inspection found a clean main checkout at9392cb0. All six jobs in predecessor41286088592 are now terminal: five passed; only the confirmed test-clock backend failure remained. Pulled the remote branch and published isolated repair fedc5af606c806313243472f61da60e3948d204c from `/tmp/acquisition-ci-fix-41286088592`; push confirmed. Exact successor: https://github.com/julysses/Wholesale-automation/actions/runs/41287270262 (queued at initial verification). No checks were cancelled or restarted. Existing repair evidence remains55 focused and4466 full backend tests passed; these were verified from the retained log, not rerun this turn.
+
+Keep candidate106/107 and feature-bearing main local until all six repair-successor checks reach success. Next publish only after that gate, then verify the next exact successor. Continue controlled disposition writer/state, typed API and guided findings in the existing numbered contract journey; preserve the navy/orange presentation and original-save recovery. Full PRD remains active/incomplete. No production migration, policy provisioning, provider activation, outreach or fulfillment occurred.
+
 ## November 1 — original disposition sources and isolated CI repair (candidate107)
 
 Candidate106 storage passed full95-migration rehearsal:26 access checks,279 workflows,148 actual API checks;24 historical rows,22 populated tables,103 definitions and Storage preserved. Committed locally as e77d893. Candidate107 adds private source resolution derived from the current proposal's original recorded execution, exact citations/scans and retention/scanner/session authority, with post-wait checks and no execution authority. Five focused SQL tests passed30.923s. Full96-migration rehearsal passed26 access checks,284 workflows and148 actual API checks, preserving24 historical rows,22 populated tables,103 definitions and Storage. Session23291 terminal0; log `/tmp/disposition-sources-upgrade.log`; evidence `evidence/2026-11-01-disposition-sources-result.json`. Inventory/mapping details are in DISPOSITION-WORKFLOW.md.
