@@ -373,6 +373,10 @@
     {
       "file": "20261101063735_acquisition_title_review_choices.sql",
       "sha256": "49fdca062c80e0b1237ffa58e34e0fb6892fc6720ea4070575d0445981868616"
+    },
+    {
+      "file": "20261101071737_acquisition_disposition_plans.sql",
+      "sha256": "c6eb933d88ec064a1ab5c830e20d51c2825492b691b940ffc73b27b3a1189ad0"
     }
   ]
 }

@@ -37,6 +37,7 @@ from acquisition_title_storage_tests import TitleStorageCases
 from acquisition_title_source_tests import TitleSourceCases
 from acquisition_title_review_tests import TitleReviewCases
 from acquisition_title_candidate_tests import TitleCandidateCases
+from acquisition_disposition_plan_tests import DispositionPlanCases
 from acquisition_transition_choice_tests import TransitionChoiceCases
 from acquisition_contract_transition_tests import ContractTransitionCases
 from acquisition_signature_candidate_tests import SignatureCandidateCases
@@ -69,7 +70,7 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
-class FullCatalogDocumentTests(TitleCandidateCases, TitleReviewCases, TitleSourceCases, TitleStorageCases, TitleDocumentCases, TitleChoiceCases, TitleTransitionCases, ExecutionDeadlineCases, DeadlineChoiceCases, DeadlineStateCases, DeadlineReviewCases, DeadlineStorageCases, ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
+class FullCatalogDocumentTests(DispositionPlanCases, TitleCandidateCases, TitleReviewCases, TitleSourceCases, TitleStorageCases, TitleDocumentCases, TitleChoiceCases, TitleTransitionCases, ExecutionDeadlineCases, DeadlineChoiceCases, DeadlineStateCases, DeadlineReviewCases, DeadlineStorageCases, ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
     supports_title_choice = True
 
     def setUp(self):
@@ -83,7 +84,7 @@ class FullCatalogDocumentTests(TitleCandidateCases, TitleReviewCases, TitleSourc
             self.terms=self.execution_prepared_terms
         if self._testMethodName.startswith(('test_signature_deadline_write_','test_signature_deadline_state_','test_signature_deadline_choice_')):
             self.terms=self.deadline_prepared_terms
-        if self._testMethodName.startswith(('test_signature_execution_deadline_', 'test_signature_title_transition_', 'test_signature_title_choice_', 'test_signature_title_document_', 'test_signature_title_storage_', 'test_signature_title_sources_', 'test_signature_title_write_', 'test_signature_title_candidate_')):
+        if self._testMethodName.startswith(('test_signature_execution_deadline_', 'test_signature_title_transition_', 'test_signature_title_choice_', 'test_signature_title_document_', 'test_signature_title_storage_', 'test_signature_title_sources_', 'test_signature_title_write_', 'test_signature_title_candidate_', 'test_signature_disposition_plan_')):
             self.terms=self.binding_prepared_terms
             self.deadline_proposal=self.binding_deadline_proposal
         if self._testMethodName.startswith('test_signature_'):
@@ -128,6 +129,7 @@ def run_workflow_probes(db):
     document_names += sorted(name for name in TitleSourceCases.__dict__ if name.startswith('test_signature_title_sources_'))
     document_names += sorted(name for name in TitleReviewCases.__dict__ if name.startswith('test_signature_title_write_'))
     document_names += sorted(name for name in TitleCandidateCases.__dict__ if name.startswith('test_signature_title_candidate_'))
+    document_names += sorted(name for name in DispositionPlanCases.__dict__ if name.startswith('test_signature_disposition_plan_'))
     document_names += sorted(name for name in TitleChoiceCases.__dict__ if name.startswith('test_signature_title_choice_'))
     document_names += sorted(name for name in TitleTransitionCases.__dict__ if name.startswith('test_signature_title_transition_'))
     document_names += sorted(name for name in ExecutionDeadlineCases.__dict__ if name.startswith('test_signature_execution_deadline_'))

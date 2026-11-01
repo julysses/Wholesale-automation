@@ -22,6 +22,7 @@ from web.api.acquisition_contract_documents_api import router as contract_docume
 from web.api.acquisition_contract_reviews_api import router as contract_reviews_router
 from web.api.acquisition_execution_reviews_api import router as execution_reviews_router
 from web.api.acquisition_title_reviews_api import router as title_reviews_router
+from web.api.acquisition_disposition_plans_api import router as disposition_plans_router
 from web.api.acquisition_deadline_reviews_api import router as deadline_reviews_router
 
 from web.api.acquisition_contract_terms_api import router as contract_terms_router
@@ -41,6 +42,7 @@ router.include_router(contract_documents_router)
 router.include_router(contract_reviews_router)
 router.include_router(execution_reviews_router)
 router.include_router(title_reviews_router)
+router.include_router(disposition_plans_router)
 router.include_router(deadline_reviews_router)
 router.include_router(contract_terms_router)
 router.include_router(contract_references_router)

@@ -497,6 +497,9 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'mounted title history bounded original decisions and complete cursor traversal',
             'mounted title original findings sources and withdrawal details without authority',
             'mounted title history tenant version role pause and revoked-session isolation',
+            'mounted purchase-path exact commit-loss recovery and changed-request rejection',
+            'mounted purchase-path workspace role version pause and original withdrawal',
+            'mounted purchase-path immutable audit and unchanged canonical contract',
             'title choices mounted current original and explicit report policy',
             'title choices mounted tenant isolation',
             'title choices original held withdrawal without a selected report while paused']

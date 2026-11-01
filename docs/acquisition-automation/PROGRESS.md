@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — internal purchase-path API and persistence (candidate103, locally verified)
+
+Resumed after the app update. Fresh pull is current. All six exact predecessor f7f0c2e7dbd4904eb1e9793d6f5b6d490f3a8d71 / run41283957816 jobs passed, including the previously reported Pipeline contracts and isolated SQL job. Do not cancel or restart successor CI.
+
+Added immutable internal principal-acquisition/wholesale-assignment proposals under the existing deal, exact retry/audit handling, scoped current-state/withdrawal reads and mounted typed user-JWT API. Proposals preserve executed/title-entry roots and never change the canonical contract, buyer, amount, fee or lifecycle. Later disposition approval must separately require current post-execution title, execution/deadline authority and reviewed assignment basis. No authority policy was provisioned.
+
+Five focused PostgreSQL tests passed28.298s;51 focused API tests passed2.90s; full backend4422 passed,10 skipped,6 subtests60.78s. Full94-migration populated-catalog rehearsal passed26 access checks and275 workflows. The initial process had loaded the app before the new router existed, so its API stage returned404. A fresh process re-applied the full catalog and passed all148 actual API checks; completed workflows were retained, not rerun. Session22709 terminal0. Preserved24 historical rows,22 populated tables,103 definitions and Storage. Evidence: `evidence/2026-11-01-disposition-plan-result.json`; logs `/tmp/disposition-plan-{upgrade,api-rehearsal,backend}.log`. Actual API journey includes committed-response loss, exact replay, changed-payload rejection, workspace/role/version isolation, pause and original withdrawal, unchanged canonical deal and one audit per decision.
+
+The purchase-path UI is still outstanding. Follow `DISPOSITION-WORKFLOW.md`: compact step5 choice/reason/save card, shared navigation holds, original-version exact recovery and independent original withdrawal, then browser QA. Full PRD remains active/incomplete; continue all hosted/provider/channel/legal/disposition/buyer/closing/exception gates. No production migration, outreach, paid fulfillment, provider activation or binding transaction occurred.
+
 ## November 1 — title report and reviewer choices (candidate100)
 
 Added read-only `title_review_candidate` and mounted GET `/title-review/candidate?artifact_id=…` over the existing current-state service. The report selection is optional so original approved/held withdrawal is available without a selected document, including after pause or policy revocation. Selected reports remain scoped to original contract references and purpose, with the exact current scan and reviewer policy. No policy or review is created by discovery.

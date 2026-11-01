@@ -119,3 +119,6 @@ def verify_title_review_http(db,rpc,request,token,workspace,contract,document,ad
             if client.get(history_path,headers=headers).status_code!=403 or client.get(history_path+'/'+api_review,headers=headers).status_code!=403:raise AssertionError('Revoked session retained mounted title history')
         finally:db.query('UPDATE auth.sessions SET not_after=%s WHERE id=%s',[prior_session,admin])
     if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_review' AND entity_id IN (%s,%s,%s)",[api_review,api_hold,api_withdrawal])!=[{'n':3}]:raise AssertionError('Mounted title replay duplicated audit')
+
+    from acquisition_disposition_plan_http import verify_disposition_plan_http
+    verify_disposition_plan_http(db,app,drops,headers,token,workspace,contract,other)
