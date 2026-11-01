@@ -447,3 +447,30 @@ it('retains original review history after disposition handoff while keeping prep
   expect(screen.queryByText('Open purchase path')).not.toBeInTheDocument();
   expect(posts()).toHaveLength(0);
 });
+
+it('opens original disposition withdrawal after handoff and holds adjacent navigation', async () => {
+  const prior = mock.fetch.getMockImplementation()!;
+  const { dispositionChoice } = await import('./fixtures/disposition-review');
+  mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    if (path.endsWith('/disposition-review/candidate')) {
+      const c = dispositionChoice(), scope = { workspace_id: id(2), contract_id: id(5), contract_version: 1 };
+      return { json: async () => ({ ...c, ...scope, status: 'contract_unavailable', candidate: null, resolution: null,
+        withdrawal: { review_id: id(92), plan_id: id(91), exit_type: 'wholesale_assignment', policy_id: id(93), expected_sequence: 1, original_status: 'requires_resolution' },
+        current_review: { ...c.current_review, ...scope, review_id: id(92), sequence: 1, status: 'requires_resolution' } }) };
+    }
+    return prior(path, init);
+  });
+  record.acquisition_status = 'disposition_review'; mock.existing = true; open();
+  await waitFor(() => expect(screen.getByText('Open disposition review')).toBeEnabled());
+  fireEvent.click(screen.getByText('Open disposition review'));
+  fireEvent.click(await screen.findByText('Withdraw my previous disposition decision'));
+  expect(screen.queryByText('Start disposition findings')).not.toBeInTheDocument();
+  for (const name of ['Review next contract status', 'Refresh draft information', 'View title history', 'View disposition history'])
+    expect(screen.getByRole('button', { name })).toBeDisabled();
+  expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.change(screen.getByLabelText('Disposition decision notes'), { target: { value: 'Withdraw the original disposition decision after handoff.' } });
+  fireEvent.click(screen.getByText('Record disposition withdrawal'));
+  await screen.findByText(/Disposition decision recorded/);
+  expect(JSON.parse(posts()[0][1].body)).toMatchObject({ status: 'withdrawn', original_review_id: id(92), plan_id: id(91), expected_sequence: 1, findings: null });
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});

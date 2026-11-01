@@ -1,0 +1,33 @@
+{
+  "checks": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "passed": true,
+      "exact_retry": true,
+      "one_withdrawal": true,
+      "no_new_findings": true,
+      "no_repeated_withdrawal": true,
+      "overflow": false,
+      "errors": [],
+      "synthetic": true
+    },
+    {
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "passed": true,
+      "exact_retry": true,
+      "one_withdrawal": true,
+      "no_new_findings": true,
+      "no_repeated_withdrawal": true,
+      "overflow": false,
+      "errors": [],
+      "synthetic": true
+    }
+  ],
+  "live_acceptance": false
+}

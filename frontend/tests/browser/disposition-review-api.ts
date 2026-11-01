@@ -17,6 +17,10 @@ export async function apiFetch(path: string, init?: RequestInit) {
   if (path.includes('/references?')) return { json: async () => ({ ...scope, purpose: new URL(path, 'http://local').searchParams.get('purpose'), items: [], next_after: null, checked_at: new Date().toISOString(), execution_authorized: false }) };
   if (path.includes('/references/')) return { json: async () => ({ ...titleReference(), source_version: 1, reference_type: 'term_source', purpose: 'purchase_contract' }) };
   const value = dispositionChoice(true), latest = journal.at(-1);
+  if (new URLSearchParams(location.search).has('withdrawal')) return { json: async () => ({ ...value, status: 'contract_unavailable', candidate: null, resolution: null,
+    current_review: { ...value.current_review, review_id: latest?.id ?? dispositionId(101), sequence: latest ? 2 : 1, status: latest ? 'withdrawn' : 'requires_review' },
+    withdrawal: latest ? null : { review_id: dispositionId(101), plan_id: dispositionId(11), exit_type: 'wholesale_assignment', policy_id: dispositionId(10), expected_sequence: 1, original_status: 'approved' } }) };
+
   if (!latest) return { json: async () => value };
   const sequence = journal.length;
   return { json: async () => ({ ...value, candidate: { ...value.candidate, expected_sequence: sequence }, resolution: { ...value.resolution, expected_sequence: sequence },

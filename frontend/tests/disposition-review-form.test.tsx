@@ -27,7 +27,7 @@ beforeEach(() => {
       : mock.legalMissing ? { ...c, status: 'legal_evidence_required', candidate: null, resolution: { ...c.resolution, legal_source: null } } : c };
   });
 });
-function open(disabled = false, ctx = context) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><DispositionReviewForm context={ctx} disabled={disabled} onPending={mock.pending} onSaved={mock.saved} /></QueryClientProvider>); }
+function open(disabled = false, ctx = context, withdrawalOnly = false) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><DispositionReviewForm withdrawalOnly={withdrawalOnly} context={ctx} disabled={disabled} onPending={mock.pending} onSaved={mock.saved} /></QueryClientProvider>); }
 async function start() {
   const view = open(); fireEvent.click(screen.getByText('Open disposition review'));
   await waitFor(() => expect(screen.getByText('Start disposition findings')).toBeEnabled()); fireEvent.click(screen.getByText('Start disposition findings')); return view;
@@ -105,4 +105,25 @@ it('recovers original version directly and blocks mismatched context', async () 
   expect(screen.getByRole('alert')).toHaveTextContent(/could not be read safely/); expect(mock.fetch).not.toHaveBeenCalled(); view.unmount();
   open(); fireEvent.click(screen.getByText('Retry saved disposition decision')); await screen.findByText(/Disposition decision recorded/);
   expect(mock.fetch).toHaveBeenCalledTimes(1); expect(mock.fetch.mock.calls[0][0]).toMatch(/versions\/2\/disposition-review$/);
+});
+
+
+it('keeps only original withdrawal available after handoff and preserves uncertain recovery', async () => {
+  mock.withdraw = true; mock.lose = true;
+  const view = open(false, context, true); fireEvent.click(screen.getByText('Open disposition review'));
+  fireEvent.click(await screen.findByText('Withdraw my previous disposition decision'));
+  expect(screen.queryByText('Start disposition findings')).not.toBeInTheDocument();
+  expect(screen.getByText('Record your withdrawal')).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Disposition decision notes'), { target: { value: 'Withdraw the original disposition decision after handoff.' } });
+  fireEvent.click(screen.getByText('Record disposition withdrawal')); await screen.findByText(/Save is unconfirmed/);
+  const original = posts()[0][1].body; view.unmount(); mock.lose = false;
+  open(false, context, true); fireEvent.click(screen.getByText('Retry saved disposition decision'));
+  await screen.findByText(/Disposition decision recorded/);
+  expect(posts()).toHaveLength(2); expect(posts()[1][1].body).toBe(original); expect(sessionStorage.length).toBe(0);
+});
+it('does not expose fresh findings from a cached ready choice in withdrawal-only mode', async () => {
+  open(false, context, true); fireEvent.click(screen.getByText('Open disposition review'));
+  await screen.findByText('No original disposition decision is available for you to withdraw.');
+  expect(screen.queryByText('Start disposition findings')).not.toBeInTheDocument();
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument(); expect(posts()).toHaveLength(0);
 });

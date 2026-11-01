@@ -50,6 +50,21 @@ def verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contrac
             paused=client.get(path+'/candidate',params={'contract_version':2},headers=headers)
             if paused.status_code!=200 or paused.json()['status']!='paused' or paused.json()['candidate'] is not None:raise AssertionError('Paused handoff offered execution')
             if not client.post(path,json=body,headers=headers).json()['duplicate']:raise AssertionError('Pause erased original handoff recovery')
+            options=client.get(review_path+'/candidate',headers=headers)
+            if options.status_code!=200 or options.json()['withdrawal']['review_id']!=review or options.json()['candidate'] is not None or options.json()['resolution'] is not None:
+                raise AssertionError('Post-handoff pause lost independent original withdrawal')
+            withdrawal=approval|dict(id='af122000-0000-4000-8000-000000000004',expected_sequence=4,status='withdrawn',original_review_id=review,
+                expires_at=None,personally_reviewed=False,findings=None,note='Withdraw the original disposition approval after its recorded handoff.')
+            drops['rpc/record_disposition_review']=True
+            lost=client.post(review_path,json=withdrawal,headers=headers);recovered=client.post(review_path,json=withdrawal,headers=headers)
+            if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate']:
+                raise AssertionError('Post-handoff original withdrawal recovery failed')
+            state=client.get(review_path,headers=headers)
+            if state.status_code!=200 or state.json()['status']!='withdrawn' or state.json()['approval_current']:
+                raise AssertionError('Post-handoff withdrawal retained current authority')
+            if not client.post(path,json=body,headers=headers).json()['duplicate']:raise AssertionError('Withdrawal erased original handoff receipt')
+            original=client.get(review_path+'/history/'+review,headers=headers)
+            if original.status_code!=200 or original.json()['record']['status']!='approved':raise AssertionError('Withdrawal rewrote original approved findings')
         finally:db.query('UPDATE private.acquisition_activation SET enabled=true')
     if before!=db.query('SELECT version,status,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract]):raise AssertionError('Disposition handoff rewrote terms')
     if db.query('SELECT acquisition_status,stage FROM public.deals WHERE id=%s',[contract])!=[{'acquisition_status':'disposition_review','stage':'offer_made'}]:raise AssertionError('Disposition handoff changed legacy pipeline')

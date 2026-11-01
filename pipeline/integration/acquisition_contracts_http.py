@@ -513,6 +513,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'disposition handoff mounted exact original approval choices and tenant isolation',
             'disposition handoff mounted commit-loss recovery and immutable original ledger',
             'disposition handoff mounted completed choice guided history and paused recovery',
+            'post-handoff original disposition withdrawal committed recovery and retained history',
             'title choices mounted current original and explicit report policy',
             'title choices mounted tenant isolation',
             'title choices original held withdrawal without a selected report while paused']

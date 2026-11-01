@@ -1,5 +1,15 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — original disposition withdrawal remains available after handoff (candidate123)
+
+Parent step5 now exposes the original disposition review in withdrawal-only mode after disposition_review. Users can withdraw their own earlier decision and recover an uncertain original save while the parent holds adjacent actions/navigation. Fresh findings/approval are hidden and blocked even if a cached response contains a ready candidate. No source/renewal authority or new database grants were added. Original review, plan and handoff records remain immutable. Source/review renewals, title/execution/date withdrawal usability and later transaction steps remain open.
+
+Mounted actual gateway verification passed162 checks, including post-handoff paused original withdrawal, commit-loss retry, removed current approval, retained original approved findings and original handoff receipt. Session48916 terminal0; `/tmp/disposition-post-handoff-gateway.log`; evidence `evidence/2026-11-01-post-handoff-withdrawal-api-result.json`. Reapplied102 migrations/access probes and explicitly reused the316 completed database workflows. No backend runtime or SQL changed, so prior4646 backend tests remain relevant.
+
+Full frontend1018 tests100 files passed14.15s; build/typecheck and lint passed with no new findings (147 existing). Sessions70161/59658/62066 terminal0; final fixture build68767/lint97366 terminal0. Logs `/tmp/disposition-post-handoff-ui-{all,build-final,lint-final}.log`. Synthetic desktop/phone browser77348 passed lost-reply/reload/exact retry, one withdrawal, no new findings/repeated withdrawal, no overflow or console errors. Evidence `evidence/2026-11-01-post-handoff-withdrawal-browser-result.json`. Visually inspected phone layout; replaced the isolated Step3 label with Record your withdrawal, then53 focused form/parent checks passed (94653). Browser evidence predates only that text-label correction. Preview39070 stopped. Initial parent-test append used a duplicated frontend path, wrote nothing, and was corrected before final focused verification.
+
+All SIX published702d960/run41291615759 checks now terminal success. Ready to commit this increment and push the locally verified119–123 updates, then discover and verify the exact successor CI. Full PRD remains active/incomplete; no production migration, outreach, paid activity, fulfillment or binding transaction occurred.
+
 ## November 1 — disposition handoff API complete locally (candidate122)
 
 Full backend4646 tests passed,10 skipped and6 subtests passed66.54s; session28875 terminal0, `/tmp/disposition-handoff-api-all.log`. Combined with final102-migration database evidence (316 workflows),161 real API checks and candidate121's1015 frontend tests/desktop-phone QA, the controlled title_review→disposition_review handoff is verified locally across database/API/guided UI boundaries. No hosted/platform/legal/provider acceptance is implied. Candidate120 is committedb678e73; candidate122 is ready for its separate commit. Full goal remains active/incomplete.

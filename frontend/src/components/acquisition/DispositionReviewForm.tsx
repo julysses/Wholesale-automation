@@ -27,11 +27,11 @@ const identity = (v: NonNullable<DispositionChoices['resolution']>) => JSON.stri
   [v.executed_source.artifact_id, v.executed_source.source_version, v.executed_source.verification_id, v.executed_source.sha256],
   v.legal_source && [v.legal_source.artifact_id, v.legal_source.source_version, v.legal_source.verification_id, v.legal_source.sha256]]);
 const citation = (s: NonNullable<DispositionChoices['resolution']>['executed_source']) => ({ artifact_id: s.artifact_id, artifact_version: s.source_version, sha256: s.sha256 });
-type Props = { context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
+type Props = { withdrawalOnly?: boolean; context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
 export function DispositionReviewForm(props: Props) {
   return <DispositionEditor key={`${props.context.userId}:${props.context.workspaceId}:${props.context.contractId}:${props.context.contractVersion}`} {...props} />;
 }
-function DispositionEditor({ context, disabled, onPending, onSaved }: Props) {
+function DispositionEditor({ context, disabled, onPending, onSaved, withdrawalOnly = false }: Props) {
   const [initial] = useState(() => { try { const saved = readPendingDisposition(sessionStorage, context.userId, context.workspaceId);
     if (saved && Object.entries(saved.context).some(([k, v]) => context[k as keyof DocumentContext] !== v)) throw new Error('Disposition context changed');
     return { saved, blocked: false }; } catch { return { saved: null, blocked: true }; } });
@@ -60,8 +60,8 @@ function DispositionEditor({ context, disabled, onPending, onSaved }: Props) {
     queryKey: ['disposition-originals', ...scope, originalIds.join(',')], queryFn: async ({ signal }) => Promise.all(originalIds.map(async id => parseReference(await (await apiFetch(`${base}/references/${id}`, { signal, cache: 'no-store' })).json(), context, id))) });
   const isFresh = (date: string) => now - Date.parse(date) <= 30000 && now - Date.parse(date) >= -5000;
   const fresh = !disabled && !blocked && !candidate.isError && !candidate.isFetching && candidate.data && isFresh(candidate.data.checked_at);
-  const resolution = fresh && resolutionData && Date.parse(resolutionData.available_until) > now ? resolutionData : null;
-  const choice = fresh && candidate.data?.candidate && Date.parse(candidate.data.candidate.max_expires_at) > now ? candidate.data.candidate : null;
+  const resolution = !withdrawalOnly && fresh && resolutionData && Date.parse(resolutionData.available_until) > now ? resolutionData : null;
+  const choice = !withdrawalOnly && fresh && candidate.data?.candidate && Date.parse(candidate.data.candidate.max_expires_at) > now ? candidate.data.candidate : null;
   const withdrawal = fresh ? candidate.data!.withdrawal : null;
   const sameSelection = mode === 'withdrawn' ? !!withdrawal && selection === JSON.stringify(withdrawal) : !!resolution && selection === identity(resolution);
   const support = supporting.data?.items.find(row => row.artifact_id === supportId);
@@ -112,18 +112,19 @@ function DispositionEditor({ context, disabled, onPending, onSaved }: Props) {
     } finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
   return <section aria-label="Disposition findings review" className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 space-y-3 text-[#1B3A5C] min-w-0">
-    <h3 className="font-semibold">Review the purchase path</h3><p className="text-sm text-gray-600">Confirm the proposed path, review findings, then record your decision.</p>
+    <h3 className="font-semibold">{withdrawalOnly ? 'Manage the original disposition decision' : 'Review the purchase path'}</h3><p className="text-sm text-gray-600">{withdrawalOnly ? 'The handoff is recorded. You can withdraw your original decision here; its findings and history remain preserved.' : 'Confirm the proposed path, review findings, then record your decision.'}</p>
     {blocked && <p role="alert">Saved disposition details could not be read safely. Reconcile the original request before continuing.</p>}
     {!expanded && !blocked && <button type="button" className={button} disabled={disabled} onClick={() => setExpanded(true)}>Open disposition review</button>}
     {expanded && !pending && !blocked && <>
       {disabled && <p role="alert">Confirm the contract and finish the adjacent pending step first.</p>}
       <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={busy || disabled || candidate.isFetching || originals.isFetching} onClick={refresh}>Refresh disposition checks</button><button type="button" className={button} disabled={busy} onClick={close}>Close without saving</button></div>
       {candidate.isError && <p role="alert">Current disposition choices could not be confirmed.</p>}
-      {fresh && candidate.data && <p role="status" className="text-sm">{holds[candidate.data.status]} Current decision: {candidate.data.current_review.status.replaceAll('_', ' ')}.</p>}
+      {fresh && candidate.data && <p role="status" className="text-sm">{withdrawalOnly && candidate.data.status === 'contract_unavailable' ? 'New findings are unavailable at this stage.' : holds[candidate.data.status]} Current decision: {candidate.data.current_review.status.replaceAll('_', ' ')}.</p>}
       {!fresh && !candidate.isFetching && <p role="status">Refresh disposition checks before saving.</p>}
-      {!mode && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-semibold">1. Confirm the proposed purchase path</legend>
+      {!mode && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-semibold">{withdrawalOnly ? 'Your original decision' : '1. Confirm the proposed purchase path'}</legend>
         {resolution && <p className="text-sm">{exitLabel(resolution.exit_type)} · Executed contract original version {resolution.executed_source.source_version}. Title findings: {resolution.title_status.replaceAll('_', ' ')}.</p>}
-        <button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={!resolution} onClick={() => { if (!resolution) return; setSelection(identity(resolution)); setMode('requires_resolution'); setStage(2); setFindings(blankFindings(resolution.exit_type)); setReviewed(false); setNote(''); }}>Start disposition findings</button>
+        {!withdrawalOnly && <button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={!resolution} onClick={() => { if (!resolution) return; setSelection(identity(resolution)); setMode('requires_resolution'); setStage(2); setFindings(blankFindings(resolution.exit_type)); setReviewed(false); setNote(''); }}>Start disposition findings</button>}
+        {withdrawalOnly && fresh && !withdrawal && <p className="text-sm">No original disposition decision is available for you to withdraw.</p>}
         {withdrawal && <button type="button" className={button} onClick={() => { setSelection(JSON.stringify(withdrawal)); setMode('withdrawn'); setStage(3); setNote(''); }}>Withdraw my previous disposition decision</button>}
       </fieldset>}
       {mode && mode !== 'withdrawn' && <><ol aria-label="Disposition review steps" className="flex flex-wrap gap-3 text-sm">{['Purchase path', 'Findings', 'Decision'].map((label, i) => <li key={label} aria-current={stage === i + 1 ? 'step' : undefined} className={stage === i + 1 ? 'font-semibold text-orange-700' : 'text-gray-600'}>{i + 1}. {label}</li>)}</ol><p className="text-sm font-medium">Reviewing: {exitLabel(findings.exit_type)}</p></>}
@@ -139,7 +140,7 @@ function DispositionEditor({ context, disabled, onPending, onSaved }: Props) {
         <button type="button" className={button} disabled={!parsed.success || !rootsCited} onClick={() => setStage(3)}>Next: disposition decision</button>
         {!rootsCited && <p role="status" className="text-sm">Cite the executed contract for satisfactory contractual-interest and assignment-provision findings, and the reviewed legal source for a satisfactory legal-basis finding.</p>}
       </fieldset>}
-      {mode && stage === 3 && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-semibold">3. Record your disposition decision</legend>
+      {mode && stage === 3 && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-semibold">{mode === 'withdrawn' ? 'Record your withdrawal' : '3. Record your disposition decision'}</legend>
         {mode !== 'withdrawn' ? <><label className="block text-sm">Disposition decision<select className={input} value={mode} onChange={e => { setMode(e.target.value as typeof mode); setReviewed(false); }}><option value="requires_resolution">Keep on hold for resolution</option><option value="approved" disabled={!canApprove}>Approve the reviewed findings</option></select></label>
           {dispositionEntries(findings).filter(i => i.finding.finding !== 'satisfactory').map(i => <p key={i.name} className="text-sm break-words"><strong>{dispositionLabels[i.name]}:</strong> {i.finding.required_action}</p>)}
           {!canApprove && <p role="status" className="text-sm">Approval needs satisfactory findings, cited originals and current review authority.</p>}{!originalsCurrent && <p role="status" className="text-sm">Refresh the original document checks before saving.</p>}
