@@ -70,7 +70,7 @@ it('shows five guided steps and locks navigation for an unresolved contract draf
     owner_relationship_id: '00000000-0000-4000-8000-000000000007', name: 'Recover draft' } }));
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AcquisitionReview userId={context.userId} /></QueryClientProvider>);
   fireEvent.change(await screen.findByLabelText('Workspace'), { target: { value: context.workspaceId } });
-  await screen.findByRole('heading', { name: 'Prepare a contract draft' });
+  await screen.findByRole('heading', { name: 'Review the contract' });
   expect(screen.getByText('Review step 5 of 5')).toBeVisible();
   await waitFor(() => expect(screen.getByLabelText('Workspace')).toBeDisabled());
   expect(screen.getByRole('button', { name: 'Refresh queue' })).toBeDisabled();

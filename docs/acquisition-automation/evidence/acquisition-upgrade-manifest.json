@@ -461,6 +461,18 @@
     {
       "file": "20261101113721_acquisition_original_review_support.sql",
       "sha256": "a34686bd3b792e4d4b024a31f3f8b698a5e710f1ba95e0608c72614196b3c97a"
+    },
+    {
+      "file": "20261101121204_acquisition_buyer_workspace_storage.sql",
+      "sha256": "bfccf730027ffb25dc72b47699451dda2ddfb6938e15722ac0030b398e16f698"
+    },
+    {
+      "file": "20261101123307_acquisition_buyer_profile_versions.sql",
+      "sha256": "5da40fb2ee31c66edd93d1f60990f2050adff12481bd1ed29eb73a35b4d854cf"
+    },
+    {
+      "file": "20261101124011_acquisition_buyer_discovery.sql",
+      "sha256": "92167b695be8e96fa15eb377bb10dcfa7bae06cc1ac8337d3111912d382dbdeb"
     }
   ]
 }

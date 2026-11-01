@@ -25,6 +25,10 @@ class Table:
     def eq(self, key, value):
         self.filters.append(lambda row: row.get(key) == value)
         return self
+    def is_(self, key, value):
+        assert value == 'null'
+        self.filters.append(lambda row: row.get(key) is None)
+        return self
     def in_(self, key, values):
         self.filters.append(lambda row: row.get(key) in values)
         return self
@@ -284,3 +288,49 @@ async def test_buyer_email_skips_opted_out_and_inactive(monkeypatch):
     monkeypatch.setattr("tools.email_client.EmailClient", FakeEmail)
     result = await buyers_api.send_email_blast(buyers_api.OutreachRequest(buyer_ids=[b["id"] for b in buyers]), BackgroundTasks())
     assert result["skipped_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_legacy_buyer_sms_excludes_workspace_buyer_even_with_legacy_opt_in(monkeypatch, sms):
+    scoped=buyer_row(workspace_id=str(uuid4()))
+    db=Database({'buyers':[scoped]})
+    monkeypatch.setattr(buyers_api,'_get_supabase',lambda:db)
+    result=await buyers_api.send_sms_blast(buyers_api.OutreachRequest(buyer_ids=[scoped['id']]),BackgroundTasks())
+    assert result['sent_count']==0 and not sms.sends and not db.inserts
+
+
+@pytest.mark.parametrize('bound_by_lead',[False,True])
+def test_legacy_buyer_matching_and_transports_reject_acquisition_deal(monkeypatch,bound_by_lead):
+    deal_id,lead_id,workspace=str(uuid4()),str(uuid4()),str(uuid4())
+    db=Database({'deals':[dict(id=deal_id,lead_id=lead_id,workspace_id=None if bound_by_lead else workspace)],
+                 'workspace_leads':[dict(lead_id=lead_id,workspace_id=workspace)] if bound_by_lead else []})
+    monkeypatch.setattr(buyers_api,'_get_supabase',lambda:db)
+    def forbidden_provider():raise AssertionError('Provider constructed before scope rejection')
+    monkeypatch.setattr('tools.sms_client.SMSClient',forbidden_provider)
+    monkeypatch.setattr('tools.email_client.EmailClient',forbidden_provider)
+    for action,request in [(buyers_api.match_deal_to_buyers,buyers_api.MatchRequest(deal_id=deal_id)),
+                           (buyers_api._send_sms_blast,buyers_api.OutreachRequest(deal_id=deal_id,buyer_ids=[str(uuid4())])),
+                           (buyers_api._send_email_blast,buyers_api.OutreachRequest(deal_id=deal_id,buyer_ids=[str(uuid4())]))]:
+        with pytest.raises(HTTPException) as exc:action(request)
+        assert exc.value.status_code==403
+    assert not db.inserts and not db.updates
+
+
+def test_legacy_buyer_history_requires_unscoped_parent(monkeypatch):
+    scoped=buyer_row(workspace_id=str(uuid4()));legacy=buyer_row()
+    rows=[dict(id=str(uuid4()),buyer_id=b['id'],purchase_date='2026-01-01') for b in (scoped,legacy)]
+    db=Database({'buyers':[scoped,legacy],'buyer_transactions':rows})
+    monkeypatch.setattr(buyers_api,'_get_supabase',lambda:db)
+    with pytest.raises(HTTPException) as exc:buyers_api.get_buyer_transactions(scoped['id'])
+    assert exc.value.status_code==404
+    assert buyers_api.get_buyer_transactions(legacy['id'])['transactions']==[rows[1]]
+
+
+@pytest.mark.asyncio
+async def test_legacy_buyer_scoring_excludes_scoped_buyer(monkeypatch):
+    scoped=buyer_row(workspace_id=str(uuid4()));legacy=buyer_row()
+    db=Database({'buyers':[scoped,legacy]})
+    monkeypatch.setattr(buyers_api,'_get_supabase',lambda:db)
+    await buyers_api._run_scoring(None)
+    assert db.tables['buyers'][0]==scoped
+    assert db.tables['buyers'][1].get('ibie_score') is not None

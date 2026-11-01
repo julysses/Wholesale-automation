@@ -1,0 +1,14 @@
+{
+  "scope": "Disposable full118 catalog; actual authenticated read RPCs and typed projections; mounted API/UI still pending",
+  "checks": [
+    "owner MFA/session/role and service denials",
+    "bounded pagination without duplicates",
+    "list omits contact details",
+    "profile exact latest revision",
+    "legacy and unversioned scoped rows absent",
+    "cross-workspace identity rejected even for shared owner",
+    "paused historical reads without save permission",
+    "read operations append no versions"
+  ],
+  "production_changed": false
+}

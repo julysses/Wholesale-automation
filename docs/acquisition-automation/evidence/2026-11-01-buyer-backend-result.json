@@ -1,0 +1,9 @@
+{
+  "session": 93921,
+  "exit_code": 0,
+  "log": "/tmp/buyer-boundary-backend.log",
+  "passed": 4703,
+  "skipped": 10,
+  "seconds": 71.16,
+  "scope": "Full offline backend suite including legacy buyer API boundary regressions; no real provider calls or hosted acceptance"
+}

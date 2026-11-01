@@ -171,3 +171,14 @@ it.each([['POST', 401, 'true', true], ['POST', 403, 'true', true], ['POST', 409,
   for (const path of [base + '/candidate', base + '?other=true', base.replace('/versions/2/', '/versions/0/'), '/api/buyers/import'])
     await expect(apiFetch(path, { method: String(method) })).rejects.toMatchObject({ rejectedRenewal: false });
 });
+
+it.each([
+  ['POST', 409, 'true', true], ['POST', 403, 'true', true], ['POST', 401, 'true', true],
+  ['POST', 503, 'true', false], ['POST', 422, 'true', false], ['GET', 409, 'true', false], ['POST', 409, 'false', false],
+])('scopes buyer rejection to the exact write route %s %s %s', async (method, status, header, rejected) => {
+  getSession.mockResolvedValue({ data: { session: { access_token: 'test-token' } } });
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response('{}', { status: Number(status), headers: { 'X-Acquisition-Buyer-Rejected': String(header) } })));
+  const path = '/api/acquisition/workspaces/20000000-0000-4000-8000-000000000001/buyers';
+  await expect(apiFetch(path, { method: String(method) })).rejects.toMatchObject({ rejectedBuyer: rejected });
+  for (const wrong of [path + '/other', '/api/buyers/import']) await expect(apiFetch(wrong, { method: String(method) })).rejects.toMatchObject({ rejectedBuyer: false });
+});

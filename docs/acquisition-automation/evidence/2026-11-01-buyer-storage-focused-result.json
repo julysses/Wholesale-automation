@@ -1,0 +1,13 @@
+{
+  "scope": "Disposable full-baseline plus116 schema; SQL storage boundaries only; no scoped application/API creation or buyer-selection acceptance yet",
+  "checks": [
+    "raw scoped insert denied; trusted fixture inserts canonical buyer",
+    "scoped buyer hidden from raw authenticated reads and legacy service views",
+    "historical scope immutable; scoped raw mutation/delete/truncate denied",
+    "all six legacy buyer relationship surfaces reject scoped IDs; legacy preferences remain valid",
+    "service one-way opt-out preserved without unrelated edits or opt-in",
+    "trusted fixture cannot move workspaces or skip exact revision advancement",
+    "scoped audit immutable and private entry points unavailable"
+  ],
+  "production_changed": false
+}

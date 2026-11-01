@@ -39,7 +39,7 @@ def inspect(db):
     return result
 
 
-def main():
+def main(probe=None):
     manifest_path = EVIDENCE/'acquisition-upgrade-manifest.json'
     manifest_bytes = manifest_path.read_bytes()
     manifest = json.loads(manifest_bytes)
@@ -73,6 +73,9 @@ def main():
             install_storage_fixture(db.query)
             for migration in migrations:
                 db.query(migration)
+            if probe is not None:
+                probe(db)
+                return
             result = inspect(db)
             result.update(scope='Separate disposable full catalog plus candidate migrations; no hosted query, no migration-role or runtime acceptance claim',
                           manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),

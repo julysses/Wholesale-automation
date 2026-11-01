@@ -2,11 +2,13 @@
 
 This is a next-action map, not a completion claim. The full PRD and activation order remain controlling. CURRENT-STATUS.md records the exact active batch/process and release gate.
 
-## Finish the current review integration batch
+## Published review integration and current buyer increment
 
-Local113-115 passed full115 session14533 (exit0):374 workflows,26 access probes,167 gateway checks. Evidence is saved in `evidence/2026-11-01-original-support-115-result.json`. Next commit/push the verified batch and confirm exact successor CI; all six published predecessor jobs are green. No local verification process remains running.
+Review integration113–115 is published at3432a0f. All SIX checks in exact run41305189013 are now successful. The retry completed successfully; no predecessor CI hold remains. See CURRENT-STATUS.md for live local verification handles.
 
-The actual-gateway journey covers renewed execution before new title findings, renewed title before new disposition findings, renewed disposition before handoff, immutable roots plus audited effective heads, post-handoff renewal, and independent withdrawal. This is local gateway acceptance, not hosted Auth or provider acceptance.
+Local116 adds scoped canonical buyer storage, guarded legacy relationships and service-client containment. Full116 passed375 workflows/26 access probes/167 gateway checks. Local117 adds immutable exact-request buyer revisions, with actual concurrent retry and authorization-change checks. Local118 adds bounded owner/admin discovery and current profile projections. Mounted API/model checks passed43. These changes are not yet published; full118 verification is running, and existing gateway coverage does not yet include a buyer-specific HTTP journey.
+
+The numbered profile panel and uncertain-save recovery are now mounted locally after disposition review; frontend1107 tests/build/lint pass, parent integration and desktop/phone browser acceptance pass. Final full118 rehearsal19435 passed376 workflows,26 access probes and175 actual gateway checks. Publish this reviewed batch and verify successor CI before the next push. Saving self-reported details does not verify a buyer or authorize contact. Extend child relationships only through controlled matching/transaction writers. The remaining verification, matching, package and closing requirements below still apply.
 
 ## Next code work: workspace-scoped buyer selection and disposition
 

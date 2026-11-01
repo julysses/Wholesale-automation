@@ -12,6 +12,7 @@ export class ApiError extends Error {
   rejectedExecution = false;
   rejectedTitle = false;
   rejectedPlan = false;
+  rejectedBuyer = false;
   rejectedDisposition = false;
   rejectedRenewal = false;
   rejectedDeadline = false;
@@ -42,6 +43,10 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       response.status === 429 && /^[0-9]{1,3}$/.test(response.headers.get('Retry-After') ?? '')
         && Number(response.headers.get('Retry-After')) >= 1 && Number(response.headers.get('Retry-After')) <= 120
         ? Number(response.headers.get('Retry-After')) : undefined);
+    error.rejectedBuyer = init?.method === 'POST'
+      && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/buyers$/.test(path)
+      && [401, 403, 409].includes(response.status)
+      && response.headers.get('X-Acquisition-Buyer-Rejected') === 'true';
     error.rejectedContract = init?.method === 'POST'
       && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/drafts$/.test(path)
       && [401, 403, 409].includes(response.status)

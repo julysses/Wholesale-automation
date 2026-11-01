@@ -1,0 +1,19 @@
+{
+  "scope": "Disposable full117 schema, actual authenticated RPC roles and typed receipts; actual simultaneous retry and revocation-during-lock checks; no mounted API/UI acceptance yet",
+  "checks": [
+    "owner MFA and workspace authorization",
+    "anonymous/service denial",
+    "invalid authority injection rejected",
+    "no legacy adoption or missing-history adoption",
+    "canonical unknown economics preserved",
+    "exact create and update revisions",
+    "exact replay returns historical receipt",
+    "changed retry/stale revision rejected",
+    "paused recovery without new save",
+    "revoked membership denies recovery",
+    "one audit/version per save and immutable history",
+    "simultaneous exact retry creates one revision",
+    "membership/session/activation changes during lock wait deny save"
+  ],
+  "production_changed": false
+}

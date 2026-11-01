@@ -86,6 +86,20 @@ def _get_supabase() -> Optional[Any]:
     return get_supabase_client()
 
 
+def _require_legacy_deal(sb: Any, deal_id: Optional[str]) -> None:
+    """Legacy matching/blasts must never consume an acquisition contract."""
+    if not deal_id:
+        return
+    rows = sb.table("deals").select("id,workspace_id,lead_id").eq("id", deal_id).limit(1).execute().data or []
+    if not rows:
+        raise HTTPException(404, "Deal not found")
+    deal = rows[0]
+    bound = (sb.table("workspace_leads").select("workspace_id").eq("lead_id", deal["lead_id"]).limit(1).execute().data
+             if deal.get("lead_id") else [])
+    if deal.get("workspace_id") is not None or bound:
+        raise HTTPException(403, "Use the acquisition workspace to review this contract")
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/import")
@@ -184,12 +198,12 @@ async def _process_import(
                     entity = buyer.get("entity_name", "").strip()
                     existing = None
                     if entity:
-                        resp = sb.table("buyers").select("id").eq("entity_name", entity).limit(1).execute()
+                        resp = sb.table("buyers").select("id").is_("workspace_id", "null").eq("entity_name", entity).limit(1).execute()
                         existing = (resp.data or [{}])[0].get("id")
                     if not existing:
                         phone = buyer.get("phone", "")
                         if phone:
-                            resp = sb.table("buyers").select("id").eq("phone", phone).limit(1).execute()
+                            resp = sb.table("buyers").select("id").is_("workspace_id", "null").eq("phone", phone).limit(1).execute()
                             existing = (resp.data or [{}])[0].get("id")
 
                     if existing:
@@ -293,17 +307,17 @@ async def _run_scoring(buyer_id: Optional[str], buyer_ids: Optional[list[str]] =
     try:
         buyers: list[dict[str, Any]] = []
         if buyer_id:
-            buyer_resp = sb.table("buyers").select("*").eq("id", buyer_id).single().execute()
+            buyer_resp = sb.table("buyers").select("*").is_("workspace_id", "null").eq("id", buyer_id).single().execute()
             buyers = [buyer_resp.data] if buyer_resp.data else []
         elif buyer_ids:
             for i in range(0, len(buyer_ids), IN_CHUNK):
-                resp = sb.table("buyers").select("*").in_("id", buyer_ids[i:i + IN_CHUNK]).execute()
+                resp = sb.table("buyers").select("*").is_("workspace_id", "null").in_("id", buyer_ids[i:i + IN_CHUNK]).execute()
                 buyers.extend(resp.data or [])
         else:
             offset = 0
             while True:
                 page = (
-                    sb.table("buyers").select("*").eq("active", True)
+                    sb.table("buyers").select("*").is_("workspace_id", "null").eq("active", True)
                     .order("id").range(offset, offset + SCORE_PAGE - 1).execute().data or []
                 )
                 if not page:
@@ -356,7 +370,7 @@ def list_buyer_imports(limit: int = 50) -> dict:
         .order("created_at", desc=True).limit(max(1, min(limit, 200))).execute().data or []
     )
     for log in logs:
-        resp = sb.table("buyers").select("id", count="exact").eq("import_log_id", log["id"]).limit(1).execute()
+        resp = sb.table("buyers").select("id", count="exact").is_("workspace_id", "null").eq("import_log_id", log["id"]).limit(1).execute()
         log["buyers_remaining"] = resp.count if getattr(resp, "count", None) is not None else len(resp.data or [])
     return {"imports": logs}
 
@@ -375,7 +389,7 @@ def delete_buyer_import(import_id: str) -> dict:
     deleted = 0
     while True:
         ids = [r["id"] for r in (
-            sb.table("buyers").select("id").eq("import_log_id", import_id).limit(1000).execute().data or []
+            sb.table("buyers").select("id").is_("workspace_id", "null").eq("import_log_id", import_id).limit(1000).execute().data or []
         )]
         if not ids:
             break
@@ -431,9 +445,11 @@ def match_deal_to_buyers(req: MatchRequest) -> dict:
     if not sb:
         raise HTTPException(503, "Database not configured")
 
+    _require_legacy_deal(sb, req.deal_id)
+
     try:
         # Load active buyers
-        buyer_resp = sb.table("buyers").select("*").eq("active", True).execute()
+        buyer_resp = sb.table("buyers").select("*").is_("workspace_id", "null").eq("active", True).execute()
         buyers = buyer_resp.data or []
 
         deal = DealMatchInput(
@@ -504,6 +520,7 @@ def _send_sms_blast(req: OutreachRequest) -> dict:
     sb = _get_supabase()
     if sb is None:
         raise HTTPException(503, "Database not configured")
+    _require_legacy_deal(sb, req.deal_id)
     from tools.sms_client import SMSClient
     from schemas.outreach import OutreachChannel, OutreachMessage
     from web.api.marketing_api import _contact_suppressed
@@ -515,7 +532,7 @@ def _send_sms_blast(req: OutreachRequest) -> dict:
         delivery_recorded = False
         try:
             if sb:
-                buyer_resp = sb.table("buyers").select("first_name,last_name,phone,sms_opt_in,active").eq("id", buyer_id).single().execute()
+                buyer_resp = sb.table("buyers").select("first_name,last_name,phone,sms_opt_in,active").is_("workspace_id", "null").eq("id", buyer_id).single().execute()
                 buyer = buyer_resp.data or {}
             else:
                 buyer = {}
@@ -587,6 +604,7 @@ def _send_email_blast(req: OutreachRequest) -> dict:
     sb = _get_supabase()
     if sb is None:
         raise HTTPException(503, "Database not configured")
+    _require_legacy_deal(sb, req.deal_id)
     from config.settings import settings
     from tools.email_client import EmailClient
     email = EmailClient()
@@ -597,7 +615,7 @@ def _send_email_blast(req: OutreachRequest) -> dict:
         delivery_recorded = False
         try:
             if sb:
-                buyer_resp = sb.table("buyers").select("first_name,last_name,email,email_opt_in,active").eq("id", buyer_id).single().execute()
+                buyer_resp = sb.table("buyers").select("first_name,last_name,email,email_opt_in,active").is_("workspace_id", "null").eq("id", buyer_id).single().execute()
                 buyer = buyer_resp.data or {}
             else:
                 buyer = {}
@@ -669,6 +687,10 @@ def get_buyer_transactions(buyer_id: str) -> dict:
     sb = _get_supabase()
     if not sb:
         raise HTTPException(503, "Database not configured")
+    parent = sb.table("buyers").select("id").is_("workspace_id", "null").eq("id", buyer_id).limit(1).execute().data
+    if not parent:
+        raise HTTPException(404, "Buyer not found")
+
     try:
         resp = (
             sb.table("buyer_transactions")
@@ -697,7 +719,7 @@ async def _run_classify(buyer_id: str) -> None:
     if not sb:
         return
     try:
-        buyer_resp = sb.table("buyers").select("*").eq("id", buyer_id).single().execute()
+        buyer_resp = sb.table("buyers").select("*").is_("workspace_id", "null").eq("id", buyer_id).single().execute()
         buyer = buyer_resp.data
         if not buyer:
             return

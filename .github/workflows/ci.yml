@@ -166,7 +166,9 @@ jobs:
   acquisition-full-upgrade:
     name: Full acquisition schema upgrade and application journeys
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Includes dependency setup, the populated catalog rehearsal, gateway checks,
+    # and final lock-wait tests. The expanded suite exceeded the old 15m budget.
+    timeout-minutes: 25
     permissions:
       contents: read
     steps:

@@ -1,0 +1,41 @@
+{
+  "scope": "Guided buyer profile panel mounted after disposition-review handoff, exact save recovery and typed projections",
+  "frontend_suite": {
+    "session_id": 5531,
+    "exit_code": 0,
+    "passed": 1107,
+    "files": 105,
+    "log": "/tmp/buyer-final-frontend.log"
+  },
+  "build": {
+    "session_id": 25755,
+    "exit_code": 0,
+    "log": "/tmp/buyer-final-build.log"
+  },
+  "browser_qa": {
+    "session_id": 62381,
+    "exit_code": 0,
+    "evidence": "buyer-profiles-2026-11-01/result.json",
+    "screenshots_reviewed": [
+      "1280-entry.png",
+      "375-review.png"
+    ],
+    "scope": "synthetic adapter, actual components; not hosted or gateway acceptance"
+  },
+  "real_buyer_gateway_journey": "pending",
+  "published": false,
+  "production_changed": false,
+  "lint": {
+    "session_id": 20764,
+    "exit_code": 0,
+    "new_findings": 0,
+    "existing_findings": 147,
+    "log": "/tmp/buyer-final-lint-recheck.log"
+  },
+  "parent_integration": {
+    "session_id": 34039,
+    "exit_code": 0,
+    "passed": 48,
+    "log": "/tmp/buyer-parent-tests.log"
+  }
+}

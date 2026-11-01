@@ -94,6 +94,8 @@ def run_postgrest(db, binary, pg):
             evidence_checks=verify_evidence_http(clone,request,token,ADMIN,OTHER,WORKSPACE)
             from acquisition_contracts_http import verify_contracts_http
             contract_checks=verify_contracts_http(clone,request,token,ADMIN,OTHER,WORKSPACE)
+            from acquisition_buyers_http import verify_buyers_http
+            buyer_checks=verify_buyers_http(clone,request,token,ADMIN,OTHER,WORKSPACE)
             from acquisition_offer_forms_http import verify_offer_forms_http
             form_checks, forms_after_revocation=verify_offer_forms_http(clone,request,token,OTHER,WORKSPACE)
             clone.query('DELETE FROM auth.sessions WHERE id=%s',[ADMIN])
@@ -101,7 +103,7 @@ def run_postgrest(db, binary, pg):
             if request('/workspaces?select=id',token())!=(200,[]):raise AssertionError('Revoked session retains access')
             if request('/rpc/acquisition_offer_review_queue?p_workspace='+WORKSPACE,token())[0]!=403:
                 raise AssertionError('Revoked session RPC accepted')
-        return {'real_postgrest':'passed','version':version,'checks':['signed tenant isolation','wrong signature rejected','expired JWT rejected','anonymous denied','deleted session hidden','revoked RPC denied']+postal_checks+evidence_checks+contract_checks+form_checks,'hosted_auth_verified':False}
+        return {'real_postgrest':'passed','version':version,'checks':['signed tenant isolation','wrong signature rejected','expired JWT rejected','anonymous denied','deleted session hidden','revoked RPC denied']+postal_checks+evidence_checks+contract_checks+buyer_checks+form_checks,'hosted_auth_verified':False}
     finally:
         if process:
             process.terminate()

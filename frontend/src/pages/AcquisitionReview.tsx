@@ -36,7 +36,7 @@ export function AcquisitionReview({ userId }: { userId: string }) {
     queryFn: ({ signal }) => read<Workspace[]>('/api/acquisition/workspaces', signal), retry: false, gcTime: 0, staleTime: 0 });
   return <main className="max-w-6xl mx-auto p-6 space-y-6">
     <header><h1 className="text-2xl font-bold text-[#1B3A5C]">Acquisition workflow</h1>
-      <p className="text-gray-600 mt-2">Prepare campaigns, review seller inquiries, evaluate the property, review the proposed amount, and prepare a contract draft in one workspace.</p><p className="text-sm text-gray-500 mt-2">These review steps support your existing acquisition process. Amount approval does not send an offer or approve a contract.</p></header>
+      <p className="text-gray-600 mt-2">Prepare campaigns, review seller inquiries, evaluate the property, review the proposed amount, and review contracts and buyer profiles in one workspace.</p><p className="text-sm text-gray-500 mt-2">These review steps support your existing acquisition process. Amount approval does not send an offer or approve a contract.</p></header>
     {spaces.isPending && <p role="status">Loading your workspaces…</p>}
     {spaces.isError && <p role="alert">{message(spaces.error)}</p>}
     {spaces.data && <label className="block max-w-md">Workspace<select className={input} disabled={campaignPending} value={workspace} onChange={e => setWorkspace(e.target.value)}>
@@ -51,7 +51,7 @@ const reviewSteps = [
   { id: 'sellers', title: 'Review seller inquiries', detail: 'Resolve intake issues, review callback requests, and confirm the seller and property information.' },
   { id: 'evaluate', title: 'Evaluate the property', detail: 'Review the evidence and costs, then prepare a proposed amount.' },
   { id: 'decide', title: 'Review the proposed amount', detail: 'Check the supporting analysis and record your decision. Contract approval and delivery are separate steps.' },
-  { id: 'contract', title: 'Prepare a contract draft', detail: 'Carry the selected property and reviewed amount forward, choose the reported seller, and save a draft for document review.' },
+  { id: 'contract', title: 'Review the contract', detail: 'Prepare the draft, review documents and the signed agreement, then prepare buyer profiles after the disposition review handoff.' },
 ];
 
 function ReviewStep({ index, children }: { index: number; children: ReactNode }) {

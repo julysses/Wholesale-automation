@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { emptyBuyer, preserveBuyer } from '../src/lib/acquisition/buyers';
 import { ContractDraft } from '../src/components/acquisition/ContractDraft';
 const mock = vi.hoisted(() => ({ fetch: vi.fn(), pending: vi.fn(), fail: false, reject: false, existing: false, approved: true }));
 vi.mock('@/lib/api', () => ({ apiFetch: mock.fetch, ApiError: class extends Error { rejectedContract = true; } }));
@@ -15,6 +16,12 @@ beforeEach(() => {
     if (init?.method === 'POST') {
       if (mock.reject) throw new ApiError('Rejected', 409);
       if (mock.fail) throw new Error('Lost response');
+      if (path.endsWith('/buyers')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ request_id: body.id, workspace_id: id(2), buyer_id: body.buyer_id,
+          revision: body.expected_revision + 1, details: body.details, duplicate: true, profile_recorded: true,
+          buyer_verified: false, contact_authorized: false, execution_authorized: false }) };
+      }
       if (path.includes('/document-links')) {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ link_id: body.id, workspace_id: id(2), contract_id: id(5), contract_version: 2, source_version: 1, artifact_id: id(32), duplicate: true, review_approved: false, execution_authorized: false }) };
@@ -60,6 +67,8 @@ beforeEach(() => {
       mock.existing = true;
       return { json: async () => ({ deal_id: JSON.parse(init.body as string).id, version: 1, status: 'draft', duplicate: false, execution_authorized: false }) };
     }
+    if (path.includes('/buyers?')) return { json: async () => ({ workspace_id: id(2), checked_at: new Date().toISOString(),
+      can_save: true, items: [], next_cursor: null, contact_authorized: false, execution_authorized: false }) };
     const value = path.endsWith('/state') ? { ...selected, workspace_id: id(2), sequence: 2, amount_approval_current: mock.approved, amount: 140000 }
       : path.endsWith('/summary') ? { id: id(3), property_id: id(4), property_address: '123 Fixture St', city: 'Dallas' }
       : path.includes('/sellers?') ? { items: [{ id: id(7), workspace_id: id(2), lead_id: id(3), property_id: id(4), owner_id: id(8), relationship: 'reported_owner', verification_status: 'unverified', seller: { display_name: 'Synthetic Seller' } }], next_after: null, ownership_verified: false, execution_authorized: false }
@@ -544,5 +553,30 @@ it('recovers the original renewal version after the contract advances without al
   expect(screen.getByText('Refresh draft information')).toBeDisabled(); expect(mock.pending).toHaveBeenLastCalledWith(true);
   fireEvent.click(screen.getByText('Retry saved renewal')); await screen.findByText(/Review renewal recorded/);
   expect(posts()[0][0]).toContain('/versions/1/review-renewals');
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});
+
+it('opens buyer preparation only after disposition handoff and holds adjacent work', async () => {
+  mock.existing = true; record.acquisition_status = 'disposition_review'; open();
+  fireEvent.click(await screen.findByText('Open buyer profiles'));
+  await screen.findByText('No buyer profiles on this page.');
+  expect(mock.pending).toHaveBeenLastCalledWith(true);
+  expect(screen.getByText('Refresh draft information')).toBeDisabled();
+  fireEvent.click(screen.getByText('Close without saving'));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+  expect(screen.getByText('Refresh draft information')).toBeEnabled();
+});
+it('does not present buyer preparation during title review', async () => {
+  mock.existing = true; record.acquisition_status = 'title_review'; open();
+  await screen.findByText(/Title review in progress: Saved property draft/);
+  expect(screen.queryByText('Open buyer profiles')).not.toBeInTheDocument();
+});
+it('keeps buyer recovery reachable without a selected contract and releases navigation after closing', async () => {
+  const original = preserveBuyer(sessionStorage, { version: 1, context: { userId: id(1), workspaceId: id(2) },
+    request: { id: id(80), buyer_id: id(81), expected_revision: 0, details: { ...emptyBuyer(), first_name: 'Synthetic', last_name: 'Buyer', source_note: 'Self-reported buyer information awaiting verification.' } } });
+  open(null); expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByText('Retry saved buyer request')); await screen.findByText(/Buyer details saved for review/);
+  expect(posts()).toHaveLength(1); expect(JSON.parse(posts()[0][1].body)).toEqual(original.request);
+  expect(sessionStorage.length).toBe(0); fireEvent.click(screen.getByText('Close without saving'));
   await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
 });
