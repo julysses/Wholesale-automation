@@ -2,6 +2,14 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — isolated CI repair validated and terms mapping inspected
+
+Isolated repair57e57af on published2a5690e now generates parameterized review timestamps at test execution and separates PostgreSQL/Python installation into individually bounded setup steps. Actual CI evidence: backend124702445359 failed a collection-time expiry assumption; full-upgrade124702445313 timed out after PostgreSQL completed but before pip finished. No application expiry rules or acceptance tests removed. Full offline backend:3565 passed,10 skipped,six subtests in28.81s; all30 inline workflow shell steps and YAML parsing passed. First local repair run exposed one accidentally deferred runtime request field; corrected it before successful full rerun. Repair committed in /tmp/wholesale-ci-repair-20261031 and merged into main locally.
+
+Run41257089916 remains live only in PostgreSQL contention/workspace isolation; three successes and two failures are terminal. Do not push repair57e57af until that last job finishes. No local test/preview processes remain active. Keep new features local until the repair successor passes all six jobs.
+
+Inspected current contract version constraints, protected-deal trigger, shared artifact/verification/review composite keys and byte transport. Added the terms/version implementation boundary to CONTRACTS-AND-DISPOSITION.md: preserve canonical deals and exact source precision; resolve audited document carry-forward without duplicating uploads or carrying old approval to changed terms before SQL. Full goal remains open across controlled transitions, disposition/buyers/closing and all provider/hosted acceptance gates. No production actions.
+
 ## October 31 — recording form browser QA and backend fixture repair
 
 Local synthetic desktop/375x812 phone QA passed approval preparation, committed-reply-loss recovery, navigation locking/unlocking, withdrawal without renewed attestation and current status changing to Review withdrawn. Client/scroll widths were 369/369; no browser warnings/errors. Evidence: evidence/contract-review-form-2026-10-31. Browser reload was attempted but not independently confirmed; automated component tests establish reload recovery. This fixture is not hosted or legal acceptance. Preview73970 stopped exit130; viewport reset and tab closed.

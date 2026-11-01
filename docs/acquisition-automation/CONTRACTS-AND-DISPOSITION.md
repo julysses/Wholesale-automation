@@ -63,3 +63,11 @@ The pure review helper is now version `acquisition-contract-review-v2`. It prese
 ## Human review persistence checkpoint
 
 Candidate migration 64 now stores exact human review bindings for contract review, title review and assignment basis, with immutable decisions, current-state assessment and original-reviewer withdrawal. It does not establish legal sufficiency or execute any contract transition. Reviewer policies remain empty by default. API/interface integration, controlled policy provisioning, immutable terms and persisted transitions remain required; see CURRENT-STATUS.md for validation and publication status.
+
+## Contract terms/version implementation boundary
+
+Current inspected migration20261031221633 restricts canonical deals and acquisition_contract_versions to draft/version1 and prevents all scoped updates. Document registry, observations, review ledgers, byte paths and current-state APIs bind an exact contract version. A terms edit therefore cannot be implemented as a raw update or a second independent contract record.
+
+Next persistence design must add immutable terms/version snapshots on canonical deals, retaining date-only versus instant precision, nullable unknown assignment provisions, earnest money, purchase amount, exact source document/hash and source clause/provenance. Version advancement uses the existing deal/lead locks, current authorization, expected version, exact request identity and atomic audit. Historical retries return their original receipt even after a later version exists; every new approval uses the new version. Existing version1 rows and legacy deals stay intact.
+
+Before adding SQL, resolve explicit carry-forward of unchanged retained source documents. Prefer an audited version-to-source association over duplicating physical uploads or silently relabeling an old artifact. Source artifact/verification identity and all sticky hash detection, revocation, retention and reviewer constraints must remain enforceable. Prior human reviews must not become approvals for changed terms. Current composite foreign keys and byte transport paths must be inspected together; no proposed shortcut may weaken them. New versions should show the retained document history and missing fresh review as the next guided action. This is an implementation design checkpoint, not completed persistence or legal approval.
