@@ -140,3 +140,65 @@ def test_invalid_term_is_rejected_without_store_access(endpoint):
     client,store=endpoint
     assert client.get(BASE+'/purchase_price').status_code==422
     store.request.assert_not_awaited()
+
+
+def candidate():
+    from tests.test_acquisition_deadline_resolution import deadline_state
+    state=deadline_state();source=state['resolution']['source']
+    return dict(workspace_id=WORKSPACE,contract_id=CONTRACT,contract_version=2,term='closing_deadline',
+        artifact_id=source['artifact_id'],status='ready_for_human_review',checked_at=state['checked_at'],
+        execution_authorized=False,current_review=state,original_source=source|{'verification_id':OTHER},
+        candidate=dict(artifact_id=source['artifact_id'],source_version=1,verification_id=OTHER,sha256=source['sha256'],
+            policy_id=OTHER,max_expires_at=state['expires_at'],expected_sequence=state['sequence']),
+        withdrawal=dict(review_id=state['review_id'],artifact_id=source['artifact_id'],source_version=1,
+            verification_id=OTHER,policy_id=OTHER,expected_sequence=state['sequence']))
+
+
+def candidate_path():return BASE+'/closing_deadline/documents/'+candidate()['artifact_id']+'/candidate'
+
+
+def test_candidate_preserves_original_withdrawal_and_shared_sequence(endpoint):
+    client,store=endpoint;value=candidate();store.request.return_value=value
+    response=client.get(candidate_path())
+    assert response.status_code==200 and response.headers['cache-control']=='no-store'
+    assert response.json()['withdrawal']['expected_sequence']==3
+    assert response.json()['current_review']['review_sequence']==1
+    assert response.json()['candidate']['expected_sequence']==3
+    assert store.request.await_args.args==('POST','rpc/deadline_review_candidate')
+    assert store.request.await_args.kwargs['body']['p_term']=='closing_deadline'
+
+
+@pytest.mark.parametrize('status',['paused','contract_unavailable','history_limit_reached','prepared_terms_required',
+    'original_date_required','original_evidence_review_required','reviewer_policy_required','evidence_review_required'])
+def test_held_candidate_cannot_inherit_approval_from_withdrawal(endpoint,status):
+    client,store=endpoint;store.request.return_value=candidate()|{'status':status,'candidate':None}
+    result=client.get(candidate_path())
+    assert result.status_code==200 and result.json()['candidate'] is None
+    assert result.json()['withdrawal'] is not None and not result.json()['execution_authorized']
+
+
+@pytest.mark.parametrize('field,change',[
+    ('top',{'term':'effective'}),('top',{'workspace_id':OTHER}),('top',{'artifact_id':OTHER}),
+    ('top',{'checked_at':'2020-01-01T00:00:00Z'}),('top',{'execution_authorized':True}),
+    ('top',{'original_source':None}),('top',{'status':'paused'}),('top',{'private':'secret-marker'}),
+    ('candidate',{'expected_sequence':1}),('candidate',{'source_version':3}),('candidate',{'artifact_id':OTHER}),
+    ('candidate',{'max_expires_at':'2099-01-01T00:00:00Z'}),('candidate',{'max_expires_at':'2020-01-01T00:00:00Z'}),
+    ('withdrawal',{'expected_sequence':1}),('withdrawal',{'review_id':OTHER}),('withdrawal',{'source_version':3}),('withdrawal',{'artifact_id':OTHER}),('withdrawal',{'source_version':2}),
+    ('original_source',{'term':'effective'}),('original_source',{'artifact_version':2}),
+    ('current_review',{'term':'effective'}),
+])
+def test_mixed_stale_or_unbounded_actions_remain_uncertain(endpoint,field,change):
+    client,store=endpoint;value=candidate()
+    if field=='top':value.update(change)
+    else:value[field].update(change)
+    store.request.return_value=value
+    response=client.get(candidate_path())
+    assert response.status_code==503 and 'secret-marker' not in response.text
+    assert 'x-acquisition-deadline-review-rejected' not in response.headers
+
+
+@pytest.mark.parametrize('status',[401,403,409,429,503])
+def test_discovery_error_preserves_pending_save(endpoint,status):
+    client,store=endpoint;store.request.side_effect=HTTPException(status,'Unavailable')
+    result=client.get(candidate_path())
+    assert result.status_code==status and 'x-acquisition-deadline-review-rejected' not in result.headers

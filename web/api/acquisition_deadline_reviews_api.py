@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
-from schemas.acquisition_deadline_resolution import DeadlineResolutionReviewRequest, DeadlineResolutionReviewReceipt, DeadlineResolutionReviewState, DeadlineTerm
+from schemas.acquisition_deadline_resolution import DeadlineResolutionReviewRequest, DeadlineResolutionReviewReceipt, DeadlineResolutionReviewState, DeadlineTerm, DeadlineResolutionCandidate
 from tools.acquisition_store import acquisition_store
 from web.api.acquisition_contract_documents_api import Version, rpc, uncertain
 
@@ -60,3 +60,24 @@ async def deadline_review_state(workspace_id: UUID, contract_id: UUID, contract_
     except (ValueError, TypeError):
         raise uncertain('Current deadline review could not be confirmed. Refresh before proceeding.') from None
     return state.model_dump(mode='json')
+
+
+@router.get('/{term}/documents/{artifact_id}/candidate')
+async def deadline_review_candidate(workspace_id: UUID, contract_id: UUID, contract_version: Version,
+                                    term: DeadlineTerm, artifact_id: UUID, response: Response,
+                                    store=Depends(acquisition_store)):
+    response.headers['Cache-Control'] = 'no-store'
+    raw = await rpc(store, 'deadline_review_candidate', {'p_workspace': str(workspace_id),
+        'p_contract': str(contract_id), 'p_version': contract_version, 'p_term': term, 'p_artifact': str(artifact_id)})
+    try:
+        choice = DeadlineResolutionCandidate.model_validate(raw)
+        now = datetime.now(timezone.utc)
+        if ((choice.workspace_id, choice.contract_id, choice.contract_version, choice.term, choice.artifact_id)
+                != (workspace_id, contract_id, contract_version, term, artifact_id)
+                or not now-timedelta(seconds=30) <= choice.checked_at <= now+timedelta(seconds=5)
+                or choice.candidate is not None and choice.candidate.max_expires_at <= now
+                or choice.current_review.approval_current and choice.current_review.expires_at <= now):
+            raise ValueError('Fresh exact deadline actions required')
+    except (ValueError, TypeError):
+        raise uncertain('Deadline review choices could not be confirmed. Refresh before proceeding.') from None
+    return choice.model_dump(mode='json')

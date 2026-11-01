@@ -473,4 +473,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'deadline API original withdrawal recovery after policy revocation',
             'deadline API workspace conflicts and unchanged calendar terms status and audit',
             'deadline state exact term identity shared sequence and independent unreviewed term',
-            'deadline state policy revocation and original withdrawal history']
+            'deadline state policy revocation and original withdrawal history',
+            'deadline choices exact original source selected policy and scoped access',
+            'deadline choices retain original withdrawal under policy hold and remove it after withdrawal']

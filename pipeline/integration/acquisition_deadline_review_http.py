@@ -75,10 +75,19 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
             source=dict(term='closing_deadline',artifact_id=document,artifact_version=1,sha256='d'*64,locator='Synthetic closing clause')))
     history=db.query('SELECT version,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract])
     with TestClient(app) as client:
+        choice_path=path+'/closing_deadline/documents/'+document+'/candidate'
+        choice=client.get(choice_path,headers=headers)
+        if choice.status_code!=200 or choice.json()['status']!='ready_for_human_review' or choice.json()['withdrawal'] is not None:
+            raise AssertionError('Deadline review choice unavailable before personal review')
+        selected=choice.json()['candidate'];original=choice.json()['original_source']
+        if selected['artifact_id']!=document or selected['verification_id']!=scan or selected['policy_id']!=policy or original['artifact_id']!=document or original['verification_id']!=scan or selected['expected_sequence']!=0:
+            raise AssertionError('Deadline choice lost exact original source and selected policy')
         initial=client.get(path+'/closing_deadline',headers=headers)
         if initial.status_code!=200 or initial.json()['status']!='not_reviewed' or initial.json()['sequence']!=0:
             raise AssertionError('Deadline initial current state unavailable')
         for auth in (foreign,{}):
+            if client.get(choice_path,headers=auth).status_code not in (401,403):
+                raise AssertionError('Deadline choice crossed workspace or session')
             if client.get(path+'/closing_deadline',headers=auth).status_code not in (401,403):
                 raise AssertionError('Deadline state crossed workspace or session')
             if client.post(path,json=body,headers=auth).status_code not in (401,403):
@@ -99,6 +108,9 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         if conflict.status_code!=409 or conflict.headers.get('X-Acquisition-Deadline-Review-Rejected')!='true':
             raise AssertionError('Deadline conflicting retry was not definitively rejected')
         db.query('UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id=%s',[policy])
+        held_choice=client.get(choice_path,headers=headers)
+        if held_choice.status_code!=200 or held_choice.json()['status']!='reviewer_policy_required' or held_choice.json()['candidate'] is not None or held_choice.json()['withdrawal']['review_id']!=review:
+            raise AssertionError('Deadline revoked policy lost original independent withdrawal')
         held=client.get(path+'/closing_deadline',headers=headers)
         if held.status_code!=200 or held.json()['status']!='requires_review' or held.json()['approval_current'] or held.json()['expires_at'] is not None:
             raise AssertionError('Deadline state retained revoked policy authority')
@@ -112,6 +124,8 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         state=client.get(path+'/closing_deadline',headers=headers)
         if state.status_code!=200 or state.json()['status']!='withdrawn' or state.json()['interpretation_review_id']!=review or state.json()['resolution']!=body['resolution'] or state.json()['review_sequence']!=2:
             raise AssertionError('Deadline withdrawn state lost original interpretation history')
+        if client.get(choice_path,headers=headers).json()['withdrawal'] is not None:
+            raise AssertionError('Deadline discovery offered a second withdrawal')
     if history!=db.query('SELECT version,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract]):
         raise AssertionError('Deadline API rewrote signed calendar precision or history')
     if db.query('SELECT acquisition_status,acquisition_version FROM public.deals WHERE id=%s',[contract])!=[dict(acquisition_status='pending_signature',acquisition_version=2)]:

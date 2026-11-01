@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## October 31 — deadline action discovery verified (candidate86); API/state pushed
+
+Added CLI-created20261101044534 read-only source/policy choices and authenticated candidate API. Original date-clause evidence is separate from the selected interpretation document; both sources, current reviewer policy and session bound readiness/expiry. Unknown or already explicit dates and unavailable sources/policies remain held. Original selected-term withdrawal is independent of new source selection and uses the shared concurrency cursor; another deadline's newer review cannot redirect it. Typed transport also matches withdrawal artifact/version to its original interpretation. No review, policy or lifecycle mutation occurs during discovery.
+
+153 focused model/API cases passed3.77s; four focused SQL cases passed20.106s. Full backend4175 passed,10 skipped,6 subtests49.81s. Full disposable rehearsal18329 exited0:84 migrations,26 access probes,227 workflows,121 actual PostgREST/API checks;24 historical rows/22 populated tables/103 definitions and Storage preserved. Actual API verifies scoped exact source/policy choices, original withdrawal under revoked-policy hold and removal after withdrawal. Evidence:evidence/2026-10-31-deadline-choice-result.json. Logs:/tmp/deadline-choice-sql.log,/tmp/deadline-choice-backend.log,/tmp/deadline-choice-upgrade.log. No live local validation process remains.
+
+All six published5c821fc/run41273417902 checks reached terminal success. Pushed verified1b20481 and8c51dab43a1718c687a098cba1348cf633f7da36. Exact successor41274555808 is live; wait for all six terminal successes before pushing candidate86. No cancellation/restart. Git pull was current before implementation. Production migrations, policy/provider activation, outreach, fulfillment and binding actions remain untouched.
+
+Next: bind exact reviewed deadline IDs into execution findings and source/current-authority checks without replacing calendar dates or changing legacy request fingerprints. Then add the source-backed interpretation editor in the existing step5 flow, preserving navy/orange styling, explicit personal approval, independent withdrawal and original-version recovery. Continue amendments/full PRD lifecycle/channel/hosted acceptance after that integration. Existing date-only execution holds remain until complete verified binding. Full goal remains active/incomplete.
+
 ## October 31 — deadline current-state API verified (candidate85)
 
 Added CLI-created20261101043729 private current-interpretation predicate and authenticated read-only state RPC, plus GET deadline-reviews/{term}. Current authority requires the exact latest approval for that term, unchanged original date/current version, active workspace/status, both bound original sources and current reviewer/scanner/policy/session authority. The shared concurrency sequence is separate from the selected-term review sequence. A different term can remain unreviewed despite nonzero shared sequence; withdrawal retains original interpretation/date without current expiry. Read errors never clear an unresolved saved write.

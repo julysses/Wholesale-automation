@@ -9,7 +9,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import AwareDatetime, StrictBool, Field, field_validator, model_validator
 from schemas.acquisition_contract_terms import Exact, ContractTermSource, ContractDateTerm
-from schemas.acquisition_contract_reviews import ContractReviewRequest, ContractReviewReceipt
+from schemas.acquisition_contract_reviews import ContractReviewRequest, ContractReviewReceipt, ReviewApprovalChoice, ReviewWithdrawalChoice
 
 DeadlineTerm = Literal['effective', 'inspection_deadline', 'closing_deadline']
 
@@ -163,4 +163,66 @@ class DeadlineResolutionReviewState(Exact):
                 raise ValueError('Current interpretation requires a future expiry')
         elif self.expires_at is not None:
             raise ValueError('Historical interpretation cannot expose current expiry')
+        return self
+
+
+class DeadlineOriginalSource(ContractTermSource):
+    verification_id: UUID
+
+
+class DeadlineApprovalChoice(ReviewApprovalChoice):
+    source_version: int = Field(strict=True, ge=1, le=2147483647)
+
+
+class DeadlineWithdrawalChoice(ReviewWithdrawalChoice):
+    source_version: int = Field(strict=True, ge=1, le=2147483647)
+
+
+class DeadlineResolutionCandidate(Exact):
+    workspace_id: UUID
+    contract_id: UUID
+    contract_version: int = Field(strict=True, ge=1, le=2147483647)
+    term: DeadlineTerm
+    artifact_id: UUID
+    status: Literal['paused', 'contract_unavailable', 'history_limit_reached', 'prepared_terms_required',
+                    'original_date_required', 'original_evidence_review_required', 'reviewer_policy_required',
+                    'evidence_review_required', 'ready_for_human_review']
+    candidate: DeadlineApprovalChoice | None
+    withdrawal: DeadlineWithdrawalChoice | None
+    original_source: DeadlineOriginalSource | None
+    current_review: DeadlineResolutionReviewState
+    checked_at: AwareDatetime
+    execution_authorized: StrictBool
+
+    @field_validator('checked_at', mode='before')
+    @classmethod
+    def explicit_candidate_timestamp(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit candidate timestamp required')
+        return value
+
+    @model_validator(mode='after')
+    def exact_term_actions(self):
+        state = self.current_review
+        if (self.execution_authorized or (state.workspace_id, state.contract_id, state.contract_version, state.term, state.checked_at)
+                != (self.workspace_id, self.contract_id, self.contract_version, self.term, self.checked_at)):
+            raise ValueError('Exact current deadline context required')
+        if (self.status == 'ready_for_human_review') != (self.candidate is not None):
+            raise ValueError('Held state cannot offer approval')
+        if self.original_source and (self.original_source.term != self.term
+                or self.original_source.artifact_version >= self.contract_version):
+            raise ValueError('Exact retained original date source required')
+        choice = self.candidate
+        if choice and (self.original_source is None or state.original_term.precision != 'date'
+                or choice.artifact_id != self.artifact_id or choice.source_version > self.contract_version
+                or choice.expected_sequence != state.sequence
+                or not 0 < (choice.max_expires_at-self.checked_at).total_seconds() <= 86400):
+            raise ValueError('Bounded exact source and shared save sequence required')
+        withdrawal = self.withdrawal
+        if withdrawal and (withdrawal.source_version > self.contract_version
+                or withdrawal.review_id != state.review_id or withdrawal.expected_sequence != state.sequence
+                or state.status not in {'approved', 'requires_review'} or state.resolution is None
+                or withdrawal.artifact_id != state.resolution.source.artifact_id
+                or withdrawal.source_version != state.resolution.source.artifact_version):
+            raise ValueError('Original selected-term withdrawal required')
         return self

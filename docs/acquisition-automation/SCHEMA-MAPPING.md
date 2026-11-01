@@ -419,3 +419,9 @@ Compensation: preserve history and disable new reviews through the existing acti
 CLI-created `20261101043729_acquisition_deadline_resolution_state.sql` adds no table or mutation path. The existing immutable review/term/source tables remain authoritative. `private.deadline_review_current(uuid,timestamptz)` is ungranted and validates exact latest-per-term evidence and authority. The scoped authenticated state wrapper additionally checks actual owner/admin MFA/session access before returning history, original precision, shared concurrency sequence and selected-term sequence. Existing RLS, grants and source indexes are unchanged.
 
 Compensation: omit/disable the read UI if rollout fails; preserve all evidence and decisions. No production apply is approved. Six focused SQL cases and the full83-migration/223-workflow/119-API-check disposable rehearsal passed with historical rows/definitions and Storage preserved. Evidence:`evidence/2026-10-31-deadline-state-result.json`.
+
+## Deadline action discovery — candidate86
+
+`20261101044534_acquisition_deadline_resolution_choices.sql` adds only private-definer/public-invoker read functions. It reuses existing review, term-source, artifact, scan, policy and session records; table constraints/RLS/grants remain unchanged. Original source authority and selected interpretation source jointly bound readiness/expiry. The latest selected-term approval supplies original withdrawal identity, while the shared ledger maximum supplies the concurrency cursor. No new policy provisioning or execution authority.
+
+Compensation: omit/disable the discovery UI while retaining sources and review history. Four focused SQL cases and the full84-migration/227-workflow/121-API-check disposable rehearsal passed, preserving historical records/definitions and Storage. Evidence:`evidence/2026-10-31-deadline-choice-result.json`.
