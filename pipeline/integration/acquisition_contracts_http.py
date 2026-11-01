@@ -489,4 +489,8 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'title review real gateway exact committed-reply recovery and current evidence',
             'title review gateway role tenant and changed-request isolation',
             'title review resolution hold removes prior approval authority',
-            'title review paused original withdrawal retains one audit per decision']
+            'title review paused original withdrawal retains one audit per decision',
+            'mounted title approval actual committed-response recovery and fresh state',
+            'mounted title scope version and changed-request rejection',
+            'mounted title hold recovery removes prior approval',
+            'mounted title paused historical and original withdrawal recovery']

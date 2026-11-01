@@ -222,7 +222,7 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_document' AND entity_id=%s",[title_file])!=[{'n':1}]:
             raise AssertionError('Title document retries duplicated metadata audit')
         from acquisition_title_review_http import verify_title_review_http
-        verify_title_review_http(db,rpc,request,token,workspace,contract,title_file,admin,other,key,observed,review_policy,expiry)
+        verify_title_review_http(db,rpc,request,token,workspace,contract,title_file,admin,other,key,observed,review_policy,expiry,app,drops,headers)
         db.query('UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id=%s',[new_policy])
         state=client.get(execution_path,headers=headers)
         if state.status_code!=200 or state.json()['approval_current']:raise AssertionError('Bound execution retained revoked interpretation authority')

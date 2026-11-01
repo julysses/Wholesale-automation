@@ -5,7 +5,7 @@ from uuid import UUID
 from tools.acquisition_contract_attestation import build_contract_scan_attestation
 
 
-def verify_title_review_http(db,rpc,request,token,workspace,contract,document,admin,other,key,observed,review_policy,expiry):
+def verify_title_review_http(db,rpc,request,token,workspace,contract,document,admin,other,key,observed,review_policy,expiry,app,drops,headers):
     scan,policy,review,hold,withdrawal=[f'ae980000-0000-4000-8000-{n:012d}' for n in range(1,6)]
     db.query("INSERT INTO private.acquisition_contract_verification_key_scopes(workspace_id,key_id,purpose,reviewed_by,approval_ref,valid_from,valid_until) VALUES(%s,%s,'title_report',%s,%s,clock_timestamp()-interval '1 hour',clock_timestamp()+interval '1 hour')",[workspace,str(key.id),admin,document])
     state=rpc('contract_document_state',dict(p_workspace=workspace,p_contract=contract,p_version=2,p_artifact=document))
@@ -40,3 +40,39 @@ def verify_title_review_http(db,rpc,request,token,workspace,contract,document,ad
         if not rpc('record_title_review',withdrawal_body)['duplicate'] or rpc('title_review_state',context)['status']!='withdrawn':raise AssertionError('Original title withdrawal failed')
     finally:db.query('UPDATE private.acquisition_activation SET enabled=true')
     if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_review' AND entity_id IN (%s,%s,%s)",[review,hold,withdrawal])!=[{'n':3}]:raise AssertionError('Title gateway duplicated immutable decisions')
+
+    from fastapi.testclient import TestClient
+    path=f'/api/acquisition/workspaces/{workspace}/contracts/{contract}/versions/2/title-review'
+    api_review,api_hold,api_withdrawal=[f'ae980000-0000-4000-8000-{n:012d}' for n in range(6,9)]
+    api_body=dict(id=api_review,expected_version=2,expected_sequence=3,status='approved',artifact_id=document,
+        verification_id=scan,policy_id=policy,expires_at=expiry,personally_reviewed=True,
+        note='Synthetic mounted title findings, with exact committed-response recovery.',findings=findings)
+    with TestClient(app) as client:
+        drops['rpc/record_title_review']=True
+        lost=client.post(path,json=api_body,headers=headers)
+        retry=client.post(path,json=api_body,headers=headers)
+        if lost.status_code!=503 or 'x-acquisition-title-review-rejected' in lost.headers or retry.status_code!=200 or not retry.json()['duplicate']:
+            raise AssertionError('Mounted title committed-response recovery failed')
+        current=client.get(path,headers=headers)
+        if current.status_code!=200 or not current.json()['approval_current'] or current.headers.get('cache-control')!='no-store':raise AssertionError('Mounted title current state missing')
+        for route in (path,path.replace('/versions/2/','/versions/1/')):
+            response=client.post(route,json=api_body,headers={'Authorization':'Bearer '+token(other)})
+            if response.status_code not in (401,403,409):raise AssertionError('Mounted foreign title write accepted')
+        for denied_headers in ({'Authorization':'Bearer '+token(other)},{}):
+            if client.get(path,headers=denied_headers).status_code not in (401,403):raise AssertionError('Mounted title read escaped authentication or workspace scope')
+            if client.post(path,json=api_body,headers=denied_headers).status_code not in (401,403):raise AssertionError('Mounted title write escaped authentication or workspace scope')
+        conflict=client.post(path,json=api_body|dict(note='Different title request text cannot replace original evidence.'),headers=headers)
+        if conflict.status_code!=409 or conflict.headers.get('x-acquisition-title-review-rejected')!='true':raise AssertionError('Mounted title conflict was not definite')
+        held=api_body|dict(id=api_hold,expected_sequence=4,status='requires_resolution',expires_at=None)
+        drops['rpc/record_title_review']=True
+        if client.post(path,json=held,headers=headers).status_code!=503 or not client.post(path,json=held,headers=headers).json()['duplicate']:raise AssertionError('Mounted title hold recovery failed')
+        if client.get(path,headers=headers).json()['status']!='requires_resolution':raise AssertionError('Mounted hold retained approval')
+        db.query('UPDATE private.acquisition_activation SET enabled=false')
+        try:
+            if not client.post(path,json=api_body,headers=headers).json()['duplicate']:raise AssertionError('Mounted historical title receipt lost after pause')
+            withdrawn=held|dict(id=api_withdrawal,expected_sequence=5,status='withdrawn',personally_reviewed=False,findings=None)
+            drops['rpc/record_title_review']=True
+            lost=client.post(path,json=withdrawn,headers=headers);retry=client.post(path,json=withdrawn,headers=headers)
+            if lost.status_code!=503 or retry.status_code!=200 or not retry.json()['duplicate'] or client.get(path,headers=headers).json()['status']!='withdrawn':raise AssertionError('Mounted original withdrawal recovery failed')
+        finally:db.query('UPDATE private.acquisition_activation SET enabled=true')
+    if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_review' AND entity_id IN (%s,%s,%s)",[api_review,api_hold,api_withdrawal])!=[{'n':3}]:raise AssertionError('Mounted title replay duplicated audit')

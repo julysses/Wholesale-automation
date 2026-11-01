@@ -1,14 +1,14 @@
 """Human title findings, never verified facts or authority supplied by a client.
 
-The future controlled writer must bind these to the recorded execution and resolve
-all original sources under workspace/session/reviewer/scanner/retention locks.
-This module is intentionally not mounted as an API until that persistence exists.
+The controlled writer binds these to recorded execution and resolves original
+sources under workspace/session/reviewer/scanner/retention locks.
+Historical save receipts never represent current approval or execution authority.
 """
 from typing import Literal
 import re
 from uuid import UUID
 from pydantic import AwareDatetime, Field, StrictBool, field_validator, model_validator
-from schemas.acquisition_contract_reviews import Exact
+from schemas.acquisition_contract_reviews import Exact, ContractReviewReceipt, ContractReviewState
 from schemas.acquisition_contract_terms import ContractDateTerm
 
 TITLE_FINDING_NAMES = ('ownership', 'legal_description', 'liens_and_payoffs',
@@ -135,3 +135,21 @@ class TitleReviewRequest(Exact):
         elif self.expires_at is not None:
             raise ValueError('A resolution hold cannot carry approval expiry')
         return self
+
+
+class TitleReviewReceipt(ContractReviewReceipt):
+    kind: Literal['title_findings']
+    status: Literal['approved', 'requires_resolution', 'withdrawn']
+
+
+class TitleReviewState(ContractReviewState):
+    kind: Literal['title_findings']
+    status: Literal['not_reviewed', 'approved', 'requires_resolution', 'withdrawn', 'requires_review']
+
+
+    @field_validator('expires_at', 'checked_at', mode='before')
+    @classmethod
+    def explicit_state_timestamp(cls, value):
+        if value is not None and (not isinstance(value, str) or 'T' not in value):
+            raise ValueError('Explicit current title timestamp required')
+        return value
