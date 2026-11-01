@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — disposition choices mounted and verified (candidate113)
+
+The new candidate endpoint passed real local gateway checks: exact ready proposal/exit/executed/legal source choices, foreign-tenant denial, independent original held withdrawal while paused and policy-revoked, and removal of the withdrawal choice after completion. Reapplied99 migrations and26 access checks, preserved historical rows/definitions/Storage, and passed158 actual API checks. Candidate112's302 workflow checks were explicitly reused, not rerun. Gateway88674 terminal0; log `/tmp/disposition-choice-api-gateway.log`; evidence `evidence/2026-11-01-disposition-choice-api-result.json`. Full backend4628 tests/10 skipped/6 subtests70.92s remains final runtime verification; later changes connected integration assertions only.
+
+Candidate112 database is committed dcc83aa. Candidate113 API is ready for its local commit. Earlier API841913c/historyf250555 are retained. Published predecessorb3a2e6e/run41288395947 still awaits its final Real PostgreSQL job at last check; require all six successes before pushing these features and then verify the exact successor.
+
+Next implement the guided disposition findings/history UI in existing ContractDraft step5. Reuse title-review's numbered form, navy/orange controls and explicit unknown defaults/required actions, but derive the proposed exit from current server choices and preserve separate assignment findings. Preserve exact original requests before sending; uncertain saves/reloads/later denials must retain the original user/workspace/contract/version. Add parent navigation/sibling holds and original-version recovery, independent original withdrawal, history and desktop/phone QA. Inspect TitleReviewForm.tsx (157 lines), title-review.ts (134), ContractDraft.tsx existing title/plan recovery, and disposition-history API as the starting points. No frontend changes have been made yet in this increment.
+
+Full PRD remains active/incomplete, including controlled transitions, buyer/disclosure/closing/exception and all channel/provider/hosted/legal acceptance. No production migration, live policy, provider activation, outreach, paid fulfillment or binding transaction occurred.
+
 ## November 1 — current-choice database fully verified (candidate112)
 
 Full99-migration rehearsal passed26 access checks,302 workflows and156 actual API checks;24 historical rows,22 populated tables,103 definitions and Storage preserved. Session77393 terminal0; log `/tmp/disposition-choice-upgrade.log`; evidence `evidence/2026-11-01-disposition-choice-result.json`. Five focused SQL tests passed31.950s. Candidate112 is ready for its separate local commit; candidate113 API has4628 backend tests passed but still needs its new mounted choice checks.

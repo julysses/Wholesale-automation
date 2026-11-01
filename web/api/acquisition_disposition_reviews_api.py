@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from schemas.acquisition_disposition_review import DispositionReviewRequest, DispositionReviewReceipt, DispositionReviewState
 from schemas.acquisition_disposition_history import DispositionHistorySummary, DispositionHistoryDetail
+from schemas.acquisition_disposition_choices import DispositionReviewCandidate
 from tools.acquisition_store import acquisition_store
 from web.api.acquisition_contract_documents_api import Version, rpc, uncertain
 
@@ -131,3 +132,24 @@ async def history_request(store, params):
 def validate_history_scope(row, workspace, contract, version, now):
     if (row.workspace_id, row.contract_id, row.contract_version) != (workspace, contract, version) or row.created_at > now:
         raise ValueError('Exact original disposition history scope required')
+
+
+@router.get('/candidate')
+async def disposition_review_candidate(workspace_id: UUID, contract_id: UUID, contract_version: Version,
+                                       response: Response, store=Depends(acquisition_store)):
+    response.headers['Cache-Control'] = 'no-store'
+    raw = await rpc(store, 'disposition_review_candidate', {'p_workspace': str(workspace_id),
+        'p_contract': str(contract_id), 'p_version': contract_version})
+    try:
+        choice = DispositionReviewCandidate.model_validate(raw)
+        now = datetime.now(timezone.utc)
+        if ((choice.workspace_id, choice.contract_id, choice.contract_version) != (workspace_id, contract_id, contract_version)
+                or not now-timedelta(seconds=30) <= choice.checked_at <= now+timedelta(seconds=5)
+                or choice.resolution is not None and choice.resolution.available_until <= now
+                or choice.resolution is not None and choice.resolution.legal_source is not None and choice.resolution.legal_source.expires_at <= now
+                or choice.candidate is not None and choice.candidate.max_expires_at <= now
+                or choice.current_review.approval_current and choice.current_review.expires_at <= now):
+            raise ValueError('Current exact disposition choices required')
+    except (ValueError, TypeError):
+        raise uncertain('Disposition review choices could not be confirmed. Refresh before proceeding.') from None
+    return choice.model_dump(mode='json')

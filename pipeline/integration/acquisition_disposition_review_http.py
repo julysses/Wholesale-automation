@@ -22,6 +22,13 @@ def verify_disposition_review_http(db,app,drops,headers,token,workspace,contract
         if prepared.status_code!=200:raise AssertionError('Disposition fixture could not renew original title: '+str(prepared.status_code))
         proposed=client.post(prefix+'/disposition-plan',json=dict(id=plan,expected_version=2,expected_sequence=3,status='proposed',exit_type='wholesale_assignment',original_plan_id=None,note='Synthetic assignment proposal requiring independent disposition review.'),headers=headers)
         if proposed.status_code!=200:raise AssertionError('Disposition fixture could not propose original assignment')
+        selected=client.get(path+'/candidate',headers=headers)
+        if selected.status_code!=200:raise AssertionError('Mounted disposition choices unavailable')
+        current_choice=selected.json()
+        if current_choice['status']!='ready_for_human_review' or current_choice['candidate']['plan_id']!=plan or current_choice['candidate']['expected_sequence']!=0 or current_choice['candidate']['executed_source']['artifact_id']!=root['artifact_id'] or current_choice['candidate']['legal_source']['artifact_id']!=root['artifact_id']:
+            raise AssertionError('Disposition choice lost original proposal/source/policy context')
+        if current_choice['execution_authorized'] or current_choice['withdrawal'] is not None:raise AssertionError('New choice implied execution or an original withdrawal')
+        if client.get(path+'/candidate',headers={'Authorization':'Bearer '+token(other)}).status_code!=403:raise AssertionError('Disposition choices escaped tenant access')
         state=client.get(path,headers=headers)
         if state.status_code!=200 or state.json()['status']!='not_reviewed':raise AssertionError('Mounted disposition initial state unavailable')
         drops['rpc/record_disposition_review']=True
@@ -45,6 +52,11 @@ def verify_disposition_review_http(db,app,drops,headers,token,workspace,contract
         db.query('UPDATE private.acquisition_activation SET enabled=false')
         db.query('UPDATE private.acquisition_disposition_policy_scopes SET revoked_at=clock_timestamp() WHERE policy_id=%s',[policy])
         try:
+            selected=client.get(path+'/candidate',headers=headers)
+            if selected.status_code!=200:raise AssertionError('Paused disposition choices unavailable')
+            current_choice=selected.json()
+            if current_choice['status']!='paused' or current_choice['candidate'] is not None or current_choice['resolution'] is not None or current_choice['withdrawal']['review_id']!=hold or current_choice['withdrawal']['plan_id']!=plan or current_choice['withdrawal']['original_status']!='requires_resolution':
+                raise AssertionError('Paused choice lost independent original withdrawal')
             if not client.post(path,json=body,headers=headers).json()['duplicate']:raise AssertionError('Paused disposition history disappeared')
             fresh=client.post(path,json=held|dict(id=withdraw,expected_sequence=2),headers=headers)
             if fresh.status_code!=409:raise AssertionError('Paused disposition accepted a new review')
@@ -53,6 +65,7 @@ def verify_disposition_review_http(db,app,drops,headers,token,workspace,contract
             lost=client.post(path,json=cancelled,headers=headers);retry=client.post(path,json=cancelled,headers=headers)
             if lost.status_code!=503 or retry.status_code!=200 or not retry.json()['duplicate']:raise AssertionError('Original disposition withdrawal recovery failed')
             if client.get(path,headers=headers).json()['status']!='withdrawn':raise AssertionError('Disposition withdrawal not current')
+            if client.get(path+'/candidate',headers=headers).json()['withdrawal'] is not None:raise AssertionError('Withdrawn original remained available for repeated withdrawal')
         finally:db.query('UPDATE private.acquisition_activation SET enabled=true')
         history=path+'/history'
         page=client.get(history,params={'limit':2},headers=headers)

@@ -508,6 +508,8 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'mounted disposition history bounded exact original pagination',
             'mounted disposition history original findings proposal title and withdrawal roots',
             'mounted disposition history pause tenant version and session isolation',
+            'mounted disposition choices retain original proposal executed and legal sources',
+            'mounted disposition choices isolate tenants and preserve paused original withdrawal',
             'title choices mounted current original and explicit report policy',
             'title choices mounted tenant isolation',
             'title choices original held withdrawal without a selected report while paused']
