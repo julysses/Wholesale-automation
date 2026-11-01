@@ -1,5 +1,21 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — retained-document regression batch fully verified locally
+
+Rehearsal24514 completed with exit0:108 migrations,26 access checks,344 application workflows and164 actual PostgREST checks passed. Preserved24 historical rows across22 populated tables,103 historical definitions and Storage fixture. Evidence: `evidence/2026-11-01-retained-refresh-108-result.json`; log `/tmp/retained-refresh-full.log`. No local verification process remains running.
+
+Three retained-refresh regressions are now integrated into the full runner. They preserve original documents/reviews/transitions and upload restrictions after disposition handoff, enforce independent renewed reviews, and verify exact retry plus scanner revocation/changed-byte rejection. Synthetic signed observations and privileged renewed-review fixtures are explicit limitations; this is not live scanning or a public renewal flow.
+
+Exact predecessor7cd3a09/run41297361568 still has four successful jobs and two running (full schema/application journeys; PostgreSQL ingestion/tracing/scoring). Commit the verified local batch, but do not push until all six succeed. Next verify the combined post-handoff byte-scan/journal journey, implement controlled personal renewal saving and current choices, then integrate the existing guided contract-step UI. Full PRD remains active/incomplete; no production/provider changes.
+
+## November 1 — resumed after GPT app update; retained-document regression verification
+
+Confirmed branch `codex/acquisition-foundation` is current with origin at `7cd3a09be61e2e409c7a149ef96dbd9f08cb81a2`. Exact CI run https://github.com/julysses/Wholesale-automation/actions/runs/41297361568 has passed pipeline contracts/isolated SQL, frontend and backend; the other three jobs remain running at this checkpoint. Do not push until all six predecessor jobs succeed.
+
+Three new focused retained-refresh tests passed in 21.787 seconds (`/tmp/retained-refresh.log`). They cover refreshing a signed observation for an original retained document after disposition handoff, exact retry/history preservation, denial of new uploads, independent personal review of dependencies, changed-byte rejection and scanner revocation. These use synthetic signed observations and privileged review fixtures: they do not prove live scanning, hosted Storage or a public renewal writer.
+
+Registered the three cases in the full catalog runner. The 108-migration isolated populated database/API rehearsal is running as session24514, log `/tmp/retained-refresh-full.log`; expected workflow count344. Preserve this process and inspect its terminal result before claiming success. No new migration or production/provider change. Pending local files: `scripts/acquisition_retained_refresh_tests.py`, `pipeline/integration/acquisition_upgrade_workflows.py`, and these progress notes. Next record final evidence, commit/push after the predecessor gate, and verify successor CI; then continue controlled personal renewal writer and guided UI work described in REVIEW-RENEWAL.md. Full PRD remains incomplete.
+
 ## November 1 — effective review checks fully verified locally
 
 Full108 rehearsal95784 completed0 with26 access checks,341 application workflows and164 actual PostgREST API checks passed. Preserved24 historical rows across22 populated tables,103 historical definitions and Storage fixture. Evidence `evidence/2026-11-01-effective-reviews-108-result.json`; log `/tmp/review-effective-108-upgrade.log`. This includes final widened expiry-test windows and the all-instant suspended-workspace regression. No local verification session remains running.

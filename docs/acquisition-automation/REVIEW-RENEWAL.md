@@ -1,6 +1,6 @@
 # Review renewal implementation contract
 
-Status: request/receipt validation and a local additive lineage migration; full upgrade verification is running. No renewal endpoint, controlled renewal writer, policy or activation exists yet. This document keeps the full lifecycle objective open and replaces the unsafe shortcut of extending an old approval's expiry.
+Status: request/receipt validation, immutable lineage and dependency bindings, and private recursive effective-review checks are published through migration108 (7cd3a09). The populated108 rehearsal passed26 access,341 workflow and164 API checks. Three added retained-refresh regressions also passed the expanded full rehearsal (session24514:108 migrations,26 access,344 workflows,164 API checks). The controlled renewal writer, public renewal endpoint, guided renewal UI and end-to-end renewal acceptance remain incomplete. No production migration or activation is authorized by these results.
 
 ## Observed current implementation
 
@@ -75,8 +75,8 @@ A receipt confirms only the exact new review and sequence, root/predecessor, ten
 
 - [x] Inspect current source dependencies and document the lineage/expiry problem.
 - [x] Define strict non-executing renewal request/receipt validation and rejection tests.
-- [ ] Disposable catalog inventory and additive lineage storage/constraints/RLS tests.
-- [ ] Private lineage resolver, per-kind fact identity and dependency expiry integration.
+- [x] Disposable catalog inventory and additive lineage storage/constraints/RLS tests (103–106; full106 evidence).
+- [x] Private lineage resolver, per-kind fact identity and recursive dependency expiry checks (104–108; full108 evidence). Public workflow integration remains pending below.
 - [ ] Same-byte evidence refresh at supported stages without enabling new agreement uploads or silently replacing sources.
 - [ ] Controlled human renewal writer, fresh policy checks, sorted combined locks and immutable audit.
 - [ ] Current read/choice API with fingerprint binding and bounded projections.
@@ -161,3 +161,13 @@ Read-only trace found that existing retained-object scanning and new uploads alr
 Next verify these existing read/scan/attestation paths at executed/title_review/disposition_review with exact old-version source references and lost-reply recovery before changing schema admission. Do not assume new upload-stage permissions are needed for re-verifying original bytes. The remaining work may be orchestration/discovery/UI and end-to-end proof using existing scanner/journal controls, not widening source admission. This inspection is source evidence only; no post-handoff scanner journey is claimed passed here and no keys/scanner configuration are activated.
 
 Final108 verification passed26 access/341 workflows/164 actual API checks (95784 terminal0), saved `evidence/2026-11-01-effective-reviews-108-result.json`. Private recursive effective support is locally verified; controlled mutation/discovery/public integration and full renewal acceptance remain pending.
+
+## Retained refresh verification and remaining boundary
+
+Three focused cases in `scripts/acquisition_retained_refresh_tests.py` passed21.787s. They prove signed-observation persistence against the actual disposable SQL controls after disposition handoff, exact request retry, preservation of original reviews/terms/transitions, continued denial of new uploads, independent dependency review, changed-byte rejection and scanner revocation. The review renewals in these cases are privileged fixtures, not an authorized public save flow.
+
+Existing scanner tests (`tests/test_acquisition_contract_document_scan.py`) verify streamed bytes and the local scanner protocol using synthetic registry/daemon responses. Existing gateway code (`pipeline/integration/acquisition_contracts_http.py`) proves journal recovery after a committed scan reply is lost, but performs that proof before later contract stages. These separate proofs do not yet establish a combined post-handoff retained-byte scan and journal recovery journey. Add that combined journey using the original source version, authenticated registry reads and explicit synthetic byte/scanner boundaries; do not loosen new-upload stage controls.
+
+Next implementation order: finish and publish this regression batch after exact predecessor CI; add combined post-handoff scanner/journal coverage; implement the controlled personal renewal save with server-derived fingerprint, combined locks and post-wait authority checks; expose bounded current choices and integrate explicit review/retry into the existing numbered contract step. Keep private effective predicates disconnected from public execution until the complete path is tested.
+
+Retained-refresh batch final result: session24514 completed0;108 migrations,26 access,344 workflow and164 actual PostgREST checks passed. Saved `evidence/2026-11-01-retained-refresh-108-result.json`. No local rehearsal remains live; predecessor CI must still finish before push.
