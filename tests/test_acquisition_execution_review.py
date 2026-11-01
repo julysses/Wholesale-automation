@@ -107,3 +107,48 @@ def test_assessment_rejects_implicit_current_timezone():
     with pytest.raises(ValueError):
         assess_execution_findings(ExecutionFindings.model_validate(findings()),
             ContractTermsDraft.model_validate(terms()),now=datetime(2026,11,1))
+
+
+def bound_findings():
+    value=findings()
+    value['terms']['effective']={'precision':'date','calendar_date':'2026-10-31'}
+    value['terms']['closing_deadline']={'precision':'date','calendar_date':'2026-11-20'}
+    value['deadline_reviews']=[{'term':'effective','review_id':UID},
+        {'term':'closing_deadline','review_id':'af000000-0000-4000-8000-000000000002'}]
+    return value
+
+
+def test_legacy_findings_serialization_has_no_new_field_or_fingerprint_change():
+    from schemas.acquisition_execution_review import ExecutionFinding
+    original=findings();expected={name:ExecutionFinding.model_validate(original[name]).model_dump(mode='json') for name in NAMES}
+    expected['terms']=ContractTermsDraft.model_validate(original['terms']).model_dump(mode='json')
+    parsed=ExecutionReviewRequest.model_validate(request())
+    assert parsed.findings.model_dump(mode='json')==expected
+    assert parsed.model_dump(mode='json')['findings']==expected
+    assert 'deadline_reviews' not in parsed.model_dump_json()
+
+
+def test_explicit_review_ids_roundtrip_without_changing_original_calendar_dates():
+    original=bound_findings();before=deepcopy(original);parsed=ExecutionFindings.model_validate(original)
+    serialized=parsed.model_dump(mode='json')
+    assert serialized['deadline_reviews']==original['deadline_reviews']
+    assert parsed.terms.effective.instant is None and parsed.terms.closing_deadline.instant is None
+    assert original==before and ExecutionFindings.model_validate(serialized)==parsed
+    # Structural identity is not current policy/evidence authority.
+    assert assess(original)['status']=='requires_review'
+
+
+@pytest.mark.parametrize('bindings',[
+    None,[],[{'term':'effective','review_id':UID}],
+    [{'term':'effective','review_id':UID},{'term':'effective','review_id':'af000000-0000-4000-8000-000000000002'}],
+    [{'term':'effective','review_id':UID},{'term':'closing_deadline','review_id':UID}],
+    [{'term':'effective','review_id':UID,'execution_authorized':True}],
+    [{'term':'purchase_price','review_id':UID}],
+    [{'term':'effective','review_id':'not-an-id'}],
+])
+def test_partial_duplicate_or_untrusted_deadline_bindings_rejected(bindings):
+    with pytest.raises(ValidationError):ExecutionFindings.model_validate(bound_findings()|{'deadline_reviews':bindings})
+
+
+def test_explicit_instant_cannot_borrow_a_date_interpretation():
+    with pytest.raises(ValidationError):ExecutionFindings.model_validate(findings()|{'deadline_reviews':[{'term':'effective','review_id':UID}]})

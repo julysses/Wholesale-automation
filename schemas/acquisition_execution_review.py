@@ -6,7 +6,7 @@ assessment alone does not approve a contract or authorize a status transition.
 """
 from typing import Literal
 from uuid import UUID
-from pydantic import AwareDatetime, StrictBool, Field, field_validator, model_validator
+from pydantic import AwareDatetime, StrictBool, Field, field_validator, model_validator, model_serializer
 
 from schemas.acquisition_contract_reviews import ContractReviewRequest, ContractReviewReceipt, ContractReviewState, ReviewApprovalChoice, ReviewWithdrawalChoice, Exact
 from schemas.acquisition_contract_terms import ContractTermsDraft
@@ -26,6 +26,11 @@ class ExecutionFinding(Exact):
         return self
 
 
+class ExecutionDeadlineReview(Exact):
+    term: Literal['effective', 'inspection_deadline', 'closing_deadline']
+    review_id: UUID
+
+
 class ExecutionFindings(Exact):
     """All findings refer to the request's exact returned contract artifact.
 
@@ -37,6 +42,32 @@ repository must resolve these before any reviewer decision can be current.
     signing_authority: ExecutionFinding
     complete_agreement: ExecutionFinding
     terms: ContractTermsDraft
+    deadline_reviews: tuple[ExecutionDeadlineReview, ...] | None = Field(default=None, min_length=1, max_length=3)
+
+    @field_validator('deadline_reviews', mode='before')
+    @classmethod
+    def explicit_bindings(cls, value):
+        if value is None:
+            raise ValueError('Omit legacy bindings or provide exact reviewed identities')
+        return value
+
+    @model_validator(mode='after')
+    def exact_calendar_bindings(self):
+        if self.deadline_reviews is not None:
+            required = {name for name in ('effective', 'inspection_deadline', 'closing_deadline')
+                        if getattr(self.terms, name).precision == 'date'}
+            names = [binding.term for binding in self.deadline_reviews]
+            identities = [binding.review_id for binding in self.deadline_reviews]
+            if set(names) != required or len(set(names)) != len(names) or len(set(identities)) != len(identities):
+                raise ValueError('Bind each calendar-only term to its own exact reviewed interpretation')
+        return self
+
+    @model_serializer(mode='wrap')
+    def preserve_legacy_request(self, handler):
+        value = handler(self)
+        if self.deadline_reviews is None:
+            value.pop('deadline_reviews', None)
+        return value
 
 
 class ExecutionReviewRequest(ContractReviewRequest):

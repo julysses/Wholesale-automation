@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — execution deadline binding comparison verified (candidate87)
+
+Optional exact deadline-review references now travel with execution findings. Legacy omitted references retain the original five-field serialization and request fingerprints; supplied references must uniquely cover each date-only term. The private comparison checks the exact current review, workspace/version/term, unchanged original date and valid ordering using temporary derived instants. Original signed terms remain unchanged. The execution writer and status transition still hold calendar-only execution until the complete source/policy locking integration is implemented; this checkpoint does not authorize execution.
+
+Validation: 111 focused model/API tests passed; five focused SQL cases passed25.892s. Full backend4186 passed,10 skipped,6 subtests50.76s. Full disposable rehearsal86937 exited0:85 migrations,26 access probes,232 workflows,121 actual local PostgREST/API checks;24 historical rows/22 populated tables/103 definitions and Storage preserved. Final full rehearsal includes the corrected isolated fixture naming. Evidence:evidence/2026-11-01-execution-deadline-binding-result.json; logs:/tmp/execution-deadline-binding-backend.log and /tmp/execution-deadline-binding-upgrade.log. Both test processes are terminal.
+
+Pull verified current. Published8c51dab/run41274555808 currently has five terminal successes and one live Real PostgreSQL ingestion/tracing/scoring check. The previously failing Pipeline contracts and isolated SQL check passed. Keep candidate86/4a806d5 and candidate87 local until all six predecessor jobs succeed; do not cancel or restart it. No production migration, provider activation, policy provisioning, outreach, fulfillment or binding transaction occurred.
+
+Next: extend execution writer, current-review predicate and executed transition together. Lock the complete union of up to13 distinct source documents plus every bound deadline policy/reviewer/session; cap execution expiry by all referenced reviews and recheck current authority after waits. Preserve original calendar dates and exact reference IDs. Then implement the source-backed interpretation form within the existing navy/orange step5 journey, including personal approval, independent withdrawal and original-version recovery. Full PRD goal remains active and incomplete.
+
 ## October 31 — deadline action discovery verified (candidate86); API/state pushed
 
 Added CLI-created20261101044534 read-only source/policy choices and authenticated candidate API. Original date-clause evidence is separate from the selected interpretation document; both sources, current reviewer policy and session bound readiness/expiry. Unknown or already explicit dates and unavailable sources/policies remain held. Original selected-term withdrawal is independent of new source selection and uses the shared concurrency cursor; another deadline's newer review cannot redirect it. Typed transport also matches withdrawal artifact/version to its original interpretation. No review, policy or lifecycle mutation occurs during discovery.

@@ -425,3 +425,9 @@ Compensation: omit/disable the read UI if rollout fails; preserve all evidence a
 `20261101044534_acquisition_deadline_resolution_choices.sql` adds only private-definer/public-invoker read functions. It reuses existing review, term-source, artifact, scan, policy and session records; table constraints/RLS/grants remain unchanged. Original source authority and selected interpretation source jointly bound readiness/expiry. The latest selected-term approval supplies original withdrawal identity, while the shared ledger maximum supplies the concurrency cursor. No new policy provisioning or execution authority.
 
 Compensation: omit/disable the discovery UI while retaining sources and review history. Four focused SQL cases and the full84-migration/227-workflow/121-API-check disposable rehearsal passed, preserving historical records/definitions and Storage. Evidence:`evidence/2026-10-31-deadline-choice-result.json`.
+
+## Execution deadline reference validation — candidate87
+
+`20261101045444_acquisition_execution_deadline_binding.sql` replaces `private.valid_execution_findings` to admit an optional exact calendar-review reference list while preserving legacy five-field shapes. Adds ungranted `private.execution_findings_match` to compare source-bound dates through temporary derived instants. No tables, RLS policies, writer grants, source-journal bounds or execution transitions are changed. Current writer still holds calendar-only findings.
+
+Compensation: retain legacy execution path and calendar hold; preserve references and original calendar terms. Five focused SQL cases pass; full upgrade/API rehearsal pending. Final integration must expand the source union to13 and add deadline reviewer/policy/source locking to execution review and transition before activation.
