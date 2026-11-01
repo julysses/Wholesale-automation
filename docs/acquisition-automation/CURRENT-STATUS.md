@@ -1,5 +1,13 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — disposition save rejection recovery (candidate115)
+
+Resumed after the GPT app update; pulled the approved branch successfully (already current). Added `ApiError.rejectedDisposition` only for the exact disposition-review POST with explicit server rejection and 401/403/409. Reads, other paths, absent/false markers, validation/rate-limit/uncertain failures cannot authorize clearing saved recovery. This connects the next guided form to candidate114's first-attempt-only recovery rule; no visible form is mounted yet.
+
+119 focused API/recovery tests passed; build/typecheck and lint gate passed with no new findings (147 existing). Logs: `/tmp/disposition-rejection-{focused,build,lint}.log`; build67428 and lint79389 completed exit0. No SQL/backend or production changes. Candidate114 is locally committed904fce4. Candidate115 is ready for its local commit.
+
+Published b03111b/run41289435649 currently has successful Pipeline, Backend and Frontend checks; three database jobs remain running. No failed job is reported. Retain the all-six-success publication gate before pushing local candidates; never cancel/restart checks. Next implement DispositionReviewForm/findings/history in ContractDraft step5, integrating original-version pending recovery and sibling/navigation holds, then desktop/phone QA. Full PRD remains active/incomplete and all live approval boundaries remain intact.
+
 ## November 1 — disposition client validation and recovery (candidate114)
 
 Added frontend disposition findings/request/current-choice validation and exact saved-request recovery. Principal and assignment findings remain distinct; unknown findings require concrete next actions and cannot approve. Original citations retain versions/hashes; conflicting/duplicate/future sources are rejected. Choice parsing checks fresh scope, sequence, original executed/legal sources, expiry, matching approval/hold context and independent original withdrawal. Uncertain/reloaded/later-denied requests retain the exact original context/payload; only a matching receipt or definite first-attempt rejection can clear them. No visible form has been mounted yet.

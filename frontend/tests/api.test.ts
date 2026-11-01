@@ -146,3 +146,19 @@ it.each([['POST', 401, 'true', true], ['POST', 403, 'true', true], ['POST', 409,
   await expect(apiFetch(base, { method: String(method) })).rejects.toMatchObject({ rejectedPlan: rejected });
   for (const path of [base + '/candidate', base + '/other', '/api/buyers/import']) await expect(apiFetch(path, { method: String(method) })).rejects.toMatchObject({ rejectedPlan: false });
 });
+
+it.each([
+  ['POST', 401, 'true', true], ['POST', 403, 'true', true], ['POST', 409, 'true', true],
+  ['POST', 503, 'true', false], ['POST', 429, 'true', false], ['POST', 422, 'true', false],
+  ['POST', 409, 'false', false], ['POST', 409, '', false], ['GET', 409, 'true', false],
+])('recognizes only definite disposition writes %s %s %s', async (method, status, header, rejected) => {
+  getSession.mockResolvedValue({ data: { session: { access_token: 'test-token' } } });
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response('{}', {
+    status: Number(status), headers: { 'X-Acquisition-Disposition-Review-Rejected': String(header) },
+  })));
+  const base = '/api/acquisition/workspaces/00000000-0000-4000-8000-000000000001/contracts/00000000-0000-4000-8000-000000000002/versions/2/disposition-review';
+  await expect(apiFetch(base, { method: String(method) })).rejects.toMatchObject({ rejectedDisposition: rejected, rejectedPlan: false, rejectedTitle: false });
+  for (const path of [base + '/candidate', base + '/history', base + '?other=true', base.replace('/versions/2/', '/versions/0/'), base.replace('disposition-review', 'disposition-plan'), '/api/buyers/import']) {
+    await expect(apiFetch(path, { method: String(method) })).rejects.toMatchObject({ rejectedDisposition: false });
+  }
+});
