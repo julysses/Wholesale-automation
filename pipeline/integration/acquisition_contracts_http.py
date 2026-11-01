@@ -281,8 +281,20 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
                 if status not in (401,403):raise AssertionError('Contract human review scope bypass')
             from acquisition_contract_terms_http import verify_terms_http, verify_terms_revocation_http
             terms_path,terms_body=verify_terms_http(db,app,document_drops,token,workspace,draft,signed['p_artifact'],observed['sha256'],other,lead)
+            reference_args=dict(p_workspace=workspace,p_contract=draft,p_version=2,p_artifact=signed['p_artifact'])
+            reference=rpc('contract_reference_state',reference_args)
+            if reference['reference_type']!='term_source' or reference['source_version']!=1 or reference['status']!='available_for_review' or reference['review_approved'] or reference['execution_authorized']:
+                raise AssertionError('Original term source was relabeled or treated as approval')
+            for identity in (token(other),None,token(role='service_role')):
+                status,_=request('/rpc/contract_reference_state',identity,reference_args)
+                if status not in (401,403):raise AssertionError('Contract source reference gateway scope bypass')
+
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
             verify_terms_revocation_http(app,token,terms_path,terms_body)
+            reference=rpc('contract_reference_state',reference_args)
+            if reference['status']!='requires_review' or reference['verification_id'] is not None:
+                raise AssertionError('Original source reference retained revoked verification authority')
+
             stale=await store.contract_document_scan_state(scope['artifact_id'],**read_scope)
             if stale.status!='requires_review' or stale.observation_id is not None or stale.execution_authorized:
                 raise AssertionError('Revoked contract scope retained current scan authority')
@@ -399,4 +411,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'terms API sourced save actual commit loss and exact retry',
             'terms API immutable paged history and updated draft list',
             'terms API workspace isolation and expected version conflicts',
-            'terms API no approval carryover and revocation blocks new versions']
+            'terms API no approval carryover and revocation blocks new versions',
+            'contract source reference original version and gateway role isolation',
+            'contract source reference current scan revocation hold']
