@@ -2,6 +2,16 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — review status inside the contract step
+
+Mounted review API rehearsal 72993 exited 0: 64 migrations, 26 access probes, 134 workflows and 78 actual local gateway checks. Historical rows/definitions and Storage fixture preserved. Evidence: evidence/2026-10-31-contract-review-api-gateway-result.json. The previous in-progress note is superseded; no local database process remains active.
+
+The existing ContractDocuments screen now includes purchase-contract, title and assignment review status cards, using the same navy/orange styles and exact saved contract/version context. On-demand GET checks only; no automatic review requests, signing or transition controls. Strict parsing rejects foreign/stale/inconsistent results, and displayed approval disappears on refresh/error/expiry or loss of confirmed parent context. Recording reviews in the screen remains explicitly unfinished. Policy/candidate discovery and exact decision recovery must be added before enabling review recording.
+
+Validation: 24 focused parser tests passed; full frontend suite 630 passed across 76 files, build/typecheck passed and lint baseline passed. Two additional component tests subsequently passed for on-demand exact context, failed-refresh removal of approval, and disabled context. First file-write attempt used an incorrect working directory and changed no source; corrected paths before testing. All local test handles are terminal. Desktop/mobile visual QA remains next; no visual acceptance is claimed for these new cards.
+
+GitHub repair run 41256126531 is still live on published b92ba6b; do not push local features until all six jobs pass. Local backend/API implementation is committed as 8af94f4; migration foundation as b67d092. No production database, provider, SMS, outreach or transaction changes. Next work remains guided review recording, immutable terms and persisted transitions, disposition/buyers/closing and the remaining full PRD acceptance scope.
+
 ## October 31 — mounted human-review API validation in progress
 
 Committed migration 64 and its completed evidence as b67d092. Published isolated CI repair b92ba6b after predecessor 41255050827 finished with five successes and one package-download timeout. Repair successor 41256126531 is running; merged the repair into the local implementation branch. Feature publication remains held until all six repair checks pass.

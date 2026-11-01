@@ -7,6 +7,8 @@ import { chooseFile, matchesFile, retentionLabel, type FileChoice } from '@/lib/
 import { checkDocumentRegistration, checkDocumentUpload, clearPendingDocument, parseDocuments, pendingSchema, purposes,
   readPendingDocument, savePendingDocument, parseDocumentScan, scanStatusLabels, type DocumentContext, type PendingDocument } from '@/lib/acquisition/contract-documents';
 
+import { parseContractReview, reviewIsFresh, reviewKinds, reviewLabels, type ReviewKind } from '@/lib/acquisition/contract-reviews';
+
 const button = 'rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed';
 const input = 'block w-full rounded-lg border border-gray-300 bg-white p-2';
 const statuses = { pending_verification: 'Registered · Review pending', revoked: 'Withdrawn', expired: 'Retention expired', policy_review_required: 'Retention review needed' };
@@ -138,6 +140,12 @@ function DocumentEditor({ context, disabled = false, onPending }: Props) {
       <nav aria-label="Document history pages" className="flex flex-wrap gap-2"><button className={button} disabled={held || disabled || records.isFetching || cursors.length === 1} onClick={() => setCursors(values => values.slice(0, -1))}>Previous documents</button>
         <button className={button} disabled={held || disabled || records.isFetching || records.isError || !records.data?.next_after} onClick={() => setCursors(values => [...values, records.data!.next_after])}>Next documents</button></nav>
     </div>
+    <div className="border-t border-orange-200 pt-3 space-y-3">
+      <div><h4 className="font-semibold">Next: human review</h4><p className="text-sm text-gray-600">Check purchase contract and title reviews for this saved version. Assignment review applies when Hilltop plans to assign its contractual interest.</p></div>
+      <div className="grid gap-3 sm:grid-cols-3">{(Object.keys(reviewKinds) as ReviewKind[]).map(reviewKind =>
+        <ContractReviewStatus key={reviewKind} context={context} kind={reviewKind} now={now} disabled={disabled || held || !ready || !current} />)}</div>
+      <p className="text-xs text-gray-600">A current review does not authorize signing, marketing, assignment or closing. Recording a review in this screen is still being prepared.</p>
+    </div>
   </section>;
 }
 
@@ -163,4 +171,29 @@ function DocumentVerification({ context, path, row, now, disabled }: {
     {!disabled && !check.isFetching && !check.isError && check.data && !current && <p>Verification status is out of date. Check again before review.</p>}
     {current && check.data?.status === 'no_detection_observed' && <p className="text-xs text-gray-600">This records the file scan only. Document and title review are still required.</p>}
   </div>;
+}
+
+
+function ContractReviewStatus({ context, kind, now, disabled }: {
+  context: DocumentContext; kind: ReviewKind; now: number; disabled: boolean;
+}) {
+  const check = useQuery({ queryKey: ['contract-human-review', context.userId, context.workspaceId, context.contractId, context.contractVersion, kind],
+    enabled: false, retry: false, gcTime: 0, staleTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false,
+    queryFn: async ({ signal }) => parseContractReview(await (await apiFetch(
+      `/api/acquisition/workspaces/${context.workspaceId}/contracts/${context.contractId}/versions/${context.contractVersion}/reviews/${kind}`,
+      { signal, cache: 'no-store' })).json(), context, kind) });
+  const current = !disabled && !check.isFetching && !check.isError && check.data && reviewIsFresh(check.data, now);
+  return <section aria-label={reviewKinds[kind]} className="min-w-0 rounded-lg border border-orange-200 bg-white p-3 space-y-2">
+    <h5 className="font-medium">{reviewKinds[kind]}</h5>
+    <button className={button} disabled={disabled || check.isFetching} onClick={() => { if (!disabled) void check.refetch(); }}>
+      {check.isFetching ? 'Checking review…' : `Check ${reviewKinds[kind].toLowerCase()}`}</button>
+    {check.isFetching && <p role="status" className="text-sm">Checking the current review…</p>}
+    {!disabled && check.isError && <p role="alert" className="text-sm">Review could not be confirmed. Refresh and check your reviewer access.</p>}
+    {current && check.data && <div role="status" className="text-sm"><p className="font-medium">{reviewLabels[check.data.status]}</p>
+      {check.data.approval_current && check.data.expires_at && <p>Valid until {new Date(check.data.expires_at).toLocaleString()}.</p>}
+      {check.data.status === 'not_reviewed' && <p>An authorized reviewer still needs to record a decision.</p>}
+      {check.data.status === 'requires_review' && <p>Recheck the document, verification and reviewer authority.</p>}
+    </div>}
+    {!disabled && !check.isFetching && !check.isError && check.data && !current && <p className="text-sm">Review status is out of date. Check again.</p>}
+  </section>;
 }
