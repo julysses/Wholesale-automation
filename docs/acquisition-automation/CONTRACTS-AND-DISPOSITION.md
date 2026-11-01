@@ -18,6 +18,14 @@ The local rules tests cover terminal/exception transitions, review ordering, sta
 
 ## Required persistence and security work
 
+### Signature-release evidence candidate (October31)
+
+`20261101020154_acquisition_signature_reviews.sql` adds a distinct immutable signature-review ledger and unseeded private authority policies. Policies bind the exact workspace/contract/target version, original artifact/version/hash, underlying contract-review policy, named release reviewer and template-approval reference. Only reviewed administrative provisioning can create these policies; no application role has policy writes. Template/legal approval is external evidence referenced by the policy, not a determination made by this migration.
+
+The record RPC requires owner/admin MFA, live membership/session, exact request identity and sequence, a personally reviewed decision and bounded expiry. It locks canonical contract context, source bytes, both review policies and reviewer/scanner authority; after waits it evaluates the exact latest underlying contract review with clock_timestamp. Known purchase/earnest values are required; a replacement basis review cannot silently renew an earlier signature release. Source/link/scan/authority revocation and changed target terms remove current approval. Withdrawal by the original reviewer remains possible after activation, policy or basis changes. Receipts remain historical and non-executing, and every decision has an immutable audit.
+
+This does not change canonical draft status, send a contract, provide an electronic signature, execute an offer or create the general lifecycle ledger. No policies are seeded. Compensation is to pause acquisition or revoke policy authority while preserving ledger/history; do not drop or rewrite prior decisions. The mounted API, discovery/candidate controls, guided app review, hosted acceptance and subsequent controlled transitions remain required. Full test/publication status is maintained in CURRENT-STATUS.md.
+
 ### Lifecycle command boundary (October 31)
 
 `schemas/acquisition_contract_transitions.py` now defines the untrusted transition request and historical receipt boundary. Immutable terms `expected_version` and lifecycle `expected_sequence` are independent: document preparation may produce version9 while the contract is still draft at lifecycle sequence0. A request includes its exact identity, expected current status, target status and unchanged reason. It cannot supply actor, workspace override, evidence, policy, buyer, exit structure, timestamps or approval claims. The transition graph is shared with the existing pure reviewer. Structural acceptance is not permission to change state.
