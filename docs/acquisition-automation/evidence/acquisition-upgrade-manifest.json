@@ -393,6 +393,10 @@
     {
       "file": "20261101080958_acquisition_disposition_review_write.sql",
       "sha256": "1ab959eac5ebfa98a82a40133b9a12288dee530b1aeb1d4d47977cdaea57f0a5"
+    },
+    {
+      "file": "20261101082423_acquisition_disposition_review_choices.sql",
+      "sha256": "8632a92afbcd9aab023e9ecb8d69af9d8fdea191182cc7d60b67ba128488f670"
     }
   ]
 }

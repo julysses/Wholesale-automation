@@ -1,5 +1,27 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — current-choice database fully verified (candidate112)
+
+Full99-migration rehearsal passed26 access checks,302 workflows and156 actual API checks;24 historical rows,22 populated tables,103 definitions and Storage preserved. Session77393 terminal0; log `/tmp/disposition-choice-upgrade.log`; evidence `evidence/2026-11-01-disposition-choice-result.json`. Five focused SQL tests passed31.950s. Candidate112 is ready for its separate local commit; candidate113 API has4628 backend tests passed but still needs its new mounted choice checks.
+
+Next execute prepared `/tmp/connect-disposition-choice-gateway.py` to connect the exact ready-choice/foreign-tenant/paused-original-withdrawal cases, then run targeted re-upgrade/access/API via `/tmp/disposition-api-gateway.py`, changing its reused workflow evidence to the candidate112 result. No need to repeat the unchanged302 workflows. Published predecessorb3a2e6e/run41288395947 still has five successes and one live Real PostgreSQL job. Wait for all six before the next push. All broader PRD/UI/lifecycle/buyer/channel/provider/hosted/legal requirements remain open; full goal is active/incomplete. No production migration or live activity occurred.
+
+## November 1 — mounted disposition choices (candidate113, verification in progress)
+
+Added strict typed current-choice API over the server-derived disposition candidate. It validates fresh exact scope/sequence/time, original source versions and identity, bounded approval/resolution lifetimes, reviewed-title/assignment-evidence requirements, full-history limits and independent original withdrawal. No execution authority or write is exposed. Initial46 API tests passed2.62s, then two extra rejection cases were added; full backend4628 tests passed,10 skipped,6 subtests70.92s; session8210 terminal0 (`/tmp/disposition-choice-api-backend.log`).
+
+Candidate112 SQL99-migration rehearsal remains live in session77393 (`/tmp/disposition-choice-upgrade.log`). Preserve the live SQL run; the backend run completed successfully. After full SQL success, save evidence/commit it separately; connect candidate113's mounted gateway choice checks described in DISPOSITION-WORKFLOW.md, run targeted re-upgrade/access/API verification with completed workflow evidence explicitly reused, and commit API. Current writer/history gateway evidence alone does not cover this new candidate endpoint.
+
+Published b3a2e6e/run41288395947 now has five successes; Real PostgreSQL ingestion/workspace administration remains live. Candidate110841913c and candidate111f250555 remain local until all six pass. Keep the full PRD active/incomplete, including guided UI, controlled transitions, buyer/disclosure/closing/exception and all channel/provider/hosted/legal acceptance. No production migration or live activity occurred.
+
+## November 1 — current disposition choices (candidate112, full rehearsal running)
+
+Implemented server-derived read-only approval/resolution/withdrawal choices with exact current proposal/exit, original execution/title, caller-specific reviewed policy, verified executed/legal sources and bounded lifetimes. Approval remains unavailable for held title/execution or unverified legal evidence; eligible holds retain concrete unresolved work. Original withdrawal remains tied to its own proposal and available after replacement/pause/revocation. No policy or review is created. Inventory/mapping/API continuation are in DISPOSITION-WORKFLOW.md and SCHEMA-MAPPING.md.
+
+Five final SQL tests passed31.950s, session37513 terminal0; log `/tmp/disposition-choice-focused-final.log`. Manifest and full-catalog runner include99 migrations and the five new choice cases. Full upgrade/application rehearsal is live in session77393, log `/tmp/disposition-choice-upgrade.log`; preserve that exact run. Candidate112 remains uncommitted pending full verification. Current typed API/discovery tests and guided UI still need implementation.
+
+Candidate110 API841913c and candidate111 historyf250555 remain locally verified/committed. Published predecessorb3a2e6e/run41288395947 has four successes, with full-upgrade and Real PostgreSQL ingestion/workspace jobs still running at last check. Wait for all six before the next feature push; never cancel/restart checks. Full PRD remains active/incomplete, including controlled transitions, buyer/disclosure/closing/exception and all channel/provider/hosted/legal acceptance. No production migration or live action occurred.
+
 ## November 1 — original disposition history verified (candidate111)
 
 Added bounded scoped disposition history and exact original detail over the existing immutable review ledger. Retains proposed exit, execution/title roots, original findings/citations and withdrawal identity; excludes private authority metadata. Expired history remains readable without current approval. Lists/details validate scope, ordering, original hashes/versions, title/exit consistency and source validity. Reads use actual user/MFA/session access plus RLS and never mark a pending write rejected.
