@@ -1,0 +1,26 @@
+{
+  "synthetic_only": true,
+  "browser_results": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "decisions": 2,
+      "exactRecovery": true,
+      "originalHistory": true,
+      "pageErrors": [],
+      "overflow": false
+    },
+    {
+      "name": "phone",
+      "width": 375,
+      "height": 812,
+      "decisions": 2,
+      "exactRecovery": true,
+      "originalHistory": true,
+      "pageErrors": [],
+      "overflow": false
+    }
+  ],
+  "visual_inspection": "Phone original-history screenshot inspected; recorded hold and withdrawal, five explicit actions, original precision and collapsed identifiers remain readable."
+}

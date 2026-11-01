@@ -80,4 +80,42 @@ def verify_title_review_http(db,rpc,request,token,workspace,contract,document,ad
             lost=client.post(path,json=withdrawn,headers=headers);retry=client.post(path,json=withdrawn,headers=headers)
             if lost.status_code!=503 or retry.status_code!=200 or not retry.json()['duplicate'] or client.get(path,headers=headers).json()['status']!='withdrawn':raise AssertionError('Mounted original withdrawal recovery failed')
         finally:db.query('UPDATE private.acquisition_activation SET enabled=true')
+        # Exercise the mounted read paths against actual RLS-protected rows.
+        history_path=path+'/history'
+        first=client.get(history_path,params={'limit':2},headers=headers)
+        if first.status_code!=200 or first.headers.get('cache-control')!='no-store':raise AssertionError('Mounted title history unavailable')
+        page=first.json()
+        if [row['sequence'] for row in page['items']]!=[6,5] or page['next_before']!=5 or not page['history_only'] or page['approval_current'] or page['execution_authorized']:raise AssertionError('Mounted title history ordering or authority invalid')
+        seen=[row['id'] for row in page['items']]
+        cursor=page['next_before']
+        while cursor is not None:
+            following=client.get(history_path,params={'limit':2,'before':cursor},headers=headers)
+            if following.status_code!=200:raise AssertionError('Mounted title history pagination unavailable')
+            page=following.json();seen.extend(row['id'] for row in page['items']);cursor=page['next_before']
+        if len(seen)!=6 or len(set(seen))!=6 or set(seen)!={review,hold,withdrawal,api_review,api_hold,api_withdrawal}:raise AssertionError('Mounted title history lost or repeated original decisions')
+        for target,status,original in ((api_review,'approved',None),(api_hold,'requires_resolution',None),(api_withdrawal,'withdrawn',api_hold)):
+            detail=client.get(history_path+'/'+target,headers=headers)
+            if detail.status_code!=200:raise AssertionError('Mounted title history detail unavailable: '+str(detail.status_code))
+            body=detail.json();row=body['record']
+            if body['approval_current'] or body['execution_authorized'] or row['id']!=target or row['status']!=status or row['title_original_review_id']!=original:raise AssertionError('Mounted original title detail scope or authority changed')
+            if status!='withdrawn' and (row['title_findings']!=findings or row['title_sources'][0]['artifact_id']!=document or row['source_version']!=2):raise AssertionError('Mounted history changed original findings or citations')
+            if any(name in row for name in ('session_id','request_hash','title_policy_snapshot')):raise AssertionError('Mounted history exposed internal authority metadata')
+        for denied_headers in ({'Authorization':'Bearer '+token(other)},{},{'Authorization':'Bearer '+token(role='service_role')}):
+            for route in (history_path,history_path+'/'+api_review):
+                denied=client.get(route,headers=denied_headers)
+                if denied.status_code not in (401,403) or 'x-acquisition-title-review-rejected' in denied.headers:raise AssertionError('Mounted title history escaped workspace/session scope')
+        for route in (history_path,history_path+'/'+api_review):
+            denied=client.get(route.replace('/versions/2/','/versions/1/'),headers=headers)
+            if route.endswith(api_review):
+                if denied.status_code!=404:raise AssertionError('Mounted title detail escaped original version')
+            elif denied.status_code!=200 or denied.json()['items']:raise AssertionError('Mounted title history mixed versions')
+        db.query('UPDATE private.acquisition_activation SET enabled=false')
+        try:
+            if client.get(history_path,headers=headers).status_code!=200:raise AssertionError('Paused historical title evidence disappeared')
+        finally:db.query('UPDATE private.acquisition_activation SET enabled=true')
+        prior_session=db.query('SELECT not_after FROM auth.sessions WHERE id=%s',[admin])[0]['not_after']
+        db.query("UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 minute' WHERE id=%s",[admin])
+        try:
+            if client.get(history_path,headers=headers).status_code!=403 or client.get(history_path+'/'+api_review,headers=headers).status_code!=403:raise AssertionError('Revoked session retained mounted title history')
+        finally:db.query('UPDATE auth.sessions SET not_after=%s WHERE id=%s',[prior_session,admin])
     if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_review' AND entity_id IN (%s,%s,%s)",[api_review,api_hold,api_withdrawal])!=[{'n':3}]:raise AssertionError('Mounted title replay duplicated audit')

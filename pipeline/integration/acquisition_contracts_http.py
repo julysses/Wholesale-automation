@@ -494,6 +494,9 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'mounted title scope version and changed-request rejection',
             'mounted title hold recovery removes prior approval',
             'mounted title paused historical and original withdrawal recovery',
+            'mounted title history bounded original decisions and complete cursor traversal',
+            'mounted title original findings sources and withdrawal details without authority',
+            'mounted title history tenant version role pause and revoked-session isolation',
             'title choices mounted current original and explicit report policy',
             'title choices mounted tenant isolation',
             'title choices original held withdrawal without a selected report while paused']

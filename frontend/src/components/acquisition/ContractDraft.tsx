@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
+import { TitleReviewHistory } from './TitleReviewHistory';
 import { TitleReviewForm } from './TitleReviewForm';
 import { readPendingTitle } from '@/lib/acquisition/title-review';
 import { DeadlineReviewForm } from './DeadlineReviewForm';
@@ -259,6 +260,7 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
       {!pending && documentTarget && ((existing && ['pending_signature', 'executed', 'title_review'].includes(existing.acquisition_status)) || deadlinePending) && <DeadlineReviewForm context={documentTarget} disabled={titlePending || !deadlineContextReady || busy || documentPending || termsPending || linkPending || reviewPending || signaturePending || transitionPending || executionPending} onPending={handleDeadlinePending} onSaved={handleTermsSaved} />}
       {!pending && documentTarget && ((existing && ['pending_signature', 'executed', 'title_review'].includes(existing.acquisition_status)) || executionPending) && <ExecutionReviewForm context={documentTarget} disabled={titlePending || deadlinePending || !executionContextReady || busy || documentPending || termsPending || linkPending || reviewPending || signaturePending || transitionPending} onPending={handleExecutionPending} onSaved={handleTermsSaved} />}
       {!pending && documentTarget && (existing?.acquisition_status === 'title_review' || titlePending) && <TitleReviewForm context={documentTarget} disabled={!titleContextReady || deadlinePending || executionPending || busy || documentPending || termsPending || linkPending || reviewPending || signaturePending || transitionPending} onPending={handleTitlePending} onSaved={handleTermsSaved} />}
+      {!pending && documentTarget && existing?.acquisition_status === 'title_review' && <TitleReviewHistory context={documentTarget} disabled={!documentContextReady || titlePending || deadlinePending || executionPending || busy || documentPending || termsPending || linkPending || reviewPending || signaturePending || transitionPending} />}
       {!pending && documentTarget && <ContractLinksForm context={documentTarget} disabled={titlePending || deadlinePending || executionPending || !linkContextReady || busy || documentPending || reviewPending || termsPending || signaturePending || transitionPending} onPending={handleLinkPending} onSaved={handleTermsSaved} />}
       {!pending && documentTarget && <ContractTermsForm context={documentTarget} disabled={titlePending || deadlinePending || executionPending || !termsContextReady || busy || documentPending || reviewPending || linkPending || signaturePending || transitionPending} onPending={handleTermsPending} onSaved={handleTermsSaved} />}
       {!pending && documentTarget && <ContractReviewForm context={documentTarget} disabled={titlePending || deadlinePending || executionPending || !reviewContextReady || busy || documentPending || termsPending || linkPending || signaturePending || transitionPending} onPending={handleReviewPending} />}

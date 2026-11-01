@@ -92,7 +92,8 @@ function TitleEditor({ context, disabled, onPending, onSaved }: Props) {
       const receipt = await response.json(); if (!mounted.current) return;
       clearConfirmedTitle(sessionStorage, saved, receipt); setPending(null); setExpanded(false); setMode(null); setReviewed(false); setNote('');
       setMessage('Title decision recorded. Disposition and closing require separate review and approval.');
-      void queryClient.invalidateQueries({ queryKey: ['title-choice', context.userId, context.workspaceId, context.contractId] }); onSaved();
+      void queryClient.invalidateQueries({ queryKey: ['title-choice', context.userId, context.workspaceId, context.contractId] });
+      void queryClient.invalidateQueries({ queryKey: ['title-history', context.userId, context.workspaceId, context.contractId] }); onSaved();
     } catch (error) {
       if (!mounted.current) return;
       if (saved && firstAttempt && sent && error instanceof ApiError && error.rejectedTitle) {

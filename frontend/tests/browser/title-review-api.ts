@@ -1,4 +1,5 @@
-import { titleChoice, titleReference, titleScope, titleId } from '../fixtures/title-review';
+import { titleChoice, titleReference, titleScope, titleId, titleHistoryRecord, titleHistorySummary, titleHistoryEnvelope } from '../fixtures/title-review';
+import { titleSources } from '../../src/lib/acquisition/title-review';
 import type { PendingTitle } from '../../src/lib/acquisition/title-review';
 export class ApiError extends Error { rejectedTitle = false; }
 const key = 'synthetic-title-decisions';
@@ -7,6 +8,18 @@ export function loseNextReply() { lose = true; }
 export async function apiFetch(path: string, init?: RequestInit) {
   const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as PendingTitle['request'][];
   const stamp = new Date().toISOString(), last = entries.at(-1);
+  if (path.includes('/title-review/history')) {
+    const records = entries.map((r, i) => ({ ...titleHistoryRecord(i + 1, r.status), id: r.id, note: r.note, artifact_id: r.artifact_id,
+      verification_id: r.verification_id, personally_reviewed: r.personally_reviewed, expires_at: r.expires_at,
+      created_at: new Date(Date.now() - 60000).toISOString(), title_findings: r.findings,
+      title_original_review_id: r.status === 'withdrawn' ? entries[i - 1]?.id : null,
+      title_original_status: r.status === 'withdrawn' ? entries[i - 1]?.status : null,
+      title_sources: r.findings ? [...new Map([{ artifact_id: r.artifact_id, artifact_version: 2, sha256: 'a'.repeat(64), locator: 'Original report' }, ...titleSources(r.findings)].map(s => [s.artifact_id, s])).values()].map(s => ({ artifact_id: s.artifact_id, source_version: s.artifact_version, verification_id: r.verification_id, sha256: s.sha256, purpose: 'title_report', expires_at: new Date(Date.now() + 3600000).toISOString() })) : null }));
+    const url = new URL(path, 'http://local'), target = url.pathname.split('/history/')[1];
+    if (target) { const record = records.find(r => r.id === target); if (!record) throw new Error('Synthetic original missing'); return { json: async () => ({ ...titleHistoryEnvelope, record }) }; }
+    const before = Number(url.searchParams.get('before') ?? 2147483647), all = records.filter(r => r.sequence < before).reverse(), fields = Object.keys(titleHistorySummary());
+    return { json: async () => ({ ...titleHistoryEnvelope, items: all.slice(0, 20).map(r => Object.fromEntries(fields.map(key => [key, r[key as keyof typeof r]]))), next_before: all.length > 20 ? all[19].sequence : null }) };
+  }
   if (init?.method === 'POST') {
     const request = JSON.parse(init.body as string) as PendingTitle['request'];
     const prior = entries.find(row => row.id === request.id);
