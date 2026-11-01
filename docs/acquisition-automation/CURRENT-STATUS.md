@@ -2,6 +2,18 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — source-aware human review (candidate68)
+
+Candidate20261101010937_acquisition_contract_review_source_versions.sql extends the existing immutable review ledger with optional evidence_version and a stored generated source_version that falls back to the historical target version. The original target-version FK remains; the two original-evidence FKs now use source_version. Prior rows, request hashes, receipts and public function signatures remain unchanged. Existing RLS/grants/private definers/empty search paths are retained. No new review policy is seeded.
+
+Record/current-state/candidate functions resolve the same-contract target reference and separately validate the original artifact/version/hash/latest verification. A withdrawn link prevents new approval and removes current approval; native and recorded-term references retain their own original identity. Every new approval still requires the current canonical target, personal review, explicit reviewer policy, fresh session and all evidence/expiry checks. Withdrawal remains possible after reference/source revocation and preserves the original source version. Receipt remains historical/non-executing; no approval carries forward on a term change.
+
+Fresh read-only hosted catalog remains ledger20261023221455 with reviews/document links absent; evidence/2026-10-31-contract-review-source-catalog.json. Inspected candidate review constraints and function bodies, and checked PostgreSQL17 generated-column documentation before CLI creation. Five focused disposable cases passed in23.916s; each first preserved a populated pre-migration decision byte-for-byte excluding the two additive columns and recovered its original request. Cases cover changed-version approval, independent withdrawal, latest scan/source revocation, scope/immutability and observed link withdrawal while review waits.
+
+Full candidate68 rehearsal28368 exited0:68 migrations,26 access probes,154 workflows and89 actual local gateway checks. Existing mounted candidate/review endpoints passed original-source/new-target binding, commit-loss recovery, revocation and withdrawal. Preserved24 historical records across22 populated tables,103 table definitions and Storage. Evidence: evidence/2026-10-31-contract-source-review-gateway-result.json. All local test processes are terminal; no hosted acceptance is implied. Publishedda1eb48 successor41259588608 has five successes and a live PostgreSQL contention job; candidates67/68 remain local.
+
+Next: mounted source-reference/link discovery and guided terms/reference controls within the existing contract step, preserving original-source display and pending-request recovery. Existing app review choices still list native documents; the new SQL/API capability does not itself complete the operator handoff. Then finish controlled lifecycle transitions, buyer/disposition/closing and all other PRD acceptance gates. No production, provider, outreach or signature changes.
+
 ## October 31 — original-document references (candidate 67)
 
 All six predecessor checks passed in41258368956. Pulled and published validated checkpointda1eb4827fca565a68c5fa2e6df9cb6e4a91f358; exact successor41259588608 is running. This publication includes prior guided review/terms/API work; candidate67 below remains local.

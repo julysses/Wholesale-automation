@@ -289,7 +289,10 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
                 status,_=request('/rpc/contract_reference_state',identity,reference_args)
                 if status not in (401,403):raise AssertionError('Contract source reference gateway scope bypass')
 
+            from acquisition_source_review_http import verify_source_review_http,verify_source_review_revocation_http
+            source_review_path,source_review_body=verify_source_review_http(db,app,document_drops,headers,workspace,draft,review_request,{'Authorization':'Bearer '+token(other)})
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
+            verify_source_review_revocation_http(db,app,document_drops,headers,source_review_path,source_review_body)
             verify_terms_revocation_http(app,token,terms_path,terms_body)
             reference=rpc('contract_reference_state',reference_args)
             if reference['status']!='requires_review' or reference['verification_id'] is not None:
@@ -413,4 +416,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'terms API workspace isolation and expected version conflicts',
             'terms API no approval carryover and revocation blocks new versions',
             'contract source reference original version and gateway role isolation',
-            'contract source reference current scan revocation hold']
+            'contract source reference current scan revocation hold',
+            'source-aware human review mounted candidate and exact commit-loss recovery',
+            'source-aware human review original evidence FK and target workspace isolation',
+            'source-aware human review revocation and withdrawal recovery']
