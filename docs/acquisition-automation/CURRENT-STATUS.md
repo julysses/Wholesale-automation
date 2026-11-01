@@ -2,6 +2,16 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — review choices API and client validation
+
+Candidate migration 65 full rehearsal session 16348 exited 0: 65 migrations, 26 access probes, 138 workflows and 79 actual local gateway checks. All historical rows/definitions and Storage fixture preserved. Saved evidence: evidence/2026-10-31-contract-review-candidate-gateway-result.json.
+
+Mounted authenticated GET /reviews/{kind}/documents/{artifact_id}/candidate. Strict nested models bind path workspace/contract/version/kind/artifact, required document purpose, current review sequence and timestamp, approval/withdrawal identities and limiting expiry. Responses are no-store; inconsistent/expired/unknown results return unconfirmed without leaking payloads. No writes or policy authority are supplied by discovery. Equivalent browser parser is available for the forthcoming guided form.
+
+84 review API tests passed in 3.59s. 29 frontend parser tests passed; frontend build/typecheck passed. Added actual mounted-candidate gateway probes for exact sequence, tenant/version isolation and withdrawal after evidence revocation. New full rehearsal session 45433 remains live at /tmp/contract-review-candidate-api-upgrade.log; poll this exact handle before restarting or claiming success. Lint session 37394 exited 0 with no new findings (/tmp/contract-review-candidate-lint.log).
+
+Repair CI 41256126531 remains five successes and one live workspace-isolation job. Features remain local until all six pass. Next: guided record/withdraw controls with exact pending-request recovery, then immutable terms/transitions, disposition and remaining PRD gates. No production migration, provider activation, outreach or binding transaction.
+
 ## October 31 — exact-document review choices (candidate migration 65)
 
 Fresh read-only hosted metadata remains ledger 20261023221455 with candidate versions/reviews/policies absent; evidence/2026-10-31-contract-review-candidate-catalog.json. Inspected predecessor functions, tables, grants, indexes and constraints. CLI-created 20261101002427_acquisition_contract_review_candidate.sql adds only private-definer/public-invoker read functions with empty search paths and explicit authenticated grants; no new tables or policy activation. Current Supabase function/privilege documentation checked.

@@ -243,6 +243,15 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
                 recovered=review_client.post(review_path,json=review_request,headers=headers)
                 if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate'] or recovered.json()['approval_current']:
                     raise AssertionError('Mounted human review exact response-loss recovery failed')
+                candidate_path=review_path+'/documents/'+signed['p_artifact']+'/candidate'
+                candidate_api=review_client.get(candidate_path,headers=headers)
+                if candidate_api.status_code!=200 or candidate_api.headers.get('cache-control')!='no-store' or candidate_api.json()['candidate']['expected_sequence']!=1:
+                    raise AssertionError('Mounted exact review candidate unavailable')
+                for identity in ({'Authorization':'Bearer '+token(other)},{}):
+                    if review_client.get(candidate_path,headers=identity).status_code not in (401,403):
+                        raise AssertionError('Mounted candidate scope bypass')
+                if review_client.get(candidate_path.replace('/versions/1/','/versions/2/'),headers=headers).status_code!=403:
+                    raise AssertionError('Mounted candidate version bypass')
                 current_api=review_client.get(review_path,headers=headers)
                 if current_api.status_code!=200 or not current_api.json()['approval_current'] or current_api.headers.get('cache-control')!='no-store':
                     raise AssertionError('Mounted current human review unavailable')
@@ -263,6 +272,9 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             if rpc('contract_review_state',review_scope)['approval_current']:
                 raise AssertionError('Human review survived revoked scan authority')
             with TestClient(app) as review_client:
+                candidate_hold=review_client.get(candidate_path,headers=headers)
+                if candidate_hold.status_code!=200 or candidate_hold.json()['candidate'] is not None or candidate_hold.json()['withdrawal']['expected_sequence']!=1:
+                    raise AssertionError('Mounted candidate lost revoked evidence/withdrawal boundary')
                 held=review_client.get(review_path,headers=headers)
                 if held.status_code!=200 or held.json()['approval_current'] or held.json()['status']!='requires_review':
                     raise AssertionError('Mounted review retained revoked scan authority')
@@ -377,4 +389,5 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract human review current scan revocation and withdrawal recovery',
             'mounted human review exact retry after response loss',
             'mounted human review scope isolation and fresh revoked state',
-            'review candidate real gateway exact authority and withdrawal after revocation']
+            'review candidate real gateway exact authority and withdrawal after revocation',
+            'mounted review candidate exact scope expiry and revoked evidence hold']

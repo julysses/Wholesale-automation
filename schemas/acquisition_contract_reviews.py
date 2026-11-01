@@ -99,3 +99,66 @@ class ContractReviewState(ContractReviewScope):
         elif self.expires_at is not None:
             raise ValueError('Historical review must not expose current expiry')
         return self
+
+
+class ReviewApprovalChoice(Exact):
+    artifact_id: UUID
+    verification_id: UUID
+    sha256: str = Field(strict=True, pattern=r'^[0-9a-f]{64}$')
+    policy_id: UUID
+    max_expires_at: AwareDatetime
+    expected_sequence: int = Field(strict=True, ge=0, lt=2147483647)
+
+    @field_validator('max_expires_at', mode='before')
+    @classmethod
+    def timestamp_string(cls, value):
+        if not isinstance(value, str):
+            raise ValueError('Timestamp string required')
+        return value
+
+
+class ReviewWithdrawalChoice(Exact):
+    review_id: UUID
+    artifact_id: UUID
+    verification_id: UUID
+    policy_id: UUID
+    expected_sequence: int = Field(strict=True, ge=1, lt=2147483647)
+
+
+class ContractReviewCandidate(ContractReviewScope):
+    artifact_id: UUID
+    purpose: Literal['purchase_contract', 'title_report']
+    status: Literal['paused', 'contract_unavailable', 'reviewer_policy_required', 'evidence_review_required', 'ready_for_human_review']
+    candidate: ReviewApprovalChoice | None
+    withdrawal: ReviewWithdrawalChoice | None
+    current_review: ContractReviewState
+    checked_at: AwareDatetime
+
+    @field_validator('checked_at', mode='before')
+    @classmethod
+    def timestamp_string(cls, value):
+        if not isinstance(value, str):
+            raise ValueError('Timestamp string required')
+        return value
+
+    @model_validator(mode='after')
+    def exact_choices(self):
+        current = self.current_review
+        if ((current.workspace_id, current.contract_id, current.contract_version, current.kind, current.checked_at)
+                != (self.workspace_id, self.contract_id, self.contract_version, self.kind, self.checked_at)):
+            raise ValueError('Current review scope changed')
+        if self.purpose != ('title_report' if self.kind == 'title_review' else 'purchase_contract'):
+            raise ValueError('Review purpose changed')
+        if (self.status == 'ready_for_human_review') != (self.candidate is not None):
+            raise ValueError('Consistent review readiness required')
+        if self.candidate is not None:
+            choice = self.candidate
+            if (choice.artifact_id != self.artifact_id or choice.expected_sequence != current.sequence
+                    or not 0 < (choice.max_expires_at-self.checked_at).total_seconds() <= 86400):
+                raise ValueError('Current bounded review choice required')
+        if self.withdrawal is not None:
+            choice = self.withdrawal
+            if (choice.artifact_id != self.artifact_id or choice.expected_sequence != current.sequence
+                    or choice.review_id != current.review_id or current.status not in {'approved', 'requires_review'}):
+                raise ValueError('Exact latest withdrawal required')
+        return self

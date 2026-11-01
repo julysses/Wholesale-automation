@@ -95,3 +95,43 @@ def test_invalid_scope_never_calls_database(endpoint,path):
     client,store=endpoint
     assert client.get(path).status_code==422
     store.request.assert_not_awaited()
+
+
+def candidate():
+    current=state()|{'status':'not_reviewed','sequence':0,'review_id':None,'approval_current':False,'expires_at':None}
+    return {'workspace_id':W,'contract_id':C,'contract_version':1,'kind':'contract_review','artifact_id':A,'purpose':'purchase_contract',
+        'status':'ready_for_human_review','candidate':{'artifact_id':A,'verification_id':V,'sha256':'a'*64,'policy_id':P,'expected_sequence':0,'max_expires_at':stamp(300)},
+        'withdrawal':None,'current_review':current,'checked_at':current['checked_at'],'execution_authorized':False}
+
+
+def test_candidate_exact_path_and_no_mutation(endpoint):
+    client,store=endpoint;store.request.return_value=candidate()
+    response=client.get(BASE+'/documents/'+A+'/candidate')
+    assert response.status_code==200 and response.headers['cache-control']=='no-store'
+    assert response.json()['candidate']['artifact_id']==A and not response.json()['execution_authorized']
+    store.request.assert_awaited_once_with('POST','rpc/contract_review_candidate',body={'p_workspace':W,'p_contract':C,'p_version':1,'p_kind':'contract_review','p_artifact':A})
+    assert client.post(BASE+'/documents/'+A+'/candidate',json=body()).status_code==405
+
+@pytest.mark.parametrize('change',[{'workspace_id':P},{'contract_id':P},{'contract_version':2},{'kind':'title_review'},
+    {'artifact_id':P},{'purpose':'title_report'},{'status':'paused'},{'candidate':None},{'execution_authorized':True},
+    {'checked_at':stamp(-60)},{'checked_at':stamp(60)},{'private':'secret-marker'}])
+def test_candidate_rejects_mixed_stale_or_unexpected_data(endpoint,change):
+    client,store=endpoint;store.request.return_value=candidate()|change
+    response=client.get(BASE+'/documents/'+A+'/candidate')
+    assert response.status_code==503 and 'secret-marker' not in response.text
+
+@pytest.mark.parametrize('change',[{'artifact_id':P},{'expected_sequence':1},{'expected_sequence':True},
+    {'max_expires_at':stamp(-1)},{'max_expires_at':stamp(86410)},{'max_expires_at':123},{'sha256':'B'*64}])
+def test_candidate_rejects_invalid_approval_choice(endpoint,change):
+    client,store=endpoint;value=candidate();value['candidate'].update(change);store.request.return_value=value
+    assert client.get(BASE+'/documents/'+A+'/candidate').status_code==503
+
+@pytest.mark.parametrize('status',['paused','contract_unavailable','reviewer_policy_required','evidence_review_required'])
+def test_candidate_preserves_holds_and_exact_withdrawal(endpoint,status):
+    client,store=endpoint;value=candidate();current=state()|{'status':'requires_review','approval_current':False,'expires_at':None,'checked_at':value['checked_at']}
+    value.update(status=status,candidate=None,current_review=current,withdrawal={'review_id':R,'artifact_id':A,'verification_id':V,'policy_id':P,'expected_sequence':1})
+    store.request.return_value=value
+    response=client.get(BASE+'/documents/'+A+'/candidate')
+    assert response.status_code==200 and response.json()['withdrawal']['review_id']==R
+    value['withdrawal']['review_id']=P
+    assert client.get(BASE+'/documents/'+A+'/candidate').status_code==503

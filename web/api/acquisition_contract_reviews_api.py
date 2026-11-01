@@ -52,3 +52,24 @@ async def record_review(workspace_id: UUID, contract_id: UUID, contract_version:
     except (ValueError, TypeError):
         raise uncertain('Review save is unconfirmed. Keep the same request and decision details for recovery.') from None
     return receipt.model_dump(mode='json')
+
+
+@router.get('/{kind}/documents/{artifact_id}/candidate')
+async def review_candidate(workspace_id: UUID, contract_id: UUID, contract_version: Version, kind: ReviewKind,
+                           artifact_id: UUID, response: Response, store=Depends(acquisition_store)):
+    from schemas.acquisition_contract_reviews import ContractReviewCandidate
+    response.headers['Cache-Control'] = 'no-store'
+    raw = await rpc(store, 'contract_review_candidate', {'p_workspace': str(workspace_id), 'p_contract': str(contract_id),
+        'p_version': contract_version, 'p_kind': kind, 'p_artifact': str(artifact_id)})
+    try:
+        choice = ContractReviewCandidate.model_validate(raw)
+        now = datetime.now(timezone.utc)
+        if (not scope_matches(choice, workspace_id, contract_id, contract_version, kind)
+                or choice.artifact_id != artifact_id
+                or not now-timedelta(seconds=30) <= choice.checked_at <= now+timedelta(seconds=5)
+                or choice.candidate is not None and choice.candidate.max_expires_at <= now
+                or choice.current_review.approval_current and choice.current_review.expires_at <= now):
+            raise ValueError('Current exact review choices required')
+    except (ValueError, TypeError):
+        raise uncertain('Review choices could not be confirmed. Refresh the selected document before continuing.') from None
+    return choice.model_dump(mode='json')
