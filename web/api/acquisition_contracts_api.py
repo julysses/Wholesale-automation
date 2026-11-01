@@ -50,7 +50,7 @@ class ContractDraftRecord(Exact):
     lead_id: UUID
     deal_name: str=Field(strict=True,min_length=1,max_length=500)
     acquisition_status: Literal['draft']
-    acquisition_version: int=Field(strict=True,ge=1,le=1)
+    acquisition_version: int=Field(strict=True,ge=1,le=2147483647)
     acquisition_property_id: UUID
     acquisition_owner_relationship_id: UUID
     acquisition_offer_id: UUID

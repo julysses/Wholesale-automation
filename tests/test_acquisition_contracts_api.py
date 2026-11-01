@@ -140,3 +140,11 @@ def test_seller_choices_require_property_and_bound_page(endpoint):
     response=client.get(PATH+'/sellers',params={'lead_id':L,'property_id':J,'after':I})
     assert response.json()['items']==[] and response.json()['next_after'] is None
     assert store.request.call_args.kwargs['params']['id']=='gt.'+I
+
+
+def test_existing_draft_preserves_new_current_version(endpoint):
+    client,store=endpoint;store.request.return_value=[ROW|{'acquisition_version':2}]
+    response=client.get(PATH)
+    assert response.status_code==200 and response.json()['items'][0]['acquisition_version']==2
+    store.request.return_value=[ROW|{'acquisition_version':2147483648}]
+    assert client.get(PATH).status_code==503

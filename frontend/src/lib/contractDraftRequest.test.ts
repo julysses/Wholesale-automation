@@ -64,6 +64,8 @@ it('fails closed on malformed or foreign draft history', () => {
     created_by: id(1), created_at: '2026-10-31T22:00:00Z' };
   const page = { items: [row], next_after: null, execution_authorized: false };
   expect(readExistingContractDrafts(page, pending.context).items).toHaveLength(1);
+  expect(readExistingContractDrafts({ ...page, items: [{ ...row, acquisition_version: 2 }] }, pending.context).items[0].acquisition_version).toBe(2);
+  for (const version of [0, true, 1.5, 2147483648]) expect(() => readExistingContractDrafts({ ...page, items: [{ ...row, acquisition_version: version }] }, pending.context)).toThrow();
   for (const value of [{ ...page, items: [{ ...row, workspace_id: id(9) }] }, { ...page, items: [row, row] },
     { ...page, next_after: id(9) }, { ...page, execution_authorized: true }]) expect(() => readExistingContractDrafts(value, pending.context)).toThrow();
 });

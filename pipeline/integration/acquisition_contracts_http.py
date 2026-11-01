@@ -172,6 +172,20 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
     status,_=request('/rpc/record_contract_document_verification',token(),signed)
     if status!=403:raise AssertionError('Unreviewed contract key scope was accepted')
     db.query("INSERT INTO private.acquisition_contract_verification_key_scopes(workspace_id,key_id,purpose,reviewed_by,approval_ref,valid_from,valid_until) VALUES(%s,%s,'purchase_contract',%s,%s,clock_timestamp()-interval '1 hour',clock_timestamp()+interval '1 hour')",[workspace,signing_key,admin,observation_id])
+    # Register native-version documents before terms advance the canonical version.
+    api_document='ad900000-0000-4000-8000-000000000004'
+    api_revocation='ad900000-0000-4000-8000-000000000005'
+    api_path=f'/api/acquisition/workspaces/{workspace}/contracts/{draft}/versions/1/documents'
+    api_body={'id':api_document,'purpose':'purchase_contract','expected_sha256':'b'*64,'expected_byte_size':123,
+        'media_type':'application/pdf','retention_policy_id':policy,'provenance_note':'Synthetic document metadata API provenance.'}
+    with TestClient(app) as client:
+        if client.post(api_path,json=api_body,headers=headers).status_code!=503:
+            raise AssertionError('Document registration commit loss was not preserved')
+        retry=client.post(api_path,json=api_body,headers=headers)
+        if retry.status_code!=200 or not retry.json()['duplicate'] or retry.json()['execution_authorized']:
+            raise AssertionError('Document API exact registration recovery failed')
+        if client.post(api_path,json=api_body|{'expected_byte_size':124},headers=headers).status_code!=409:
+            raise AssertionError('Document API conflicting request accepted')
     import asyncio
     import tempfile
     from pathlib import Path
@@ -265,7 +279,10 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             for jwt,wrong in [(token(other),review_body),(None,review_body),(token(),review_body|{'p_version':2})]:
                 status,_=request('/rpc/record_contract_review',jwt,wrong)
                 if status not in (401,403):raise AssertionError('Contract human review scope bypass')
+            from acquisition_contract_terms_http import verify_terms_http, verify_terms_revocation_http
+            terms_path,terms_body=verify_terms_http(db,app,document_drops,token,workspace,draft,signed['p_artifact'],observed['sha256'],other,lead)
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
+            verify_terms_revocation_http(app,token,terms_path,terms_body)
             stale=await store.contract_document_scan_state(scope['artifact_id'],**read_scope)
             if stale.status!='requires_review' or stale.observation_id is not None or stale.execution_authorized:
                 raise AssertionError('Revoked contract scope retained current scan authority')
@@ -296,7 +313,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
         raise AssertionError('Contract observation exact recovery or target failed')
     if any(recovered_scan[k] for k in ('preview_authorized','legal_review_approved','execution_authorized')):
         raise AssertionError('Persisted scan implied approval')
-    for jwt,body in [(token(other),signed),(token(),signed|{'p_version':2}),(None,signed)]:
+    for jwt,body in [(token(other),signed),(token(),signed|{'p_version':3}),(None,signed)]:
         status,_=request('/rpc/record_contract_document_verification',jwt,body)
         if status not in (401,403):raise AssertionError('Contract observation scope/session bypass accepted')
     status,rows=request('/acquisition_evidence_verifications?select=id&contract_id=eq.'+draft,token(other))
@@ -310,19 +327,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
         raise AssertionError('Contract document revocation missing from state')
     if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_document' AND entity_id=%s",[document])!=[{'n':2}]:
         raise AssertionError('Contract document retry duplicated audit')
-    api_document='ad900000-0000-4000-8000-000000000004'
-    api_revocation='ad900000-0000-4000-8000-000000000005'
-    api_path=f'/api/acquisition/workspaces/{workspace}/contracts/{draft}/versions/1/documents'
-    api_body={'id':api_document,'purpose':'purchase_contract','expected_sha256':'b'*64,'expected_byte_size':123,
-        'media_type':'application/pdf','retention_policy_id':policy,'provenance_note':'Synthetic document metadata API provenance.'}
     with TestClient(app) as client:
-        if client.post(api_path,json=api_body,headers=headers).status_code!=503:
-            raise AssertionError('Document registration commit loss was not preserved')
-        retry=client.post(api_path,json=api_body,headers=headers)
-        if retry.status_code!=200 or not retry.json()['duplicate'] or retry.json()['execution_authorized']:
-            raise AssertionError('Document API exact registration recovery failed')
-        if client.post(api_path,json=api_body|{'expected_byte_size':124},headers=headers).status_code!=409:
-            raise AssertionError('Document API conflicting request accepted')
         state=client.get(api_path+'/'+api_document,headers=headers)
         if state.status_code!=200 or state.json()['status']!='pending_verification' or state.json()['legal_review_approved']:
             raise AssertionError('Document API state or approval boundary failed')
@@ -364,7 +369,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
         for identity in ({'Authorization':'Bearer '+token(other)},{}):
             if client.get(api_path+'?purpose=purchase_contract',headers=identity).status_code not in (401,403):
                 raise AssertionError('Document discovery tenant/session bypass')
-        if client.get(api_path.replace('/versions/1/','/versions/2/')+'?purpose=purchase_contract',headers=headers).status_code!=403:
+        if client.get(api_path.replace('/versions/1/','/versions/3/')+'?purpose=purchase_contract',headers=headers).status_code!=403:
             raise AssertionError('Document discovery wrong-version bypass')
         if client.post(api_path+'/'+api_document+'/bytes',headers=headers,content=b'not accepted').status_code not in (404,405):
             raise AssertionError('Contract document upload unexpectedly enabled')
@@ -390,4 +395,8 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'mounted human review exact retry after response loss',
             'mounted human review scope isolation and fresh revoked state',
             'review candidate real gateway exact authority and withdrawal after revocation',
-            'mounted review candidate exact scope expiry and revoked evidence hold']
+            'mounted review candidate exact scope expiry and revoked evidence hold',
+            'terms API sourced save actual commit loss and exact retry',
+            'terms API immutable paged history and updated draft list',
+            'terms API workspace isolation and expected version conflicts',
+            'terms API no approval carryover and revocation blocks new versions']
