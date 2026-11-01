@@ -2,6 +2,10 @@
 
 October 31, 2026. Local implementation checkpoint, not legal approval or execution authority.
 
+## Persisted lifecycle checkpoint
+
+Candidate72 records the first controlled draft → pending_signature transition through a user-JWT API and independent immutable lifecycle sequence. SQL pins and rechecks exact signature-release/source/reviewer authority; terms history remains unchanged, and the legacy stage stays offer_made. The existing list and step5 preserve pending-signature visibility and recovery. The actual transition button/read-only discovery, executed/exception/closing evidence and later lifecycle edges remain outstanding. See CURRENT-STATUS.md for full local rehearsal and publication evidence. No send/sign/closing action or hosted migration is authorized by this checkpoint.
+
 ## Guided review checkpoint
 
 Step 5 now includes a collapsed signature-release review after ordinary contract review. Candidate discovery supplies source/version and policy; approval requires personal acknowledgement, notes and bounded expiry. Independent withdrawal and exact saved-request recovery preserve original basis and target version. Adjacent edits and navigation stay held until unsaved edits are closed or the exact saved decision is confirmed. Desktop/mobile synthetic QA and 738 frontend tests passed; see CURRENT-STATUS.md for publication gate and evidence. No signing or lifecycle transition is exposed.

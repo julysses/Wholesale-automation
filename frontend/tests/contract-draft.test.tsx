@@ -10,7 +10,7 @@ const selected = { offer_id: id(6), lead_id: id(3), property_id: id(4) };
 const record = { id: id(5), workspace_id: id(2), lead_id: id(3), deal_name: 'Saved property draft', acquisition_status: 'draft', acquisition_version: 1,
   acquisition_property_id: id(4), acquisition_owner_relationship_id: id(7), acquisition_offer_id: id(6), acquisition_offer_sequence: 2, created_by: id(1), created_at: '2026-10-31T22:00:00Z' };
 beforeEach(() => {
-  record.acquisition_version = 1; sessionStorage.clear(); mock.fetch.mockReset(); mock.pending.mockReset(); mock.fail = false; mock.reject = false; mock.existing = false; mock.approved = true;
+  record.acquisition_status = 'draft'; record.acquisition_version = 1; sessionStorage.clear(); mock.fetch.mockReset(); mock.pending.mockReset(); mock.fail = false; mock.reject = false; mock.existing = false; mock.approved = true;
   mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
     if (init?.method === 'POST') {
       if (mock.reject) throw new ApiError('Rejected', 409);
@@ -207,4 +207,13 @@ it('preserves conflicting signature and terms recoveries without selecting eithe
   preserveTerms(sessionStorage, { version: 1, context: signatureContext, request: { id: id(30), expected_version: 1, terms: { ...emptyTerms(), note: 'Original terms retained across a lost save reply.' } } });
   open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile the existing request');
   expect(mock.fetch).not.toHaveBeenCalled(); expect(mock.pending).toHaveBeenLastCalledWith(true); expect(sessionStorage.length).toBe(2);
+});
+
+it('keeps a contract awaiting signature visible and holds further draft preparation', async () => {
+  record.acquisition_status = 'pending_signature'; mock.existing = true; open();
+  await screen.findByText('Awaiting signature. This status does not confirm that an agreement was sent or signed.');
+  expect(screen.getByRole('button', { name: 'Draft saved' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Edit draft terms' })).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled();
+  expect(posts()).toHaveLength(0);
 });

@@ -301,6 +301,8 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             link_path,link_body=verify_links_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,api_document,linked_observation_id,observed['sha256'])
             from acquisition_signature_review_http import verify_signature_http,verify_signature_revocation_http
             signature_path,signature_body=verify_signature_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,terms_body,source_review_body)
+            from acquisition_contract_transition_http import verify_transition_http
+            verify_transition_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft)
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
             verify_source_review_revocation_http(db,app,document_drops,headers,source_review_path,source_review_body)
             verify_terms_revocation_http(app,token,terms_path,terms_body)
@@ -443,4 +445,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'signature review API tenant session target and request conflict denial',
             'signature review API revoked source and paused withdrawal recovery without legal transition',
             'signature candidate API exact original document basis and scoped reviewer policy',
-            'signature candidate API paused hold preserves independent original withdrawal']
+            'signature candidate API paused hold preserves independent original withdrawal',
+            'lifecycle API committed response loss and exact historical retry',
+            'lifecycle API tenant session and conflicting reason rejection',
+            'lifecycle version preservation and continued guided contract visibility']

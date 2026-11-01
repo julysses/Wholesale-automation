@@ -18,6 +18,7 @@ from acquisition_contract_document_link_tests import ContractDocumentLinkCases
 from acquisition_contract_source_review_tests import ContractSourceReviewCases
 from acquisition_contract_reference_discovery_tests import ContractReferenceDiscoveryCases
 from acquisition_signature_review_tests import SignatureReviewCases
+from acquisition_contract_transition_tests import ContractTransitionCases
 from acquisition_signature_candidate_tests import SignatureCandidateCases
 from acquisition_contract_document_tests import ContractDocumentCases, ContractUploadAdmissionCases
 from test_acquisition_workspace import ADMIN, OTHER, CALLER, OPERATOR, WORKSPACE, WORKSPACE_B, LEAD, LEAD_B, PROPERTY
@@ -48,7 +49,7 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
-class FullCatalogDocumentTests(SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
+class FullCatalogDocumentTests(ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
     def setUp(self):
         super().setUp()
         self.prepare_document_fixture()
@@ -80,6 +81,7 @@ def run_workflow_probes(db):
     document_names += sorted(name for name in ContractReferenceDiscoveryCases.__dict__ if name.startswith('test_reference_discovery_'))
     document_names += sorted(name for name in SignatureReviewCases.__dict__ if name.startswith('test_signature_'))
     document_names += sorted(name for name in SignatureCandidateCases.__dict__ if name.startswith('test_signature_candidate_'))
+    document_names += sorted(name for name in ContractTransitionCases.__dict__ if name.startswith('test_signature_transition_'))
     names += contract_names + document_names
     if not names:
         raise RuntimeError('No application journeys discovered')

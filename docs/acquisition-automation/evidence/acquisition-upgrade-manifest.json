@@ -285,6 +285,10 @@
     {
       "file": "20261101022040_acquisition_signature_candidates.sql",
       "sha256": "23131839e6e022b44a3d1c39d43d73834b53eae26c6c91f9f2fb50d822406744"
+    },
+    {
+      "file": "20261101023551_acquisition_contract_lifecycle.sql",
+      "sha256": "01e0f19ff399ca6c2e63d9be22b9dabf840f5dbe63ed4bd843c9e3ba0ac63706"
     }
   ]
 }

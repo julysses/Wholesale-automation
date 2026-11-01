@@ -70,7 +70,7 @@ def test_list_filters_and_pagination(endpoint):
     assert response.status_code==200 and response.json()['next_after']==I
     assert len(response.json()['items'])==1 and response.json()['execution_authorized'] is False
     assert store.request.call_args.kwargs['params']=={'select':','.join(ContractDraftRecord.model_fields),
-        'workspace_id':'eq.'+W,'lead_id':'eq.'+L,'acquisition_status':'eq.draft','order':'id','limit':'2'}
+        'workspace_id':'eq.'+W,'lead_id':'eq.'+L,'acquisition_status':'in.(draft,pending_signature)','order':'id','limit':'2'}
     store.request.return_value=[ROW|{'id':J}]
     assert client.get(PATH,params={'after':I}).json()['next_after'] is None
     assert store.request.call_args.kwargs['params']['id']=='gt.'+I
@@ -148,3 +148,11 @@ def test_existing_draft_preserves_new_current_version(endpoint):
     assert response.status_code==200 and response.json()['items'][0]['acquisition_version']==2
     store.request.return_value=[ROW|{'acquisition_version':2147483648}]
     assert client.get(PATH).status_code==503
+
+
+def test_awaiting_signature_remains_in_the_existing_contract_list(endpoint):
+    client,store=endpoint;store.request.return_value=[ROW|{'acquisition_status':'pending_signature'}]
+    response=client.get(PATH,params={'lead_id':L})
+    assert response.status_code==200
+    assert response.json()['items'][0]['acquisition_status']=='pending_signature'
+    assert response.json()['execution_authorized'] is False
