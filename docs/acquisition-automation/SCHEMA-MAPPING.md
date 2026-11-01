@@ -2,6 +2,10 @@
 
 Observed October 25, 2026, America/Chicago (catalog checkpoint 2026-10-26 02:31:52 UTC). Status: historical inventory with additive implementation tracked in PROGRESS.md; no production migrations applied.
 
+## November 1 — post-execution title findings storage
+
+`acquisition_contract_reviews` remains the logical title/contract review entity, with new bounded `title_findings` and `title_sources` JSON, exact execution-transition identity and original-withdrawal reference. `private.acquisition_contract_review_policies` adds the distinct `title_findings` / `title_report` pairing without provisioning authority. `acquisition_contract_transitions` gains a scoped execution identity for the foreign key; historical transitions and contract versions remain unchanged. New source/shape validators are private, invoker functions with fixed search path and no application-role grants. Existing RLS and immutable review controls are retained. Inventory: `evidence/2026-11-01-title-findings-local-catalog.json`. Migration: `20261101055752_acquisition_title_findings_storage.sql`. No production application authorized; forward compensation preserves historical rows and keeps the new path disabled.
+
 ## Evidence and baseline
 
 Fresh lifecycle-focused read-only inspection on October31 at2026-11-01T01:56:26Z is saved in `evidence/2026-10-31-lifecycle-catalog.json`. It covers100 columns,9 constraints,72 grants and current indexes/policies/triggers for deals, buyers and buyer_preferences. Hosted latest migration remains20261023221455. A preceding metadata query also confirmed RLS enabled on these three tables and no hosted acquisition_contract tables. This refresh does not replace the broader baseline inventory or prove hosted feature acceptance. No seller/buyer records were read.

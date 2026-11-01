@@ -1,0 +1,742 @@
+{
+  "constraints": [
+    {
+      "name": "acquisition_contract_reviews_actor_id_fkey",
+      "table": "acquisition_contract_reviews",
+      "definition": "FOREIGN KEY (actor_id) REFERENCES profiles(id)"
+    },
+    {
+      "name": "acquisition_contract_reviews_check",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK ((((status = 'approved'::text) AND personally_reviewed AND (expires_at IS NOT NULL) AND isfinite(expires_at) AND (expires_at > created_at)) OR ((status = 'withdrawn'::text) AND (NOT personally_reviewed) AND (expires_at IS NULL))))"
+    },
+    {
+      "name": "acquisition_contract_reviews_check1",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK (((evidence_version > 0) AND (evidence_version <= contract_version)))"
+    },
+    {
+      "name": "acquisition_contract_reviews_note_check",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK (((length(TRIM(BOTH FROM note)) >= 20) AND (length(TRIM(BOTH FROM note)) <= 4000)))"
+    },
+    {
+      "name": "acquisition_contract_reviews_pkey",
+      "table": "acquisition_contract_reviews",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "acquisition_contract_reviews_request_hash_check",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK ((request_hash ~ '^[0-9a-f]{64}$'::text))"
+    },
+    {
+      "name": "acquisition_contract_reviews_sequence_check",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK ((sequence > 0))"
+    },
+    {
+      "name": "acquisition_contract_reviews_sha256_check",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK ((sha256 ~ '^[0-9a-f]{64}$'::text))"
+    },
+    {
+      "name": "acquisition_contract_reviews_status_check",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK ((status = ANY (ARRAY['approved'::text, 'withdrawn'::text])))"
+    },
+    {
+      "name": "acquisition_contract_reviews_workspace_id_contract_id_cont_fkey",
+      "table": "acquisition_contract_reviews",
+      "definition": "FOREIGN KEY (workspace_id, contract_id, contract_version) REFERENCES acquisition_contract_versions(workspace_id, deal_id, version)"
+    },
+    {
+      "name": "acquisition_contract_reviews_workspace_id_contract_id_contr_key",
+      "table": "acquisition_contract_reviews",
+      "definition": "UNIQUE (workspace_id, contract_id, contract_version, kind, sequence)"
+    },
+    {
+      "name": "acquisition_contract_reviews_workspace_id_policy_id_kind_p_fkey",
+      "table": "acquisition_contract_reviews",
+      "definition": "FOREIGN KEY (workspace_id, policy_id, kind, purpose, actor_id) REFERENCES private.acquisition_contract_review_policies(workspace_id, id, kind, purpose, reviewer_id)"
+    },
+    {
+      "name": "acquisition_deadline_original_review",
+      "table": "acquisition_contract_reviews",
+      "definition": "FOREIGN KEY (workspace_id, contract_id, contract_version, kind, deadline_term, deadline_original_review_id, deadline_original_status) REFERENCES acquisition_contract_reviews(workspace_id, contract_id, contract_version, kind, deadline_term, id, status)"
+    },
+    {
+      "name": "acquisition_deadline_review_identity",
+      "table": "acquisition_contract_reviews",
+      "definition": "UNIQUE (workspace_id, contract_id, contract_version, kind, deadline_term, id, status)"
+    },
+    {
+      "name": "acquisition_deadline_review_shape",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK ((((kind <> 'deadline_resolution'::text) AND (deadline_term IS NULL) AND (deadline_resolution IS NULL) AND (deadline_original_review_id IS NULL)) OR ((kind = 'deadline_resolution'::text) AND (deadline_term IS NOT NULL) AND (deadline_term = ANY (ARRAY['effective'::text, 'inspection_deadline'::text, 'closing_deadline'::text])) AND (((status = 'approved'::text) AND (deadline_original_review_id IS NULL) AND (deadline_resolution IS NOT NULL) AND private.valid_deadline_resolution(deadline_resolution, contract_version) AND ((deadline_resolution ->> 'term'::text) = deadline_term) AND ((((deadline_resolution -> 'source'::text) ->> 'artifact_id'::text))::uuid = artifact_id) AND ((((deadline_resolution -> 'source'::text) ->> 'artifact_version'::text))::integer = source_version) AND (((deadline_resolution -> 'source'::text) ->> 'sha256'::text) = sha256)) OR ((status = 'withdrawn'::text) AND (deadline_resolution IS NULL) AND (deadline_original_review_id IS NOT NULL) AND (deadline_original_review_id <> id) AND (sequence > 1))))))"
+    },
+    {
+      "name": "acquisition_deadline_sources_shape",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK ((((kind = 'deadline_resolution'::text) AND (status = 'approved'::text) AND (deadline_sources IS NOT NULL) AND (jsonb_typeof(deadline_sources) = 'array'::text) AND ((jsonb_array_length(deadline_sources) >= 1) AND (jsonb_array_length(deadline_sources) <= 2))) OR (((kind <> 'deadline_resolution'::text) OR (status = 'withdrawn'::text)) AND (deadline_sources IS NULL))))"
+    },
+    {
+      "name": "acquisition_execution_findings_shape",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK ((((kind <> 'executed_contract'::text) AND (execution_findings IS NULL)) OR ((kind = 'executed_contract'::text) AND (((status = 'approved'::text) AND (execution_findings IS NOT NULL) AND private.valid_execution_findings(execution_findings, contract_version)) OR ((status = 'withdrawn'::text) AND (execution_findings IS NULL))))))"
+    },
+    {
+      "name": "acquisition_execution_sources_shape",
+      "table": "acquisition_contract_reviews",
+      "definition": "CHECK ((((kind = 'executed_contract'::text) AND (status = 'approved'::text) AND (execution_sources IS NOT NULL) AND (jsonb_typeof(execution_sources) = 'array'::text) AND ((jsonb_array_length(execution_sources) >= 1) AND (jsonb_array_length(execution_sources) <= 13))) OR (((kind <> 'executed_contract'::text) OR (status = 'withdrawn'::text)) AND (execution_sources IS NULL))))"
+    },
+    {
+      "name": "acquisition_execution_transition_identity",
+      "table": "acquisition_contract_reviews",
+      "definition": "UNIQUE (workspace_id, contract_id, contract_version, id, kind)"
+    },
+    {
+      "name": "acquisition_review_identity",
+      "table": "acquisition_contract_reviews",
+      "definition": "UNIQUE (workspace_id, contract_id, contract_version, id)"
+    },
+    {
+      "name": "contract_review_original_artifact",
+      "table": "acquisition_contract_reviews",
+      "definition": "FOREIGN KEY (workspace_id, contract_id, source_version, artifact_id, purpose) REFERENCES acquisition_evidence_artifacts(workspace_id, contract_id, contract_version, id, purpose)"
+    },
+    {
+      "name": "contract_review_original_verification",
+      "table": "acquisition_contract_reviews",
+      "definition": "FOREIGN KEY (workspace_id, contract_id, source_version, artifact_id, verification_id) REFERENCES acquisition_evidence_verifications(workspace_id, contract_id, contract_version, artifact_id, id)"
+    },
+    {
+      "name": "acquisition_contract_transit_workspace_id_contract_id_con_fkey1",
+      "table": "acquisition_contract_transitions",
+      "definition": "FOREIGN KEY (workspace_id, contract_id, contract_version, signature_review_id) REFERENCES acquisition_signature_reviews(workspace_id, contract_id, contract_version, id)"
+    },
+    {
+      "name": "acquisition_contract_transiti_workspace_id_contract_id_con_fkey",
+      "table": "acquisition_contract_transitions",
+      "definition": "FOREIGN KEY (workspace_id, contract_id, contract_version) REFERENCES acquisition_contract_versions(workspace_id, deal_id, version)"
+    },
+    {
+      "name": "acquisition_contract_transiti_workspace_id_contract_id_sequ_key",
+      "table": "acquisition_contract_transitions",
+      "definition": "UNIQUE (workspace_id, contract_id, sequence)"
+    },
+    {
+      "name": "acquisition_contract_transitions_actor_id_fkey",
+      "table": "acquisition_contract_transitions",
+      "definition": "FOREIGN KEY (actor_id) REFERENCES profiles(id)"
+    },
+    {
+      "name": "acquisition_contract_transitions_pkey",
+      "table": "acquisition_contract_transitions",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "acquisition_contract_transitions_reason_check",
+      "table": "acquisition_contract_transitions",
+      "definition": "CHECK (((length(TRIM(BOTH FROM reason)) >= 20) AND (length(TRIM(BOTH FROM reason)) <= 4000)))"
+    },
+    {
+      "name": "acquisition_contract_transitions_request_hash_check",
+      "table": "acquisition_contract_transitions",
+      "definition": "CHECK ((request_hash ~ '^[0-9a-f]{64}$'::text))"
+    },
+    {
+      "name": "acquisition_contract_transitions_sequence_check",
+      "table": "acquisition_contract_transitions",
+      "definition": "CHECK ((sequence > 0))"
+    },
+    {
+      "name": "acquisition_transition_execution_source",
+      "table": "acquisition_contract_transitions",
+      "definition": "FOREIGN KEY (workspace_id, contract_id, contract_version, execution_review_id, execution_review_kind) REFERENCES acquisition_contract_reviews(workspace_id, contract_id, contract_version, id, kind)"
+    },
+    {
+      "name": "acquisition_transition_supported_edge",
+      "table": "acquisition_contract_transitions",
+      "definition": "CHECK ((((previous_status = 'draft'::text) AND (recorded_status = 'pending_signature'::text) AND (sequence = 1) AND (signature_review_id IS NOT NULL) AND (execution_review_id IS NULL) AND (execution_review_kind IS NULL)) OR ((previous_status = 'pending_signature'::text) AND (recorded_status = 'executed'::text) AND (sequence = 2) AND (signature_review_id IS NULL) AND (execution_review_id IS NOT NULL) AND (execution_review_kind = 'executed_contract'::text) AND (execution_review_kind IS NOT NULL)) OR ((previous_status = 'executed'::text) AND (recorded_status = 'title_review'::text) AND (sequence = 3) AND (signature_review_id IS NULL) AND (execution_review_id IS NOT NULL) AND (execution_review_kind = 'executed_contract'::text) AND (execution_review_kind IS NOT NULL))))"
+    },
+    {
+      "name": "acquisition_contract_review_p_workspace_id_id_kind_purpose__key",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "UNIQUE (workspace_id, id, kind, purpose, reviewer_id)"
+    },
+    {
+      "name": "acquisition_contract_review_policies_check",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "CHECK ((valid_from < valid_until))"
+    },
+    {
+      "name": "acquisition_contract_review_policies_max_review_seconds_check",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "CHECK (((max_review_seconds >= 1) AND (max_review_seconds <= 86400)))"
+    },
+    {
+      "name": "acquisition_contract_review_policies_pkey",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "acquisition_contract_review_policies_reviewed_by_fkey",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "FOREIGN KEY (reviewed_by) REFERENCES profiles(id)"
+    },
+    {
+      "name": "acquisition_contract_review_policies_reviewer_id_fkey",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "FOREIGN KEY (reviewer_id) REFERENCES profiles(id)"
+    },
+    {
+      "name": "acquisition_contract_review_policies_revoked_at_check",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "CHECK (isfinite(revoked_at))"
+    },
+    {
+      "name": "acquisition_contract_review_policies_valid_from_check",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "CHECK (isfinite(valid_from))"
+    },
+    {
+      "name": "acquisition_contract_review_policies_valid_until_check",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "CHECK (isfinite(valid_until))"
+    },
+    {
+      "name": "acquisition_contract_review_policies_workspace_id_fkey",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id)"
+    },
+    {
+      "name": "acquisition_review_policy_kind",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "CHECK ((kind = ANY (ARRAY['contract_review'::text, 'title_review'::text, 'assignment_basis'::text, 'executed_contract'::text, 'deadline_resolution'::text])))"
+    },
+    {
+      "name": "acquisition_review_policy_purpose",
+      "table": "private.acquisition_contract_review_policies",
+      "definition": "CHECK ((((kind = ANY (ARRAY['contract_review'::text, 'assignment_basis'::text, 'executed_contract'::text, 'deadline_resolution'::text])) AND (purpose = 'purchase_contract'::text)) OR ((kind = 'title_review'::text) AND (purpose = 'title_report'::text))))"
+    }
+  ],
+  "columns": [
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_reviews",
+      "column": "id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_reviews",
+      "column": "workspace_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_reviews",
+      "column": "contract_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "integer",
+      "table": "acquisition_contract_reviews",
+      "column": "contract_version",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_reviews",
+      "column": "kind",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "integer",
+      "table": "acquisition_contract_reviews",
+      "column": "sequence",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_reviews",
+      "column": "status",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_reviews",
+      "column": "artifact_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_reviews",
+      "column": "verification_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_reviews",
+      "column": "purpose",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_reviews",
+      "column": "sha256",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_reviews",
+      "column": "policy_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_reviews",
+      "column": "actor_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_reviews",
+      "column": "session_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "acquisition_contract_reviews",
+      "column": "actor_membership_updated_at",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "boolean",
+      "table": "acquisition_contract_reviews",
+      "column": "personally_reviewed",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_reviews",
+      "column": "note",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "acquisition_contract_reviews",
+      "column": "expires_at",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_reviews",
+      "column": "request_hash",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "acquisition_contract_reviews",
+      "column": "created_at",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "integer",
+      "table": "acquisition_contract_reviews",
+      "column": "evidence_version",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "integer",
+      "table": "acquisition_contract_reviews",
+      "column": "source_version",
+      "not_null": true,
+      "generated": "s"
+    },
+    {
+      "type": "jsonb",
+      "table": "acquisition_contract_reviews",
+      "column": "execution_findings",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "jsonb",
+      "table": "acquisition_contract_reviews",
+      "column": "execution_sources",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_reviews",
+      "column": "deadline_term",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "jsonb",
+      "table": "acquisition_contract_reviews",
+      "column": "deadline_resolution",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_reviews",
+      "column": "deadline_original_review_id",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_reviews",
+      "column": "deadline_original_status",
+      "not_null": false,
+      "generated": "s"
+    },
+    {
+      "type": "jsonb",
+      "table": "acquisition_contract_reviews",
+      "column": "deadline_sources",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_transitions",
+      "column": "id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_transitions",
+      "column": "workspace_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_transitions",
+      "column": "contract_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "integer",
+      "table": "acquisition_contract_transitions",
+      "column": "contract_version",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "integer",
+      "table": "acquisition_contract_transitions",
+      "column": "sequence",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_transitions",
+      "column": "previous_status",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_transitions",
+      "column": "recorded_status",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_transitions",
+      "column": "signature_review_id",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_transitions",
+      "column": "actor_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_transitions",
+      "column": "session_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "acquisition_contract_transitions",
+      "column": "actor_membership_updated_at",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_transitions",
+      "column": "reason",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_transitions",
+      "column": "request_hash",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "acquisition_contract_transitions",
+      "column": "created_at",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "acquisition_contract_transitions",
+      "column": "execution_review_id",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "acquisition_contract_transitions",
+      "column": "execution_review_kind",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "workspace_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "kind",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "text",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "purpose",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "reviewer_id",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "integer",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "max_review_seconds",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "valid_from",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "valid_until",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "revoked_at",
+      "not_null": false,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "reviewed_by",
+      "not_null": true,
+      "generated": ""
+    },
+    {
+      "type": "uuid",
+      "table": "private.acquisition_contract_review_policies",
+      "column": "approval_ref",
+      "not_null": true,
+      "generated": ""
+    }
+  ],
+  "indexes": [
+    {
+      "indexdef": "CREATE UNIQUE INDEX acquisition_contract_review_policies_pkey ON private.acquisition_contract_review_policies USING btree (id)",
+      "indexname": "acquisition_contract_review_policies_pkey",
+      "tablename": "acquisition_contract_review_policies",
+      "schemaname": "private",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX acquisition_contract_review_p_workspace_id_id_kind_purpose__key ON private.acquisition_contract_review_policies USING btree (workspace_id, id, kind, purpose, reviewer_id)",
+      "indexname": "acquisition_contract_review_p_workspace_id_id_kind_purpose__key",
+      "tablename": "acquisition_contract_review_policies",
+      "schemaname": "private",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX acquisition_contract_reviews_pkey ON public.acquisition_contract_reviews USING btree (id)",
+      "indexname": "acquisition_contract_reviews_pkey",
+      "tablename": "acquisition_contract_reviews",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX acquisition_contract_reviews_workspace_id_contract_id_contr_key ON public.acquisition_contract_reviews USING btree (workspace_id, contract_id, contract_version, kind, sequence)",
+      "indexname": "acquisition_contract_reviews_workspace_id_contract_id_contr_key",
+      "tablename": "acquisition_contract_reviews",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX acquisition_review_identity ON public.acquisition_contract_reviews USING btree (workspace_id, contract_id, contract_version, id)",
+      "indexname": "acquisition_review_identity",
+      "tablename": "acquisition_contract_reviews",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX acquisition_execution_transition_identity ON public.acquisition_contract_reviews USING btree (workspace_id, contract_id, contract_version, id, kind)",
+      "indexname": "acquisition_execution_transition_identity",
+      "tablename": "acquisition_contract_reviews",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX acquisition_deadline_review_identity ON public.acquisition_contract_reviews USING btree (workspace_id, contract_id, contract_version, kind, deadline_term, id, status)",
+      "indexname": "acquisition_deadline_review_identity",
+      "tablename": "acquisition_contract_reviews",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX acquisition_deadline_review_latest ON public.acquisition_contract_reviews USING btree (workspace_id, contract_id, contract_version, deadline_term, sequence DESC) WHERE (kind = 'deadline_resolution'::text)",
+      "indexname": "acquisition_deadline_review_latest",
+      "tablename": "acquisition_contract_reviews",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX acquisition_contract_transitions_pkey ON public.acquisition_contract_transitions USING btree (id)",
+      "indexname": "acquisition_contract_transitions_pkey",
+      "tablename": "acquisition_contract_transitions",
+      "schemaname": "public",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX acquisition_contract_transiti_workspace_id_contract_id_sequ_key ON public.acquisition_contract_transitions USING btree (workspace_id, contract_id, sequence)",
+      "indexname": "acquisition_contract_transiti_workspace_id_contract_id_sequ_key",
+      "tablename": "acquisition_contract_transitions",
+      "schemaname": "public",
+      "tablespace": null
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "qual": "((private.acquisition_role(workspace_id) = ANY (ARRAY['owner'::text, 'admin'::text])) AND ((auth.jwt() ->> 'aal'::text) = 'aal2'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "acquisition_contract_reviews",
+      "permissive": "PERMISSIVE",
+      "policyname": "acquisition_contract_review_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((private.acquisition_role(workspace_id) = ANY (ARRAY['owner'::text, 'admin'::text])) AND ((auth.jwt() ->> 'aal'::text) = 'aal2'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "acquisition_contract_transitions",
+      "permissive": "PERMISSIVE",
+      "policyname": "acquisition_transition_read",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "security": [
+    {
+      "acl": [
+        "test_admin=arwdDxtm/test_admin"
+      ],
+      "rls": true,
+      "table": "private.acquisition_contract_review_policies"
+    },
+    {
+      "acl": [
+        "test_admin=arwdDxtm/test_admin",
+        "authenticated=r/test_admin"
+      ],
+      "rls": true,
+      "table": "acquisition_contract_reviews"
+    },
+    {
+      "acl": [
+        "test_admin=arwdDxtm/test_admin",
+        "authenticated=r/test_admin"
+      ],
+      "rls": true,
+      "table": "acquisition_contract_transitions"
+    }
+  ],
+  "scope": "Disposable local candidate94 schema; synthetic rows only"
+}

@@ -126,3 +126,17 @@ def test_missing_required_action_category_or_report_source_is_not_silently_defau
     with pytest.raises(ValidationError):TitleFindings.model_validate(value)
     value=findings();value['report_as_of_source']=None
     with pytest.raises(ValidationError):TitleFindings.model_validate(value)
+
+
+@pytest.mark.parametrize('instant', ['2026-10-31T10:00:00.1234567Z', '2026-10-31T10:00Z',
+    '2026-10-31T24:00:00Z', '2026-02-30T10:00:00Z'])
+def test_report_instant_preserves_source_precision_and_valid_calendar(instant):
+    value=findings();value['report_as_of']=dict(precision='instant',calendar_date=None,instant=instant)
+    with pytest.raises(ValidationError):TitleFindings.model_validate(value)
+
+
+def test_report_instant_preserves_microseconds_and_explicit_offset():
+    value=findings();value['report_as_of']=dict(precision='instant',calendar_date=None,instant='2026-10-31T10:00:00.123456-05:00')
+    parsed=TitleFindings.model_validate(value)
+    assert parsed.report_as_of.instant.microsecond==123456
+    assert parsed.report_as_of.instant.utcoffset().total_seconds()==-18000

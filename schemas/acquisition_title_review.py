@@ -5,6 +5,7 @@ all original sources under workspace/session/reviewer/scanner/retention locks.
 This module is intentionally not mounted as an API until that persistence exists.
 """
 from typing import Literal
+import re
 from uuid import UUID
 from pydantic import AwareDatetime, Field, StrictBool, field_validator, model_validator
 from schemas.acquisition_contract_reviews import Exact
@@ -58,6 +59,15 @@ class TitleFindings(Exact):
     liens_and_payoffs: TitleFinding
     exceptions_and_encumbrances: TitleFinding
     occupancy_and_possession: TitleFinding
+
+    @field_validator('report_as_of', mode='before')
+    @classmethod
+    def preserve_report_timestamp_precision(cls, value):
+        if isinstance(value, dict) and value.get('precision') == 'instant':
+            stamp = value.get('instant')
+            if isinstance(stamp, str) and not re.fullmatch(r'\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)', stamp):
+                raise ValueError('Use an explicit report timestamp without losing source precision')
+        return value
 
     @model_validator(mode='after')
     def source_precision_and_consistency(self):

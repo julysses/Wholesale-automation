@@ -25,10 +25,10 @@ class ContractObservationCases:
     def prepare_observation_fixture(self):
         self.document();self.attestation_fixture();self.contract_key_scope()
 
-    def signed_contract(self, request=OBS, actor=ADMIN, **changes):
+    def signed_contract(self, request=OBS, actor=ADMIN, signing_purposes=None, **changes):
         state=self.document_state()
         now=datetime.now(timezone.utc)
-        key=ContractVerificationSigningKey(UUID(KEY),UUID(WORKSPACE),bytes.fromhex('ab'*32),frozenset({'purchase_contract'}),
+        key=ContractVerificationSigningKey(UUID(KEY),UUID(WORKSPACE),bytes.fromhex('ab'*32),frozenset(signing_purposes or {'purchase_contract'}),
             'ClamAV 1.4.3/12345/Thu Oct 29 00:00:00 2026','synthetic-v1',now-timedelta(hours=1),now+timedelta(hours=1))
         receipt=dict(status='scan_observed',workspace_id=WORKSPACE,contract_id=DRAFT,contract_version=1,artifact_id=DOCUMENT,purpose='purchase_contract',
             sha256=state['expected_sha256'],byte_size=state['expected_byte_size'],media_type=state['media_type'],retain_until=state['retain_until'],

@@ -1,5 +1,14 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — post-execution title findings storage (candidate96)
+
+The existing immutable review entity now has a distinct post-execution title findings kind, original execution binding, bounded source journals and approved/held/withdrawn history. Unresolved findings retain concrete actions and cannot carry approval expiry. Withdrawal preserves its original decision and execution context. Preparation reviews remain separate. No writer, API, findings UI, live policy or disposition authority is enabled by this storage increment.
+
+Four focused PostgreSQL tests passed (22.300s). Full backend passed 4231 tests, 10 skipped and 6 subtests (50.13s), including explicit report timestamp precision. Full populated-catalog upgrade passed: 90 migrations, 26 access checks, 253 workflows and 131 real API checks. Preserved 24 historical rows across 22 populated tables, 103 table definitions and Storage. Evidence: `evidence/2026-11-01-title-findings-storage-result.json`; rehearsal session85875 terminal0. Local inventory and forward compensation are documented in SCHEMA-MAPPING.md and TITLE-FINDINGS-WORKFLOW.md. Existing app navigation and navy/orange presentation remain unchanged.
+
+All six checks on published c5f0a5c916721047b98868901f774cf610fda72a / run41278484893 passed, including the previously reported pipeline job. Candidate95 d1115ff and this verified storage increment are ready for publication; verify the exact successor CI before the next feature push. Next: controlled title writer/current-state checks, source and policy discovery, original retry/withdrawal recovery, mounted API and guided step5 findings form; then disposition linkage. Full PRD remains active and incomplete. No production migration, provider activation, outreach, fulfillment or binding transaction occurred.
+
+
 ## November 1 — reviewed dates connected to execution handoff (candidate91)
 
 Returned-agreement review now loads fresh scoped current interpretations for prepared calendar-only terms. It preserves original calendar fields, derives temporary instant copies only for comparison/order checks, and persists the exact interpretation IDs with execution findings. Missing/stale/revoked/wrong-scope/changed-date states hold the decision. Review expiry is capped by the earliest interpretation expiry and rechecked immediately before first save. Historical pending requests still retry their original bytes without adopting new references. Explicit-instant legacy requests retain their original payload shape.
