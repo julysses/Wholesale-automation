@@ -43,7 +43,10 @@ class DispositionTransitionStorageCases:
         self.assertEqual(stored['disposition_review_status'],'approved');self.assertEqual(stored['disposition_title_status'],'approved')
         self.assertEqual(stored['disposition_execution_status'],'executed');self.assertEqual(stored['execution_review_id'],EXEC_REVIEW)
         self.assertEqual(before,self.sql(f"SELECT to_jsonb(d) FROM deals d WHERE id='{DRAFT}'"))
-        self.sql(f"UPDATE deals SET acquisition_status='disposition_review' WHERE id='{DRAFT}'",fail=True)
+        # Before the writer migration, even the privileged fixture owner cannot advance.
+        # Later, its preinserted valid ledger is an intentionally supported guard proof.
+        if not getattr(self,'supports_disposition_handoff',False):
+            self.sql(f"UPDATE deals SET acquisition_status='disposition_review' WHERE id='{DRAFT}'",fail=True)
         self.sql(f"UPDATE acquisition_contract_transitions SET reason='Replace this original reviewed handoff record' WHERE id='{TRANSITION}'",fail=True)
         self.sql(f"DELETE FROM acquisition_contract_transitions WHERE id='{TRANSITION}'",fail=True)
 

@@ -1,5 +1,11 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — controlled disposition handoff verified (candidate119)
+
+Full101-migration rehearsal completed successfully:26 access checks,313 application workflow tests and158 actual API checks;24 historical rows across22 populated tables,103 definitions and Storage preserved. Session35695 terminal0; `/tmp/disposition-transition-upgrade.log`; result `evidence/2026-11-01-disposition-transition-result.json`. Eight focused handoff tests passed previously. This writer increment is ready for its separate commit; no production migration or live action.
+
+Candidate120 read-only choices passed3 focused tests22.997s and now needs registration/full102 verification. Frontend handoff choice/request/recovery parser is in progress separately, with20 focused parser/form tests passed; no visible disposition handoff control is enabled yet. Typed API, guided UI and source renewal after stage advancement remain unfinished. Full PRD active/incomplete. Published702d960 successor CI is not yet visible in GitHub run discovery; do not treat predecessor success as successor evidence.
+
 ## November 1 — resumed checkpoint and verified publication gate
 
 The GPT app update is complete; resumed the existing implementation goal. Pulled `codex/acquisition-foundation` successfully (already current). All six checks for published `2f58c7b` / run [41290490110](https://github.com/julysses/Wholesale-automation/actions/runs/41290490110) are now terminal success, including Pipeline contracts and isolated SQL. Candidate118 storage is locally committed `d52d048`, with the previously recorded full100-migration verification complete; it may now be pushed with this checkpoint.
