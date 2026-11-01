@@ -7,7 +7,26 @@ def verify_source_review_http(db,app,drops,headers,workspace,contract,original_r
     body=original_request|{'id':'af920000-0000-4000-8000-000000000001',
         'note':'Synthetic fresh review of changed version two and its original source clauses.'}
     candidate=path+'/documents/'+body['artifact_id']+'/candidate'
+    references=path.rsplit('/reviews/',1)[0]+'/references'
     with TestClient(app) as client:
+        listed=client.get(references+'?purpose=purchase_contract&limit=1',headers=headers)
+        if listed.status_code!=200 or listed.headers.get('cache-control')!='no-store' or len(listed.json()['items'])!=1:
+            raise AssertionError('Mounted source reference discovery unavailable')
+        source=listed.json()['items'][0]
+        if source['artifact_id']!=body['artifact_id'] or source['source_version']!=1 or source['contract_version']!=2 or source['reference_type']!='term_source' or source['review_approved']:
+            raise AssertionError('Mounted original-source reference identity lost')
+        detail=client.get(references+'/'+body['artifact_id'],headers=headers)
+        if detail.status_code!=200 or detail.json()['verification_id']!=body['verification_id']:
+            raise AssertionError('Mounted original-source detail unavailable')
+        for identity in (foreign_headers,{}):
+            if client.get(references+'?purpose=purchase_contract',headers=identity).status_code not in (401,403):
+                raise AssertionError('Reference discovery crossed workspace/session')
+        native=client.get(references.replace('/versions/2/','/versions/1/')+'?purpose=purchase_contract&limit=1',headers=headers)
+        if native.status_code!=200 or native.json()['next_after']!=body['artifact_id']:
+            raise AssertionError('Native reference page cursor changed')
+        following=client.get(references.replace('/versions/2/','/versions/1/')+'?purpose=purchase_contract&limit=1&after='+body['artifact_id'],headers=headers)
+        if following.status_code!=200 or len(following.json()['items'])!=1 or following.json()['next_after'] is not None:
+            raise AssertionError('Native reference next page unavailable')
         choice=client.get(candidate,headers=headers)
         if choice.status_code!=200 or choice.json()['contract_version']!=2 or choice.json()['candidate']['verification_id']!=body['verification_id']:
             raise AssertionError('Mounted review candidate lost original source for new target')
@@ -35,6 +54,10 @@ def verify_source_review_http(db,app,drops,headers,workspace,contract,original_r
 
 def verify_source_review_revocation_http(db,app,drops,headers,path,body):
     with TestClient(app) as client:
+        references=path.rsplit('/reviews/',1)[0]+'/references?purpose=purchase_contract'
+        listed=client.get(references,headers=headers)
+        if listed.status_code!=200 or listed.json()['items'][0]['status']!='requires_review' or listed.json()['items'][0]['verification_id'] is not None:
+            raise AssertionError('Mounted source references retained revoked verification')
         state=client.get(path,headers=headers)
         candidate=client.get(path+'/documents/'+body['artifact_id']+'/candidate',headers=headers)
         if state.status_code!=200 or state.json()['approval_current'] or candidate.status_code!=200 or candidate.json()['candidate'] is not None:

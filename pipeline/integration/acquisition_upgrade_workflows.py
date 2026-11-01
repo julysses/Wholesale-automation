@@ -16,6 +16,7 @@ from acquisition_contract_review_candidate_tests import ContractReviewCandidateC
 from acquisition_contract_terms_tests import ContractTermsCases
 from acquisition_contract_document_link_tests import ContractDocumentLinkCases
 from acquisition_contract_source_review_tests import ContractSourceReviewCases
+from acquisition_contract_reference_discovery_tests import ContractReferenceDiscoveryCases
 from acquisition_contract_document_tests import ContractDocumentCases, ContractUploadAdmissionCases
 from test_acquisition_workspace import ADMIN, OTHER, CALLER, OPERATOR, WORKSPACE, WORKSPACE_B, LEAD, LEAD_B, PROPERTY
 
@@ -45,13 +46,13 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
-class FullCatalogDocumentTests(ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
+class FullCatalogDocumentTests(ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
     def setUp(self):
         super().setUp()
         self.prepare_document_fixture()
-        if self._testMethodName.startswith(('test_contract_observation_', 'test_contract_scan_state_', 'test_contract_review_', 'test_terms_', 'test_contract_link_', 'test_source_review_')):
+        if self._testMethodName.startswith(('test_contract_observation_', 'test_contract_scan_state_', 'test_contract_review_', 'test_terms_', 'test_contract_link_', 'test_source_review_', 'test_reference_discovery_')):
             self.prepare_observation_fixture()
-        if self._testMethodName.startswith(('test_contract_review_', 'test_terms_', 'test_contract_link_', 'test_source_review_')):
+        if self._testMethodName.startswith(('test_contract_review_', 'test_terms_', 'test_contract_link_', 'test_source_review_', 'test_reference_discovery_')):
             self.prepare_review_fixture()
 
 
@@ -72,6 +73,7 @@ def run_workflow_probes(db):
     document_names += sorted(name for name in ContractTermsCases.__dict__ if name.startswith('test_terms_'))
     document_names += sorted(name for name in ContractDocumentLinkCases.__dict__ if name.startswith('test_contract_link_'))
     document_names += sorted(name for name in ContractSourceReviewCases.__dict__ if name.startswith('test_source_review_'))
+    document_names += sorted(name for name in ContractReferenceDiscoveryCases.__dict__ if name.startswith('test_reference_discovery_'))
     names += contract_names + document_names
     if not names:
         raise RuntimeError('No application journeys discovered')

@@ -419,4 +419,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract source reference current scan revocation hold',
             'source-aware human review mounted candidate and exact commit-loss recovery',
             'source-aware human review original evidence FK and target workspace isolation',
-            'source-aware human review revocation and withdrawal recovery']
+            'source-aware human review revocation and withdrawal recovery',
+            'mounted source reference discovery and exact original detail',
+            'mounted source reference workspace isolation and native pagination',
+            'mounted source reference revocation removes current verification']

@@ -134,7 +134,7 @@ function DocumentEditor({ context, disabled = false, disabledReason, onPending }
     {retrySeconds > 0 && <p role="status">Retry available in {retrySeconds} seconds.</p>}
     {message && <p role="status" className="text-sm">{message}</p>}
     <div className="border-t border-orange-200 pt-3 space-y-2"><h4 className="font-semibold">Document history</h4><p className="text-xs text-gray-600">Registration alone does not confirm upload, verification or legal review.</p>
-      {!records.isFetching && !records.isError && records.data?.items.length === 0 && <p className="text-sm">No {purposes[kind].toLowerCase()} registered yet.</p>}
+      {!records.isFetching && !records.isError && records.data?.items.length === 0 && <p className="text-sm">No {purposes[kind].toLowerCase()} registered for this version yet. Documents carried forward from earlier versions appear under “Record your review.”</p>}
       <ul>{!records.isError && records.data?.items.map(row => <li key={row.artifact_id} className="border-t py-2 text-sm"><p>{purposes[row.purpose]} · {new Date(row.created_at).toLocaleString()}</p><p>{row.expected_byte_size.toLocaleString()} bytes · {statuses[row.status]}</p>
         <DocumentVerification context={context} path={path} row={row} now={now} disabled={disabled || blocked || busy || access.data !== true || access.isFetching || access.isError || records.isFetching}/></li>)}</ul>
       <nav aria-label="Document history pages" className="flex flex-wrap gap-2"><button className={button} disabled={held || disabled || records.isFetching || cursors.length === 1} onClick={() => setCursors(values => values.slice(0, -1))}>Previous documents</button>

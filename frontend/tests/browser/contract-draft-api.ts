@@ -6,17 +6,19 @@ let lose = false;
 export function loseNextReply() { lose = true; }
 const ledgerKey = 'contract-draft-local-qa-ledger';
 // Explicit local presentation fixture; no production imports or network calls.
-if (new URLSearchParams(location.search).get('scanFixture') === 'true' && !sessionStorage.getItem(ledgerKey)) {
+const referenceFixture = new URLSearchParams(location.search).get('referenceFixture') === 'true';
+if ((referenceFixture || new URLSearchParams(location.search).get('scanFixture') === 'true') && !sessionStorage.getItem(ledgerKey)) {
   sessionStorage.setItem(ledgerKey, JSON.stringify({ request: {}, row: { id: id(10), workspace_id: ids.workspace,
-    lead_id: id(3), deal_name: 'Synthetic document review', acquisition_status: 'draft', acquisition_version: 1,
+    lead_id: id(3), deal_name: 'Synthetic document review', acquisition_status: 'draft', acquisition_version: referenceFixture ? 2 : 1,
     acquisition_property_id: id(4), acquisition_owner_relationship_id: id(7), acquisition_offer_id: id(6),
     acquisition_offer_sequence: 2, created_by: ids.user, created_at: new Date().toISOString() } }));
-  sessionStorage.setItem('contract-document-local-qa-ledger', JSON.stringify({ created: new Date().toISOString(), request: {
+  sessionStorage.setItem('contract-document-local-qa-ledger', JSON.stringify({ sourceVersion: 1, created: new Date().toISOString(), request: {
     id: id(11), purpose: 'purchase_contract', expected_sha256: 'a'.repeat(64), expected_byte_size: 123,
     media_type: 'text/plain', retention_policy_id: id(8), provenance_note: 'Synthetic file metadata for status presentation QA.' } }));
 }
 export async function apiFetch(path: string, init?: RequestInit) {
   const ledger = JSON.parse(sessionStorage.getItem(ledgerKey) ?? 'null');
+  const requestedVersion = Number(path.match(/\/versions\/(\d+)/)?.[1] ?? 1);
   let value: unknown;
   if (init?.method === 'POST' && path.endsWith('/contracts/drafts')) {
     const request = JSON.parse(init.body as string);
@@ -31,8 +33,8 @@ export async function apiFetch(path: string, init?: RequestInit) {
     if (!ledger) throw new Error('Save the synthetic draft first');
     const kind = path.split('/reviews/')[1].split('/')[0];
     if (!['contract_review', 'title_review', 'assignment_basis'].includes(kind)) throw new Error('Unknown review kind');
-    const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: 1, kind };
-    const key = 'contract-review-local-qa-ledger:'+kind;
+    const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion, kind };
+    const key = 'contract-review-local-qa-ledger:'+requestedVersion+':'+kind;
     const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as { request: Record<string, unknown>; receipt: Record<string, unknown> }[];
     const last = entries.at(-1), checked = new Date().toISOString();
     const current = last?.request.status === 'approved' && Date.parse(String(last.request.expires_at)) > Date.now();
@@ -61,16 +63,30 @@ export async function apiFetch(path: string, init?: RequestInit) {
         current_review: state, checked_at: checked, execution_authorized: false };
     } else value = state;
   }
+  else if (path.includes('/references')) {
+    if (!ledger) throw new Error('Save the synthetic draft first');
+    const saved = JSON.parse(sessionStorage.getItem('contract-document-local-qa-ledger') ?? 'null');
+    const purpose = new URL(path, 'http://localhost').searchParams.get('purpose');
+    const checked = new Date().toISOString();
+    const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion };
+    const sourceVersion = saved?.sourceVersion ?? 1;
+    value = { ...scope, purpose, checked_at: checked, next_after: null, execution_authorized: false,
+      items: saved && saved.request.purpose === purpose && sourceVersion <= requestedVersion ? [{ ...scope,
+        artifact_id: saved.request.id, source_version: sourceVersion,
+        reference_type: sourceVersion === requestedVersion ? 'native' : 'term_source', link_id: null,
+        status: 'available_for_review', purpose, sha256: saved.request.expected_sha256, verification_id: id(9),
+        source_created_at: saved.created, checked_at: checked, review_approved: false, execution_authorized: false }] : [] };
+  }
   else if (path.includes('/documents')) {
     if (!ledger) throw new Error('Save the synthetic draft first');
-    const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: 1 };
+    const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion };
     const documentsKey = 'contract-document-local-qa-ledger';
     const saved = JSON.parse(sessionStorage.getItem(documentsKey) ?? 'null');
     const now = new Date().toISOString();
     if (init?.method === 'POST' && path.endsWith('/documents')) {
       const request = JSON.parse(init.body as string);
       if (saved && JSON.stringify(saved.request) !== JSON.stringify(request)) throw new Error('Conflicting synthetic document');
-      sessionStorage.setItem(documentsKey, JSON.stringify({ request, created: saved?.created ?? now }));
+      sessionStorage.setItem(documentsKey, JSON.stringify({ request, sourceVersion: requestedVersion, created: saved?.created ?? now }));
       if (lose) { lose = false; throw new Error('Synthetic document reply lost after commit'); }
       value = { ...scope, artifact_id: request.id, retain_until: '2099-01-01T00:00:00Z', duplicate: !!saved, bytes_verified: false, execution_authorized: false };
     } else if (init?.method === 'POST' && path.includes('/bytes?')) {
@@ -91,7 +107,7 @@ export async function apiFetch(path: string, init?: RequestInit) {
       const r = saved?.request;
       value = { ...scope, purpose, current_policy: { id: id(8), workspace_id: ids.workspace, purpose, version: 1, retention_seconds: 86400,
         valid_from: '2026-01-01T00:00:00Z', valid_until: '2099-01-01T00:00:00Z' }, checked_at: now, next_after: null, upload_enabled: true, execution_authorized: false,
-        items: r && r.purpose === purpose ? [{ ...scope, artifact_id: r.id, purpose, expected_sha256: r.expected_sha256, expected_byte_size: r.expected_byte_size,
+        items: r && r.purpose === purpose && (saved.sourceVersion ?? 1) === requestedVersion ? [{ ...scope, artifact_id: r.id, purpose, expected_sha256: r.expected_sha256, expected_byte_size: r.expected_byte_size,
           media_type: r.media_type, retention_policy_id: r.retention_policy_id, created_at: saved.created, retain_until: '2099-01-01T00:00:00Z', revoked_at: null,
           checked_at: now, status: 'pending_verification', bytes_verified: false, legal_review_approved: false, execution_authorized: false }] : [] };
     }

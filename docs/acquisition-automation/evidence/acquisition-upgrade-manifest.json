@@ -273,6 +273,10 @@
     {
       "file": "20261101010937_acquisition_contract_review_source_versions.sql",
       "sha256": "300309a21b823b2f25edb3e1f24d7cc9ba20c8dd58ea95fde61886dd208a6ef0"
+    },
+    {
+      "file": "20261101011718_acquisition_contract_reference_discovery.sql",
+      "sha256": "1375905f27a4ac15ac3eb72504ca6fccee2c2d2a14a73c65f9ba31da8b0f6012"
     }
   ]
 }

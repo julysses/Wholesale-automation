@@ -2,6 +2,18 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — guided original-document review (candidate 69)
+
+Added bounded, workspace-authorized source-reference discovery and mounted read-only list/detail endpoints. Review choices now retain original document dates/versions while explicitly identifying the contract version being reviewed. Native document history clarifies that carried-forward sources appear in the review section. Existing navy/orange step 5 styling is retained. No approval carries forward automatically.
+
+Saved review recovery retains the exact historical target while confirmation is pending, then returns to the current contract version. Changed contract/offer identities remain blocked. No request is rewritten as a new decision.
+
+Validation: 31 focused API tests; 3 focused SQL cases; 3,666 backend tests (10 skipped); 670 frontend tests; build/typecheck and lint baseline passed. Final affected UI suite after fixture/copy edits: 42 passed. Full candidate69 database/API rehearsal exited0: 69 migrations, 26 access probes, 157 application workflows and 92 actual local gateway checks; preserved24 historical records across22 populated tables,103 table definitions and Storage. Evidence: evidence/2026-10-31-contract-reference-discovery-gateway-result.json. Its initial run caught and corrected a test-discovery startswith argument typo; a restricted local launch was retried with local database permission.
+
+Local synthetic desktop browser QA confirmed original source version1/current contract version2, required personal review, lost-response navigation hold, reload recovery and restored navigation. Browser console had no errors/warnings. Requested mobile viewport override did not take effect (measured1464px); mobile visual QA remains unverified. Preview uses synthetic records only and is not hosted, scanner, legal or provider acceptance.
+
+Published predecessor da1eb48: all six jobs passed in GitHub run41259588608. Candidates67/68/69 are validated for publication in this checkpoint; verify its exact successor GitHub run before another feature push. No production migration, outreach, provider activation or signature occurred. Next: guided terms editing and explicit source-link controls, then the remaining lifecycle/disposition and channel acceptance work in the original implementation plan.
+
 ## October 31 — source-aware human review (candidate68)
 
 Candidate20261101010937_acquisition_contract_review_source_versions.sql extends the existing immutable review ledger with optional evidence_version and a stored generated source_version that falls back to the historical target version. The original target-version FK remains; the two original-evidence FKs now use source_version. Prior rows, request hashes, receipts and public function signatures remain unchanged. Existing RLS/grants/private definers/empty search paths are retained. No new review policy is seeded.

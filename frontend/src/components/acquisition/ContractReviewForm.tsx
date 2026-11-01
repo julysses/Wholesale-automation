@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
-import { parseDocuments, type DocumentContext } from '@/lib/acquisition/contract-documents';
+import { type DocumentContext } from '@/lib/acquisition/contract-documents';
+import { parseReferences } from '@/lib/acquisition/contract-references';
 import { parseReviewCandidate, reviewKinds, type ReviewKind } from '@/lib/acquisition/contract-reviews';
 import { clearConfirmedReview, clearRejectedReview, pendingReviewSchema, preserveReview, readPendingReview, type PendingReview } from '@/lib/acquisition/contract-review-request';
 const button = 'rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed';
@@ -31,8 +32,8 @@ function ReviewEditor({ context, disabled, onPending }: { context: DocumentConte
   useEffect(() => { if (!held) return; const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn); }, [held]);
   const options = { enabled: !disabled && !blocked && !pending, retry: false, gcTime: 0, staleTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false } as const;
-  const documents = useQuery({ ...options, queryKey: ['review-documents', context.userId, context.workspaceId, context.contractId, context.contractVersion, purpose, after],
-    queryFn: async ({ signal }) => parseDocuments(await (await apiFetch(`${base}/documents?purpose=${purpose}&limit=20${after ? `&after=${after}` : ''}`, { signal, cache: 'no-store' })).json(), context, purpose, after) });
+  const documents = useQuery({ ...options, queryKey: ['review-references', context.userId, context.workspaceId, context.contractId, context.contractVersion, purpose, after],
+    queryFn: async ({ signal }) => parseReferences(await (await apiFetch(`${base}/references?purpose=${purpose}&limit=20${after ? `&after=${after}` : ''}`, { signal, cache: 'no-store' })).json(), context, purpose, after) });
   const candidate = useQuery({ ...options, enabled: options.enabled && !!artifact,
     queryKey: ['review-choice', context.userId, context.workspaceId, context.contractId, context.contractVersion, kind, artifact],
     queryFn: async ({ signal }) => parseReviewCandidate(await (await apiFetch(`${base}/reviews/${kind}/documents/${artifact}/candidate`, { signal, cache: 'no-store' })).json(), context, kind, artifact) });
@@ -41,7 +42,12 @@ function ReviewEditor({ context, disabled, onPending }: { context: DocumentConte
   const choice = fresh ? candidate.data!.candidate : null, withdrawal = fresh ? candidate.data!.withdrawal : null;
   const deadline = choice ? Math.min(Date.parse(choice.max_expires_at), now + minutes * 60000) : 0;
   const validNote = note.trim().length >= 20 && note.length <= 4000 && !note.includes('\0');
-  const canApprove = !!choice && deadline > now && personallyReviewed && validNote;
+  const selectedReference = !documents.isError ? documents.data?.items.find(row => row.artifact_id === artifact) : undefined;
+  const sourceFresh = !!selectedReference && !documents.isFetching && now - Date.parse(selectedReference.checked_at) <= 30000
+    && now - Date.parse(selectedReference.checked_at) >= -5000;
+  const sourceMatches = !!choice && sourceFresh && selectedReference!.status === 'available_for_review'
+    && selectedReference!.verification_id === choice.verification_id && selectedReference!.sha256 === choice.sha256;
+  const canApprove = sourceMatches && deadline > now && personallyReviewed && validNote;
   const canWithdraw = !!withdrawal && validNote;
   function refresh() { if (disabled || held) return; void documents.refetch(); if (artifact) void candidate.refetch(); }
   async function save(status: 'approved' | 'withdrawn') {
@@ -83,7 +89,11 @@ function ReviewEditor({ context, disabled, onPending }: { context: DocumentConte
     {disabled && <p role="alert">Confirm the saved contract context and finish document recovery before continuing.</p>}
     {pending ? <div className="rounded-lg border bg-white p-3"><h4 className="font-semibold">Recover the saved review</h4><p>{reviewKinds[pending.kind]} · {pending.request.status === 'approved' ? 'Approval decision' : 'Withdrawal'}</p><p className="whitespace-pre-wrap break-words">{pending.request.note}</p><p className="text-sm">The original document, reviewer policy, expiry and decision stay fixed until confirmed.</p></div> : <fieldset disabled={held || disabled} className="space-y-3">
       <label className="block text-sm font-medium">Review type<select className={input} value={kind} onChange={event => { setMessage(''); setKind(event.target.value as ReviewKind); setArtifact(''); setCursors([null]); setPersonallyReviewed(false); setNote(''); }}>{Object.entries(reviewKinds).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      <label className="block text-sm font-medium">Document to review<select className={input} value={artifact} onChange={event => { setMessage(''); setArtifact(event.target.value); setPersonallyReviewed(false); setNote(''); }}><option value="">Choose a saved document</option>{!documents.isError && documents.data?.items.map((row, index) => <option key={row.artifact_id} value={row.artifact_id}>{index + 1}. {new Date(row.created_at).toLocaleString()} · {row.expected_byte_size.toLocaleString()} bytes · {row.status === 'revoked' ? 'Withdrawn' : 'Saved document'}</option>)}</select></label>
+      <label className="block text-sm font-medium">Document to review<select className={input} value={artifact} onChange={event => { setMessage(''); setArtifact(event.target.value); setPersonallyReviewed(false); setNote(''); }}><option value="">Choose a saved document</option>{!documents.isError && documents.data?.items.map((row, index) => <option key={row.artifact_id} value={row.artifact_id}>{index + 1}. {new Date(row.source_created_at).toLocaleDateString()} · Source version {row.source_version} · {row.status === 'reference_withdrawn' ? 'Reference withdrawn' : row.status === 'source_revoked' ? 'Document withdrawn' : row.status === 'requires_review' ? 'Needs verification' : 'Saved document'}</option>)}</select></label>
+      {selectedReference && <p className="rounded-lg border border-orange-200 bg-white p-3 text-sm">Reviewing contract version {context.contractVersion}. This original document was saved with version {selectedReference.source_version}.{selectedReference.reference_type !== 'native' && ' Earlier approval does not carry forward; record a new decision for this version.'}</p>}
+      {documents.isFetching && <p role="status">Loading supporting documents…</p>}
+      {!documents.isFetching && !documents.isError && documents.data?.items.length === 0 && <p className="text-sm">No supporting document is recorded for this review. Complete document preparation above before continuing.</p>}
+      {choice && !sourceMatches && <p role="alert">Document details changed. Refresh review choices before recording an approval.</p>}
       {documents.isError && <p role="alert">Documents could not be loaded. Refresh to try again.</p>}
       <nav aria-label="Review document pages" className="flex flex-wrap gap-2"><button type="button" className={button} disabled={documents.isFetching || cursors.length === 1} onClick={() => { setCursors(values => values.slice(0, -1)); setArtifact(''); }}>Previous</button><button type="button" className={button} disabled={documents.isFetching || documents.isError || !documents.data?.next_after} onClick={() => { setCursors(values => [...values, documents.data!.next_after]); setArtifact(''); }}>More documents</button></nav>
       <button type="button" className={button} onClick={refresh} disabled={documents.isFetching || candidate.isFetching}>Refresh review choices</button>
@@ -92,7 +102,7 @@ function ReviewEditor({ context, disabled, onPending }: { context: DocumentConte
       {fresh && candidate.data && <p className="text-sm">{holds[candidate.data.status]}</p>}
       {candidate.data && !fresh && !candidate.isFetching && !candidate.isError && <p>Review choices are out of date. Refresh before continuing.</p>}
       <label className="block text-sm font-medium">Review notes<textarea className={input} value={note} maxLength={4000} onChange={event => { setMessage(''); setNote(event.target.value); }} /></label><p className="text-xs text-gray-600">Explain your decision in at least 20 characters.</p>
-      <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={personallyReviewed} onChange={event => { setMessage(''); setPersonallyReviewed(event.target.checked); }} />I personally reviewed this exact original document for the selected review.</label>
+      <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={personallyReviewed} onChange={event => { setMessage(''); setPersonallyReviewed(event.target.checked); }} />I personally reviewed this exact original document for the selected review of this contract version.</label>
       <label className="block text-sm font-medium">Approval validity<select className={input} value={minutes} onChange={event => { setMessage(''); setMinutes(Number(event.target.value)); }}>{[1, 5, 15, 30, 60].map(value => <option key={value} value={value}>{value} {value === 1 ? 'minute' : 'minutes'}</option>)}</select></label>
       {choice && <p className="text-xs">An approval will expire no later than {new Date(deadline).toLocaleString()}, subject to current document and reviewer authority.</p>}
     </fieldset>}

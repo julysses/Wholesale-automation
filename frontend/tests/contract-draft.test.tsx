@@ -10,11 +10,16 @@ const selected = { offer_id: id(6), lead_id: id(3), property_id: id(4) };
 const record = { id: id(5), workspace_id: id(2), lead_id: id(3), deal_name: 'Saved property draft', acquisition_status: 'draft', acquisition_version: 1,
   acquisition_property_id: id(4), acquisition_owner_relationship_id: id(7), acquisition_offer_id: id(6), acquisition_offer_sequence: 2, created_by: id(1), created_at: '2026-10-31T22:00:00Z' };
 beforeEach(() => {
-  sessionStorage.clear(); mock.fetch.mockReset(); mock.pending.mockReset(); mock.fail = false; mock.reject = false; mock.existing = false; mock.approved = true;
+  record.acquisition_version = 1; sessionStorage.clear(); mock.fetch.mockReset(); mock.pending.mockReset(); mock.fail = false; mock.reject = false; mock.existing = false; mock.approved = true;
   mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
     if (init?.method === 'POST') {
       if (mock.reject) throw new ApiError('Rejected', 409);
       if (mock.fail) throw new Error('Lost response');
+      if (path.includes('/reviews/')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: 1, kind: 'contract_review', review_id: body.id,
+          sequence: body.expected_sequence + 1, status: body.status, duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
+      }
       mock.existing = true;
       return { json: async () => ({ deal_id: JSON.parse(init.body as string).id, version: 1, status: 'draft', duplicate: false, execution_authorized: false }) };
     }
@@ -93,4 +98,19 @@ it('restores pending human review context after reload without a selected propos
   expect(screen.getByRole('button', { name: 'Draft saved' })).toBeDisabled();
   await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true));
   expect(posts()).toHaveLength(0);
+});
+
+it('recovers the exact historical review after the canonical contract advances', async () => {
+  const { preserveReview } = await import('../src/lib/acquisition/contract-review-request');
+  const request = { id: id(20), expected_sequence: 0, status: 'approved' as const, artifact_id: id(21), verification_id: id(22), policy_id: id(23), expires_at: '2020-01-01T00:00:00Z', personally_reviewed: true, note: 'Original review request retained after version advancement.' };
+  preserveReview(sessionStorage, { version: 1, context: { userId: id(1), workspaceId: id(2), leadId: id(3), propertyId: id(4), offerId: id(6), contractId: id(5), contractVersion: 1 }, kind: 'contract_review', request });
+  record.acquisition_version = 2; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Retry saved review' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Retry saved review' }));
+  await waitFor(() => expect(sessionStorage.length).toBe(0));
+  expect(posts()).toHaveLength(1); expect(posts()[0][0]).toContain('/versions/1/reviews/contract_review');
+  expect(JSON.parse(posts()[0][1].body)).toEqual(request);
+  expect(screen.getByText('Current contract version 2.')).toBeVisible();
+  await waitFor(() => expect(mock.fetch.mock.calls.some(([path]) => path.includes('/versions/2/references?'))).toBe(true));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
 });
