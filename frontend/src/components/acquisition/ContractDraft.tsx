@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
+import { ContractReviewForm } from './ContractReviewForm';
+import { readPendingReview } from '@/lib/acquisition/contract-review-request';
 import { ContractDocuments } from './ContractDocuments';
 import { readPendingDocument, type DocumentContext } from '@/lib/acquisition/contract-documents';
 import { apiFetch, ApiError } from '@/lib/api';
@@ -21,8 +23,11 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
     catch { return { request: null, invalid: true }; } });
   const [documentInitial] = useState(() => { try { return { saved: readPendingDocument(sessionStorage, userId, workspace), invalid: false }; }
     catch { return { saved: null, invalid: true }; } });
+  const [reviewInitial] = useState(() => { try { return { saved: readPendingReview(sessionStorage, userId, workspace), invalid: false }; }
+    catch { return { saved: null, invalid: true }; } });
+  const [reviewPending, setReviewPending] = useState(!!reviewInitial.saved);
   const [documentPending, setDocumentPending] = useState(!!documentInitial.saved);
-  const invalid = initial.invalid || documentInitial.invalid;
+  const invalid = initial.invalid || documentInitial.invalid || reviewInitial.invalid || !!(reviewInitial.saved && (documentInitial.saved || initial.request));
   const [pending, setPending] = useState<PendingContractDraft | null>(initial.request);
   const [relationship, setRelationship] = useState('');
   const [name, setName] = useState('');
@@ -31,11 +36,11 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
   const [savedOffer, setSavedOffer] = useState('');
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const lock = useRef(false);
-  const context = pending?.context ?? documentInitial.saved?.context ?? (selected ? { userId, workspaceId: workspace, leadId: selected.lead_id, propertyId: selected.property_id } : null);
-  const offerId = pending?.request.offer_id ?? documentInitial.saved?.context.offerId ?? selected?.offer_id;
+  const context = pending?.context ?? reviewInitial.saved?.context ?? documentInitial.saved?.context ?? (selected ? { userId, workspaceId: workspace, leadId: selected.lead_id, propertyId: selected.property_id } : null);
+  const offerId = pending?.request.offer_id ?? reviewInitial.saved?.context.offerId ?? documentInitial.saved?.context.offerId ?? selected?.offer_id;
   const after = cursors.at(-1) ?? null;
   const base = `/api/acquisition/workspaces/${workspace}`;
-  useEffect(() => { onPending(busy || !!pending || invalid || documentPending); }, [busy, pending, invalid, documentPending, onPending]);
+  useEffect(() => { onPending(busy || !!pending || invalid || documentPending || reviewPending); }, [busy, pending, invalid, documentPending, reviewPending, onPending]);
   const state = useQuery({ queryKey: ['contract-draft', userId, workspace, offerId, 'state'], enabled: !!offerId && !invalid,
     queryFn: async ({ signal }) => {
       const value = offerState.parse(await read(`${base}/offers/${offerId}/state`, signal));
@@ -57,14 +62,14 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
     queryFn: async ({ signal }) => readExistingContractDrafts(await read(`${base}/contracts/drafts?lead_id=${context!.leadId}&limit=50`, signal), context!),
     retry: false, gcTime: 0, staleTime: 0 });
   const existing = history.data?.items[0];
-  const documentTarget: DocumentContext | null = documentInitial.saved?.context ?? (existing && context ? {
+  const documentTarget: DocumentContext | null = reviewInitial.saved?.context ?? documentInitial.saved?.context ?? (existing && context ? {
     userId, workspaceId: workspace, leadId: context.leadId, propertyId: context.propertyId,
     offerId: existing.acquisition_offer_id, contractId: existing.id, contractVersion: existing.acquisition_version,
   } : null);
   const documentContextReady = !!documentTarget && !!existing && existing.id === documentTarget.contractId
     && existing.acquisition_version === documentTarget.contractVersion && !history.isError && !history.isFetching && !!property.data && !property.isError;
   const currentSeller = sellers.data?.items.find(row => row.id === relationship);
-  const canSave = !documentPending && !!context && !!currentSeller && !!state.data?.amount_approval_current && !state.isError && !sellers.isError && !property.isError
+  const canSave = !documentPending && !reviewPending && !!context && !!currentSeller && !!state.data?.amount_approval_current && !state.isError && !sellers.isError && !property.isError
     && !!property.data && !!history.data && !history.isError && !existing && !!name.trim()
     && contractDraftRequestSchema.shape.name.safeParse(name.trim()).success && ![state, sellers, property, history].some(query => query.isFetching) && savedOffer !== offerId;
 
@@ -120,8 +125,9 @@ export function ContractDraft({ userId, workspace, selected, onPending }: {
         <nav aria-label="Seller relationship pages" className="flex gap-2"><button className={button} disabled={cursors.length === 1 || sellers.isFetching} onClick={() => { setRelationship(''); setCursors(values => values.slice(0, -1)); }}>Previous sellers</button><button className={button} disabled={!sellers.data?.next_after || sellers.isFetching || sellers.isError} onClick={() => { const next = sellers.data?.next_after; if (next) { setRelationship(''); setCursors(values => [...values, next]); } }}>More sellers</button></nav>
         <label className="block text-sm">Draft name<input className={input} value={name} maxLength={500} onChange={event => setName(event.target.value)} placeholder="Property address or review name" /></label>
       </fieldset> : null}
-      <button className={`${button} bg-[#1B3A5C] text-white`} disabled={busy || documentPending || (!pending && !canSave)} onClick={() => { void save(); }}>{busy ? 'Saving…' : pending ? 'Retry same draft' : existing || savedOffer === offerId ? 'Draft saved' : 'Save draft for review'}</button>
-      {!pending && documentTarget && <ContractDocuments context={documentTarget} disabled={!documentContextReady || busy} onPending={setDocumentPending} />}
+      <button className={`${button} bg-[#1B3A5C] text-white`} disabled={busy || documentPending || reviewPending || (!pending && !canSave)} onClick={() => { void save(); }}>{busy ? 'Saving…' : pending ? 'Retry same draft' : existing || savedOffer === offerId ? 'Draft saved' : 'Save draft for review'}</button>
+      {!pending && documentTarget && <ContractDocuments context={documentTarget} disabled={!documentContextReady || busy || reviewPending} onPending={setDocumentPending} />}
+      {!pending && documentTarget && <ContractReviewForm context={documentTarget} disabled={!documentContextReady || busy || documentPending} onPending={setReviewPending} />}
     </>}
     {message && <p role="status" className="text-sm">{message}</p>}
   </section>;

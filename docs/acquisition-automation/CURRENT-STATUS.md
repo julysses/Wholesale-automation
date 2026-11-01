@@ -2,6 +2,16 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — guided human review form and exact recovery
+
+All six repair jobs passed in 41256126531 on b92ba6b. Published tested checkpoint 2a5690e5652d0f867588bc4d1dbfacfa9864cc69; successor 41257089916 is running. Mounted candidate API full rehearsal 45433 exited 0: 65 migrations, 26 access probes, 138 workflows and 80 gateway checks, preserving historical records/definitions and Storage. Evidence: evidence/2026-10-31-contract-review-candidate-api-gateway-result.json.
+
+Local form adds document selection, review type, personal-review confirmation, notes, bounded validity and original-reviewer withdrawal inside the saved-contract step. Server choices determine exact artifact/verification/policy/sequence. A versioned per-user/workspace session record is verified before sending; it retains exact decision, expiry, context and request across reply loss/reload. Retry never renews expiry or changes the payload. The parent restores saved property/offer/contract context with no selected proposal and locks conflicting document/draft/navigation work while pending. Malformed/unavailable recovery blocks new decisions. Exact validated receipt alone clears uncertain work. A definitively rejected first attempt may clear; a later rejection never discards an earlier uncertain outcome. POST rejection markers are route/method/status scoped. No automatic write, signing, sending or transition action.
+
+Validation: 90 mounted review API tests passed in 7.60s; final full frontend 655 tests across 79 files passed in 8.29s. Focused tests include approval, withdrawal without renewed attestation, exact reload retry, later rejection preserving uncertainty, first-attempt definitive rejection, malformed/storage failures and wrong receipt identity/authority. Parent reload test initially checked property text before the asynchronous load; corrected to await the property label, without weakening behavior. Build/typecheck and lint baseline passed (147 existing findings, none added). React skill review covered isolated state, versioned storage, cheap guards, request keys, labeled inputs, disabled controls and separate historical/current authority. All local test handles terminal; no preview server is running.
+
+Desktop/mobile browser QA of this new recording form remains next; only the prior status cards have visual acceptance. This form is local/unpublished pending visual checks and all six successor checks. Next: finish form QA and actual workflow recovery coverage, then immutable terms/controlled transitions, disposition/buyers/closing and all remaining PRD gates. No production database, provider, outreach, fulfillment or transaction changes.
+
 ## October 31 — review choices API and client validation
 
 Candidate migration 65 full rehearsal session 16348 exited 0: 65 migrations, 26 access probes, 138 workflows and 79 actual local gateway checks. All historical rows/definitions and Storage fixture preserved. Saved evidence: evidence/2026-10-31-contract-review-candidate-gateway-result.json.

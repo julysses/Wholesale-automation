@@ -135,3 +135,15 @@ def test_candidate_preserves_holds_and_exact_withdrawal(endpoint,status):
     assert response.status_code==200 and response.json()['withdrawal']['review_id']==R
     value['withdrawal']['review_id']=P
     assert client.get(BASE+'/documents/'+A+'/candidate').status_code==503
+
+@pytest.mark.parametrize('status',[401,403,409,429,503])
+def test_review_rejection_marker_only_reports_definitive_attempt(endpoint,status):
+    client,store=endpoint;store.request.side_effect=HTTPException(status,'Unavailable')
+    response=client.post(BASE,json=body())
+    assert (response.headers.get('x-acquisition-review-rejected')=='true') == (status in {401,403,409})
+
+
+def test_invalid_receipt_is_never_marked_as_rejected(endpoint):
+    client,store=endpoint;store.request.return_value=receipt()|{'approval_current':True}
+    response=client.post(BASE,json=body())
+    assert response.status_code==503 and 'x-acquisition-review-rejected' not in response.headers

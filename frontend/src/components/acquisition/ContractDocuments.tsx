@@ -144,7 +144,7 @@ function DocumentEditor({ context, disabled = false, onPending }: Props) {
       <div><h4 className="font-semibold">Next: human review</h4><p className="text-sm text-gray-600">Check purchase contract and title reviews for this saved version. Assignment review applies when Hilltop plans to assign its contractual interest.</p></div>
       <div className="grid gap-3 sm:grid-cols-3">{(Object.keys(reviewKinds) as ReviewKind[]).map(reviewKind =>
         <ContractReviewStatus key={reviewKind} context={context} kind={reviewKind} now={now} disabled={disabled || held || !ready || !current} />)}</div>
-      <p className="text-xs text-gray-600">A current review does not authorize signing, marketing, assignment or closing. Recording a review in this screen is still being prepared.</p>
+      <p className="text-xs text-gray-600">A current review does not authorize signing, marketing, assignment or closing. Continue to “Record your review” below to record an authorized decision.</p>
     </div>
   </section>;
 }

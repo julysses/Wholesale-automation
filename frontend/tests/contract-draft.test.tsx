@@ -82,3 +82,15 @@ it('restores document context without a selected proposal and holds navigation',
   expect(screen.getByLabelText('Document type')).toBeDisabled();
   expect(posts()).toHaveLength(0);
 });
+
+
+it('restores pending human review context after reload without a selected proposal', async () => {
+  const { preserveReview } = await import('../src/lib/acquisition/contract-review-request');
+  preserveReview(sessionStorage, { version: 1, context: { userId: id(1), workspaceId: id(2), leadId: id(3), propertyId: id(4), offerId: id(6), contractId: id(5), contractVersion: 1 }, kind: 'contract_review', request: { id: id(20), expected_sequence: 0, status: 'approved', artifact_id: id(21), verification_id: id(22), policy_id: id(23), expires_at: '2020-01-01T00:00:00Z', personally_reviewed: true, note: 'Synthetic original human review preserved for recovery.' } });
+  mock.existing = true; open(null);
+  await screen.findByText('Recover the saved review');
+  expect(await screen.findByText('123 Fixture St, Dallas')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Draft saved' })).toBeDisabled();
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true));
+  expect(posts()).toHaveLength(0);
+});

@@ -68,3 +68,12 @@ it.each([[403, 'true', 'POST', true], [409, 'true', 'POST', true], [401, 'true',
   for (const other of ['/api/buyers/import', `${path}/40000000-0000-4000-8000-000000000001/bytes?purpose=purchase_contract`, `${path}?purpose=purchase_contract`])
     await expect(apiFetch(other, { method: String(method) })).rejects.toMatchObject({ rejectedDocument: false });
 });
+
+it.each([[403, 'true', 'POST', true], [409, 'true', 'POST', true], [401, 'true', 'POST', true], [503, 'true', 'POST', false], [403, 'false', 'POST', false], [403, 'true', 'GET', false]])('recognizes only definitive review rejection (%s %s %s)', async (status, header, method, rejected) => {
+  getSession.mockResolvedValue({ data: { session: { access_token: 'test-token' } } });
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response('{}', { status: Number(status), headers: { 'X-Acquisition-Review-Rejected': String(header) } })));
+  const path = '/api/acquisition/workspaces/20000000-0000-4000-8000-000000000001/contracts/30000000-0000-4000-8000-000000000001/versions/1/reviews/contract_review';
+  await expect(apiFetch(path, { method: String(method) })).rejects.toMatchObject({ rejectedReview: rejected });
+  for (const other of ['/api/buyers/import', `${path}/documents/40000000-0000-4000-8000-000000000001/candidate`, `${path}?other=true`])
+    await expect(apiFetch(other, { method: String(method) })).rejects.toMatchObject({ rejectedReview: false });
+});

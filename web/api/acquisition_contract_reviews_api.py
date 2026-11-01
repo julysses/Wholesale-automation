@@ -1,7 +1,7 @@
 """Authenticated human decisions; database policy and evidence remain authoritative."""
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Response, HTTPException
 from schemas.acquisition_contract_reviews import ContractReviewRequest, ContractReviewReceipt, ContractReviewState, ReviewKind
 from tools.acquisition_store import acquisition_store
 from web.api.acquisition_contract_documents_api import Version, rpc, uncertain
@@ -37,12 +37,18 @@ async def record_review(workspace_id: UUID, contract_id: UUID, contract_version:
     response.headers['Cache-Control'] = 'no-store'
     # Preserve exact note, request identity and expired historical retry input.
     # Database authorization is evaluated afresh; client assertions grant no authority.
-    raw = await rpc(store, 'record_contract_review', {'p_id': str(body.id), 'p_workspace': str(workspace_id),
-        'p_contract': str(contract_id), 'p_version': contract_version, 'p_kind': kind,
-        'p_expected_sequence': body.expected_sequence, 'p_status': body.status,
-        'p_artifact': str(body.artifact_id), 'p_verification': str(body.verification_id),
-        'p_policy': str(body.policy_id), 'p_expires': body.expires_at.isoformat() if body.expires_at else None,
-        'p_personally_reviewed': body.personally_reviewed, 'p_note': body.note})
+    try:
+        raw = await rpc(store, 'record_contract_review', {'p_id': str(body.id), 'p_workspace': str(workspace_id),
+            'p_contract': str(contract_id), 'p_version': contract_version, 'p_kind': kind,
+            'p_expected_sequence': body.expected_sequence, 'p_status': body.status,
+            'p_artifact': str(body.artifact_id), 'p_verification': str(body.verification_id),
+            'p_policy': str(body.policy_id), 'p_expires': body.expires_at.isoformat() if body.expires_at else None,
+            'p_personally_reviewed': body.personally_reviewed, 'p_note': body.note})
+    except HTTPException as error:
+        if error.status_code in {401, 403, 409}:
+            error.headers = {**(error.headers or {}), 'X-Acquisition-Review-Rejected': 'true'}
+        raise
+
     try:
         receipt = ContractReviewReceipt.model_validate(raw)
         if (not scope_matches(receipt, workspace_id, contract_id, contract_version, kind)
