@@ -63,6 +63,11 @@ class AcquisitionStore:
         return await upload_registered_contract_document(self.client, artifact_id, source, workspace_id=workspace_id,
             contract_id=contract_id, contract_version=contract_version, purpose=purpose)
 
+    async def contract_document_scan_state(self, artifact_id, *, workspace_id, contract_id, contract_version, purpose):
+        from tools.acquisition_contract_documents import load_contract_document_scan_state
+        return await load_contract_document_scan_state(self.client, artifact_id=artifact_id, workspace_id=workspace_id,
+            contract_id=contract_id, contract_version=contract_version, purpose=purpose)
+
     async def scan_contract_document(self, artifact_id, *, workspace_id, contract_id, contract_version, purpose, policy):
         """Internal local scan only; no persisted document or legal approval."""
         from tools.acquisition_contract_documents import scan_registered_contract_document

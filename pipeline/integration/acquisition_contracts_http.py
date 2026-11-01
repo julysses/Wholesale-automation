@@ -182,12 +182,14 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
         def __init__(self, data): self.data=json.dumps(data).encode()
         async def __aiter__(self): yield self.data
     def scan_gateway(req):
-        if req.url != httpx.URL('https://contract-gateway.test/rest/v1/rpc/record_contract_document_verification'):
+        if str(req.url) not in ('https://contract-gateway.test/rest/v1/rpc/record_contract_document_verification',
+                               'https://contract-gateway.test/rest/v1/rpc/contract_document_scan_state'):
             raise AssertionError('Unexpected contract observation destination')
-        scan_requests.append(req.content)
-        status,data=request('/rpc/record_contract_document_verification',
+        writing=req.url.path.endswith('/record_contract_document_verification')
+        if writing: scan_requests.append(req.content)
+        status,data=request(req.url.path.removeprefix('/rest/v1'),
             req.headers['authorization'].removeprefix('Bearer '),json.loads(req.content))
-        if status==200:
+        if status==200 and writing:
             scan_commits.append(data)
             if len(scan_commits)==1: raise httpx.ReadTimeout('Synthetic lost reply after actual commit')
         return httpx.Response(status,stream=RawScanReply(data),headers={'content-type':'application/json'})
@@ -206,6 +208,14 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
                 raise AssertionError('Exact signed contract request was not retained')
             receipt=await store.persist_journaled_contract_observation(reopened,UUID(observation_id),**scope)
             if reopened.load(UUID(observation_id))[1]!='confirmed': raise AssertionError('Contract recovery not journaled')
+            read_scope={k:v for k,v in scope.items() if k not in ('actor_id','session_id','artifact_id')}
+            current=await store.contract_document_scan_state(scope['artifact_id'],**read_scope)
+            if current.status!='no_detection_observed' or current.observation_id!=UUID(observation_id) or current.legal_review_approved:
+                raise AssertionError('Contract current scan state binding failed')
+            db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
+            stale=await store.contract_document_scan_state(scope['artifact_id'],**read_scope)
+            if stale.status!='requires_review' or stale.observation_id is not None or stale.execution_authorized:
+                raise AssertionError('Revoked contract scope retained current scan authority')
             return receipt
     with tempfile.TemporaryDirectory(prefix='contract-observation-recovery-') as directory:
         recovered_scan=asyncio.run(reconcile_contract_scan(Path(directory)))
@@ -290,4 +300,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract document discovery real policy pagination and retained state','contract document discovery API tenant and version isolation',
             'contract observation real signature and separately reviewed key scope','contract observation exact retry and immutable audit',
             'contract observation real tenant session and version isolation',
-            'contract observation typed journal recovery after actual commit loss']
+            'contract observation typed journal recovery after actual commit loss',
+            'contract scan current typed gateway state and exact observation',
+            'contract scan purpose scope revocation removes current observation']

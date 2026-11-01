@@ -121,3 +121,26 @@ async def scan_registered_contract_document(client, artifact_id, *, workspace_id
             _observe_chunk=observe)
     return await _scan_registered_object(load=load, verify=verify, policy=policy, clock=clock,
         registry_version='acquisition-contract-document-registry-v1')
+
+
+async def load_contract_document_scan_state(client, *, artifact_id, workspace_id, contract_id,
+                                            contract_version, purpose, clock=utcnow):
+    """Read a fresh exact-target assessment; no scans, writes or review approval."""
+    from typing import get_args
+    from schemas.acquisition_contract_documents import ContractDocumentScanState, DocumentPurpose
+    try:
+        if (not all(isinstance(value, UUID) for value in (artifact_id, workspace_id, contract_id))
+                or type(contract_version) is not int or not 1 <= contract_version <= 2147483647
+                or purpose not in get_args(DocumentPurpose)):
+            raise ValueError('Contract scan scope required')
+        state = ContractDocumentScanState.model_validate(await _read_registry_json(client, 'contract_document_scan_state', {
+            'p_workspace':str(workspace_id), 'p_contract':str(contract_id), 'p_version':contract_version,
+            'p_purpose':purpose, 'p_artifact':str(artifact_id)}))
+        now = clock()
+        if (now.utcoffset() is None or (state.workspace_id, state.contract_id, state.contract_version, state.purpose, state.artifact_id)
+                != (workspace_id, contract_id, contract_version, purpose, artifact_id)
+                or not now-timedelta(seconds=30) <= state.checked_at <= now+timedelta(seconds=5)):
+            raise ValueError('Current contract scan assessment required')
+        return state
+    except (ValueError, TypeError, AttributeError):
+        raise EvidenceUnavailable('Contract scan assessment is unavailable') from None

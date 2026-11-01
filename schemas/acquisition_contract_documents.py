@@ -162,3 +162,38 @@ class ContractDocumentCandidates(BaseModel):
         if self.next_after is not None and (not self.items or self.next_after != self.items[-1].id):
             raise ValueError('Last returned artifact cursor required')
         return self
+
+
+class ContractDocumentScanState(BaseModel):
+    """Current assessment; a historical clean receipt alone is never clearance."""
+    model_config = ConfigDict(extra='forbid', frozen=True)
+    workspace_id: UUID
+    contract_id: UUID
+    contract_version: int = Field(strict=True, ge=1, le=2147483647)
+    purpose: DocumentPurpose
+    artifact_id: UUID
+    status: Literal['not_scanned', 'no_detection_observed', 'quarantined', 'requires_review',
+                    'revoked', 'expired', 'policy_review_required']
+    quarantined: StrictBool
+    observation_id: UUID | None
+    preview_authorized: StrictBool
+    legal_review_approved: StrictBool
+    execution_authorized: StrictBool
+    checked_at: AwareDatetime
+
+    @field_validator('checked_at', mode='before')
+    @classmethod
+    def timestamp_string(cls, value):
+        if not isinstance(value, str):
+            raise ValueError('Timestamp string required')
+        return value
+
+    @model_validator(mode='after')
+    def no_approval(self):
+        if self.preview_authorized or self.legal_review_approved or self.execution_authorized:
+            raise ValueError('Scan status cannot grant approval')
+        if ((self.status == 'no_detection_observed') != (self.observation_id is not None)
+                or self.status == 'quarantined' and not self.quarantined
+                or self.quarantined and self.status in {'not_scanned','no_detection_observed','requires_review'}):
+            raise ValueError('Inconsistent contract scan state')
+        return self

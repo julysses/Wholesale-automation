@@ -49,7 +49,7 @@ def unique_json_object(pairs):
 
 async def _read_registry_json(client: httpx.AsyncClient, rpc_name: str, body: dict):
     """Shared bounded authenticated registry read, restricted to internal RPC names."""
-    if rpc_name not in ('acquisition_evidence_state', 'contract_document_state'):
+    if rpc_name not in ('acquisition_evidence_state', 'contract_document_state', 'contract_document_scan_state'):
         raise EvidenceUnavailable('Evidence registry is unavailable')
     url = authenticated_origin(client).copy_with(path='/rest/v1/rpc/' + rpc_name)
     data = bytearray()
