@@ -1,5 +1,13 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — post-execution title findings boundary (candidate95, local)
+
+Added strict title-finding inputs and a non-authorizing assessment. Ownership, legal description, liens/payoffs, exceptions/encumbrances and occupancy/possession are required. Satisfactory findings need original citations; unknown/unresolved findings retain concrete next actions. Report cutoff preserves unknown/date/instant precision. Sources cannot conflict or reference future versions. Human resolution holds have no approval expiry; withdrawal cannot replace findings or renew authority. Assessment always requires original-source verification, report freshness policy and recorded-execution binding, and never confirms title or legal/execution authority.
+
+37 focused tests passed0.21s; full backend4226passed/10skipped/6subtests46.56s. No route, database migration, UI or provider behavior changed in this increment. This is the necessary input boundary, not completed title findings persistence or release. Detailed next implementation and acceptance:TITLE-FINDINGS-WORKFLOW.md.
+
+Published headc5f0a5c916721047b98868901f774cf610fda72a exact successor41278484893 is running. Keep this candidate local until all six checks pass. Next: extend the existing immutable review entity with distinct post-execution title_findings, held/approved/withdrawn states and server-derived original execution/source journals; then controlled writer/current state/API/discovery and guided UI. Existing generic preparation title_review approvals must never become disposition authority by remaining unexpired. Full PRD remains active/incomplete; production unchanged.
+
 ## November 1 — title-document intake verified (candidate94, local)
 
 Step5 now permits original evidence capture at current title_review. The existing card defaults to Title report and explicitly separates upload, verification and title findings. Draft-preparation approval cards are hidden in this stage; no clear-title/disposition authority is implied. Historical pending documents retain their original purpose. Registration/admission/Storage reuse existing tenant/session/MFA/role/retention/capacity checks, with only title_review added to the current-status gates. No new grants or entities; existing mail behavior unchanged.

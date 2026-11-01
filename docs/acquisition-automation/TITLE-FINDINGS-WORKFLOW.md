@@ -1,0 +1,43 @@
+# Title findings after recorded execution
+
+Status: candidate95 defines and tests the input/assessment boundary. Persistence, API and guided form remain to implement. No title approval or disposition authority exists from these new modules alone.
+
+## Operator workflow
+
+Continue the existing step5 property/contract context:
+
+1. Begin title review from the recorded execution handoff.
+2. Retain the original title report and supporting documents; verify their original bytes and current source authority.
+3. Record the report cutoff at its original precision, plus findings for ownership, legal description, liens/payoffs, exceptions/encumbrances and occupancy/possession.
+4. For each finding, retain its original page/clause, explanation and immutable source identity. Unknown and unresolved items need a concrete next action; they cannot be silently omitted or treated as satisfactory.
+5. Record either a resolution hold or a personally reviewed approval with bounded validity. A hold has no approval expiry and cannot satisfy a disposition gate. A reviewer may hold even apparently satisfactory findings for an additional issue explained in the decision note.
+6. Preserve original withdrawal and exact-request recovery. Only a separately controlled disposition review may consume a still-current title decision.
+
+The UI must keep the existing navy/orange card style, explicit stage headings, source choices, recovery holds and mobile layout. Starting title review, storing bytes, passing a scan and recording a human finding are distinct events. None alone establishes legal title or authorizes marketing, assignment or closing.
+
+## Input boundary implemented
+
+- `schemas/acquisition_title_review.py`: bounded immutable original references; all five finding categories required; source-backed satisfactory findings; explicit required actions for unknown/unresolved findings; report cutoff preserved as unknown/date/instant; no future-version or conflicting-original citations; personal review and separate approved/held/withdrawn envelopes.
+- `tools/acquisition_title_review.py`: reason codes and unresolved actions. Outputs always deny legal/title/execution authority and require source verification, report freshness review and recorded-execution binding. An explicit future instant is held; calendar dates are never silently converted to midnight.
+- `tests/test_acquisition_title_review.py`: missing/negative findings, source conflicts, scope-related version bounds, coercion/authority injection, cutoff precision, future instant, immutable payload, explicit holds and original withdrawal.
+
+These inputs are assertions for a reviewer. No client-supplied actor, execution-transition identity, approval flag or source verification can create authority.
+
+## Required persistence and server controls
+
+Use the existing `acquisition_contract_reviews` entity with a distinct `title_findings` kind. Preserve the generic preparation-stage `title_review` records. A preparation approval must not satisfy post-execution disposition merely because it remains unexpired.
+
+1. Inspect current columns, constraints, indexes, RLS and migration history; create an additive migration via the CLI. Keep policy/FK/immutable audit identities and actual workspace/session/MFA/role checks.
+2. Add bounded findings and server-derived original-source journal fields. Bind every recorded decision to the exact sequence2 executed transition for the current immutable contract version and its retained execution review. Confirm the current sequence3 title-review context when creating a new decision. Use scoped foreign keys and controlled checks rather than a client-provided execution identifier.
+3. Add `requires_resolution` only for this new kind: personally reviewed, no approval expiry, retained findings/actions. Other review kinds retain their current approved/withdrawn contract. Withdrawal retains original decision identity and does not replace findings. Existing generic RPCs continue to reject this kind and status.
+4. Require a separately reviewed `title_findings` policy for the selected title report and authorized reviewer. Do not inherit a preparation policy or seed authority. Counsel-approved report freshness/timezone rules remain explicit; do not infer a cutoff instant from a date.
+5. Resolve the selected title report and every supplemental source against the exact workspace, contract, source version and hash. Retain original verification/scanner/session/policy/retention identities; deduplicate locking by original artifact while retaining each page/clause citation. No source may be substituted by a later scan or newer document on retry.
+6. Lock current contract/history, artifact and byte identities, verification/scanner/retention policies, original reviewers and sessions, execution authority and bound deadline authority in the established deterministic order. Recheck after waits with current time; require current review only for new authority, not as a way to erase historical receipts or deny original withdrawal.
+7. Fingerprint the full exact request and actor/session. Persist one immutable decision and audit in one transaction. A held or withdrawn latest decision invalidates the older approval. Historical receipts are non-executing; fresh state must independently recheck all original authority.
+8. Only then mount the user-JWT API and bounded source/policy discovery, implement browser recovery and the guided findings form, and bind disposition snapshots to this exact current post-execution review. Never map an ordinary preparation review directly to disposition authority.
+
+## Required verification before release
+
+Disposable upgrade preserves representative history and Storage. Test approved/held/withdrawn history, exact concurrent retries, changed-payload conflicts, workspace/role/MFA/session isolation, original source revocation and replacement, report precision and policy freshness, execution/deadline revocation during observed lock waits, and no raw writes. The mounted API journey must include response loss, historical retry after pause and current-authority invalidation. Desktop/mobile QA must cover unresolved actions, source citations, no automatic positive defaults, fresh checks, original withdrawal and recovery without the currently selected proposal.
+
+No production migration, policy provisioning, outreach, paid fulfillment, agreement execution or disposition distribution is authorized by this plan. Full PRD scope, all channel gates and hosted/provider/legal acceptance remain open.

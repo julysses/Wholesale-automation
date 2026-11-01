@@ -2501,3 +2501,12 @@ Browser81275 passed desktop1280x900/mobile375x812 full flow through title-file r
 ### 2026-11-01 — title handoff and intake publication gate passed
 
 All six67a91ff/run41277565234 jobs passed on final refresh. Fresh pull completed current. Publishing verifiedf133c2d and3fad582 plus this evidence note. All local validation is terminal/passed and worktree was clean before this note. Next verify exact pushed head/successor and continue post-execution title findings; no production migration/provider/outreach/fulfillment authority is inferred. Full goal remains incomplete.
+
+
+### 2026-11-01 — title-findings input boundary verified (candidate95)
+
+Previous turn made concrete progress: publishedc5f0a5c after all predecessor checks passed, with title handoff/intake verified. Current worktree was clean; fresh pull already current (network access retry resolved DNS restriction). Addedschemas/acquisition_title_review.py andtools/acquisition_title_review.py with all five finding categories, explicit uncertainty/actions, original source/version/hash/clause consistency, report cutoff precision, strict human approved/requires_resolution/withdrawn decisions, immutable payload semantics and non-authorizing assessment. Client actor/execution/approval overrides are rejected. Holds cannot carry approval expiry; missing findings are not silently dropped. No endpoints mount this boundary before controlled persistence.
+
+37focusedtests passed0.21s; fullbackend4226passed/10skipped/6subtests46.56s, session84644 terminal0. Logs/tmp/title-findings-domain.log and/tmp/title-findings-backend.log. No frontend, SQL, production or provider mutation. Existing acquisition_contract_reviews and policy/source/transition shapes inspected from current migration sources. TITLE-FINDINGS-WORKFLOW.md tracks the complete required server/storage/API/UI integration, preserves separate preparation/post-execution semantics and the broader PRD. Next inspect live/disposable constraints/RLS/indexes, add scoped recorded-execution/source bindings and held status only for newtitle_findings kind, then implement full authority/lock-wait/idempotent persistence and fresh state before exposing the guided form.
+
+Publishedc5f0a5c exact successor41278484893 remains running; all-six predecessor gate still applies before the next push. Do not cancel/restart live jobs. Goal remains active/incomplete; hosted/legal/provider/channel/disposition/closing/exception requirements remain open.
