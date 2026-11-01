@@ -1,0 +1,16 @@
+{
+  "scope": "Synthetic local presentation only; no provider/database/legal acceptance",
+  "desktop": true,
+  "mobile": {
+    "width": 375,
+    "height": 812,
+    "clientWidth": 369,
+    "scrollWidth": 369
+  },
+  "consoleErrors": [],
+  "checks": [
+    "review cards remain in saved contract step",
+    "purchase review current and title/assignment not recorded remain distinct",
+    "mobile cards stack without horizontal overflow"
+  ]
+}

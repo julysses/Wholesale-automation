@@ -27,6 +27,16 @@ export async function apiFetch(path: string, init?: RequestInit) {
     if (lose) { lose = false; throw new Error('Synthetic lost reply after commit'); }
     value = { deal_id: request.id, version: 1, status: 'draft', duplicate: !!ledger, execution_authorized: false };
   } else if (path.endsWith('/memberships')) value = [{ workspace_id: ids.workspace, user_id: ids.user, status: 'active', role: 'owner' }];
+  else if (path.includes('/reviews/')) {
+    if (!ledger || init?.method === 'POST') throw new Error('Read-only synthetic review fixture');
+    const kind = path.split('/').at(-1);
+    if (!['contract_review', 'title_review', 'assignment_basis'].includes(kind ?? '')) throw new Error('Unknown review kind');
+    const approved = kind === 'contract_review';
+    value = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: 1, kind,
+      sequence: approved ? 1 : 0, review_id: approved ? id(12) : null, status: approved ? 'approved' : 'not_reviewed',
+      approval_current: approved, expires_at: approved ? new Date(Date.now() + 60000).toISOString() : null,
+      checked_at: new Date().toISOString(), execution_authorized: false };
+  }
   else if (path.includes('/documents')) {
     if (!ledger) throw new Error('Save the synthetic draft first');
     const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: 1 };

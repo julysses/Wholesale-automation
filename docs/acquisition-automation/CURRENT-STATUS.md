@@ -2,6 +2,14 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — human-review desktop/mobile presentation verified
+
+Synthetic browser QA exercised all three review checks inside the saved contract step. Purchase review displayed current while title and assignment remained not recorded; no aggregate transaction approval is implied. Desktop retains the existing navy/orange card treatment. At 375x812, cards stack with client/scroll widths 369/369 and no horizontal overflow. No browser warnings/errors. Evidence: evidence/contract-human-review-ui-2026-10-31/{desktop.png,mobile.png,result.json}. This fixture is local presentation only, not real scan, legal approval or hosted acceptance. Preview process 75866 stopped with exit130; viewport reset and temporary tab closed.
+
+Repair CI 41256126531 has four successful jobs. Its two remaining jobs are running actual acquisition workflow and workspace-isolation tests; package installation passed. Do not restart the live jobs or publish features until all six succeed. No production actions.
+
+Next implementation: reviewed-policy and exact-artifact candidate discovery for human decisions, followed by the guided record/withdraw/recovery controls. Use server-provided current sequence, reviewer-specific policy and maximum expiry; never require an operator to type private UUIDs or invent approval policy. Preserve the exact decision across lost replies and fixed property/contract context. Immutable contract terms and controlled transitions, disposition and remaining PRD requirements are still outstanding.
+
 ## October 31 — review status inside the contract step
 
 Mounted review API rehearsal 72993 exited 0: 64 migrations, 26 access probes, 134 workflows and 78 actual local gateway checks. Historical rows/definitions and Storage fixture preserved. Evidence: evidence/2026-10-31-contract-review-api-gateway-result.json. The previous in-progress note is superseded; no local database process remains active.
