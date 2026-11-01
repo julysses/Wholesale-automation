@@ -2,6 +2,14 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — exact-document review choices (candidate migration 65)
+
+Fresh read-only hosted metadata remains ledger 20261023221455 with candidate versions/reviews/policies absent; evidence/2026-10-31-contract-review-candidate-catalog.json. Inspected predecessor functions, tables, grants, indexes and constraints. CLI-created 20261101002427_acquisition_contract_review_candidate.sql adds only private-definer/public-invoker read functions with empty search paths and explicit authenticated grants; no new tables or policy activation. Current Supabase function/privilege documentation checked.
+
+The exact workspace/contract/version/kind/artifact read uses current owner/admin MFA authority and returns a deterministic most-recent active policy explicitly assigned to that reviewer. Evidence must be the current exact verification and pass the shared retained-evidence checks. Maximum expiry is the earliest of retention, key/purpose, policy, scanner/reviewer sessions and configured review duration. Discovery grants no execution authority and writes no reviews/audits. It provides the latest sequence and original-reviewer withdrawal identifiers even while acquisition is paused or evidence/policy authority is revoked. A different document or purpose is rejected. No private signing material, approval notes or unrelated identities are returned. Compensation omits/revokes this read interface while retaining all review history.
+
+Four focused database cases passed in 18.453s, covering exact scope/MFA/role restrictions, no mutations, limiting session expiry, policy/evidence revocation and withdrawal during pause. Full disposable catalog/gateway rehearsal session 16348 is live (/tmp/contract-review-candidate-upgrade.log); do not restart or declare it passed before terminal evidence. Manifest includes migration 65. Typed candidate API, app decision controls and recovery are still required. No production changes.
+
 ## October 31 — human-review desktop/mobile presentation verified
 
 Synthetic browser QA exercised all three review checks inside the saved contract step. Purchase review displayed current while title and assignment remained not recorded; no aggregate transaction approval is implied. Desktop retains the existing navy/orange card treatment. At 375x812, cards stack with client/scroll widths 369/369 and no horizontal overflow. No browser warnings/errors. Evidence: evidence/contract-human-review-ui-2026-10-31/{desktop.png,mobile.png,result.json}. This fixture is local presentation only, not real scan, legal approval or hosted acceptance. Preview process 75866 stopped with exit130; viewport reset and temporary tab closed.

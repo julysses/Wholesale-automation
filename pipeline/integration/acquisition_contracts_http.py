@@ -220,6 +220,13 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
                 p_status='approved',p_artifact=signed['p_artifact'],p_verification=observation_id,p_policy=review_policy,
                 p_expires=(datetime.now(timezone.utc)+timedelta(minutes=5)).isoformat(),p_personally_reviewed=True,
                 p_note='Synthetic authorized human review of exact contract document contents.')
+            candidate_scope=dict(p_workspace=workspace,p_contract=draft,p_version=1,p_kind='contract_review',p_artifact=signed['p_artifact'])
+            choice=rpc('contract_review_candidate',candidate_scope)
+            if choice['status']!='ready_for_human_review' or choice['candidate']['verification_id']!=observation_id or choice['candidate']['policy_id']!=review_policy or choice['execution_authorized']:
+                raise AssertionError('Actual review candidate did not bind exact policy/evidence')
+            for jwt in (token(other),None,token(role='service_role')):
+                status,_=request('/rpc/contract_review_candidate',jwt,candidate_scope)
+                if status not in (401,403):raise AssertionError('Review candidate gateway scope bypass')
             human_review=rpc('record_contract_review',review_body)
             replay=rpc('record_contract_review',review_body)
             review_scope=dict(p_workspace=workspace,p_contract=draft,p_version=1,p_kind='contract_review')
@@ -259,6 +266,9 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
                 held=review_client.get(review_path,headers=headers)
                 if held.status_code!=200 or held.json()['approval_current'] or held.json()['status']!='requires_review':
                     raise AssertionError('Mounted review retained revoked scan authority')
+            held_choice=rpc('contract_review_candidate',candidate_scope)
+            if held_choice['candidate'] is not None or held_choice['withdrawal']['expected_sequence']!=1:
+                raise AssertionError('Candidate did not retain withdrawal and remove revoked evidence')
             withdrawal=review_body|dict(p_id=withdrawal_id,p_expected_sequence=1,p_status='withdrawn',p_expires=None,p_personally_reviewed=False)
             if rpc('record_contract_review',withdrawal)['status']!='withdrawn' or not rpc('record_contract_review',withdrawal)['duplicate']:
                 raise AssertionError('Human review withdrawal exact recovery failed')
@@ -366,4 +376,5 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract human review gateway tenant session and version isolation',
             'contract human review current scan revocation and withdrawal recovery',
             'mounted human review exact retry after response loss',
-            'mounted human review scope isolation and fresh revoked state']
+            'mounted human review scope isolation and fresh revoked state',
+            'review candidate real gateway exact authority and withdrawal after revocation']

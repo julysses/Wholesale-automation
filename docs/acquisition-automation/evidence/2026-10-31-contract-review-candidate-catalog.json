@@ -1,0 +1,9 @@
+{
+  "scope": "Read-only hosted metadata before candidate migration",
+  "project_id": "dvzhzlipbwzzcliujzyz",
+  "latest_migration": "20261023221455",
+  "contract_versions": null,
+  "reviews": null,
+  "review_policies": null,
+  "production_changes": false
+}
