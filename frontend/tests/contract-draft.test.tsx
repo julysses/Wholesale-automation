@@ -39,6 +39,10 @@ beforeEach(() => {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: body.expected_version, plan_id: body.id, sequence: body.expected_sequence + 1, status: body.status, exit_type: body.exit_type, original_plan_id: body.original_plan_id, duplicate: true, plan_recorded: true, disposition_approved: false, execution_authorized: false }) };
       }
+      if (path.endsWith('/disposition-review')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: body.expected_version, kind: 'disposition_findings', review_id: body.id, sequence: body.expected_sequence + 1, status: body.status, duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
+      }
       if (path.endsWith('/title-review')) {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: body.expected_version, kind: 'title_findings', review_id: body.id, sequence: body.expected_sequence + 1, status: body.status, duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
@@ -398,6 +402,34 @@ it('blocks corrupt or conflicting purchase-path recovery before current contract
   sessionStorage.setItem(planKey(id(1), id(2)), '{broken'); const view = open(null);
   expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled(); view.unmount(); sessionStorage.clear();
   preservePlan(sessionStorage, { version: 1, context: signatureContext, request: { id: id(96), expected_version: 1, expected_sequence: 0, status: 'proposed', exit_type: 'principal_acquisition', original_plan_id: null, note: 'Internal proposal requiring separate disposition review.' } });
+  const { preserveDeadline } = await import('../src/lib/acquisition/deadline-review'); preserveDeadline(sessionStorage, { version: 1, context: signatureContext, request: deadlineRequest });
+  open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled(); expect(sessionStorage.length).toBe(2);
+});
+
+
+it('holds sibling steps while disposition findings are open and releases on close', async () => {
+  record.acquisition_status = 'title_review'; mock.existing = true; open();
+  await waitFor(() => expect(screen.getByText('Open disposition review')).toBeEnabled()); fireEvent.click(screen.getByText('Open disposition review'));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true));
+  for (const name of ['Open purchase path', 'Open title review', 'View title history', 'Open execution review', 'Open date review', 'Refresh draft information']) expect(screen.getByText(name)).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled(); fireEvent.click(screen.getByText('Close without saving'));
+  await waitFor(() => expect(screen.getByText('Open purchase path')).toBeEnabled()); expect(screen.getByLabelText('Document type')).toBeEnabled();
+});
+it('recovers original disposition version without an offer and then restores current context', async () => {
+  const { preserveDisposition } = await import('../src/lib/acquisition/disposition-review');
+  const request = { id: id(96), expected_version: 1, expected_sequence: 1, status: 'withdrawn' as const, plan_id: id(91), original_review_id: id(92), policy_id: id(93), expires_at: null, personally_reviewed: false, note: 'Withdraw the original disposition decision after lost response.', findings: null };
+  preserveDisposition(sessionStorage, { version: 1, context: signatureContext, request });
+  record.acquisition_status = 'title_review'; record.acquisition_version = 2; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByText('Retry saved disposition decision')).toBeEnabled()); expect(screen.getByText('Open purchase path')).toBeDisabled();
+  fireEvent.click(screen.getByText('Retry saved disposition decision')); await waitFor(() => expect(sessionStorage.length).toBe(0));
+  expect(posts()).toHaveLength(1); expect(posts()[0][0]).toContain('/versions/1/disposition-review'); expect(JSON.parse(posts()[0][1].body)).toEqual(request);
+  await waitFor(() => expect(screen.getByText('Open disposition review')).toBeEnabled()); expect(screen.getByText('Open purchase path')).toBeEnabled();
+});
+it('blocks corrupt or conflicting disposition recovery before any current contract read', async () => {
+  const { dispositionKey, preserveDisposition } = await import('../src/lib/acquisition/disposition-review');
+  sessionStorage.setItem(dispositionKey(id(1), id(2)), '{broken'); const view = open(null);
+  expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled(); view.unmount(); sessionStorage.clear();
+  preserveDisposition(sessionStorage, { version: 1, context: signatureContext, request: { id: id(96), expected_version: 1, expected_sequence: 1, status: 'withdrawn', plan_id: id(91), original_review_id: id(92), policy_id: id(93), expires_at: null, personally_reviewed: false, note: 'Withdraw the original disposition decision after lost response.', findings: null } });
   const { preserveDeadline } = await import('../src/lib/acquisition/deadline-review'); preserveDeadline(sessionStorage, { version: 1, context: signatureContext, request: deadlineRequest });
   open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled(); expect(sessionStorage.length).toBe(2);
 });

@@ -1,0 +1,36 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "unknown_defaults": true,
+      "resolution_default": true,
+      "reload_exact_retry": true,
+      "one_ledger_record": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "unknown_defaults": true,
+      "resolution_default": true,
+      "reload_exact_retry": true,
+      "one_ledger_record": true,
+      "overflow": false,
+      "errors": []
+    }
+  ],
+  "screenshots": [
+    "/tmp/disposition-decision-375.png",
+    "/tmp/disposition-decision-1280.png",
+    "/tmp/disposition-recovery-375.png",
+    "/tmp/disposition-recovery-1280.png"
+  ],
+  "scope": "Synthetic local component preview; parent recovery and sibling holds verified by component tests. Not hosted/provider acceptance."
+}
