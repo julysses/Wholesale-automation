@@ -305,7 +305,10 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             verify_transition_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft)
             from acquisition_pending_document_http import verify_pending_document_http
             verify_pending_document_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,policy,rpc)
+            from acquisition_execution_review_http import verify_execution_http,verify_execution_revocation_http
+            execution_path,execution_body=verify_execution_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,source_review_body)
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
+            verify_execution_revocation_http(db,app,document_drops,headers,execution_path,execution_body)
             verify_source_review_revocation_http(db,app,document_drops,headers,source_review_path,source_review_body)
             verify_terms_revocation_http(app,token,terms_path,terms_body)
             verify_link_withdrawal_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},link_path,link_body)
@@ -454,4 +457,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'lifecycle candidate current exact handoff and workspace isolation',
             'lifecycle candidate recorded state removes duplicate action',
             'pending contract document registration exact commit-loss recovery and isolation',
-            'pending contract document admission preserves terms status and unverified history']
+            'pending contract document admission preserves terms status and unverified history',
+            'execution review API actual commit loss and exact findings recovery',
+            'execution review API tenant session conflict and immutable lifecycle boundaries',
+            'execution review current source revocation and paused withdrawal recovery']

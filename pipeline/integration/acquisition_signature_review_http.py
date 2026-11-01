@@ -11,10 +11,15 @@ TERMS='af940000-0000-4000-8000-000000000005'
 
 def verify_signature_http(db,app,drops,headers,foreign,workspace,contract,terms_body,review_body):
     root=f'/api/acquisition/workspaces/{workspace}/contracts/{contract}'
-    terms=terms_body['terms'] | {'earnest_money_cents':0,
+    now=datetime.now(timezone.utc)
+    terms=terms_body['terms'] | {'earnest_money_cents':0, 'assignment_allowed':False,
+        'assignment_provisions':'Synthetic written consent requirement.',
+        'effective':{'precision':'instant','instant':(now-timedelta(hours=1)).isoformat()},
+        'inspection_deadline':{'precision':'instant','instant':(now+timedelta(days=5)).isoformat()},
+        'closing_deadline':{'precision':'instant','instant':(now+timedelta(days=20)).isoformat()},
         'note':'Synthetic known earnest-money term prepared before a separate signature release review.'}
     source=next(s for s in terms['sources'] if s['term']=='purchase_price')
-    terms['sources']=[*terms['sources'],source|{'term':'earnest_money'}]
+    terms['sources']=[source|{'term':name} for name in ('purchase_price','earnest_money','assignment','effective','inspection_deadline','closing_deadline')]
     basis=review_body|{'id':BASIS,'note':'Synthetic review of exact version three before distinct signature release.'}
     with TestClient(app) as client:
         saved=client.post(root+'/terms',json={'id':TERMS,'expected_version':2,'terms':terms},headers=headers)

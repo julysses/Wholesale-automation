@@ -305,6 +305,10 @@
     {
       "file": "20261101030913_acquisition_execution_review_write.sql",
       "sha256": "5e0b61039da586eeeb653b8feb7ba2c6e3a8dac3c994438adad2de02105338df"
+    },
+    {
+      "file": "20261101031709_acquisition_execution_review_state.sql",
+      "sha256": "3ba05a695097b77ce9879584ce2adbe9be5d23d77abfcd663b2b3bab40363d80"
     }
   ]
 }

@@ -1,7 +1,8 @@
 """Authenticated exact execution decisions; no signing or lifecycle advancement."""
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
-from schemas.acquisition_execution_review import ExecutionReviewRequest, ExecutionReviewReceipt
+from schemas.acquisition_execution_review import ExecutionReviewRequest, ExecutionReviewReceipt, ExecutionReviewState
 from tools.acquisition_store import acquisition_store
 from web.api.acquisition_contract_documents_api import Version, rpc, uncertain
 
@@ -37,3 +38,21 @@ async def record_execution_review(workspace_id: UUID, contract_id: UUID, contrac
     except (ValueError, TypeError):
         raise uncertain('Execution review save is unconfirmed. Keep the same request and findings for recovery.') from None
     return receipt.model_dump(mode='json')
+
+
+@router.get('')
+async def execution_review_state(workspace_id: UUID, contract_id: UUID, contract_version: Version,
+                                  response: Response, store=Depends(acquisition_store)):
+    response.headers['Cache-Control'] = 'no-store'
+    raw = await rpc(store, 'execution_review_state', {'p_workspace': str(workspace_id),
+        'p_contract': str(contract_id), 'p_version': contract_version})
+    try:
+        state = ExecutionReviewState.model_validate(raw)
+        now = datetime.now(timezone.utc)
+        if ((state.workspace_id, state.contract_id, state.contract_version) != (workspace_id, contract_id, contract_version)
+                or not now-timedelta(seconds=30) <= state.checked_at <= now+timedelta(seconds=5)
+                or state.approval_current and state.expires_at <= now):
+            raise ValueError('Fresh exact execution review required')
+    except (ValueError, TypeError):
+        raise uncertain('Current execution review could not be confirmed. Refresh before proceeding.') from None
+    return state.model_dump(mode='json')
