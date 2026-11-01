@@ -1,6 +1,6 @@
 # Review renewal implementation contract
 
-Status: design and request/receipt validation only. No renewal endpoint, database writer, policy or activation exists yet. This document keeps the full lifecycle objective open and replaces the unsafe shortcut of extending an old approval's expiry.
+Status: request/receipt validation and a local additive lineage migration; full upgrade verification is running. No renewal endpoint, controlled renewal writer, policy or activation exists yet. This document keeps the full lifecycle objective open and replaces the unsafe shortcut of extending an old approval's expiry.
 
 ## Observed current implementation
 
@@ -87,3 +87,61 @@ A receipt confirms only the exact new review and sequence, root/predecessor, ten
 - [ ] Push only after predecessor CI completes; confirm exact successor. Hosted/legal/provider release approvals remain separate.
 
 This work does not complete buyer matching, disclosure delivery, distribution approvals, deposits, closing, exception states, remaining acquisition channels or hosted acceptance. Those PRD requirements remain in the overall plan.
+
+## Local lineage implementation (candidate128)
+
+CLI-created `20261101093742_acquisition_review_renewal_lineage.sql` adds separate root/predecessor IDs, a non-null generated stream discriminator, scoped approved-parent foreign keys, unique predecessor and root-chain indexes. A private INSERT trigger locks the canonical deal, requires the latest applicable predecessor and next shared stream sequence, verifies an original approved root and unchanged material findings/artifact identity. It preserves existing null-lineage rows, withdrawal fields, RLS, grants and immutable UPDATE/DELETE protection. No callable renewal writer or current-authority resolver is added.
+
+The trigger computes source version from its base columns because generated columns are not populated in a BEFORE INSERT trigger. Initial focused testing found this issue; corrected before the four-case pass. Two initial test argument mistakes were also corrected. Four focused cases passed26.639s (`/tmp/review-renewal-storage-final.log`): valid chained append/history preservation, fork/scope/partial-lineage/changed-findings rejection, withdrawn/superseded rejection and client-write denial. The added all-kind/shared-date-sequence case is running separately.
+
+Manifest now includes103 migrations and full-catalog workflows include five renewal storage cases. Full populated schema/access/application/API rehearsal runs as session43336 in `/tmp/review-renewal-lineage-upgrade.log`; do not restart while live. All-kind focused session28729 is `/tmp/review-renewal-all-kinds.log`. Neither is yet claimed passed. No production apply. The controlled writer still must enforce fresh membership/session, policy/evidence/activation/dependencies and current expiry under combined locks; storage links alone are not authorization.
+
+Final focused result: all five storage cases passed37.170s, session96401 terminal0 (`/tmp/review-renewal-storage-five.log`), including all supported kinds/shared deadline sequence. Full rehearsal43336 remains running and is not yet passed.
+
+Candidate128 verification history: all-kind session28729 finished1 due to an omitted test-method boundary that inadvertently ran fixture setup twice after the all-kind assertions. Restored the separate client-denial method; then launched final five-case session96401 (now passed) in `/tmp/review-renewal-storage-five.log`. Full upgrade43336 remains live and may have imported the earlier test definition; do not restart it until terminal, and do not treat it as final coverage of the corrected five-case suite. The SQL migration did not change after its four-case pass.
+
+## Private chain identity and serialization (candidate129)
+
+`20261101094232_acquisition_review_lineage_head.sql` resolves the exact original root to its latest applicable approved chain member, checking every predecessor and complete workspace/version/kind/date-term scope. It rejects a renewal ID supplied as an original root, invalid time, withdrawn or superseded chains and future records. It does not grant authority or filter expired history away; policy/session/evidence/dependency/expiry checks remain mandatory in the future effective-authority resolver. No external grants or live call sites. Three focused cases passed21.981s.
+
+The preceding local storage migration now takes `deal-ref` advisory lock before row locking, matching controlled writer order. The concurrent withdrawal test confirms a waiting renewal observes the newly committed withdrawal; a final six-case run adds exact-reason and saved-status assertions. Both migrations remain uncommitted until full verification. Manifest104 and full workflow integration include nine new cases; currently running rehearsal43336 covers an earlier103 snapshot and cannot prove final104 acceptance.
+
+Candidate129 final focused evidence: six storage cases passed44.261s (23328 terminal0), including committed-withdrawal exact-reason lock-wait rejection; three identity lookup cases previously passed21.981s. Saved `evidence/2026-11-01-review-renewal-focused-result.json` with exact coverage limits and migration hashes. Earlier35909 terminal1 was solely the corrected test synchronization issue. Full43336 still running against earlier103 snapshot; final104 upgrade/API acceptance remains pending. Worktree intentionally uncommitted until final verification.
+
+## Effective-authority integration audit (candidate130 planning, no new runtime)
+
+The existing root-to-head helper is identity only. The next resolver must add an explicit server-derived dependency snapshot to each renewed decision before it can safely replace current-authority predicates. Resolving every original dependency to its latest head at read time alone would silently reactivate older dependent approvals.
+
+| Current source/function | Original dependency retained | Required effective-authority behavior |
+| --- | --- | --- |
+| `20261101045444` / `execution_findings_match` | `execution_findings.deadline_reviews[].review_id`, date term and date-precision terms | Keep original findings unchanged; compare dates/order using the bound effective interpretation, and reject a changed effective dependency until execution is personally renewed. |
+| `20261101050425` / `lock_execution_deadline_authority` | Original interpretation policy/session and minimum original expiry | Lock effective interpretation policies/memberships/sessions after resolving the complete source union; cap against effective expiry and recheck after waiting. |
+| `20261101085535` / `deadline_review_current` | Original term-source verification ID plus original agreement/source journal | A refreshed scan must prove the same retained artifact/version/hash and current scanner authority; keep the original term-source reference immutable. Do not simply omit the verification check. |
+| `20261101085535` / `execution_review_current` | Exact original deadline expiry and journal verification IDs | Require renewal dependency snapshot to match current effective heads; derive the source union from those exact heads, not from arbitrary latest scans. |
+| `20261101085535` / `title_review_current` | Execution transition's original approval ID/expiry; retained report cutoff | Preserve transition identity, require bound effective execution identity/expiry, and retain report-freshness limits. Renewing a review cannot make an old report newer. |
+| `20261101080958` / `disposition_review_current` | Latest title must equal original title ID; original execution expiry; exact latest plan | Resolve bound effective title/execution supports without changing original plan/exit/handoff references. A different proposal or exit still requires separate review. |
+| `20261101085535` / `lock_disposition_handoff_authority` and transition writer | Original reviews/source unions and repeated current checks | Preserve exact receipt replay and ledger roots; current execution must use a fresh combined source/policy/dependency lock set and one post-wait evaluation. |
+
+Required dependency snapshot: a strictly validated list of original root IDs plus the effective review IDs used by that personal decision, with kind/date-term context. Deadline reviews have no review dependencies. Execution binds each date-precision interpretation. Title binds original execution. Disposition binds original execution and title; transitive dependencies are checked recursively. Snapshot construction is server-side, under the contract serialization lock; clients cannot supply effective IDs as proof of authority. Include this snapshot in immutable audit/fingerprint/receipt discovery context, while historical receipts remain non-authorizing.
+
+For legacy/non-renewed rows, derive their original dependency identities from existing findings/transitions; do not backfill or rewrite them. A dependency advancing to a different head makes the old dependent review require fresh personal review, even if its original expiry has not elapsed. For renewal rows, an absent/malformed/mismatched dependency snapshot fails closed. Keep current legacy predicates in place until root-aware checks, source refresh, lock helpers, writer, choices and read projections are integrated and tested together.
+
+Acceptance additions: renew a deadline while execution remains unexpired and verify execution/title/disposition stay held; renew execution and verify title/disposition remain held; renew title and verify disposition remains held; renew each in dependency order and verify only explicitly re-reviewed chains become current. Reject changed dependency heads during source/policy lock waits and preserve all original handoff receipts. These are pending implementation, not passed tests.
+
+## Server-derived dependency bindings (candidate131)
+
+After a fresh disposable104 catalog inventory (`evidence/2026-11-01-review-dependencies-local-catalog.json`,5.688s), CLI-created migration20261101095023 adds nullable `renewal_dependencies` to the existing immutable review ledger. Historical rows remain null. A new BEFORE INSERT trigger, ordered after lineage validation/deal serialization, rejects supplied snapshots and derives the exact supporting root/head IDs from original findings and transitions. New deadline renewals record an empty list; execution records date interpretations; title records execution; disposition records title and execution. Withdrawn/superseded/missing supporting chains reject the insert.
+
+Private `acquisition_review_dependencies_match` compares the stored direct bindings against current chain heads. Legacy rows require original heads, so dependency renewal cannot silently refresh them. This check intentionally does not assert transitive current authority, expiry, policy or evidence validity. Existing current predicates are unchanged; the forthcoming effective-authority resolver must recursively require each supporting review's full current checks as well as direct identity matching.
+
+Initial two focused cases passed15.058s. Expanded withdrawn-support/scope assertions and all eleven renewal cases are running together as49999 in `/tmp/review-dependencies-eleven.log`. Manifest105 and full-catalog runner include both new dependency cases. Earlier104 full rehearsal27184 remains live and cannot prove105 acceptance; preserve it until terminal. No renewal writer/API or production activation exists.
+
+Candidate131 verification update: eleven combined105 focused cases passed81.984s (49999 terminal0). Full104 completed0 with26 access/325 workflows/164 actual API checks, saved `evidence/2026-11-01-review-renewal-104-result.json`; it excludes105. Final105 full rehearsal49344 is live in `/tmp/review-renewal-105-upgrade-final.log`; final acceptance pending.
+
+## Effective deadline support (candidate132)
+
+Private migration20261101095505 resolves an original deadline to its effective review and validates the full existing current-policy/session/evidence/retention chain plus immutable source-byte identity. Same-byte fresh verification is allowed only for a renewal; historical term-source verification remains unchanged. Four local tests passed24.457s (51300). Legacy public/current functions remain untouched until the complete recursive resolver and writer are integrated. Full105 is still running; final106 verification is pending. Freeze further migration additions until this batch is verified and published.
+
+Publication verification: full105 passed26 access/327 workflows/164 actual API checks (49344 terminal0), saved `evidence/2026-11-01-review-renewal-105-result.json`. Frozen final106 rehearsal81318 is live in `/tmp/review-renewal-106-upgrade-final.log`. Finish this run and publish before adding features; no106 acceptance claim yet.
+
+Final batch verification:106 migrations,26 access checks,331 application workflows and164 actual API checks passed (81318 terminal0). Saved `evidence/2026-11-01-review-renewal-106-result.json`. Lineage/direct-binding/private deadline foundations are verified; recursive downstream authority, source-refresh admission, human writer, public API/UI and full renewal acceptance remain incomplete. No live activation.

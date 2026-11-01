@@ -1,0 +1,35 @@
+{
+  "scope": "Disposable PostgreSQL focused tests only; no production or provider acceptance",
+  "storage": {
+    "tests": 6,
+    "seconds": 44.261,
+    "session": 23328,
+    "result": "passed",
+    "log": "/tmp/review-renewal-storage-six-final.log"
+  },
+  "lineage_head": {
+    "tests": 3,
+    "seconds": 21.981,
+    "session": 49836,
+    "result": "passed",
+    "log": "/tmp/review-lineage-head.log",
+    "limitation": "Ran before the storage guard advisory lock addition; lookup SQL unchanged"
+  },
+  "full_upgrade": {
+    "session": 43336,
+    "status": "failed",
+    "scope": "earlier 103 snapshot",
+    "reason": "Previously corrected omitted test-method boundary repeated fixture setup"
+  },
+  "production_apply": false,
+  "migration_hashes": {
+    "20261101093742_acquisition_review_renewal_lineage.sql": "4552f502e87debd907cc9dc573eeb3cebbee31b0acf4d5d39690dc253b889347",
+    "20261101094232_acquisition_review_lineage_head.sql": "3344e73007e576ebc7daee773b74377132829552740719d289d85f92a6ae107b"
+  },
+  "final_full_upgrade": {
+    "session": 27184,
+    "status": "running",
+    "log": "/tmp/review-renewal-104-upgrade-final.log",
+    "migrations": 104
+  }
+}

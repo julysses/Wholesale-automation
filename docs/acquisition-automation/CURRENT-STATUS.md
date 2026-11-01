@@ -1,5 +1,71 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — renewal foundation batch fully verified locally, ready to publish
+
+Final frozen106 rehearsal81318 completed0: all26 access checks,331 application workflows and164 actual PostgREST checks passed. Preserved24 historical rows across22 populated tables,103 historical definitions and Storage fixture. Evidence `evidence/2026-11-01-review-renewal-106-result.json`; log `/tmp/review-renewal-106-upgrade-final.log`. No local verification session remains running. All six exact predecessor4960ad2/run41293917867 CI checks succeeded.
+
+This batch adds immutable scoped renewal roots/predecessors, private chain lookup, server-derived direct supporting-review bindings and private effective deadline authority. Fifteen new focused cases are included in the full workflow pass. Existing ordinary reviews, withdrawals, contract handoffs and API journeys remain verified. No public renewal writer/endpoint, user-facing renewal action, production migration or provider activation is enabled. This is foundational work, not completion of the renewal lifecycle or full PRD.
+
+Next: commit/push this verified batch and discover its exact successor CI. Then build recursive effective execution/title/disposition checks (including source and expiry caps), same-byte verification refresh at supported stages, sorted combined locks, controlled human renewal writer, discovery/API and the existing guided contract-step UI. Keep receipt recovery/historical identity, tenant/role/MFA isolation, original terms and paused SMS intact. Full PRD remains active/incomplete, including later buyer/disclosure/closing/channel/provider/hosted/legal work.
+
+## November 1 — full105 passed; frozen106 verification running
+
+Full105 rehearsal49344 completed0:26 access checks,327 application workflows and164 real PostgREST checks passed. Historical rows/definitions and Storage remained preserved. Evidence `evidence/2026-11-01-review-renewal-105-result.json`; log `/tmp/review-renewal-105-upgrade-final.log`. This excludes migration106's private effective-deadline predicate. All106 ordered manifest hashes and15 new focused test registrations were checked.
+
+Frozen final106 full rehearsal81318 is running in `/tmp/review-renewal-106-upgrade-final.log`. This is the only live local verification session. Preserve it; do not restart or add more migrations/features before publication. On success, save exact results, review diff, commit this batch and push (all six predecessor4960ad2/run41293917867 CI jobs already succeeded), then verify the exact successor run. No106 result is claimed yet.
+
+After publication, continue recursive execution/title/disposition authority, same-byte refresh/combined locks, controlled human renewal writer and guided API/UI. Full PRD remains active/incomplete; no production changes or provider activation.
+
+Publication gate update: all SIX checks for published4960ad2/run41293917867 are now terminal success. No remote CI blocker remains. Local105 rehearsal49344 is still running; final106 verification must finish before committing/pushing this batch.
+
+## November 1 — effective deadline review support verified locally (candidate132)
+
+Added private root-aware `deadline_review_effective_current` in CLI-created migration20261101095505. It resolves the original deadline to its latest valid lineage head, requires matching dependency bindings, and rechecks activation, reviewer membership/profile/session, current policy, exact immutable interpretation/date/source identity, source retention/reference and current scanner authority. Renewals may reference a fresh verification of the same original artifact/version/hash; ordinary rows retain the original exact verification requirement. It never rewrites original expiry or term-source history. No public/current legacy path is switched yet.
+
+Four focused cases passed24.457s (51300 terminal0, `/tmp/deadline-effective.log`): effective renewed expiry with retained original bytes, fresh same-byte scan and scanner revocation, pause/session/private-role restrictions, policy revocation and withdrawal. Manifest106/full runner now includes those cases. Existing105 full rehearsal49344 remains live in `/tmp/review-renewal-105-upgrade-final.log`; it excludes106. Final106 full verification is still required. Freeze this publication candidate now: finish105, run106, repair actual failures, then commit/push behind predecessor CI. Do not add further migrations before publishing this batch.
+
+Next implementation after publication: recursive execution/title/disposition support and bounded effective-dependency expiry/source union, sorted policy/source/session locks, controlled human renewal writer, discovery/API/UI. Full PRD stays active/incomplete. No production migration, provider activation or live action.
+
+## November 1 — full104 and combined105 focused checks passed
+
+Full104 rehearsal27184 completed0:26 access checks,325 application workflows and164 actual PostgREST API checks passed. Preserved24 historical rows across22 populated tables,103 historical definitions and Storage fixture; no hosted Auth/provider/platform acceptance implied. Evidence `evidence/2026-11-01-review-renewal-104-result.json` (and separate database result); log `/tmp/review-renewal-104-upgrade-final.log`. This covers lineage storage/lookup, not migration105.
+
+All eleven focused renewal cases passed on105 in81.984s (49999 terminal0, `/tmp/review-dependencies-eleven.log`), including the two direct-binding cases, three lineage cases and six storage/concurrency cases. Final105 full populated upgrade/access/application/API rehearsal49344 is now running in `/tmp/review-renewal-105-upgrade-final.log`. Poll this exact session; do not restart while live. No other local verification sessions remain live.
+
+Next finish105 verification, record final evidence, commit and push after exact predecessor CI success. Then integrate effective-authority recursion, same-byte scans, controlled renewal writer and guided API/UI. No production changes; full PRD remains active/incomplete.
+
+## November 1 — server-derived supporting-review bindings (candidate131)
+
+Added local migration20261101095023 after fresh104 disposable inventory5.688s. New immutable renewal dependency snapshots are derived by the server after lineage/deal locking, never accepted from clients. Direct match checks hold legacy/dependent reviews when supporting heads advance; they are explicitly not transitive current authority or expiry/evidence approval. Current legacy predicates, public endpoints and provider controls remain unchanged.
+
+Initial two dependency cases passed15.058s (7215 terminal0). Final combined eleven-case session49999 is running in `/tmp/review-dependencies-eleven.log`; includes stronger scope/withdrawn-support assertions plus prior storage and lookup cases on the105 schema. Full104 rehearsal27184 remains live in `/tmp/review-renewal-104-upgrade-final.log`; preserve until terminal, then verify final105 before claiming complete schema acceptance. Manifest105/full workflow integration updated. No final105 full run yet. Changes remain local/uncommitted; published4960ad2/run41293917867 still had five successes and one running database job at last check.
+
+Next finish combined/full verification and commit/push behind exact CI gate, then implement recursive effective-authority checks, same-byte verification refresh and controlled human writer/API/guided UI. Full PRD remains active/incomplete; no production migration or live action.
+
+## November 1 — effective-authority dependency audit (candidate130)
+
+Confirmed the full104 rehearsal27184 remains live; no restart or overlapping full run. Added the source-level dependency matrix and explicit required immutable dependency snapshots to REVIEW-RENEWAL.md. Key finding: resolving original dependencies to latest renewal heads on every read would silently reactivate older dependent decisions. Renewed execution/title/disposition decisions must bind the exact effective supporting review IDs selected during their own fresh personal review. Original rows derive their original bindings and become held after a dependency advances. New snapshot storage/resolver/source-refresh/writer/API/UI remain to implement; no new runtime or migration in this audit.
+
+Git pull was already current. Published4960ad2/run41293917867 now has five successful jobs and the Real PostgreSQL contention job running. Candidates128–129 remain local/uncommitted until final104 verification; preserve the full PRD and all production/provider approval boundaries.
+
+Latest verification: prior43336 ended1 at the already-corrected all-kind test-method boundary (duplicate fixture policy). Final104 full populated upgrade/access/workflow/API rehearsal27184 is now running in `/tmp/review-renewal-104-upgrade-final.log`; poll this exact session, do not restart. Nine focused cases passed. Changes remain uncommitted until final verification.
+
+## November 1 — private renewal history lookup and lock-wait protection (candidate129)
+
+Added CLI-created migration20261101094232 with private `acquisition_review_lineage_head`: exact workspace/contract/version/original root, latest applicable kind/date stream, approved unbroken chain, descending predecessor sequence, and no resurrection of withdrawn/superseded/future history. It intentionally returns identity only, including after expiry; it is not current authority, has no client grants and is not wired into live execution. Current policy/evidence/dependency resolution and the human writer remain pending.
+
+Three focused lineage cases passed21.981s (49836 terminal0, `/tmp/review-lineage-head.log`). Strengthened local lineage insert locking to take the same deal advisory lock before the canonical row lock as existing controlled writers. Corrected concurrency test synchronization to avoid buffered empty output. Withdrawal-during-wait passed7.436s (56844 terminal0, `/tmp/review-renewal-storage-wait-final.log`). Added explicit assertions for committed withdrawn status and exact rejection reason; final six-storage-case suite23328 is running in `/tmp/review-renewal-storage-six-final.log`. Earlier six-case35909 may finish with the prior synchronization issue; inspect its exact result, do not treat it as final.
+
+Manifest now104 migrations and full runner includes six storage plus three lookup cases. Existing full rehearsal43336 continues with its earlier103-migration/test snapshot in `/tmp/review-renewal-lineage-upgrade.log`; preserve until terminal, then run the corrected final104 catalog. No new full rehearsal has started. Changes remain local/uncommitted pending verification; predecessor4960ad2/run41293917867 had four successes/two database checks running. No production changes or provider activation. Full PRD remains active/incomplete.
+
+## November 1 — additive renewal lineage under verification (candidate128)
+
+Published4960ad2/run41293917867 is the predecessor; confirm its six checks before the next push. Local CLI-created migration20261101093742 adds scoped immutable renewal links, non-null stream discriminator, fork prevention and an insert guard for latest predecessor/exact sequence/unchanged original facts. Existing withdrawal references, grants, RLS and immutable history remain. No renewal endpoint or controlled writer exists yet.
+
+Four focused local PostgreSQL cases passed26.639s (40512 terminal0, `/tmp/review-renewal-storage-final.log`). Initial24877 terminal1 exposed the generated-source-version BEFORE INSERT issue plus two test argument errors; all corrected. Added all-kind/deadline shared-sequence case28729 remains live in `/tmp/review-renewal-all-kinds.log`. Full103-migration populated upgrade/access/workflow/real API rehearsal43336 remains live in `/tmp/review-renewal-lineage-upgrade.log`; do not restart. Five new cases are wired into the full-catalog runner.
+
+Changes remain uncommitted until final verification. Next poll those exact processes, repair any actual failures, save evidence, commit and publish only after predecessor CI succeeds. Then implement effective-authority resolution and same-byte refresh/controlled human renewal/API/guided UI. Full PRD remains active/incomplete; no production/provider action.
+
 ## November 1 — renewal catalog verified (candidate127)
 
 Completed and saved a reproducible disposable catalog inventory before renewal SQL. `scripts/acquisition_review_renewal_inventory.py` reaches the disposition-choice fixture through20261101090156, records schema/constraints/indexes/RLS/grants/triggers and the reference migration manifest, and verifies all five tables retain RLS plus SELECT-only client review access and the immutable trigger. Final inventory test passed5.063s (`/tmp/review-renewal-inventory-final.log`, session92857 terminal0). Evidence: `evidence/2026-11-01-review-renewal-local-catalog.json`. This is not a full populated-upgrade rerun.
@@ -1092,3 +1158,9 @@ Amount approval is internal review only. Saving a document or scan observation d
 4. Complete remaining inbound/human-caller/agency, contracts/disposition and underwriting-delivery requirements shown above, preserving one guided app process and sequential activation gates.
 
 See [PHASE-1-RELEASE-PACKET.md](PHASE-1-RELEASE-PACKET.md), [ONLINE-OFFER-PORTAL.md](ONLINE-OFFER-PORTAL.md), [POSTAL-AND-BATCH-IMPLEMENTATION.md](POSTAL-AND-BATCH-IMPLEMENTATION.md), and [UPGRADE-REHEARSAL.md](UPGRADE-REHEARSAL.md). Read current source/Git/CI before relying on any older checkpoint in those documents.
+
+Final focused result: all five storage cases passed37.170s, session96401 terminal0 (`/tmp/review-renewal-storage-five.log`), including all supported kinds/shared deadline sequence. Full rehearsal43336 remains running and is not yet passed.
+
+Candidate128 verification history: all-kind session28729 finished1 due to an omitted test-method boundary that inadvertently ran fixture setup twice after the all-kind assertions. Restored the separate client-denial method; then launched final five-case session96401 (now passed) in `/tmp/review-renewal-storage-five.log`. Full upgrade43336 remains live and may have imported the earlier test definition; do not restart it until terminal, and do not treat it as final coverage of the corrected five-case suite. The SQL migration did not change after its four-case pass.
+
+Candidate129 final focused evidence: six storage cases passed44.261s (23328 terminal0), including committed-withdrawal exact-reason lock-wait rejection; three identity lookup cases previously passed21.981s. Saved `evidence/2026-11-01-review-renewal-focused-result.json` with exact coverage limits and migration hashes. Earlier35909 terminal1 was solely the corrected test synchronization issue. Full43336 still running against earlier103 snapshot; final104 upgrade/API acceptance remains pending. Worktree intentionally uncommitted until final verification.

@@ -409,6 +409,22 @@
     {
       "file": "20261101090156_acquisition_disposition_transition_choices.sql",
       "sha256": "b1fe25c03424589c34f79bae737802d696ced66295c05d907cc671d0e7c3652e"
+    },
+    {
+      "file": "20261101093742_acquisition_review_renewal_lineage.sql",
+      "sha256": "4552f502e87debd907cc9dc573eeb3cebbee31b0acf4d5d39690dc253b889347"
+    },
+    {
+      "file": "20261101094232_acquisition_review_lineage_head.sql",
+      "sha256": "3344e73007e576ebc7daee773b74377132829552740719d289d85f92a6ae107b"
+    },
+    {
+      "file": "20261101095023_acquisition_review_renewal_dependencies.sql",
+      "sha256": "a231ba08f58ddd2c2d5987ac367c79cf475c2724baff6d90b64b8d98c9515dce"
+    },
+    {
+      "file": "20261101095505_acquisition_deadline_effective_review.sql",
+      "sha256": "2af9676426e84900d3bfc8d8726eb5ec08557137f383a20e000f6006a6ec1e09"
     }
   ]
 }
