@@ -1,5 +1,17 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — reviewed dates connected to execution handoff (candidate91)
+
+Returned-agreement review now loads fresh scoped current interpretations for prepared calendar-only terms. It preserves original calendar fields, derives temporary instant copies only for comparison/order checks, and persists the exact interpretation IDs with execution findings. Missing/stale/revoked/wrong-scope/changed-date states hold the decision. Review expiry is capped by the earliest interpretation expiry and rechecked immediately before first save. Historical pending requests still retry their original bytes without adopting new references. Explicit-instant legacy requests retain their original payload shape.
+
+The terms step shows which current interpretations accompany the review; personal acknowledgement includes those interpretations. Refreshing checks clears acknowledgement, and revoked authority holds the decision. Source documents and reviewer authority are independently enforced again by the already-tested server writer/transition. Original contract terms are never replaced by derived times.
+
+Validation:26 focused model/component tests passed876ms; full frontend834tests/92files passed9.69s; typecheck/build passed2.98s; no new lint findings against147 existing. Desktop1280x900/mobile375x812 combined synthetic browser journey passed date interpretation → returned-agreement review → executed status, committed-response-loss/reload/exact recovery at all three writes, exact saved date-reference ID, unchanged calendar date, bounded expiry, later original execution-review withdrawal, no overflow/page errors. Phone terms screenshot visually inspected. Evidence:evidence/execution-date-handoff-ui-2026-11-01/. Logs:/tmp/execution-date-ui-focused-final.log,/tmp/execution-date-ui-all-tests.log,/tmp/execution-date-ui-final-build.log,/tmp/execution-date-ui-lint.log,/tmp/execution-date-handoff-browser.log. All validation processes terminal; preview94766 intentionally stopped.
+
+All six predecessor626c44a/run41275553285 checks passed. Pulled current and pushed verified fd1e1e6 and0c5d65dfa895b9d0ce8026f84b62586b3660d35f. Exact successor41276522452 is running; keep candidate91 local until all six terminal successes. Do not cancel/restart live validation. Production schema, policy provisioning, signing, providers, outreach and fulfillment remain untouched.
+
+Next: continue controlled contract amendment/exception, title/disposition and closing lifecycle work with actual source evidence and original-version recovery; preserve one guided app journey. The date-review handoff closes a local implementation gap, not hosted/provider/legal acceptance or the full PRD. Remaining foundation/Phase1/inbound/mail/human/agency/disposition acceptance remains required. Full goal active/incomplete.
+
 ## November 1 — guided date-review form verified (candidate90)
 
 Step5 now includes a collapsed “Clarify contract dates” form before returned-agreement review, using the existing navy/orange card style and property/contract context. It separates the immutable original calendar date/clause from the selected interpretation source. Operators supply explicit time, named zone, offset, clause, rationale, personal review and bounded validity; no time is guessed. Original withdrawal remains independent of the selected source and shared ledger cursor.

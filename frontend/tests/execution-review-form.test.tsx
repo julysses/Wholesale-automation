@@ -68,10 +68,17 @@ it('holds malformed recovery and makes no request', async () => {
 });
 it('cannot open while an adjacent step is held', () => { open(true); expect(screen.getByText('Open execution review')).toBeDisabled(); expect(mock.fetch).not.toHaveBeenCalled(); });
 
-async function prepareCompleteReview() {
+async function prepareCompleteReview(calendar = false) {
   const { executionChoice, executionTerms } = await import('./fixtures/execution-review');
   const previous = mock.fetch.getMockImplementation()!, prepared = executionTerms(id(8));
+  if (calendar) prepared.closing_deadline = { precision: 'date', calendar_date: new Date(Date.now() + 864000000).toISOString().slice(0, 10), instant: null };
   mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    if (path.endsWith('/deadline-reviews/closing_deadline')) return { json: async () => ({ ...scope, kind: 'deadline_resolution', term: 'closing_deadline',
+      sequence: 2, review_sequence: 1, review_id: id(31), interpretation_review_id: id(31), original_term: prepared.closing_deadline,
+      resolution: { term: 'closing_deadline', calendar_date: prepared.closing_deadline.calendar_date, local_time: '17:00:00', time_zone: 'UTC',
+        resolved_instant: `${prepared.closing_deadline.calendar_date}T17:00:00Z`, basis: 'explicit_document_time',
+        source: { term: 'closing_deadline', artifact_id: id(8), artifact_version: 1, sha256: 'a'.repeat(64), locator: 'Original closing clause' }, rationale: 'Personally reviewed original date and explicit UTC time.' },
+      status: 'approved', approval_current: true, expires_at: new Date(Date.now() + 60000).toISOString(), checked_at: new Date().toISOString(), execution_authorized: false }) };
     if (path.endsWith('/candidate')) return { json: async () => executionChoice(context, id(8), prepared) };
     const response = await previous(path, init);
     if (path.includes('/references?')) { const page = await response.json(); page.items[0].source_version = 1; page.items[0].reference_type = 'term_source'; return { json: async () => page }; }
@@ -122,4 +129,27 @@ it('withdraws the original agreement even when the selected new agreement is hel
   fireEvent.click(screen.getByText('Record withdrawal')); await screen.findByText(/Execution review recorded/);
   const post = mock.fetch.mock.calls.find(call => call[1]?.method === 'POST')!;
   expect(JSON.parse(post[1].body)).toMatchObject({ artifact_id: id(71), status: 'withdrawn', findings: null, personally_reviewed: false });
+});
+
+it('preserves reviewed calendar dates, exact IDs and the earliest approval expiry', async () => {
+  await prepareCompleteReview(true);
+  fireEvent.click(screen.getByText('Record execution review')); await screen.findByText(/Execution review recorded/);
+  const body = JSON.parse(mock.fetch.mock.calls.find(call => call[1]?.method === 'POST')![1].body);
+  expect(body.findings.deadline_reviews).toEqual([{ term: 'closing_deadline', review_id: id(31) }]);
+  expect(body.findings.terms.closing_deadline.precision).toBe('date'); expect(body.findings.terms.closing_deadline.instant).toBeNull();
+  expect(Date.parse(body.expires_at)).toBeLessThanOrEqual(Date.now() + 60000);
+});
+it('holds the decision when refreshing reveals withdrawn interpretation authority', async () => {
+  await prepareCompleteReview(true);
+  const previous = mock.fetch.getMockImplementation()!;
+  mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    const response = await previous(path, init);
+    if (path.endsWith('/deadline-reviews/closing_deadline')) {
+      const state = await response.json(); return { json: async () => ({ ...state, status: 'requires_review', approval_current: false, expires_at: null }) };
+    }
+    return response;
+  });
+  fireEvent.click(screen.getByText('Refresh review checks'));
+  await waitFor(() => expect(screen.getByText('Record execution review')).toBeDisabled());
+  expect(screen.getByRole('checkbox')).not.toBeChecked(); expect(mock.fetch.mock.calls.some(call => call[1]?.method === 'POST')).toBe(false);
 });

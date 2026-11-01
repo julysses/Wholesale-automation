@@ -10,6 +10,8 @@ let lose = false;
 export function loseNextReply() { lose = true; }
 const ledgerKey = 'contract-draft-local-qa-ledger';
 // Explicit local presentation fixture; no production imports or network calls.
+const boundDatesFixture = new URLSearchParams(location.search).get('boundDates') === 'true';
+const deadlineDay = boundDatesFixture ? new Date(Date.now() + 864000000).toISOString().slice(0, 10) : '2026-11-20';
 const executionFixture = new URLSearchParams(location.search).get('executionFixture') === 'true';
 const signatureFixture = new URLSearchParams(location.search).get('signatureFixture') === 'true';
 const linkFixture = new URLSearchParams(location.search).get('linkFixture') === 'true';
@@ -64,10 +66,11 @@ export async function apiFetch(path: string, init?: RequestInit) {
         original_source: { term, artifact_id: id(11), artifact_version: 1, sha256: 'a'.repeat(64), locator: 'Synthetic original calendar clause', verification_id: id(9) },
         current_review: { ...scope, kind: 'deadline_resolution', term, sequence: entries.length, review_sequence: latest ? entries.indexOf(latest) + 1 : null,
           review_id: latest?.request.id ?? null, interpretation_review_id: original?.request.id ?? null,
-          original_term: { precision: 'date', calendar_date: '2026-11-20', instant: null }, resolution: original?.request.resolution ?? null,
+          original_term: { precision: 'date', calendar_date: deadlineDay, instant: null }, resolution: original?.request.resolution ?? null,
           status: !latest ? 'not_reviewed' : latest.request.status === 'withdrawn' ? 'withdrawn' : current ? 'approved' : 'requires_review',
           approval_current: !!current, expires_at: current ? latest!.request.expires_at : null, checked_at: stamp, execution_authorized: false }, checked_at: stamp, execution_authorized: false };
     }
+    if (init?.method !== 'POST' && !path.endsWith('/candidate')) value = (value as { current_review: unknown }).current_review;
   }
   else if (path.endsWith('/terms') || path.includes('/versions?')) {
     if (!ledger) throw new Error('Save the synthetic draft first');
@@ -237,7 +240,11 @@ export async function apiFetch(path: string, init?: RequestInit) {
     const key = 'contract-execution-local-qa-ledger';
     const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as { request: { id: string; expected_sequence: number; status: string; artifact_id: string; verification_id: string; policy_id: string; expires_at: string | null }; receipt: Record<string, unknown> }[];
     const termsKey = 'contract-execution-prepared-local-qa';
-    if (!sessionStorage.getItem(termsKey)) sessionStorage.setItem(termsKey, JSON.stringify(executionTerms(id(11))));
+    if (!sessionStorage.getItem(termsKey)) {
+      const prepared = executionTerms(id(11));
+      if (boundDatesFixture) prepared.closing_deadline = { precision: 'date', calendar_date: deadlineDay, instant: null };
+      sessionStorage.setItem(termsKey, JSON.stringify(prepared));
+    }
     const terms = JSON.parse(sessionStorage.getItem(termsKey)!);
     if (init?.method === 'POST') {
       const request = JSON.parse(init.body as string), prior = entries.find(entry => entry.request.id === request.id);

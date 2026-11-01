@@ -3,9 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
 import type { DocumentContext } from '@/lib/acquisition/contract-documents';
 import { parseReferences } from '@/lib/acquisition/contract-references';
+import { deadlineTerms, parseDeadlineState } from '@/lib/acquisition/deadline-review';
 import { termsSchema, centsToDollars, dollarsToCents, type ContractTerms } from '@/lib/acquisition/contract-terms';
 import { parseExecutionCandidate, readPendingExecution, preserveExecution, pendingExecutionSchema, findingNames,
-  clearConfirmedExecution, clearRejectedExecution, executionTermsHold, type PendingExecution } from '@/lib/acquisition/execution-review';
+  clearConfirmedExecution, clearRejectedExecution, executionTermsHold, resolveExecutionDates, type PendingExecution } from '@/lib/acquisition/execution-review';
 import { TermsSummary } from './ContractTermsForm';
 import { ExecutionTermsFields } from './ExecutionTermsFields';
 const button = 'rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed';
@@ -52,6 +53,11 @@ function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
   const candidate = useQuery({ ...options, enabled: options.enabled && !!artifact,
     queryKey: ['execution-choice', context.userId, context.workspaceId, context.contractId, context.contractVersion, artifact],
     queryFn: async ({ signal }) => parseExecutionCandidate(await (await apiFetch(`${base}/execution-review/documents/${artifact}/candidate`, { signal, cache: 'no-store' })).json(), context, artifact) });
+  const requiredDates = deadlineTerms.filter(name => candidate.data?.prepared_terms?.[name].precision === 'date');
+  const dates = useQuery({ ...options, enabled: options.enabled && requiredDates.length > 0,
+    queryKey: ['execution-deadlines', context.userId, context.workspaceId, context.contractId, context.contractVersion, requiredDates.join(',')],
+    queryFn: async ({ signal }) => Object.fromEntries(await Promise.all(requiredDates.map(async name => [name,
+      parseDeadlineState(await (await apiFetch(`${base}/deadline-reviews/${name}`, { signal, cache: 'no-store' })).json(), context, name)] as const))) });
   const fresh = !disabled && !blocked && !candidate.isError && !candidate.isFetching && candidate.data
     && now - Date.parse(candidate.data.checked_at) <= 30000 && now - Date.parse(candidate.data.checked_at) >= -5000;
   const choice = fresh ? candidate.data!.candidate : null, withdrawal = fresh ? candidate.data!.withdrawal : null;
@@ -62,11 +68,19 @@ function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
   const checksComplete = findingNames.every(name => checks[name].finding === 'confirmed' && validLocator(checks[name].locator) && validNote(checks[name].note));
   let proposed: ContractTerms | null = null;
   try { if (draft) { const parsed = termsSchema.safeParse({ ...draft, purchase_price_cents: dollarsToCents(price), earnest_money_cents: dollarsToCents(earnest) }); if (parsed.success) proposed = parsed.data; } } catch { /* Incomplete entry remains visible, never submitted. */ }
-  const termHold = proposed && candidate.data?.prepared_terms ? executionTermsHold(proposed, candidate.data.prepared_terms, now) : 'Complete every entered term, its source clause, and your comparison notes.';
-  const canApprove = sourceMatches && !!choice && Date.parse(choice.max_expires_at) > now && checksComplete && !!proposed && !termHold && reviewed && validNote(note);
+  let dateBinding: ReturnType<typeof resolveExecutionDates> | null = null;
+  let termHold: string | null = 'Complete every entered term, its source clause, and your comparison notes.';
+  if (proposed && candidate.data?.prepared_terms) {
+    try {
+      if (requiredDates.length && (dates.isError || dates.isFetching || !dates.data)) throw new Error('Refresh the current date interpretations before continuing.');
+      dateBinding = resolveExecutionDates(proposed, candidate.data.prepared_terms, context, dates.data ?? {}, now);
+      termHold = executionTermsHold(dateBinding.compared, dateBinding.original, now);
+    } catch { termHold = 'Date interpretations are missing, expired or changed. Close this review to clarify the original dates, then refresh checks.'; }
+  }
+  const canApprove = sourceMatches && !!choice && Date.parse(choice.max_expires_at) > now && checksComplete && !!proposed && !!dateBinding && dateBinding.maxExpiresAt > now && !termHold && reviewed && validNote(note);
   const canWithdraw = !!withdrawal && validNote(note);
   function close() { if (busy || pending || blocked) return; setExpanded(false); setMode(null); setDraft(null); setChecks(blankChecks()); setNote(''); setReviewed(false); setMessage(''); }
-  function refresh() { if (disabled || pending || busy || blocked) return; setReviewed(false); setNow(Date.now()); void documents.refetch(); if (artifact) void candidate.refetch(); }
+  function refresh() { if (disabled || pending || busy || blocked) return; setReviewed(false); setNow(Date.now()); void documents.refetch(); if (artifact) void candidate.refetch(); if (requiredDates.length) void dates.refetch(); }
   function begin() {
     if (!sourceMatches || !candidate.data?.prepared_terms || pending || busy || disabled) return;
     const prepared = candidate.data.prepared_terms;
@@ -81,10 +95,13 @@ function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
       if (!saved) {
         const authority = mode === 'approved' ? choice : withdrawal;
         if (!authority || !candidate.data || Date.now() - Date.parse(candidate.data.checked_at) > 30000) throw new Error('Choices expired');
+        const bound = mode === 'approved' && proposed && candidate.data.prepared_terms
+          ? resolveExecutionDates(proposed, candidate.data.prepared_terms, context, dates.data ?? {}, Date.now()) : null;
+        if (mode === 'approved' && (!bound || executionTermsHold(bound.compared, bound.original, Date.now()))) throw new Error('Date interpretation changed');
         saved = pendingExecutionSchema.parse({ version: 1, context, request: { id: crypto.randomUUID(), expected_version: context.contractVersion,
           expected_sequence: authority.expected_sequence, status: mode, artifact_id: authority.artifact_id, verification_id: authority.verification_id,
-          policy_id: authority.policy_id, expires_at: mode === 'approved' ? new Date(Math.min(Date.parse(choice!.max_expires_at), Date.now() + minutes * 60000)).toISOString() : null,
-          personally_reviewed: mode === 'approved', note, findings: mode === 'approved' ? { ...checks, terms: proposed } : null } });
+          policy_id: authority.policy_id, expires_at: mode === 'approved' ? new Date(Math.min(Date.parse(choice!.max_expires_at), bound!.maxExpiresAt, Date.now() + minutes * 60000)).toISOString() : null,
+          personally_reviewed: mode === 'approved', note, findings: mode === 'approved' ? { ...checks, terms: proposed, ...(bound!.bindings.length ? { deadline_reviews: bound!.bindings } : {}) } : null } });
         try { saved = preserveExecution(sessionStorage, saved); setPending(saved); } catch (error) { setBlocked(true); throw error; }
       }
       sent = true;
@@ -110,7 +127,7 @@ function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
     {!expanded && !blocked && <button type="button" className={button} disabled={disabled} onClick={() => setExpanded(true)}>Open execution review</button>}
     {expanded && !pending && !blocked && <>
       {disabled && <p role="alert">Confirm the contract and finish the adjacent pending step first.</p>}
-      <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={busy || disabled || candidate.isFetching || documents.isFetching} onClick={refresh}>Refresh review checks</button>
+      <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={busy || disabled || candidate.isFetching || documents.isFetching || dates.isFetching} onClick={refresh}>Refresh review checks</button>
         <button type="button" className={button} disabled={busy} onClick={close}>Close without saving</button></div>
       {!mode && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-medium">Choose the returned agreement</legend>
         <label className="block text-sm">Verified purchase-contract document<select className={input} value={artifact} onChange={e => { setArtifact(e.target.value); setReviewed(false); }}><option value="">Choose a retained agreement</option>
@@ -134,12 +151,13 @@ function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
         <button type="button" className={button} disabled={!checksComplete} onClick={() => setStage('terms')}>Next: compare terms</button>
       </fieldset>}
       {mode === 'approved' && stage === 'terms' && draft && <><ExecutionTermsFields context={context} draft={draft} disabled={disabled || busy} price={price} earnest={earnest} setPrice={setPrice} setEarnest={setEarnest} onChange={setDraft} />
+        {!!dateBinding?.bindings.length && <div className="rounded-lg border border-orange-200 bg-white p-3 text-sm space-y-1"><p>Original calendar dates are preserved. These current interpretations will accompany your review:</p>{dateBinding.bindings.map(binding => <p key={binding.term}>{binding.term === 'effective' ? 'Effective date' : binding.term === 'inspection_deadline' ? 'Inspection deadline' : 'Closing deadline'}: {dates.data?.[binding.term]?.resolution?.local_time} · {dates.data?.[binding.term]?.resolution?.time_zone}</p>)}</div>}
         {termHold && <p role="status" className="text-sm">{termHold}</p>}
         <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={busy} onClick={() => setStage('findings')}>Back to findings</button><button type="button" className={button} disabled={disabled || busy || !proposed || !!termHold} onClick={() => setStage('decision')}>Next: review decision</button></div></>}
       {mode && stage === 'decision' && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-semibold">3. Record your decision</legend>
-        {mode === 'approved' && proposed ? <><TermsSummary terms={proposed} /><label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={reviewed} onChange={e => setReviewed(e.target.checked)} />I personally reviewed the selected agreement, all four findings and every sourced term.</label>
+        {mode === 'approved' && proposed ? <><TermsSummary terms={proposed} /><label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={reviewed} onChange={e => setReviewed(e.target.checked)} />I personally reviewed the selected agreement, all four findings, every sourced term and any date interpretations.</label>
           <label className="block text-sm">Review validity (minutes)<input type="number" min={1} max={1440} className={input} value={minutes} onChange={e => setMinutes(Math.max(1, Math.min(1440, Number(e.target.value) || 1)))} /></label>
-          <p className="text-xs">Validity is capped by current document and reviewer checks. Other cited sources are checked again on save.</p></> : <p className="text-sm">Withdraw only your previous recorded execution review. Its original agreement and findings remain in history.</p>}
+          <p className="text-xs">Validity is capped by current document, reviewer and date-interpretation checks. Other cited sources are checked again on save.</p></> : <p className="text-sm">Withdraw only your previous recorded execution review. Its original agreement and findings remain in history.</p>}
         <label className="block text-sm">Decision notes<textarea className={input} maxLength={4000} value={note} onChange={e => setNote(e.target.value)} /></label><p className="text-xs">Explain your decision in at least 20 characters.</p>
         <div className="flex flex-wrap gap-2">{mode === 'approved' && <button type="button" className={button} onClick={() => { setStage('terms'); setReviewed(false); }}>Back to terms</button>}
           <button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={now < retryAt || !(mode === 'approved' ? canApprove : canWithdraw)} onClick={() => { void save(); }}>{mode === 'approved' ? 'Record execution review' : 'Record withdrawal'}</button></div>

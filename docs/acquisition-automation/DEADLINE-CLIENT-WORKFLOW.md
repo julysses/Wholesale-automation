@@ -24,3 +24,9 @@ No live schema, policy, signing, outreach or provider activation is authorized b
 ## Guided form checkpoint — candidate90
 
 Visible `DeadlineReviewForm.tsx` and parent `ContractDraft.tsx` recovery/adjacent-action integration now implement steps1–4 above. The form records explicit interpretation or original withdrawal using the exact discovered authority. Parent recovery supports missing selection, newer canonical versions, conflicting operations and unreadable saved requests. All831frontend tests, build and lint passed; desktop/mobile browser approval/withdrawal lost-response recovery passed with exactly two decisions and unchanged original date. Evidence:`evidence/deadline-review-ui-2026-11-01/`. The source-backed execution binding in step5 and complete combined journey remain next; existing date-only client execution hold is intentionally still present until that connection is verified.
+
+## Combined execution handoff — candidate91
+
+ExecutionReviewForm now reads fresh exact term states, displays accompanying interpretations, preserves original calendar fields and attaches their exact review IDs. `resolveExecutionDates` makes temporary comparison copies only and caps review expiry. Missing, revoked, stale, mixed-scope and changed-date authority stays held; pending retries preserve the original IDs/bytes. Refresh clears personal acknowledgement. No server authority is inferred from these client checks.
+
+The combined date interpretation → execution review → executed status browser journey passed on desktop/mobile with lost responses/reload/recovery at all three writes, original date/ID preservation, expiry bounds and later original execution withdrawal. Full834frontend tests, build and lint passed. Evidence:`evidence/execution-date-handoff-ui-2026-11-01/`. The local client steps above are now connected; hosted/provider/legal and remaining full lifecycle/PRD acceptance remain separate and incomplete.

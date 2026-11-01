@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { id } from './mail-content';
 import { contextSchema, type DocumentContext } from './contract-documents';
 import { termsSchema } from './contract-terms';
-import { deadlineTerm, deadlineTerms } from './deadline-review';
+import { deadlineTerm, deadlineTerms, parseDeadlineState } from './deadline-review';
 const timestamp = z.string().datetime({ offset: true });
 const version = z.number().int().min(1).max(2147483647);
 const sequence = z.number().int().min(0).max(2147483647);
@@ -110,4 +110,26 @@ export function executionTermsHold(terms: z.infer<typeof termsSchema>, prepared:
   if (![effective, inspection, closing].every(Number.isFinite) || effective > now || effective > inspection || inspection > closing || effective >= closing || closing <= now)
     return 'The effective time or contract deadlines need review before proceeding.';
   return null;
+}
+
+/** Derived comparison copies only. Persist the original calendar terms and IDs. */
+export function resolveExecutionDates(terms: z.infer<typeof termsSchema>, prepared: z.infer<typeof termsSchema>,
+  context: DocumentContext, states: Partial<Record<typeof deadlineTerms[number], unknown>>, now = Date.now()) {
+  const compared = { ...terms }, original = { ...prepared };
+  const bindings: { term: typeof deadlineTerms[number]; review_id: string }[] = [];
+  let maxExpiresAt = Infinity;
+  for (const name of deadlineTerms) {
+    if (terms[name].precision !== 'date') continue;
+    if (prepared[name].precision !== 'date' || terms[name].calendar_date !== prepared[name].calendar_date)
+      throw new Error('Returned dates differ from the prepared version. A separately reviewed amendment is required.');
+    const state = parseDeadlineState(states[name], context, name, now);
+    if (!state.approval_current || !state.resolution || !state.review_id || !state.expires_at
+      || state.original_term.calendar_date !== terms[name].calendar_date)
+      throw new Error('Complete a current date interpretation in Clarify contract dates before continuing.');
+    const instant = { precision: 'instant' as const, calendar_date: null, instant: state.resolution.resolved_instant };
+    compared[name] = instant; original[name] = instant;
+    bindings.push({ term: name, review_id: state.review_id });
+    maxExpiresAt = Math.min(maxExpiresAt, Date.parse(state.expires_at));
+  }
+  return { compared, original, bindings, maxExpiresAt };
 }

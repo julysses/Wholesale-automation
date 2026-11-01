@@ -97,3 +97,25 @@ it('preserves legacy findings and exact optional date-review references', () => 
     expect(() => pendingExecutionSchema.parse({ ...value, request: { ...value.request, findings: { ...findings, deadline_reviews: refs } } })).toThrow();
   expect(() => preserveExecution(sessionStorage, { ...value, request: { ...value.request, findings: { ...findings, deadline_reviews: [{ term: 'effective', review_id: id(22) }] } } })).toThrow();
 });
+
+it('binds current exact date interpretations without changing original terms', async () => {
+  const { executionTerms } = await import('../../../tests/fixtures/execution-review');
+  const { resolveExecutionDates, executionTermsHold } = await import('./execution-review');
+  const now = Date.now(), prepared = executionTerms(id(8), now);
+  const day = new Date(now + 864000000).toISOString().slice(0, 10);
+  prepared.closing_deadline = { precision: 'date', calendar_date: day, instant: null };
+  const state = { workspace_id: context.workspaceId, contract_id: context.contractId, contract_version: 2, kind: 'deadline_resolution', term: 'closing_deadline',
+    sequence: 3, review_sequence: 1, review_id: id(21), interpretation_review_id: id(21), original_term: prepared.closing_deadline,
+    resolution: { term: 'closing_deadline', calendar_date: day, local_time: '17:00:00', time_zone: 'UTC', resolved_instant: `${day}T17:00:00Z`, basis: 'explicit_document_time',
+      source: { term: 'closing_deadline', artifact_id: id(8), artifact_version: 1, sha256: 'a'.repeat(64), locator: 'Closing clause' }, rationale: 'Reviewed the original closing date and explicit time.' },
+    status: 'approved', approval_current: true, expires_at: new Date(now + 60000).toISOString(), checked_at: new Date(now).toISOString(), execution_authorized: false };
+  const before = JSON.stringify(prepared), resolved = resolveExecutionDates(prepared, prepared, context, { closing_deadline: state }, now);
+  expect(resolved.bindings).toEqual([{ term: 'closing_deadline', review_id: id(21) }]); expect(resolved.maxExpiresAt).toBe(now + 60000);
+  expect(executionTermsHold(resolved.compared, resolved.original, now)).toBeNull(); expect(JSON.stringify(prepared)).toBe(before);
+  for (const patch of [{ workspace_id: id(30) }, { term: 'effective' }, { status: 'requires_review', approval_current: false, expires_at: null },
+    { checked_at: new Date(now - 31000).toISOString() }, { expires_at: new Date(now - 1).toISOString() }])
+    expect(() => resolveExecutionDates(prepared, prepared, context, { closing_deadline: { ...state, ...patch } }, now)).toThrow();
+  expect(() => resolveExecutionDates(prepared, prepared, context, {}, now)).toThrow();
+  const changed = { ...prepared, closing_deadline: { ...prepared.closing_deadline, calendar_date: '2099-01-01' } };
+  expect(() => resolveExecutionDates(changed, prepared, context, { closing_deadline: state }, now)).toThrow();
+});
