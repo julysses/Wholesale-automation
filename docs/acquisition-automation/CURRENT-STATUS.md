@@ -1,5 +1,15 @@
 # Acquisition automation — current implementation and release handoff
 
+## October 31 — deadline interpretation storage verified (candidate82)
+
+CLI-created20261101040743 adds deadline interpretation fields to the existing immutable review ledger, a same-workspace/contract/version/term approved-original foreign key, latest-per-term index and private exact-shape/DST validator. Existing review policies, source-version foreign keys, shared sequence uniqueness, RLS and immutable history remain intact; no policy is seeded and no writer/API is exposed. Unrelated review kinds cannot carry deadline interpretations. See SCHEMA-MAPPING.md and DEADLINE-RESOLUTIONS.md.
+
+Four focused SQL cases passed20.215s. Full disposable rehearsal96508 exited0:81 migrations,26 access probes,212 workflows (including all four new cases),114 actual PostgREST/API checks;24 historical rows/22 populated tables/103 table definitions and Storage fixtures preserved. Evidence:evidence/2026-10-31-deadline-storage-result.json. Logs:/tmp/deadline-storage-sql.log,/tmp/deadline-storage-upgrade.log. No live local test process remains.
+
+Git pull verified current before edits. Published repair180ba10/run41271347320 still has five terminal successes and one live database job; its currently running step is Acquisition workspace isolation and concurrent administration. No cancellation/restart. Local e8e5837,0e742a8 and candidate82 remain unpublished pending all six terminal successes. Once that gate passes, pull/push the validated checkpoints and verify the exact successor.
+
+Next: controlled deadline-review writer with original date-only term/source binding, deterministic source/policy/session locks and fresh recheck, shared sequence plus latest-per-term withdrawal, immutable audit and exact retry. Then current-state/discovery, execution-review binding, guided UI and API/browser recovery. Production migration, policy/provider activation, outreach, fulfillment and binding actions remain untouched. Full PRD goal remains active and incomplete.
+
 ## October 31 — term-specific deadline review boundary verified
 
 Added strict deadline-resolution approval/withdrawal requests and historical receipts. Approval binds one exact term and retained interpretation source; withdrawal retains the original approval identity independently of the shared ledger sequence, prohibits replacement interpretations and cannot renew approval. Server ownership, original-term identity, source and policy verification remain required in the pending controlled writer. These models are not mounted; existing date-only execution holds remain unchanged.

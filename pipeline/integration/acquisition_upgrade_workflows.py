@@ -25,6 +25,7 @@ from acquisition_execution_state_tests import ExecutionStateCases
 from acquisition_execution_choice_tests import ExecutionChoiceCases
 from acquisition_executed_transition_tests import ExecutedTransitionCases
 from acquisition_executed_choice_tests import ExecutedChoiceCases
+from acquisition_deadline_storage_tests import DeadlineStorageCases
 from acquisition_transition_choice_tests import TransitionChoiceCases
 from acquisition_contract_transition_tests import ContractTransitionCases
 from acquisition_signature_candidate_tests import SignatureCandidateCases
@@ -57,7 +58,7 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
-class FullCatalogDocumentTests(ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
+class FullCatalogDocumentTests(DeadlineStorageCases, ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
     def setUp(self):
         super().setUp()
         self.prepare_document_fixture()
@@ -100,6 +101,7 @@ def run_workflow_probes(db):
     document_names += sorted(name for name in ExecutionChoiceCases.__dict__ if name.startswith('test_signature_execution_choice_'))
     document_names += sorted(name for name in ExecutedTransitionCases.__dict__ if name.startswith('test_signature_executed_transition_'))
     document_names += sorted(name for name in ExecutedChoiceCases.__dict__ if name.startswith('test_signature_executed_choice_'))
+    document_names += sorted(name for name in DeadlineStorageCases.__dict__ if name.startswith('test_signature_deadline_storage_'))
     names += contract_names + document_names
     if not names:
         raise RuntimeError('No application journeys discovered')

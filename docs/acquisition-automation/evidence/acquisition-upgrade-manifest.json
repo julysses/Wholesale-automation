@@ -321,6 +321,10 @@
     {
       "file": "20261101035403_acquisition_executed_transition_choices.sql",
       "sha256": "e83fabb1f2058678bd97883aed676659e2a47330135460140f600ceb2de3bac7"
+    },
+    {
+      "file": "20261101040743_acquisition_deadline_resolution_storage.sql",
+      "sha256": "80cd014c14b835ca6b60f9c02367e9bcc2231e853b7a6375acbf8bb1aa80a06c"
     }
   ]
 }
