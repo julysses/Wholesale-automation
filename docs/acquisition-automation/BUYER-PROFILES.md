@@ -1,6 +1,6 @@
 # Buyer profiles in the acquisition flow
 
-Status: local full database, gateway and UI acceptance passed; publication pending. Production activation is separate.
+Status: published in90f9c324ef4ccd4c30dae0f8fcbe1a4ed74680e5 after local database, gateway and UI acceptance. See CURRENT-STATUS.md for exact successor CI; production activation is separate.
 
 ## Operator process
 
@@ -39,4 +39,4 @@ If this capability must be withdrawn after an approved deployment, pause new acq
 - Backend4746 passed,10 skipped. `evidence/2026-11-01-buyer-118-backend-result.json`.
 - Final frontend1107 passed, build passed, no new lint findings; parent integration48 passed (including three buyer cases).
 - Synthetic browser desktop1280×900 and phone375×812: lost reply, reload, identical recovery and one retained buyer record. Screenshots visually reviewed; no console errors. `evidence/buyer-profiles-2026-11-01/`. This tests real components with a synthetic adapter, not the server or hosted Auth.
-- All175 actual gateway checks, including buyer-specific mounted API checks, pass in the focused complete-catalog runner. The final populated migration-role rehearsal19435 passed376 workflows and175 gateway checks; inspect CURRENT-STATUS.md for the exact running handle and outcome. Do not treat baseline167 checks as evidence of this newly added journey.
+- All175 actual gateway checks, including buyer-specific mounted API checks, pass in the focused complete-catalog runner. The final populated migration-role rehearsal19435 passed376 workflows and175 gateway checks; see evidence/2026-11-01-buyer-118-publish-result.json for the terminal result and CURRENT-STATUS.md for the next active batch. Do not treat baseline167 checks as evidence of this newly added journey.

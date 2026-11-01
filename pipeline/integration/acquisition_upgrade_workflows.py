@@ -63,6 +63,7 @@ from acquisition_effective_handoff_tests import EffectiveHandoffCases
 from acquisition_original_support_tests import OriginalSupportCases
 from acquisition_buyer_storage_tests import BuyerStorageCases
 from acquisition_buyer_discovery_tests import BuyerDiscoveryCases
+from acquisition_buyer_evidence_storage_tests import BuyerEvidenceStorageCases
 from acquisition_transition_choice_tests import TransitionChoiceCases
 from acquisition_contract_transition_tests import ContractTransitionCases
 from acquisition_signature_candidate_tests import SignatureCandidateCases
@@ -95,7 +96,7 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
-class FullCatalogDocumentTests(BuyerDiscoveryCases, BuyerStorageCases, OriginalSupportCases, EffectiveHandoffCases, EffectiveStateCases, RenewalRpcCases, RenewalChoiceCases, PersonalRenewalCases, RenewalAuthorityLockCases, RetainedScanJourneyCases, RetainedRefreshCases, DownstreamEffectiveCases, ExecutionEffectiveCases, DeadlineEffectiveCases, ReviewDependencyCases, ReviewLineageHeadCases, ReviewRenewalStorageCases, DispositionTransitionChoiceCases, DispositionTransitionCases, DispositionTransitionStorageCases, DispositionCandidateCases, DispositionReviewCases, DispositionPolicyCases, DispositionSourceCases, DispositionStorageCases, DispositionPlanCases, TitleCandidateCases, TitleReviewCases, TitleSourceCases, TitleStorageCases, TitleDocumentCases, TitleChoiceCases, TitleTransitionCases, ExecutionDeadlineCases, DeadlineChoiceCases, DeadlineStateCases, DeadlineReviewCases, DeadlineStorageCases, ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
+class FullCatalogDocumentTests(BuyerEvidenceStorageCases, BuyerDiscoveryCases, BuyerStorageCases, OriginalSupportCases, EffectiveHandoffCases, EffectiveStateCases, RenewalRpcCases, RenewalChoiceCases, PersonalRenewalCases, RenewalAuthorityLockCases, RetainedScanJourneyCases, RetainedRefreshCases, DownstreamEffectiveCases, ExecutionEffectiveCases, DeadlineEffectiveCases, ReviewDependencyCases, ReviewLineageHeadCases, ReviewRenewalStorageCases, DispositionTransitionChoiceCases, DispositionTransitionCases, DispositionTransitionStorageCases, DispositionCandidateCases, DispositionReviewCases, DispositionPolicyCases, DispositionSourceCases, DispositionStorageCases, DispositionPlanCases, TitleCandidateCases, TitleReviewCases, TitleSourceCases, TitleStorageCases, TitleDocumentCases, TitleChoiceCases, TitleTransitionCases, ExecutionDeadlineCases, DeadlineChoiceCases, DeadlineStateCases, DeadlineReviewCases, DeadlineStorageCases, ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
     supports_title_choice = True
     supports_disposition_handoff = True
     supports_disposition_choice = True
@@ -167,7 +168,7 @@ def run_workflow_probes(db):
     document_names += sorted(name for name in DispositionTransitionStorageCases.__dict__ if name.startswith('test_signature_disposition_transition_storage_'))
     document_names += sorted(name for name in DispositionTransitionCases.__dict__ if name.startswith('test_signature_disposition_transition_'))
     document_names += sorted(name for name in RetainedScanJourneyCases.__dict__ if name.startswith('test_signature_retained_scan_journey_'))
-    document_names += ['test_acquisition_buyer_storage_boundaries', 'test_acquisition_buyer_profile_and_discovery']
+    document_names += ['test_acquisition_buyer_storage_boundaries', 'test_acquisition_buyer_profile_and_discovery', 'test_acquisition_buyer_evidence_storage']
     document_names += sorted(name for name in OriginalSupportCases.__dict__ if name.startswith('test_signature_original_support_'))
     document_names += sorted(name for name in EffectiveStateCases.__dict__ if name.startswith('test_signature_effective_state_'))
     document_names += sorted(name for name in EffectiveHandoffCases.__dict__ if name.startswith('test_signature_effective_handoff_'))

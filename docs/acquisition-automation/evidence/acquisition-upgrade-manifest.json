@@ -473,6 +473,10 @@
     {
       "file": "20261101124011_acquisition_buyer_discovery.sql",
       "sha256": "92167b695be8e96fa15eb377bb10dcfa7bae06cc1ac8337d3111912d382dbdeb"
+    },
+    {
+      "file": "20261101132332_acquisition_buyer_evidence_storage.sql",
+      "sha256": "6f95961c3b046edacc38a8b781b2e592c4e0e47b18de2b6eaaf0b3835b233567"
     }
   ]
 }

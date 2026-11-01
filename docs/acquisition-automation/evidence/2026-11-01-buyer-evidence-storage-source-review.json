@@ -1,0 +1,9 @@
+{
+  "scope": "Read-only comparison of local119 Storage helper to saved complete118 catalog definition",
+  "migration": "20261101132332_acquisition_buyer_evidence_storage.sql",
+  "migration_sha256": "6f95961c3b046edacc38a8b781b2e592c4e0e47b18de2b6eaaf0b3835b233567",
+  "storage_helper_change": "Exact existing definition plus explicit buyer-owned artifact denial; no other branch changes",
+  "inventory": "2026-11-01-buyer-review-local-catalog.json",
+  "full_rehearsal": "Still running; this comparison is not database acceptance",
+  "production_changed": false
+}

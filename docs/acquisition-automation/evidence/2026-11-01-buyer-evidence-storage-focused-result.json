@@ -1,0 +1,16 @@
+{
+  "scope": "Disposable full119 schema; buyer evidence storage/metadata and existing Storage path denial only, no buyer upload/review authority",
+  "checks": [
+    "exact buyer revision FK and mutually exclusive ownership",
+    "cross-workspace/nonexistent revision/purpose rejected",
+    "exact immutable revocation binding",
+    "owner metadata vs operator/caller/agency denial",
+    "MFA and membership revocation deny metadata",
+    "anonymous/service raw metadata denial",
+    "existing mail metadata and private download preserved",
+    "buyer private download/upload denied even with current policy and creator identity",
+    "legacy registration rejects buyer purpose",
+    "no live buyer policy provisioned"
+  ],
+  "production_changed": false
+}

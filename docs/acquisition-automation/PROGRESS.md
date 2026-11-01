@@ -1,5 +1,41 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — buyer evidence119 full verification passed; ready to publish
+
+Full119 rehearsal completed with377 database workflows,26 access probes and175 real PostgREST/API checks passing. Historical24 rows/22 populated tables/103 definitions and the Storage fixture were preserved; execution controls remain disabled. Process9989 is absent after both final success JSON results; no traceback/error appears in the log. The original tool session handle was lost during compaction, so the exit-code field is honestly null rather than inferred0. Source runner emits these success results only after the respective complete suites return; the terminated process has no cleanup error in its log. Evidence: `evidence/2026-11-01-buyer-evidence-119-full-result.json`, `/tmp/buyer-evidence-119-full.log`.
+
+Exact published predecessor90f9c32/run41310833331 now has all SIX jobs completed successfully. Git pull --ff-only is up to date. The local119 batch extends existing buyer evidence ownership/privacy, adds actual boundary regression coverage and updates the schema/remaining-work handoff. Existing Storage helper matches118 exactly apart from buyer denial. No frontend/runtime API changes in this batch; the full database/gateway acceptance covers its behavioral surface. Diff whitespace checks pass.
+
+Next commit/push the reviewed119 batch, verify exact remote SHA and successor CI. Then implement dedicated buyer document registration/revocation/upload/verification and human findings according to NEXT-BUYER-VERIFICATION.md, before explainable matching/packages/disclosures/closing. Current registry ownership is not a usable upload or buyer-verification workflow. Full objective remains active/incomplete. No production apply, provider activation, outreach, spending or transaction action.
+
+## November 1 — buyer evidence schema review and next workflow specified
+
+This continuation completed the119 entity mapping, privacy conflict explanation and forward-compensation procedure in SCHEMA-MAPPING.md. NEXT-BUYER-VERIFICATION.md now specifies the dedicated authenticated registration/revocation/current-state/upload/review sequence, exact historical retry semantics, shared lock order, concurrency checks and guided app handoff. These are remaining implementation requirements, not available upload or verification capabilities.
+
+Read-only source comparison confirmed that the119 Storage helper is byte-for-byte the saved118 definition after removing only the explicit buyer denial. Migration hash6f95961c3b046edacc38a8b781b2e592c4e0e47b18de2b6eaaf0b3835b233567 matches the manifest. Retained `evidence/2026-11-01-buyer-evidence-storage-source-review.json`; git diff --check passed.
+
+Full119 process9989 was reverified live at elapsed05:23, advancing through disposition candidate workflows in `/tmp/buyer-evidence-119-full.log`. No restart or runtime/test/schema mutation. Exact published CI41310833331 still has five successful jobs and the ingestion/concurrency job running. Do not push until complete local acceptance and all six predecessor jobs pass. Next inspect this same process/log for terminal evidence, then proceed with dedicated buyer evidence implementation. Full goal remains active/incomplete; all production and live-action gates remain unchanged.
+
+## November 1 — resumed after app update; buyer evidence isolation under verification
+
+User clarified that the GPT app finished updating. Resumed the existing implementation goal; no change to scope or activation authority.
+
+Published90f9c324ef4ccd4c30dae0f8fcbe1a4ed74680e5 successor run41310833331 currently has FIVE successful jobs; Real PostgreSQL ingestion, tracing and scoring contention remains in progress. The previously reported Pipeline contracts and isolated SQL job is successful. Recheck all six before the next push.
+
+Local migration119 (`20261101132332_acquisition_buyer_evidence_storage.sql`) extends existing evidence and revocation ownership to an exact buyer-profile revision, preserves mail/contract ownership, requires owner/admin MFA for buyer metadata, and denies buyer files through existing generic Storage access pending the dedicated workflow. No buyer retention policy, upload workflow or verification authority is activated. Focused disposable checks38753 exited0 in `/tmp/buyer-evidence-119-final.log`; evidence is `evidence/2026-11-01-buyer-evidence-storage-focused-result.json`. The tests caught and corrected the missing explicit owner/admin MFA condition. Existing append-only protections remain intact.
+
+Full119 rehearsal remains LIVE: `/tmp/buyer-evidence-119-full.log`, OS PID9989 verified directly after the tool session handle was lost during context compaction. Do not restart or edit its runtime/migration/test inputs until terminal. Expected377 workflows,26 access and175 gateway checks; this is not yet a pass. Test integration imports BuyerEvidenceStorageCases and includes its workflow. Documentation may be updated independently. New119 files remain local/unpublished until full verification and predecessor CI pass. No production migration, outreach, fulfillment, spending or transaction action.
+
+Next: recover terminal rehearsal evidence, finish the119 schema mapping/compensation documentation, then implement dedicated authenticated buyer evidence registration and review in the existing guided process. Preserve the complete remaining PRD goal and paused SMS work.
+
+## November 1 — scoped buyer preparation published; successor CI queued
+
+Published `90f9c324ef4ccd4c30dae0f8fcbe1a4ed74680e5` (Add scoped buyer profiles and guided disposition preparation). Push14516 exited0; git ls-remote exactly matches. Working tree was clean immediately after publication. Exact successor CI: https://github.com/julysses/Wholesale-automation/actions/runs/41310833331 (queued at last check). Do not push another update until all SIX jobs are successful; do not cancel the predecessor by pushing.
+
+Final local acceptance19435:118 migrations,376 workflows,26 access checks,175 real gateway checks;24 historical rows/22 tables/103 definitions/Storage preserved. Evidence `evidence/2026-11-01-buyer-118-publish-result.json`. Backend4746 passed/10 skipped, frontend1107 passed plus53 affected copy tests, final build/lint passed, desktop/phone recovery verified. Scoped profiles save self-reported information only; no buyer verification, matching/distribution, production apply, provider activation or transaction authority is granted. All61 reviewed files were committed; staged diff check was clean after removing one trailing blank line in the discovery test.
+
+No local verification process or browser preview remains running. This publication checkpoint is a local documentation update to include in the next verified batch after successor CI clears. Continue with NEXT-BUYER-VERIFICATION.md and fresh `evidence/2026-11-01-buyer-review-local-catalog.json`; implement evidence-based buyer review, explainable matching, contractual-interest packages/disclosures, controlled principal/assignment closing and the remaining PRD channels. Full goal remains active/incomplete. Preserve production and paused SMS safeguards.
+
 ## November 1 — buyer116–118 full acceptance passed; ready to publish
 
 Final session19435 exited0 (`/tmp/buyer-118-publish-full.log`). Evidence `evidence/2026-11-01-buyer-118-publish-result.json` proves118 migrations,376 workflows,26 access checks and175 real gateway checks, including the buyer mounted API journey. Preserved24 historical rows across22 tables,103 historical definitions and the Storage fixture. Execution controls remain disabled. No local process or browser preview remains running.
