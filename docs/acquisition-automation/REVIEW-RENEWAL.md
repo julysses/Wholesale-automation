@@ -34,6 +34,22 @@ New findings on a different root supersede prior authority. An original root tha
 
 Compensation: pause acquisition or revoke applicable policy, retain all original and renewal rows/audits, and keep renewed authority unavailable until a forward-only correction. Never delete or rewrite original decisions to roll back.
 
+## Verified disposable catalog (November 1)
+
+Reproducible inventory: `scripts/acquisition_review_renewal_inventory.py`, run through the offline test launcher. Evidence: `evidence/2026-11-01-review-renewal-local-catalog.json`. The `DispositionTransitionChoiceTests` fixture reaches migration `20261101090156`; the embedded 102-entry manifest is a reference, not a claim that this inventory reruns the populated full upgrade. No production connection.
+
+The five existing entities (`deals`, contract versions, reviews, transitions and disposition plans) expose139 columns,83 constraints,22 indexes,10 policies and5 application triggers. All five have RLS enabled. Review grants allow authenticated SELECT only; no anonymous/service-role grant or client write grant exists. The immutable review trigger is present. The inventory verifies these controls before saving evidence.
+
+Storage conflicts to resolve in the additive migration:
+
+- Existing `deadline_original_review_id`, `title_original_review_id` and `disposition_original_review_id` identify withdrawal targets. Approved rows must keep those null under current shape checks. Do not reuse them for renewal lineage.
+- Existing generic review identity omits kind/status; deadline identity includes nullable date term. A generic composite foreign key containing nullable date term would skip validation for other kinds. Use a non-null normalized stream discriminator (or separate complete references) so every renewal enforces scope, kind, date term and approved status.
+- Preserve the unique workspace/contract/version/kind/sequence stream, including the shared sequence across deadline terms. A lineage chain's immediate predecessor must be earlier and in the same term/root; a unique predecessor can reject forks but does not establish current authority or prevent revival after an intervening withdrawal.
+- Existing immutable triggers cover UPDATE/DELETE only. A new insert guard must validate original root, predecessor and unchanged facts under the writer's existing serialization; client grants must remain SELECT-only. Historic rows must retain null lineage without backfilling or rewriting approvals.
+- Existing transition references and title/disposition source journals bind original approval IDs. Storage alone must not make renewal available; resolver and writer integration remain required before any API activation.
+
+Inventory verification passed in5.063s; `/tmp/review-renewal-inventory-final.log`. Full populated upgrade, new lineage constraints and concurrency testing remain pending because no renewal migration has been authored yet.
+
 ## Current authority resolution
 
 Implement a private resolver separating historical identity from current supporting review:

@@ -1,5 +1,11 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — renewal catalog verified (candidate127)
+
+Completed and saved a reproducible disposable catalog inventory before renewal SQL. `scripts/acquisition_review_renewal_inventory.py` reaches the disposition-choice fixture through20261101090156, records schema/constraints/indexes/RLS/grants/triggers and the reference migration manifest, and verifies all five tables retain RLS plus SELECT-only client review access and the immutable trigger. Final inventory test passed5.063s (`/tmp/review-renewal-inventory-final.log`, session92857 terminal0). Evidence: `evidence/2026-11-01-review-renewal-local-catalog.json`. This is not a full populated-upgrade rerun.
+
+Documented actual conflicts in REVIEW-RENEWAL.md: existing original-review fields are withdrawal references and cannot be reused; nullable deadline term can bypass generic composite foreign keys; shared deadline sequence differs from per-term lineage; storage must preserve historical handoff references and cannot itself enable renewal. Next implement additive lineage with complete references and insert validation, then the effective-authority resolver and controlled human review path. No production SQL or provider action. Candidate126 committedb68b52e; publication remains gated on the existing exact CI run's final database job.
+
 ## November 1 — review renewal contract and resumed work (candidate126)
 
 Resumed after the GPT app update. Pulled `codex/acquisition-foundation` with fast-forward-only; already current. Local predecessors remain `4d2d6e0` and `d3dc8b9` above published `00f5489`. Exact GitHub run41292882111 currently has five successful jobs; Real PostgreSQL ingestion, tracing and scoring contention remains in progress. Preserve that run and wait for all six successes before the next push.
