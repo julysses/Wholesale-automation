@@ -2,6 +2,14 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## October 31 — lifecycle repository projection and fresh inventory
+
+Read-only hosted catalog captured at2026-11-01T01:56:26Z (October31 local), saved in evidence/2026-10-31-lifecycle-catalog.json:100 columns,9 constraints,72 grants plus indexes/policies/triggers for canonical deals/buyers/preferences. Hosted ledger remains20261023221455; acquisition contract tables remain undeployed. Current local draft/terms migrations were inspected together: canonical status is still constrained to draft, the write guard only permits term-version advances, and immutable version rows keep their historical draft status. Lifecycle state therefore must come from canonical deals and a separate transition ledger, never by rewriting version status.
+
+Added tools/acquisition_contract_snapshot.py to project explicitly selected, authorized repository fields into the pure reviewer. It binds workspace/contract/current terms version/lifecycle sequence/status to the exact request, preserves null/zero/date/instant values, rejects foreign or duplicate evidence and never relabels historical evidence. It excludes legacy stage, money, buyer and date fallback.151 focused adapter/command/terms/reviewer tests passed in0.23s; diff check passed. This is a tested projection boundary, not a repository query, current authorization check, mounted endpoint or migration. The independent acquisition_sequence field remains a planned persisted field.
+
+Next: add lifecycle evidence/authority records and independent SQL enforcement after the documented fresh inventory; signature release, executed contract and exception/closing evidence are still missing from persisted review kinds. Preserve current three review kinds and all historical requests. Successor41262891275 remains live; local command commit a5c6d4b and this increment await its all-six-success publication gate. No production schema, provider, outreach, fulfillment or legal action changed.
+
 ## October 31 — lifecycle command boundary
 
 Published979b3d16d739d3174b2eb66b82fdbdfcff8762cd after all six predecessor checks passed. Successor run41262891275 is still running (isolated SQL passed at latest observation); require all six terminal successes before another feature push. Worktree pull was already current. Do not cancel or restart the live run.

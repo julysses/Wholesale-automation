@@ -4,6 +4,8 @@ Observed October 25, 2026, America/Chicago (catalog checkpoint 2026-10-26 02:31:
 
 ## Evidence and baseline
 
+Fresh lifecycle-focused read-only inspection on October31 at2026-11-01T01:56:26Z is saved in `evidence/2026-10-31-lifecycle-catalog.json`. It covers100 columns,9 constraints,72 grants and current indexes/policies/triggers for deals, buyers and buyer_preferences. Hosted latest migration remains20261023221455. A preceding metadata query also confirmed RLS enabled on these three tables and no hosted acquisition_contract tables. This refresh does not replace the broader baseline inventory or prove hosted feature acceptance. No seller/buyer records were read.
+
 Live Supabase project: `dvzhzlipbwzzcliujzyz` (`wholesale-automation`). Catalog evidence: [2026-10-25-catalog.json](evidence/2026-10-25-catalog.json). Metadata was read in separate READ ONLY transactions; this is not a backup or a transactionally consistent snapshot. No seller records, message bodies, credentials or raw provider payloads were exported.
 
 Inventory covers public, private and wholesale_ingest: **103 tables, 17 views, 1,638 columns, 407 constraints, 248 indexes, 127 policies, 28 non-internal triggers and 122 function signatures/security settings**. Policy inventory also checked storage and found no policies there. Storage bucket configuration and application access were not audited. All 103 application tables have RLS enabled; all 17 public views have `security_invoker=true`. Neither observation establishes tenant isolation.
