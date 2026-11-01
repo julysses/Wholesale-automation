@@ -8,9 +8,10 @@ The scoped contract list and existing step5 card retain title-review records and
 
 Validation: full backend4186 passed,10 skipped,6 subtests50.42s; final frontend835tests/92files11.63s; final build3.07s; no new lint findings against147 existing. Five focused SQL cases passed30.763s, including observed lock-wait deadline-policy revocation and original execution-withdrawal discovery after title entry/pause. Original execution/date review forms remain accessible after title entry; signature/terms preparation remains held. The initial full rehearsal passed87migrations,26access checks,241workflows and126real API checks with24 historical rows/22populated tables/103definitions/Storage preserved. Evidence:evidence/2026-11-01-title-transition-initial-result.json.
 
-The expanded full rehearsal with the fifth title-specific lock-wait case is live under session73788, /tmp/title-transition-upgrade-final.log; expected242workflows. Do not restart it while live or treat initial evidence as proof of the expanded run. All other local validation processes are terminal. Candidate92 is ready for a local checkpoint; publication still waits for this exact expanded run and the predecessor gate.
+The expanded full rehearsal completed successfully (session73788 terminal0):87migrations,26access checks,242workflows,126real API checks, preserved historical rows/definitions/Storage. Evidence:evidence/2026-11-01-title-transition-final-result.json. All six predecessor0c5d65d/run41276522452 jobs now passed. Verified local commits9fb8915 and4a89e15 are ready for publication with this evidence checkpoint; inspect the exact successor before the next feature push.
 
-Local committed9fb8915 remains unpublished; candidate92 is being checkpointed locally. Published0c5d65d exact successor41276522452 has five terminal successes and one live PostgreSQL job at last read. Preserve the all-six-success publication gate. No production migration, policy provisioning, provider activation or transaction occurred. Full PRD goal remains active.
+Candidate93 guided title-entry choice/form is under development locally and is not part of this verified publication. Production schema and provider controls remain untouched. Full PRD remains incomplete.
+
 
 ## November 1 — reviewed dates connected to execution handoff (candidate91)
 
