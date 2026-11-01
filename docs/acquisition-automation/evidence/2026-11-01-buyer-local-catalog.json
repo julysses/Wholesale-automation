@@ -1,0 +1,4256 @@
+{
+  "columns": [
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "imported_by",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "source",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "filename",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "market",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "rows_total",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "rows_imported",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "buyers_created",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "buyers_updated",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "transactions_created",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "rows_skipped",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "errors",
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": "'[]'::jsonb"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "status",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'pending'::text"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "column_name": "completed_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "buyer_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "deal_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "deal_match_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "channel",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "direction",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'outbound'::text"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "status",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'queued'::text"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "subject",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "body",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "to_address",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "provider",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "provider_msg_id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "opened_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "replied_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "reply_body",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "column_name": "sent_by",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "buyer_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "min_price",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "max_price",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "preferred_property_types",
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "YES",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "preferred_condition",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'any'::text"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "preferred_zips",
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "YES",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "preferred_counties",
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "YES",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "target_roi",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "max_days_to_close",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "requires_seller_finance",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "requires_subject_to",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "pays_above_market",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "contact_method",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'sms'::text"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "preferred_contact_time",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "do_not_contact_before",
+      "data_type": "time without time zone",
+      "udt_name": "time",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "do_not_contact_after",
+      "data_type": "time without time zone",
+      "udt_name": "time",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_preferences",
+      "column_name": "notes",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "buyer_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "property_address",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "city",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "state",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'TX'::text"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "zip_code",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "county",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "purchase_price",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "purchase_date",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "cash_transaction",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "lender_name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "loan_amount",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "property_type",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "sqft",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "bedrooms",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "bathrooms",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "year_built",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "resale_date",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "resale_price",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "flip_detected",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "apn",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "deed_book",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "deed_page",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "grantor",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "grantee",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "source",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'csv'::text"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "column_name": "raw_data",
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "first_name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "last_name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "company",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "email",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "phone",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "source",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "target_zips",
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "min_price",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "max_price",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "property_types",
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "min_beds",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "min_baths",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "max_repairs",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "strategy",
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "close_speed_days",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "tier",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'C'::text"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "deals_closed",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "pof_verified",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "pof_amount",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "active",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "true"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "email_opt_in",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "true"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "sms_opt_in",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "true"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "notes",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "last_contact_date",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "buyer_type",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'traditional'::text"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "land_buyer_type",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "target_acres_min",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "target_acres_max",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "preferred_zoning",
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "buys_land",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "buys_infill",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "entity_name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "market",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "ibie_score",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "ibie_tier",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'D'::text"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "buyer_type_ibie",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "ai_classified_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "tags",
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "YES",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "cash_buyer",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "repeat_buyer",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "total_purchases_12mo",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "properties_owned",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "avg_purchase_price",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "last_purchase_date",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "lender_used",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "engagement_delta",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "outreach_ignore_count",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "last_scored_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "score_version",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "buyers",
+      "column_name": "import_log_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()"
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "deal_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "buyer_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "zip_score",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "price_score",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "type_score",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "ibie_score",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "match_score",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": "0"
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "rank",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "sms_sent_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "email_sent_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "responded_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deal_matches",
+      "column_name": "response_type",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()"
+    },
+    {
+      "table_name": "deals",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "deals",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "deals",
+      "column_name": "lead_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "deal_name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "stage",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'offer_made'::text"
+    },
+    {
+      "table_name": "deals",
+      "column_name": "contract_price",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "arv",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "repair_estimate",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "assignment_fee",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "buyer_price",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "earnest_money",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "contract_date",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "inspection_deadline",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "closing_date",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "actual_close_date",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "seller_name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "buyer_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "title_company",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "title_contact",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "title_phone",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "psa_doc_url",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "assignment_doc_url",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "notes",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "assigned_to",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "created_by",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "creation_manifest",
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "workspace_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "acquisition_status",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "acquisition_version",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "acquisition_property_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "acquisition_owner_relationship_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "acquisition_offer_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deals",
+      "column_name": "acquisition_offer_sequence",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "due_date",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "completed_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "title",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "description",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "priority",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'medium'::text"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "status",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": "'pending'::text"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "type",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "lead_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "deal_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "buyer_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "assigned_to",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "workspace_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "acquisition_integration_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "acquisition_call_id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "acquisition_request_id",
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "acquisition_revision",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "acquisition_request_kind",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "acquisition_evidence",
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "acquisition_request_hash",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "acquisition_phone",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    }
+  ],
+  "constraints": [
+    {
+      "relname": "buyer_import_log",
+      "conname": "buyer_import_log_imported_by_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (imported_by) REFERENCES auth.users(id)"
+    },
+    {
+      "relname": "buyer_import_log",
+      "conname": "buyer_import_log_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relname": "buyer_outreach_log",
+      "conname": "buyer_outreach_log_buyer_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "relname": "buyer_outreach_log",
+      "conname": "buyer_outreach_log_deal_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL"
+    },
+    {
+      "relname": "buyer_outreach_log",
+      "conname": "buyer_outreach_log_deal_match_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (deal_match_id) REFERENCES deal_matches(id) ON DELETE SET NULL"
+    },
+    {
+      "relname": "buyer_outreach_log",
+      "conname": "buyer_outreach_log_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relname": "buyer_outreach_log",
+      "conname": "buyer_outreach_log_sent_by_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (sent_by) REFERENCES auth.users(id)"
+    },
+    {
+      "relname": "buyer_preferences",
+      "conname": "buyer_preferences_buyer_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "relname": "buyer_preferences",
+      "conname": "buyer_preferences_buyer_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (buyer_id)"
+    },
+    {
+      "relname": "buyer_preferences",
+      "conname": "buyer_preferences_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relname": "buyer_transactions",
+      "conname": "buyer_transactions_buyer_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "relname": "buyer_transactions",
+      "conname": "buyer_transactions_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relname": "buyers",
+      "conname": "buyers_import_log_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (import_log_id) REFERENCES buyer_import_log(id) ON DELETE SET NULL"
+    },
+    {
+      "relname": "buyers",
+      "conname": "buyers_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relname": "deal_matches",
+      "conname": "deal_matches_buyer_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "relname": "deal_matches",
+      "conname": "deal_matches_deal_id_buyer_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (deal_id, buyer_id)"
+    },
+    {
+      "relname": "deal_matches",
+      "conname": "deal_matches_deal_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+    },
+    {
+      "relname": "deal_matches",
+      "conname": "deal_matches_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relname": "deals",
+      "conname": "acquisition_deal_identity",
+      "contype": "u",
+      "definition": "UNIQUE (id, workspace_id)"
+    },
+    {
+      "relname": "deals",
+      "conname": "acquisition_deal_offer",
+      "contype": "f",
+      "definition": "FOREIGN KEY (acquisition_offer_id, workspace_id, lead_id) REFERENCES offer_recommendations(id, workspace_id, lead_id)"
+    },
+    {
+      "relname": "deals",
+      "conname": "acquisition_deal_property",
+      "contype": "f",
+      "definition": "FOREIGN KEY (workspace_id, lead_id, acquisition_property_id) REFERENCES workspace_leads(workspace_id, lead_id, property_id)"
+    },
+    {
+      "relname": "deals",
+      "conname": "acquisition_deal_seller",
+      "contype": "f",
+      "definition": "FOREIGN KEY (acquisition_owner_relationship_id, workspace_id, lead_id, acquisition_property_id) REFERENCES acquisition_owner_properties(id, workspace_id, lead_id, property_id)"
+    },
+    {
+      "relname": "deals",
+      "conname": "acquisition_deal_shape",
+      "contype": "c",
+      "definition": "CHECK ((((workspace_id IS NULL) AND (acquisition_status IS NULL) AND (acquisition_version IS NULL) AND (acquisition_property_id IS NULL) AND (acquisition_owner_relationship_id IS NULL) AND (acquisition_offer_id IS NULL) AND (acquisition_offer_sequence IS NULL)) OR ((workspace_id IS NOT NULL) AND (acquisition_status = ANY (ARRAY['draft'::text, 'pending_signature'::text, 'executed'::text, 'title_review'::text, 'disposition_review'::text])) AND (acquisition_status IS NOT NULL) AND ((acquisition_version >= 1) AND (acquisition_version <= 2147483647)) AND (acquisition_version IS NOT NULL) AND (acquisition_property_id IS NOT NULL) AND (acquisition_owner_relationship_id IS NOT NULL) AND (acquisition_offer_id IS NOT NULL) AND (acquisition_offer_sequence > 0) AND (acquisition_offer_sequence IS NOT NULL) AND (stage = 'offer_made'::text) AND (contract_price IS NULL) AND (buyer_id IS NULL) AND (contract_date IS NULL) AND (closing_date IS NULL) AND (actual_close_date IS NULL) AND (psa_doc_url IS NULL) AND (assignment_doc_url IS NULL))))"
+    },
+    {
+      "relname": "deals",
+      "conname": "deals_buyer_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id)"
+    },
+    {
+      "relname": "deals",
+      "conname": "deals_created_by_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES profiles(id)"
+    },
+    {
+      "relname": "deals",
+      "conname": "deals_lead_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id)"
+    },
+    {
+      "relname": "deals",
+      "conname": "deals_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relname": "tasks",
+      "conname": "acquisition_task_route_fk",
+      "contype": "f",
+      "definition": "FOREIGN KEY (acquisition_integration_id, workspace_id) REFERENCES private.acquisition_inbound_routes(integration_id, workspace_id)"
+    },
+    {
+      "relname": "tasks",
+      "conname": "acquisition_task_shape",
+      "contype": "c",
+      "definition": "CHECK ((((workspace_id IS NULL) AND (acquisition_integration_id IS NULL) AND (acquisition_call_id IS NULL) AND (acquisition_request_id IS NULL) AND (acquisition_revision IS NULL) AND (acquisition_request_kind IS NULL) AND (acquisition_evidence IS NULL) AND (acquisition_request_hash IS NULL) AND (acquisition_phone IS NULL)) OR ((workspace_id IS NOT NULL) AND (acquisition_integration_id IS NOT NULL) AND (acquisition_call_id IS NOT NULL) AND (acquisition_call_id ~ '^[A-Za-z0-9_-]{1,200}$'::text) AND (acquisition_request_id IS NOT NULL) AND (acquisition_revision IS NOT NULL) AND (acquisition_revision > 0) AND (acquisition_request_kind IS NOT NULL) AND (acquisition_request_kind = ANY (ARRAY['request_callback'::text, 'request_human'::text])) AND (acquisition_evidence IS NOT NULL) AND (jsonb_typeof(acquisition_evidence) = 'object'::text) AND (acquisition_request_hash IS NOT NULL) AND (acquisition_request_hash ~ '^[0-9a-f]{64}$'::text) AND (title = 'Inbound acquisition review'::text) AND (status IS NOT NULL) AND (status = 'acquisition_review_required'::text) AND (type IS NOT NULL) AND (type = 'acquisition_inbound_review'::text) AND (priority IS NULL) AND (description IS NULL) AND (due_date IS NULL) AND (completed_at IS NULL) AND (lead_id IS NULL) AND (deal_id IS NULL) AND (buyer_id IS NULL) AND (assigned_to IS NULL))))"
+    },
+    {
+      "relname": "tasks",
+      "conname": "acquisition_task_workspace_identity",
+      "contype": "u",
+      "definition": "UNIQUE (workspace_id, id)"
+    },
+    {
+      "relname": "tasks",
+      "conname": "tasks_buyer_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE SET NULL"
+    },
+    {
+      "relname": "tasks",
+      "conname": "tasks_deal_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL"
+    },
+    {
+      "relname": "tasks",
+      "conname": "tasks_lead_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL"
+    },
+    {
+      "relname": "tasks",
+      "conname": "tasks_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relname": "tasks",
+      "conname": "tasks_workspace_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id)"
+    }
+  ],
+  "indexes": [
+    {
+      "tablename": "buyer_import_log",
+      "indexname": "buyer_import_log_pkey",
+      "indexdef": "CREATE UNIQUE INDEX buyer_import_log_pkey ON public.buyer_import_log USING btree (id)"
+    },
+    {
+      "tablename": "buyer_outreach_log",
+      "indexname": "buyer_outreach_log_pkey",
+      "indexdef": "CREATE UNIQUE INDEX buyer_outreach_log_pkey ON public.buyer_outreach_log USING btree (id)"
+    },
+    {
+      "tablename": "buyer_outreach_log",
+      "indexname": "idx_buyer_outreach_buyer",
+      "indexdef": "CREATE INDEX idx_buyer_outreach_buyer ON public.buyer_outreach_log USING btree (buyer_id)"
+    },
+    {
+      "tablename": "buyer_outreach_log",
+      "indexname": "idx_buyer_outreach_deal",
+      "indexdef": "CREATE INDEX idx_buyer_outreach_deal ON public.buyer_outreach_log USING btree (deal_id)"
+    },
+    {
+      "tablename": "buyer_preferences",
+      "indexname": "buyer_preferences_buyer_id_key",
+      "indexdef": "CREATE UNIQUE INDEX buyer_preferences_buyer_id_key ON public.buyer_preferences USING btree (buyer_id)"
+    },
+    {
+      "tablename": "buyer_preferences",
+      "indexname": "buyer_preferences_pkey",
+      "indexdef": "CREATE UNIQUE INDEX buyer_preferences_pkey ON public.buyer_preferences USING btree (id)"
+    },
+    {
+      "tablename": "buyer_transactions",
+      "indexname": "buyer_transactions_pkey",
+      "indexdef": "CREATE UNIQUE INDEX buyer_transactions_pkey ON public.buyer_transactions USING btree (id)"
+    },
+    {
+      "tablename": "buyer_transactions",
+      "indexname": "idx_buyer_tx_apn_buyer",
+      "indexdef": "CREATE UNIQUE INDEX idx_buyer_tx_apn_buyer ON public.buyer_transactions USING btree (buyer_id, apn) WHERE (apn IS NOT NULL)"
+    },
+    {
+      "tablename": "buyer_transactions",
+      "indexname": "idx_buyer_tx_buyer_id",
+      "indexdef": "CREATE INDEX idx_buyer_tx_buyer_id ON public.buyer_transactions USING btree (buyer_id)"
+    },
+    {
+      "tablename": "buyer_transactions",
+      "indexname": "idx_buyer_tx_date",
+      "indexdef": "CREATE INDEX idx_buyer_tx_date ON public.buyer_transactions USING btree (purchase_date DESC NULLS LAST)"
+    },
+    {
+      "tablename": "buyer_transactions",
+      "indexname": "idx_buyer_tx_zip",
+      "indexdef": "CREATE INDEX idx_buyer_tx_zip ON public.buyer_transactions USING btree (zip_code)"
+    },
+    {
+      "tablename": "buyers",
+      "indexname": "buyers_pkey",
+      "indexdef": "CREATE UNIQUE INDEX buyers_pkey ON public.buyers USING btree (id)"
+    },
+    {
+      "tablename": "buyers",
+      "indexname": "idx_buyers_buys_land",
+      "indexdef": "CREATE INDEX idx_buyers_buys_land ON public.buyers USING btree (buys_land) WHERE (buys_land = true)"
+    },
+    {
+      "tablename": "buyers",
+      "indexname": "idx_buyers_import_log_id",
+      "indexdef": "CREATE INDEX idx_buyers_import_log_id ON public.buyers USING btree (import_log_id)"
+    },
+    {
+      "tablename": "buyers",
+      "indexname": "idx_buyers_land_type",
+      "indexdef": "CREATE INDEX idx_buyers_land_type ON public.buyers USING btree (land_buyer_type) WHERE (land_buyer_type IS NOT NULL)"
+    },
+    {
+      "tablename": "buyers",
+      "indexname": "idx_buyers_tier",
+      "indexdef": "CREATE INDEX idx_buyers_tier ON public.buyers USING btree (tier)"
+    },
+    {
+      "tablename": "deal_matches",
+      "indexname": "deal_matches_deal_id_buyer_id_key",
+      "indexdef": "CREATE UNIQUE INDEX deal_matches_deal_id_buyer_id_key ON public.deal_matches USING btree (deal_id, buyer_id)"
+    },
+    {
+      "tablename": "deal_matches",
+      "indexname": "deal_matches_pkey",
+      "indexdef": "CREATE UNIQUE INDEX deal_matches_pkey ON public.deal_matches USING btree (id)"
+    },
+    {
+      "tablename": "deal_matches",
+      "indexname": "idx_deal_matches_buyer",
+      "indexdef": "CREATE INDEX idx_deal_matches_buyer ON public.deal_matches USING btree (buyer_id)"
+    },
+    {
+      "tablename": "deal_matches",
+      "indexname": "idx_deal_matches_deal",
+      "indexdef": "CREATE INDEX idx_deal_matches_deal ON public.deal_matches USING btree (deal_id)"
+    },
+    {
+      "tablename": "deal_matches",
+      "indexname": "idx_deal_matches_score",
+      "indexdef": "CREATE INDEX idx_deal_matches_score ON public.deal_matches USING btree (match_score DESC)"
+    },
+    {
+      "tablename": "deals",
+      "indexname": "acquisition_deal_identity",
+      "indexdef": "CREATE UNIQUE INDEX acquisition_deal_identity ON public.deals USING btree (id, workspace_id)"
+    },
+    {
+      "tablename": "deals",
+      "indexname": "acquisition_deal_workspace_idx",
+      "indexdef": "CREATE INDEX acquisition_deal_workspace_idx ON public.deals USING btree (workspace_id, id) WHERE (workspace_id IS NOT NULL)"
+    },
+    {
+      "tablename": "deals",
+      "indexname": "deals_one_active_lead",
+      "indexdef": "CREATE UNIQUE INDEX deals_one_active_lead ON public.deals USING btree (lead_id) WHERE (stage <> ALL (ARRAY['closed'::text, 'cancelled'::text]))"
+    },
+    {
+      "tablename": "deals",
+      "indexname": "deals_pkey",
+      "indexdef": "CREATE UNIQUE INDEX deals_pkey ON public.deals USING btree (id)"
+    },
+    {
+      "tablename": "deals",
+      "indexname": "idx_deals_closing_date",
+      "indexdef": "CREATE INDEX idx_deals_closing_date ON public.deals USING btree (closing_date)"
+    },
+    {
+      "tablename": "deals",
+      "indexname": "idx_deals_stage",
+      "indexdef": "CREATE INDEX idx_deals_stage ON public.deals USING btree (stage)"
+    },
+    {
+      "tablename": "tasks",
+      "indexname": "acquisition_task_call_revision",
+      "indexdef": "CREATE UNIQUE INDEX acquisition_task_call_revision ON public.tasks USING btree (acquisition_integration_id, acquisition_call_id, acquisition_request_kind, acquisition_revision) WHERE (workspace_id IS NOT NULL)"
+    },
+    {
+      "tablename": "tasks",
+      "indexname": "acquisition_task_queue",
+      "indexdef": "CREATE INDEX acquisition_task_queue ON public.tasks USING btree (workspace_id, id) WHERE (workspace_id IS NOT NULL)"
+    },
+    {
+      "tablename": "tasks",
+      "indexname": "acquisition_task_request_identity",
+      "indexdef": "CREATE UNIQUE INDEX acquisition_task_request_identity ON public.tasks USING btree (acquisition_integration_id, acquisition_request_id) WHERE (workspace_id IS NOT NULL)"
+    },
+    {
+      "tablename": "tasks",
+      "indexname": "acquisition_task_scope",
+      "indexdef": "CREATE INDEX acquisition_task_scope ON public.tasks USING btree (workspace_id, acquisition_integration_id, acquisition_call_id, id) WHERE (workspace_id IS NOT NULL)"
+    },
+    {
+      "tablename": "tasks",
+      "indexname": "acquisition_task_workspace_identity",
+      "indexdef": "CREATE UNIQUE INDEX acquisition_task_workspace_identity ON public.tasks USING btree (workspace_id, id)"
+    },
+    {
+      "tablename": "tasks",
+      "indexname": "idx_tasks_due_date",
+      "indexdef": "CREATE INDEX idx_tasks_due_date ON public.tasks USING btree (due_date)"
+    },
+    {
+      "tablename": "tasks",
+      "indexname": "tasks_pkey",
+      "indexdef": "CREATE UNIQUE INDEX tasks_pkey ON public.tasks USING btree (id)"
+    }
+  ],
+  "policies": [
+    {
+      "schemaname": "public",
+      "tablename": "buyer_import_log",
+      "policyname": "acquisition_legacy_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT private.acquisition_legacy_access() AS acquisition_legacy_access)",
+      "with_check": "( SELECT private.acquisition_legacy_access() AS acquisition_legacy_access)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_import_log",
+      "policyname": "authenticated_full_access",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_import_log",
+      "policyname": "require_approved_operator",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_outreach_log",
+      "policyname": "acquisition_related_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, true)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_outreach_log",
+      "policyname": "acquisition_related_insert",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, true)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_outreach_log",
+      "policyname": "acquisition_related_read",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, false)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_outreach_log",
+      "policyname": "acquisition_related_update",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, true)",
+      "with_check": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, true)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_outreach_log",
+      "policyname": "authenticated_full_access",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_outreach_log",
+      "policyname": "require_approved_operator",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_preferences",
+      "policyname": "acquisition_legacy_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT private.acquisition_legacy_access() AS acquisition_legacy_access)",
+      "with_check": "( SELECT private.acquisition_legacy_access() AS acquisition_legacy_access)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_preferences",
+      "policyname": "authenticated_full_access",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_preferences",
+      "policyname": "require_approved_operator",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_transactions",
+      "policyname": "acquisition_legacy_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT private.acquisition_legacy_access() AS acquisition_legacy_access)",
+      "with_check": "( SELECT private.acquisition_legacy_access() AS acquisition_legacy_access)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_transactions",
+      "policyname": "authenticated_full_access",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyer_transactions",
+      "policyname": "require_approved_operator",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyers",
+      "policyname": "acquisition_legacy_boundary",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT private.acquisition_legacy_access() AS acquisition_legacy_access)",
+      "with_check": "( SELECT private.acquisition_legacy_access() AS acquisition_legacy_access)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyers",
+      "policyname": "authenticated_full_access",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "ALL",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "buyers",
+      "policyname": "require_approved_operator",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deal_matches",
+      "policyname": "acquisition_related_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, true)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deal_matches",
+      "policyname": "acquisition_related_insert",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, true)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deal_matches",
+      "policyname": "acquisition_related_read",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, false)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deal_matches",
+      "policyname": "acquisition_related_update",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, true)",
+      "with_check": "private.acquisition_record_access(NULL::uuid, deal_id, NULL::uuid, true)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deal_matches",
+      "policyname": "authenticated_full_access",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deal_matches",
+      "policyname": "require_approved_operator",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deals",
+      "policyname": "acquisition_contract_read",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "((workspace_id IS NULL) OR (private.acquisition_role(workspace_id) = ANY (ARRAY['owner'::text, 'admin'::text, 'operator'::text])))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deals",
+      "policyname": "acquisition_related_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "private.acquisition_record_access(lead_id, NULL::uuid, NULL::uuid, true)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deals",
+      "policyname": "acquisition_related_insert",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "private.acquisition_record_access(lead_id, NULL::uuid, NULL::uuid, true)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deals",
+      "policyname": "acquisition_related_read",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "private.acquisition_record_access(lead_id, NULL::uuid, NULL::uuid, false)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deals",
+      "policyname": "acquisition_related_update",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "private.acquisition_record_access(lead_id, NULL::uuid, NULL::uuid, true)",
+      "with_check": "private.acquisition_record_access(lead_id, NULL::uuid, NULL::uuid, true)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deals",
+      "policyname": "authenticated_full_access",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "ALL",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "deals",
+      "policyname": "require_approved_operator",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tasks",
+      "policyname": "acquisition_related_delete",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "DELETE",
+      "qual": "private.acquisition_record_access(lead_id, deal_id, NULL::uuid, true)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tasks",
+      "policyname": "acquisition_related_insert",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "private.acquisition_record_access(lead_id, deal_id, NULL::uuid, true)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tasks",
+      "policyname": "acquisition_related_read",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "SELECT",
+      "qual": "private.acquisition_record_access(lead_id, deal_id, NULL::uuid, false)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tasks",
+      "policyname": "acquisition_related_update",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "UPDATE",
+      "qual": "private.acquisition_record_access(lead_id, deal_id, NULL::uuid, true)",
+      "with_check": "private.acquisition_record_access(lead_id, deal_id, NULL::uuid, true)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tasks",
+      "policyname": "acquisition_task_namespace",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "(workspace_id IS NULL)",
+      "with_check": "(workspace_id IS NULL)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tasks",
+      "policyname": "authenticated_full_access",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "cmd": "ALL",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tasks",
+      "policyname": "require_approved_operator",
+      "permissive": "RESTRICTIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "qual": "( SELECT is_approved() AS is_approved)",
+      "with_check": "( SELECT is_approved() AS is_approved)"
+    }
+  ],
+  "grants": [
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "postgres",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "postgres",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_import_log",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "postgres",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "postgres",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_outreach_log",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "postgres",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "postgres",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_preferences",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "postgres",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "postgres",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyer_transactions",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "postgres",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "postgres",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "buyers",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "postgres",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "postgres",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "deal_matches",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "postgres",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "postgres",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "deals",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "postgres",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "postgres",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_name": "tasks",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    }
+  ],
+  "triggers": [
+    {
+      "relname": "buyer_preferences",
+      "tgname": "update_buyer_preferences_updated_at",
+      "definition": "CREATE TRIGGER update_buyer_preferences_updated_at BEFORE UPDATE ON public.buyer_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+    },
+    {
+      "relname": "buyers",
+      "tgname": "buyers_updated_at",
+      "definition": "CREATE TRIGGER buyers_updated_at BEFORE UPDATE ON public.buyers FOR EACH ROW EXECUTE FUNCTION update_updated_at()"
+    },
+    {
+      "relname": "deals",
+      "tgname": "acquisition_contract_protected",
+      "definition": "CREATE TRIGGER acquisition_contract_protected BEFORE INSERT OR DELETE OR UPDATE ON public.deals FOR EACH ROW EXECUTE FUNCTION private.protect_acquisition_contract()"
+    },
+    {
+      "relname": "deals",
+      "tgname": "deals_updated_at",
+      "definition": "CREATE TRIGGER deals_updated_at BEFORE UPDATE ON public.deals FOR EACH ROW EXECUTE FUNCTION update_updated_at()"
+    },
+    {
+      "relname": "tasks",
+      "tgname": "protect_acquisition_task",
+      "definition": "CREATE TRIGGER protect_acquisition_task BEFORE INSERT OR DELETE OR UPDATE ON public.tasks FOR EACH ROW EXECUTE FUNCTION private.protect_acquisition_task()"
+    }
+  ],
+  "row_security": [
+    {
+      "relname": "buyer_import_log",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "buyer_outreach_log",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "buyer_preferences",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "buyer_transactions",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "buyers",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "deal_matches",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "deals",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "tasks",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    }
+  ],
+  "incoming_foreign_keys": [
+    {
+      "nspname": "public",
+      "relname": "acquisition_contract_versions",
+      "conname": "acquisition_contract_versions_deal_id_workspace_id_fkey",
+      "definition": "FOREIGN KEY (deal_id, workspace_id) REFERENCES deals(id, workspace_id)"
+    },
+    {
+      "nspname": "public",
+      "relname": "acquisition_inbound_request_reviews",
+      "conname": "acquisition_inbound_request_reviews_workspace_id_task_id_fkey",
+      "definition": "FOREIGN KEY (workspace_id, task_id) REFERENCES tasks(workspace_id, id)"
+    },
+    {
+      "nspname": "public",
+      "relname": "ai_agent_log",
+      "conname": "ai_agent_log_deal_id_fkey",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id)"
+    },
+    {
+      "nspname": "public",
+      "relname": "app_notifications",
+      "conname": "app_notifications_deal_id_fkey",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL"
+    },
+    {
+      "nspname": "public",
+      "relname": "buyer_outreach_log",
+      "conname": "buyer_outreach_log_buyer_id_fkey",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "nspname": "public",
+      "relname": "buyer_outreach_log",
+      "conname": "buyer_outreach_log_deal_id_fkey",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL"
+    },
+    {
+      "nspname": "public",
+      "relname": "buyer_outreach_log",
+      "conname": "buyer_outreach_log_deal_match_id_fkey",
+      "definition": "FOREIGN KEY (deal_match_id) REFERENCES deal_matches(id) ON DELETE SET NULL"
+    },
+    {
+      "nspname": "public",
+      "relname": "buyer_preferences",
+      "conname": "buyer_preferences_buyer_id_fkey",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "nspname": "public",
+      "relname": "buyer_transactions",
+      "conname": "buyer_transactions_buyer_id_fkey",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "nspname": "public",
+      "relname": "buyers",
+      "conname": "buyers_import_log_id_fkey",
+      "definition": "FOREIGN KEY (import_log_id) REFERENCES buyer_import_log(id) ON DELETE SET NULL"
+    },
+    {
+      "nspname": "public",
+      "relname": "deal_matches",
+      "conname": "deal_matches_buyer_id_fkey",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE CASCADE"
+    },
+    {
+      "nspname": "public",
+      "relname": "deal_matches",
+      "conname": "deal_matches_deal_id_fkey",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+    },
+    {
+      "nspname": "public",
+      "relname": "deals",
+      "conname": "deals_buyer_id_fkey",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id)"
+    },
+    {
+      "nspname": "public",
+      "relname": "tasks",
+      "conname": "tasks_buyer_id_fkey",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES buyers(id) ON DELETE SET NULL"
+    },
+    {
+      "nspname": "public",
+      "relname": "tasks",
+      "conname": "tasks_deal_id_fkey",
+      "definition": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL"
+    },
+    {
+      "nspname": "wholesale_ingest",
+      "relname": "bulk_supervision",
+      "conname": "bulk_supervision_task_id_fkey",
+      "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)"
+    },
+    {
+      "nspname": "wholesale_ingest",
+      "relname": "daily_digests",
+      "conname": "daily_digests_alert_task_id_fkey",
+      "definition": "FOREIGN KEY (alert_task_id) REFERENCES tasks(id)"
+    },
+    {
+      "nspname": "wholesale_ingest",
+      "relname": "expected_runs",
+      "conname": "expected_runs_alert_task_id_fkey",
+      "definition": "FOREIGN KEY (alert_task_id) REFERENCES tasks(id)"
+    },
+    {
+      "nspname": "wholesale_ingest",
+      "relname": "monitor_incidents",
+      "conname": "monitor_incidents_task_id_fkey",
+      "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)"
+    },
+    {
+      "nspname": "wholesale_ingest",
+      "relname": "property_alert_days",
+      "conname": "property_alert_days_task_id_fkey",
+      "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)"
+    },
+    {
+      "nspname": "wholesale_ingest",
+      "relname": "propstream_handoffs",
+      "conname": "propstream_handoffs_follow_up_task_id_fkey",
+      "definition": "FOREIGN KEY (follow_up_task_id) REFERENCES tasks(id)"
+    },
+    {
+      "nspname": "wholesale_ingest",
+      "relname": "scoring_incidents",
+      "conname": "scoring_incidents_task_id_fkey",
+      "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)"
+    }
+  ],
+  "buyer_referencing_functions": [
+    {
+      "nspname": "private",
+      "proname": "valid_execution_findings",
+      "signature": "private.valid_execution_findings(jsonb,integer)",
+      "definition": "CREATE OR REPLACE FUNCTION private.valid_execution_findings(value jsonb, p_version integer)\n RETURNS boolean\n LANGUAGE plpgsql\n IMMUTABLE\n SET search_path TO ''\nAS $function$\nDECLARE name text; finding jsonb; source jsonb; binding jsonb; names text[]:=ARRAY[]::text[]; ids uuid[]:=ARRAY[]::uuid[];\nBEGIN\n IF value IS NULL OR p_version IS NULL OR p_version<1 OR jsonb_typeof(value)<>'object'\n  OR NOT(value ?& ARRAY['seller_signatures','buyer_signatures','signing_authority','complete_agreement','terms'])\n  OR EXISTS(SELECT 1 FROM jsonb_object_keys(value) k WHERE k NOT IN ('seller_signatures','buyer_signatures','signing_authority','complete_agreement','terms','deadline_reviews')) THEN RETURN false; END IF;\n FOREACH name IN ARRAY ARRAY['seller_signatures','buyer_signatures','signing_authority','complete_agreement'] LOOP\n  finding:=value->name;\n  IF jsonb_typeof(finding) IS DISTINCT FROM 'object'\n   OR NOT(finding ?& ARRAY['finding','locator','note'])\n   OR (SELECT count(*) FROM jsonb_object_keys(finding))<>3\n   OR finding->>'finding' IS DISTINCT FROM 'confirmed'\n   OR jsonb_typeof(finding->'locator') IS DISTINCT FROM 'string'\n   OR length(trim(finding->>'locator')) NOT BETWEEN 1 AND 1000\n   OR finding->>'locator' ~ '[[:cntrl:]]'\n   OR jsonb_typeof(finding->'note') IS DISTINCT FROM 'string'\n   OR length(trim(finding->>'note')) NOT BETWEEN 20 AND 4000 THEN RETURN false; END IF;\n END LOOP;\n IF NOT private.valid_contract_terms(value->'terms') THEN RETURN false; END IF;\n FOR source IN SELECT * FROM jsonb_array_elements(value->'terms'->'sources') LOOP\n  IF (source->>'artifact_version')::integer>p_version THEN RETURN false; END IF;\n END LOOP;\n IF value ? 'deadline_reviews' THEN\n  IF jsonb_typeof(value->'deadline_reviews') IS DISTINCT FROM 'array'\n   OR jsonb_array_length(value->'deadline_reviews') NOT BETWEEN 1 AND 3 THEN RETURN false; END IF;\n  FOR binding IN SELECT * FROM jsonb_array_elements(value->'deadline_reviews') LOOP\n   IF jsonb_typeof(binding) IS DISTINCT FROM 'object' OR NOT(binding ?& ARRAY['term','review_id'])\n    OR (SELECT count(*) FROM jsonb_object_keys(binding))<>2\n    OR binding->>'term' IS NULL OR binding->>'term' NOT IN ('effective','inspection_deadline','closing_deadline')\n    OR jsonb_typeof(binding->'review_id') IS DISTINCT FROM 'string'\n    OR binding->>'review_id' !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'\n    OR binding->>'term'=ANY(names) OR (binding->>'review_id')::uuid=ANY(ids)\n    OR value->'terms'->(binding->>'term')->>'precision' IS DISTINCT FROM 'date' THEN RETURN false; END IF;\n   names:=array_append(names,binding->>'term'); ids:=array_append(ids,(binding->>'review_id')::uuid);\n  END LOOP;\n  FOREACH name IN ARRAY ARRAY['effective','inspection_deadline','closing_deadline'] LOOP\n   IF value->'terms'->name->>'precision'='date' AND NOT(name=ANY(names)) THEN RETURN false; END IF;\n  END LOOP;\n END IF;\n RETURN true;\nEXCEPTION WHEN invalid_text_representation OR numeric_value_out_of_range OR datetime_field_overflow THEN RETURN false;\nEND $function$\n",
+      "owner": "test_admin",
+      "security_definer": false,
+      "acl": "{test_admin=X/test_admin}",
+      "settings": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "nspname": "public",
+      "proname": "deal_handoff_valid",
+      "signature": "deal_handoff_valid(deals)",
+      "definition": "CREATE OR REPLACE FUNCTION public.deal_handoff_valid(d deals)\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO ''\nAS $function$\n SELECT coalesce(d.stage IN ('offer_made','under_contract','marketing_to_buyers','buyer_found','assigned','closed','cancelled')\n AND length(trim(d.deal_name)) BETWEEN 1 AND 500\n AND EXISTS(SELECT 1 FROM public.profiles WHERE id=d.assigned_to AND status='approved')\n AND (d.buyer_id IS NULL OR EXISTS(SELECT 1 FROM public.buyers WHERE id=d.buyer_id))\n AND (d.contract_price IS NULL OR d.contract_price>=0) AND (d.arv IS NULL OR d.arv>=0)\n AND (d.repair_estimate IS NULL OR d.repair_estimate>=0) AND (d.assignment_fee IS NULL OR d.assignment_fee>=0)\n AND (d.buyer_price IS NULL OR d.buyer_price>=0) AND (d.earnest_money IS NULL OR d.earnest_money>=0)\n AND (d.inspection_deadline IS NULL OR d.contract_date IS NULL OR d.inspection_deadline>=d.contract_date)\n AND (d.closing_date IS NULL OR d.contract_date IS NULL OR d.closing_date>=d.contract_date)\n AND (d.actual_close_date IS NULL OR d.contract_date IS NULL OR d.actual_close_date>=d.contract_date)\n AND (d.stage NOT IN ('under_contract','marketing_to_buyers','buyer_found','assigned','closed') OR\n (d.contract_price>0 AND d.contract_date IS NOT NULL AND d.contract_date<=(now() AT TIME ZONE 'America/Chicago')::date AND d.closing_date IS NOT NULL AND length(trim(d.title_company))>0 AND d.psa_doc_url LIKE 'https://%'))\n AND (d.stage NOT IN ('buyer_found','assigned','closed') OR d.buyer_id IS NOT NULL)\n AND (d.stage NOT IN ('assigned','closed') OR d.assignment_doc_url LIKE 'https://%')\n AND (d.stage<>'closed' OR d.actual_close_date IS NOT NULL AND d.actual_close_date<=(now() AT TIME ZONE 'America/Chicago')::date),false);\n$function$\n",
+      "owner": "postgres",
+      "security_definer": false,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "settings": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "nspname": "public",
+      "proname": "record_sendgrid_events",
+      "signature": "record_sendgrid_events(jsonb)",
+      "definition": "CREATE OR REPLACE FUNCTION public.record_sendgrid_events(p_events jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nDECLARE e jsonb; v_email text; v_id text; v_msg uuid; v_new text; v_stop boolean;\nBEGIN\n IF jsonb_typeof(p_events)<>'array' OR jsonb_array_length(p_events)>1000 THEN RAISE EXCEPTION 'Invalid batch'; END IF;\n FOR e IN SELECT value FROM jsonb_array_elements(p_events) LOOP\n  v_email:=lower(trim(e->>'email')); v_id:=e->>'event_id'; v_msg:=NULL;\n  IF coalesce(v_email,'')='' OR coalesce(v_id,'')='' THEN RAISE EXCEPTION 'Invalid event'; END IF;\n  PERFORM pg_advisory_xact_lock(hashtextextended(v_email,0));\n  IF e->>'message_id' IS NOT NULL THEN\n   SELECT id INTO v_msg FROM public.email_messages WHERE id=(e->>'message_id')::uuid AND recipient=v_email AND provider='sendgrid';\n  END IF;\n  INSERT INTO public.email_delivery_events(event_id,message_id,recipient,event,occurred_at,payload)\n  VALUES(v_id,v_msg,v_email,e->>'event',to_timestamp((e->>'timestamp')::double precision),e)\n  ON CONFLICT(event_id) DO NOTHING RETURNING event_id INTO v_new;\n  IF v_new IS NULL THEN CONTINUE; END IF;\n  v_stop:=e->>'event' IN ('unsubscribe','group_unsubscribe','spamreport','bounce');\n  IF v_stop THEN\n   INSERT INTO public.email_suppressions(email,reason) VALUES(v_email,e->>'event') ON CONFLICT(email) DO NOTHING;\n   UPDATE public.leads SET email_sequence_active=false WHERE lower(trim(owner_email))=v_email;\n   UPDATE public.buyers SET email_opt_in=false WHERE lower(trim(email))=v_email;\n  END IF;\n  -- Never remove suppression on group_resubscribe or on out-of-order delivery events.\n  IF v_stop OR (v_msg IS NOT NULL AND e->>'event' IN ('delivered','dropped','deferred')) THEN\n   INSERT INTO public.app_notifications(recipient_role,type,title,body,action_url,metadata)\n   VALUES('admin','pipeline_step','Email ' || (e->>'event'),\n    v_email || ': ' || left(coalesce(e->>'reason',e->>'event'),300),'/settings',\n    jsonb_build_object('provider','sendgrid','message_id',v_msg,'event_id',v_id,'suppressed',v_stop));\n  END IF;\n END LOOP;\n RETURN jsonb_build_object('saved',true);\nEND;\n$function$\n",
+      "owner": "postgres",
+      "security_definer": false,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "settings": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "nspname": "public",
+      "proname": "score_leads_rules",
+      "signature": "score_leads_rules(uuid[],uuid,boolean,boolean)",
+      "definition": "CREATE OR REPLACE FUNCTION public.score_leads_rules(p_ids uuid[] DEFAULT NULL::uuid[], p_list_id uuid DEFAULT NULL::uuid, p_rescore boolean DEFAULT false, p_include_errors boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\n SET statement_timeout TO '120s'\n SET search_path TO 'pg_catalog', 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_scored int := 0;\nBEGIN\n  WITH src AS MATERIALIZED (\n    SELECT\n      l.id, l.status, l.contact_attempts, l.dnc,\n      coalesce(l.property_type, '') AS ptype,\n      l.estimated_arv AS arv, l.loan_balance AS loan, l.estimated_equity_pct AS eq_pct,\n      l.asking_price AS ask, l.sqft, l.bedrooms AS beds, l.year_built AS yr,\n      lower(regexp_replace(concat_ws(' ', l.motivation_tag, l.source, l.seller_notes, l.internal_notes), '[_+/]+', ' ', 'g')) AS blob,\n      l.internal_notes, l.source,\n      (SELECT count(*) FROM unnest(ARRAY[l.owner_phone_1, l.owner_phone_2, l.owner_phone_3]) p\n        WHERE nullif(btrim(p), '') IS NOT NULL AND p NOT IN ('None', 'nan'))::int AS phones,\n      (nullif(btrim(l.owner_email), '') IS NULL OR l.owner_email IN ('None', 'nan')) AS no_email,\n      public.lead_street_key(l.owner_mailing_address) AS mail_key,\n      public.lead_street_key(l.property_address) AS prop_key\n    FROM public.leads l\n    WHERE (p_ids IS NULL OR l.id = ANY (p_ids))\n      AND (p_list_id IS NULL OR l.list_id = p_list_id)\n      AND (p_rescore OR l.score_motivation IS NULL)\n      AND (p_include_errors OR l.status IS DISTINCT FROM 'scoring_error')\n  ),\n  sig AS MATERIALIZED (\n    SELECT s.*,\n      (blob ~ 'probate|inherit|estate of|deceased|\\yheir\\y') AS probate,\n      (blob ~ 'pre[[:space:]-]?foreclos|\\yprefor\\y|foreclos|\\ylis pendens\\y|\\ynod\\y|notice of default|auction|trustee sale') AS prefor,\n      (blob ~ 'delinq|tax[[:space:]-]?(lien|sale|roll)|back tax') AS tax,\n      (blob ~ 'code (violation|enforcement)|condemn|unsafe|nuisance') AS code,\n      (blob ~ 'vacant|abandon|empty') AS vacant,\n      (blob ~ 'absentee|non[[:space:]-]?owner|out[[:space:]-]?of[[:space:]-]?(state|town)') AS absentee_txt,\n      (blob ~ 'divorce|bankrupt|chapter 7|chapter 13') AS life,\n      (blob ~ 'tired landlord|landlord|evict|tenant') AS tired,\n      (blob ~ 'water shut|utility (shut|disconnect)|shutoff') AS util,\n      (blob ~ 'fire damage|fire[[:space:]-]?damaged|\\yflood|\\yhail\\y|\\ystorm|foundation|\\ymold\\y|\\yroof') AS damaged,\n      (blob ~ 'high equity|free and clear|no mortgage|paid off|\\ylow ltv\\y') AS high_eq,\n      (blob ~ 'need(s)? to sell|must sell|asap|relocat|behind on|hardship|job loss|as[[:space:]-]?is') AS urgent,\n      CASE\n        WHEN mail_key = '' OR prop_key = '' THEN NULL\n        WHEN mail_key ~ '^(po|p o) box\\y' OR mail_key ~ '\\y(ste|suite)\\y' THEN true\n        ELSE mail_key <> prop_key\n      END AS mail_abs,\n      coalesce((regexp_match(internal_notes, 'stack_count=([0-9]+)'))[1]::int,\n        CASE WHEN source LIKE '%|%'\n          THEN (SELECT count(*) FROM unnest(string_to_array(source, '|')) x WHERE btrim(x) <> '')::int\n          ELSE 1 END) AS stack,\n      (ptype ~* 'business personal|personal property|mineral|utility|inventory') AS not_re,\n      ((ptype ~* 'mobile|manufactured|trailer|land|lot\\y|acre|multi|duplex|triplex|fourplex|quad|apartment|commercial|condo|coop|co-op|industrial|farm|^other$') OR prop_key !~ '^[0-9]') AS non_sfr,\n      (ptype ~* 'single[[:space:]-]?family|\\ysfr\\y|residential|\\yhouse\\y|\\yhome\\y|townhome') AS resid\n    FROM src s\n  ),\n  sig2 AS MATERIALIZED (\n    SELECT g.*, (absentee_txt OR coalesce(mail_abs, false)) AS absentee FROM sig g\n  ),\n  mot AS MATERIALIZED (\n    SELECT g.*,\n      ( 3*probate::int + 3*prefor::int + 2*tax::int + 2*code::int + 2*util::int + 2*vacant::int\n        + 2*life::int + 1.5*tired::int + absentee::int + damaged::int + 1.5*urgent::int\n        + 0.5*high_eq::int + CASE WHEN stack >= 3 THEN 2 WHEN stack = 2 THEN 1 ELSE 0 END ) AS pts,\n      (probate OR prefor OR tax OR code OR util OR vacant OR life OR tired OR absentee OR damaged OR urgent) AS distress,\n      greatest(3*prefor::int, 2*probate::int, 2*tax::int, 2*code::int, 2*util::int, 2*life::int, 2*urgent::int) AS clock,\n      coalesce(eq_pct, CASE WHEN arv > 0 AND loan IS NOT NULL THEN greatest(0, (arv - loan) / arv * 100) END) AS eq_calc,\n      ( (non_sfr OR resid)::int\n        + (coalesce(sqft, 0) > 0)::int + (coalesce(beds, 0) > 0)::int\n        + (coalesce(yr, 0) > 0)::int\n        + (coalesce(CASE WHEN coalesce(arv, 0) > 0 THEN arv ELSE ask END, 0) > 0)::int ) AS checks,\n      ( CASE WHEN non_sfr THEN -2 WHEN resid THEN 1 ELSE 0 END\n        + CASE WHEN coalesce(sqft, 0) > 0 THEN CASE WHEN sqft BETWEEN 900 AND 3200 THEN 1 ELSE -1 END ELSE 0 END\n        + CASE WHEN coalesce(beds, 0) > 0 THEN CASE WHEN beds >= 3 THEN 1 ELSE -1 END ELSE 0 END\n        + CASE WHEN coalesce(yr, 0) > 0 THEN CASE WHEN yr >= 1960 THEN 1 ELSE -1 END ELSE 0 END\n        + CASE WHEN coalesce(CASE WHEN coalesce(arv, 0) > 0 THEN arv ELSE ask END, 0) > 0\n               THEN CASE WHEN CASE WHEN coalesce(arv, 0) > 0 THEN arv ELSE ask END BETWEEN 90000 AND 450000 THEN 1 ELSE -1 END\n               ELSE 0 END ) AS buybox\n    FROM sig2 g\n  ),\n  fit AS MATERIALIZED (\n    SELECT m.*,\n      CASE\n        WHEN checks = 0 THEN 'unknown'\n        WHEN non_sfr THEN 'weak'\n        WHEN buybox::numeric / checks >= 0.6 AND checks >= 2 THEN 'strong'\n        WHEN buybox::numeric / checks >= 0 THEN 'ok'\n        ELSE 'weak'\n      END AS fit_label\n    FROM mot m\n  ),\n  fac AS MATERIALIZED (\n    SELECT f.*,\n      CASE WHEN pts >= 3 THEN 3 WHEN pts >= 1.5 THEN 2 ELSE 1 END AS f_mot,\n      greatest(1, least(3,\n        (CASE WHEN clock >= 3 OR (clock >= 2 AND stack >= 2) THEN 3\n              WHEN clock >= 2 OR vacant OR stack >= 2 THEN 2 ELSE 1 END)\n        - CASE WHEN coalesce(contact_attempts, 0) >= 4\n                AND (CASE WHEN clock >= 3 OR (clock >= 2 AND stack >= 2) THEN 3\n                          WHEN clock >= 2 OR vacant OR stack >= 2 THEN 2 ELSE 1 END) > 1 THEN 1 ELSE 0 END\n      )) AS f_time,\n      CASE\n        WHEN eq_calc IS NOT NULL THEN CASE WHEN eq_calc >= 50 THEN 3 WHEN eq_calc >= 30 THEN 2 ELSE 1 END\n        WHEN high_eq THEN 3\n        WHEN tired OR absentee THEN 2\n        WHEN distress THEN 2\n        ELSE 1\n      END AS f_eq,\n      least(3, CASE fit_label\n        WHEN 'unknown' THEN 2 WHEN 'strong' THEN 3 WHEN 'ok' THEN 2 ELSE 1 END\n        + CASE WHEN damaged AND fit_label IN ('strong', 'ok') THEN 1 ELSE 0 END) AS f_cond,\n      (phones = 0 AND no_email) AS needs_skip\n    FROM fit f\n  ),\n  fin AS MATERIALIZED (\n    SELECT c.*,\n      CASE WHEN dnc THEN 1 ELSE\n        greatest(1, least(3,\n          CASE\n            WHEN coalesce(ask, 0) > 0 AND coalesce(arv, 0) > 0\n              THEN CASE WHEN ask / arv <= 0.70 THEN 3 WHEN ask / arv <= 0.85 THEN 2 ELSE 1 END\n            WHEN coalesce(ask, 0) > 0 THEN 2\n            ELSE 2 END\n          + CASE WHEN NOT (phones = 0 AND no_email) AND phones >= 2\n                      AND (CASE WHEN coalesce(ask, 0) > 0 AND coalesce(arv, 0) > 0\n                                THEN CASE WHEN ask / arv <= 0.70 THEN 3 WHEN ask / arv <= 0.85 THEN 2 ELSE 1 END\n                                WHEN coalesce(ask, 0) > 0 THEN 2 ELSE 2 END) < 3 THEN 1 ELSE 0 END\n        ))\n      END AS f_flex\n    FROM fac c\n  ),\n  scored AS MATERIALIZED (\n    SELECT n.*,\n      CASE WHEN not_re THEN 5 ELSE f_mot + f_time + f_eq + f_cond + f_flex END AS total,\n      CASE WHEN not_re THEN 1 ELSE f_mot END AS s_mot,\n      CASE WHEN not_re THEN 1 ELSE f_time END AS s_time,\n      CASE WHEN not_re THEN 1 ELSE f_eq END AS s_eq,\n      CASE WHEN not_re THEN 1 ELSE f_cond END AS s_cond,\n      CASE WHEN not_re THEN 1 ELSE f_flex END AS s_flex\n    FROM fin n\n  ),\n  tiered AS MATERIALIZED (\n    SELECT t.*,\n      CASE WHEN s_mot < 2 THEN 'COLD' WHEN total >= 13 AND NOT (coalesce(dnc, false)) THEN 'HOT'\n           WHEN total >= 13 THEN 'WARM'\n           WHEN total >= 8 THEN 'WARM' ELSE 'COLD' END AS tier\n    FROM scored t\n  ),\n  final AS MATERIALIZED (\n    SELECT t.id, t.status AS old_status,\n      t.s_mot, t.s_time, t.s_eq, t.s_cond, t.s_flex, t.tier, t.total,\n      tier || ' (' || total || '/15): ' ||\n        CASE WHEN not_re THEN 'Not real property (' || ptype || ') - cannot be assigned'\n        ELSE array_to_string(array_remove(ARRAY[\n          CASE WHEN distress THEN 'Distress: ' || concat_ws(', ',\n            CASE WHEN probate THEN 'probate' END, CASE WHEN prefor THEN 'pre foreclosure' END,\n            CASE WHEN tax THEN 'tax delinquent' END, CASE WHEN code THEN 'code violation' END,\n            CASE WHEN util THEN 'utility shutoff' END, CASE WHEN vacant THEN 'vacant' END,\n            CASE WHEN life THEN 'life event' END, CASE WHEN tired THEN 'tired landlord' END,\n            CASE WHEN absentee THEN 'absentee' END, CASE WHEN damaged THEN 'damaged' END,\n            CASE WHEN urgent THEN 'urgent language' END) END,\n          CASE WHEN stack >= 2 THEN 'Stacked on ' || stack || ' lists' END,\n          CASE WHEN mail_abs IS FALSE THEN 'Owner-occupied' END,\n          CASE WHEN clock >= 3 OR (clock >= 2 AND stack >= 2) THEN 'Hard deadline pressure' END,\n          CASE WHEN eq_calc IS NOT NULL THEN '~' || round(eq_calc) || '% equity' END,\n          CASE fit_label WHEN 'strong' THEN 'Fits institutional/flip buy-box'\n                         WHEN 'weak' THEN 'Narrow exit (small buyer pool)' END,\n          CASE WHEN needs_skip THEN 'No phone/email - skip trace first' END\n        ], NULL), '; ') END\n        || '.' ||\n        CASE\n          WHEN not_re THEN ' Next: Suppress: not a wholesale target'\n          WHEN dnc THEN ' Next: Do not call; direct mail only if legal'\n          WHEN tier = 'HOT' THEN ' Next: ' || CASE WHEN needs_skip THEN 'Skip trace first, then call' ELSE 'Call' END\n                                  || ' today; ' || CASE WHEN fit_label = 'weak' THEN 'confirm a buyer exists before contracting' ELSE 'pull comps and line up an end buyer' END\n          WHEN tier = 'WARM' THEN ' Next: ' || CASE WHEN needs_skip THEN 'Skip trace first, then sms' ELSE 'SMS' END || ' + follow-up call this week'\n          ELSE ' Next: Nurture only; revisit if a new distress signal appears'\n        END AS summary\n    FROM tiered t\n  ),\n  upd AS (\n    UPDATE public.leads l SET\n      score_motivation = f.s_mot, score_timeline = f.s_time, score_equity = f.s_eq,\n      score_condition = f.s_cond, score_flexibility = f.s_flex,\n      ai_qualification_summary = left(f.summary, 500),\n      status = CASE WHEN f.old_status IN ('new', 'qualified_hot', 'qualified_warm', 'qualified_cold', 'scoring_error')\n                    OR f.old_status IS NULL\n                    THEN 'qualified_' || lower(f.tier) ELSE f.old_status END,\n      precision_tier = CASE f.tier WHEN 'HOT' THEN 1 WHEN 'WARM' THEN 2 ELSE 3 END\n    FROM final f\n    WHERE l.id = f.id\n      AND (l.score_motivation, l.score_timeline, l.score_equity, l.score_condition, l.score_flexibility,\n           l.ai_qualification_summary)\n          IS DISTINCT FROM (f.s_mot, f.s_time, f.s_eq, f.s_cond, f.s_flex, left(f.summary, 500))\n    RETURNING l.id\n  )\n  SELECT count(*) INTO v_scored FROM upd;\n\n  PERFORM public.recompute_priority_ranks();\n  PERFORM public.refresh_lead_retention(p_ids);\n\n  RETURN jsonb_build_object(\n    'scored', v_scored,\n    'hot',  (SELECT count(*) FROM public.leads WHERE status = 'qualified_hot'),\n    'warm', (SELECT count(*) FROM public.leads WHERE status = 'qualified_warm'),\n    'cold', (SELECT count(*) FROM public.leads WHERE status = 'qualified_cold'),\n    'unscored', (SELECT count(*) FROM public.leads WHERE score_motivation IS NULL AND status IS DISTINCT FROM 'scoring_error')\n  );\nEND;\n$function$\n",
+      "owner": "postgres",
+      "security_definer": false,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "settings": [
+        "statement_timeout=120s",
+        "search_path=pg_catalog, public, pg_temp"
+      ]
+    },
+    {
+      "nspname": "public",
+      "proname": "update_pipeline_deal",
+      "signature": "update_pipeline_deal(uuid,uuid,timestamp with time zone,jsonb)",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_pipeline_deal(p_id uuid, p_operator uuid, p_expected timestamp with time zone, p_patch jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nDECLARE saved public.deals%ROWTYPE; proposed public.deals%ROWTYPE;\nBEGIN\n IF NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=p_operator AND status='approved') THEN RAISE EXCEPTION 'Operator not approved'; END IF;\n IF p_patch ?| ARRAY['id','lead_id','created_by','created_at','updated_at','creation_manifest'] THEN RETURN jsonb_build_object('conflict',true); END IF;\n SELECT * INTO saved FROM public.deals WHERE id=p_id FOR UPDATE;\n IF NOT FOUND THEN RETURN jsonb_build_object('missing',true); END IF;\n IF to_jsonb(saved) @> p_patch THEN RETURN jsonb_build_object('deal',to_jsonb(saved),'reused',true); END IF;\n IF saved.updated_at IS DISTINCT FROM p_expected THEN RETURN jsonb_build_object('conflict',true); END IF;\n proposed:=jsonb_populate_record(saved,p_patch);\n IF proposed.stage NOT IN ('closed','cancelled') AND EXISTS(SELECT 1 FROM public.deals WHERE lead_id=proposed.lead_id AND id<>p_id AND stage NOT IN ('closed','cancelled')) THEN\n  RETURN jsonb_build_object('existing_id',(SELECT id FROM public.deals WHERE lead_id=proposed.lead_id AND id<>p_id AND stage NOT IN ('closed','cancelled') LIMIT 1)); END IF;\n IF NOT public.deal_handoff_valid(proposed) THEN RETURN jsonb_build_object('invalid',true); END IF;\n UPDATE public.deals SET\n deal_name=proposed.deal_name,stage=proposed.stage,contract_price=proposed.contract_price,arv=proposed.arv,repair_estimate=proposed.repair_estimate,\n assignment_fee=proposed.assignment_fee,buyer_price=proposed.buyer_price,earnest_money=proposed.earnest_money,\n contract_date=proposed.contract_date,inspection_deadline=proposed.inspection_deadline,closing_date=proposed.closing_date,actual_close_date=proposed.actual_close_date,\n seller_name=proposed.seller_name,buyer_id=proposed.buyer_id,title_company=proposed.title_company,title_contact=proposed.title_contact,title_phone=proposed.title_phone,\n psa_doc_url=proposed.psa_doc_url,assignment_doc_url=proposed.assignment_doc_url,notes=proposed.notes,assigned_to=proposed.assigned_to\n WHERE id=p_id RETURNING * INTO saved;\n PERFORM public.sync_deal_handoff_tasks(saved);\n RETURN jsonb_build_object('deal',to_jsonb(saved),'reused',false);\nEND $function$\n",
+      "owner": "postgres",
+      "security_definer": false,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "settings": [
+        "search_path=\"\""
+      ]
+    }
+  ],
+  "buyer_referencing_views": [
+    {
+      "schemaname": "public",
+      "viewname": "buyer_leaderboard",
+      "definition": " SELECT b.id,\n    b.first_name,\n    b.last_name,\n    b.company,\n    b.entity_name,\n    b.email,\n    b.phone,\n    b.market,\n    b.buyer_type_ibie,\n    b.ibie_score,\n    b.ibie_tier,\n    b.cash_buyer,\n    b.repeat_buyer,\n    b.total_purchases_12mo,\n    b.properties_owned,\n    b.avg_purchase_price,\n    b.last_purchase_date,\n    b.tags,\n    b.deals_closed,\n    b.pof_verified,\n    b.pof_amount,\n    b.target_zips,\n    b.min_price,\n    b.max_price,\n    b.tier AS crm_tier,\n    b.active,\n    b.sms_opt_in,\n    b.email_opt_in,\n    b.outreach_ignore_count,\n    b.last_scored_at,\n    b.created_at,\n    (count(DISTINCT bt.id))::integer AS transaction_count,\n    max(bt.purchase_date) AS most_recent_purchase\n   FROM (buyers b\n     LEFT JOIN buyer_transactions bt ON ((bt.buyer_id = b.id)))\n  WHERE (b.active = true)\n  GROUP BY b.id\n  ORDER BY b.ibie_score DESC NULLS LAST;",
+      "owner": "postgres",
+      "options": [
+        "security_invoker=true"
+      ],
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "schemaname": "public",
+      "viewname": "ibie_segment_summary",
+      "definition": " SELECT ibie_tier,\n    buyer_type_ibie,\n    (count(*))::integer AS buyer_count,\n    round(avg(ibie_score), 1) AS avg_score,\n    (count(*) FILTER (WHERE cash_buyer))::integer AS cash_buyer_count,\n    (count(*) FILTER (WHERE repeat_buyer))::integer AS repeat_buyer_count,\n    round(avg(total_purchases_12mo), 1) AS avg_purchases_12mo,\n    round(avg(avg_purchase_price)) AS avg_buy_price\n   FROM buyers\n  WHERE (active = true)\n  GROUP BY ibie_tier, buyer_type_ibie;",
+      "owner": "postgres",
+      "options": [
+        "security_invoker=true"
+      ],
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "schemaname": "public",
+      "viewname": "reportable_deals",
+      "definition": " SELECT r.id,\n    r.created_at,\n    r.updated_at,\n    r.lead_id,\n    r.deal_name,\n    r.stage,\n    r.contract_price,\n    r.arv,\n    r.repair_estimate,\n    r.assignment_fee,\n    r.buyer_price,\n    r.earnest_money,\n    r.contract_date,\n    r.inspection_deadline,\n    r.closing_date,\n    r.actual_close_date,\n    r.seller_name,\n    r.buyer_id,\n    r.title_company,\n    r.title_contact,\n    r.title_phone,\n    r.psa_doc_url,\n    r.assignment_doc_url,\n    r.notes,\n    r.assigned_to,\n    r.created_by,\n    r.creation_manifest\n   FROM (deals r\n     JOIN reportable_leads l ON ((l.id = r.lead_id)));",
+      "owner": "postgres",
+      "options": [
+        "security_invoker=true"
+      ],
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=r/postgres,service_role=r/postgres}"
+    }
+  ],
+  "scope": "Separate disposable full catalog plus candidate migrations; no hosted query, no migration-role or runtime acceptance claim",
+  "manifest_sha256": "e74c1b17c8d870c6c49e8425e1c5b86eb8db972f18b8f98aeaa10023f4124114",
+  "migrations": [
+    {
+      "file": "20261026024157_acquisition_workspace_foundation.sql",
+      "sha256": "14c7f1a45a17da6b97501f66695afe0296b1b2dd1a8cb62e63fe457a41b6ebcb"
+    },
+    {
+      "file": "20261026025259_acquisition_legacy_access_boundary.sql",
+      "sha256": "d8969087ce39307e9dbbdd54dca72487476c8deaa76dd00827393a6bcd4b8f0a"
+    },
+    {
+      "file": "20261026030633_acquisition_related_record_isolation.sql",
+      "sha256": "c6bfe34982edcc14ecfd0d3e6e7cc109eb085e64a8c40fd59cf08b45857708c1"
+    },
+    {
+      "file": "20261026031751_acquisition_activation_gate.sql",
+      "sha256": "90096d53cc5c2a781f072b7c4535899f3303d29ef105e1bf9a95304fe6de8317"
+    },
+    {
+      "file": "20261026032050_acquisition_contact_crosswalk.sql",
+      "sha256": "c442e4fd51a14c4d4cb86641b2911e74a771904c64d66d1149f536e59fdd3ed5"
+    },
+    {
+      "file": "20261026032519_acquisition_eligibility_ledger.sql",
+      "sha256": "4b5d5a0d33a036baeff28d79f4069bea8eea86a3b64770abae1a5f794cb718f2"
+    },
+    {
+      "file": "20261026033010_acquisition_owner_relationships.sql",
+      "sha256": "e5ca7b0b5a02246fe136900be26008449a633b3c43c18c76262b8fdc6782826f"
+    },
+    {
+      "file": "20261026033554_acquisition_permission_evidence.sql",
+      "sha256": "dcf9ad8056f6c4555165fbf4fd5fa2da0180609438d22b71e788797520963c6c"
+    },
+    {
+      "file": "20261026040321_acquisition_analysis_versions.sql",
+      "sha256": "6833b308cf58a9b9588f215e69ac027514bd40d75b31850a3eff1c88ea4db996"
+    },
+    {
+      "file": "20261026041236_acquisition_offer_review.sql",
+      "sha256": "0b264e0abe1f91d2aad6d233bc3ec999ea2ab2ee1f7bec90b5367f9b3d9581ca"
+    },
+    {
+      "file": "20261026041845_acquisition_offer_review_state.sql",
+      "sha256": "7f9aabec53828a1812a44d6d345d49063cc968ca05ab48d557cfa39247a312d6"
+    },
+    {
+      "file": "20261026153314_acquisition_provider_inbox.sql",
+      "sha256": "070efee732cd2e9f0deaf06a755900ffc9f41b11fab40b1706ec58d9ad91755e"
+    },
+    {
+      "file": "20261026153939_acquisition_inbox_leases.sql",
+      "sha256": "bd29c2ab0c4eb2f36571076f64d2fab3e325b4217214e69d8331448d4a2157ba"
+    },
+    {
+      "file": "20261026162924_acquisition_seller_intakes.sql",
+      "sha256": "c8e6b03c055c8a5ecc919113316fc4b31b249f9a90aaf58da2485a83156b4e19"
+    },
+    {
+      "file": "20261026163900_acquisition_facebook_batch_acceptance.sql",
+      "sha256": "35b26bd95a60558c6fbd8455cf0034048c895d5ae74ebb4b77fda45542c4ddfb"
+    },
+    {
+      "file": "20261026165322_acquisition_inquiry_health.sql",
+      "sha256": "b5ef334d4021de05aa780cf316ab7d1eb31e48715066b331f473137a7eb538da"
+    },
+    {
+      "file": "20261026170113_acquisition_inquiry_recovery.sql",
+      "sha256": "8282520d359024c00c57fcd54be272da1d71eb5c168154cfe40b67a773eb5cd6"
+    },
+    {
+      "file": "20261026171817_acquisition_intake_candidates.sql",
+      "sha256": "05152506bcad080f6ec086c7e0825a23b98217ae76b2c1731c185e07db9a4275"
+    },
+    {
+      "file": "20261026173422_acquisition_intake_identity_reviews.sql",
+      "sha256": "3d7e0314aefe5fddaf6905355c9cb0a53f409fbf7b8710c3f7233dd67e4b53c5"
+    },
+    {
+      "file": "20261026181452_acquisition_intake_qualification.sql",
+      "sha256": "949f878c0606abe15785c375ac0a1b7f5a9e07406a9fb7aae570f1325a6c328c"
+    },
+    {
+      "file": "20261026184848_acquisition_intake_underwriting_handoff.sql",
+      "sha256": "3cd73cc07fc2184bf823cc03be2c01ff30926d04fe9308d65199a9b30580d701"
+    },
+    {
+      "file": "20261026205233_acquisition_campaign_ownership.sql",
+      "sha256": "4f3deb45e46c6757b932cbb27468c03e91302865fb5ea971b233e5c7db65987f"
+    },
+    {
+      "file": "20261026214412_acquisition_campaign_links.sql",
+      "sha256": "a9bf8c9e2d0b14c4dc993a9acabd94019145fa653031dbbb6be2ed84a4cca092"
+    },
+    {
+      "file": "20261026221434_acquisition_lead_sources.sql",
+      "sha256": "0f055a1d73f32304fd7cddfcd81a68fa0636d825b74226db5a3112663208cda0"
+    },
+    {
+      "file": "20261026223054_acquisition_property_source_touches.sql",
+      "sha256": "dcef02beca7eb557e355711a9cf9137634c4359379ca5f80e037ebe098adf109"
+    },
+    {
+      "file": "20261026234504_acquisition_cost_evidence.sql",
+      "sha256": "f06c7920d611507e0c03ad1c94c8fd124d3212faa1048c0a5332cc467db0cf3c"
+    },
+    {
+      "file": "20261027010558_acquisition_inbound_event_ledger.sql",
+      "sha256": "bc96c9df95cc50a5820459fc7823ac0a9a210408fdba2ac28f5f245a4957629b"
+    },
+    {
+      "file": "20261027013724_acquisition_inbound_review_tasks.sql",
+      "sha256": "5d6b023070827d6014e5900568e3ceb16f2d99aaa949851c441f9faa684f3db5"
+    },
+    {
+      "file": "20261027015624_acquisition_inbound_intakes.sql",
+      "sha256": "b4375d11cd96bb8dca6499a1452f2781c69929ee2d70a1549c65123f8f3e9f08"
+    },
+    {
+      "file": "20261027020314_acquisition_inbound_read_metadata.sql",
+      "sha256": "3e9a94404755e25f8456dd112bccc6b3569343eb87ed5cc1f70dba80937e17c4"
+    },
+    {
+      "file": "20261027023450_acquisition_inbound_request_queue.sql",
+      "sha256": "63c781c11835d9439e611c3330d66dd4720970364af7ae2036867aa61472260e"
+    },
+    {
+      "file": "20261027024045_acquisition_inbound_request_reviews.sql",
+      "sha256": "ab52fc48b68a7a08c254b065d07200f296072f5660f206ee699fc7bb8987b0ff"
+    },
+    {
+      "file": "20261027025554_acquisition_inbound_queue_review_status.sql",
+      "sha256": "9e725de6870d5390457d9508dfd240e8aa1b3b3bd540f22b4f6f8d23450cb590"
+    },
+    {
+      "file": "20261027031552_acquisition_inbound_property_lookup.sql",
+      "sha256": "48d706c8b374b74759b1a0233f9be2f247feb2e592b8b3a17bd08147b2b9c274"
+    },
+    {
+      "file": "20261027140038_acquisition_inbound_contact_restrictions.sql",
+      "sha256": "25e72ba784d42135d2b976e4171ddc59e8035244fbde5a23b2411d26b4403f08"
+    },
+    {
+      "file": "20261028020606_acquisition_mail_template_versions.sql",
+      "sha256": "df52f3e11ef252cf6032dcd892a88eb1fe48e3be9c338393f950c550e6e0f749"
+    },
+    {
+      "file": "20261028181631_acquisition_mail_destination_reviews.sql",
+      "sha256": "099d671bfe638b6ecb9dc58689ffaabc564383567f6f941b72c139f09603ceb6"
+    },
+    {
+      "file": "20261029012211_acquisition_mail_content_preparation.sql",
+      "sha256": "588e652c5c9adde1381555bce19a529b68c63e75695b619c6eeb8d27eafaa777"
+    },
+    {
+      "file": "20261029013306_acquisition_mail_content_reviews.sql",
+      "sha256": "f30d7c209a00b52670567b42276d91a37f3d29fa73e0145291a8ece3a32a44ec"
+    },
+    {
+      "file": "20261029014552_acquisition_mail_proof_context.sql",
+      "sha256": "40a5567c927ab7ee6857cd747a19b394e865e7bde284a15a399b260c16a037e2"
+    },
+    {
+      "file": "20261029022851_acquisition_evidence_registry.sql",
+      "sha256": "47c9b25b58658e2f61d054a86c15dbf2aa7cc671c6c3ed00bb5df214bf4799fc"
+    },
+    {
+      "file": "20261029024603_acquisition_evidence_storage.sql",
+      "sha256": "90ca43744bc69036bacbdc9c1ac44c37fe9813867536781ee7584294fb4938d2"
+    },
+    {
+      "file": "20261029035546_acquisition_evidence_discovery.sql",
+      "sha256": "f73577f3e5c44f79dd9a6df786b00efa8fa9482d9bf731a13028c7a45ab03f0e"
+    },
+    {
+      "file": "20261029142852_acquisition_evidence_upload_admission.sql",
+      "sha256": "d958bbe53e68655ea25118176d673876fde7018e76f39e17b628f47667bafa25"
+    },
+    {
+      "file": "20261029184129_acquisition_evidence_attestations.sql",
+      "sha256": "538a797101ff77e81ec5feabfd78fd32ac6509504393cc3c98dd3fc3d2913e0d"
+    },
+    {
+      "file": "20261030041400_acquisition_postal_observations.sql",
+      "sha256": "f3b53c10574c7d4ee9b4a71795341c4b13a2845490d65d6f4b7665bc6718c6c9"
+    },
+    {
+      "file": "20261030171809_acquisition_evidence_scan_state.sql",
+      "sha256": "963765598c21696df1f531e4f122e4c79747facf2545495aa6c4d389ae4258e7"
+    },
+    {
+      "file": "20261030182649_acquisition_content_review_session_freshness.sql",
+      "sha256": "27a3d7d249218144966c24b3432e425827fb16ac7c321823efde8cfe7db108c2"
+    },
+    {
+      "file": "20261030214239_acquisition_content_evidence_bindings.sql",
+      "sha256": "7afe4be48013101e9436d452bf303d01c735abe0ea648697d0ab7693a2c914a7"
+    },
+    {
+      "file": "20261030220930_acquisition_evidence_review_candidate.sql",
+      "sha256": "21cbe9b34a9bbe166891e372daeafac0949f0117cb1bab9f39d78f9bc0c1e253"
+    },
+    {
+      "file": "20261030230704_acquisition_offer_form_versions.sql",
+      "sha256": "f90928af8d9844d7bdd59829b9bb7a4d5330ce6d478b282dcb465e7c3c0f74c8"
+    },
+    {
+      "file": "20261031195256_acquisition_offer_publication_routing.sql",
+      "sha256": "729981a599e0f316d7fc435828fa9c63913073c25f435e77c1bbc19401443ed7"
+    },
+    {
+      "file": "20261031200935_acquisition_legacy_receipt_guards.sql",
+      "sha256": "95eb88b3e73bcd848f8df53072736e516592e84867dc76da03a2fc4c8635242d"
+    },
+    {
+      "file": "20261031202407_acquisition_portal_receipts.sql",
+      "sha256": "666843aed4476187fc94ce54f5cb4f7afa52a587a634b49aa32ad7aa7ec50e0f"
+    },
+    {
+      "file": "20261031203609_acquisition_portal_admission.sql",
+      "sha256": "d5649de6b29d4ab559e7247bed81d1eac04825b405687cc7199304d0806c9625"
+    },
+    {
+      "file": "20261031204520_acquisition_portal_verified_acceptance.sql",
+      "sha256": "5eb63166c3b3405bfc2241b45c6fe0c4532d6fc4e00760e8e1ed2fc72a9ef4b3"
+    },
+    {
+      "file": "20261031221633_acquisition_contract_drafts.sql",
+      "sha256": "193ee1da84da9bfe58b5b97d1d6f9b6e702f3c04617f51ab23c050b59025f63e"
+    },
+    {
+      "file": "20261031224723_acquisition_contract_document_registry.sql",
+      "sha256": "85924fc865b3ecb8ecbf8e62503d95ee76cd5e28b2ba41b96fa4494e6abc0dbc"
+    },
+    {
+      "file": "20261031225950_acquisition_contract_upload_admission.sql",
+      "sha256": "85606b5c4f078b10e697275326ac14d9d0f8f4a37d1fc222452597ad857944cf"
+    },
+    {
+      "file": "20261031231025_acquisition_contract_storage_upload.sql",
+      "sha256": "ad99ed227baf06061936925d5d3d3553e00d02c5d12adf2865b6ab17045b19e5"
+    },
+    {
+      "file": "20261031231924_acquisition_contract_document_discovery.sql",
+      "sha256": "2b8a0a6c70a686f01847e787c354b1720fb82974dd02ab2b452b967017ff0721"
+    },
+    {
+      "file": "20261031234409_acquisition_contract_observations.sql",
+      "sha256": "e28590c70973b6be188cd3ce6521de1a2ec1766d56be8ef7f126c1febf5ca9f1"
+    },
+    {
+      "file": "20261031235803_acquisition_contract_scan_state.sql",
+      "sha256": "511d83021931eb97db8dc4cd501528dbcc6d6e408f23aa999e1890b8ccc3919b"
+    },
+    {
+      "file": "20261101000910_acquisition_contract_reviews.sql",
+      "sha256": "61aef0dfe07847e406fa73f3f5e3f86217a57980343b45afd35a7c0a0fd45af2"
+    },
+    {
+      "file": "20261101002427_acquisition_contract_review_candidate.sql",
+      "sha256": "a34babb434120380cc5bed1e5e0f20832415b12466f0ed807e9ece4fe439bcf8"
+    },
+    {
+      "file": "20261101004230_acquisition_contract_terms.sql",
+      "sha256": "246dbb83e97a14b91186a29fd7bd7e4af5062d414de62146e32be3b41f4bbc73"
+    },
+    {
+      "file": "20261101010335_acquisition_contract_document_links.sql",
+      "sha256": "f157a597cfcd22c5661cedfc49cbdc26febbb64fc165ffdafa6b488e8ebf1e1a"
+    },
+    {
+      "file": "20261101010937_acquisition_contract_review_source_versions.sql",
+      "sha256": "300309a21b823b2f25edb3e1f24d7cc9ba20c8dd58ea95fde61886dd208a6ef0"
+    },
+    {
+      "file": "20261101011718_acquisition_contract_reference_discovery.sql",
+      "sha256": "1375905f27a4ac15ac3eb72504ca6fccee2c2d2a14a73c65f9ba31da8b0f6012"
+    },
+    {
+      "file": "20261101020154_acquisition_signature_reviews.sql",
+      "sha256": "5eb4e05870fe5d071914fbb1d3b4e2b95fc8856aebc828a019d6c8a702361aed"
+    },
+    {
+      "file": "20261101022040_acquisition_signature_candidates.sql",
+      "sha256": "23131839e6e022b44a3d1c39d43d73834b53eae26c6c91f9f2fb50d822406744"
+    },
+    {
+      "file": "20261101023551_acquisition_contract_lifecycle.sql",
+      "sha256": "01e0f19ff399ca6c2e63d9be22b9dabf840f5dbe63ed4bd843c9e3ba0ac63706"
+    },
+    {
+      "file": "20261101024344_acquisition_transition_choices.sql",
+      "sha256": "2f25db99be2d6a52e8e267b8c31f00d1dc3210ba1a7ec6bc613a7b85636f9f4c"
+    },
+    {
+      "file": "20261101025323_acquisition_pending_contract_documents.sql",
+      "sha256": "15319d631674963993e0e2639c540e6af7c4892da4d4943d6d87a05653c650fe"
+    },
+    {
+      "file": "20261101030340_acquisition_execution_findings_storage.sql",
+      "sha256": "aa37d86abddf0a3c9f3372ee3db6af09493fda4d7d4e3db90dca314fec5cf0b5"
+    },
+    {
+      "file": "20261101030913_acquisition_execution_review_write.sql",
+      "sha256": "5e0b61039da586eeeb653b8feb7ba2c6e3a8dac3c994438adad2de02105338df"
+    },
+    {
+      "file": "20261101031709_acquisition_execution_review_state.sql",
+      "sha256": "3ba05a695097b77ce9879584ce2adbe9be5d23d77abfcd663b2b3bab40363d80"
+    },
+    {
+      "file": "20261101032437_acquisition_execution_review_choices.sql",
+      "sha256": "5cf107aa85806ecae5708f23ecf520b3194b1391b5f2e551315bdd979c7ca7ca"
+    },
+    {
+      "file": "20261101034450_acquisition_executed_contract_transition.sql",
+      "sha256": "7ee4d7f20de8483c9c7cae49fbd1b130151affce5f8856abb2ee395be3b6f172"
+    },
+    {
+      "file": "20261101035403_acquisition_executed_transition_choices.sql",
+      "sha256": "e83fabb1f2058678bd97883aed676659e2a47330135460140f600ceb2de3bac7"
+    },
+    {
+      "file": "20261101040743_acquisition_deadline_resolution_storage.sql",
+      "sha256": "80cd014c14b835ca6b60f9c02367e9bcc2231e853b7a6375acbf8bb1aa80a06c"
+    },
+    {
+      "file": "20261101041353_acquisition_deadline_resolution_write.sql",
+      "sha256": "28735d81dc070b319ab2131896b53c84e3a993c2f9c7dc47582f8d4fb48d9237"
+    },
+    {
+      "file": "20261101043729_acquisition_deadline_resolution_state.sql",
+      "sha256": "b202df15f89c861d548174646ce8111e76cb4a28b91d34801fe7fee0e0d12959"
+    },
+    {
+      "file": "20261101044534_acquisition_deadline_resolution_choices.sql",
+      "sha256": "07ff4edbfc61fbfc30bc35081bbb6aba43700ae551b829b04b2b286ac4167010"
+    },
+    {
+      "file": "20261101045444_acquisition_execution_deadline_binding.sql",
+      "sha256": "2156d17b70c137fedb4c46d050642cc86d65ff69cb2df86a0900f9d1efbd6a5c"
+    },
+    {
+      "file": "20261101050425_acquisition_execution_deadline_authority.sql",
+      "sha256": "ec93c89e84894e86496b30013d7f238fd129b837062c532f29b210c9bf182fbb"
+    },
+    {
+      "file": "20261101052408_acquisition_title_review_transition.sql",
+      "sha256": "703165c55f3c833f051891d2468e093eea6832f0b47c8c51bf7a804ee41254b0"
+    },
+    {
+      "file": "20261101053450_acquisition_title_review_choices.sql",
+      "sha256": "20e35248fd1dcb04950e1df1ff30c5f5b12844e8b99878f97f0ce5125982b62d"
+    },
+    {
+      "file": "20261101054305_acquisition_title_contract_documents.sql",
+      "sha256": "399782a8484e9e02cdf2cea10313ed1b825b62009139b3b58c246aad59502b56"
+    },
+    {
+      "file": "20261101055752_acquisition_title_findings_storage.sql",
+      "sha256": "a14ee908abc3b2c922b25b74d21f15efbc7e99efc0fec5d6d9e52d3d5dbe0198"
+    },
+    {
+      "file": "20261101061021_acquisition_title_source_resolution.sql",
+      "sha256": "ee2cd00cb8484a7c52aa83e7ddfcb53a494c7aac62e5166bff4c783ff1875279"
+    },
+    {
+      "file": "20261101061744_acquisition_title_review_write.sql",
+      "sha256": "1e7b4425012689c42e516cfad8b75cec9d1fe82a9257fde176e4ef18b6bb5adf"
+    },
+    {
+      "file": "20261101063735_acquisition_title_review_choices.sql",
+      "sha256": "49fdca062c80e0b1237ffa58e34e0fb6892fc6720ea4070575d0445981868616"
+    },
+    {
+      "file": "20261101071737_acquisition_disposition_plans.sql",
+      "sha256": "c6eb933d88ec064a1ab5c830e20d51c2825492b691b940ffc73b27b3a1189ad0"
+    },
+    {
+      "file": "20261101074125_acquisition_disposition_findings_storage.sql",
+      "sha256": "2361cc3c5402d151aa592ce2b962c2c31b3280a25d2412e0a51fee745dafb34d"
+    },
+    {
+      "file": "20261101074845_acquisition_disposition_source_resolution.sql",
+      "sha256": "7e310e85d4b57b8700c6924a17c975715d64140c80dc7b0e8010f20313d9a323"
+    },
+    {
+      "file": "20261101080541_acquisition_disposition_policy_scope.sql",
+      "sha256": "53213007d1f25d506ad5840b9bd0fe99c880088278efebc594c7b35fcb5177d8"
+    },
+    {
+      "file": "20261101080958_acquisition_disposition_review_write.sql",
+      "sha256": "1ab959eac5ebfa98a82a40133b9a12288dee530b1aeb1d4d47977cdaea57f0a5"
+    },
+    {
+      "file": "20261101082423_acquisition_disposition_review_choices.sql",
+      "sha256": "8632a92afbcd9aab023e9ecb8d69af9d8fdea191182cc7d60b67ba128488f670"
+    },
+    {
+      "file": "20261101085153_acquisition_disposition_transition_storage.sql",
+      "sha256": "d6c77a05d4fca4e6961e9399dbbcac45431dbe965844595ddf336c4f9e13b937"
+    },
+    {
+      "file": "20261101085535_acquisition_disposition_contract_transition.sql",
+      "sha256": "849d25030b0b674d7a90cab3a0d9b92df84f662dd15dabba92bcfba643232b81"
+    },
+    {
+      "file": "20261101090156_acquisition_disposition_transition_choices.sql",
+      "sha256": "b1fe25c03424589c34f79bae737802d696ced66295c05d907cc671d0e7c3652e"
+    },
+    {
+      "file": "20261101093742_acquisition_review_renewal_lineage.sql",
+      "sha256": "4552f502e87debd907cc9dc573eeb3cebbee31b0acf4d5d39690dc253b889347"
+    },
+    {
+      "file": "20261101094232_acquisition_review_lineage_head.sql",
+      "sha256": "3344e73007e576ebc7daee773b74377132829552740719d289d85f92a6ae107b"
+    },
+    {
+      "file": "20261101095023_acquisition_review_renewal_dependencies.sql",
+      "sha256": "a231ba08f58ddd2c2d5987ac367c79cf475c2724baff6d90b64b8d98c9515dce"
+    },
+    {
+      "file": "20261101095505_acquisition_deadline_effective_review.sql",
+      "sha256": "2af9676426e84900d3bfc8d8726eb5ec08557137f383a20e000f6006a6ec1e09"
+    },
+    {
+      "file": "20261101101024_acquisition_execution_effective_review.sql",
+      "sha256": "8d61cdb8fcabd31ae5ef3169ed4b45a80cda42da7fc96524cd5efa779242460b"
+    },
+    {
+      "file": "20261101101358_acquisition_downstream_effective_reviews.sql",
+      "sha256": "43b42472a8d946bd4ef1cfb283f081c70ca073701661a32aea39e96552404306"
+    },
+    {
+      "file": "20261101104256_acquisition_renewal_authority_locks.sql",
+      "sha256": "fe5d1f26a0f09cfc28b98902d3e8f81f34d3d52cd34de047dadd804bbbcf6438"
+    },
+    {
+      "file": "20261101104656_acquisition_personal_review_renewal.sql",
+      "sha256": "365e5ae91240aae2da2fa30437e87edcdb38c1f7d678b159f53bbcafe966d278"
+    },
+    {
+      "file": "20261101110243_acquisition_review_renewal_choices.sql",
+      "sha256": "d1aec0bbfbb413f40cdedb597245f2221c2d6293205ea2a2a755c13309af2883"
+    },
+    {
+      "file": "20261101110902_acquisition_review_renewal_api.sql",
+      "sha256": "2ae282c9477a528dce3652b59269698d7c26a95919a5766f2d243f7dc0d1ca34"
+    },
+    {
+      "file": "20261101112744_acquisition_effective_review_state.sql",
+      "sha256": "3b0c982799a265b8f0c97bfafdcd3163894386ae375f89e92c427204eac38b0e"
+    },
+    {
+      "file": "20261101113021_acquisition_effective_review_handoffs.sql",
+      "sha256": "17a904482e2a0c18893d23ccdd36c65259ba2c99672bed2e34be419fa505faa2"
+    },
+    {
+      "file": "20261101113721_acquisition_original_review_support.sql",
+      "sha256": "a34686bd3b792e4d4b024a31f3f8b698a5e710f1ba95e0608c72614196b3c97a"
+    }
+  ],
+  "production_changed": false
+}

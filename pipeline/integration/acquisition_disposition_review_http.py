@@ -1,5 +1,7 @@
 """Mounted disposition decisions against real local JWT/PostgREST authority."""
 from fastapi.testclient import TestClient
+from datetime import datetime
+from acquisition_review_renewals_http import verify_review_renewal_http
 
 
 def verify_disposition_review_http(db,app,drops,headers,token,workspace,contract,admin,other,title_body):
@@ -7,7 +9,7 @@ def verify_disposition_review_http(db,app,drops,headers,token,workspace,contract
     path=prefix+'/disposition-review'
     title,plan,policy,review,hold,withdraw=[f'ae110000-0000-4000-8000-{n:012d}' for n in range(1,7)]
     original=db.query('SELECT to_jsonb(d) AS row FROM public.deals d WHERE id=%s',[contract])
-    root=db.query("SELECT r.artifact_id::text,r.source_version,r.sha256,r.policy_id::text FROM public.acquisition_contract_reviews r JOIN public.acquisition_contract_transitions t ON t.execution_review_id=r.id WHERE t.workspace_id=%s AND t.contract_id=%s AND t.contract_version=2 AND t.recorded_status='executed'",[workspace,contract])[0]
+    root=db.query("SELECT r.id::text,r.artifact_id::text,r.source_version,r.sha256,r.policy_id::text FROM public.acquisition_contract_reviews r JOIN public.acquisition_contract_transitions t ON t.execution_review_id=r.id WHERE t.workspace_id=%s AND t.contract_id=%s AND t.contract_version=2 AND t.recorded_status='executed'",[workspace,contract])[0]
     # Synthetic administrative policy fixture only; no application provisioning path.
     db.query("INSERT INTO private.acquisition_contract_review_policies SELECT (jsonb_populate_record(NULL::private.acquisition_contract_review_policies,to_jsonb(p)||jsonb_build_object('id',%s::text,'kind','disposition_findings'))).* FROM private.acquisition_contract_review_policies p WHERE id=%s",[policy,root['policy_id']])
     db.query("INSERT INTO private.acquisition_disposition_policy_scopes(policy_id,workspace_id,reviewer_id,exit_type,legal_source_id,reviewed_by,approval_ref,valid_from,valid_until) VALUES(%s,%s,%s,'wholesale_assignment',%s,%s,%s,clock_timestamp()-interval '1 minute',clock_timestamp()+interval '1 hour')",[policy,workspace,admin,root['artifact_id'],admin,policy])
@@ -18,13 +20,20 @@ def verify_disposition_review_http(db,app,drops,headers,token,workspace,contract
     body=dict(id=review,expected_version=2,expected_sequence=0,status='approved',plan_id=plan,original_review_id=None,policy_id=policy,
         expires_at=title_body['expires_at'],personally_reviewed=True,note='Synthetic original disposition review for controlled gateway verification.',findings=findings)
     with TestClient(app) as client:
+        renewed_execution,_=verify_review_renewal_http(db,client,drops,headers,token,workspace,contract,other,root['id'],
+            request_id='af126000-0000-4000-8000-000000000011')
+        expiry=db.query('SELECT expires_at::text FROM public.acquisition_contract_reviews WHERE id=%s',[renewed_execution])[0]['expires_at']
+        title_body=title_body|dict(expires_at=datetime.fromisoformat(expiry).isoformat())
         prepared=client.post(prefix+'/title-review',json=title_body|dict(id=title,expected_sequence=6),headers=headers)
         if prepared.status_code!=200:raise AssertionError('Disposition fixture could not renew original title: '+str(prepared.status_code))
+        title,_=verify_review_renewal_http(db,client,drops,headers,token,workspace,contract,other,title,
+            request_id='af126000-0000-4000-8000-000000000010')
         proposed=client.post(prefix+'/disposition-plan',json=dict(id=plan,expected_version=2,expected_sequence=3,status='proposed',exit_type='wholesale_assignment',original_plan_id=None,note='Synthetic assignment proposal requiring independent disposition review.'),headers=headers)
         if proposed.status_code!=200:raise AssertionError('Disposition fixture could not propose original assignment')
         selected=client.get(path+'/candidate',headers=headers)
         if selected.status_code!=200:raise AssertionError('Mounted disposition choices unavailable')
         current_choice=selected.json()
+        body['expires_at']=current_choice['candidate']['max_expires_at'] if current_choice['candidate'] else body['expires_at']
         if current_choice['status']!='ready_for_human_review' or current_choice['candidate']['plan_id']!=plan or current_choice['candidate']['expected_sequence']!=0 or current_choice['candidate']['executed_source']['artifact_id']!=root['artifact_id'] or current_choice['candidate']['legal_source']['artifact_id']!=root['artifact_id']:
             raise AssertionError('Disposition choice lost original proposal/source/policy context')
         if current_choice['execution_authorized'] or current_choice['withdrawal'] is not None:raise AssertionError('New choice implied execution or an original withdrawal')

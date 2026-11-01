@@ -1,0 +1,28 @@
+{
+  "scope": "Disposable local SQL and authenticated public RPC roles; no hosted/gateway/production acceptance for migrations113-114 yet",
+  "runs": [
+    {
+      "session": 93097,
+      "tests": 3,
+      "seconds": 24.664,
+      "exit_code": 0,
+      "log": "/tmp/effective-review-state.log"
+    },
+    {
+      "session": 66342,
+      "tests": 2,
+      "seconds": 16.141,
+      "exit_code": 0,
+      "log": "/tmp/effective-review-handoffs.log"
+    },
+    {
+      "session": 93645,
+      "tests": 1,
+      "seconds": 6.562,
+      "exit_code": 0,
+      "log": "/tmp/effective-execution-handoff.log"
+    }
+  ],
+  "full114_rehearsal_completed": false,
+  "production_apply_approved": false
+}

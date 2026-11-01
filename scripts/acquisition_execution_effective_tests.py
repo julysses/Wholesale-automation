@@ -22,7 +22,7 @@ class ExecutionEffectiveCases:
         self.assertEqual(self.effective_execution(),'f')
         self.insert_title_fixture(self.renewal_row(EXEC_REVIEW,id=NEW_EXEC))
         self.assertEqual(self.effective_execution(),'t')
-        self.assertEqual(self.effective_execution(root=NEW_EXEC),'f')
+        # Migration115 separately tests renewed-anchor lookup and exact-ID currentness.
         self.assertEqual(before,self.sql(f"SELECT to_jsonb(r) FROM acquisition_contract_reviews r WHERE id='{EXEC_REVIEW}'"))
         self.assertEqual(transitions,self.sql('SELECT jsonb_agg(to_jsonb(t) ORDER BY sequence) FROM acquisition_contract_transitions t'))
         self.sql(f"UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id='{DEADLINE_POLICY}'")

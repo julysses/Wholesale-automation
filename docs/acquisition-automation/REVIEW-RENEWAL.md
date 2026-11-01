@@ -1,6 +1,6 @@
 # Review renewal implementation contract
 
-Status: local110 batch fully verified (110 migrations,26 access,356 workflows,164 API checks), including private authenticated personal renewal saving and28 browser recovery tests. Public choices/API/UI, public effective-authority integration and full renewal acceptance remain incomplete. No production migration or activation.
+Status: published112 includes verified authenticated renewal API and guided UI. Local113-115 effective states/handoffs and original support bindings passed full115 populated database/gateway acceptance: session14533 exit0,374 workflows,26 access probes,167 gateway checks. Evidence: `evidence/2026-11-01-original-support-115-result.json`. Publication pending; no production migration or activation.
 
 ## Observed current implementation
 

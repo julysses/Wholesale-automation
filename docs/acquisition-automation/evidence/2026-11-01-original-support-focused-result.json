@@ -1,0 +1,61 @@
+{
+  "scope": "Disposable schema inventory and authenticated SQL/RPC tests; full115/gateway acceptance pending",
+  "inventory": {
+    "session": 24237,
+    "exit_code": 0,
+    "seconds": 5.293,
+    "columns": 144,
+    "constraints": 88,
+    "indexes": 25,
+    "policies": 10,
+    "grants": 48,
+    "triggers": 7
+  },
+  "tests": {
+    "session": 34222,
+    "exit_code": 0,
+    "count": 4,
+    "seconds": 28.104,
+    "log": "/tmp/original-support-tests.log"
+  },
+  "full_rehearsal": {
+    "session": 8495,
+    "status": "failed",
+    "log": "/tmp/original-support-115-full.log",
+    "exit_code": 1,
+    "failure": "Historical renewal lock assertion rejected newly supported renewed anchors"
+  },
+  "production_apply_approved": false,
+  "anchor_regression": {
+    "session": 10882,
+    "exit_code": 0,
+    "count": 1,
+    "seconds": 6.715,
+    "log": "/tmp/original-support-anchor.log"
+  },
+  "full_recheck": {
+    "session": 93650,
+    "status": "failed",
+    "log": "/tmp/original-support-115-recheck.log",
+    "expected_workflows": 373,
+    "expected_gateway_checks": 167,
+    "exit_code": 1,
+    "failure": "Obsolete root-only assertion for private effective disposition lookup"
+  },
+  "effective_anchor_regression": {
+    "session": 52213,
+    "exit_code": 0,
+    "count": 4,
+    "seconds": 28.093,
+    "log": "/tmp/original-support-effective-anchors-recheck.log"
+  },
+  "full_current": {
+    "session": 14533,
+    "status": "passed",
+    "log": "/tmp/original-support-115-final.log",
+    "expected_workflows": 374,
+    "expected_gateway_checks": 167,
+    "exit_code": 0,
+    "evidence": "2026-11-01-original-support-115-result.json"
+  }
+}

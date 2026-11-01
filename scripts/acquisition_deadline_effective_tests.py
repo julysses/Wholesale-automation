@@ -20,7 +20,7 @@ class DeadlineEffectiveCases:
         self.assertEqual(self.effective_deadline(at=f"'{short}'::timestamptz+interval '1 second'"),'t')
         self.assertEqual(self.effective_deadline(at="clock_timestamp()+interval '1 day'"),'f')
         self.assertEqual(before,self.sql(f"SELECT to_jsonb(r) FROM acquisition_contract_reviews r WHERE id='{DEADLINE_REVIEW}'"))
-        self.assertEqual(self.effective_deadline(root=row['id']),'f')
+        # Migration115 separately tests renewed-anchor lookup and exact-ID currentness.
 
     def test_signature_deadline_effective_fresh_scan_same_bytes_and_scanner_revocation(self):
         self.prepare_deadline_review();self.deadline_review()

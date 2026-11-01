@@ -1,5 +1,6 @@
 """Actual disposition handoff with retained originals and exact commit-loss retry."""
 from fastapi.testclient import TestClient
+from acquisition_review_renewals_http import verify_review_renewal_http
 
 
 def verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contract,admin,other,review_body):
@@ -19,6 +20,7 @@ def verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contrac
             raise AssertionError('Missing disposition approval did not hold the handoff')
         approved=client.post(review_path,json=approval,headers=headers)
         if approved.status_code!=200:raise AssertionError('Handoff fixture approval failed: '+str(approved.status_code))
+        before_handoff,_=verify_review_renewal_http(db,client,drops,headers,token,workspace,contract,other,review)
         choice=client.get(path+'/candidate',params={'contract_version':2},headers=headers)
         if choice.status_code!=200 or choice.headers.get('cache-control')!='no-store':raise AssertionError('Disposition handoff choice unavailable')
         selected=choice.json()['candidate']
@@ -33,6 +35,9 @@ def verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contrac
         lost=client.post(path,json=body,headers=headers);retry=client.post(path,json=body,headers=headers)
         if lost.status_code!=503 or lost.headers.get('X-Acquisition-Transition-Rejected') or retry.status_code!=200 or not retry.json()['duplicate']:
             raise AssertionError('Disposition handoff commit-loss recovery failed: '+str(retry.status_code))
+        used=db.query("SELECT new_value->'review_authority' AS used FROM public.audit_logs WHERE entity_id=%s AND entity_type='acquisition_contract_transition'",[transition])[0]['used']
+        if not any(row['root_id']==review and row['review_id']==before_handoff for row in used):
+            raise AssertionError('Handoff audit did not retain the actual renewed approval')
         if retry.json()['recorded_status']!='disposition_review' or retry.json()['sequence']!=4 or retry.json()['execution_authorized']:
             raise AssertionError('Disposition receipt changed status or granted execution')
         if client.post(path,json=body|dict(reason='Changed reason cannot replace original handoff history.'),headers=headers).status_code!=409:
@@ -45,8 +50,7 @@ def verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contrac
             raise AssertionError('Disposition contract disappeared from guided history')
         current=client.get(review_path,headers=headers)
         if current.status_code!=200 or not current.json()['approval_current']:raise AssertionError('Handoff immediately invalidated original disposition authority')
-        from acquisition_review_renewals_http import verify_review_renewal_http
-        renewed,renewed_sequence=verify_review_renewal_http(db,client,drops,headers,token,workspace,contract,other,review)
+        renewed,renewed_sequence=verify_review_renewal_http(db,client,drops,headers,token,workspace,contract,other,review,request_id='af126000-0000-4000-8000-000000000002')
         db.query('UPDATE private.acquisition_activation SET enabled=false')
         try:
             paused=client.get(path+'/candidate',params={'contract_version':2},headers=headers)
@@ -86,7 +90,7 @@ def verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contrac
                     command.update(term='closing_deadline',original_review_id=prior['review_id'],resolution=None)
                     write_path=version_path+'/deadline-reviews';state_path=write_path+'/closing_deadline'
                 else:
-                    if prior['review_id']!=execution:raise AssertionError('Execution withdrawal changed original review')
+                    if prior['review_id']!=db.query('SELECT private.acquisition_review_anchor_head(%s,%s,2,%s,clock_timestamp())::text AS id',[workspace,contract,execution])[0]['id']:raise AssertionError('Execution withdrawal changed the current personal review')
                     command.update(findings=None);write_path=version_path+'/execution-review';state_path=write_path
                 drops[rpc_name]=True
                 lost=client.post(write_path,json=command,headers=headers);recovered=client.post(write_path,json=command,headers=headers)

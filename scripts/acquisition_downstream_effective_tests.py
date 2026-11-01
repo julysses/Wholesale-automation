@@ -69,7 +69,7 @@ class DownstreamEffectiveCases:
         for kind in ('title','disposition'):
             for role in ('anon','authenticated','service_role'):self.effective_downstream(kind,user=ADMIN,role=role,fail=True)
         self.assertEqual(self.effective_downstream(root=REVIEW),'f')
-        self.assertEqual(self.effective_downstream('disposition',root=NEW_DISPO),'f')
+        # Migration115 separately tests renewed-anchor lookup and exact-ID currentness.
         self.sql(f"UPDATE private.acquisition_disposition_policy_scopes SET revoked_at=clock_timestamp() WHERE policy_id='{POLICY}'")
         self.assertEqual(self.effective_downstream('disposition'),'f');self.assertEqual(self.effective_downstream(),'t')
         self.sql(f"UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id='{DEADLINE_POLICY}'")

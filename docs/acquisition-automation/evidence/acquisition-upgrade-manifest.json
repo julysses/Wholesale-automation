@@ -449,6 +449,18 @@
     {
       "file": "20261101110902_acquisition_review_renewal_api.sql",
       "sha256": "2ae282c9477a528dce3652b59269698d7c26a95919a5766f2d243f7dc0d1ca34"
+    },
+    {
+      "file": "20261101112744_acquisition_effective_review_state.sql",
+      "sha256": "3b0c982799a265b8f0c97bfafdcd3163894386ae375f89e92c427204eac38b0e"
+    },
+    {
+      "file": "20261101113021_acquisition_effective_review_handoffs.sql",
+      "sha256": "17a904482e2a0c18893d23ccdd36c65259ba2c99672bed2e34be419fa505faa2"
+    },
+    {
+      "file": "20261101113721_acquisition_original_review_support.sql",
+      "sha256": "a34686bd3b792e4d4b024a31f3f8b698a5e710f1ba95e0608c72614196b3c97a"
     }
   ]
 }

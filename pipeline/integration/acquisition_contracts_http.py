@@ -516,6 +516,9 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'post-handoff original disposition withdrawal committed recovery and retained history',
             'post-handoff original title withdrawal committed recovery and retained approved findings',
             'post-handoff original execution and deadline withdrawal committed recovery preserves handoff',
+            'fresh title and disposition originals bind renewed supporting reviews through real gateway',
+            'renewed disposition handoff retains historical roots and audits current approval heads',
+            'pre and post handoff renewal lost-response recovery and independent withdrawal',
             'title choices mounted current original and explicit report policy',
             'title choices mounted tenant isolation',
             'title choices original held withdrawal without a selected report while paused']
