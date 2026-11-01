@@ -325,6 +325,10 @@
     {
       "file": "20261101040743_acquisition_deadline_resolution_storage.sql",
       "sha256": "80cd014c14b835ca6b60f9c02367e9bcc2231e853b7a6375acbf8bb1aa80a06c"
+    },
+    {
+      "file": "20261101041353_acquisition_deadline_resolution_write.sql",
+      "sha256": "28735d81dc070b319ab2131896b53c84e3a993c2f9c7dc47582f8d4fb48d9237"
     }
   ]
 }

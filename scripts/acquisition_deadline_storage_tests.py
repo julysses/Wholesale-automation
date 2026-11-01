@@ -12,7 +12,7 @@ DEADLINE_REVIEW='af820000-0000-4000-8000-000000000002'
 
 class DeadlineStorageCases:
     def deadline_proposal(self):
-        original=json.loads(self.sql('SELECT to_jsonb(r) FROM acquisition_contract_reviews r WHERE contract_version=2'))
+        original=json.loads(self.sql("SELECT to_jsonb(r) FROM acquisition_contract_reviews r WHERE contract_version=2 AND kind='contract_review'"))
         return dict(term='closing_deadline',calendar_date='2026-11-20',local_time='17:00:00',
             time_zone='America/Chicago',resolved_instant='2026-11-20T17:00:00-06:00',
             basis='explicit_document_time',rationale='Synthetic explicit time interpretation for storage verification only.',
@@ -24,9 +24,12 @@ class DeadlineStorageCases:
 
     def deadline_row(self):
         self.sql(f"INSERT INTO private.acquisition_contract_review_policies SELECT (jsonb_populate_record(NULL::private.acquisition_contract_review_policies,to_jsonb(p)||jsonb_build_object('id','{DEADLINE_POLICY}','kind','deadline_resolution'))).* FROM private.acquisition_contract_review_policies p WHERE id='{POLICY}'")
-        row=json.loads(self.sql('SELECT to_jsonb(r) FROM acquisition_contract_reviews r WHERE contract_version=2'))
+        row=json.loads(self.sql("SELECT to_jsonb(r) FROM acquisition_contract_reviews r WHERE contract_version=2 AND kind='contract_review'"))
         row.update(id=DEADLINE_REVIEW,kind='deadline_resolution',policy_id=DEADLINE_POLICY,sequence=1,
                    deadline_term='closing_deadline',deadline_resolution=self.deadline_proposal(),deadline_original_review_id=None)
+        if 'deadline_sources' in row:
+            row['deadline_sources']=[{'artifact_id':row['artifact_id'],'source_version':row['source_version'],
+                'verification_id':row['verification_id'],'sha256':row['sha256'],'purpose':row['purpose'],'expires_at':row['expires_at']}]
         return row
 
     def insert_deadline_row(self,value,fail=False):
@@ -61,6 +64,7 @@ class DeadlineStorageCases:
         self.insert_deadline_row(second)
         withdrawn=row|dict(id='af820000-0000-4000-8000-000000000004',sequence=3,status='withdrawn',
             personally_reviewed=False,expires_at=None,deadline_resolution=None,deadline_original_review_id=DEADLINE_REVIEW)
+        if 'deadline_sources' in withdrawn:withdrawn['deadline_sources']=None
         self.insert_deadline_row(withdrawn|{'deadline_term':'effective'},fail=True)
         self.insert_deadline_row(withdrawn|{'deadline_original_review_id':withdrawn['id']},fail=True)
         self.insert_deadline_row(withdrawn|{'deadline_original_review_id':None},fail=True)

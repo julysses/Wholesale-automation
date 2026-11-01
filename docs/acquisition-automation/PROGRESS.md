@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## October 31 — controlled deadline-review writer verified (candidate83); prior features pushed
+
+All six repair180ba10/run41271347320 checks reached terminal success. Pushed previously validated e8e5837,0e742a8 and f443f37525466a02dd6448a68f6467f8e672df6b. Exact successor41272432307 is live; wait for all six terminal successes before pushing candidate83. Do not cancel/restart the run. No production migration or provider action was performed.
+
+CLI-created20261101041353 implements an authenticated invoker/private-definer deadline review writer. It locks current owner/admin MFA/session/contract context, preserves the exact original calendar date, binds both original term-source scan and interpretation-source scan, requires reviewed policy, rechecks authority after waits, and records immutable decision/audit atomically. Exact historical retry survives pause/revocation. Withdrawal uses the shared latest sequence and the original latest-per-term approval, so another term cannot redirect withdrawal. Contract terms/version/status remain unchanged. No policy is seeded.
+
+Five focused SQL cases passed25.772s after fixing fixture source selection and original source-version revocation. Full rehearsal47314 exited0:82 migrations,26 access checks,217 workflows,114 actual PostgREST/API checks;24 historical rows/22 populated tables/103 definitions and Storage fixtures preserved. Evidence:evidence/2026-10-31-deadline-write-result.json. Logs:/tmp/deadline-write-sql-final.log,/tmp/deadline-write-upgrade.log. Earlier fixture-failure log:/tmp/deadline-write-sql.log. No live local validation process remains.
+
+Next: mount the exact deadline-review API using the existing acquisition_store authentication and historical/uncertain response conventions; verify receipt term and original interpretation ID as well as workspace/version/request/sequence. Add real API committed-response-loss recovery to the disposable gateway journey. Then current-state/discovery, server-bound execution-review interpretation IDs, guided UI/recovery, amendments and remaining full PRD requirements. The current writer is not yet mounted in the app API and existing date-only execution holds remain. Full goal is active/incomplete; production/SMS/outreach/fulfillment/transaction holds remain intact.
+
 ## October 31 — deadline interpretation storage verified (candidate82)
 
 CLI-created20261101040743 adds deadline interpretation fields to the existing immutable review ledger, a same-workspace/contract/version/term approved-original foreign key, latest-per-term index and private exact-shape/DST validator. Existing review policies, source-version foreign keys, shared sequence uniqueness, RLS and immutable history remain intact; no policy is seeded and no writer/API is exposed. Unrelated review kinds cannot carry deadline interpretations. See SCHEMA-MAPPING.md and DEADLINE-RESOLUTIONS.md.
