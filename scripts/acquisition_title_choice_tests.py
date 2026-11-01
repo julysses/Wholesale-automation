@@ -25,7 +25,7 @@ class TitleChoiceCases:
         self.assertEqual(before,self.sql('SELECT count(*) FROM audit_logs'))
         self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contract_transitions'),'2')
         self.transition(self.title_args())
-        done=self.title_choice();self.assertEqual(done['status'],'title_review_started')
+        done=self.title_choice();self.assertEqual(done['status'], 'disposition_review_required' if getattr(self, 'supports_disposition_choice', False) else 'title_review_started')
         self.assertEqual(done['sequence'],3);self.assertIsNone(done['candidate'])
 
     def test_signature_title_choice_revocation_and_pause_remove_action(self):

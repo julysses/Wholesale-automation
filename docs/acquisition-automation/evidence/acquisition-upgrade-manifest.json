@@ -405,6 +405,10 @@
     {
       "file": "20261101085535_acquisition_disposition_contract_transition.sql",
       "sha256": "849d25030b0b674d7a90cab3a0d9b92df84f662dd15dabba92bcfba643232b81"
+    },
+    {
+      "file": "20261101090156_acquisition_disposition_transition_choices.sql",
+      "sha256": "b1fe25c03424589c34f79bae737802d696ced66295c05d907cc671d0e7c3652e"
     }
   ]
 }
