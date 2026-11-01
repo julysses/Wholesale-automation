@@ -47,6 +47,8 @@ def test_withdrawal_does_not_renew_authority(endpoint):
     {'personally_reviewed':False},{'personally_reviewed':'true'},{'expires_at':None},{'expires_at':123},
     {'note':' '*30},{'status':'executed'},{'status':'withdrawn'}])
 def test_client_assertions_fail_before_database(endpoint,change):
+    # Compute relative timestamps at execution, not suite collection.
+    change={key:value() if callable(value) else value for key,value in change.items()}
     client,store=endpoint
     assert client.post(BASE,json=body()|change).status_code==422
     store.request.assert_not_awaited()
@@ -55,6 +57,8 @@ def test_client_assertions_fail_before_database(endpoint,change):
     {'review_id':P},{'sequence':2},{'sequence':True},{'status':'withdrawn'},{'review_recorded':False},
     {'approval_current':True},{'execution_authorized':True},{'duplicate':'true'},{'private':'secret-marker'}])
 def test_bad_receipt_is_uncertain_and_not_retried(endpoint,change):
+    # Compute relative timestamps at execution, not suite collection.
+    change={key:value() if callable(value) else value for key,value in change.items()}
     client,store=endpoint;store.request.return_value=receipt()|change
     response=client.post(BASE,json=body())
     assert response.status_code==503 and response.headers['cache-control']=='no-store'
@@ -74,10 +78,12 @@ def test_current_state_and_historical_holds(endpoint,status):
         'p_workspace':W,'p_contract':C,'p_version':1,'p_kind':'contract_review'})
 
 @pytest.mark.parametrize('change',[{'workspace_id':P},{'contract_id':P},{'contract_version':2},{'kind':'title_review'},
-    {'checked_at':stamp(-60)},{'checked_at':stamp(60)},{'checked_at':0},{'expires_at':stamp(-1)},
+    {'checked_at':lambda:stamp(-60)},{'checked_at':lambda:stamp(60)},{'checked_at':0},{'expires_at':lambda:stamp(-1)},
     {'expires_at':None},{'approval_current':False},{'execution_authorized':True},{'review_id':None},
     {'sequence':0},{'sequence':True},{'status':'withdrawn'},{'private':'secret-marker'}])
 def test_stale_or_inconsistent_current_state_is_hidden(endpoint,change):
+    # Compute relative timestamps at execution, not suite collection.
+    change={key:value() if callable(value) else value for key,value in change.items()}
     client,store=endpoint;store.request.return_value=state()|change
     response=client.get(BASE)
     assert response.status_code==503 and 'secret-marker' not in response.text
@@ -114,15 +120,19 @@ def test_candidate_exact_path_and_no_mutation(endpoint):
 
 @pytest.mark.parametrize('change',[{'workspace_id':P},{'contract_id':P},{'contract_version':2},{'kind':'title_review'},
     {'artifact_id':P},{'purpose':'title_report'},{'status':'paused'},{'candidate':None},{'execution_authorized':True},
-    {'checked_at':stamp(-60)},{'checked_at':stamp(60)},{'private':'secret-marker'}])
+    {'checked_at':lambda:stamp(-60)},{'checked_at':lambda:stamp(60)},{'private':'secret-marker'}])
 def test_candidate_rejects_mixed_stale_or_unexpected_data(endpoint,change):
+    # Compute relative timestamps at execution, not suite collection.
+    change={key:value() if callable(value) else value for key,value in change.items()}
     client,store=endpoint;store.request.return_value=candidate()|change
     response=client.get(BASE+'/documents/'+A+'/candidate')
     assert response.status_code==503 and 'secret-marker' not in response.text
 
 @pytest.mark.parametrize('change',[{'artifact_id':P},{'expected_sequence':1},{'expected_sequence':True},
-    {'max_expires_at':stamp(-1)},{'max_expires_at':stamp(86410)},{'max_expires_at':123},{'sha256':'B'*64}])
+    {'max_expires_at':lambda:stamp(-1)},{'max_expires_at':lambda:stamp(86410)},{'max_expires_at':123},{'sha256':'B'*64}])
 def test_candidate_rejects_invalid_approval_choice(endpoint,change):
+    # Compute relative timestamps at execution, not suite collection.
+    change={key:value() if callable(value) else value for key,value in change.items()}
     client,store=endpoint;value=candidate();value['candidate'].update(change);store.request.return_value=value
     assert client.get(BASE+'/documents/'+A+'/candidate').status_code==503
 
