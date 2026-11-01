@@ -261,6 +261,10 @@
     {
       "file": "20261101002427_acquisition_contract_review_candidate.sql",
       "sha256": "a34babb434120380cc5bed1e5e0f20832415b12466f0ed807e9ece4fe439bcf8"
+    },
+    {
+      "file": "20261101004230_acquisition_contract_terms.sql",
+      "sha256": "246dbb83e97a14b91186a29fd7bd7e4af5062d414de62146e32be3b41f4bbc73"
     }
   ]
 }
