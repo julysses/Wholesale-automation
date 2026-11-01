@@ -441,6 +441,14 @@
     {
       "file": "20261101104656_acquisition_personal_review_renewal.sql",
       "sha256": "365e5ae91240aae2da2fa30437e87edcdb38c1f7d678b159f53bbcafe966d278"
+    },
+    {
+      "file": "20261101110243_acquisition_review_renewal_choices.sql",
+      "sha256": "d1aec0bbfbb413f40cdedb597245f2221c2d6293205ea2a2a755c13309af2883"
+    },
+    {
+      "file": "20261101110902_acquisition_review_renewal_api.sql",
+      "sha256": "2ae282c9477a528dce3652b59269698d7c26a95919a5766f2d243f7dc0d1ca34"
     }
   ]
 }

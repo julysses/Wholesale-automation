@@ -511,3 +511,38 @@ it.each(['Open execution review', 'Open date review'])('keeps %s reachable after
   fireEvent.click(screen.getByText('Close without saving'));
   await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false)); expect(posts()).toHaveLength(0);
 });
+
+it('keeps renewal inside the contract step and holds adjacent actions until it closes', async () => {
+  record.acquisition_status = 'disposition_review'; mock.existing = true; open();
+  await waitFor(() => expect(screen.getByText('Check review renewals')).toBeEnabled());
+  fireEvent.click(screen.getByText('Check review renewals'));
+  for (const name of ['Open title review', 'Open disposition review', 'Review next contract status', 'Refresh draft information'])
+    expect(screen.getByRole('button', { name })).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled(); expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByText('Close without saving'));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false)); expect(posts()).toHaveLength(0);
+});
+
+it('recovers the original renewal version after the contract advances without allowing adjacent edits', async () => {
+  const { preserveRenewal } = await import('../src/lib/acquisition/review-renewal');
+  preserveRenewal(sessionStorage, { version: 1, context: { userId: id(1), workspaceId: id(2), leadId: id(3), propertyId: id(4), offerId: id(6), contractId: id(5), contractVersion: 1 },
+    request: { id: id(95), expected_version: 1, expected_sequence: 1, kind: 'title_findings', deadline_term: null,
+      root_review_id: id(92), previous_review_id: id(92), policy_id: id(93), expected_snapshot_sha256: 'a'.repeat(64),
+      expires_at: '2026-01-01T00:00:00Z', personally_reviewed: true, note: 'Recover this exact original personal renewal after a lost response.' } });
+  const prior = mock.fetch.getMockImplementation()!;
+  mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    if (path.endsWith('/review-renewals') && init?.method === 'POST') {
+      const r = JSON.parse(init.body as string);
+      return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: 1, kind: r.kind, deadline_term: null,
+        review_id: r.id, root_review_id: r.root_review_id, previous_review_id: r.previous_review_id, sequence: 2,
+        duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
+    }
+    return prior(path, init);
+  });
+  record.acquisition_status = 'disposition_review'; record.acquisition_version = 2; mock.existing = true; open();
+  await waitFor(() => expect(screen.getByText('Retry saved renewal')).toBeEnabled());
+  expect(screen.getByText('Refresh draft information')).toBeDisabled(); expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByText('Retry saved renewal')); await screen.findByText(/Review renewal recorded/);
+  expect(posts()[0][0]).toContain('/versions/1/review-renewals');
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});

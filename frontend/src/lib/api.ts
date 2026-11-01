@@ -13,6 +13,7 @@ export class ApiError extends Error {
   rejectedTitle = false;
   rejectedPlan = false;
   rejectedDisposition = false;
+  rejectedRenewal = false;
   rejectedDeadline = false;
   rejectedTransition = false;
   rejectedCost: boolean;
@@ -77,6 +78,10 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/[a-f0-9-]{36}\/versions\/[1-9][0-9]*\/disposition-plan$/.test(path)
       && [401, 403, 409].includes(response.status)
       && response.headers.get('X-Acquisition-Disposition-Plan-Rejected') === 'true';
+    error.rejectedRenewal = init?.method === 'POST'
+      && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/[a-f0-9-]{36}\/versions\/[1-9][0-9]*\/review-renewals$/.test(path)
+      && [401, 403, 409].includes(response.status)
+      && response.headers.get('X-Acquisition-Renewal-Rejected') === 'true';
     error.rejectedDisposition = init?.method === 'POST'
       && /^\/api\/acquisition\/workspaces\/[a-f0-9-]{36}\/contracts\/[a-f0-9-]{36}\/versions\/[1-9][0-9]*\/disposition-review$/.test(path)
       && [401, 403, 409].includes(response.status)

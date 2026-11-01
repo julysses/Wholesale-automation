@@ -1,0 +1,29 @@
+{
+  "checks": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "passed": true,
+      "exact_retry": true,
+      "pending_cleared": true,
+      "overflow": false,
+      "errors": [],
+      "synthetic": true
+    },
+    {
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "passed": true,
+      "exact_retry": true,
+      "pending_cleared": true,
+      "overflow": false,
+      "errors": [],
+      "synthetic": true
+    }
+  ],
+  "live_acceptance": false
+}

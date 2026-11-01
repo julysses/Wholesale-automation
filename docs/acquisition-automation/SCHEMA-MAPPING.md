@@ -523,3 +523,11 @@ Inventory: `evidence/2026-11-01-renewal-writer-local-catalog.json`, disposable10
 ## Private personal renewal writer (local110)
 
 Migration20261101104656 extends the existing immutable review/audit ledgers through private functions only; no entity duplication, new table or client grant. Uses the inspected nongenerated review columns (generated source/lineage fields remain database-owned). Server-derived source snapshots reuse existing artifact/verification/policy/session records; copied findings and original transition roots remain unchanged. Existing RLS and guards remain active. Eight focused writer tests passed; full110 pending. Compensation: pause/revoke approval authority, retain all immutable history and forward-fix. No production apply.
+
+## Read-only renewal choices (local111)
+
+No table/column/entity changes. Adds private effective-review dispatcher and scoped per-root renewal candidate over existing reviews, transitions, policies, sessions, plans and evidence. Uses inspected110 entities and current source constraints; external execute revoked. Compensation: pause/revoke applicable policy and forward-fix; retain immutable decisions. Five local SQL/typed choice cases pass; full111 and public API/UI remain pending.
+
+### Renewal RPC transport (112, local only)
+
+`20261101110902_acquisition_review_renewal_api.sql` adds no entities or table changes. Reuses the inspected review lineage, policy, audit, and role/session controls through bounded private index and public SECURITY INVOKER wrappers. Only authenticated receives execute; anonymous/service roles remain denied, and controlled private writers independently enforce the actual user/workspace role. Compensation revokes wrapper/private execute grants or pauses acquisition; preserve all historical reviews and audits. Manifest112 rehearsal is pending; production apply remains unapproved.

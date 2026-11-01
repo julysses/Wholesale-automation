@@ -45,6 +45,8 @@ def verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contrac
             raise AssertionError('Disposition contract disappeared from guided history')
         current=client.get(review_path,headers=headers)
         if current.status_code!=200 or not current.json()['approval_current']:raise AssertionError('Handoff immediately invalidated original disposition authority')
+        from acquisition_review_renewals_http import verify_review_renewal_http
+        renewed,renewed_sequence=verify_review_renewal_http(db,client,drops,headers,token,workspace,contract,other,review)
         db.query('UPDATE private.acquisition_activation SET enabled=false')
         try:
             paused=client.get(path+'/candidate',params={'contract_version':2},headers=headers)
@@ -95,9 +97,9 @@ def verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contrac
                     raise AssertionError('Post-handoff '+kind+' withdrawal retained current authority')
                 if client.get(route,headers=headers).json()['withdrawal'] is not None:raise AssertionError('Repeated '+kind+' withdrawal offered')
             options=client.get(review_path+'/candidate',headers=headers)
-            if options.status_code!=200 or options.json()['withdrawal']['review_id']!=review or options.json()['candidate'] is not None or options.json()['resolution'] is not None:
+            if options.status_code!=200 or options.json()['withdrawal']['review_id']!=renewed or options.json()['candidate'] is not None or options.json()['resolution'] is not None:
                 raise AssertionError('Post-handoff pause lost independent original withdrawal')
-            withdrawal=approval|dict(id='af122000-0000-4000-8000-000000000004',expected_sequence=4,status='withdrawn',original_review_id=review,
+            withdrawal=approval|dict(id='af122000-0000-4000-8000-000000000004',expected_sequence=renewed_sequence,status='withdrawn',original_review_id=renewed,
                 expires_at=None,personally_reviewed=False,findings=None,note='Withdraw the original disposition approval after its recorded handoff.')
             drops['rpc/record_disposition_review']=True
             lost=client.post(review_path,json=withdrawal,headers=headers);recovered=client.post(review_path,json=withdrawal,headers=headers)
