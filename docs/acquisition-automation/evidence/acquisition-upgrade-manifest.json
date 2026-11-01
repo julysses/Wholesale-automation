@@ -361,6 +361,10 @@
     {
       "file": "20261101055752_acquisition_title_findings_storage.sql",
       "sha256": "a14ee908abc3b2c922b25b74d21f15efbc7e99efc0fec5d6d9e52d3d5dbe0198"
+    },
+    {
+      "file": "20261101061021_acquisition_title_source_resolution.sql",
+      "sha256": "ee2cd00cb8484a7c52aa83e7ddfcb53a494c7aac62e5166bff4c783ff1875279"
     }
   ]
 }

@@ -1,5 +1,14 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — original title-source resolution (candidate97)
+
+Added a private, ungranted source resolver for the controlled title-review writer. It requires current owner/admin workspace membership, MFA, an active session, acquisition activation and the current title-review contract version. It resolves the selected title report plus every supplemental citation against original contract references, source versions and bytes; captures the exact current scans; locks scanner, retention and session authority; and checks current authority after waits. Repeated citations retain their clauses while the journal includes each original once. Returned results explicitly deny title/legal/execution authority. No application route, review save or provider action is enabled.
+
+Pre-migration local inventory: `evidence/2026-11-01-title-source-local-catalog.json`. Four focused SQL tests passed22.644s, including mixed original versions, cross-workspace/role/MFA/session rejection, source mismatch, private-role denial, scanner/retention/session revocation and observed retention revocation during a lock wait. Full catalog rehearsal passed91 migrations,26 access checks,257 workflows and131 actual API checks;24 historical rows,22 populated tables,103 definitions and Storage preserved. Evidence: `evidence/2026-11-01-title-source-result.json`; session28537 terminal0. No frontend or backend API behavior changed; previous full backend4231 and frontend841 results are not new runs for this increment.
+
+Published head6b6c9b778a7aa33bacc491ac12798cbc12974b05 / run41279633648 has five terminal successes; Real PostgreSQL ingestion/tracing/scoring remains live. This verified increment stays local until the sixth job succeeds; do not cancel/restart it. Next: use this resolver inside the controlled title writer, bind the exact executed transition/review and deadline authority, enforce reviewed report freshness policy, recheck after subsequent waits, preserve exact retry/withdrawal history, then expose scoped API/discovery and the guided findings form. Full PRD remains active/incomplete; production and all live activation controls remain unchanged.
+
+
 ## November 1 — post-execution title findings storage (candidate96)
 
 The existing immutable review entity now has a distinct post-execution title findings kind, original execution binding, bounded source journals and approved/held/withdrawn history. Unresolved findings retain concrete actions and cannot carry approval expiry. Withdrawal preserves its original decision and execution context. Preparation reviews remain separate. No writer, API, findings UI, live policy or disposition authority is enabled by this storage increment.
