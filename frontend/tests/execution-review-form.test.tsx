@@ -24,7 +24,7 @@ beforeEach(() => {
     return { json: async () => ({ ...scope, artifact_id: id(8), status: 'ready_for_human_review', candidate: { artifact_id: id(8), source_version: 2, verification_id: id(9), sha256: 'a'.repeat(64), policy_id: id(10), expected_sequence: 0, max_expires_at: new Date(Date.now() + 300000).toISOString() }, withdrawal: null, prepared_terms: { ...emptyTerms(), note: 'Prepared terms are incomplete and require review.' }, current_review: { ...scope, kind: 'executed_contract', review_id: null, sequence: 0, status: 'not_reviewed', approval_current: false, expires_at: null, checked_at: stamp, execution_authorized: false }, checked_at: stamp, execution_authorized: false }) };
   });
 });
-function open(disabled = false) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ExecutionReviewForm context={context} disabled={disabled} onPending={mock.pending} onSaved={mock.saved} /></QueryClientProvider>); }
+function open(disabled = false, withdrawalOnly = false) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ExecutionReviewForm withdrawalOnly={withdrawalOnly} context={context} disabled={disabled} onPending={mock.pending} onSaved={mock.saved} /></QueryClientProvider>); }
 it('opens explicitly, holds navigation, and closes without any save', async () => {
   open(); expect(mock.fetch).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Open execution review' }));
@@ -51,10 +51,10 @@ it('requires personal findings and preserves unknown terms for follow-up', async
   expect(screen.getByText('Next: review decision')).toBeDisabled();
   expect(mock.fetch.mock.calls.some(call => call[1]?.method === 'POST')).toBe(false);
 });
-it('recovers the exact original request after a later denial without erasing it', async () => {
-  preserveExecution(sessionStorage, saved); mock.reject = true; const view = open();
+it.each([false, true])('recovers the original execution request with withdrawalOnly=%s after a later denial', async withdrawalOnly => {
+  preserveExecution(sessionStorage, saved); mock.reject = true; const view = open(false, withdrawalOnly);
   fireEvent.click(screen.getByText('Retry saved execution review')); await screen.findByText(/Save is unconfirmed/);
-  expect(sessionStorage.length).toBe(1); view.unmount(); mock.reject = false; open();
+  expect(sessionStorage.length).toBe(1); view.unmount(); mock.reject = false; open(false, withdrawalOnly);
   fireEvent.click(screen.getByText('Retry saved execution review')); await screen.findByText(/Execution review recorded/);
   const posts = mock.fetch.mock.calls.filter(call => call[1]?.method === 'POST');
   expect(posts).toHaveLength(2); expect(posts[0][1].body).toBe(posts[1][1].body);
@@ -115,14 +115,14 @@ it('clears a definite first-attempt rejection and removes the personal acknowled
   await prepareCompleteReview(); mock.reject = true; fireEvent.click(screen.getByText('Record execution review'));
   await screen.findByText(/The review was not saved/); expect(sessionStorage.length).toBe(0); expect(screen.getByRole('checkbox')).not.toBeChecked(); expect(mock.saved).not.toHaveBeenCalled();
 });
-it('withdraws the original agreement even when the selected new agreement is held', async () => {
+it.each([false, true])('withdraws original agreement independently with withdrawalOnly=%s', async withdrawalOnly => {
   const { executionChoice, executionTerms } = await import('./fixtures/execution-review'); const previous = mock.fetch.getMockImplementation()!;
   mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
     if (!path.endsWith('/candidate')) return previous(path, init);
     const choice = executionChoice(context, id(8), executionTerms(id(8)), { ...saved.request, id: id(70), artifact_id: id(71), status: 'approved' }, 1);
     return { json: async () => ({ ...choice, status: 'evidence_review_required', candidate: null }) };
   });
-  open(); fireEvent.click(screen.getByText('Open execution review')); await screen.findByRole('option', { name: /Original version 2/ });
+  open(false, withdrawalOnly); fireEvent.click(screen.getByText('Open execution review')); await screen.findByRole('option', { name: /Original version 2/ });
   fireEvent.change(screen.getByLabelText('Verified purchase-contract document'), { target: { value: id(8) } });
   fireEvent.click(await screen.findByText('Withdraw my previous execution review'));
   fireEvent.change(screen.getByLabelText('Decision notes'), { target: { value: 'Withdraw the earlier agreement review while current evidence is held.' } });
@@ -152,4 +152,13 @@ it('holds the decision when refreshing reveals withdrawn interpretation authorit
   fireEvent.click(screen.getByText('Refresh review checks'));
   await waitFor(() => expect(screen.getByText('Record execution review')).toBeDisabled());
   expect(screen.getByRole('checkbox')).not.toBeChecked(); expect(mock.fetch.mock.calls.some(call => call[1]?.method === 'POST')).toBe(false);
+});
+
+it('blocks fresh agreement findings in withdrawal-only mode despite a ready response', async () => {
+  open(false, true); fireEvent.click(screen.getByText('Open execution review'));
+  await screen.findByRole('option', { name: /Original version 2/ });
+  fireEvent.change(screen.getByLabelText('Verified purchase-contract document'), { target: { value: id(8) } });
+  await screen.findByText('No original execution review is available for you to withdraw.');
+  expect(screen.queryByText('Start agreement review')).not.toBeInTheDocument();
+  expect(mock.fetch.mock.calls.some(c => c[1]?.method === 'POST')).toBe(false);
 });

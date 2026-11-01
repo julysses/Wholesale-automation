@@ -13,11 +13,11 @@ const holds = { paused: 'Acquisition review is paused.', contract_unavailable: '
   original_date_required: 'This term needs an original calendar date. Do not replace an unknown or already explicit time here.',
   original_evidence_review_required: 'The original date clause needs current document verification.', reviewer_policy_required: 'A reviewed policy must authorize your date interpretation.',
   evidence_review_required: 'The selected interpretation document needs current verification.', ready_for_human_review: 'Original source and reviewer checks passed. Complete your own interpretation.' };
-type Props = { context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
+type Props = { withdrawalOnly?: boolean; context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
 export function DeadlineReviewForm(props: Props) {
   return <DeadlineEditor key={`${props.context.userId}:${props.context.workspaceId}:${props.context.contractId}:${props.context.contractVersion}`} {...props} />;
 }
-function DeadlineEditor({ context, disabled, onPending, onSaved }: Props) {
+function DeadlineEditor({ context, disabled, onPending, onSaved, withdrawalOnly = false }: Props) {
   const [initial] = useState(() => { try {
     const saved = readPendingDeadline(sessionStorage, context.userId, context.workspaceId);
     if (saved && Object.entries(saved.context).some(([key, value]) => context[key as keyof DocumentContext] !== value)) throw new Error('Date review context changed');
@@ -48,7 +48,7 @@ function DeadlineEditor({ context, disabled, onPending, onSaved }: Props) {
     queryFn: async ({ signal }) => parseDeadlineCandidate(await (await apiFetch(`${base}/deadline-reviews/${term}/documents/${artifact}/candidate`, { signal, cache: 'no-store' })).json(), context, term, artifact) });
   const fresh = !disabled && !blocked && !candidate.isError && !candidate.isFetching && candidate.data
     && now - Date.parse(candidate.data.checked_at) <= 30000 && now - Date.parse(candidate.data.checked_at) >= -5000;
-  const choice = fresh ? candidate.data!.candidate : null, withdrawal = fresh ? candidate.data!.withdrawal : null;
+  const choice = fresh && !withdrawalOnly ? candidate.data!.candidate : null, withdrawal = fresh ? candidate.data!.withdrawal : null;
   const selected = documents.data?.items.find(row => row.artifact_id === artifact);
   const sourceMatches = !!choice && !!selected && !documents.isError && !documents.isFetching && selected.status === 'available_for_review'
     && selected.sha256 === choice.sha256 && selected.verification_id === choice.verification_id && selected.source_version === choice.source_version
@@ -97,7 +97,7 @@ function DeadlineEditor({ context, disabled, onPending, onSaved }: Props) {
   }
   return <section aria-label="Contract date review" className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 space-y-3 text-[#1B3A5C]">
     <h3 className="font-semibold">Clarify contract dates</h3>
-    <p className="text-sm text-gray-600">Before reviewing the returned agreement, clarify any calendar-only date using its original clause and a reviewed source. This does not change the signed terms.</p>
+    <p className="text-sm text-gray-600">{withdrawalOnly ? 'Choose the date and a retained contract document to find your original interpretation. Withdrawal preserves the signed terms and review history.' : 'Before reviewing the returned agreement, clarify any calendar-only date using its original clause and a reviewed source. This does not change the signed terms.'}</p>
     {blocked && <p role="alert">Saved date-review details need reconciliation before another decision can be recorded.</p>}
     {disabled && <p className="text-sm">Finish the current contract step before continuing.</p>}
     {!expanded && !pending ? <button type="button" className={button} disabled={disabled || blocked} onClick={() => { setNow(Date.now()); setExpanded(true); }}>Open date review</button> : <>
@@ -111,7 +111,7 @@ function DeadlineEditor({ context, disabled, onPending, onSaved }: Props) {
           <button type="button" className={button} disabled={!documents.data?.next_after || documents.isFetching} onClick={() => { setCursors(v => [...v, documents.data!.next_after]); setArtifact(''); resetEntry(); }}>More documents</button></div>
         {(documents.isFetching || candidate.isFetching) && <p role="status">Checking original sources and reviewer authority…</p>}
         {(documents.isError || candidate.isError) && <p role="alert">Date-review choices could not be confirmed. Refresh before continuing.</p>}
-        {fresh && candidate.data && <p className="text-sm">{holds[candidate.data.status]}</p>}
+        {fresh && candidate.data && <p className="text-sm">{withdrawalOnly && candidate.data.status === 'contract_unavailable' ? 'New reviews are unavailable at this stage. Original withdrawal remains separate.' : holds[candidate.data.status]}</p>}
         {candidate.data && !fresh && !candidate.isFetching && !candidate.isError && <p>Choices are out of date. Refresh before continuing.</p>}
         {fresh && candidate.data && <div className="rounded-lg border bg-white p-3 text-sm space-y-1"><p>Original {termLabels[term].toLowerCase()}: {day ?? 'Not available'}</p>
           {candidate.data.original_source && <p className="break-words">Original clause: {candidate.data.original_source.locator} · version {candidate.data.original_source.artifact_version}</p>}</div>}
@@ -127,12 +127,13 @@ function DeadlineEditor({ context, disabled, onPending, onSaved }: Props) {
           <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={reviewed} onChange={e => setReviewed(e.target.checked)} />I personally reviewed the original date and this exact interpretation.</label>
           <label className="block text-sm">Date review validity<select className={input} value={minutes} onChange={e => setMinutes(Number(e.target.value))}>{[1, 5, 15, 30, 60].map(value => <option key={value} value={value}>{value} minutes</option>)}</select></label>
         </div>}
+        {withdrawalOnly && fresh && !withdrawal && <p className="text-sm">No original date review is available for you to withdraw.</p>}
         {withdrawal && <p className="text-sm">You can withdraw your original review for this date, independently of the selected document.</p>}
         <label className="block text-sm font-medium">Date-review decision notes<textarea className={input} maxLength={4000} value={note} onChange={e => setNote(e.target.value)} /></label>
         <p className="text-xs">Explain your decision in at least 20 characters.</p>
       </fieldset>}
       <div className="flex flex-wrap gap-2">{pending ? <button type="button" className={button} disabled={busy || disabled || blocked || now < retryAt} onClick={() => { void save(pending.request.status); }}>Retry saved date review</button> : <>
-        <button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={busy || disabled || blocked || !canApprove || now < retryAt} onClick={() => { void save('approved'); }}>Record date interpretation</button>
+        {!withdrawalOnly && <button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={busy || disabled || blocked || !canApprove || now < retryAt} onClick={() => { void save('approved'); }}>Record date interpretation</button>}
         <button type="button" className={button} disabled={busy || disabled || blocked || !canWithdraw || now < retryAt} onClick={() => { void save('withdrawn'); }}>Withdraw my date review</button>
         <button type="button" className={button} disabled={busy || blocked} onClick={close}>Close without saving</button></>}</div>
     </>}

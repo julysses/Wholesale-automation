@@ -515,6 +515,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'disposition handoff mounted completed choice guided history and paused recovery',
             'post-handoff original disposition withdrawal committed recovery and retained history',
             'post-handoff original title withdrawal committed recovery and retained approved findings',
+            'post-handoff original execution and deadline withdrawal committed recovery preserves handoff',
             'title choices mounted current original and explicit report policy',
             'title choices mounted tenant isolation',
             'title choices original held withdrawal without a selected report while paused']

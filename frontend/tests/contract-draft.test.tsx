@@ -500,3 +500,14 @@ it('keeps original title withdrawal reachable after handoff without enabling new
   expect(JSON.parse(posts()[0][1].body)).toMatchObject({ status: 'withdrawn', artifact_id: id(81), verification_id: id(83), policy_id: id(84), expected_sequence: 1, findings: null });
   await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
 });
+
+it.each(['Open execution review', 'Open date review'])('keeps %s reachable after handoff and holds sibling actions', async name => {
+  record.acquisition_status = 'disposition_review'; mock.existing = true; open();
+  await waitFor(() => expect(screen.getByText(name)).toBeEnabled()); fireEvent.click(screen.getByText(name));
+  for (const sibling of ['Open title review', 'Open disposition review', 'Review next contract status', 'Refresh draft information'])
+    expect(screen.getByRole('button', { name: sibling })).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled();
+  expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByText('Close without saving'));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false)); expect(posts()).toHaveLength(0);
+});

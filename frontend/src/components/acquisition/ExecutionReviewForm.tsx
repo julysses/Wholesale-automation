@@ -23,11 +23,11 @@ const blankChecks = (): Checks => {
 };
 const validNote = (value: string) => value.trim().length >= 20 && value.length <= 4000 && !value.includes('\0');
 const validLocator = (value: string) => !!value.trim() && value.length <= 1000 && !Array.from(value).some(c => c.charCodeAt(0) < 32);
-type Props = { context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
+type Props = { withdrawalOnly?: boolean; context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
 export function ExecutionReviewForm(props: Props) {
   return <ExecutionEditor key={`${props.context.userId}:${props.context.workspaceId}:${props.context.contractId}:${props.context.contractVersion}`} {...props} />;
 }
-function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
+function ExecutionEditor({ context, disabled, onPending, onSaved, withdrawalOnly = false }: Props) {
   const [initial] = useState(() => { try {
     const saved = readPendingExecution(sessionStorage, context.userId, context.workspaceId);
     if (saved && Object.entries(saved.context).some(([key, value]) => context[key as keyof DocumentContext] !== value)) throw new Error('Execution context changed');
@@ -54,13 +54,13 @@ function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
     queryKey: ['execution-choice', context.userId, context.workspaceId, context.contractId, context.contractVersion, artifact],
     queryFn: async ({ signal }) => parseExecutionCandidate(await (await apiFetch(`${base}/execution-review/documents/${artifact}/candidate`, { signal, cache: 'no-store' })).json(), context, artifact) });
   const requiredDates = deadlineTerms.filter(name => candidate.data?.prepared_terms?.[name].precision === 'date');
-  const dates = useQuery({ ...options, enabled: options.enabled && requiredDates.length > 0,
+  const dates = useQuery({ ...options, enabled: options.enabled && !withdrawalOnly && requiredDates.length > 0,
     queryKey: ['execution-deadlines', context.userId, context.workspaceId, context.contractId, context.contractVersion, requiredDates.join(',')],
     queryFn: async ({ signal }) => Object.fromEntries(await Promise.all(requiredDates.map(async name => [name,
       parseDeadlineState(await (await apiFetch(`${base}/deadline-reviews/${name}`, { signal, cache: 'no-store' })).json(), context, name)] as const))) });
   const fresh = !disabled && !blocked && !candidate.isError && !candidate.isFetching && candidate.data
     && now - Date.parse(candidate.data.checked_at) <= 30000 && now - Date.parse(candidate.data.checked_at) >= -5000;
-  const choice = fresh ? candidate.data!.candidate : null, withdrawal = fresh ? candidate.data!.withdrawal : null;
+  const choice = fresh && !withdrawalOnly ? candidate.data!.candidate : null, withdrawal = fresh ? candidate.data!.withdrawal : null;
   const selected = documents.data?.items.find(row => row.artifact_id === artifact);
   const sourceMatches = !!choice && !!selected && !documents.isError && !documents.isFetching && selected.status === 'available_for_review'
     && selected.sha256 === choice.sha256 && selected.verification_id === choice.verification_id && selected.source_version === choice.source_version
@@ -80,7 +80,7 @@ function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
   const canApprove = sourceMatches && !!choice && Date.parse(choice.max_expires_at) > now && checksComplete && !!proposed && !!dateBinding && dateBinding.maxExpiresAt > now && !termHold && reviewed && validNote(note);
   const canWithdraw = !!withdrawal && validNote(note);
   function close() { if (busy || pending || blocked) return; setExpanded(false); setMode(null); setDraft(null); setChecks(blankChecks()); setNote(''); setReviewed(false); setMessage(''); }
-  function refresh() { if (disabled || pending || busy || blocked) return; setReviewed(false); setNow(Date.now()); void documents.refetch(); if (artifact) void candidate.refetch(); if (requiredDates.length) void dates.refetch(); }
+  function refresh() { if (disabled || pending || busy || blocked) return; setReviewed(false); setNow(Date.now()); void documents.refetch(); if (artifact) void candidate.refetch(); if (!withdrawalOnly && requiredDates.length) void dates.refetch(); }
   function begin() {
     if (!sourceMatches || !candidate.data?.prepared_terms || pending || busy || disabled) return;
     const prepared = candidate.data.prepared_terms;
@@ -121,8 +121,8 @@ function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
     } finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
   return <section aria-label="Execution review" className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 space-y-3 text-[#1B3A5C] min-w-0">
-    <h3 className="font-semibold">Review the returned agreement</h3>
-    <p className="text-sm text-gray-600">After document verification, record your own findings about signatures, authority and terms. This review does not sign an agreement or advance its status.</p>
+    <h3 className="font-semibold">{withdrawalOnly ? 'Manage the original execution review' : 'Review the returned agreement'}</h3>
+    <p className="text-sm text-gray-600">{withdrawalOnly ? 'Choose a retained agreement to find your original review. Withdrawal preserves the original findings and recorded contract status.' : 'After document verification, record your own findings about signatures, authority and terms. This review does not sign an agreement or advance its status.'}</p>
     {blocked && <p role="alert">Saved execution-review details could not be read safely. Reconcile the original request before continuing.</p>}
     {!expanded && !blocked && <button type="button" className={button} disabled={disabled} onClick={() => setExpanded(true)}>Open execution review</button>}
     {expanded && !pending && !blocked && <>
@@ -136,9 +136,10 @@ function ExecutionEditor({ context, disabled, onPending, onSaved }: Props) {
           <button type="button" className={button} disabled={documents.isFetching || documents.isError || !documents.data?.next_after} onClick={() => { setCursors(c => [...c, documents.data!.next_after]); setArtifact(''); }}>More agreements</button></div>
       </fieldset>}
       {(documents.isError || candidate.isError) && <p role="alert">Current agreement or review choices could not be confirmed. Refresh before continuing.</p>}
-      {fresh && candidate.data && <p role="status" className="text-sm">{holds[candidate.data.status]}</p>}
+      {fresh && candidate.data && <p role="status" className="text-sm">{withdrawalOnly && candidate.data.status === 'contract_unavailable' ? 'New reviews are unavailable at this stage. Original withdrawal remains separate.' : holds[candidate.data.status]}</p>}
       {!fresh && artifact && !candidate.isFetching && <p role="status" className="text-sm">Refresh the review checks before saving a decision.</p>}
-      {!mode && <div className="flex flex-wrap gap-2"><button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={disabled || busy || !sourceMatches} onClick={begin}>Start agreement review</button>
+      {!mode && <div className="flex flex-wrap gap-2">{!withdrawalOnly && <button type="button" className={`${button} bg-[#1B3A5C] text-white`} disabled={disabled || busy || !sourceMatches} onClick={begin}>Start agreement review</button>}
+        {withdrawalOnly && fresh && !withdrawal && <p className="text-sm">No original execution review is available for you to withdraw.</p>}
         {withdrawal && <button type="button" className={button} disabled={disabled || busy} onClick={() => { setMode('withdrawn'); setStage('decision'); setNote(''); }}>Withdraw my previous execution review</button>}</div>}
       {mode === 'approved' && stage === 'findings' && <fieldset disabled={disabled || busy} className="space-y-3 min-w-0"><legend className="font-semibold">1. Record signature and authority findings</legend>
         <p className="text-sm">Review the actual retained agreement. Unresolved findings need human follow-up before approval.</p>

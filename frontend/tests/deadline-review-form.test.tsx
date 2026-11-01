@@ -29,7 +29,7 @@ beforeEach(() => {
         status: mock.withdrawal ? 'approved' : 'not_reviewed', approval_current: mock.withdrawal, expires_at: mock.withdrawal ? expiry : null, checked_at: stamp, execution_authorized: false }, checked_at: stamp, execution_authorized: false }) };
   });
 });
-function open(disabled = false) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><DeadlineReviewForm context={context} disabled={disabled} onPending={mock.pending} onSaved={mock.saved} /></QueryClientProvider>); }
+function open(disabled = false, withdrawalOnly = false) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><DeadlineReviewForm withdrawalOnly={withdrawalOnly} context={context} disabled={disabled} onPending={mock.pending} onSaved={mock.saved} /></QueryClientProvider>); }
 async function choose(artifact = id(8)) {
   fireEvent.click(screen.getByText('Open date review')); await screen.findAllByRole('option', { name: /Document from version 1/ });
   fireEvent.change(screen.getByLabelText('Interpretation source'), { target: { value: artifact } });
@@ -49,16 +49,16 @@ it('keeps time blank and requires exact personal interpretation before approval'
   await fill(); fireEvent.change(screen.getByLabelText('Explicit UTC offset'), { target: { value: '-05:00' } });
   expect(screen.getByRole('checkbox')).not.toBeChecked(); expect(screen.getByText('Record date interpretation')).toBeDisabled();
 });
-it('recovers exactly the original approval after lost response and reload', async () => {
+it.each([false, true])('recovers original date approval after reload with withdrawalOnly=%s', async withdrawalOnly => {
   const view = open(); await choose(); await fill(); mock.lose = true;
   fireEvent.click(screen.getByText('Record date interpretation')); await screen.findByText(/Save is unconfirmed/);
   const stored = sessionStorage.getItem(deadlineKey(id(1), id(2))); expect(stored).not.toBeNull();
-  view.unmount(); mock.lose = false; open(); fireEvent.click(screen.getByText('Retry saved date review')); await screen.findByText(/Date review recorded/);
+  view.unmount(); mock.lose = false; open(false, withdrawalOnly); fireEvent.click(screen.getByText('Retry saved date review')); await screen.findByText(/Date review recorded/);
   const posts = mock.fetch.mock.calls.filter(c => c[1]?.method === 'POST'); expect(posts).toHaveLength(2); expect(posts[0][1].body).toBe(posts[1][1].body);
   expect(JSON.parse(posts[0][1].body).resolution.calendar_date).toBe('2026-11-20'); expect(sessionStorage.length).toBe(0);
 });
-it('withdraws the original review despite another selected document and newer shared cursor', async () => {
-  mock.withdrawal = true; open(); await choose(id(18));
+it.each([false, true])('withdraws original date independently with withdrawalOnly=%s', async withdrawalOnly => {
+  mock.withdrawal = true; open(false, withdrawalOnly); await choose(id(18));
   fireEvent.change(screen.getByLabelText('Date-review decision notes'), { target: { value: 'Withdraw my original synthetic date interpretation for further review.' } });
   fireEvent.click(screen.getByText('Withdraw my date review')); await screen.findByText(/Date review recorded/);
   const body = JSON.parse(mock.fetch.mock.calls.find(c => c[1]?.method === 'POST')![1].body);
@@ -69,3 +69,11 @@ it('holds corrupt recovery without issuing requests', async () => {
   await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true)); expect(mock.fetch).not.toHaveBeenCalled();
 });
 it('cannot open when an adjacent step is active', () => { open(true); expect(screen.getByText('Open date review')).toBeDisabled(); });
+
+it('blocks fresh date interpretation in withdrawal-only mode despite ready choices', async () => {
+  open(false, true); await choose();
+  await screen.findByText('No original date review is available for you to withdraw.');
+  expect(screen.queryByText('Record date interpretation')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Local cutoff time')).not.toBeInTheDocument();
+  expect(mock.fetch.mock.calls.some(c => c[1]?.method === 'POST')).toBe(false);
+});
