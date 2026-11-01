@@ -54,5 +54,38 @@ def verify_disposition_review_http(db,app,drops,headers,token,workspace,contract
             if lost.status_code!=503 or retry.status_code!=200 or not retry.json()['duplicate']:raise AssertionError('Original disposition withdrawal recovery failed')
             if client.get(path,headers=headers).json()['status']!='withdrawn':raise AssertionError('Disposition withdrawal not current')
         finally:db.query('UPDATE private.acquisition_activation SET enabled=true')
+        history=path+'/history'
+        page=client.get(history,params={'limit':2},headers=headers)
+        if page.status_code!=200:raise AssertionError('Mounted disposition history unavailable')
+        data=page.json()
+        if [r['id'] for r in data['items']]!=[withdraw,hold] or data['next_before']!=2 or data['approval_current'] or not data['history_only']:
+            raise AssertionError('Disposition history order or historical boundary changed')
+        following=client.get(history,params={'limit':2,'before':data['next_before']},headers=headers)
+        if following.status_code!=200 or [r['id'] for r in following.json()['items']]!=[review] or following.json()['next_before'] is not None:
+            raise AssertionError('Disposition history pagination repeated or lost an original')
+        for target,status in ((review,'approved'),(hold,'requires_resolution'),(withdraw,'withdrawn')):
+            detail=client.get(history+'/'+target,headers=headers)
+            if detail.status_code!=200:raise AssertionError('Disposition original detail unavailable')
+            data=detail.json();row=data['record']
+            if data['approval_current'] or data['execution_authorized'] or row['status']!=status or row['disposition_plan_id']!=plan or row['disposition_title_review_id']!=title:
+                raise AssertionError('Disposition detail lost original roots or implied authority')
+            if status!='withdrawn' and (row['disposition_findings']!=findings or row['artifact_id']!=root['artifact_id'] or row['source_version']!=root['source_version']):
+                raise AssertionError('Disposition detail changed original findings')
+            if status=='withdrawn' and (row['disposition_original_review_id']!=hold or row['disposition_findings'] is not None):
+                raise AssertionError('Disposition withdrawal replaced original findings')
+            if any(k in row for k in ('session_id','request_hash','disposition_policy_snapshot')):raise AssertionError('History exposed private authority metadata')
+        for denied in ({},{'Authorization':'Bearer '+token(other)},{'Authorization':'Bearer '+token(role='service_role')}):
+            for route in (history,history+'/'+review):
+                if client.get(route,headers=denied).status_code not in (401,403):raise AssertionError('Disposition history escaped workspace/role boundary')
+        if client.get(history.replace('/versions/2/','/versions/1/')+'/'+review,headers=headers).status_code!=404:raise AssertionError('Disposition history escaped original version')
+        db.query('UPDATE private.acquisition_activation SET enabled=false')
+        try:
+            if client.get(history,headers=headers).status_code!=200:raise AssertionError('Paused disposition history unavailable')
+        finally:db.query('UPDATE private.acquisition_activation SET enabled=true')
+        prior_session=db.query('SELECT not_after FROM auth.sessions WHERE id=%s',[admin])[0]['not_after']
+        db.query("UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 minute' WHERE id=%s",[admin])
+        try:
+            if client.get(history,headers=headers).status_code!=403 or client.get(history+'/'+review,headers=headers).status_code!=403:raise AssertionError('Revoked session retained disposition history')
+        finally:db.query('UPDATE auth.sessions SET not_after=%s WHERE id=%s',[prior_session,admin])
     if db.query('SELECT to_jsonb(d) AS row FROM public.deals d WHERE id=%s',[contract])!=original:raise AssertionError('Disposition review changed canonical contract')
     if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_review' AND entity_id IN (%s,%s,%s)",[review,hold,withdraw])!=[{'n':3}]:raise AssertionError('Disposition review duplicated or omitted audit')

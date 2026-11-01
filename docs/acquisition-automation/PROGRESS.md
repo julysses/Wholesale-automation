@@ -1,5 +1,13 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — original disposition history verified (candidate111)
+
+Added bounded scoped disposition history and exact original detail over the existing immutable review ledger. Retains proposed exit, execution/title roots, original findings/citations and withdrawal identity; excludes private authority metadata. Expired history remains readable without current approval. Lists/details validate scope, ordering, original hashes/versions, title/exit consistency and source validity. Reads use actual user/MFA/session access plus RLS and never mark a pending write rejected.
+
+Initial47 history tests passed2.47s; added6 assignment/title/source cases, then full backend4580 passed,10 skipped,6 subtests62.87s. Session34511 terminal0; log `/tmp/disposition-history-backend.log`. Real gateway passed156 API checks after98-migration re-upgrade and26 access checks, preserving historical rows/definitions/Storage. Candidate109's297 workflow checks were explicitly reused, not rerun. Gateway29029 terminal0; log `/tmp/disposition-history-gateway.log`; evidence `evidence/2026-11-01-disposition-history-result.json`.
+
+Candidate110 API is locally committed841913c; candidate111 is ready for its local commit. Published b3a2e6e successor41288395947 remains running; wait for all six successes before pushing these features, and verify their exact successor. Next implement current review/policy/source and independent withdrawal choices, then guided disposition findings/history in existing contract step5, followed by controlled transitions and remaining buyer/disclosure/closing/exception workflows. Full PRD and all channel/provider/hosted/legal acceptance remain active/incomplete. No production migration or live activity occurred.
+
 ## November 1 — disposition API verified locally (candidate110)
 
 Connected the mounted disposition review journey to the real local JWT/PostgREST gateway. Actual committed-response loss and exact replay passed for approval, resolution hold and original withdrawal after pause/policy revocation. Tenant/role/version/conflict checks, fresh current status, one audit per decision and unchanged canonical contract also passed. Reapplied all98 migrations and26 access checks, preserved24 historical rows/22 populated tables/103 definitions/Storage, and passed153 actual API checks. The297 workflow checks from the immediately preceding full writer rehearsal were explicitly reused, not rerun. Evidence: `evidence/2026-11-01-disposition-mounted-api-result.json`; gateway73749 terminal0, log `/tmp/disposition-api-gateway.log`. Full backend4527 tests/10 skipped/6 subtests63.78s remains the final runtime test result; later changes connected integration coverage only.

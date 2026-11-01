@@ -505,6 +505,9 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'mounted disposition resolution hold commit-loss recovery',
             'mounted disposition paused original withdrawal after policy revocation',
             'mounted disposition immutable audit and unchanged canonical contract',
+            'mounted disposition history bounded exact original pagination',
+            'mounted disposition history original findings proposal title and withdrawal roots',
+            'mounted disposition history pause tenant version and session isolation',
             'title choices mounted current original and explicit report policy',
             'title choices mounted tenant isolation',
             'title choices original held withdrawal without a selected report while paused']
