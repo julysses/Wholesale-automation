@@ -194,7 +194,7 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate'] or recovered.json()['recorded_status']!='title_review':
             raise AssertionError(f'Title-review transition recovery failed: {lost.status_code} {recovered.status_code} {recovered.text}')
         done=client.get(transition_path+'/candidate',params={'contract_version':2},headers=headers)
-        if done.status_code!=200 or done.json()['status']!='title_review_started' or done.json()['candidate'] is not None:
+        if done.status_code!=200 or done.json()['status']!='disposition_review_required' or done.json()['candidate'] is not None:
             raise AssertionError('Started title review offered a repeated action')
         listing=client.get(f'/api/acquisition/workspaces/{workspace}/contracts/drafts?lead_id={lead}&limit=50',headers=headers)
         if listing.status_code!=200 or not any(item['id']==contract and item['acquisition_status']=='title_review' for item in listing.json()['items']):

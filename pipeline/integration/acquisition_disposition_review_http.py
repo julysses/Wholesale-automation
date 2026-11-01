@@ -102,3 +102,6 @@ def verify_disposition_review_http(db,app,drops,headers,token,workspace,contract
         finally:db.query('UPDATE auth.sessions SET not_after=%s WHERE id=%s',[prior_session,admin])
     if db.query('SELECT to_jsonb(d) AS row FROM public.deals d WHERE id=%s',[contract])!=original:raise AssertionError('Disposition review changed canonical contract')
     if db.query("SELECT count(*) AS n FROM public.audit_logs WHERE entity_type='acquisition_contract_review' AND entity_id IN (%s,%s,%s)",[review,hold,withdraw])!=[{'n':3}]:raise AssertionError('Disposition review duplicated or omitted audit')
+
+    from acquisition_disposition_handoff_http import verify_disposition_handoff_http
+    verify_disposition_handoff_http(db,app,drops,headers,token,workspace,contract,admin,other,body)

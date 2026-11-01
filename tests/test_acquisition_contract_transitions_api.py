@@ -151,3 +151,64 @@ def test_title_holds_require_exact_current_status(endpoint,status,current,sequen
     assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==200
     store.request.return_value=value|dict(sequence=sequence-1)
     assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==503
+
+
+def disposition_choice():
+    value=title_choice()
+    return value|dict(current_status='title_review',sequence=3,candidate=value['candidate']|dict(
+        expected_sequence=3,expected_status='title_review',target_status='disposition_review',
+        disposition_review_id=R,plan_id=W,title_review_id=C,exit_type='wholesale_assignment'))
+
+
+@pytest.mark.parametrize('exit_type',['principal_acquisition','wholesale_assignment'])
+def test_disposition_choice_retains_original_roots_without_execution_authority(endpoint,exit_type):
+    client,store=endpoint;value=disposition_choice();value['candidate']['exit_type']=exit_type;store.request.return_value=value
+    response=client.get(PATH+'/candidate',params={'contract_version':2})
+    assert response.status_code==200 and response.headers['cache-control']=='no-store'
+    from datetime import datetime
+    actual=response.json()['candidate'];expected=value['candidate']
+    assert {k:v for k,v in actual.items() if k!='expires_at'}=={k:v for k,v in expected.items() if k!='expires_at'}
+    assert datetime.fromisoformat(actual['expires_at'].replace('Z','+00:00'))==datetime.fromisoformat(expected['expires_at'])
+    assert response.json()['execution_authorized'] is False
+    assert store.request.await_args.kwargs['body']==dict(p_workspace=W,p_contract=C,p_version=2)
+
+
+@pytest.mark.parametrize('patch',[{'expected_sequence':2},{'expected_status':'executed'},{'expected_version':1},
+    {'disposition_review_id':None},{'plan_id':None},{'title_review_id':None},{'execution_review_id':None},
+    {'exit_type':'direct_close'},{'expires_at':'2020-01-01T00:00:00Z'}, {'execution_authorized':True},
+    {'policy_snapshot':'private-marker'}])
+def test_disposition_choice_rejects_missing_roots_stale_authority_and_private_fields(endpoint,patch):
+    client,store=endpoint;value=disposition_choice();value['candidate'].update(patch);store.request.return_value=value
+    response=client.get(PATH+'/candidate',params={'contract_version':2})
+    assert response.status_code==503 and response.headers['cache-control']=='no-store'
+    assert 'private-marker' not in response.text
+
+
+@pytest.mark.parametrize('status,current,sequence',[
+    ('disposition_review_required','title_review',3),('disposition_review_started','disposition_review',4)])
+def test_disposition_held_or_completed_choice_has_no_action(endpoint,status,current,sequence):
+    client,store=endpoint;value=disposition_choice()|dict(status=status,current_status=current,sequence=sequence,candidate=None)
+    store.request.return_value=value
+    response=client.get(PATH+'/candidate',params={'contract_version':2})
+    assert response.status_code==200 and response.json()['candidate'] is None
+    for patch in ({'sequence':sequence-1},{'current_status':'executed'},{'candidate':disposition_choice()['candidate']}):
+        store.request.return_value=value|patch
+        assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==503
+
+
+def test_disposition_handoff_retry_preserves_command_and_exact_receipt(endpoint):
+    client,store=endpoint;body=BODY|dict(expected_status='title_review',target_status='disposition_review',expected_sequence=3)
+    receipt=RECEIPT|dict(previous_status='title_review',recorded_status='disposition_review',sequence=4,duplicate=True)
+    store.request.return_value=receipt
+    for _ in range(2):
+        response=client.post(PATH,json=body)
+        assert response.status_code==200 and response.json()==receipt
+    assert store.request.await_args_list[0]==store.request.await_args_list[1]
+    assert set(store.request.await_args.kwargs['body'])=={'p_id','p_workspace','p_contract','p_expected_version','p_expected_sequence','p_expected_status','p_target_status','p_reason'}
+    for field in ('disposition_review_id','plan_id','title_review_id','execution_review_id','exit_type'):
+        before=store.request.await_count
+        assert client.post(PATH,json=body|{field:R}).status_code==422
+        assert store.request.await_count==before
+    store.request.return_value=receipt|{'sequence':3}
+    response=client.post(PATH,json=body)
+    assert response.status_code==503 and response.headers.get('X-Acquisition-Transition-Rejected') is None

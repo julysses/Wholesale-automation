@@ -1,5 +1,11 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — disposition handoff API complete locally (candidate122)
+
+Full backend4646 tests passed,10 skipped and6 subtests passed66.54s; session28875 terminal0, `/tmp/disposition-handoff-api-all.log`. Combined with final102-migration database evidence (316 workflows),161 real API checks and candidate121's1015 frontend tests/desktop-phone QA, the controlled title_review→disposition_review handoff is verified locally across database/API/guided UI boundaries. No hosted/platform/legal/provider acceptance is implied. Candidate120 is committedb678e73; candidate122 is ready for its separate commit. Full goal remains active/incomplete.
+
+Published702d960/run41291615759 still has five successful jobs and the Real PostgreSQL contention/workspace job running at latest authoritative check. Keep all local successors unpublished until that sixth result succeeds; then push and verify the exact successor. Next inspect current source resolvers, document admissions, candidate/state schemas and original-withdrawal UI for post-handoff renewal. Preserve immutable original execution/title/disposition references; do not blindly widen stage lists or replace original approvals. Full buyer/disclosure/distribution/deposit/closing/exceptions and channel/provider/hosted/legal rollout requirements remain open. No production migration or live action.
+
 ## November 1 — disposition handoff database and mounted API verified
 
 Candidate120 full102 rehearsal completed26 access checks and316 application workflows with24 historical rows across22 populated tables,103 definitions and Storage preserved. Its gateway phase failed at the old title-review status expectation; session80340 terminal1. Saved the successful database/workflow result separately in `evidence/2026-11-01-disposition-handoff-choice-database-result.json`; this is not a claim that the initial full run passed.

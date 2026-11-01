@@ -108,17 +108,26 @@ class TitleReviewChoice(ExecutedContractChoice):
     target_status: Literal['title_review']
 
 
+class DispositionReviewChoice(ExecutedContractChoice):
+    expected_status: Literal['title_review']
+    target_status: Literal['disposition_review']
+    disposition_review_id: UUID
+    plan_id: UUID
+    exit_type: Literal['principal_acquisition', 'wholesale_assignment']
+    title_review_id: UUID
+
+
 class ContractTransitionChoice(BaseModel):
     model_config = ConfigDict(extra='forbid', frozen=True)
     workspace_id: UUID
     contract_id: UUID
     contract_version: int = Field(strict=True, ge=1, le=2147483647)
     current_version: int = Field(strict=True, ge=1, le=2147483647)
-    current_status: Literal['draft', 'pending_signature', 'executed', 'title_review']
+    current_status: Literal['draft', 'pending_signature', 'executed', 'title_review', 'disposition_review']
     sequence: int = Field(strict=True, ge=0, le=2147483647)
     status: Literal['version_changed', 'paused', 'awaiting_signature', 'history_requires_review',
-                    'signature_review_required', 'execution_review_required', 'execution_recorded', 'title_review_required', 'title_review_started', 'ready_for_human_review']
-    candidate: PendingSignatureChoice | ExecutedContractChoice | TitleReviewChoice | None
+                    'signature_review_required', 'execution_review_required', 'execution_recorded', 'title_review_required', 'title_review_started', 'disposition_review_required', 'disposition_review_started', 'ready_for_human_review']
+    candidate: PendingSignatureChoice | ExecutedContractChoice | TitleReviewChoice | DispositionReviewChoice | None
     checked_at: AwareDatetime
     execution_authorized: StrictBool
 
@@ -147,9 +156,13 @@ class ContractTransitionChoice(BaseModel):
             status, sequence = ('executed', 2) if self.status == 'title_review_required' else ('title_review', 3)
             if self.current_status != status or self.sequence != sequence:
                 raise ValueError('Exact title-review lifecycle required')
+        if self.status in {'disposition_review_required', 'disposition_review_started'}:
+            status, sequence = ('title_review', 3) if self.status == 'disposition_review_required' else ('disposition_review', 4)
+            if self.current_status != status or self.sequence != sequence:
+                raise ValueError('Exact disposition-review lifecycle required')
         choice = self.candidate
         if choice and (choice.expected_version != self.contract_version or choice.expected_sequence != self.sequence
                 or self.current_status != choice.expected_status
-                or self.sequence != ({'pending_signature': 0, 'executed': 1, 'title_review': 2}[choice.target_status]) or choice.expires_at <= self.checked_at):
+                or self.sequence != ({'pending_signature': 0, 'executed': 1, 'title_review': 2, 'disposition_review': 3}[choice.target_status]) or choice.expires_at <= self.checked_at):
             raise ValueError('Exact current transition choice required')
         return self
