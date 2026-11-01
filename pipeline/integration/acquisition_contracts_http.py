@@ -186,6 +186,12 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             raise AssertionError('Document API exact registration recovery failed')
         if client.post(api_path,json=api_body|{'expected_byte_size':124},headers=headers).status_code!=409:
             raise AssertionError('Document API conflicting request accepted')
+    linked_observation_id='ae900000-0000-4000-8000-000000000003'
+    linked_state=rpc('contract_document_state',state_body|{'p_artifact':api_document})
+    linked_observed=observed|{name:linked_state[name] for name in ('artifact_id','checked_at','retain_until')}
+    linked_observed.update(scan_checked_at=linked_state['checked_at'],registry_checked_at=linked_state['checked_at'])
+    linked_signed=build_contract_scan_attestation(linked_observed,request_id=UUID(linked_observation_id),actor_id=UUID(admin),session_id=UUID(admin),key=key)
+    rpc('record_contract_document_verification',linked_signed)
     import asyncio
     import tempfile
     from pathlib import Path
@@ -291,9 +297,12 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
 
             from acquisition_source_review_http import verify_source_review_http,verify_source_review_revocation_http
             source_review_path,source_review_body=verify_source_review_http(db,app,document_drops,headers,workspace,draft,review_request,{'Authorization':'Bearer '+token(other)})
+            from acquisition_contract_links_http import verify_links_http,verify_link_withdrawal_http
+            link_path,link_body=verify_links_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,api_document,linked_observation_id,observed['sha256'])
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
             verify_source_review_revocation_http(db,app,document_drops,headers,source_review_path,source_review_body)
             verify_terms_revocation_http(app,token,terms_path,terms_body)
+            verify_link_withdrawal_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},link_path,link_body)
             reference=rpc('contract_reference_state',reference_args)
             if reference['status']!='requires_review' or reference['verification_id'] is not None:
                 raise AssertionError('Original source reference retained revoked verification authority')
@@ -422,4 +431,7 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'source-aware human review revocation and withdrawal recovery',
             'mounted source reference discovery and exact original detail',
             'mounted source reference workspace isolation and native pagination',
-            'mounted source reference revocation removes current verification']
+            'mounted source reference revocation removes current verification',
+            'document link API actual commit loss and exact original source recovery',
+            'document link API workspace session target and conflict isolation',
+            'document link withdrawal after revoked source while paused preserves original audit']
