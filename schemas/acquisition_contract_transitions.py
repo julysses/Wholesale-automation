@@ -1,11 +1,12 @@
-"""Lifecycle command boundary. No endpoint or persistence authority is exposed here.
+"""Lifecycle command and read-only discovery boundaries; authority is enforced in SQL.
 
 Version identifies immutable terms; sequence identifies lifecycle history. Evidence,
 actor, policy, buyer and closing structure must be loaded from authorized storage.
 """
 from uuid import UUID
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 
 from schemas.acquisition_contracts import CONTRACT_TRANSITIONS, ContractStatus
 
@@ -65,3 +66,59 @@ class ContractTransitionReceipt(BaseModel):
                 and self.sequence == request.expected_sequence + 1
                 and self.previous_status == request.expected_status
                 and self.recorded_status == request.target_status)
+
+
+# Choices describe a fresh read, not permission to execute the transition later.
+class PendingSignatureChoice(BaseModel):
+    model_config = ConfigDict(extra='forbid', frozen=True)
+    expected_version: int = Field(strict=True, ge=1, le=2147483647)
+    expected_sequence: int = Field(strict=True, ge=0, lt=2147483647)
+    expected_status: Literal['draft']
+    target_status: Literal['pending_signature']
+    signature_review_id: UUID
+    expires_at: AwareDatetime
+
+    @field_validator('expires_at', mode='before')
+    @classmethod
+    def explicit_timestamp(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit expiry timestamp required')
+        return value
+
+
+class ContractTransitionChoice(BaseModel):
+    model_config = ConfigDict(extra='forbid', frozen=True)
+    workspace_id: UUID
+    contract_id: UUID
+    contract_version: int = Field(strict=True, ge=1, le=2147483647)
+    current_version: int = Field(strict=True, ge=1, le=2147483647)
+    current_status: Literal['draft', 'pending_signature']
+    sequence: int = Field(strict=True, ge=0, le=2147483647)
+    status: Literal['version_changed', 'paused', 'awaiting_signature', 'history_requires_review',
+                    'signature_review_required', 'ready_for_human_review']
+    candidate: PendingSignatureChoice | None
+    checked_at: AwareDatetime
+    execution_authorized: StrictBool
+
+    @field_validator('checked_at', mode='before')
+    @classmethod
+    def explicit_timestamp(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit checked timestamp required')
+        return value
+
+    @model_validator(mode='after')
+    def coherent_choice(self):
+        if self.execution_authorized or self.current_version < self.contract_version:
+            raise ValueError('Exact non-executing contract context required')
+        if (self.status == 'version_changed') != (self.current_version != self.contract_version):
+            raise ValueError('Version change must remain held')
+        if (self.status == 'ready_for_human_review') != (self.candidate is not None):
+            raise ValueError('Held state cannot offer a transition')
+        if self.status == 'awaiting_signature' and (self.current_status != 'pending_signature' or self.sequence != 1):
+            raise ValueError('Recorded lifecycle required')
+        choice = self.candidate
+        if choice and (choice.expected_version != self.contract_version or choice.expected_sequence != self.sequence
+                or self.current_status != choice.expected_status or self.sequence != 0 or choice.expires_at <= self.checked_at):
+            raise ValueError('Exact current transition choice required')
+        return self

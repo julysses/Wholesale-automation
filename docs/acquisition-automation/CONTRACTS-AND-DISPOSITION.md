@@ -2,9 +2,13 @@
 
 October 31, 2026. Local implementation checkpoint, not legal approval or execution authority.
 
+## Guided status handoff checkpoint
+
+The current step5 journey now ends with current signature-release review → intentional awaiting-signature status handoff. Discovery uses exact current version and independent lifecycle sequence; the app explains holds rather than asking for internal identifiers. The form confirms only a recorded status, holds adjacent edits/navigation during unsaved or uncertain work, and restores the exact request after reload. It does not send or sign. Read-only choice and actual gateway tests verify that recorded status removes the duplicate action. See CURRENT-STATUS.md for complete local evidence/publication gate. Next required implementation: reviewed executed-contract outcomes and exception/closing evidence, then the remaining lifecycle/disposition transitions; full PRD scope remains controlling.
+
 ## Persisted lifecycle checkpoint
 
-Candidate72 records the first controlled draft → pending_signature transition through a user-JWT API and independent immutable lifecycle sequence. SQL pins and rechecks exact signature-release/source/reviewer authority; terms history remains unchanged, and the legacy stage stays offer_made. The existing list and step5 preserve pending-signature visibility and recovery. The actual transition button/read-only discovery, executed/exception/closing evidence and later lifecycle edges remain outstanding. See CURRENT-STATUS.md for full local rehearsal and publication evidence. No send/sign/closing action or hosted migration is authorized by this checkpoint.
+Candidate72 records the first controlled draft → pending_signature transition through a user-JWT API and independent immutable lifecycle sequence. SQL pins and rechecks exact signature-release/source/reviewer authority; terms history remains unchanged, and the legacy stage stays offer_made. The existing list and step5 preserve pending-signature visibility and recovery. Candidate73 now supplies read-only choice discovery and the guided intentional transition form with exact recovery. Executed/exception/closing evidence and later lifecycle edges remain outstanding. See CURRENT-STATUS.md for full local rehearsal and publication evidence. No send/sign/closing action or hosted migration is authorized by this checkpoint.
 
 ## Guided review checkpoint
 

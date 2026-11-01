@@ -10,7 +10,15 @@ def verify_transition_http(db,app,drops,headers,foreign,workspace,contract):
               reason='Synthetic human request to record awaiting signature, without signing or sending.')
     before=db.query('SELECT version,status,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract])
     with TestClient(app) as client:
+        choice=client.get(path+'/candidate',params={'contract_version':3},headers=headers)
+        if choice.status_code!=200 or choice.headers.get('cache-control')!='no-store' or choice.json()['status']!='ready_for_human_review':
+            raise AssertionError('Lifecycle discovery did not provide a fresh exact handoff')
+        selected=choice.json()['candidate']
+        if selected['expected_version']!=3 or selected['expected_sequence']!=0 or selected['target_status']!='pending_signature':
+            raise AssertionError('Lifecycle discovery mixed terms and status cursors')
         for identity in (foreign,{}):
+            if client.get(path+'/candidate',params={'contract_version':3},headers=identity).status_code not in (401,403):
+                raise AssertionError('Lifecycle discovery crossed workspace/session')
             if client.post(path,json=body,headers=identity).status_code not in (401,403):
                 raise AssertionError('Lifecycle request crossed workspace/session')
         drops['rpc/record_contract_transition']=True
@@ -22,6 +30,9 @@ def verify_transition_http(db,app,drops,headers,foreign,workspace,contract):
             raise AssertionError('Lifecycle receipt claimed current execution authority')
         if retry.json()['contract_version']!=3 or retry.json()['sequence']!=1 or retry.json()['recorded_status']!='pending_signature':
             raise AssertionError('Lifecycle cursor corrupted terms version')
+        recorded=client.get(path+'/candidate',params={'contract_version':3},headers=headers)
+        if recorded.status_code!=200 or recorded.json()['status']!='awaiting_signature' or recorded.json()['candidate'] is not None or recorded.json()['sequence']!=1:
+            raise AssertionError('Lifecycle discovery offered a duplicate transition after save')
         changed=client.post(path,json=body|{'reason':'Different reason cannot confirm the original lifecycle change.'},headers=headers)
         if changed.status_code!=409 or changed.headers.get('X-Acquisition-Transition-Rejected')!='true':
             raise AssertionError('Conflicting transition request was not definitively rejected')

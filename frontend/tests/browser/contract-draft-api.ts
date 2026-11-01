@@ -88,6 +88,30 @@ export async function apiFetch(path: string, init?: RequestInit) {
     }
     if (lose) { lose = false; throw new Error('Synthetic reference reply lost after commit'); }
   }
+  else if (path.includes('/transitions')) {
+    if (!signatureFixture || !ledger) throw new Error('Lifecycle fixture required');
+    const key = 'contract-transition-local-qa-ledger', prior = JSON.parse(sessionStorage.getItem(key) ?? 'null');
+    if (init?.method === 'POST') {
+      const request = JSON.parse(init.body as string);
+      if (prior && JSON.stringify(prior.request) !== JSON.stringify(request)) throw new Error('Lifecycle retry changed');
+      if (!prior && (ledger.row.acquisition_status !== 'draft' || request.expected_sequence !== 0 || request.expected_version !== ledger.row.acquisition_version)) throw new Error('Lifecycle cursor changed');
+      const receipt = prior?.receipt ?? { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: request.expected_version,
+        request_id: request.id, sequence: 1, previous_status: 'draft', recorded_status: 'pending_signature', transition_recorded: true, execution_authorized: false };
+      if (!prior) {
+        sessionStorage.setItem(key, JSON.stringify({ request, receipt })); ledger.row.acquisition_status = 'pending_signature'; sessionStorage.setItem(ledgerKey, JSON.stringify(ledger));
+      }
+      if (lose) { lose = false; throw new Error('Synthetic lifecycle reply lost after commit'); }
+      value = { ...receipt, duplicate: !!prior };
+    } else {
+      const target = Number(new URL(path, 'http://localhost').searchParams.get('contract_version'));
+      const releases = JSON.parse(sessionStorage.getItem('contract-signature-local-qa-ledger') ?? '[]');
+      const release = releases.at(-1), ready = release?.request.status === 'approved' && Date.parse(release.request.expires_at) > Date.now() && ledger.row.acquisition_status === 'draft' && target === ledger.row.acquisition_version;
+      value = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: target, current_version: ledger.row.acquisition_version,
+        current_status: ledger.row.acquisition_status, sequence: prior ? 1 : 0, checked_at: new Date().toISOString(), execution_authorized: false,
+        status: target !== ledger.row.acquisition_version ? 'version_changed' : prior ? 'awaiting_signature' : ready ? 'ready_for_human_review' : 'signature_review_required',
+        candidate: ready ? { expected_version: target, expected_sequence: 0, expected_status: 'draft', target_status: 'pending_signature', signature_review_id: release.request.id, expires_at: release.request.expires_at } : null };
+    }
+  }
   else if (path.includes('/signature-review')) {
     if (!signatureFixture || !ledger) throw new Error('Signature fixture required');
     const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion };

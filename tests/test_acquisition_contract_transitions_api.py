@@ -54,3 +54,46 @@ def test_definitive_rejection_marker_is_distinct_from_uncertainty(endpoint,statu
     assert (response.headers.get('X-Acquisition-Transition-Rejected')=='true') == (status in {401,403,409})
     assert response.headers['cache-control']=='no-store'
     assert store.request.await_count==1
+
+
+def choice():
+    from datetime import datetime,timedelta,timezone
+    now=datetime.now(timezone.utc)
+    return dict(workspace_id=W,contract_id=C,contract_version=2,current_version=2,current_status='draft',sequence=0,
+        status='ready_for_human_review',candidate=dict(expected_version=2,expected_sequence=0,expected_status='draft',
+        target_status='pending_signature',signature_review_id=R,expires_at=(now+timedelta(minutes=5)).isoformat()),
+        checked_at=now.isoformat(),execution_authorized=False)
+
+
+def test_choice_is_scoped_read_only_and_has_no_execution_authority(endpoint):
+    client,store=endpoint;store.request.return_value=choice()
+    response=client.get(PATH+'/candidate',params={'contract_version':2})
+    assert response.status_code==200 and response.headers['cache-control']=='no-store'
+    assert not response.json()['execution_authorized']
+    assert store.request.await_args.args==('POST','rpc/contract_transition_choice')
+    assert store.request.await_args.kwargs['body']==dict(p_workspace=W,p_contract=C,p_version=2)
+
+
+@pytest.mark.parametrize('change',[
+    {'workspace_id':C},{'contract_id':W},{'contract_version':1},{'current_version':1},{'sequence':1},
+    {'current_status':'pending_signature'},{'status':'paused'},{'candidate':None},{'execution_authorized':True},
+    {'checked_at':'2020-01-01T00:00:00Z'},{'checked_at':'2099-01-01T00:00:00Z'},
+    {'checked_at':12345},{'status':'awaiting_signature'},{'unexpected':'private-marker'}])
+def test_choice_rejects_wrong_scope_staleness_and_contradictory_authority(endpoint,change):
+    client,store=endpoint;store.request.return_value=choice()|change
+    response=client.get(PATH+'/candidate',params={'contract_version':2})
+    assert response.status_code==503 and 'private-marker' not in response.text
+    assert response.headers['cache-control']=='no-store'
+
+
+@pytest.mark.parametrize('field,value', [('expected_version',3),('expected_sequence',1),('expected_sequence',True),
+    ('expires_at','2020-01-01T00:00:00Z'),('expires_at',12345),('expected_status','executed')])
+def test_choice_rejects_inconsistent_nested_target_and_expiry(endpoint,field,value):
+    client,store=endpoint;raw=choice();raw['candidate'][field]=value;store.request.return_value=raw
+    assert client.get(PATH+'/candidate',params={'contract_version':2}).status_code==503
+
+
+@pytest.mark.parametrize('status',['paused','signature_review_required','history_requires_review'])
+def test_held_choice_has_no_available_transition(endpoint,status):
+    client,store=endpoint;store.request.return_value=choice()|{'status':status,'candidate':None}
+    assert client.get(PATH+'/candidate',params={'contract_version':2}).json()['candidate'] is None

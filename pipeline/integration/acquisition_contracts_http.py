@@ -448,4 +448,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'signature candidate API paused hold preserves independent original withdrawal',
             'lifecycle API committed response loss and exact historical retry',
             'lifecycle API tenant session and conflicting reason rejection',
-            'lifecycle version preservation and continued guided contract visibility']
+            'lifecycle version preservation and continued guided contract visibility',
+            'lifecycle candidate current exact handoff and workspace isolation',
+            'lifecycle candidate recorded state removes duplicate action']

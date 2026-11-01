@@ -1,0 +1,35 @@
+{
+  "syntheticOnly": true,
+  "results": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "dimensions": {
+        "width": 1280,
+        "scrollWidth": 1280
+      },
+      "missingReviewHeld": true,
+      "exactReloadRecovery": true,
+      "oneTransition": true,
+      "duplicateActionHeld": true,
+      "versionUnchanged": 2,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "dimensions": {
+        "width": 375,
+        "scrollWidth": 375
+      },
+      "missingReviewHeld": true,
+      "exactReloadRecovery": true,
+      "oneTransition": true,
+      "duplicateActionHeld": true,
+      "versionUnchanged": 2,
+      "errors": []
+    }
+  ]
+}

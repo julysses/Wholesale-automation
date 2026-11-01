@@ -289,6 +289,10 @@
     {
       "file": "20261101023551_acquisition_contract_lifecycle.sql",
       "sha256": "01e0f19ff399ca6c2e63d9be22b9dabf840f5dbe63ed4bd843c9e3ba0ac63706"
+    },
+    {
+      "file": "20261101024344_acquisition_transition_choices.sql",
+      "sha256": "2f25db99be2d6a52e8e267b8c31f00d1dc3210ba1a7ec6bc613a7b85636f9f4c"
     }
   ]
 }

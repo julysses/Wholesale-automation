@@ -23,6 +23,12 @@ beforeEach(() => {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ request_id: body.id, workspace_id: id(2), contract_id: id(5), version: body.expected_version + 1, status: 'draft', duplicate: true, execution_authorized: false }) };
       }
+      if (path.endsWith('/transitions')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: body.expected_version, request_id: body.id,
+          sequence: body.expected_sequence + 1, previous_status: body.expected_status, recorded_status: body.target_status,
+          duplicate: true, transition_recorded: true, execution_authorized: false }) };
+      }
       if (path.endsWith('/signature-review')) {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: 1, review_id: body.id,
@@ -216,4 +222,40 @@ it('keeps a contract awaiting signature visible and holds further draft preparat
   expect(screen.getByRole('button', { name: 'Edit draft terms' })).toBeDisabled();
   expect(screen.getByLabelText('Document type')).toBeDisabled();
   expect(posts()).toHaveLength(0);
+});
+
+const transitionRequest = { id: id(50), expected_version: 1, expected_sequence: 0, expected_status: 'draft' as const, target_status: 'pending_signature' as const, reason: 'Original reviewed status handoff kept after a lost response.' };
+it('recovers a committed status change after reload without a selected proposal', async () => {
+  const { preserveTransition } = await import('../src/lib/acquisition/contract-transition');
+  preserveTransition(sessionStorage, { version: 1, context: signatureContext, request: transitionRequest });
+  record.acquisition_status = 'pending_signature'; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Retry saved status change' })).toBeEnabled());
+  expect(screen.getByRole('button', { name: 'Open signature-release review' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Refresh draft information' })).toBeDisabled();
+  expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry saved status change' }));
+  await waitFor(() => expect(sessionStorage.length).toBe(0));
+  expect(posts()).toHaveLength(1); expect(posts()[0][0]).toMatch(/\/contracts\/[^/]+\/transitions$/);
+  expect(JSON.parse(posts()[0][1].body)).toEqual(transitionRequest);
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+});
+it('holds sibling signature and draft actions during unsaved status review', async () => {
+  mock.existing = true; open();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Review next contract status' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Review next contract status' }));
+  expect(screen.getByRole('button', { name: 'Open signature-release review' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Refresh draft information' })).toBeDisabled();
+  expect(mock.pending).toHaveBeenLastCalledWith(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Close status review without saving' }));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+  expect(screen.getByRole('button', { name: 'Open signature-release review' })).toBeEnabled();
+  expect(posts()).toHaveLength(0);
+});
+it('retains conflicting signature and status requests without selecting either', async () => {
+  const { preserveTransition } = await import('../src/lib/acquisition/contract-transition');
+  const { preserveSignature } = await import('../src/lib/acquisition/signature-review');
+  preserveTransition(sessionStorage, { version: 1, context: signatureContext, request: transitionRequest });
+  preserveSignature(sessionStorage, { version: 1, context: signatureContext, request: signatureRequest });
+  open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile the existing request');
+  expect(mock.fetch).not.toHaveBeenCalled(); expect(mock.pending).toHaveBeenLastCalledWith(true); expect(sessionStorage.length).toBe(2);
 });
