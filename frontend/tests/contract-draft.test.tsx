@@ -215,12 +215,13 @@ it('preserves conflicting signature and terms recoveries without selecting eithe
   expect(mock.fetch).not.toHaveBeenCalled(); expect(mock.pending).toHaveBeenLastCalledWith(true); expect(sessionStorage.length).toBe(2);
 });
 
-it('keeps a contract awaiting signature visible and holds further draft preparation', async () => {
+it('keeps a contract awaiting signature visible and enables document capture while holding draft terms', async () => {
   record.acquisition_status = 'pending_signature'; mock.existing = true; open();
   await screen.findByText('Awaiting signature. This status does not confirm that an agreement was sent or signed.');
   expect(screen.getByRole('button', { name: 'Draft saved' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Edit draft terms' })).toBeDisabled();
-  expect(screen.getByLabelText('Document type')).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeEnabled();
+  expect(screen.getByText('Next: confirm the signed document')).toBeVisible();
   expect(posts()).toHaveLength(0);
 });
 

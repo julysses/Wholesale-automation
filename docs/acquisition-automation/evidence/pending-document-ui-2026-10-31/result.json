@@ -1,0 +1,37 @@
+{
+  "syntheticOnly": true,
+  "results": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "dimensions": {
+        "width": 1280,
+        "scrollWidth": 1280
+      },
+      "registrationReloadRecovery": true,
+      "originalPreserved": true,
+      "newDocumentCount": 1,
+      "contractStatus": "pending_signature",
+      "version": 2,
+      "legalReviewClaimed": false,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "dimensions": {
+        "width": 375,
+        "scrollWidth": 375
+      },
+      "registrationReloadRecovery": true,
+      "originalPreserved": true,
+      "newDocumentCount": 1,
+      "contractStatus": "pending_signature",
+      "version": 2,
+      "legalReviewClaimed": false,
+      "errors": []
+    }
+  ]
+}

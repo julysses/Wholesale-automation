@@ -303,6 +303,8 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             signature_path,signature_body=verify_signature_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,terms_body,source_review_body)
             from acquisition_contract_transition_http import verify_transition_http
             verify_transition_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft)
+            from acquisition_pending_document_http import verify_pending_document_http
+            verify_pending_document_http(db,app,document_drops,headers,{'Authorization':'Bearer '+token(other)},workspace,draft,policy,rpc)
             db.query('UPDATE private.acquisition_contract_verification_key_scopes SET revoked_at=clock_timestamp() WHERE workspace_id=%s AND key_id=%s',[workspace,signing_key])
             verify_source_review_revocation_http(db,app,document_drops,headers,source_review_path,source_review_body)
             verify_terms_revocation_http(app,token,terms_path,terms_body)
@@ -450,4 +452,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'lifecycle API tenant session and conflicting reason rejection',
             'lifecycle version preservation and continued guided contract visibility',
             'lifecycle candidate current exact handoff and workspace isolation',
-            'lifecycle candidate recorded state removes duplicate action']
+            'lifecycle candidate recorded state removes duplicate action',
+            'pending contract document registration exact commit-loss recovery and isolation',
+            'pending contract document admission preserves terms status and unverified history']

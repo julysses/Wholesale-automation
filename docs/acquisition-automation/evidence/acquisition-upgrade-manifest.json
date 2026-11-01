@@ -293,6 +293,10 @@
     {
       "file": "20261101024344_acquisition_transition_choices.sql",
       "sha256": "2f25db99be2d6a52e8e267b8c31f00d1dc3210ba1a7ec6bc613a7b85636f9f4c"
+    },
+    {
+      "file": "20261101025323_acquisition_pending_contract_documents.sql",
+      "sha256": "15319d631674963993e0e2639c540e6af7c4892da4d4943d6d87a05653c650fe"
     }
   ]
 }

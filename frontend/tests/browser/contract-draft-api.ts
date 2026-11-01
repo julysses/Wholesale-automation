@@ -193,7 +193,7 @@ export async function apiFetch(path: string, init?: RequestInit) {
   else if (path.includes('/documents')) {
     if (!ledger) throw new Error('Save the synthetic draft first');
     const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion };
-    const documentsKey = 'contract-document-local-qa-ledger';
+    const documentsKey = ledger.row.acquisition_status === 'pending_signature' ? 'contract-pending-document-local-qa-ledger' : 'contract-document-local-qa-ledger';
     const saved = JSON.parse(sessionStorage.getItem(documentsKey) ?? 'null');
     const now = new Date().toISOString();
     if (init?.method === 'POST' && path.endsWith('/documents')) {
