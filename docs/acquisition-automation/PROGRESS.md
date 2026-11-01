@@ -1,5 +1,15 @@
 # WholesaleOS acquisition automation — progress
 
+## November 1 — review renewal contract and resumed work (candidate126)
+
+Resumed after the GPT app update. Pulled `codex/acquisition-foundation` with fast-forward-only; already current. Local predecessors remain `4d2d6e0` and `d3dc8b9` above published `00f5489`. Exact GitHub run41292882111 currently has five successful jobs; Real PostgreSQL ingestion, tracing and scoring contention remains in progress. Preserve that run and wait for all six successes before the next push.
+
+Added `REVIEW-RENEWAL.md` with the source-backed lifecycle design and remaining implementation checklist, plus frozen strict request/receipt schemas. Renewal must preserve original review roots and unchanged facts, require fresh personal review and server-derived evidence/policy/dependency checks, and never treat a historical receipt as current authority. No route, database writer, migration, provider or activation is enabled by this increment. The operator flow stays within the existing numbered review step.
+
+Validation:49 focused checks passed (`/tmp/review-renewal-contract-focused.log`). Full backend completed4695 passed,10 skipped,6 subtests passed in64.74s (`/tmp/review-renewal-contract-all.log`). No frontend or database changes in this increment. No production action.
+
+Next: inspect the latest102-migration disposable catalog before writing additive lineage SQL; then implement resolver/dependency checks, same-byte evidence refresh, controlled writer, API and guided UI with exact retry recovery. Follow the checklist in REVIEW-RENEWAL.md. Full PRD remains active and incomplete; all existing approval gates and paused SMS remain intact.
+
 ## November 1 — execution and date withdrawals after handoff (candidate125)
 
 Parent step5 now retains execution and deadline forms after disposition_review in explicit withdrawal-only mode. Existing retained-document selection locates original reviews; fresh approval choices are suppressed even if a cached response says ready. Execution date-comparison queries are disabled in this mode. Exact saved approvals/withdrawals can still be recovered; adjacent steps/navigation remain held while open. No SQL, policy provisioning, runtime Python or renewal authorization changed. Existing labels/layout/native controls are retained.
