@@ -1,5 +1,17 @@
 # Acquisition automation — current implementation and release handoff
 
+## October 31 — deadline-review API and exact recovery verified (candidate84)
+
+Mounted POST deadline-reviews in the existing acquisition router/authenticated store. Requests retain exact term, interpretation/source and original withdrawal identity; receipts must match workspace/contract/version/request/sequence/status/term/original approval. Definite rejection is distinguished from uncertain saves; malformed or mismatched receipts never clear the saved request or trigger automatic retries. No-store is explicit, including path-version rejection. Current-state/discovery and guided UI are still pending; the write receipt grants no current or execution authority.
+
+80 focused model/API cases passed2.22s;35 API cases passed2.09s after the explicit no-store refinement. Full backend4102 passed,10 skipped,6 subtests47.69s. Full disposable rehearsal23348 exited0:82 migrations,26 access probes,217 workflows,117 actual PostgREST/API checks;24 historical rows/22 populated tables/103 definitions and Storage preserved. New real API cases prove approval/withdrawal committed-response loss and exact recovery, tenant/conflict rejection, original identity, one audit each and unchanged calendar/status/history. Evidence:evidence/2026-10-31-deadline-api-result.json. Logs:/tmp/deadline-api-backend.log,/tmp/deadline-api-upgrade-final.log. All local validation processes are terminal.
+
+Initial rehearsal99881 stopped because its new fixture attempted a second contract on the same lead. Kept that production safeguard and corrected the fixture to prepare a separate synthetic lead/property through the normal owner/underwriting/offer/draft workflow. Earlier log:/tmp/deadline-api-upgrade.log. The final complete rehearsal proves the corrected journey; no application constraint was relaxed.
+
+All six f443f37/run41272432307 checks reached terminal success. Pushed verified writer5c821fcbb3453b4a2e994a384c0bc2a559822fba. Exact successor41273417902 is live; wait for its six terminal successes before pushing candidate84, without cancellation/restart. Git pull was current before this implementation. No production migration, policy provisioning, provider activation, outreach, fulfillment or binding transaction.
+
+Next: term-specific current-review/discovery with separate shared concurrency sequence and selected-term review sequence; revalidate all original sources, policy/session and unchanged date/version. Then bind exact interpretation IDs into execution review and add the guided source-backed time-interpretation screen plus browser recovery. Existing date-only execution holds remain; full PRD goal remains active and incomplete.
+
 ## October 31 — controlled deadline-review writer verified (candidate83); prior features pushed
 
 All six repair180ba10/run41271347320 checks reached terminal success. Pushed previously validated e8e5837,0e742a8 and f443f37525466a02dd6448a68f6467f8e672df6b. Exact successor41272432307 is live; wait for all six terminal successes before pushing candidate83. Do not cancel/restart the run. No production migration or provider action was performed.
