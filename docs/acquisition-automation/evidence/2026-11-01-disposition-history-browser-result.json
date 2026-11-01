@@ -1,0 +1,34 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "withdrawal_original": true,
+      "required_action_visible": true,
+      "original_identifiers": true,
+      "adjacent_edit_hides_history": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "withdrawal_original": true,
+      "required_action_visible": true,
+      "original_identifiers": true,
+      "adjacent_edit_hides_history": true,
+      "overflow": false,
+      "errors": []
+    }
+  ],
+  "screenshots": [
+    "/tmp/disposition-history-375.png",
+    "/tmp/disposition-history-1280.png"
+  ],
+  "scope": "Synthetic local component preview, not hosted or provider acceptance."
+}

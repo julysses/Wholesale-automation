@@ -15,3 +15,20 @@ export function dispositionChoice(assignment = true, now = Date.now()) {
   return { ...scope, status: 'ready_for_human_review', candidate: { ...structuredClone(resolution), max_expires_at: expiry }, resolution,
     withdrawal: null, current_review: { ...scope, kind: 'disposition_findings', review_id: null, sequence: 0, status: 'not_reviewed', approval_current: false, expires_at: null, checked_at: stamp, execution_authorized: false }, checked_at: stamp, execution_authorized: false };
 }
+export function dispositionHistoryRecord(sequence = 1, status: 'approved' | 'requires_resolution' | 'withdrawn' = 'approved', assignment = true) {
+  const now = Date.now(), findings = dispositionFindings(assignment);
+  if (status === 'requires_resolution') findings.contractual_interest = { finding: 'unknown', note: 'The original contractual interest needs confirmation.', required_action: 'Obtain counsel review of the original contractual interest.', sources: [] };
+  return { id: id(100 + sequence), ...scope, kind: 'disposition_findings', sequence, status, artifact_id: id(8), source_version: 1, actor_id: id(1),
+    disposition_plan_id: id(11), disposition_exit_type: findings.exit_type,
+    note: 'Original synthetic disposition decision retained in history.', expires_at: status === 'approved' ? new Date(now - 3600000).toISOString() : null, created_at: new Date(now - 86400000).toISOString(),
+    disposition_original_review_id: status === 'withdrawn' ? id(100 + sequence - 1) : null, disposition_original_status: status === 'withdrawn' ? 'requires_resolution' : null,
+    verification_id: id(9), sha256: 'a'.repeat(64), personally_reviewed: status !== 'withdrawn', disposition_findings: status === 'withdrawn' ? null : findings,
+    disposition_sources: status === 'withdrawn' ? null : [{ artifact_id: id(8), source_version: 1, verification_id: id(9), sha256: 'a'.repeat(64), purpose: 'purchase_contract', expires_at: new Date(now - 3600000).toISOString() }],
+    disposition_execution_id: id(12), disposition_title_entry_id: id(13), disposition_title_review_id: id(14), disposition_title_status: 'approved' };
+}
+export function dispositionHistorySummary(sequence = 1, status: 'approved' | 'requires_resolution' | 'withdrawn' = 'approved') {
+  const { verification_id, sha256, personally_reviewed, disposition_findings, disposition_sources, disposition_execution_id, disposition_title_entry_id, disposition_title_review_id, disposition_title_status, ...summary } = dispositionHistoryRecord(sequence, status);
+  void verification_id; void sha256; void personally_reviewed; void disposition_findings; void disposition_sources; void disposition_execution_id; void disposition_title_entry_id; void disposition_title_review_id; void disposition_title_status;
+  return summary;
+}
+export const dispositionHistoryEnvelope = { ...scope, history_only: true, approval_current: false, execution_authorized: false };

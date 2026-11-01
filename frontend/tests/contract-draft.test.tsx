@@ -383,7 +383,7 @@ it('holds sibling contract steps while purchase-path planning is open', async ()
   record.acquisition_status = 'title_review'; mock.existing = true; open();
   await waitFor(() => expect(screen.getByText('Open purchase path')).toBeEnabled()); fireEvent.click(screen.getByText('Open purchase path'));
   await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true));
-  for (const name of ['Open title review', 'View title history', 'Open execution review', 'Open date review', 'Refresh draft information']) expect(screen.getByText(name)).toBeDisabled();
+  for (const name of ['Open title review', 'View title history', 'View disposition history', 'Open execution review', 'Open date review', 'Refresh draft information']) expect(screen.getByText(name)).toBeDisabled();
   expect(screen.getByLabelText('Document type')).toBeDisabled(); fireEvent.click(screen.getByText('Close without saving'));
   await waitFor(() => expect(screen.getByText('Open title review')).toBeEnabled()); expect(screen.getByLabelText('Document type')).toBeEnabled();
 });
@@ -411,7 +411,7 @@ it('holds sibling steps while disposition findings are open and releases on clos
   record.acquisition_status = 'title_review'; mock.existing = true; open();
   await waitFor(() => expect(screen.getByText('Open disposition review')).toBeEnabled()); fireEvent.click(screen.getByText('Open disposition review'));
   await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true));
-  for (const name of ['Open purchase path', 'Open title review', 'View title history', 'Open execution review', 'Open date review', 'Refresh draft information']) expect(screen.getByText(name)).toBeDisabled();
+  for (const name of ['Open purchase path', 'Open title review', 'View title history', 'View disposition history', 'Open execution review', 'Open date review', 'Refresh draft information']) expect(screen.getByText(name)).toBeDisabled();
   expect(screen.getByLabelText('Document type')).toBeDisabled(); fireEvent.click(screen.getByText('Close without saving'));
   await waitFor(() => expect(screen.getByText('Open purchase path')).toBeEnabled()); expect(screen.getByLabelText('Document type')).toBeEnabled();
 });

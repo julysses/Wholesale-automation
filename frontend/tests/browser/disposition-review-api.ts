@@ -1,4 +1,4 @@
-import { dispositionChoice, dispositionScope as scope } from '../fixtures/disposition-review';
+import { dispositionChoice, dispositionScope as scope, dispositionHistoryRecord, dispositionHistorySummary, dispositionHistoryEnvelope, dispositionId } from '../fixtures/disposition-review';
 import { titleReference } from '../fixtures/title-review';
 const ledgerKey = 'qa.disposition-review.ledger';
 let lose = false;
@@ -12,6 +12,8 @@ export async function apiFetch(path: string, init?: RequestInit) {
     if (lose) { lose = false; throw new Error('Synthetic lost response after commit'); }
     return { json: async () => ({ ...scope, kind: 'disposition_findings', review_id: request.id, sequence: request.expected_sequence + 1, status: request.status, duplicate: !!existing, review_recorded: true, approval_current: false, execution_authorized: false }) };
   }
+  if (path.includes('/history?')) return { json: async () => ({ ...dispositionHistoryEnvelope, items: [dispositionHistorySummary(2, 'withdrawn'), dispositionHistorySummary(1, 'requires_resolution')], next_before: null }) };
+  if (path.includes('/history/')) return { json: async () => ({ ...dispositionHistoryEnvelope, record: path.endsWith(dispositionId(102)) ? dispositionHistoryRecord(2, 'withdrawn') : dispositionHistoryRecord(1, 'requires_resolution') }) };
   if (path.includes('/references?')) return { json: async () => ({ ...scope, purpose: new URL(path, 'http://local').searchParams.get('purpose'), items: [], next_after: null, checked_at: new Date().toISOString(), execution_authorized: false }) };
   if (path.includes('/references/')) return { json: async () => ({ ...titleReference(), source_version: 1, reference_type: 'term_source', purpose: 'purchase_contract' }) };
   const value = dispositionChoice(true), latest = journal.at(-1);
