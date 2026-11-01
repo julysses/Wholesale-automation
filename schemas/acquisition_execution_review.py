@@ -4,9 +4,10 @@ This boundary is not mounted until persistence can resolve every referenced orig
 under the current workspace, version, scanner and reviewer policy locks.
 """
 from typing import Literal
-from pydantic import Field, model_validator
+from uuid import UUID
+from pydantic import AwareDatetime, StrictBool, Field, field_validator, model_validator
 
-from schemas.acquisition_contract_reviews import ContractReviewRequest, ContractReviewReceipt, ContractReviewState, Exact
+from schemas.acquisition_contract_reviews import ContractReviewRequest, ContractReviewReceipt, ContractReviewState, ReviewApprovalChoice, ReviewWithdrawalChoice, Exact
 from schemas.acquisition_contract_terms import ContractTermsDraft
 
 
@@ -63,3 +64,54 @@ class ExecutionReviewReceipt(ContractReviewReceipt):
 
 class ExecutionReviewState(ContractReviewState):
     kind: Literal['executed_contract']
+
+
+class ExecutionApprovalChoice(ReviewApprovalChoice):
+    source_version: int = Field(strict=True, ge=1, le=2147483647)
+
+
+class ExecutionWithdrawalChoice(ReviewWithdrawalChoice):
+    source_version: int = Field(strict=True, ge=1, le=2147483647)
+
+
+class ExecutionReviewCandidate(Exact):
+    workspace_id: UUID
+    contract_id: UUID
+    contract_version: int = Field(strict=True, ge=1, le=2147483647)
+    artifact_id: UUID
+    status: Literal['paused', 'contract_unavailable', 'history_limit_reached', 'prepared_terms_required',
+                    'reviewer_policy_required', 'evidence_review_required', 'ready_for_human_review']
+    candidate: ExecutionApprovalChoice | None
+    withdrawal: ExecutionWithdrawalChoice | None
+    prepared_terms: ContractTermsDraft | None
+    current_review: ExecutionReviewState
+    checked_at: AwareDatetime
+    execution_authorized: StrictBool
+
+    @field_validator('checked_at', mode='before')
+    @classmethod
+    def explicit_timestamp(cls, value):
+        if not isinstance(value, str) or 'T' not in value:
+            raise ValueError('Explicit checked timestamp required')
+        return value
+
+    @model_validator(mode='after')
+    def exact_choices(self):
+        state = self.current_review
+        if self.execution_authorized or ((state.workspace_id, state.contract_id, state.contract_version, state.checked_at)
+                != (self.workspace_id, self.contract_id, self.contract_version, self.checked_at)):
+            raise ValueError('Exact current review scope required')
+        if (self.status == 'ready_for_human_review') != (self.candidate is not None):
+            raise ValueError('Held state cannot offer approval')
+        if self.prepared_terms and any(source.artifact_version > self.contract_version for source in self.prepared_terms.sources):
+            raise ValueError('Prepared terms cannot reference a future source')
+        choice = self.candidate
+        if choice and (self.prepared_terms is None or choice.artifact_id != self.artifact_id
+                or choice.source_version > self.contract_version or choice.expected_sequence != state.sequence
+                or not 0 < (choice.max_expires_at-self.checked_at).total_seconds() <= 86400):
+            raise ValueError('Current bounded source choice required')
+        withdrawal = self.withdrawal
+        if withdrawal and (withdrawal.source_version > self.contract_version or withdrawal.review_id != state.review_id
+                or withdrawal.expected_sequence != state.sequence or state.status not in {'approved','requires_review'}):
+            raise ValueError('Original withdrawal identity required')
+        return self

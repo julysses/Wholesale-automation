@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
-from schemas.acquisition_execution_review import ExecutionReviewRequest, ExecutionReviewReceipt, ExecutionReviewState
+from schemas.acquisition_execution_review import ExecutionReviewRequest, ExecutionReviewReceipt, ExecutionReviewState, ExecutionReviewCandidate
 from tools.acquisition_store import acquisition_store
 from web.api.acquisition_contract_documents_api import Version, rpc, uncertain
 
@@ -56,3 +56,23 @@ async def execution_review_state(workspace_id: UUID, contract_id: UUID, contract
     except (ValueError, TypeError):
         raise uncertain('Current execution review could not be confirmed. Refresh before proceeding.') from None
     return state.model_dump(mode='json')
+
+
+@router.get('/documents/{artifact_id}/candidate')
+async def execution_review_candidate(workspace_id: UUID, contract_id: UUID, contract_version: Version,
+                                     artifact_id: UUID, response: Response, store=Depends(acquisition_store)):
+    response.headers['Cache-Control'] = 'no-store'
+    raw = await rpc(store, 'execution_review_candidate', {'p_workspace': str(workspace_id),
+        'p_contract': str(contract_id), 'p_version': contract_version, 'p_artifact': str(artifact_id)})
+    try:
+        choice = ExecutionReviewCandidate.model_validate(raw)
+        now = datetime.now(timezone.utc)
+        if ((choice.workspace_id, choice.contract_id, choice.contract_version, choice.artifact_id)
+                != (workspace_id, contract_id, contract_version, artifact_id)
+                or not now-timedelta(seconds=30) <= choice.checked_at <= now+timedelta(seconds=5)
+                or choice.candidate is not None and choice.candidate.max_expires_at <= now
+                or choice.current_review.approval_current and choice.current_review.expires_at <= now):
+            raise ValueError('Current exact execution choices required')
+    except (ValueError, TypeError):
+        raise uncertain('Execution review choices could not be confirmed. Refresh the selected agreement before proceeding.') from None
+    return choice.model_dump(mode='json')

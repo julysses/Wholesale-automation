@@ -309,6 +309,10 @@
     {
       "file": "20261101031709_acquisition_execution_review_state.sql",
       "sha256": "3ba05a695097b77ce9879584ce2adbe9be5d23d77abfcd663b2b3bab40363d80"
+    },
+    {
+      "file": "20261101032437_acquisition_execution_review_choices.sql",
+      "sha256": "5cf107aa85806ecae5708f23ecf520b3194b1391b5f2e551315bdd979c7ca7ca"
     }
   ]
 }

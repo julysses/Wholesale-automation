@@ -460,4 +460,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'pending contract document admission preserves terms status and unverified history',
             'execution review API actual commit loss and exact findings recovery',
             'execution review API tenant session conflict and immutable lifecycle boundaries',
-            'execution review current source revocation and paused withdrawal recovery']
+            'execution review current source revocation and paused withdrawal recovery',
+            'execution candidate exact returned source and scoped reviewer policy',
+            'execution candidate paused hold preserves original withdrawal']

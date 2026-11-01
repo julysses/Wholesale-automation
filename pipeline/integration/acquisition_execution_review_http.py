@@ -24,6 +24,15 @@ def verify_execution_http(db,app,drops,headers,foreign,workspace,contract,basis)
             for name in ('seller_signatures','buyer_signatures','signing_authority','complete_agreement')},'terms':terms})
     history=db.query('SELECT version,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract])
     with TestClient(app) as client:
+        choices=client.get(path+'/documents/'+body['artifact_id']+'/candidate',headers=headers)
+        if choices.status_code!=200 or choices.json()['status']!='ready_for_human_review':
+            raise AssertionError('Execution source choice unavailable')
+        selected=choices.json()['candidate']
+        if selected['artifact_id']!=body['artifact_id'] or selected['verification_id']!=body['verification_id'] or selected['policy_id']!=POLICY or selected['source_version']!=1:
+            raise AssertionError('Execution discovery changed original source or policy')
+        for identity in (foreign,{}):
+            if client.get(path+'/documents/'+body['artifact_id']+'/candidate',headers=identity).status_code not in (401,403):
+                raise AssertionError('Execution choices crossed workspace/session')
         initial=client.get(path,headers=headers)
         if initial.status_code!=200 or initial.json()['status']!='not_reviewed':
             raise AssertionError('Execution initial state unavailable')
@@ -57,6 +66,9 @@ def verify_execution_revocation_http(db,app,drops,headers,path,body):
     db.query('UPDATE private.acquisition_activation SET enabled=false WHERE singleton')
     try:
         with TestClient(app) as client:
+            choice=client.get(path+'/documents/'+body['artifact_id']+'/candidate',headers=headers)
+            if choice.status_code!=200 or choice.json()['status']!='paused' or choice.json()['candidate'] is not None or choice.json()['withdrawal']['review_id']!=REVIEW:
+                raise AssertionError('Paused execution choices lost original withdrawal')
             state=client.get(path,headers=headers)
             if state.status_code!=200 or state.json()['status']!='requires_review' or state.json()['approval_current']:
                 raise AssertionError('Execution review retained authority after source revocation/pause')
