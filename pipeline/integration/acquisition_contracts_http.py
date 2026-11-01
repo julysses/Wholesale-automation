@@ -500,6 +500,11 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'mounted purchase-path exact commit-loss recovery and changed-request rejection',
             'mounted purchase-path workspace role version pause and original withdrawal',
             'mounted purchase-path immutable audit and unchanged canonical contract',
+            'mounted disposition approval commit-loss exact recovery and fresh current state',
+            'mounted disposition tenant role version and changed-request rejection',
+            'mounted disposition resolution hold commit-loss recovery',
+            'mounted disposition paused original withdrawal after policy revocation',
+            'mounted disposition immutable audit and unchanged canonical contract',
             'title choices mounted current original and explicit report policy',
             'title choices mounted tenant isolation',
             'title choices original held withdrawal without a selected report while paused']

@@ -1,13 +1,13 @@
 """Human post-execution findings, never client-supplied disposition authority.
 
-The future controlled writer must resolve the selected proposal and original
-sources and bind current execution, deadline, title and reviewer-policy evidence.
+The controlled writer resolves the selected proposal and original sources
+and binds current execution, deadline, title and reviewer-policy evidence.
 Draft preparation reviews cannot satisfy those bindings.
 """
 from typing import Literal
 from uuid import UUID
 from pydantic import AwareDatetime, Field, StrictBool, field_validator, model_validator
-from schemas.acquisition_contract_reviews import Exact
+from schemas.acquisition_contract_reviews import Exact, ContractReviewReceipt, ContractReviewState
 from schemas.acquisition_disposition_plans import ExitType
 from schemas.acquisition_title_review import TitleSource, TitleFinding
 
@@ -92,3 +92,20 @@ class DispositionReviewRequest(Exact):
         elif self.expires_at is not None:
             raise ValueError('Resolution holds cannot carry approval expiry')
         return self
+
+
+class DispositionReviewReceipt(ContractReviewReceipt):
+    kind: Literal['disposition_findings']
+    status: Literal['approved', 'requires_resolution', 'withdrawn']
+
+
+class DispositionReviewState(ContractReviewState):
+    kind: Literal['disposition_findings']
+    status: Literal['not_reviewed', 'approved', 'requires_resolution', 'withdrawn', 'requires_review']
+
+    @field_validator('expires_at', 'checked_at', mode='before')
+    @classmethod
+    def explicit_state_timestamp(cls, value):
+        if value is not None and (not isinstance(value, str) or 'T' not in value):
+            raise ValueError('Explicit current disposition timestamp required')
+        return value

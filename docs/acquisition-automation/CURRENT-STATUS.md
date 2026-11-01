@@ -1,5 +1,13 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — disposition API verified locally (candidate110)
+
+Connected the mounted disposition review journey to the real local JWT/PostgREST gateway. Actual committed-response loss and exact replay passed for approval, resolution hold and original withdrawal after pause/policy revocation. Tenant/role/version/conflict checks, fresh current status, one audit per decision and unchanged canonical contract also passed. Reapplied all98 migrations and26 access checks, preserved24 historical rows/22 populated tables/103 definitions/Storage, and passed153 actual API checks. The297 workflow checks from the immediately preceding full writer rehearsal were explicitly reused, not rerun. Evidence: `evidence/2026-11-01-disposition-mounted-api-result.json`; gateway73749 terminal0, log `/tmp/disposition-api-gateway.log`. Full backend4527 tests/10 skipped/6 subtests63.78s remains the final runtime test result; later changes connected integration coverage only.
+
+Published database HEAD b3a2e6ed41002ae0d374f58aef787a5cbe2693eb after all six repair41287270262 checks succeeded. Push confirmed; exact successor https://github.com/julysses/Wholesale-automation/actions/runs/41288395947 was queued at initial verification. Commit candidate110 locally, then wait for all six exact predecessor jobs to pass before its feature push. Do not cancel/restart active checks.
+
+Next: bounded current proposal/policy/source and original-withdrawal discovery, immutable disposition history, then the guided findings form within existing contract step5 with navy/orange styling and exact pending-save recovery. Controlled lifecycle transition, buyer isolation/matching/packages/disclosures/deposits/closing/exception handling and all broader PRD channel/provider/hosted/legal acceptance remain required. Full goal remains active/incomplete. No production migration, live policy, outreach, provider activation, paid fulfillment or binding transaction occurred.
+
 ## November 1 — disposition writer fully rehearsed (candidate109)
 
 Session62143 completed with exit0:98 migrations,26 access checks,297 workflow checks and148 actual API checks passed. Preserved24 historical rows,22 populated tables,103 definitions and Storage. Evidence: `evidence/2026-11-01-disposition-write-result.json`; log `/tmp/disposition-write-upgrade.log`. Nine focused writer tests passed62.597s. All six exact repair-successor41287270262 jobs now passed. Candidate108 ae32062 and candidate109 database work may be published after the writer commit; then verify the exact successor before further feature publication.

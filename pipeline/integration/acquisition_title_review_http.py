@@ -122,3 +122,6 @@ def verify_title_review_http(db,rpc,request,token,workspace,contract,document,ad
 
     from acquisition_disposition_plan_http import verify_disposition_plan_http
     verify_disposition_plan_http(db,app,drops,headers,token,workspace,contract,other)
+
+    from acquisition_disposition_review_http import verify_disposition_review_http
+    verify_disposition_review_http(db,app,drops,headers,token,workspace,contract,admin,other,api_body)
