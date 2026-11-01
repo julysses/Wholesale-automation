@@ -1,3 +1,4 @@
+import type { PendingDeadline } from '../../src/lib/acquisition/deadline-review';
 import { executionChoice, executionTerms } from '../fixtures/execution-review';
 import { signatureChoice } from '../fixtures/signature-review';
 import { emptyTerms } from '../../src/lib/acquisition/contract-terms';
@@ -35,6 +36,39 @@ export async function apiFetch(path: string, init?: RequestInit) {
     if (lose) { lose = false; throw new Error('Synthetic lost reply after commit'); }
     value = { deal_id: request.id, version: 1, status: 'draft', duplicate: !!ledger, execution_authorized: false };
   } else if (path.endsWith('/memberships')) value = [{ workspace_id: ids.workspace, user_id: ids.user, status: 'active', role: 'owner' }];
+  else if (path.includes('/deadline-reviews')) {
+    if (!executionFixture || !ledger) throw new Error('Synthetic deadline fixture required');
+    const key = 'contract-deadline-local-qa-ledger';
+    const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as { request: PendingDeadline['request']; receipt: Record<string, unknown> }[];
+    const scope = { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion };
+    if (init?.method === 'POST') {
+      const request = JSON.parse(init.body as string) as PendingDeadline['request'];
+      const prior = entries.find(row => row.request.id === request.id);
+      if (prior && JSON.stringify(prior.request) !== JSON.stringify(request)) throw new Error('Synthetic deadline request changed');
+      if (!prior && request.expected_sequence !== entries.length) throw new Error('Synthetic deadline cursor changed');
+      const receipt = prior?.receipt ?? { ...scope, kind: 'deadline_resolution', term: request.term, review_id: request.id,
+        interpretation_review_id: request.original_review_id ?? request.id, sequence: entries.length + 1, status: request.status,
+        review_recorded: true, approval_current: false, execution_authorized: false };
+      if (!prior) { entries.push({ request, receipt }); sessionStorage.setItem(key, JSON.stringify(entries)); }
+      if (lose) { lose = false; throw new Error('Synthetic deadline reply lost after commit'); }
+      value = { ...receipt, duplicate: !!prior };
+    } else {
+      const term = path.includes('/effective/') ? 'effective' : path.includes('/inspection_deadline/') ? 'inspection_deadline' : 'closing_deadline';
+      const artifact = path.match(/\/documents\/([a-f0-9-]+)\/candidate/)?.[1] ?? id(11);
+      const latest = entries.filter(row => row.request.term === term).at(-1), approved = latest?.request.status === 'approved';
+      const original = latest?.request.original_review_id ? entries.find(row => row.request.id === latest.request.original_review_id) : latest;
+      const stamp = new Date().toISOString(), current = approved && Date.parse(latest.request.expires_at ?? '') > Date.now();
+      value = { ...scope, term, artifact_id: artifact, status: 'ready_for_human_review',
+        candidate: { artifact_id: artifact, source_version: 1, verification_id: id(9), sha256: 'a'.repeat(64), policy_id: id(12), expected_sequence: entries.length, max_expires_at: new Date(Date.now() + 300000).toISOString() },
+        withdrawal: approved ? { review_id: latest.request.id, artifact_id: latest.request.artifact_id, source_version: 1, verification_id: latest.request.verification_id, policy_id: latest.request.policy_id, expected_sequence: entries.length } : null,
+        original_source: { term, artifact_id: id(11), artifact_version: 1, sha256: 'a'.repeat(64), locator: 'Synthetic original calendar clause', verification_id: id(9) },
+        current_review: { ...scope, kind: 'deadline_resolution', term, sequence: entries.length, review_sequence: latest ? entries.indexOf(latest) + 1 : null,
+          review_id: latest?.request.id ?? null, interpretation_review_id: original?.request.id ?? null,
+          original_term: { precision: 'date', calendar_date: '2026-11-20', instant: null }, resolution: original?.request.resolution ?? null,
+          status: !latest ? 'not_reviewed' : latest.request.status === 'withdrawn' ? 'withdrawn' : current ? 'approved' : 'requires_review',
+          approval_current: !!current, expires_at: current ? latest!.request.expires_at : null, checked_at: stamp, execution_authorized: false }, checked_at: stamp, execution_authorized: false };
+    }
+  }
   else if (path.endsWith('/terms') || path.includes('/versions?')) {
     if (!ledger) throw new Error('Save the synthetic draft first');
     const key = 'contract-terms-local-qa-ledger';

@@ -20,3 +20,7 @@ Validation: full frontend822 tests/91 files passed14.43s; final build/typecheck 
 6. Verify desktop/mobile guided journeys: unknown/missing source holds; explicit review; changed source; original withdrawal; lost approval and withdrawal responses; reload; exact retry; original-version recovery; cross-operation conflict; current expiry/revocation; bound execution handoff. Inspect screenshots, overflow, keyboard access and errors before usability acceptance.
 
 No live schema, policy, signing, outreach or provider activation is authorized by these local checks. Full PRD scope and sequential channel release gates remain active.
+
+## Guided form checkpoint — candidate90
+
+Visible `DeadlineReviewForm.tsx` and parent `ContractDraft.tsx` recovery/adjacent-action integration now implement steps1–4 above. The form records explicit interpretation or original withdrawal using the exact discovered authority. Parent recovery supports missing selection, newer canonical versions, conflicting operations and unreadable saved requests. All831frontend tests, build and lint passed; desktop/mobile browser approval/withdrawal lost-response recovery passed with exactly two decisions and unchanged original date. Evidence:`evidence/deadline-review-ui-2026-11-01/`. The source-backed execution binding in step5 and complete combined journey remain next; existing date-only client execution hold is intentionally still present until that connection is verified.

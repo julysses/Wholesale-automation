@@ -1,0 +1,28 @@
+{
+  "synthetic": true,
+  "liveAcceptance": false,
+  "results": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "entries": 2,
+      "originalDatePreserved": true,
+      "originalWithdrawalPreserved": true,
+      "pending": 0,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "entries": 2,
+      "originalDatePreserved": true,
+      "originalWithdrawalPreserved": true,
+      "pending": 0,
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}

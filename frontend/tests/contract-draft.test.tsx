@@ -29,6 +29,12 @@ beforeEach(() => {
           sequence: body.expected_sequence + 1, previous_status: body.expected_status, recorded_status: body.target_status,
           duplicate: true, transition_recorded: true, execution_authorized: false }) };
       }
+      if (path.endsWith('/deadline-reviews')) {
+        const body = JSON.parse(init.body as string);
+        return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: body.expected_version,
+          kind: 'deadline_resolution', term: body.term, review_id: body.id, interpretation_review_id: body.original_review_id ?? body.id,
+          sequence: body.expected_sequence + 1, status: body.status, duplicate: true, review_recorded: true, approval_current: false, execution_authorized: false }) };
+      }
       if (path.endsWith('/signature-review')) {
         const body = JSON.parse(init.body as string);
         return { json: async () => ({ workspace_id: id(2), contract_id: id(5), contract_version: 1, review_id: body.id,
@@ -292,4 +298,32 @@ it('shows executed history without reopening draft edits or document capture', a
   expect(screen.getByLabelText('Document type')).toBeDisabled();
   expect(screen.getByText('Open signature-release review')).toBeDisabled();
   expect(screen.getByText('Draft saved')).toBeDisabled(); expect(posts()).toHaveLength(0);
+});
+
+const deadlineRequest = { id: id(90), expected_version: 1, expected_sequence: 4, status: 'withdrawn' as const,
+  artifact_id: id(91), verification_id: id(92), policy_id: id(93), expires_at: null, personally_reviewed: false,
+  note: 'Withdraw the original date interpretation after uncertain reply.', term: 'closing_deadline' as const, resolution: null, original_review_id: id(94) };
+it('recovers original date-review version without a selection and restores the current context', async () => {
+  const { preserveDeadline } = await import('../src/lib/acquisition/deadline-review');
+  preserveDeadline(sessionStorage, { version: 1, context: signatureContext, request: deadlineRequest });
+  record.acquisition_version = 2; record.acquisition_status = 'pending_signature'; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByText('Retry saved date review')).toBeEnabled());
+  expect(screen.getByText('Open execution review')).toBeDisabled();
+  fireEvent.click(screen.getByText('Retry saved date review')); await waitFor(() => expect(sessionStorage.length).toBe(0));
+  expect(posts()).toHaveLength(1); expect(posts()[0][0]).toContain('/versions/1/deadline-reviews'); expect(JSON.parse(posts()[0][1].body)).toEqual(deadlineRequest);
+  await waitFor(() => expect(screen.getByText('Open date review')).toBeEnabled());
+});
+it('holds execution and navigation while date review is open', async () => {
+  record.acquisition_status = 'pending_signature'; mock.existing = true; open();
+  await waitFor(() => expect(screen.getByText('Open date review')).toBeEnabled()); fireEvent.click(screen.getByText('Open date review'));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true));
+  expect(screen.getByText('Open execution review')).toBeDisabled(); expect(screen.getByText('Refresh draft information')).toBeDisabled();
+  fireEvent.click(screen.getByText('Close without saving')); await waitFor(() => expect(screen.getByText('Open execution review')).toBeEnabled());
+});
+it('holds conflicting date and execution recovery requests without selecting either', async () => {
+  const { preserveDeadline } = await import('../src/lib/acquisition/deadline-review');
+  const { preserveExecution } = await import('../src/lib/acquisition/execution-review');
+  preserveDeadline(sessionStorage, { version: 1, context: signatureContext, request: deadlineRequest });
+  preserveExecution(sessionStorage, { version: 1, context: signatureContext, request: { id: id(95), expected_version: 1, expected_sequence: 4, status: 'withdrawn', artifact_id: id(91), verification_id: id(92), policy_id: id(93), expires_at: null, personally_reviewed: false, note: deadlineRequest.note, findings: null } });
+  open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled(); expect(sessionStorage.length).toBe(2);
 });
