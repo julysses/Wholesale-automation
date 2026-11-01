@@ -1,5 +1,16 @@
 # Acquisition contracts and disposition
 
+## October 31 — execution-review form integration, validation still open (candidate79 draft)
+
+Mounted the returned-agreement review in step 5 for awaiting-signature contracts. Three explicit stages cover signature/authority findings, independently sourced returned terms, and the personal decision. Prepared values do not inherit sources or confirmations. Unknown/date-only or changed prepared terms remain held. Review recording does not advance contract status. Opening the editor holds adjacent actions/navigation; exact pending recovery retains its original target through reload, no proposal selection, or a newer contract version. Only unsaved edits may be closed.
+
+Local validation: 37 focused tests passed, then all 786 frontend tests/90 files passed in11.87s; typecheck/build passed3.11s; lint:check has no new findings against147 existing. Two later parent integration cases passed in the21-case parent suite, covering navigation holds and original-version recovery. Logs: /tmp/execution-ui-focused.log, /tmp/execution-ui-all-tests.log, /tmp/execution-ui-build.log, /tmp/execution-ui-lint.log, /tmp/execution-ui-parent-tests.log.
+
+This is an implementation checkpoint, not visual or release acceptance. Next: complete approval from sourced terms, first-attempt rejection and independent withdrawal UI tests, desktop/mobile browser QA with screenshots, final review, and publication. Review the current source rather than assuming this partial test set covers the full journey. No backend/database changes or production actions in this increment.
+
+Pulled branch before integration: already up to date. Published predecessor c70aff7/run41269058955 still has five successful jobs and one live database-isolation job at the current read. Candidate78 fd9f970 and this draft remain local pending all six terminal successes and completion of UI acceptance. Do not cancel/restart live jobs. Full PRD goal remains active and incomplete; production/SMS/provider/fulfillment/transaction holds remain unchanged.
+
+
 October 31, 2026. Local implementation checkpoint, not legal approval or execution authority.
 
 ## Guided status handoff checkpoint

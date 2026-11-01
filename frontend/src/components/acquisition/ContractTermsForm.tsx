@@ -7,7 +7,7 @@ import { clearConfirmedTerms, clearRejectedTerms, readPendingTerms, preserveTerm
   emptyTerms, dollarsToCents, centsToDollars, termNames, termLabels, type ContractTerms, type TermName, type PendingTerms } from '@/lib/acquisition/contract-terms';
 const button = 'rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed';
 const input = 'block w-full min-w-0 rounded-lg border border-gray-300 bg-white p-2';
-function TermsSummary({ terms }: { terms: ContractTerms }) {
+export function TermsSummary({ terms }: { terms: ContractTerms }) {
   const deadline = (name: 'effective' | 'inspection_deadline' | 'closing_deadline') => terms[name].precision === 'date'
     ? `${terms[name].calendar_date} (date only)` : terms[name].instant ?? 'Unknown';
   const values = { 'Purchase price': terms.purchase_price_cents === null ? 'Unknown' : `$${centsToDollars(terms.purchase_price_cents)}`,

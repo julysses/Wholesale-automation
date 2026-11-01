@@ -260,3 +260,25 @@ it('retains conflicting signature and status requests without selecting either',
   open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile the existing request');
   expect(mock.fetch).not.toHaveBeenCalled(); expect(mock.pending).toHaveBeenLastCalledWith(true); expect(sessionStorage.length).toBe(2);
 });
+
+it('holds adjacent actions and navigation throughout an open execution review', async () => {
+  record.acquisition_status = 'pending_signature'; mock.existing = true; open();
+  await waitFor(() => expect(screen.getByText('Open execution review')).toBeEnabled());
+  fireEvent.click(screen.getByText('Open execution review'));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(true));
+  expect(screen.getByText('Refresh draft information')).toBeDisabled();
+  expect(screen.getByLabelText('Document type')).toBeDisabled();
+  expect(screen.getByText('Open signature-release review')).toBeDisabled();
+  fireEvent.click(screen.getByText('Close without saving'));
+  await waitFor(() => expect(mock.pending).toHaveBeenLastCalledWith(false));
+  expect(screen.getByLabelText('Document type')).toBeEnabled(); expect(posts()).toHaveLength(0);
+});
+it('retains the original execution target with no selection and a newer contract version', async () => {
+  const { preserveExecution } = await import('../src/lib/acquisition/execution-review');
+  preserveExecution(sessionStorage, { version: 1, context: signatureContext, request: { id: id(80), expected_version: 1, expected_sequence: 1, status: 'withdrawn', artifact_id: id(81), verification_id: id(82), policy_id: id(83), expires_at: null, personally_reviewed: false, findings: null, note: 'Original review withdrawal retained after uncertain save.' } });
+  record.acquisition_version = 2; record.acquisition_status = 'pending_signature'; mock.existing = true; open(null);
+  await waitFor(() => expect(screen.getByText('Retry saved execution review')).toBeEnabled());
+  expect(screen.getByText(/Original contract version 1/)).toBeVisible();
+  expect(screen.getByText('Refresh draft information')).toBeDisabled();
+  expect(mock.pending).toHaveBeenLastCalledWith(true); expect(sessionStorage.length).toBe(1);
+});

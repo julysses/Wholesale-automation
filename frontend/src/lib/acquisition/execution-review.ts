@@ -84,3 +84,22 @@ export function parseExecutionCandidate(raw: unknown, context: DocumentContext, 
     || withdrawal.expected_sequence !== current.sequence || !['approved', 'requires_review'].includes(current.status))) throw new Error('Original execution withdrawal required');
   return value;
 }
+
+export function executionTermsHold(terms: z.infer<typeof termsSchema>, prepared: z.infer<typeof termsSchema>, now = Date.now()): string | null {
+  if (!Number.isFinite(now) || terms.purchase_price_cents === null || terms.earnest_money_cents === null
+    || terms.assignment_allowed === null || terms.assignment_provisions === null)
+    return 'Complete the price, earnest money and assignment provisions from the returned agreement.';
+  if (terms.earnest_money_cents > terms.purchase_price_cents) return 'Earnest money exceeds the purchase price. Resolve the discrepancy before review.';
+  for (const name of ['purchase_price_cents', 'earnest_money_cents', 'assignment_allowed', 'assignment_provisions'] as const)
+    if (prepared[name] !== null && prepared[name] !== terms[name]) return 'Returned terms differ from the prepared version. A separately reviewed amendment is required.';
+  for (const name of ['effective', 'inspection_deadline', 'closing_deadline'] as const) {
+    if (terms[name].precision !== 'instant') return 'Unknown or date-only deadlines need reviewed resolution. Do not invent a time or time zone.';
+    if (prepared[name].precision !== 'unknown' && (prepared[name].precision !== 'instant'
+      || Date.parse(prepared[name].instant!) !== Date.parse(terms[name].instant!)))
+      return 'Returned dates differ from the prepared version. A separately reviewed amendment is required.';
+  }
+  const effective = Date.parse(terms.effective.instant!), inspection = Date.parse(terms.inspection_deadline.instant!), closing = Date.parse(terms.closing_deadline.instant!);
+  if (![effective, inspection, closing].every(Number.isFinite) || effective > now || effective > inspection || inspection > closing || effective >= closing || closing <= now)
+    return 'The effective time or contract deadlines need review before proceeding.';
+  return null;
+}
