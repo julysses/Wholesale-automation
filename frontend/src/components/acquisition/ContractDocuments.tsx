@@ -5,11 +5,11 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { id } from '@/lib/acquisition/mail-content';
 import { chooseFile, matchesFile, retentionLabel, type FileChoice } from '@/lib/acquisition/evidence';
 import { checkDocumentRegistration, checkDocumentUpload, clearPendingDocument, parseDocuments, pendingSchema, purposes,
-  readPendingDocument, savePendingDocument, type DocumentContext, type PendingDocument } from '@/lib/acquisition/contract-documents';
+  readPendingDocument, savePendingDocument, parseDocumentScan, scanStatusLabels, type DocumentContext, type PendingDocument } from '@/lib/acquisition/contract-documents';
 
 const button = 'rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed';
 const input = 'block w-full rounded-lg border border-gray-300 bg-white p-2';
-const statuses = { pending_verification: 'Verification and review pending', revoked: 'Withdrawn', expired: 'Retention expired', policy_review_required: 'Retention review needed' };
+const statuses = { pending_verification: 'Registered · Review pending', revoked: 'Withdrawn', expired: 'Retention expired', policy_review_required: 'Retention review needed' };
 type Props = { context: DocumentContext; disabled?: boolean; onPending: (pending: boolean) => void };
 export function ContractDocuments(props: Props) {
   return <DocumentEditor key={`${props.context.userId}:${props.context.workspaceId}:${props.context.contractId}:${props.context.contractVersion}`} {...props}/>;
@@ -133,9 +133,34 @@ function DocumentEditor({ context, disabled = false, onPending }: Props) {
     {message && <p role="status" className="text-sm">{message}</p>}
     <div className="border-t border-orange-200 pt-3 space-y-2"><h4 className="font-semibold">Document history</h4><p className="text-xs text-gray-600">Registration alone does not confirm upload, verification or legal review.</p>
       {!records.isFetching && !records.isError && records.data?.items.length === 0 && <p className="text-sm">No {purposes[kind].toLowerCase()} registered yet.</p>}
-      <ul>{!records.isError && records.data?.items.map(row => <li key={row.artifact_id} className="border-t py-2 text-sm"><p>{purposes[row.purpose]} · {new Date(row.created_at).toLocaleString()}</p><p>{row.expected_byte_size.toLocaleString()} bytes · {statuses[row.status]}</p></li>)}</ul>
+      <ul>{!records.isError && records.data?.items.map(row => <li key={row.artifact_id} className="border-t py-2 text-sm"><p>{purposes[row.purpose]} · {new Date(row.created_at).toLocaleString()}</p><p>{row.expected_byte_size.toLocaleString()} bytes · {statuses[row.status]}</p>
+        <DocumentVerification context={context} path={path} row={row} now={now} disabled={disabled || blocked || busy || access.data !== true || access.isFetching || access.isError || records.isFetching}/></li>)}</ul>
       <nav aria-label="Document history pages" className="flex flex-wrap gap-2"><button className={button} disabled={held || disabled || records.isFetching || cursors.length === 1} onClick={() => setCursors(values => values.slice(0, -1))}>Previous documents</button>
         <button className={button} disabled={held || disabled || records.isFetching || records.isError || !records.data?.next_after} onClick={() => setCursors(values => [...values, records.data!.next_after])}>Next documents</button></nav>
     </div>
   </section>;
+}
+
+
+function DocumentVerification({ context, path, row, now, disabled }: {
+  context: DocumentContext; path: string; row: ReturnType<typeof parseDocuments>['items'][number]; now: number; disabled: boolean;
+}) {
+  const check = useQuery({ queryKey: ['contract-document-scan', context.userId, context.workspaceId, context.contractId,
+    context.contractVersion, row.artifact_id, row.purpose, row.checked_at], enabled: false, retry: false,
+    gcTime: 0, staleTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false,
+    queryFn: async ({ signal }) => parseDocumentScan(await (await apiFetch(`${path}/${row.artifact_id}/scan-state?purpose=${row.purpose}`,
+      { signal, cache: 'no-store' })).json(), context, row.artifact_id, row.purpose) });
+  if (row.status !== 'pending_verification') return null;
+  const current = !disabled && !check.isFetching && !check.isError && check.data
+    && now - Date.parse(check.data.checked_at) <= 30000 && now - Date.parse(check.data.checked_at) >= -5000;
+  return <div className="mt-2 space-y-1">
+    <button className={button} disabled={disabled || check.isFetching} onClick={() => { if (!disabled) void check.refetch(); }}>
+      {check.isFetching ? 'Checking verification…' : 'Check verification status'}
+    </button>
+    {check.isFetching && <p role="status">Checking the current file record…</p>}
+    {!disabled && check.isError && <p role="alert">Verification could not be confirmed. Refresh this check before review.</p>}
+    {current && check.data && <p role="status" className={check.data.quarantined ? 'font-medium text-amber-800' : ''}>{scanStatusLabels[check.data.status]}</p>}
+    {!disabled && !check.isFetching && !check.isError && check.data && !current && <p>Verification status is out of date. Check again before review.</p>}
+    {current && check.data?.status === 'no_detection_observed' && <p className="text-xs text-gray-600">This records the file scan only. Document and title review are still required.</p>}
+  </div>;
 }

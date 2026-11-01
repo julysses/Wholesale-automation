@@ -4,14 +4,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { webcrypto, createHash } from 'node:crypto';
 import { ContractDocuments } from '@/components/acquisition/ContractDocuments';
 import { ApiError } from '@/lib/api';
-const mock = vi.hoisted(() => ({ fetch: vi.fn(), register: vi.fn(), upload: vi.fn(), enabled: true, policy: true, role: 'owner', wrongScope: false }));
+const mock = vi.hoisted(() => ({ fetch: vi.fn(), register: vi.fn(), upload: vi.fn(), enabled: true, policy: true, role: 'owner', wrongScope: false, rows: false, scan: vi.fn() }));
 vi.mock('@/lib/api', () => ({ apiFetch: mock.fetch, ApiError: class extends Error { constructor(message: string, public status: number, public rejectedCreate = false, public rejectedCost = false, public retryAfterSeconds?: number) { super(message); } } }));
 const W = '10000000-0000-4000-8000-000000000001', C = '20000000-0000-4000-8000-000000000001', U = '30000000-0000-4000-8000-000000000001', P = '40000000-0000-4000-8000-000000000001';
 const context = { userId: U, workspaceId: W, contractId: C, contractVersion: 1, propertyId: P, leadId: P, offerId: P };
 const key = `wholesale.contract.document:v1:${U}:${W}`, path = `/api/acquisition/workspaces/${W}/contracts/${C}/versions/1/documents`;
 const body = 'Synthetic original file contents', digest = createHash('sha256').update(body).digest('hex');
 function pending(stage: 'register' | 'upload' = 'upload') { return { version: 1, context, stage, registration: { id: '50000000-0000-4000-8000-000000000001', purpose: 'purchase_contract', expected_sha256: digest, expected_byte_size: body.length, media_type: 'text/plain', retention_policy_id: P, provenance_note: 'Synthetic reviewed source for this content.' } }; }
-function candidates() { return { workspace_id: mock.wrongScope ? C : W, contract_id: C, contract_version: 1, purpose: 'purchase_contract', current_policy: mock.policy ? { id: P, workspace_id: W, purpose: 'purchase_contract', version: 1, retention_seconds: 86400, valid_from: '2026-01-01T00:00:00Z', valid_until: '2099-01-01T00:00:00Z' } : null, items: [], next_after: null, checked_at: new Date().toISOString(), execution_authorized: false, upload_enabled: mock.enabled }; }
+function candidates() { const checked = new Date().toISOString(); return { workspace_id: mock.wrongScope ? C : W, contract_id: C, contract_version: 1, purpose: 'purchase_contract', current_policy: mock.policy ? { id: P, workspace_id: W, purpose: 'purchase_contract', version: 1, retention_seconds: 86400, valid_from: '2026-01-01T00:00:00Z', valid_until: '2099-01-01T00:00:00Z' } : null, items: mock.rows ? [{ workspace_id: W, contract_id: C, contract_version: 1, artifact_id: P, purpose: 'purchase_contract', expected_sha256: digest, expected_byte_size: body.length, media_type: 'text/plain', retention_policy_id: P, created_at: '2026-01-01T00:00:00Z', retain_until: '2099-01-01T00:00:00Z', revoked_at: null, status: 'pending_verification', bytes_verified: false, legal_review_approved: false, execution_authorized: false, checked_at: checked }] : [], next_after: null, checked_at: checked, execution_authorized: false, upload_enabled: mock.enabled }; }
 function uploaded() { const saved = JSON.parse(sessionStorage.getItem(key)!), r = saved.registration, now = new Date().toISOString(); return { workspace_id: W, contract_id: C, contract_version: 1, artifact_id: r.id, purpose: 'purchase_contract', sha256: r.expected_sha256, byte_size: r.expected_byte_size, media_type: r.media_type, retention_policy_id: r.retention_policy_id, checked_at: now, registry_checked_at: now, retain_until: '2099-01-01T00:00:00Z', status: 'stored_unverified', verifier_version: 'acquisition-contract-document-bytes-v1', registry_verifier_version: 'acquisition-contract-document-registry-v1', upload_version: 'acquisition-contract-document-upload-v1', write_outcome: 'stored_or_existing', scan_status: 'not_scanned', byte_match_observed: true, verification_persisted: false, legal_review_approved: false, execution_authorized: false }; }
 function file(value = body) {
   const f = new File([value], 'evidence.txt', { type: 'text/plain' });
@@ -24,13 +24,14 @@ function file(value = body) {
   return f;
 }
 beforeEach(() => {
-  sessionStorage.clear(); vi.clearAllMocks(); mock.enabled = true; mock.policy = true; mock.role = 'owner'; mock.wrongScope = false;
+  sessionStorage.clear(); vi.clearAllMocks(); mock.enabled = true; mock.policy = true; mock.role = 'owner'; mock.wrongScope = false; mock.rows = false;
+  mock.scan.mockImplementation(() => ({ workspace_id: W, contract_id: C, contract_version: 1, artifact_id: P, purpose: 'purchase_contract', status: 'no_detection_observed', quarantined: false, observation_id: P, checked_at: new Date().toISOString(), preview_authorized: false, legal_review_approved: false, execution_authorized: false }));
   vi.stubGlobal('crypto', { subtle: webcrypto.subtle, randomUUID: () => '60000000-0000-4000-8000-000000000001' });
   mock.register.mockImplementation(r => ({ artifact_id: r.id, workspace_id: W, contract_id: C, contract_version: 1, retain_until: '2099-01-01T00:00:00Z', duplicate: false, bytes_verified: false, execution_authorized: false }));
   mock.upload.mockImplementation(uploaded);
   mock.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
     const result = init?.method === 'POST' ? url === path ? await mock.register(JSON.parse(String(init.body))) : await mock.upload(url, init)
-      : url.endsWith('/memberships') ? [{ workspace_id: W, user_id: U, status: 'active', role: mock.role }] : candidates();
+      : url.includes('/scan-state?') ? await mock.scan() : url.endsWith('/memberships') ? [{ workspace_id: W, user_id: U, status: 'active', role: mock.role }] : candidates();
     return new Response(JSON.stringify(result));
   });
 });
@@ -97,4 +98,28 @@ it('never clears an earlier uncertain registration when its retry is rejected', 
   await waitFor(() => expect(screen.getByRole('button', { name: 'Check saved registration' })).toBeEnabled());
   expect(sessionStorage.getItem(key)).toBe(saved); expect(mock.upload).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Document type')).toBeDisabled();
+});
+
+it('checks one document on request and keeps human review pending without a preview', async () => {
+  mock.rows = true; await open(); expect(mock.scan).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Check verification status' }));
+  await screen.findByText('Scan completed · Human review pending');
+  expect(mock.scan).toHaveBeenCalledTimes(1); expect(mock.register).not.toHaveBeenCalled(); expect(mock.upload).not.toHaveBeenCalled();
+  expect(mock.fetch.mock.calls.some(([url]) => url === `${path}/${P}/scan-state?purpose=purchase_contract`)).toBe(true);
+  expect(screen.queryByRole('link')).toBeNull(); expect(screen.queryByRole('img')).toBeNull();
+});
+it('hides earlier scan success if a fresh check fails and shows detection holds', async () => {
+  mock.rows = true; await open(); fireEvent.click(screen.getByRole('button', { name: 'Check verification status' }));
+  await screen.findByText('Scan completed · Human review pending'); mock.scan.mockRejectedValueOnce(new ApiError('Unavailable', 403));
+  fireEvent.click(screen.getByRole('button', { name: 'Check verification status' }));
+  await screen.findByText(/Verification could not be confirmed/); expect(screen.queryByText('Scan completed · Human review pending')).toBeNull();
+  mock.scan.mockImplementation(() => ({ workspace_id: W, contract_id: C, contract_version: 1, artifact_id: P, purpose: 'purchase_contract', status: 'quarantined', quarantined: true, observation_id: null, checked_at: new Date().toISOString(), preview_authorized: false, legal_review_approved: false, execution_authorized: false }));
+  fireEvent.click(screen.getByRole('button', { name: 'Check verification status' })); await screen.findByText('File flagged · Review required');
+});
+it('expires displayed scan state without keeping a stale clean status', async () => {
+  mock.rows = true; await open(); fireEvent.click(screen.getByRole('button', { name: 'Check verification status' }));
+  await screen.findByText('Scan completed · Human review pending'); const later = Date.now() + 31000;
+  vi.spyOn(Date, 'now').mockReturnValue(later);
+  await waitFor(() => expect(screen.getByText(/Verification status is out of date/)).toBeInTheDocument(), { timeout: 2500 });
+  expect(screen.queryByText('Scan completed · Human review pending')).toBeNull();
 });

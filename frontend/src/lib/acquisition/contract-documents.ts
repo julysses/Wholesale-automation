@@ -79,3 +79,21 @@ export function checkDocumentUpload(raw: unknown, saved: PendingDocument) {
     || Date.parse(result.checked_at) - Date.parse(result.registry_checked_at) > 5000) throw new Error('Unconfirmed document upload');
   return result;
 }
+
+const scanState = z.object({ ...scope, artifact_id: id, purpose,
+  status: z.enum(['not_scanned', 'no_detection_observed', 'quarantined', 'requires_review', 'revoked', 'expired', 'policy_review_required']),
+  quarantined: z.boolean(), observation_id: id.nullable(), checked_at: date,
+  preview_authorized: z.literal(false), legal_review_approved: z.literal(false), execution_authorized: z.literal(false) }).strict().refine(value =>
+    (value.status === 'no_detection_observed') === (value.observation_id !== null)
+    && (value.status !== 'quarantined' || value.quarantined)
+    && (!value.quarantined || !['not_scanned', 'no_detection_observed', 'requires_review'].includes(value.status)));
+export function parseDocumentScan(raw: unknown, context: DocumentContext, artifact: string, kind: z.infer<typeof purpose>) {
+  const value = scoped(scanState.parse(raw), context); fresh(value.checked_at);
+  if (value.artifact_id !== artifact || value.purpose !== kind) throw new Error('Document verification scope changed');
+  return value;
+}
+export const scanStatusLabels = {
+  not_scanned: 'File verification pending', no_detection_observed: 'Scan completed · Human review pending',
+  quarantined: 'File flagged · Review required', requires_review: 'Verification needs review',
+  revoked: 'Withdrawn', expired: 'Retention expired', policy_review_required: 'Retention review needed',
+} as const;

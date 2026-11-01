@@ -5,6 +5,16 @@ export class ApiError extends Error { rejectedContract = false; }
 let lose = false;
 export function loseNextReply() { lose = true; }
 const ledgerKey = 'contract-draft-local-qa-ledger';
+// Explicit local presentation fixture; no production imports or network calls.
+if (new URLSearchParams(location.search).get('scanFixture') === 'true' && !sessionStorage.getItem(ledgerKey)) {
+  sessionStorage.setItem(ledgerKey, JSON.stringify({ request: {}, row: { id: id(10), workspace_id: ids.workspace,
+    lead_id: id(3), deal_name: 'Synthetic document review', acquisition_status: 'draft', acquisition_version: 1,
+    acquisition_property_id: id(4), acquisition_owner_relationship_id: id(7), acquisition_offer_id: id(6),
+    acquisition_offer_sequence: 2, created_by: ids.user, created_at: new Date().toISOString() } }));
+  sessionStorage.setItem('contract-document-local-qa-ledger', JSON.stringify({ created: new Date().toISOString(), request: {
+    id: id(11), purpose: 'purchase_contract', expected_sha256: 'a'.repeat(64), expected_byte_size: 123,
+    media_type: 'text/plain', retention_policy_id: id(8), provenance_note: 'Synthetic file metadata for status presentation QA.' } }));
+}
 export async function apiFetch(path: string, init?: RequestInit) {
   const ledger = JSON.parse(sessionStorage.getItem(ledgerKey) ?? 'null');
   let value: unknown;
@@ -38,6 +48,10 @@ export async function apiFetch(path: string, init?: RequestInit) {
         retention_policy_id: r.retention_policy_id, checked_at: now, registry_checked_at: now, retain_until: '2099-01-01T00:00:00Z', status: 'stored_unverified',
         verifier_version: 'acquisition-contract-document-bytes-v1', registry_verifier_version: 'acquisition-contract-document-registry-v1', upload_version: 'acquisition-contract-document-upload-v1',
         write_outcome: 'stored_or_existing', scan_status: 'not_scanned', byte_match_observed: true, verification_persisted: false, legal_review_approved: false, execution_authorized: false };
+    } else if (path.includes('/scan-state?')) {
+      if (!saved || !path.includes('/'+saved.request.id+'/scan-state?')) throw new Error('Unknown synthetic document');
+      value = { ...scope, artifact_id: saved.request.id, purpose: saved.request.purpose, status: 'no_detection_observed',
+        quarantined: false, observation_id: id(9), checked_at: now, preview_authorized: false, legal_review_approved: false, execution_authorized: false };
     } else {
       const purpose = new URL(path, 'http://localhost').searchParams.get('purpose');
       const r = saved?.request;

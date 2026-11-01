@@ -271,6 +271,16 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             raise AssertionError('Document API revocation recovery failed')
         if client.get(api_path+'/'+api_document,headers=headers).json()['status']!='revoked':
             raise AssertionError('Document API lost revoked state')
+        scan_path=api_path+'/'+document+'/scan-state?purpose=purchase_contract'
+        scan_response=client.get(scan_path,headers=headers)
+        if scan_response.status_code!=200 or scan_response.headers.get('cache-control')!='no-store' or scan_response.json()['status']!='revoked' or scan_response.json()['legal_review_approved']:
+            raise AssertionError('Contract scan API lost retained non-approving state')
+        for identity in ({'Authorization':'Bearer '+token(other)},{}):
+            if client.get(scan_path,headers=identity).status_code not in (401,403):
+                raise AssertionError('Contract scan API tenant/session bypass')
+        for wrong_path in (scan_path.replace('/versions/1/','/versions/2/'),scan_path.replace('purpose=purchase_contract','purpose=title_report')):
+            if client.get(wrong_path,headers=headers).status_code!=403:
+                raise AssertionError('Contract scan API target/purpose bypass')
         listing=client.get(api_path+'?purpose=purchase_contract&limit=1',headers=headers)
         if listing.status_code!=200:raise AssertionError('Document discovery API unavailable')
         page=listing.json()
@@ -302,4 +312,5 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'contract observation real tenant session and version isolation',
             'contract observation typed journal recovery after actual commit loss',
             'contract scan current typed gateway state and exact observation',
-            'contract scan purpose scope revocation removes current observation']
+            'contract scan purpose scope revocation removes current observation',
+            'contract scan mounted API retained state and tenant version purpose isolation']

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { checkDocumentRegistration, clearPendingDocument, documentKey, parseDocuments, readPendingDocument, savePendingDocument, type PendingDocument } from './contract-documents';
+import { parseDocumentScan, checkDocumentRegistration, clearPendingDocument, documentKey, parseDocuments, readPendingDocument, savePendingDocument, type PendingDocument } from './contract-documents';
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const context = { userId: id(1), workspaceId: id(2), leadId: id(3), propertyId: id(4), offerId: id(5), contractId: id(6), contractVersion: 1 };
 const pending: PendingDocument = { version: 1, context, stage: 'register', registration: { id: id(7), purpose: 'purchase_contract', expected_sha256: 'a'.repeat(64), expected_byte_size: 30, media_type: 'application/pdf', retention_policy_id: id(8), provenance_note: 'Provided by seller for contract review.' } };
@@ -36,4 +36,18 @@ it('requires fresh scoped discovery and a real pagination boundary', () => {
   expect(parseDocuments(page, context, 'purchase_contract', null).upload_enabled).toBe(false);
   for (const patch of [{ next_after: id(7) }, { checked_at: '2026-10-31T11:59:29Z' }, { checked_at: '2026-10-31T12:00:06Z' }, { contract_version: 2 }, { purpose: 'title_report' }, { execution_authorized: true }])
     expect(() => parseDocuments({ ...page, ...patch }, context, 'purchase_contract', null)).toThrow();
+});
+
+it('keeps scan status bound to the exact document and rejects stale or approving claims', () => {
+  vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-31T12:00:00Z'));
+  const scan = { workspace_id: context.workspaceId, contract_id: context.contractId, contract_version: 1,
+    artifact_id: id(7), purpose: 'purchase_contract', status: 'no_detection_observed', quarantined: false,
+    observation_id: id(8), checked_at: '2026-10-31T12:00:00Z', preview_authorized: false, legal_review_approved: false, execution_authorized: false };
+  expect(parseDocumentScan(scan, context, id(7), 'purchase_contract').status).toBe('no_detection_observed');
+  for (const patch of [{ workspace_id: id(9) }, { contract_id: id(9) }, { contract_version: 2 }, { artifact_id: id(9) },
+    { purpose: 'title_report' }, { checked_at: '2026-10-31T11:59:29Z' }, { checked_at: '2026-10-31T12:00:06Z' },
+    { preview_authorized: true }, { legal_review_approved: true }, { execution_authorized: true }, { observation_id: null },
+    { quarantined: true }, { status: 'not_scanned' }, { private_url: 'secret' }])
+    expect(() => parseDocumentScan({ ...scan, ...patch }, context, id(7), 'purchase_contract')).toThrow();
+  expect(parseDocumentScan({ ...scan, status: 'quarantined', quarantined: true, observation_id: null }, context, id(7), 'purchase_contract').quarantined).toBe(true);
 });

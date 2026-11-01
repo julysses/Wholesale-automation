@@ -2,6 +2,16 @@
 
 Updated October 31, 2026 (America/Chicago). The original PRD and IMPLEMENTATION-PLAN.md remain controlling. This page is current scope/status; chronological results and commands are in PROGRESS.md. Nothing here certifies production or provider acceptance.
 
+## Latest publication and document-status interface
+
+All six repair checks completed successfully in CI 41254289589 on e687fd6. Published the verified candidate through c3b91a75538c1a13ffa3ee6376ebbec203b59779 with a normal push. Exact successor CI [41255050827](https://github.com/julysses/Wholesale-automation/actions/runs/41255050827) is running. This supersedes older wait/publication statements below. No deployment or production migration was performed.
+
+New local increment: authenticated GET document scan-state endpoint and an on-demand “Check verification status” action inside the existing contract-document history. Exact workspace/contract/version/purpose/file binding, no-store responses, and plain review-needed/detection/retention states are preserved. Scan completion still says human review is pending. No preview, signing or approval action is added. Old successful results disappear during refresh, after error, or after 30 seconds. Changing list context discards old status. Existing upload recovery and navigation holds remain unchanged.
+
+Validation: 113 metadata/status API tests; 611 frontend tests across 75 files; typecheck/build passed; zero new lint findings (147 existing). Synthetic desktop/375×812 check passed with widths 369/369px, no warning/error console entries, and existing context/buttons retained. Screenshots: `evidence/contract-scan-status-2026-10-31/`. Preview process 37121 stopped (exit 130), viewport reset and inspected tab closed. Actual gateway rehearsal 71255 exited 0: 63 migrations, 26 access probes, 125 workflows and 73 real gateway checks. Mounted scan-state API retained revoked history, enforced tenant/session/version/purpose isolation and returned no approval. Historical records/definitions and Storage fixture preserved. Evidence: `evidence/2026-10-31-contract-scan-api-gateway-result.json`. All local test/preview processes are terminal.
+
+Next: commit this verified interface; require all six c3b91a7 successor checks before publishing it. Then exact human document/title review bindings, immutable terms/transitions and disposition, preserving the full PRD and approval gates.
+
 ## Resumed checkpoint — contract observations and CI repair
 
 Published isolated CI repair `e687fd6b841c3a57abccfe50d2b9497fff562240` to `codex/acquisition-foundation`. It includes deterministic clock tests and bounded PostgreSQL package setup using the Ubuntu HTTPS archive. Predecessor 41252309134 is terminal: four successes, backend timing failure, PostgreSQL setup timeout. No manual cancellation/restart. Successor [41254289589](https://github.com/julysses/Wholesale-automation/actions/runs/41254289589) is pending; require all six terminal successes before publishing retained features. The isolated repair was merged locally as ff654b9 after saving migration 62 in 6914be0; history was preserved. Main now contains the repair and retained features, with a clean committed checkpoint before the next persistence increment.

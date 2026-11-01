@@ -143,3 +143,10 @@ The current observation disappears when its signing key or reviewed contract pur
 
 
 Next app handoff: add authenticated `GET /api/acquisition/workspaces/{workspace}/contracts/{contract}/versions/{version}/documents/{artifact}/scan-state?purpose=...`, with no-store responses and the same exact-target/freshness validation. Extend the existing `ContractDocuments.tsx` history rows rather than creating a separate document dashboard. Keep one clear document status, explain review-needed/quarantine states in plain language, and preserve pending upload recovery and parent navigation holds. A current no-detection observation must still say human review is pending. Do not expose a private preview, trigger scanning from this read, or add signing/approval buttons until the corresponding evidence-bound reviews exist. Include denied/stale/loading/error states and phone-width QA.
+
+
+## Document-status interface candidate
+
+The planned GET `.../documents/{artifact}/scan-state?purpose=...` is mounted with exact target/freshness validation and no-store responses/errors. The existing document history offers an on-demand check, with no parallel dashboard. Human review remains pending after scan completion. Detection/expired/revoked/review-needed states have plain labels. The UI hides prior successful state during retry/error and after 30 seconds; list context changes discard the old result. Pending registration/upload recovery is unchanged.
+
+Synthetic fixture `?scanFixture=true` seeds an explicitly synthetic saved draft/document and returns artificial no-detection status for presentation checks. It uploads/scans no actual bytes and is not provider/scanner acceptance. Desktop/phone screenshots are retained; component tests cover detection, error and rendered expiry. Current gateway/CI status is in CURRENT-STATUS.md.

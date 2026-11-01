@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, Request, Query
-from schemas.acquisition_contract_documents import ContractDocumentRegistration, ContractDocumentRegistrationReceipt, ContractDocumentState, ContractDocumentUploadReceipt, ContractDocumentCandidates, DocumentPurpose
+from schemas.acquisition_contract_documents import ContractDocumentRegistration, ContractDocumentRegistrationReceipt, ContractDocumentState, ContractDocumentUploadReceipt, ContractDocumentCandidates, ContractDocumentScanState, DocumentPurpose
 from schemas.acquisition_evidence import EvidenceRevocation, EvidenceRevocationReceipt
 from tools.acquisition_store import acquisition_store, open_acquisition_store
 from tools.acquisition_evidence import EvidenceUnavailable
@@ -90,6 +90,24 @@ async def document_state(workspace_id:UUID,contract_id:UUID,contract_version:Ver
         raise uncertain('Current contract document state could not be confirmed.') from None
     # Raw projection has already passed strict field validation; preserve RPC field names.
     return raw
+
+
+@router.get('/{artifact_id}/scan-state')
+async def document_scan_state(workspace_id:UUID,contract_id:UUID,contract_version:Version,artifact_id:UUID,
+                              purpose:DocumentPurpose,response:Response,store=Depends(acquisition_store)):
+    response.headers['Cache-Control']='no-store'
+    raw=await rpc(store,'contract_document_scan_state',{'p_workspace':str(workspace_id),'p_contract':str(contract_id),
+        'p_version':contract_version,'p_purpose':purpose,'p_artifact':str(artifact_id)})
+    try:
+        state=ContractDocumentScanState.model_validate(raw)
+        now=datetime.now(timezone.utc)
+        if ((state.artifact_id,state.workspace_id,state.contract_id,state.contract_version,state.purpose)
+                != (artifact_id,workspace_id,contract_id,contract_version,purpose)
+                or not now-timedelta(seconds=30)<=state.checked_at<=now+timedelta(seconds=5)):
+            raise ValueError('Current scan scope or freshness changed')
+    except (ValueError,TypeError):
+        raise uncertain('Current document verification could not be confirmed. Refresh before review.') from None
+    return state.model_dump(mode='json')
 
 
 @router.post('/{artifact_id}/revocations')

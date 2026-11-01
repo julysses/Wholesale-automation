@@ -189,3 +189,51 @@ def test_malformed_success_never_claims_registration_rejected(endpoint):
     response=client.post(BASE,json=BODY)
     assert response.status_code==503
     assert 'x-acquisition-document-rejected' not in response.headers
+
+
+def scan_state():
+    return {'artifact_id':A,'workspace_id':W,'contract_id':C,'contract_version':1,'purpose':'purchase_contract',
+        'status':'no_detection_observed','quarantined':False,'observation_id':R,'checked_at':stamp(),
+        'preview_authorized':False,'legal_review_approved':False,'execution_authorized':False}
+
+
+def test_current_scan_endpoint_derives_exact_scope_and_cannot_start_scan(endpoint):
+    client,store=endpoint;store.request.return_value=scan_state()
+    response=client.get(BASE+'/'+A+'/scan-state?purpose=purchase_contract')
+    assert response.status_code==200 and response.headers['cache-control']=='no-store'
+    assert response.json()['observation_id']==R and not response.json()['legal_review_approved']
+    store.request.assert_awaited_once_with('POST','rpc/contract_document_scan_state',body={
+        'p_workspace':W,'p_contract':C,'p_version':1,'p_purpose':'purchase_contract','p_artifact':A})
+    assert client.post(BASE+'/'+A+'/scan-state?purpose=purchase_contract').status_code==405
+
+
+@pytest.mark.parametrize('change',[{'workspace_id':R},{'contract_id':R},{'contract_version':2},{'artifact_id':R},
+    {'purpose':'title_report'},{'checked_at':stamp(-60)},{'checked_at':stamp(60)},{'checked_at':0},
+    {'legal_review_approved':True},{'preview_authorized':True},{'execution_authorized':True},
+    {'observation_id':None},{'quarantined':True},{'status':'not_scanned'},{'private':'secret-marker'}])
+def test_current_scan_endpoint_rejects_stale_foreign_or_approving_state(endpoint,change):
+    client,store=endpoint;store.request.return_value=scan_state()|change
+    response=client.get(BASE+'/'+A+'/scan-state?purpose=purchase_contract')
+    assert response.status_code==503 and response.headers['cache-control']=='no-store'
+    assert 'secret-marker' not in response.text
+
+
+@pytest.mark.parametrize('status',['not_scanned','requires_review','quarantined','revoked','expired','policy_review_required'])
+def test_current_scan_endpoint_retains_holds_without_approval(endpoint,status):
+    client,store=endpoint;store.request.return_value=scan_state()|{'status':status,'observation_id':None,'quarantined':status=='quarantined'}
+    response=client.get(BASE+'/'+A+'/scan-state?purpose=purchase_contract')
+    assert response.status_code==200 and response.json()['status']==status and not response.json()['execution_authorized']
+
+
+@pytest.mark.parametrize('status',[401,403,409,429,503])
+def test_current_scan_endpoint_preserves_auth_and_unavailable_errors(endpoint,status):
+    client,store=endpoint;store.request.side_effect=HTTPException(status,'Unavailable')
+    response=client.get(BASE+'/'+A+'/scan-state?purpose=purchase_contract')
+    assert response.status_code==status and response.headers['cache-control']=='no-store'
+
+
+@pytest.mark.parametrize('query',['','?purpose=mail_content','?purpose=approved'])
+def test_current_scan_endpoint_requires_contract_purpose(endpoint,query):
+    client,store=endpoint
+    assert client.get(BASE+'/'+A+'/scan-state'+query).status_code==422
+    store.request.assert_not_awaited()

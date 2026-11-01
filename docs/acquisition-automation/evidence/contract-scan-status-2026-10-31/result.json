@@ -1,0 +1,15 @@
+{
+  "scope": "Local synthetic browser presentation only; no actual scanner/provider or hosted Auth acceptance",
+  "desktop": "passed",
+  "mobile_viewport": [
+    375,
+    812
+  ],
+  "mobile_client_width": 369,
+  "mobile_scroll_width": 369,
+  "console_warnings_errors": [],
+  "status": "Scan completed; human review pending",
+  "viewport_reset": true,
+  "preview_exit_code": 130,
+  "tab_closed": true
+}

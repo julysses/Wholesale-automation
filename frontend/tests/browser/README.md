@@ -103,3 +103,8 @@ Run `./node_modules/.bin/vite --config tests/browser/offer-forms.vite.config.ts`
 Run `./node_modules/.bin/vite --config tests/browser/contract-draft.vite.config.ts` from frontend; open port 5188 `/tests/browser/contract-draft.html`. This renders the real fifth-step component with a synthetic tab-persistent ledger and no environment, API proxy or provider calls. Select the reported seller and enter a draft name. Enable the lost-reply fixture and save; reload, verify the held original request, then retry. The existing draft must be shown with navigation available and no second creation form. A second reload retains that draft. Close the preview after QA.
 
 Verified October 31: desktop and 375×812 display, lost-reply/reload/exact recovery and saved-draft reload. Phone document width 369 at viewport 375; no horizontal overflow. No warning/error console entries. Screenshots/results: `docs/acquisition-automation/evidence/contract-draft-2026-10-31`. The fixture checks browser presentation/recovery only; actual local gateway acceptance is separate and hosted Auth remains unverified.
+
+
+### Contract scan status presentation
+
+The contract draft fixture accepts `?scanFixture=true`, seeding synthetic draft/document metadata only. Click “Check verification status” to inspect the non-approving scan result in document history. No API or scanner calls. October 31 desktop/375×812 check passed: widths 369/369, no console warnings/errors. Screenshots: docs/acquisition-automation/evidence/contract-scan-status-2026-10-31. Component tests separately cover detection/error/stale display.
