@@ -1,6 +1,6 @@
 # Review renewal implementation contract
 
-Status: request/receipt validation, immutable lineage and dependency bindings, and private recursive effective-review checks are published through migration108 (7cd3a09). The populated108 rehearsal passed26 access,341 workflow and164 API checks. Three added retained-refresh regressions also passed the expanded full rehearsal (session24514:108 migrations,26 access,344 workflows,164 API checks). The controlled renewal writer, public renewal endpoint, guided renewal UI and end-to-end renewal acceptance remain incomplete. No production migration or activation is authorized by these results.
+Status: local110 batch fully verified (110 migrations,26 access,356 workflows,164 API checks), including private authenticated personal renewal saving and28 browser recovery tests. Public choices/API/UI, public effective-authority integration and full renewal acceptance remain incomplete. No production migration or activation.
 
 ## Observed current implementation
 
@@ -171,3 +171,21 @@ Existing scanner tests (`tests/test_acquisition_contract_document_scan.py`) veri
 Next implementation order: finish and publish this regression batch after exact predecessor CI; add combined post-handoff scanner/journal coverage; implement the controlled personal renewal save with server-derived fingerprint, combined locks and post-wait authority checks; expose bounded current choices and integrate explicit review/retry into the existing numbered contract step. Keep private effective predicates disconnected from public execution until the complete path is tested.
 
 Retained-refresh batch final result: session24514 completed0;108 migrations,26 access,344 workflow and164 actual PostgREST checks passed. Saved `evidence/2026-11-01-retained-refresh-108-result.json`. No local rehearsal remains live; predecessor CI must still finish before push.
+
+Combined retained-byte/local-protocol/journal proof now passes: `scripts/acquisition_retained_scan_journey_tests.py`, one case7.116s, session82462 terminal0. A version2 document is registered before disposition handoff and later scanned from retained synthetic bytes; real disposable SQL registry/observation writes, exact daemon framing, durable journal reopen, lost committed reply, revoked-scanner historical receipt recovery and no rescan are checked together. This complements the version1 signed-observation SQL cases. Storage and HTTP are synthetic transports, and the daemon is a protocol fixture, so hosted/mounted-gateway scanning remains unclaimed. Next implement the controlled writer and include this case in its full regression batch.
+
+## Private renewal support locks (local109)
+
+After fresh disposable108 catalog inventory, migration20261101104256 derives up to six scoped original roots/current heads and locks the combined source and reviewer authority set in existing writer order. It rejects unavailable/withdrawn support but deliberately permits expired identities, since renewal must be able to inspect expired history. Returned identities are not authority. Three tests passed20.167s including held transitive policy/key/session/artifact/contract locks. No external execution grants. The controlled writer must authenticate first, bind a freshly derived snapshot, recheck activation/sources/policies/support/expiry after waits, append immutable original facts and dependency bindings, validate effective authority and write audit before returning a non-authorizing receipt. No public renewal capability yet.
+
+## Private personal save (local110)
+
+The server-derived snapshot binds original/previous rows, shared stream sequence, selected policy/scope, exact refreshed source verification identities and bounded expiries, and the full supporting review set/rows. It omits runtime observation time so a displayed fingerprint remains comparable; the save independently rechecks current time and authority under locks. No client findings or sources are accepted. After copying unchanged originals into a new linked review and letting the trigger derive dependency bindings, the writer invokes the corresponding effective-current predicate; failure rolls back the inserted review and audit. Receipt recovery precedes new activation/policy checks but retains current user/session/workspace authentication. All functions are private with external execute revoked until the complete public workflow is ready.
+
+Eight focused writer tests passed (seven51.143s plus expiry7.939s). Full110 is live as53246, `/tmp/personal-renewal-110-full.log`; no final110 acceptance yet. Next bounded choice/read API must call the same snapshot derivation, present original facts and expiry limits, and preserve exact request retries through the guided contract step. Existing public current predicates must be integrated only with that full workflow and gateway/UI acceptance.
+
+## Browser recovery contract (local, not mounted)
+
+`frontend/src/lib/acquisition/review-renewal.ts` retains the exact scoped personal request with no replacement facts, source payloads or authority. All28 focused cases pass; TypeScript compilation and targeted lint passed. Expiry does not erase a potentially committed request. Only an exact non-authorizing receipt clears recovery, or a definitive rejection of the first attempt; a rejected retry leaves uncertainty held. Parent integration belongs in `ContractDraft.tsx` alongside its existing per-form pending contexts so property/version navigation remains fixed. No separate wizard or public renewal action is introduced by this library.
+
+Final110 rehearsal53246 completed0; evidence `evidence/2026-11-01-personal-renewal-110-result.json`. No running local processes. Publish this batch behind confirmed six-job predecessor success, then continue bounded current choices/API and guided UI; do not treat private writer tests or browser recovery utilities as a live renewal workflow.

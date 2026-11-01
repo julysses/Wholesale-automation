@@ -515,3 +515,11 @@ Migration20261101095023 extends `acquisition_contract_reviews.renewal_dependenci
 ## Effective execution/title/disposition predicates — candidates133–134
 
 Migrations20261101101024 and20261101101358 add private read-only effective-support functions, using existing immutable review/transition/plan/source entities and the renewal dependency snapshots. No table grants, public endpoints, legacy predicates or current writers are replaced. Explicit active-workspace checks cover execution with no date-review dependencies. Compensation retains history and leaves renewal execution unavailable. Full108 rehearsal pending.
+
+## Renewal authority lock orchestration (local109)
+
+Inventory: `evidence/2026-11-01-renewal-writer-local-catalog.json`, disposable108 fixture; no production inspection/apply. Existing `acquisition_contract_reviews`, transitions, versions, evidence artifacts/observations, policies and sessions remain the mapped entities. Migration20261101104256 adds only private functions with external execution revoked; existing RLS/constraints/history are preserved. Complete original-root/current-head traversal is bounded at six identities. Locks use current contract serialization then combined retained artifact/byte pairs and evidence/review authority. This helper does not authenticate or authorize a renewal; the controlled caller must perform current-context checks and final post-wait validation. Compensation is to leave renewal unavailable and forward-fix, preserving all history. Three focused tests passed; full109 and writer/API/UI integration remain pending.
+
+## Private personal renewal writer (local110)
+
+Migration20261101104656 extends the existing immutable review/audit ledgers through private functions only; no entity duplication, new table or client grant. Uses the inspected nongenerated review columns (generated source/lineage fields remain database-owned). Server-derived source snapshots reuse existing artifact/verification/policy/session records; copied findings and original transition roots remain unchanged. Existing RLS and guards remain active. Eight focused writer tests passed; full110 pending. Compensation: pause/revoke approval authority, retain all immutable history and forward-fix. No production apply.

@@ -53,6 +53,9 @@ from acquisition_deadline_effective_tests import DeadlineEffectiveCases
 from acquisition_execution_effective_tests import ExecutionEffectiveCases
 from acquisition_downstream_effective_tests import DownstreamEffectiveCases
 from acquisition_retained_refresh_tests import RetainedRefreshCases
+from acquisition_retained_scan_journey_tests import RetainedScanJourneyCases
+from acquisition_renewal_authority_lock_tests import RenewalAuthorityLockCases
+from acquisition_personal_renewal_tests import PersonalRenewalCases
 from acquisition_transition_choice_tests import TransitionChoiceCases
 from acquisition_contract_transition_tests import ContractTransitionCases
 from acquisition_signature_candidate_tests import SignatureCandidateCases
@@ -85,7 +88,7 @@ class FullCatalogContractTests(ContractDraftCases, FullCatalogWorkflowTests):
         self.prepare_contract_fixture()
 
 
-class FullCatalogDocumentTests(RetainedRefreshCases, DownstreamEffectiveCases, ExecutionEffectiveCases, DeadlineEffectiveCases, ReviewDependencyCases, ReviewLineageHeadCases, ReviewRenewalStorageCases, DispositionTransitionChoiceCases, DispositionTransitionCases, DispositionTransitionStorageCases, DispositionCandidateCases, DispositionReviewCases, DispositionPolicyCases, DispositionSourceCases, DispositionStorageCases, DispositionPlanCases, TitleCandidateCases, TitleReviewCases, TitleSourceCases, TitleStorageCases, TitleDocumentCases, TitleChoiceCases, TitleTransitionCases, ExecutionDeadlineCases, DeadlineChoiceCases, DeadlineStateCases, DeadlineReviewCases, DeadlineStorageCases, ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
+class FullCatalogDocumentTests(PersonalRenewalCases, RenewalAuthorityLockCases, RetainedScanJourneyCases, RetainedRefreshCases, DownstreamEffectiveCases, ExecutionEffectiveCases, DeadlineEffectiveCases, ReviewDependencyCases, ReviewLineageHeadCases, ReviewRenewalStorageCases, DispositionTransitionChoiceCases, DispositionTransitionCases, DispositionTransitionStorageCases, DispositionCandidateCases, DispositionReviewCases, DispositionPolicyCases, DispositionSourceCases, DispositionStorageCases, DispositionPlanCases, TitleCandidateCases, TitleReviewCases, TitleSourceCases, TitleStorageCases, TitleDocumentCases, TitleChoiceCases, TitleTransitionCases, ExecutionDeadlineCases, DeadlineChoiceCases, DeadlineStateCases, DeadlineReviewCases, DeadlineStorageCases, ExecutedChoiceCases, ExecutedTransitionCases, ExecutionChoiceCases, ExecutionStateCases, ExecutionReviewCases, ExecutionStorageCases, PendingDocumentCases, TransitionChoiceCases, ContractTransitionCases, SignatureCandidateCases, SignatureReviewCases, ContractReferenceDiscoveryCases, ContractSourceReviewCases, ContractDocumentLinkCases, ContractTermsCases, ContractReviewCandidateCases, ContractReviewCases, ContractScanStateCases, ContractObservationCases, ContractDiscoveryCases, ContractStorageCases, ContractUploadAdmissionCases, ContractDocumentCases, FullCatalogContractTests):
     supports_title_choice = True
     supports_disposition_handoff = True
     supports_disposition_choice = True
@@ -101,7 +104,7 @@ class FullCatalogDocumentTests(RetainedRefreshCases, DownstreamEffectiveCases, E
             self.terms=self.execution_prepared_terms
         if self._testMethodName.startswith(('test_signature_deadline_write_','test_signature_deadline_state_','test_signature_deadline_choice_')):
             self.terms=self.deadline_prepared_terms
-        if self._testMethodName.startswith(('test_signature_execution_deadline_', 'test_signature_title_transition_', 'test_signature_title_choice_', 'test_signature_title_document_', 'test_signature_title_storage_', 'test_signature_title_sources_', 'test_signature_title_write_', 'test_signature_title_candidate_', 'test_signature_disposition_plan_', 'test_signature_disposition_storage_', 'test_signature_disposition_sources_', 'test_signature_disposition_policy_', 'test_signature_disposition_write_', 'test_signature_disposition_candidate_', 'test_signature_disposition_transition_storage_', 'test_signature_disposition_transition_', 'test_signature_disposition_handoff_choice_', 'test_signature_review_renewal_', 'test_signature_review_lineage_', 'test_signature_review_dependencies_', 'test_signature_deadline_effective_', 'test_signature_execution_effective_', 'test_signature_downstream_effective_', 'test_signature_retained_refresh_')):
+        if self._testMethodName.startswith(('test_signature_execution_deadline_', 'test_signature_title_transition_', 'test_signature_title_choice_', 'test_signature_title_document_', 'test_signature_title_storage_', 'test_signature_title_sources_', 'test_signature_title_write_', 'test_signature_title_candidate_', 'test_signature_disposition_plan_', 'test_signature_disposition_storage_', 'test_signature_disposition_sources_', 'test_signature_disposition_policy_', 'test_signature_disposition_write_', 'test_signature_disposition_candidate_', 'test_signature_disposition_transition_storage_', 'test_signature_disposition_transition_', 'test_signature_disposition_handoff_choice_', 'test_signature_review_renewal_', 'test_signature_review_lineage_', 'test_signature_review_dependencies_', 'test_signature_deadline_effective_', 'test_signature_execution_effective_', 'test_signature_downstream_effective_', 'test_signature_retained_refresh_', 'test_signature_retained_scan_journey_', 'test_signature_renewal_locks_', 'test_signature_personal_renewal_')):
             self.terms=self.binding_prepared_terms
             self.deadline_proposal=self.binding_deadline_proposal
         if self._testMethodName=='test_signature_execution_effective_suspended_workspace_instant':
@@ -156,6 +159,9 @@ def run_workflow_probes(db):
     document_names += sorted(name for name in DispositionCandidateCases.__dict__ if name.startswith('test_signature_disposition_candidate_'))
     document_names += sorted(name for name in DispositionTransitionStorageCases.__dict__ if name.startswith('test_signature_disposition_transition_storage_'))
     document_names += sorted(name for name in DispositionTransitionCases.__dict__ if name.startswith('test_signature_disposition_transition_'))
+    document_names += sorted(name for name in RetainedScanJourneyCases.__dict__ if name.startswith('test_signature_retained_scan_journey_'))
+    document_names += sorted(name for name in PersonalRenewalCases.__dict__ if name.startswith('test_signature_personal_renewal_'))
+    document_names += sorted(name for name in RenewalAuthorityLockCases.__dict__ if name.startswith('test_signature_renewal_locks_'))
     document_names += sorted(name for name in RetainedRefreshCases.__dict__ if name.startswith('test_signature_retained_refresh_'))
     document_names += sorted(name for name in DownstreamEffectiveCases.__dict__ if name.startswith('test_signature_downstream_effective_'))
     document_names += sorted(name for name in ExecutionEffectiveCases.__dict__ if name.startswith('test_signature_execution_effective_'))

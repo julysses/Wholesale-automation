@@ -1,0 +1,35 @@
+{
+  "scope": "Disposable private writer and lock tests; no public renewal endpoint, hosted/provider or production acceptance",
+  "personal_writer": {
+    "cases": 8,
+    "seven_case_session": 21458,
+    "seven_case_exit": 0,
+    "seven_case_seconds": 51.143,
+    "expired_original_session": 5903,
+    "expired_original_exit": 0,
+    "expired_original_seconds": 7.939
+  },
+  "authority_locks": {
+    "cases": 3,
+    "session": 10322,
+    "exit": 0,
+    "seconds": 20.167
+  },
+  "retained_scan_journey": {
+    "cases": 1,
+    "session": 82462,
+    "exit": 0,
+    "seconds": 7.116,
+    "storage_and_daemon": "synthetic; SQL registry and observation writes actual disposable PostgreSQL"
+  },
+  "migrations": [
+    {
+      "file": "20261101104256_acquisition_renewal_authority_locks.sql",
+      "sha256": "fe5d1f26a0f09cfc28b98902d3e8f81f34d3d52cd34de047dadd804bbbcf6438"
+    },
+    {
+      "file": "20261101104656_acquisition_personal_review_renewal.sql",
+      "sha256": "365e5ae91240aae2da2fa30437e87edcdb38c1f7d678b159f53bbcafe966d278"
+    }
+  ]
+}

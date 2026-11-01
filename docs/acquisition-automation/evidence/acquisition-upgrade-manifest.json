@@ -433,6 +433,14 @@
     {
       "file": "20261101101358_acquisition_downstream_effective_reviews.sql",
       "sha256": "43b42472a8d946bd4ef1cfb283f081c70ca073701661a32aea39e96552404306"
+    },
+    {
+      "file": "20261101104256_acquisition_renewal_authority_locks.sql",
+      "sha256": "fe5d1f26a0f09cfc28b98902d3e8f81f34d3d52cd34de047dadd804bbbcf6438"
+    },
+    {
+      "file": "20261101104656_acquisition_personal_review_renewal.sql",
+      "sha256": "365e5ae91240aae2da2fa30437e87edcdb38c1f7d678b159f53bbcafe966d278"
     }
   ]
 }
