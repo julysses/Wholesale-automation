@@ -327,3 +327,13 @@ it('holds conflicting date and execution recovery requests without selecting eit
   preserveExecution(sessionStorage, { version: 1, context: signatureContext, request: { id: id(95), expected_version: 1, expected_sequence: 4, status: 'withdrawn', artifact_id: id(91), verification_id: id(92), policy_id: id(93), expires_at: null, personally_reviewed: false, note: deadlineRequest.note, findings: null } });
   open(null); expect(screen.getByRole('alert')).toHaveTextContent('Reconcile'); expect(mock.fetch).not.toHaveBeenCalled(); expect(sessionStorage.length).toBe(2);
 });
+
+it('keeps title-review contracts visible without claiming clearance or enabling signing', async () => {
+  record.acquisition_status = 'title_review'; mock.existing = true; open();
+  await screen.findByText('Title review in progress: Saved property draft');
+  expect(screen.getByText(/Title review is underway/)).toHaveTextContent('does not confirm clear title');
+  expect(screen.getByText('Open signature-release review')).toBeDisabled();
+  expect(screen.getByText('Open execution review')).toBeEnabled();
+  expect(screen.getByText('Open date review')).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Draft saved' })).toBeDisabled();
+});

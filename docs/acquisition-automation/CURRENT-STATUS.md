@@ -1,5 +1,17 @@
 # Acquisition automation — current implementation and release handoff
 
+## November 1 — title-review entry under validation (candidate92)
+
+The next additive migration extends the existing contract and immutable transition ledger with executed → title_review. It requires the exact execution review that recorded execution, current original source and deadline authority, and fresh checks after lock waits. Exact retries retain their original receipt after pause. Entry changes only acquisition status; it does not claim clear title, authorize distribution, change terms, attach a buyer, or close a transaction.
+
+The scoped contract list and existing step5 card retain title-review records and explain their status. Guided title-entry choice/action, title-stage evidence capture and clearance remain next implementation work; this is not the finished title/disposition workflow. Preparation controls remain held after execution.
+
+Validation: full backend4186 passed,10 skipped,6 subtests50.42s; final frontend835tests/92files11.63s; final build3.07s; no new lint findings against147 existing. Five focused SQL cases passed30.763s, including observed lock-wait deadline-policy revocation and original execution-withdrawal discovery after title entry/pause. Original execution/date review forms remain accessible after title entry; signature/terms preparation remains held. The initial full rehearsal passed87migrations,26access checks,241workflows and126real API checks with24 historical rows/22populated tables/103definitions/Storage preserved. Evidence:evidence/2026-11-01-title-transition-initial-result.json.
+
+The expanded full rehearsal with the fifth title-specific lock-wait case is live under session73788, /tmp/title-transition-upgrade-final.log; expected242workflows. Do not restart it while live or treat initial evidence as proof of the expanded run. All other local validation processes are terminal. Candidate92 is ready for a local checkpoint; publication still waits for this exact expanded run and the predecessor gate.
+
+Local committed9fb8915 remains unpublished; candidate92 is being checkpointed locally. Published0c5d65d exact successor41276522452 has five terminal successes and one live PostgreSQL job at last read. Preserve the all-six-success publication gate. No production migration, policy provisioning, provider activation or transaction occurred. Full PRD goal remains active.
+
 ## November 1 — reviewed dates connected to execution handoff (candidate91)
 
 Returned-agreement review now loads fresh scoped current interpretations for prepared calendar-only terms. It preserves original calendar fields, derives temporary instant copies only for comparison/order checks, and persists the exact interpretation IDs with execution findings. Missing/stale/revoked/wrong-scope/changed-date states hold the decision. Review expiry is capped by the earliest interpretation expiry and rechecked immediately before first save. Historical pending requests still retry their original bytes without adopting new references. Explicit-instant legacy requests retain their original payload shape.

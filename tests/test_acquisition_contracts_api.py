@@ -70,14 +70,14 @@ def test_list_filters_and_pagination(endpoint):
     assert response.status_code==200 and response.json()['next_after']==I
     assert len(response.json()['items'])==1 and response.json()['execution_authorized'] is False
     assert store.request.call_args.kwargs['params']=={'select':','.join(ContractDraftRecord.model_fields),
-        'workspace_id':'eq.'+W,'lead_id':'eq.'+L,'acquisition_status':'in.(draft,pending_signature,executed)','order':'id','limit':'2'}
+        'workspace_id':'eq.'+W,'lead_id':'eq.'+L,'acquisition_status':'in.(draft,pending_signature,executed,title_review)','order':'id','limit':'2'}
     store.request.return_value=[ROW|{'id':J}]
     assert client.get(PATH,params={'after':I}).json()['next_after'] is None
     assert store.request.call_args.kwargs['params']['id']=='gt.'+I
 
 
 @pytest.mark.parametrize('rows',[[ROW|{'workspace_id':J}],[ROW,ROW],[ROW|{'acquisition_version':True}],
-    [ROW|{'acquisition_status':'title_review'}],[ROW|{'secret':'private-marker'}],None,{'items':[]}])
+    [ROW|{'acquisition_status':'disposition_review'}],[ROW|{'secret':'private-marker'}],None,{'items':[]}])
 def test_read_rejects_wrong_scope_or_malformed_page(endpoint,rows):
     client,store=endpoint;store.request.return_value=deepcopy(rows)
     response=client.get(PATH)

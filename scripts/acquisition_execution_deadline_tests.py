@@ -117,11 +117,14 @@ class ExecutionDeadlineCases:
         self.execution_review(self.execution_args(p_findings=missing),fail=True)
         self.assertEqual(self.sql("SELECT count(*) FROM acquisition_contract_reviews WHERE kind='executed_contract'"),'0')
 
-    def deadline_wait(self,writing=False):
+    def deadline_wait(self,writing=False,title=False):
         value=self.prepare_execution_bindings();self.prepare_execution()
         if not writing:self.execution_review(self.execution_args(p_findings=value))
         action=self.execution_review if writing else self.transition
         args=self.execution_args(p_findings=value) if writing else ExecutedTransitionCases.executed_args(self)
+        if title:
+            self.transition(args)
+            args=self.title_args()
         function='record_execution_review' if writing else 'record_contract_transition'
         holder=subprocess.Popen([str(PG/'psql'),'-X','-qAt','-h',self.socket,'-U','test_admin','-d',getattr(self,'database_name','acquisition_test')],
             stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,env=self.env)
@@ -143,7 +146,8 @@ class ExecutionDeadlineCases:
                     holder.stdin.write(f"UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id='{DEADLINE_POLICY}'; COMMIT;\n");holder.stdin.flush()
                 finally:holder.stdin.write('COMMIT;\n');holder.stdin.flush()
                 future.result(timeout=5)
-            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contract_transitions'),'1')
+            self.assertEqual(self.sql('SELECT count(*) FROM acquisition_contract_transitions'),'2' if title else '1')
+            if title:self.assertEqual(self.sql(f"SELECT acquisition_status FROM deals WHERE id='{DRAFT}'"),'executed')
             if writing:self.assertEqual(self.sql("SELECT count(*) FROM acquisition_contract_reviews WHERE kind='executed_contract'"),'0')
         finally:holder.communicate('\\q\n',timeout=5)
 

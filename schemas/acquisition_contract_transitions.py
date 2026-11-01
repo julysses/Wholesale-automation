@@ -109,7 +109,7 @@ class ContractTransitionChoice(BaseModel):
     contract_id: UUID
     contract_version: int = Field(strict=True, ge=1, le=2147483647)
     current_version: int = Field(strict=True, ge=1, le=2147483647)
-    current_status: Literal['draft', 'pending_signature', 'executed']
+    current_status: Literal['draft', 'pending_signature', 'executed', 'title_review']
     sequence: int = Field(strict=True, ge=0, le=2147483647)
     status: Literal['version_changed', 'paused', 'awaiting_signature', 'history_requires_review',
                     'signature_review_required', 'execution_review_required', 'execution_recorded', 'ready_for_human_review']

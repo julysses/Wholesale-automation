@@ -183,6 +183,16 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
         recovered=client.post(transition_path,json=transition_body,headers=headers)
         if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate'] or recovered.json()['recorded_status']!='executed':
             raise AssertionError(f'Bound transition recovery failed: {lost.status_code} {recovered.status_code} {recovered.text}')
+        title_body=transition_body|dict(id=identity(36),expected_sequence=2,expected_status='executed',target_status='title_review',
+            reason='Begin synthetic title review without claiming clear title or authorizing disposition.')
+        drops['rpc/record_contract_transition']=True
+        lost=client.post(transition_path,json=title_body,headers=headers)
+        recovered=client.post(transition_path,json=title_body,headers=headers)
+        if lost.status_code!=503 or recovered.status_code!=200 or not recovered.json()['duplicate'] or recovered.json()['recorded_status']!='title_review':
+            raise AssertionError(f'Title-review transition recovery failed: {lost.status_code} {recovered.status_code} {recovered.text}')
+        listing=client.get(f'/api/acquisition/workspaces/{workspace}/contracts/drafts?lead_id={lead}&limit=50',headers=headers)
+        if listing.status_code!=200 or not any(item['id']==contract and item['acquisition_status']=='title_review' for item in listing.json()['items']):
+            raise AssertionError('Title-review contract disappeared from the guided list')
         db.query('UPDATE private.acquisition_contract_review_policies SET revoked_at=clock_timestamp() WHERE id=%s',[new_policy])
         state=client.get(execution_path,headers=headers)
         if state.status_code!=200 or state.json()['approval_current']:raise AssertionError('Bound execution retained revoked interpretation authority')
@@ -190,6 +200,6 @@ def verify_deadline_http(db,app,drops,headers,foreign,workspace,admin,rpc,retent
             raise AssertionError('Historical bound execution or transition recovery disappeared')
     if history!=db.query('SELECT version,terms FROM public.acquisition_contract_versions WHERE deal_id=%s ORDER BY version',[contract]):
         raise AssertionError('Bound execution changed original contract versions')
-    for entity,request_id in (('acquisition_contract_review',execution_review),('acquisition_contract_transition',executed)):
+    for entity,request_id in (('acquisition_contract_review',execution_review),('acquisition_contract_transition',executed),('acquisition_contract_transition',identity(36))):
         if db.query('SELECT count(*) AS n FROM public.audit_logs WHERE entity_type=%s AND entity_id=%s',[entity,request_id])!=[{'n':1}]:
             raise AssertionError('Bound execution recovery duplicated audit')

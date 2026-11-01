@@ -11,7 +11,7 @@ const holds = { version_changed: 'The contract version changed. Refresh the draf
   execution_recorded: 'Execution is already recorded. Title and disposition review are separate next steps.',
   history_requires_review: 'The contract history needs administrator review.', signature_review_required: 'Complete a current signature-release review above.',
   ready_for_human_review: 'Current review checks passed. Confirm the proposed status below.' };
-type Props = { currentStatus?: 'draft' | 'pending_signature' | 'executed'; context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
+type Props = { currentStatus?: 'draft' | 'pending_signature' | 'executed' | 'title_review'; context: DocumentContext; disabled: boolean; onPending: (value: boolean) => void; onSaved: () => void };
 export function ContractTransitionForm(props: Props) {
   return <TransitionEditor key={`${props.context.userId}:${props.context.workspaceId}:${props.context.contractId}:${props.context.contractVersion}`} {...props} />;
 }

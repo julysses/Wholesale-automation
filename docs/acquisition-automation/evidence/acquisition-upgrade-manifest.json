@@ -345,6 +345,10 @@
     {
       "file": "20261101050425_acquisition_execution_deadline_authority.sql",
       "sha256": "ec93c89e84894e86496b30013d7f238fd129b837062c532f29b210c9bf182fbb"
+    },
+    {
+      "file": "20261101052408_acquisition_title_review_transition.sql",
+      "sha256": "703165c55f3c833f051891d2468e093eea6832f0b47c8c51bf7a804ee41254b0"
     }
   ]
 }

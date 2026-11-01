@@ -478,4 +478,6 @@ def verify_contracts_http(db, request, token, admin, other, workspace):
             'deadline choices retain original withdrawal under policy hold and remove it after withdrawal',
             'bound deadline execution API commit-loss recovery preserves exact calendar terms and identities',
             'bound deadline executed transition API recovery and immutable original history',
-            'bound deadline policy revocation removes current authority but preserves historical receipts']
+            'bound deadline policy revocation removes current authority but preserves historical receipts',
+            'title-review transition API exact committed-response recovery retains execution evidence',
+            'title-review contract remains visible in guided scoped contract list']

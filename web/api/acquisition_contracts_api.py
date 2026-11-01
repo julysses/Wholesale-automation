@@ -49,7 +49,7 @@ class ContractDraftRecord(Exact):
     workspace_id: UUID
     lead_id: UUID
     deal_name: str=Field(strict=True,min_length=1,max_length=500)
-    acquisition_status: Literal['draft','pending_signature','executed']
+    acquisition_status: Literal['draft','pending_signature','executed','title_review']
     acquisition_version: int=Field(strict=True,ge=1,le=2147483647)
     acquisition_property_id: UUID
     acquisition_owner_relationship_id: UUID
@@ -95,7 +95,7 @@ async def contract_drafts(workspace_id:UUID,response:Response,lead_id:UUID|None=
                           limit:int=Query(default=20,ge=1,le=50),store=Depends(acquisition_store)):
     response.headers['Cache-Control']='no-store'
     params={'select':','.join(ContractDraftRecord.model_fields),'workspace_id':'eq.'+str(workspace_id),
-            'acquisition_status':'in.(draft,pending_signature,executed)','order':'id','limit':str(limit+1)}
+            'acquisition_status':'in.(draft,pending_signature,executed,title_review)','order':'id','limit':str(limit+1)}
     if lead_id is not None:params['lead_id']='eq.'+str(lead_id)
     if after is not None:params['id']='gt.'+str(after)
     raw=await request(store,'GET','deals',params=params)

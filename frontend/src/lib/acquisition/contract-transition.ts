@@ -5,7 +5,7 @@ const version = z.number().int().min(1).max(2147483647);
 const sequence = z.number().int().min(0).max(2147483646);
 const timestamp = z.string().datetime({ offset: true });
 const choiceSchema = z.object({ workspace_id: id, contract_id: id, contract_version: version, current_version: version,
-  current_status: z.enum(['draft', 'pending_signature', 'executed']), sequence: sequence.max(2147483647),
+  current_status: z.enum(['draft', 'pending_signature', 'executed', 'title_review']), sequence: sequence.max(2147483647),
   status: z.enum(['version_changed', 'paused', 'awaiting_signature', 'history_requires_review', 'signature_review_required', 'execution_review_required', 'execution_recorded', 'ready_for_human_review']),
   candidate: z.discriminatedUnion('target_status', [
     z.object({ expected_version: version, expected_sequence: sequence, expected_status: z.literal('draft'),
