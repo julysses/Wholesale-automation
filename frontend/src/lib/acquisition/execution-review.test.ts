@@ -69,3 +69,18 @@ it.each(['scope', 'time', 'source', 'cursor', 'withdrawal', 'deadline', 'hold', 
   if (fault === 'terms') value.prepared_terms = null;
   expect(() => parseExecutionCandidate(value, context, id(8))).toThrow();
 });
+
+it('holds unknown, date-only, changed and elapsed returned terms without inventing values', async () => {
+  const { executionTerms } = await import('../../../tests/fixtures/execution-review');
+  const { executionTermsHold } = await import('./execution-review');
+  const now = Date.now(), prepared = executionTerms(id(8), now);
+  expect(executionTermsHold(prepared, prepared, now)).toBeNull();
+  expect(executionTermsHold({ ...prepared, purchase_price_cents: null }, prepared, now)).toMatch(/Complete the price/);
+  expect(executionTermsHold({ ...prepared, earnest_money_cents: prepared.purchase_price_cents! + 1 }, prepared, now)).toMatch(/exceeds/);
+  expect(executionTermsHold({ ...prepared, purchase_price_cents: prepared.purchase_price_cents! + 1 }, prepared, now)).toMatch(/amendment/);
+  const dateOnly = { precision: 'date' as const, calendar_date: '2026-11-20', instant: null };
+  expect(executionTermsHold({ ...prepared, closing_deadline: dateOnly }, prepared, now)).toMatch(/date-only/);
+  expect(executionTermsHold(prepared, { ...prepared, closing_deadline: dateOnly }, now)).toMatch(/amendment/);
+  expect(executionTermsHold(prepared, prepared, Date.parse(prepared.closing_deadline.instant!) + 1)).toMatch(/deadlines/);
+  expect(executionTermsHold(prepared, prepared, Date.parse(prepared.effective.instant!) - 1)).toMatch(/effective time/);
+});

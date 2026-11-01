@@ -67,3 +67,59 @@ it('holds malformed recovery and makes no request', async () => {
   expect(sessionStorage.length).toBe(1);
 });
 it('cannot open while an adjacent step is held', () => { open(true); expect(screen.getByText('Open execution review')).toBeDisabled(); expect(mock.fetch).not.toHaveBeenCalled(); });
+
+async function prepareCompleteReview() {
+  const { executionChoice, executionTerms } = await import('./fixtures/execution-review');
+  const previous = mock.fetch.getMockImplementation()!, prepared = executionTerms(id(8));
+  mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    if (path.endsWith('/candidate')) return { json: async () => executionChoice(context, id(8), prepared) };
+    const response = await previous(path, init);
+    if (path.includes('/references?')) { const page = await response.json(); page.items[0].source_version = 1; page.items[0].reference_type = 'term_source'; return { json: async () => page }; }
+    return response;
+  });
+  open(); fireEvent.click(screen.getByText('Open execution review')); await screen.findByRole('option', { name: /Original version 1/ });
+  fireEvent.change(screen.getByLabelText('Verified purchase-contract document'), { target: { value: id(8) } });
+  await waitFor(() => expect(screen.getByText('Start agreement review')).toBeEnabled()); fireEvent.click(screen.getByText('Start agreement review'));
+  for (const label of ['Seller signatures', 'Buyer signatures', 'Signing authority', 'Complete agreement']) {
+    fireEvent.change(screen.getByLabelText(label), { target: { value: 'confirmed' } });
+    fireEvent.change(screen.getByLabelText(`${label} page or clause`), { target: { value: 'Synthetic page 4' } });
+    fireEvent.change(screen.getByLabelText(`${label} findings`), { target: { value: 'Personally checked the synthetic signature evidence.' } });
+  }
+  fireEvent.click(screen.getByText('Next: compare terms')); await screen.findByRole('option', { name: /Source version 1/ });
+  expect(screen.getByText('Next: review decision')).toBeDisabled();
+  for (const term of ['purchase_price', 'earnest_money', 'assignment', 'effective', 'inspection_deadline', 'closing_deadline']) {
+    fireEvent.change(screen.getByLabelText('Term to cite'), { target: { value: term } });
+    fireEvent.change(screen.getByLabelText('Original source document'), { target: { value: id(8) } });
+    fireEvent.change(screen.getByLabelText('Page or clause reference'), { target: { value: `Synthetic ${term} clause` } });
+    fireEvent.click(screen.getByText('Attach source to term'));
+  }
+  fireEvent.change(screen.getByLabelText('Returned-term review notes'), { target: { value: 'Personally compared every synthetic returned term to its source.' } });
+  fireEvent.click(screen.getByText('Next: review decision')); expect(screen.getByText('Record execution review')).toBeDisabled();
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.change(screen.getByLabelText('Decision notes'), { target: { value: 'Personally reviewed all synthetic findings and supporting clauses.' } });
+}
+it('saves only after explicit findings, six original sources and final personal review', async () => {
+  await prepareCompleteReview(); fireEvent.click(screen.getByText('Record execution review')); await screen.findByText(/Execution review recorded/);
+  const posts = mock.fetch.mock.calls.filter(call => call[1]?.method === 'POST'); expect(posts).toHaveLength(1);
+  const request = JSON.parse(posts[0][1].body); expect(request.findings.terms.sources).toHaveLength(6); expect(request.personally_reviewed).toBe(true);
+  expect(request.findings.terms.purchase_price_cents).toBe(14000000); expect(request.expected_version).toBe(2); expect(sessionStorage.length).toBe(0); expect(mock.saved).toHaveBeenCalledOnce();
+});
+it('clears a definite first-attempt rejection and removes the personal acknowledgement', async () => {
+  await prepareCompleteReview(); mock.reject = true; fireEvent.click(screen.getByText('Record execution review'));
+  await screen.findByText(/The review was not saved/); expect(sessionStorage.length).toBe(0); expect(screen.getByRole('checkbox')).not.toBeChecked(); expect(mock.saved).not.toHaveBeenCalled();
+});
+it('withdraws the original agreement even when the selected new agreement is held', async () => {
+  const { executionChoice, executionTerms } = await import('./fixtures/execution-review'); const previous = mock.fetch.getMockImplementation()!;
+  mock.fetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    if (!path.endsWith('/candidate')) return previous(path, init);
+    const choice = executionChoice(context, id(8), executionTerms(id(8)), { ...saved.request, id: id(70), artifact_id: id(71), status: 'approved' }, 1);
+    return { json: async () => ({ ...choice, status: 'evidence_review_required', candidate: null }) };
+  });
+  open(); fireEvent.click(screen.getByText('Open execution review')); await screen.findByRole('option', { name: /Original version 2/ });
+  fireEvent.change(screen.getByLabelText('Verified purchase-contract document'), { target: { value: id(8) } });
+  fireEvent.click(await screen.findByText('Withdraw my previous execution review'));
+  fireEvent.change(screen.getByLabelText('Decision notes'), { target: { value: 'Withdraw the earlier agreement review while current evidence is held.' } });
+  fireEvent.click(screen.getByText('Record withdrawal')); await screen.findByText(/Execution review recorded/);
+  const post = mock.fetch.mock.calls.find(call => call[1]?.method === 'POST')!;
+  expect(JSON.parse(post[1].body)).toMatchObject({ artifact_id: id(71), status: 'withdrawn', findings: null, personally_reviewed: false });
+});

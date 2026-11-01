@@ -1,3 +1,4 @@
+import { executionChoice, executionTerms } from '../fixtures/execution-review';
 import { signatureChoice } from '../fixtures/signature-review';
 import { emptyTerms } from '../../src/lib/acquisition/contract-terms';
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -8,12 +9,13 @@ let lose = false;
 export function loseNextReply() { lose = true; }
 const ledgerKey = 'contract-draft-local-qa-ledger';
 // Explicit local presentation fixture; no production imports or network calls.
+const executionFixture = new URLSearchParams(location.search).get('executionFixture') === 'true';
 const signatureFixture = new URLSearchParams(location.search).get('signatureFixture') === 'true';
 const linkFixture = new URLSearchParams(location.search).get('linkFixture') === 'true';
 const referenceFixture = new URLSearchParams(location.search).get('referenceFixture') === 'true';
-if ((signatureFixture || linkFixture || referenceFixture || new URLSearchParams(location.search).get('scanFixture') === 'true') && !sessionStorage.getItem(ledgerKey)) {
+if ((executionFixture || signatureFixture || linkFixture || referenceFixture || new URLSearchParams(location.search).get('scanFixture') === 'true') && !sessionStorage.getItem(ledgerKey)) {
   sessionStorage.setItem(ledgerKey, JSON.stringify({ request: {}, row: { id: id(10), workspace_id: ids.workspace,
-    lead_id: id(3), deal_name: 'Synthetic document review', acquisition_status: 'draft', acquisition_version: signatureFixture || referenceFixture || linkFixture ? 2 : 1,
+    lead_id: id(3), deal_name: 'Synthetic document review', acquisition_status: executionFixture ? 'pending_signature' : 'draft', acquisition_version: executionFixture || signatureFixture || referenceFixture || linkFixture ? 2 : 1,
     acquisition_property_id: id(4), acquisition_owner_relationship_id: id(7), acquisition_offer_id: id(6),
     acquisition_offer_sequence: 2, created_by: ids.user, created_at: new Date().toISOString() } }));
   sessionStorage.setItem('contract-document-local-qa-ledger', JSON.stringify({ sourceVersion: 1, created: new Date().toISOString(), request: {
@@ -172,6 +174,25 @@ export async function apiFetch(path: string, init?: RequestInit) {
         current_review: state, checked_at: checked, execution_authorized: false };
     } else value = state;
   }
+  else if (path.includes('/execution-review')) {
+    if (!executionFixture || !ledger) throw new Error('Execution fixture required');
+    const context = { userId: ids.user, workspaceId: ids.workspace, leadId: id(3), propertyId: id(4), offerId: id(6), contractId: ledger.row.id, contractVersion: requestedVersion };
+    const key = 'contract-execution-local-qa-ledger';
+    const entries = JSON.parse(sessionStorage.getItem(key) ?? '[]') as { request: { id: string; expected_sequence: number; status: string; artifact_id: string; verification_id: string; policy_id: string; expires_at: string | null }; receipt: Record<string, unknown> }[];
+    const termsKey = 'contract-execution-prepared-local-qa';
+    if (!sessionStorage.getItem(termsKey)) sessionStorage.setItem(termsKey, JSON.stringify(executionTerms(id(11))));
+    const terms = JSON.parse(sessionStorage.getItem(termsKey)!);
+    if (init?.method === 'POST') {
+      const request = JSON.parse(init.body as string), prior = entries.find(entry => entry.request.id === request.id);
+      if (prior && JSON.stringify(prior.request) !== JSON.stringify(request)) throw new Error('Execution retry changed');
+      if (!prior && request.expected_sequence !== entries.length) throw new Error('Execution sequence changed');
+      const receipt = prior?.receipt ?? { workspace_id: ids.workspace, contract_id: ledger.row.id, contract_version: requestedVersion,
+        kind: 'executed_contract', review_id: request.id, sequence: entries.length + 1, status: request.status, review_recorded: true, approval_current: false, execution_authorized: false };
+      if (!prior) { entries.push({ request, receipt }); sessionStorage.setItem(key, JSON.stringify(entries)); }
+      if (lose) { lose = false; throw new Error('Synthetic execution reply lost after commit'); }
+      value = { ...receipt, duplicate: !!prior };
+    } else value = executionChoice(context, id(11), terms, entries.at(-1)?.request, entries.length);
+  }
   else if (path.includes('/references')) {
     if (!ledger) throw new Error('Save the synthetic draft first');
     const saved = JSON.parse(sessionStorage.getItem('contract-document-local-qa-ledger') ?? 'null');
@@ -182,7 +203,7 @@ export async function apiFetch(path: string, init?: RequestInit) {
     const links = JSON.parse(sessionStorage.getItem('contract-link-local-qa-ledger') ?? '[]') as { target: number; request: Record<string, unknown>; withdrawal?: unknown }[];
     const linked = links.find(row => row.target === requestedVersion && row.request.artifact_id === saved?.request.id);
     const terms = JSON.parse(sessionStorage.getItem('contract-terms-local-qa-ledger') ?? '[]') as { request: { expected_version: number; terms: { sources: { artifact_id: string }[] } } }[];
-    const termSource = referenceFixture || terms.some(row => row.request.expected_version + 1 === requestedVersion && row.request.terms.sources.some(source => source.artifact_id === saved?.request.id));
+    const termSource = executionFixture || referenceFixture || terms.some(row => row.request.expected_version + 1 === requestedVersion && row.request.terms.sources.some(source => source.artifact_id === saved?.request.id));
     value = { ...scope, purpose, checked_at: checked, next_after: null, execution_authorized: false,
       items: saved && saved.request.purpose === purpose && sourceVersion <= requestedVersion && (sourceVersion === requestedVersion || termSource || linked) ? [{ ...scope,
         artifact_id: saved.request.id, source_version: sourceVersion,

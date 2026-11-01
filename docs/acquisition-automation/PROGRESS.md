@@ -1,5 +1,16 @@
 # WholesaleOS acquisition automation — progress
 
+## October 31 — guided execution review verified locally (candidate79)
+
+Step 5 now exposes a three-stage returned-agreement review: signature/authority findings, separately sourced term comparison, and a personal decision. Existing navy/orange styling, responsive controls and navigation holds are preserved. No finding/source/approval is inherited from preparation. Unknown/date-only, changed prepared terms and invalid deadlines stay held. Original independent withdrawal and exact saved-request recovery are supported; review recording never advances status.
+
+Validated complete synthetic approval and withdrawal, first-attempt rejection, later denial with reload recovery, original-source withdrawal while a new agreement is held, malformed storage, adjacent-action/navigation holds and original-version recovery with no selected proposal. Full frontend791 tests/90 files passed10.76s; a subsequently added terms-hold regression passed in the14-case helper suite. Typecheck/build passed; lint:check adds no findings against147 existing. Logs: /tmp/execution-ui-final-tests.log, /tmp/execution-ui-final-build.log, /tmp/execution-ui-final-lint.log, /tmp/execution-ui-journey-tests.log, /tmp/execution-ui-term-holds.log.
+
+Real local browser presentation checks passed at1280x900 and375x812: explicit four findings/six term sources/final acknowledgement, committed reply loss, reload/exact recovery, one approval and one withdrawal, unchanged pending_signature/version2, no overflow or page errors. Inspected mobile decision and desktop findings screenshots; evidence/execution-review-ui-2026-10-31/ contains all stages and result.json. Browser fixture is synthetic-only and does not establish hosted, legal or provider acceptance. An initial browser selector mismatch was corrected; no application defect was hidden by the correction.
+
+All six predecessor c70aff7/run41269058955 jobs are now terminal success. Pull is up to date. Publish candidate78/79 after this checkpoint and record successor CI; do not claim successor success before terminal verification. No production migration, policy provisioning, outreach, provider activation, fulfillment or binding transaction. Next: controlled pending_signature→executed transition with fresh execution/source authority, reviewed date-only/amendment resolution, remaining lifecycle/disposition and full PRD/channel/hosted acceptance. Goal remains active and incomplete.
+
+
 ## October 31 — execution-review form integration, validation still open (candidate79 draft)
 
 Mounted the returned-agreement review in step 5 for awaiting-signature contracts. Three explicit stages cover signature/authority findings, independently sourced returned terms, and the personal decision. Prepared values do not inherit sources or confirmations. Unknown/date-only or changed prepared terms remain held. Review recording does not advance contract status. Opening the editor holds adjacent actions/navigation; exact pending recovery retains its original target through reload, no proposal selection, or a newer contract version. Only unsaved edits may be closed.
