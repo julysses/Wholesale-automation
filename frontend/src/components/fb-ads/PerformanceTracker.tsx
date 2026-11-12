@@ -35,10 +35,13 @@ export function PerformanceTracker() {
     queryKey: ['fb_leads_30d', since30d],
     queryFn: async () => {
       const { data } = await supabase
-        .from('fb_leads')
-        .select('situations, segment_tag, received_at')
-        .gte('received_at', since30d);
-      return data || [];
+        .from('leads')
+        .select('motivation_tag, created_at')
+        .eq('inbound_channel', 'facebook_lead_ad')
+        .gte('created_at', since30d);
+      return (data || []).map((l: { motivation_tag: string | null }) => ({
+        situations: l.motivation_tag ? [l.motivation_tag] : [],
+      }));
     },
     staleTime: 60000,
   });

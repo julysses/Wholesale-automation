@@ -37,6 +37,8 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from tools.form_intake_guard import INTAKE_KEY_HEADER, assess_submission
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Lead Generation"])
@@ -239,6 +241,19 @@ async def submit_form(
             "form_slug": form_config.get("slug", form_id),
         }
 
+    # Screen for automated spam before anything is saved. Suspicious inquiries
+    # are kept as quarantined receipts: no lead, owner alert, task or SMS.
+    request_ref = str(body.request_id) if body.request_id else None
+    quarantine_reasons = assess_submission(
+        supabase, form_config, answers, body.answers,
+        request.headers.get(INTAKE_KEY_HEADER), request_ref,
+    )
+    if quarantine_reasons:
+        receipt_answers["_spam_review"] = {
+            "reasons": quarantine_reasons,
+            "flagged_at": datetime.now(timezone.utc).isoformat(),
+        }
+
     # Insert submission record
     submission_data = {
         "form_id": form_config["id"],
@@ -251,8 +266,9 @@ async def submit_form(
         "computed_motivation_tag": scores.get("motivation_tag"),
         "computed_timeline": answers.get("timeline"),
         "computed_condition": answers.get("condition"),
-        "processing_status": "pending",
+        "processing_status": "quarantined" if quarantine_reasons else "pending",
     }
+    stored_status = None
     try:
         if body.request_id:
             # Compare validated inquiry inputs, not volatile server timestamps or IPs.
@@ -273,10 +289,18 @@ async def submit_form(
             submission_id = reserved.get("submission_id") if isinstance(reserved, dict) else None
             if not isinstance(reserved, dict) or reserved.get("status") not in {"created", "replayed"} or submission_id != str(body.request_id):
                 raise RuntimeError("Inquiry reference was not confirmed")
+            stored_status = reserved.get("processing_status")
+            # A replay keeps the verdict of the original receipt once it has one.
+            if quarantine_reasons and (reserved.get("status") == "created" or stored_status == "pending"):
+                supabase.table("lead_form_submissions").update(
+                    {"processing_status": "quarantined"}
+                ).eq("id", submission_id).eq("processing_status", "pending").execute()
+                stored_status = "quarantined"
         else:
             # Legacy clients remain accepted until both sites and the CRM form are upgraded.
             sub_resp = supabase.table("lead_form_submissions").insert(submission_data).execute()
             submission_id = sub_resp.data[0]["id"] if sub_resp.data else None
+            stored_status = submission_data["processing_status"]
     except HTTPException:
         raise
     except Exception as exc:
@@ -285,6 +309,18 @@ async def submit_form(
 
     if not submission_id:
         raise HTTPException(503, "We could not save your inquiry. Please try again.")
+
+    if stored_status == "quarantined":
+        # Same response a person gets, so automated senders learn nothing.
+        logger.warning("[lead_forms] submission %s quarantined: %s", submission_id,
+                       ",".join(quarantine_reasons) or "earlier verdict")
+        return {
+            "success": True,
+            "submission_id": submission_id,
+            "processing_status": "received",
+            "message": form_config.get("thank_you_message", "Thank you! We'll be in touch shortly."),
+            "redirect_url": form_config.get("redirect_url"),
+        }
 
     # Finish durable CRM work before acknowledging the inquiry.
     await _process_form_submission(

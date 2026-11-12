@@ -1,7 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { cn, formatDate } from '@/lib/utils';
-import { Phone, MessageSquare, Clock } from 'lucide-react';
+import { Phone } from 'lucide-react';
+
+// Facebook leads arrive through the signed /webhooks/facebook/lead handler,
+// which writes CRM leads tagged inbound_channel='facebook_lead_ad'.
+interface FbLeadRow {
+  id: string;
+  created_at: string;
+  owner_first_name: string | null;
+  owner_last_name: string | null;
+  owner_phone_1: string | null;
+  property_address: string | null;
+  motivation_tag: string | null;
+  priority_tier: string | null;
+  status: string | null;
+  contact_attempts: number | null;
+}
 
 interface FbLead {
   id: string;
@@ -10,22 +25,35 @@ interface FbLead {
   phone: string | null;
   property_address: string | null;
   situations: string[] | null;
-  timeline: string | null;
-  segment_tag: string | null;
-  twilio_sms_sent: boolean;
-  twilio_sms_time: string | null;
+  status: string | null;
+  segment_tag: string;
   contacted: boolean;
   appointment_set: boolean;
 }
 
+const SEGMENT_BY_TIER: Record<string, string> = { A: 'HOT', B: 'WARM' };
+
+function toFbLead(row: FbLeadRow): FbLead {
+  const name = [row.owner_first_name, row.owner_last_name].filter(Boolean).join(' ').trim();
+  const status = row.status || 'new';
+  return {
+    id: row.id,
+    received_at: row.created_at,
+    name: name || null,
+    phone: row.owner_phone_1,
+    property_address: row.property_address,
+    situations: row.motivation_tag ? [row.motivation_tag] : null,
+    status,
+    segment_tag: SEGMENT_BY_TIER[row.priority_tier || ''] || 'COLD',
+    contacted: (row.contact_attempts || 0) > 0 || !['new', 'qualified_hot', 'qualified_warm', 'qualified_cold'].includes(status),
+    appointment_set: status.includes('appointment'),
+  };
+}
+
 const SEGMENT_STYLES: Record<string, { bg: string; text: string }> = {
-  'HOT-URGENT':      { bg: 'bg-red-100', text: 'text-red-700' },
-  'HOT-ESTATE':      { bg: 'bg-red-100', text: 'text-red-700' },
-  'HOT-LEGAL':       { bg: 'bg-red-100', text: 'text-red-700' },
-  'HOT-TAX':         { bg: 'bg-red-100', text: 'text-red-700' },
-  'WARM-LANDLORD':   { bg: 'bg-orange-100', text: 'text-orange-700' },
-  'WARM-RELOCATION': { bg: 'bg-orange-100', text: 'text-orange-700' },
-  'COLD-NURTURE':    { bg: 'bg-gray-100', text: 'text-gray-600' },
+  HOT:  { bg: 'bg-red-100', text: 'text-red-700' },
+  WARM: { bg: 'bg-orange-100', text: 'text-orange-700' },
+  COLD: { bg: 'bg-gray-100', text: 'text-gray-600' },
 };
 
 export function LeadIntakeRouter() {
@@ -33,12 +61,13 @@ export function LeadIntakeRouter() {
     queryKey: ['fb_leads_recent'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('fb_leads')
-        .select('*')
-        .order('received_at', { ascending: false })
+        .from('leads')
+        .select('id, created_at, owner_first_name, owner_last_name, owner_phone_1, property_address, motivation_tag, priority_tier, status, contact_attempts')
+        .eq('inbound_channel', 'facebook_lead_ad')
+        .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
-      return data || [];
+      return ((data || []) as FbLeadRow[]).map(toFbLead);
     },
     staleTime: 30000,
     refetchInterval: 30000,
@@ -52,7 +81,7 @@ export function LeadIntakeRouter() {
     <div className="space-y-5">
       <div>
         <h2 className="font-semibold text-gray-900">Lead Intake Router</h2>
-        <p className="text-xs text-gray-500">Real-time feed of Facebook leads with segment routing and Twilio SMS status</p>
+        <p className="text-xs text-gray-500">Facebook Lead Ads leads saved to the CRM, by priority</p>
       </div>
 
       {/* Summary strip */}
@@ -101,20 +130,8 @@ export function LeadIntakeRouter() {
                   <span className="text-xs text-gray-500">{lead.phone || '—'}</span>
                 </div>
 
-                {/* SMS status */}
-                <div className="shrink-0">
-                  {lead.twilio_sms_sent ? (
-                    <div className="flex items-center gap-1 text-xs text-green-600">
-                      <MessageSquare className="h-3.5 w-3.5" />
-                      SMS sent
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-xs text-amber-500">
-                      <Clock className="h-3.5 w-3.5" />
-                      Pending SMS
-                    </div>
-                  )}
-                </div>
+                {/* CRM status */}
+                <span className="text-xs text-gray-500 shrink-0">{(lead.status || 'new').replace(/_/g, ' ')}</span>
 
                 {/* Status dots */}
                 <div className="flex items-center gap-1.5 shrink-0">

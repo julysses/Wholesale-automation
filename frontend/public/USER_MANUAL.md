@@ -466,7 +466,7 @@ Actions:
 
 **Where:** FB Ads → Lead Router tab
 
-Real-time view of all inbound leads from Facebook Lead Ads (received via the `fb-lead-intake` Edge Function). Refreshes every 30 seconds.
+Real-time view of all inbound leads from Facebook Lead Ads (received by the signed `/webhooks/facebook/lead` endpoint and saved as CRM leads). Refreshes every 30 seconds.
 
 **Summary strip:**
 - HOT count (foreclosure, probate, divorce, taxes)
@@ -542,10 +542,8 @@ Sections:
 Complete these before your first campaign:
 
 1. **Run migration 010** in Supabase SQL Editor (`010_fb_ads_command_center.sql`)
-2. **Deploy the Edge Function**: `supabase functions deploy fb-lead-intake`
-3. **Set Edge Function secrets** in Supabase Dashboard → Functions → Secrets:
-   - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
-   - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
+2. **Set the app's environment variables** (Vercel project settings, never in Git): `FACEBOOK_APP_SECRET`, `FACEBOOK_WEBHOOK_VERIFY_TOKEN`, `FACEBOOK_ACCESS_TOKEN` (a Page token with `leads_retrieval`). The webhook rejects any request whose Meta signature does not match the app secret.
+3. **Confirm the consent form**: lead forms must use the reviewed SMS and AI-call disclosures in `tools/facebook_consent.py`; leads without affirmative consent get an owner alert only, never an automatic text.
 4. **Create a Facebook App** at developers.facebook.com → get App ID + Secret
 5. **Subscribe your app** to your Facebook Page's `leadgen` events
 6. **Set webhook URL** in Facebook App settings: `https://[your-domain]/webhooks/facebook/lead`

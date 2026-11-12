@@ -68,6 +68,8 @@ function LeadFormInner({ formId }: { formId: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Hidden from people and assistive tech; automated form fillers tend to complete it.
+  const [honeypot, setHoneypot] = useState('');
 
   // Fetch form config
   useEffect(() => {
@@ -192,6 +194,7 @@ function LeadFormInner({ formId }: { formId: string }) {
               ...answers,
               sms_consent_text: config.questions.find(q => q.field_name === 'sms_opt_in' && q.type === 'checkbox')?.label || '',
               sms_consent_source: window.location.origin + window.location.pathname,
+              company_website: honeypot,
             },
             utm_source: params.get('utm_source'), utm_medium: params.get('utm_medium'), utm_campaign: params.get('utm_campaign'),
           },
@@ -301,6 +304,13 @@ function LeadFormInner({ formId }: { formId: string }) {
               }}
             />
           ))}
+          <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', width: 1, height: 1, overflow: 'hidden' }}>
+            <label>
+              Company website
+              <input type="text" name="company_website" tabIndex={-1} autoComplete="off"
+                value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+            </label>
+          </div>
           </fieldset>
 
           {(submitError || blocked || (pending && !submitting)) && (
