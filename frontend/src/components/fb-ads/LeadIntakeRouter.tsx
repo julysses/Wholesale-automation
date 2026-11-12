@@ -118,9 +118,6 @@ export function LeadIntakeRouter() {
                     {lead.situations && lead.situations.length > 0 && (
                       <span className="text-xs text-gray-500">{lead.situations.join(', ')}</span>
                     )}
-                    {lead.timeline && (
-                      <span className="text-xs text-gray-400">· {lead.timeline}</span>
-                    )}
                   </div>
                 </div>
 
