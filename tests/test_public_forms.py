@@ -278,3 +278,111 @@ def test_saved_but_unfinished_inquiry_retry_uses_original_receipt(form_service):
     assert all(c.kwargs["submission_id"] == REFERENCE for c in processor.call_args_list)
     assert db.rpc.call_args_list[0].args[1]["p_manifest"]["utm_campaign"] == "original campaign"
     db.table.return_value.insert.assert_not_called()
+
+
+@pytest.fixture
+def protected_form(form_service, monkeypatch):
+    from web.api import website_turnstile
+
+    db, processor = form_service
+    config = db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data[0]
+    config.update(id=REFERENCE, slug="hilltop-home-co")
+    monkeypatch.setenv("WEBSITE_TURNSTILE_REQUIRED", "true")
+    monkeypatch.setenv("WEBSITE_TURNSTILE_SITE_KEY", "public-widget-key")
+    monkeypatch.setenv("WEBSITE_TURNSTILE_SECRET", "server-only-test-secret")
+    verification = MagicMock()
+    verification.return_value.__aenter__.return_value.post = AsyncMock()
+    monkeypatch.setattr(website_turnstile.httpx, "AsyncClient", verification)
+    return db, processor, verification.return_value.__aenter__.return_value.post, config
+
+
+@pytest.mark.parametrize("identifier", ["hilltop-home-co", REFERENCE, "the-jays-dallas"])
+def test_protected_website_requires_token_before_any_write(protected_form, identifier):
+    db, processor, verify, config = protected_form
+    if identifier == "the-jays-dallas":
+        config["slug"] = identifier
+
+    client = TestClient(app)
+    public = client.get(f"/api/forms/{identifier}")
+    assert public.json()["turnstile_site_key"] == "public-widget-key"
+    assert "server-only-test-secret" not in public.text
+    response = client.post(f"/api/forms/{identifier}/submit", json={"answers": ANSWERS})
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == "website_challenge_required"
+    verify.assert_not_awaited()
+    db.rpc.assert_not_called()
+    db.table.return_value.insert.assert_not_called()
+    processor.assert_not_awaited()
+
+
+@pytest.mark.parametrize("provider_result, status", [
+    ({"success": False, "error-codes": ["invalid-input-response"]}, 403),
+    ({"success": False, "error-codes": ["timeout-or-duplicate"]}, 403),
+    ({"success": False, "error-codes": ["internal-error"]}, 503),
+    ({"success": True, "hostname": "unrelated.example", "action": "hilltop-home-co"}, 403),
+    ({"success": True, "hostname": "thejaysdallas.com", "action": "hilltop-home-co"}, 403),
+    ({"success": True, "hostname": "hilltophome.co", "action": "the-jays-dallas"}, 403),
+    ({"success": True, "hostname": "hilltophome.co", "action": "hilltop-home-co"}, 200),
+    ({"success": True, "hostname": "wholesale-automation.vercel.app", "action": "hilltop-home-co"}, 200),
+])
+def test_protected_website_verifies_before_save(protected_form, provider_result, status):
+    import httpx
+
+    db, processor, verify, _ = protected_form
+    verify.return_value = httpx.Response(200, json=provider_result, request=httpx.Request("POST", "https://example.test"))
+    response = TestClient(app).post("/api/forms/hilltop-home-co/submit", json={
+        "answers": ANSWERS, "turnstile_token": "synthetic-token",
+    })
+    assert response.status_code == status
+    assert verify.await_args.kwargs["json"]["response"] == "synthetic-token"
+    if status == 200:
+        processor.assert_awaited_once()
+        record = db.table.return_value.insert.call_args.args[0]
+        assert "synthetic-token" not in str(record)
+    else:
+        db.rpc.assert_not_called()
+        db.table.return_value.insert.assert_not_called()
+        processor.assert_not_awaited()
+
+
+def test_website_retry_uses_fresh_token_with_same_durable_reference(protected_form):
+    import httpx
+
+    db, processor, verify, _ = protected_form
+    verify.return_value = httpx.Response(200, json={"success": True, "hostname": "hilltophome.co",
+                                                   "action": "hilltop-home-co"},
+                                         request=httpx.Request("POST", "https://example.test"))
+    db.rpc.return_value.execute.side_effect = [
+        SimpleNamespace(data={"status": status, "submission_id": REFERENCE})
+        for status in ("created", "replayed")
+    ]
+    client = TestClient(app)
+    for token in ("fresh-one", "fresh-two"):
+        response = client.post("/api/forms/hilltop-home-co/submit", json={
+            "answers": ANSWERS, "request_id": REFERENCE, "turnstile_token": token,
+        })
+        assert response.json()["submission_id"] == REFERENCE
+    assert [call.kwargs["json"]["response"] for call in verify.await_args_list] == ["fresh-one", "fresh-two"]
+    first, second = db.rpc.call_args_list
+    assert first.args[1]["p_manifest"] == second.args[1]["p_manifest"]
+    assert processor.await_count == 2
+
+
+@pytest.mark.parametrize("missing_secret", [False, True])
+def test_website_challenge_outage_is_retryable_without_write(protected_form, monkeypatch, missing_secret):
+    import httpx
+
+    db, processor, verify, _ = protected_form
+    if missing_secret:
+        monkeypatch.delenv("WEBSITE_TURNSTILE_SECRET")
+    verify.side_effect = httpx.ReadTimeout("internal detail")
+
+    response = TestClient(app).post("/api/forms/hilltop-home-co/submit", json={
+        "answers": ANSWERS, "turnstile_token": "synthetic-token",
+    })
+    assert response.status_code == 503
+    assert response.headers["retry-after"] == "30"
+    assert "internal detail" not in response.text
+    assert response.json()["detail"]["code"] == "website_challenge_unavailable"
+    db.table.return_value.insert.assert_not_called()
+    processor.assert_not_awaited()

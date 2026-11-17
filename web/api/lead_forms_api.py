@@ -35,7 +35,9 @@ from uuid import UUID, NAMESPACE_URL, uuid4, uuid5
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from web.api.website_turnstile import challenge_site_key, verify_website_challenge
 
 logger = logging.getLogger(__name__)
 
@@ -182,12 +184,17 @@ def _load_active_form(supabase, form_id: str) -> dict:
 
 @router.get("/api/forms/{form_id}")
 async def get_form_config(form_id: str):
-    return _load_active_form(_get_supabase(), form_id)
+    config = _load_active_form(_get_supabase(), form_id)
+    site_key = challenge_site_key(config.get("slug", ""))
+    if not site_key:
+        return config
+    return JSONResponse({**config, "turnstile_site_key": site_key}, headers={"Cache-Control": "no-store"})
 
 
 class FormSubmitRequest(BaseModel):
     answers: dict[str, Any]
     request_id: Optional[UUID] = None
+    turnstile_token: Optional[str] = Field(default=None, max_length=2048)
     utm_source: Optional[str] = None
     utm_medium: Optional[str] = None
     utm_campaign: Optional[str] = None
@@ -238,6 +245,8 @@ async def submit_form(
             "form_id": form_config["id"],
             "form_slug": form_config.get("slug", form_id),
         }
+
+    await verify_website_challenge(form_config.get("slug", ""), body.turnstile_token)
 
     # Insert submission record
     submission_data = {

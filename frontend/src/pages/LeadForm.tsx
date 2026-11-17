@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, ChevronRight, ChevronLeft, CheckCircle, AlertTriangle } from 'lucide-react';
+import { WebsiteChallenge } from '@/components/seller/WebsiteChallenge';
 import { cn } from '@/lib/utils';
 import { clearPublicIntake, matchesPublicIntakeReceipt, preservePublicIntake, readPublicIntake, UNCONFIRMED_INQUIRY, type PendingPublicIntake } from '@/lib/publicIntakeRecovery';
 
@@ -32,6 +33,7 @@ interface FormConfig {
   logo_url?: string;
   thank_you_message: string;
   questions: FormQuestion[];
+  turnstile_site_key?: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -65,6 +67,9 @@ function LeadFormInner({ formId }: { formId: string }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [answers, setAnswers] = useState<Record<string, string>>(recovery.draft?.answers || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [challengeAttempt, setChallengeAttempt] = useState(0);
+  const needsChallenge = Boolean(config?.turnstile_site_key && !challengeToken);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -164,12 +169,13 @@ function LeadFormInner({ formId }: { formId: string }) {
   };
 
   const handleBack = () => {
+    if (!pending) setChallengeToken(null);
     setCurrentStep((s) => s - 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = async () => {
-    if (busy.current || blocked) return;
+    if (busy.current || blocked || needsChallenge) return;
     const errs = pending ? {} : validate(currentStep);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -211,11 +217,21 @@ function LeadFormInner({ formId }: { formId: string }) {
       const resp = await fetch(`/api/forms/${encodeURIComponent(formId)}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draft.payload),
+        body: JSON.stringify({ ...draft.payload, turnstile_token: challengeToken ?? undefined }),
         signal: AbortSignal.timeout(45000),
       });
       const data = await resp.json();
       if (!resp.ok || !matchesPublicIntakeReceipt(data, draft)) {
+        const code = data?.detail?.code;
+        if (code === 'website_challenge_required' || code === 'website_challenge_unavailable') {
+          if (firstAttempt) {
+            clearPublicIntake(window.sessionStorage, draft);
+            setPending(null);
+          }
+          setSubmitError(config.turnstile_site_key ? 'Complete a new verification and try again.'
+            : 'Verification settings changed. Reload this page and try again.');
+          return;
+        }
         if (firstAttempt && (resp.status === 400 || resp.status === 422)) {
           clearPublicIntake(window.sessionStorage, draft);
           setPending(null);
@@ -240,6 +256,8 @@ function LeadFormInner({ formId }: { formId: string }) {
     } finally {
       busy.current = false;
       setSubmitting(false);
+      setChallengeToken(null);
+      setChallengeAttempt(value => value + 1);
     }
   };
 
@@ -309,9 +327,13 @@ function LeadFormInner({ formId }: { formId: string }) {
               {submitError || (blocked ? 'This browser cannot recover a previous inquiry. Contact our team before submitting again.' : UNCONFIRMED_INQUIRY)}
             </div>
           )}
+          {config.turnstile_site_key && (pending || currentStep === totalSteps) && (
+            <WebsiteChallenge key={challengeAttempt} siteKey={config.turnstile_site_key}
+              action={config.slug} onToken={setChallengeToken} />
+          )}
           {pending && !submitted && <div className="space-y-3">
             <p className="text-xs text-gray-500">Saved inquiry reference: {pending.payload.request_id}. Original answers remain locked while we confirm receipt.</p>
-            <button type="button" onClick={handleSubmit} disabled={blocked || submitting} style={{ backgroundColor: brandColor }} className="w-full rounded-xl px-4 py-3 text-white text-sm font-semibold disabled:opacity-60">{submitting ? 'Confirming your inquiry…' : 'Retry Saved Inquiry'}</button>
+            <button type="button" onClick={handleSubmit} disabled={blocked || submitting || needsChallenge} style={{ backgroundColor: brandColor }} className="w-full rounded-xl px-4 py-3 text-white text-sm font-semibold disabled:opacity-60">{submitting ? 'Confirming your inquiry…' : 'Retry Saved Inquiry'}</button>
           </div>}
 
           {/* Navigation */}
@@ -337,7 +359,7 @@ function LeadFormInner({ formId }: { formId: string }) {
             ) : (
               <button
                 onClick={handleSubmit}
-                disabled={blocked || submitting || !!pending}
+                disabled={blocked || submitting || !!pending || needsChallenge}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-60"
                 style={{ backgroundColor: brandColor }}
               >
