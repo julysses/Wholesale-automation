@@ -87,7 +87,7 @@ A website-destination campaign requires website acceptance first. A native Meta 
 
 **Audience.** Start with one Meta Leads campaign and one broad Housing ad set centered on Dallas within a proposed 20-mile radius. This is the initial area for a prompt local follow-up. Use Meta's available Housing audience controls and default age and gender settings. Use a single offer for people considering selling a house as-is. A local exterior or team photo and the as-is offer give sellers a clear reason to respond. Start with one ad for this budget. [Meta Housing audiences](https://www.facebook.com/business/help/2220749868045706) · [Meta U.S. Housing targeting guidance](https://about.fb.com/news/2022/06/expanding-our-work-on-ads-fairness/)
 
-**Ad for review.** “Skip the repairs.” keeps the geographic restriction in Ads Manager and leads with the as-is selling benefit. The built-in image generator used Hilltop’s existing wide exterior photo and brand colors. The preview is saved with this chat’s outputs as `Hilltop-Seller-Ad-Skip-the-Repairs.png`. Ads remain off pending approval.
+**Preferred creative.** On November 17, Julio selected “Skip the repairs.” for the pilot. It keeps the geographic restriction in Ads Manager and leads with the as-is selling benefit. The built-in image generator used Hilltop’s existing wide exterior photo and brand colors. The preview is saved with this chat’s outputs as `Hilltop-Seller-Ad-Skip-the-Repairs.png`. Ads remain off pending separate launch approval.
 
 **Proposed primary text.** “No need to fix up the house before selling. Tell us your timeline, and Hilltop Home Co. will reach out to discuss a cash offer. No obligation.”
 
