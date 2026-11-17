@@ -44,6 +44,12 @@ A website-destination campaign requires website acceptance first. A native Meta 
 - [ ] **Codex** verifies a real allowed-domain response on desktop and mobile for both sites and checks every funnel. Confirm signed-off test inquiries produce the same receipt, lead, task and owner alert. In isolated or approved checks, verify missing, invalid, expired, repeated and wrong-site tokens stop before any write and provider outages show a retry. Verify direct CRM submission by slug and UUID obeys the same check and survey any alternate production backend before declaring coverage complete.
 - [ ] **Codex with Julio** compares legitimate intake and spam for the first 48 hours. If legitimate submissions break, restore the known-good CRM intake setting or deployment, verify both sites can take inquiries and track the window when spam checks are off while correcting widget configuration. Keep a note of the before/after accepted and rejected counts without storing raw challenge tokens or inquiry details in Git.
 
+## November 17 live test checkpoint
+
+- [x] Signed-in Meta Business Suite shows Hilltop Home Company. The Lead Ads Testing Tool shows the Hilltop Lead Intake app and the selected form **Hilltop Property Inquiry — Consent v2**. Page Admin showed a checkmark. The Leads Permission and Lead Access Manager rows showed warning icons, so effective lead access still needs verification.
+- [x] The production CRM has an approved intake owner. The existing Meta test showed **Pending**. The attempt to create a fresh test was blocked because the same form already has a test lead. Production still showed zero native Facebook receipts and zero new Facebook leads during the check.
+- [ ] Obtain action-time approval to delete only the existing test lead from Meta's Testing Tool. Then submit a fresh synthetic test for the same form with SMS and AI call consent unchecked. Record the Meta delivery status and match the lead ID to the production CRM receipt, pending follow-up task and in-app owner alert. Check the signed email delivery receipt separately if the owner email was sent. Ads remain pending acceptance.
+
 ## Resume here
 
 - [x] Local verification on the Vercel baseline passed 1,216 backend tests (10 skipped), 180 WholesaleOS frontend tests, the project's lint gate and production build. The path from real Meta or Cloudflare to the production CRM still needs acceptance.
