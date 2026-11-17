@@ -54,6 +54,13 @@ A website-destination campaign requires website acceptance first. A native Meta 
 - [x] No outbound seller SMS event, Retell SMS job or Retell call request was recorded for the test. AI calling was paused and CRM email and SMS sequences were off on the lead. The dummy lead had no valid normalized phone. Meta marked both optional consent choices true in the dummy payload, so this test leaves the unchecked-consent path open.
 - [ ] Verify why the preview disabled Submit with no optional consent. The CRM classified the dummy SMS handoff as an invalid form receipt and left the alert in review even though the owner email was delivered. That outcome is only returned by the enabled Retell form-SMS scheduling path. Verify how valid opted-in inquiries behave under the pilot's manual follow-up settings before launch. The live test incurred no ad spend.
 
+### Unchecked-consent retest
+
+- [x] Reopened the published Consent v2 form in Meta Business Suite. Meta shows it as active and Higher Intent. The published form preview labels both communication choices optional. Higher Intent includes a review step. The previous disabled Submit button therefore needs reproduction with a fresh editable preview and checks of the input and review controls. [Meta Higher Intent forms](https://developers.facebook.com/docs/marketing-api/guides/lead-ads/create/v2.6/#higher-intent-forms)
+- [x] Confirmed the built-in dummy from the previous successful webhook occupies the test slot. Meta Business Suite's Test form opens that same completed submission. The CRM had one receipt for the form before the retest. All 42 focused local Facebook consent and SMS tests passed.
+- [ ] Obtain action-time approval to remove only the previous dummy from Meta. Reproduce the disabled button with fresh valid synthetic fields, confirm both choices unchecked and submit through Meta. If the browser preview still blocks submission, Meta's documented test API can submit explicit unchecked values with the same form and authorized Page access. A test through that API can verify intake and no outreach independently of the form UI. [Meta test-lead API](https://developers.facebook.com/docs/marketing-api/guides/lead-ads/testing-troubleshooting/)
+- [ ] Match the new Meta lead ID and consent choices to the production receipt. Verify the task, owner alert, and zero seller SMS jobs, outbound texts and calls. Keep the Friday paid pilot pending this live check.
+
 ## Resume here
 
 - [x] Local verification on the Vercel baseline passed 1,216 backend tests (10 skipped), 180 WholesaleOS frontend tests, the project's lint gate and production build. The live Meta webhook test is recorded above. Production Turnstile acceptance is pending.
