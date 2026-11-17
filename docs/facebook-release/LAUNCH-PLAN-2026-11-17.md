@@ -75,6 +75,16 @@ A website-destination campaign requires website acceptance first. A native Meta 
 - [ ] **Meta account setup still blocks publishing.** Account Overview still asks to confirm the existing **Hilltop Home Company** Page, and Continue remains disabled. [Hilltop Ads Manager](https://adsmanager.facebook.com/adsmanager/manage/accounts?act=1637550421158397)
 - [ ] After setup, verify the selected Consent v2 form, final ad and applicable Housing category and targeting. Julio approves the creative, start time and staffed follow-up coverage. Apply the user-approved $100 total limit to the pilot campaign and verify the live cap before activation. Review seller response before considering a separate top-up. The campaign must clear Meta review before any activation. Reconcile the first paid lead against the CRM during the staffed pilot, then decide whether to increase spend.
 
+## Controlled Facebook-to-Twilio owner test
+
+- [x] Confirmed Meta shows zero active Hilltop campaigns and $0.00 ad spend in the preceding seven days. The advertising account remains out of scope for the SMS test.
+- [x] Rechecked the serving WholesaleOS deployment and production queue. No outreach dispatch cron is active, and no SMS form job is unexpired or processing. The app dispatch scope is still bound to an earlier exact test. A fresh opted-in intake by itself will not dispatch under that scope.
+- [x] Rechecked both prior Meta tests. The two owner emails have provider delivery receipts. No outbound Twilio record exists for either Facebook test. The current Meta test slot holds the successful unchecked-consent lead, and its production CRM receipt is retained.
+- [x] Checked both previously used owner destinations without changing suppression or limits. One is currently clear in CRM. The other is attempt-limited. Use only the destination Julio confirms and recheck eligibility before submitting.
+- [ ] Await the owner destination confirmation and explicit permission to remove only the current prior Meta test from the testing tool. Recheck the exact form and prior test before removal.
+- [ ] For the one approved message, use the same selected form with SMS consent checked and AI call consent unchecked. Trace the fresh Meta lead to its immutable CRM receipt, one pending owner task and one exact app-owned SMS job. Prepare an approved, time-limited production scope for only that job and confirmed recipient. Clear any old reply-only selector in the test scope so it can authorize the new acknowledgment. A test job must be inside its original deadline and contact hours. Keep general launch acceptance and scheduled workers disabled. Use only the authenticated exact-job acknowledgment route, then restore the dispatch hold and verify both schedulers remain off.
+- [ ] Match the exact Twilio message to a signed delivery receipt and the owner's handset confirmation. Verify the owner email's signed delivery and inbox confirmation separately. Stop on ambiguous delivery and retain the evidence for review. Any later seller automation or ad activation requires a separate decision.
+
 ## Resume here
 
 - [x] Local verification on the Vercel baseline passed 1,216 backend tests (10 skipped), 180 WholesaleOS frontend tests, the project's lint gate and production build. The live Meta webhook test is recorded above. Production Turnstile acceptance is pending.
