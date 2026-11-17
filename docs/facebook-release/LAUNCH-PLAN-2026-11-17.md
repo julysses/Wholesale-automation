@@ -87,12 +87,21 @@ A website-destination campaign requires website acceptance first. A native Meta 
 
 **Audience.** Start with one Meta Leads campaign and one broad Housing ad set centered on Dallas within a proposed 20-mile radius. This is the initial area for a prompt local follow-up. Use Meta's available Housing audience controls and default age and gender settings. Use a single offer for people considering selling a house as-is. A local exterior or team photo and the as-is offer give sellers a clear reason to respond. Start with one ad for this budget. [Meta Housing audiences](https://www.facebook.com/business/help/2220749868045706) · [Meta U.S. Housing targeting guidance](https://about.fb.com/news/2022/06/expanding-our-work-on-ads-fairness/)
 
-**Proposed ad.** “Thinking about selling a Dallas-area house? Hilltop Home Co. buys houses as-is. Tell us your timeline and our local team will reach out to discuss a cash offer. No obligation.”
+**Ad for review.** “Skip the repairs.” keeps the geographic restriction in Ads Manager and leads with the as-is selling benefit. The built-in image generator used Hilltop’s existing wide exterior photo and brand colors. The preview is saved with this chat’s outputs as `Hilltop-Seller-Ad-Skip-the-Repairs.png`. Ads remain off pending approval.
 
-**First creative for review.** The mobile feed mockup uses Hilltop’s existing homepage exterior and brand colors, with the headline “Sell your Dallas-area house as-is.” and a single invitation to request a cash offer. The built-in image generator produced the preview, saved with this chat’s outputs as `Hilltop-Seller-Ad-Mockup.png`. Creative awaits approval and delivery is off.
+**Proposed primary text.** “No need to fix up the house before selling. Tell us your timeline, and Hilltop Home Co. will reach out to discuss a cash offer. No obligation.”
 
 <details>
-<summary>Image generation prompt</summary>
+<summary>Second creative image generation prompt</summary>
+
+Use case: ads-marketing. Compose a polished 4:5 portrait feed ad for Hilltop Home Co., using the provided Hilltop website photograph as the image source. Lead with a full-width matte Hilltop crimson #ce0435 panel across the top roughly 40 percent of the image. In that panel place large left-aligned ivory Georgia-style type, exact headline “Skip the repairs.” on two short lines if advantageous, and immediately below in smaller but still phone-readable modern ivory sans serif the exact line “Request an as-is cash offer.” Use confident editorial typography, high contrast, and ample padding around all text. Below the headline panel, use the provided wide photograph showing a warmly lit, ordinary single-story brick house, with the recognizable mature tree and front walkway, cropped naturally on a separate clean photo band. Remove any visible house numbers. Do not add people, for-sale signs, money, flags, or location markers. Finish with a slim warm-white bottom signature strip, with the brand’s small Georgia-style crimson “H.” and the exact name “Hilltop Home Co.” in dark navy #10263e. Render exactly and only the requested words. No city or area name, no buttons, no app chrome, no icons, no borders, no watermarks. The result should feel like a credible local homebuyer and make the no-repairs benefit clear at a glance.
+
+</details>
+
+**Earlier creative.** The city-led mockup is saved as `Hilltop-Seller-Ad-Mockup.png`.
+
+<details>
+<summary>Earlier creative image generation prompt</summary>
 
 Use case: ads-marketing. Create a polished, portrait 4:5 mobile feed ad creative for Hilltop Home Co. from the provided Hilltop website hero photograph. This is an ad mockup for Dallas-area homeowners weighing an as-is sale. Use the reference as the source for the exterior and keep its warm, natural, familiar North Texas appearance, the tree and brick and walkway. Remove the visible street number by blending with surrounding brick. Crop and reframe the photo so the front door and illuminated windows are clearly visible in the upper 56 percent of the canvas, at a size that has impact in a mobile feed. Below, a warm off-white editorial panel with generous padding and no app chrome. Use Hilltop’s actual brand palette, dark navy #10263e, crimson #ce0435 and warm white. Small wordmark at top of the panel, a crimson Georgia-style “H.” followed by dark navy “Hilltop Home Co.” The large feature headline in heavy dark navy Georgia-style serif, laid out across two lines, reads exactly “Sell your Dallas-area” and “house as-is.” Under it is a single crimson sans-serif line, “Request a cash offer.” All typography must read perfectly on a phone, with crisp letterforms, comfortable padding away from the crop zones and high contrast. Render only those exact words. No fake buttons, no social-media imitation, no interface framing, no dollar amount, no testimonial, no people, no listing sign, no watermark. Design feels like a credible local homebuyer, warm but focused.
 
