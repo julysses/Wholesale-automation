@@ -1,4 +1,4 @@
-"""Consent specification for the immutable Hilltop native form.
+"""Consent specification for the immutable Hilltop native forms.
 
 Never infer consent from contact details, a free-text question, or an unknown
 form. Keep the provider's raw checkbox answers with the exact disclosure.
@@ -20,10 +20,11 @@ def normalize_us_phone(value) -> str:
     return '+' + digits
 
 HILLTOP_CONSENT_FORM_ID = "1548364970390755"
+HILLTOP_HOUSING_PILOT_FORM_ID = "2089492558416792"
+HILLTOP_CONSENT_FORM_IDS = frozenset({HILLTOP_CONSENT_FORM_ID, HILLTOP_HOUSING_PILOT_FORM_ID})
 SMS_DISCLOSURE = "I agree to receive recurring automated text messages from Hilltop Home Co., a DBA of The Jays Dallas, LLC, about my property inquiry, offer updates, appointment reminders and closing updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase or receiving an offer."
 AI_DISCLOSURE = "I agree to receive automated calls using an AI-generated or artificial voice from Hilltop Home Co., a DBA of The Jays Dallas, LLC, at the number I provide about my property inquiry, offers and appointments. Calls may be recorded. Consent is not a condition of purchase or receiving an offer. I may revoke consent at any time by calling 214-701-0100 or emailing julio@hilltophome.co."
-# Verified against native test1116758057469583: Meta uses normalized disclosure
-# text as the key for this form, rather than positional optional_1/optional_2.
+# Meta returns the normalized disclosure text as the key on both forms.
 SMS_CHECKBOX_KEY = SMS_DISCLOSURE.lower().replace(" ", "_")
 AI_CHECKBOX_KEY = AI_DISCLOSURE.lower().replace(" ", "_")
 
@@ -32,7 +33,7 @@ def facebook_consent_record(lead_data, leadgen_id: str) -> dict:
     form_id = str(getattr(lead_data, "form_id", "") or "")
     responses = getattr(lead_data, "custom_disclaimer_responses", []) or []
     created_time = getattr(lead_data, "created_time", None)
-    recognized = form_id == HILLTOP_CONSENT_FORM_ID and bool(created_time)
+    recognized = form_id in HILLTOP_CONSENT_FORM_IDS and bool(created_time)
 
     def checked(key):
         matches = [row for row in responses if isinstance(row, dict) and row.get("checkbox_key") == key]
