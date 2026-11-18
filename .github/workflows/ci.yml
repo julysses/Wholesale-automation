@@ -47,7 +47,9 @@ jobs:
       - name: Frontend regression tests
         run: npm test
       - name: Dependency security audit
-        run: npm audit --audit-level=high
+        run: |
+          npm audit --omit=dev --audit-level=high
+          node scripts/check-dependency-audit.mjs
       - name: Type-check and build
         run: npm run build
 
