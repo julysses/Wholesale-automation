@@ -35,6 +35,7 @@ import { parseCombinedAddress } from '@/lib/masterList';
 import { parseSpreadsheet, isSupportedFile } from '@/lib/parseFile';
 import { retentionBadge, RETENTION_TONE_CLASS } from '@/lib/retention';
 import { ManageListsModal } from '@/components/leads/ManageListsModal';
+import { FACEBOOK_AD_SOURCE, leadSourceLabel } from '@/lib/leadSources';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
@@ -97,7 +98,7 @@ const SOURCE_OPTIONS = [
   { value: '', label: 'All Sources' },
   { value: 'propstream', label: 'PropStream' },
   { value: 'batchleads', label: 'BatchLeads' },
-  { value: 'facebook_ad', label: 'Facebook Ad' },
+  { value: FACEBOOK_AD_SOURCE, label: 'Facebook Ad' },
   { value: 'driving', label: 'Driving for $' },
   { value: 'referral', label: 'Referral' },
   { value: 'other', label: 'Other' },
@@ -201,6 +202,22 @@ export function Leads() {
   }, [searchParams]);
 
   const filteredLeads = leads;
+  const hasFilters = Boolean(search || status || source || tier || motivation || retention);
+  const clearFilters = () => {
+    setSearch('');
+    setStatus('');
+    setSource('');
+    setTier('');
+    setMotivation('');
+    setRetention('');
+    setPage(1);
+    setSearchParams(current => {
+      const next = new URLSearchParams(current);
+      next.delete('search');
+      next.delete('status');
+      return next;
+    }, { replace: true });
+  };
 
   const toggleSort = (column: string) => {
     if (sortBy === column) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -278,6 +295,9 @@ export function Leads() {
         <Select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} options={SOURCE_OPTIONS} className="w-36" />
         <Select value={retention} onChange={(e) => { setRetention(e.target.value); setPage(1); }} options={RETENTION_OPTIONS} className="w-44" />
         <Select value={motivation} onChange={(e) => { setMotivation(e.target.value); setPage(1); }} options={MOTIVATION_OPTIONS} className="w-40" />
+        <Button variant="outline" size="sm" onClick={() => { setSortBy('created_at'); setSortDir('desc'); setPage(1); }}
+          aria-pressed={sortBy === 'created_at' && sortDir === 'desc'}>Newest first</Button>
+        {hasFilters && <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>}
       </div>
 
       {(retention === 'delete_now' || retention === 'delete_soon') && total > 0 && (
@@ -332,7 +352,8 @@ export function Leads() {
                     <div className="flex flex-col items-center gap-2 text-gray-400">
                       <Search className="h-10 w-10 opacity-30" />
                       <p className="font-medium">No leads found</p>
-                      <p className="text-xs">Try adjusting your filters or import a CSV</p>
+                      {hasFilters ? <Button size="sm" variant="outline" onClick={clearFilters}>Clear filters</Button>
+                        : <p className="text-xs">New inquiries and imported leads will appear here.</p>}
                     </div>
                   </td>
                 </tr>
@@ -368,7 +389,7 @@ export function Leads() {
                   </td>
                   <td className="px-4 py-3">
                     {lead.source
-                      ? <span className="capitalize text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{lead.source.replace(/_/g, ' ')}</span>
+                      ? <span className="capitalize text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{leadSourceLabel(lead.source)}</span>
                       : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-3">

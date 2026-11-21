@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Lead } from '@/types';
 import { toast } from 'sonner';
+import { FACEBOOK_AD_SOURCE, FACEBOOK_AD_SOURCES } from '@/lib/leadSources';
 
 interface LeadsFilter {
   status?: string;
@@ -45,7 +46,8 @@ export function useLeads(filters: LeadsFilter = {}) {
         .range((page - 1) * pageSize, page * pageSize - 1);
 
       if (status) query = query.eq('status', status);
-      if (source) query = query.eq('source', source);
+      if (source === FACEBOOK_AD_SOURCE) query = query.in('source', FACEBOOK_AD_SOURCES);
+      else if (source) query = query.eq('source', source);
       if (tier) query = query.eq('priority_tier', tier);
       if (motivation) query = query.eq('motivation_tag', motivation);
       if (retention) {
