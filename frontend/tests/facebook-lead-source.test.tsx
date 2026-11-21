@@ -8,6 +8,7 @@ const query = vi.hoisted(() => ({
   order: vi.fn().mockReturnThis(),
   range: vi.fn().mockReturnThis(),
   in: vi.fn().mockReturnThis(),
+  or: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
 }));
 
@@ -16,9 +17,9 @@ vi.mock('@/lib/supabase', () => ({ supabase: { from: vi.fn(() => query) } }));
 import { useLeads } from '@/hooks/useLeads';
 import { leadSourceLabel } from '@/lib/leadSources';
 
-function renderLeads(source: string) {
+function renderLeads(source: string, search?: string, inbound?: boolean) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return renderHook(() => useLeads({ source }), {
+  return renderHook(() => useLeads({ source, search, inbound }), {
     wrapper: ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     ),
@@ -38,5 +39,18 @@ describe('lead sources', () => {
     const { result } = renderLeads('referral');
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(query.eq).toHaveBeenCalledWith('source', 'referral');
+  });
+
+  it('searches both parts of a full name and includes native inbound sources', async () => {
+    const { result } = renderLeads('', 'Ana Seller', true);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(query.or).toHaveBeenCalledWith('inbound_channel.not.is.null,source.in.(facebook_ad,facebook_lead_ad,web_form)');
+    expect(query.or).toHaveBeenCalledWith(expect.stringContaining('and(owner_first_name.ilike."%Ana%",owner_last_name.ilike."%Seller%")'));
+  });
+
+  it('matches a formatted phone against stored numbers with or without formatting', async () => {
+    const { result } = renderLeads('', '(214) 555-0101');
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(query.or).toHaveBeenCalledWith(expect.stringContaining('owner_phone_1.ilike."%2%1%4%5%5%5%0%1%0%1%"'));
   });
 });

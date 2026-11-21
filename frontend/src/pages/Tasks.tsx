@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTasks, useCreateTask, useUpdateTask, useCompleteTask } from '@/hooks/useTasks';
+import { useProfile } from '@/hooks/useProfile';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +39,39 @@ const STATUS_OPTIONS = [
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
+
+export function MyFollowUps() {
+  const { profile, loading, error: profileError } = useProfile();
+  const { data = [], isLoading, error, refetch } = useTasks({ type: 'follow_up', assignedTo: profile?.id, openOnly: true }, !!profile?.id);
+  const linkedTasks = data.filter(task => task.lead_id);
+
+  return <div className="space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h1 className="text-2xl font-bold text-gray-900">My Follow-ups</h1>
+      <Link to="/leads?view=inquiries" className="text-sm font-medium text-blue-800 hover:underline">New Inquiries</Link>
+    </div>
+    {loading || isLoading ? <p role="status">Loading follow-ups…</p>
+      : error || profileError || !profile ? <div role="alert" className="space-y-2 text-sm text-red-700">
+        <p>Could not load your follow-ups.</p>
+        {profile && <Button size="sm" variant="outline" onClick={() => void refetch()}>Retry</Button>}
+      </div> : !linkedTasks.length ? <p className="text-gray-600">No open lead follow-ups assigned to you.</p>
+      : <ul className="space-y-2">
+        {linkedTasks.map(task => {
+          const lead = task.lead;
+          const name = [lead?.owner_first_name, lead?.owner_last_name].filter(Boolean).join(' ');
+          const address = !lead?.property_address || lead.property_address === 'Unknown' ? 'Address pending' : lead.property_address;
+          return <li key={task.id}>
+            <Link to={`/leads?lead=${task.lead_id}&tab=follow-up`} className="block space-y-1 rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50">
+              <span className="block break-words font-semibold">{name || address}</span>
+              {name && <span className="block break-words text-sm text-gray-600">{address}</span>}
+              <span className="block break-words text-sm">{task.title}</span>
+              <span className="block text-xs text-gray-600">{task.due_date ? `Due ${formatDateTime(task.due_date)}` : 'No due date'} · {lead?.last_contact_date ? `Last contact ${formatDateTime(lead.last_contact_date)}` : 'No contact logged'}</span>
+            </Link>
+          </li>;
+        })}
+      </ul>}
+  </div>;
+}
 
 interface TaskActions {
   onEdit: (task: Task) => void;

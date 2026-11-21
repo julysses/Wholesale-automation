@@ -1,12 +1,13 @@
 import { apiFetch } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useLead, useLeads, useDeleteLead, useCreateLead, useUpdateLead, useLogActivity, type LeadWrite } from '@/hooks/useLeads';
 import { useLeadQualifier } from '@/hooks/useAIAgent';
 import { useCreateDeal } from '@/hooks/useDeals';
 import { DealRecoveryPanel } from '@/components/pipeline/DealRecoveryPanel';
 import { OutreachTimeline } from '@/components/leads/OutreachTimeline';
+import { LeadFollowUp } from '@/components/leads/LeadFollowUp';
 import { RetellBatchDialog } from '@/components/leads/RetellBatchDialog';
 import { AppointmentBookingDialog } from '@/components/appointments/AppointmentBookingDialog';
 import { SMSNurtureDialog } from '@/components/leads/SMSNurtureDialog';
@@ -21,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import type { Lead } from '@/types';
 import {
-  formatDate, phoneFormat, getStatusClass, getStatusLabel,
+  formatDate, formatDateTime, phoneFormat, getStatusClass, getStatusLabel,
   getScoreBadgeClass, truncate
 } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -99,6 +100,7 @@ const SOURCE_OPTIONS = [
   { value: 'propstream', label: 'PropStream' },
   { value: 'batchleads', label: 'BatchLeads' },
   { value: FACEBOOK_AD_SOURCE, label: 'Facebook Ad' },
+  { value: 'web_form', label: 'Website Form' },
   { value: 'driving', label: 'Driving for $' },
   { value: 'referral', label: 'Referral' },
   { value: 'other', label: 'Other' },
@@ -136,6 +138,7 @@ function downloadCSV(filename: string, rows: Record<string, unknown>[], excludeK
 
 export function Leads() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const inquiries = searchParams.get('view') === 'inquiries';
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [status, setStatus] = useState(searchParams.get('status') || '');
   const [source, setSource] = useState('');
@@ -143,7 +146,7 @@ export function Leads() {
   const [page, setPage] = useState(1);
   const [tier, setTier] = useState('');
   const [retention, setRetention] = useState('');
-  const [sortBy, setSortBy] = useState('total_score');
+  const [sortBy, setSortBy] = useState(inquiries ? 'created_at' : 'total_score');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -162,6 +165,7 @@ export function Leads() {
     if (requestedLead !== null) {
       const next = new URLSearchParams(searchParams);
       next.delete('lead');
+      next.delete('tab');
       setSearchParams(next, { replace: true });
     }
   };
@@ -172,8 +176,11 @@ export function Leads() {
   const [nurtureLead, setNurtureLead] = useState<Lead | null>(null);
   const [callLead, setCallLead] = useState<Lead | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
 
-  const { data, isLoading, error: loadError, refetch } = useLeads({ status, source, tier, motivation, retention, search, page, pageSize: 50, sortBy, sortDir });
+  const { data, isLoading, error: loadError, refetch } = useLeads({ status: inquiries ? 'new' : status,
+    source, tier, motivation, retention, inbound: inquiries, search, page, pageSize: 50, sortBy, sortDir });
   const leads = data?.data ?? [];
   const total = data?.count ?? 0;
   const totalPages = Math.ceil(total / 50);
@@ -202,7 +209,12 @@ export function Leads() {
   }, [searchParams]);
 
   const filteredLeads = leads;
-  const hasFilters = Boolean(search || status || source || tier || motivation || retention);
+  const activeFilters = [
+    [status, STATUS_OPTIONS], [source, SOURCE_OPTIONS], [tier, TIER_OPTIONS],
+    [motivation, MOTIVATION_OPTIONS], [retention, RETENTION_OPTIONS],
+  ] as const;
+  const filterLabels = activeFilters.flatMap(([value, options]) => value ? options.find(option => option.value === value)?.label ?? [] : []);
+  const hasFilters = Boolean(search.trim() || filterLabels.length);
   const clearFilters = () => {
     setSearch('');
     setStatus('');
@@ -217,6 +229,22 @@ export function Leads() {
       next.delete('status');
       return next;
     }, { replace: true });
+  };
+
+  const showInquiries = (show: boolean) => {
+    clearFilters();
+    setSortBy(show ? 'created_at' : 'total_score');
+    setSortDir('desc');
+    const next = new URLSearchParams(searchParams);
+    next.delete('status');
+    next.delete('search');
+    if (show) next.set('view', 'inquiries');
+    else next.delete('view');
+    setSearchParams(next, { replace: true });
+  };
+
+  const toggleCallSelection = (leadId: string, checked: boolean) => {
+    setCallSelection(current => checked ? [...current, leadId].slice(0, 5) : current.filter(id => id !== leadId));
   };
 
   const toggleSort = (column: string) => {
@@ -258,7 +286,9 @@ export function Leads() {
           <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} total leads</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <Button variant="outline" size="sm" className="md:hidden" aria-expanded={mobileToolsOpen}
+          aria-controls="lead-tools" onClick={() => setMobileToolsOpen(open => !open)}>Tools</Button>
+        <div id="lead-tools" className={cn('w-full gap-2 flex-wrap md:flex md:w-auto', mobileToolsOpen ? 'flex' : 'hidden')}>
           <Button variant="outline" size="sm" icon={<Download className="h-4 w-4" />}
             onClick={() => {
               const date = new Date().toISOString().slice(0, 10);
@@ -278,26 +308,38 @@ export function Leads() {
         </div>
       </div>
 
+      <nav aria-label="Lead views" className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant={inquiries ? 'outline' : 'primary'} aria-pressed={!inquiries} onClick={() => showInquiries(false)}>All Leads</Button>
+        <Button size="sm" variant={inquiries ? 'primary' : 'outline'} aria-pressed={inquiries} onClick={() => showInquiries(true)}>New Inquiries</Button>
+        <Link to="/tasks/follow-ups" className="px-2 py-2 text-sm font-medium text-blue-800 hover:underline">My Follow-ups</Link>
+      </nav>
+
       {/* Filters */}
       <div className="flex gap-2 flex-wrap items-center">
-        <div className="relative flex-1 min-w-48">
+        <div className="relative min-w-0 flex-1 md:min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search address, name, phone..."
+            aria-label="Search leads"
+            placeholder="Name, email, phone or address"
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#1B3A5C]"
           />
         </div>
-        <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} options={STATUS_OPTIONS} className="w-44" />
-        <Select value={tier} onChange={(e) => { setTier(e.target.value); setPage(1); }} options={TIER_OPTIONS} className="w-36" />
-        <Select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} options={SOURCE_OPTIONS} className="w-36" />
-        <Select value={retention} onChange={(e) => { setRetention(e.target.value); setPage(1); }} options={RETENTION_OPTIONS} className="w-44" />
-        <Select value={motivation} onChange={(e) => { setMotivation(e.target.value); setPage(1); }} options={MOTIVATION_OPTIONS} className="w-40" />
-        <Button variant="outline" size="sm" onClick={() => { setSortBy('created_at'); setSortDir('desc'); setPage(1); }}
-          aria-pressed={sortBy === 'created_at' && sortDir === 'desc'}>Newest first</Button>
-        {hasFilters && <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>}
+        <Button variant="outline" size="sm" className="shrink-0 md:hidden" aria-expanded={mobileFiltersOpen}
+          aria-controls="lead-filters" onClick={() => setMobileFiltersOpen(open => !open)}>Filters</Button>
+        <div id="lead-filters" className={cn('w-full flex-wrap items-center gap-2 md:flex', mobileFiltersOpen ? 'flex' : 'hidden')}>
+          {!inquiries && <Select aria-label="Lead status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} options={STATUS_OPTIONS} className="w-36" />}
+          <Select aria-label="Lead tier" value={tier} onChange={(e) => { setTier(e.target.value); setPage(1); }} options={TIER_OPTIONS} className="w-36" />
+          <Select aria-label="Lead source" value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} options={SOURCE_OPTIONS} className="w-36" />
+          <Select aria-label="Lead retention" value={retention} onChange={(e) => { setRetention(e.target.value); setPage(1); }} options={RETENTION_OPTIONS} className="w-36" />
+          <Select aria-label="Lead signals" value={motivation} onChange={(e) => { setMotivation(e.target.value); setPage(1); }} options={MOTIVATION_OPTIONS} className="w-36" />
+          <Button variant="outline" size="sm" onClick={() => { setSortBy('created_at'); setSortDir('desc'); setPage(1); }}
+            aria-pressed={sortBy === 'created_at' && sortDir === 'desc'}>Newest first</Button>
+          {hasFilters && <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>}
+        </div>
+        {filterLabels.length > 0 && <p className="w-full text-xs text-gray-600 md:hidden">{filterLabels.join(' · ')}</p>}
       </div>
 
       {(retention === 'delete_now' || retention === 'delete_soon') && total > 0 && (
@@ -310,7 +352,7 @@ export function Leads() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={cn('flex-wrap items-center gap-2 md:flex', mobileToolsOpen ? 'flex' : 'hidden')}>
         <Button variant="outline" onClick={() => setCallBatchOpen(true)}>Review AI call batch ({callSelection.length}/5 selected)</Button>
         {!!callSelection.length && <Button variant="outline" onClick={() => setCallSelection([])}>Clear call selection</Button>}
         <span className="text-xs text-gray-500">Select individual leads. Calls require saved consent and operator review.</span>
@@ -318,7 +360,37 @@ export function Leads() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="md:hidden">
+          {loadError ? <p className="p-4 text-red-700" role="alert">Could not load leads. <button onClick={() => refetch()} className="underline">Retry</button></p>
+            : isLoading ? <p className="p-4 text-gray-500" role="status">Loading leads…</p>
+            : filteredLeads.length === 0 ? (
+              <div className="space-y-2 p-4 text-sm text-gray-600">
+                <p>{inquiries ? 'No new inquiries found' : 'No leads found'}</p>
+                {hasFilters && <Button size="sm" variant="outline" onClick={clearFilters}>Clear filters</Button>}
+              </div>
+            ) : <ul className="divide-y divide-gray-200" aria-label="Leads">
+              {filteredLeads.map(lead => {
+                const name = [lead.owner_first_name, lead.owner_last_name].filter(Boolean).join(' ');
+                const address = !lead.property_address || lead.property_address === 'Unknown' ? 'Address pending' : lead.property_address;
+                return <li key={lead.id} className="flex min-w-0 items-start">
+                  <button type="button" className="min-w-0 flex-1 space-y-1 p-4 text-left hover:bg-gray-50" onClick={() => setDetailLead(lead)}>
+                    <span className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="break-words font-semibold text-gray-900">{name || address}</span>
+                      <span className={cn('rounded px-2 py-0.5 text-xs', getStatusClass(lead.status))}>{getStatusLabel(lead.status)}</span>
+                    </span>
+                    {name && <span className="block break-words text-sm text-gray-600">{address}</span>}
+                    <span className="block text-xs text-gray-600">{[lead.source && leadSourceLabel(lead.source), formatDateTime(lead.created_at)].filter(Boolean).join(' · ')}</span>
+                    {lead.next_follow_up_date && <span className="block text-xs font-medium text-blue-800">Follow up {formatDate(lead.next_follow_up_date)}</span>}
+                    {!lead.next_follow_up_date && lead.status === 'new' && <span className="block text-xs font-medium text-blue-800">Review inquiry</span>}
+                  </button>
+                  {mobileToolsOpen && <input type="checkbox" className="m-4" aria-label={`Select ${name || address} for call batch`}
+                    checked={callSelection.includes(lead.id)} disabled={callSelection.length >= 5 && !callSelection.includes(lead.id)}
+                    onChange={event => toggleCallSelection(lead.id, event.target.checked)} />}
+                </li>;
+              })}
+            </ul>}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
@@ -362,7 +434,7 @@ export function Leads() {
                   <td className="px-3 py-3" onClick={event => event.stopPropagation()}>
                     <input type="checkbox" aria-label={`Select ${lead.property_address} for call batch`}
                       checked={callSelection.includes(lead.id)} disabled={callSelection.length >= 5 && !callSelection.includes(lead.id)}
-                      onChange={event => setCallSelection(current => event.target.checked ? [...current, lead.id].slice(0, 5) : current.filter(id => id !== lead.id))} />
+                      onChange={event => toggleCallSelection(lead.id, event.target.checked)} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
@@ -529,7 +601,10 @@ export function Leads() {
         <LogActivityModal lead={logActivityLead} onClose={() => setLogActivityLead(null)} />
       )}
       {displayedLead && (
-        <LeadDetailDrawer key={displayedLead.id} lead={displayedLead} onClose={closeLead} />
+        <LeadDetailDrawer key={displayedLead.id} lead={displayedLead} onClose={closeLead}
+          openFollowUp={searchParams.get('tab') === 'follow-up'}
+          onReviewSms={() => { closeLead(); setNurtureLead(displayedLead); }}
+          onReviewCall={() => { closeLead(); setCallLead(displayedLead); }} />
       )}
       {callBatchOpen && <RetellBatchDialog leadIds={callSelection} onClose={() => setCallBatchOpen(false)} />}
       {appointmentLead && <AppointmentBookingDialog key={appointmentLead.id} leadId={appointmentLead.id}
@@ -1011,13 +1086,17 @@ type LeadDrawerEdits = Pick<LeadWrite,
   'score_motivation' | 'score_timeline' | 'score_equity' | 'score_condition' | 'score_flexibility'
 >;
 
-function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+function LeadDetailDrawer({ lead, onClose, openFollowUp, onReviewSms, onReviewCall }: {
+  lead: Lead; onClose: () => void; openFollowUp: boolean; onReviewSms: () => void; onReviewCall: () => void;
+}) {
   const updateLead = useUpdateLead();
   const { qualify, loading: aiLoading, result: aiResult } = useLeadQualifier();
   const [edits, setEdits] = useState<LeadDrawerEdits>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const form = { ...lead, ...edits };
-  const [activeTab, setActiveTab] = useState<'details' | 'timeline'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'follow-up' | 'timeline'>(openFollowUp ? 'follow-up' : 'details');
+  const sellerName = [lead.owner_first_name, lead.owner_last_name].filter(Boolean).join(' ');
+  const addressPending = !lead.property_address || lead.property_address === 'Unknown';
   const set = <K extends keyof LeadDrawerEdits>(key: K, value: LeadDrawerEdits[K]) => {
     setSaveError(null);
     setEdits((current) => {
@@ -1051,22 +1130,24 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
     });
 
   return (
-    <Modal open={true} onClose={onClose} title={lead.property_address} size="2xl">
-      <div className="p-6">
+    <Modal open={true} onClose={onClose} title={addressPending ? sellerName || 'Address pending' : lead.property_address} size="2xl">
+      <div className="p-4 sm:p-6">
+        {addressPending && <p className="mb-3 text-sm text-gray-600">Address pending</p>}
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-6">
-          {(['details', 'timeline'] as const).map((tab) => (
+        <div className="flex flex-wrap border-b border-gray-200 mb-4">
+          {(['details', 'follow-up', 'timeline'] as const).map((tab) => (
             <button
               key={tab}
+              aria-pressed={activeTab === tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+                'px-2.5 sm:px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
                 activeTab === tab
                   ? 'border-[#1B3A5C] text-[#1B3A5C]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               )}
             >
-              {tab === 'timeline' ? 'Activity Timeline' : 'Details'}
+              {{ details: 'Details', 'follow-up': 'Follow-up', timeline: 'Activity Timeline' }[tab]}
             </button>
           ))}
         </div>
@@ -1079,7 +1160,7 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
               {totalScore} / 15
             </span>
           </div>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {LEAD_SCORE_FIELDS.map(([label, key]) => (
               <div key={key} className="text-center">
                 <p className="text-xs text-gray-500 mb-1">{label}</p>
@@ -1101,7 +1182,7 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
         </div>
 
         {/* Property + Owner */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="Property Address" value={form.property_address || ''} onChange={(e) => set('property_address', e.target.value)} />
           <div className="grid grid-cols-2 gap-2">
             <Input label="City" value={form.city || ''} onChange={(e) => set('city', e.target.value)} />
@@ -1170,6 +1251,7 @@ function LeadDetailDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }
           <Button onClick={handleSave} loading={updateLead.isPending}>Save Changes</Button>
         </div>
         </div>)}
+        {activeTab === 'follow-up' && <LeadFollowUp lead={lead} onReviewSms={onReviewSms} onReviewCall={onReviewCall} />}
         {activeTab === 'timeline' && (
           <OutreachTimeline leadId={lead.id} />
         )}

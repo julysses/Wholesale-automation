@@ -127,7 +127,7 @@ export function NotificationPanel() {
 
       {/* Panel */}
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-96 bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-x-2 top-16 z-50 bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-96">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">

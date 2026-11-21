@@ -10,6 +10,7 @@ interface LeadsFilter {
   tier?: string;
   motivation?: string;
   retention?: string;
+  inbound?: boolean;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -29,8 +30,32 @@ export type LeadWrite = Omit<Partial<Lead>, 'asking_price' | 'estimated_equity_p
   next_follow_up_date?: string | null;
 };
 
+function searchPattern(value: string) {
+  const literal = value.replace(/[\\%_]/g, '\\$&');
+  return JSON.stringify(`%${literal}%`);
+}
+
+function leadSearchConditions(search: string) {
+  const pattern = searchPattern(search);
+  const matches = ['property_address', 'owner_first_name', 'owner_last_name', 'owner_email', 'owner_phone_1']
+    .map(column => `${column}.ilike.${pattern}`);
+  const nameParts = search.split(/\s+/);
+  if (nameParts.length > 1 && /\p{L}/u.test(search) && !search.includes('@')) {
+    const first = searchPattern(nameParts[0]);
+    const last = searchPattern(nameParts.slice(1).join(' '));
+    matches.push(`and(owner_first_name.ilike.${first},owner_last_name.ilike.${last})`);
+  }
+  if (/^[\d+().\s-]+$/.test(search)) {
+    const digits = search.replace(/\D/g, '');
+    if (digits.length >= 7 && digits.length <= 11) {
+      matches.push(`owner_phone_1.ilike.${JSON.stringify(`%${Array.from(digits).join('%')}%`)}`);
+    }
+  }
+  return matches.join(',');
+}
+
 export function useLeads(filters: LeadsFilter = {}) {
-  const { status, source, tier, motivation, retention, search, page = 1, pageSize = 50, sortBy = 'total_score', sortDir = 'desc' } = filters;
+  const { status, source, tier, motivation, retention, inbound, search, page = 1, pageSize = 50, sortBy = 'total_score', sortDir = 'desc' } = filters;
   const sortColumn = (SORTABLE_LEAD_COLUMNS as readonly string[]).includes(sortBy) ? sortBy : 'total_score';
 
   return useQuery({
@@ -48,6 +73,7 @@ export function useLeads(filters: LeadsFilter = {}) {
       if (status) query = query.eq('status', status);
       if (source === FACEBOOK_AD_SOURCE) query = query.in('source', FACEBOOK_AD_SOURCES);
       else if (source) query = query.eq('source', source);
+      if (inbound) query = query.or(`inbound_channel.not.is.null,source.in.(${FACEBOOK_AD_SOURCES.join(',')},web_form)`);
       if (tier) query = query.eq('priority_tier', tier);
       if (motivation) query = query.eq('motivation_tag', motivation);
       if (retention) {
@@ -58,17 +84,15 @@ export function useLeads(filters: LeadsFilter = {}) {
             .lte('retention_due_at', new Date(now.getTime() + 30 * 86_400_000).toISOString());
         } else query = query.eq('retention_action', retention);
       }
-      if (search) {
-        query = query.or(
-          `property_address.ilike.%${search}%,owner_first_name.ilike.%${search}%,owner_last_name.ilike.%${search}%,owner_phone_1.ilike.%${search}%`
-        );
-      }
+      const term = search?.trim();
+      if (term) query = query.or(leadSearchConditions(term));
 
       const { data, error, count } = await query;
       if (error) throw error;
       return { data: data as Lead[], count: count ?? 0 };
     },
     staleTime: 60000,
+    refetchInterval: inbound ? 30_000 : false,
   });
 }
 

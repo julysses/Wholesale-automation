@@ -22,6 +22,7 @@ const Buyers = lazy(() => import('@/pages/Buyers').then(m => ({ default: m.Buyer
 const AIAgents = lazy(() => import('@/pages/AIAgents').then(m => ({ default: m.AIAgents })));
 const Acquisitions = lazy(() => import('@/pages/Acquisitions').then(m => ({ default: m.Acquisitions })));
 const Tasks = lazy(() => import('@/pages/Tasks').then(m => ({ default: m.Tasks })));
+const MyFollowUps = lazy(() => import('@/pages/Tasks').then(m => ({ default: m.MyFollowUps })));
 const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
 const SetupWizard = lazy(() => import('@/pages/SetupWizard').then(m => ({ default: m.SetupWizard })));
 const UserManual = lazy(() => import('@/pages/UserManual').then(m => ({ default: m.UserManual })));
@@ -245,6 +246,7 @@ function OperatorApp() {
           <Route path="/ai-agents"    element={<AIAgents />} />
           <Route path="/acquisitions" element={<Acquisitions />} />
           <Route path="/tasks"        element={<Tasks />} />
+          <Route path="/tasks/follow-ups" element={<MyFollowUps />} />
           <Route path="/reports"      element={<Reports />} />
           <Route path="/manual"       element={<UserManual />} />
           <Route path="/land"         element={<LandLeads />} />
