@@ -153,6 +153,7 @@ export function Leads() {
   const [listsOpen, setListsOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const requestedLead = searchParams.get('lead');
+  const requestedTask = searchParams.get('tab') === 'follow-up' ? searchParams.get('task') : null;
   const linkedLeadId = requestedLead && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedLead)
     ? requestedLead.toLowerCase() : null;
   const linkedLead = useLead(linkedLeadId);
@@ -166,6 +167,7 @@ export function Leads() {
       const next = new URLSearchParams(searchParams);
       next.delete('lead');
       next.delete('tab');
+      next.delete('task');
       setSearchParams(next, { replace: true });
     }
   };
@@ -601,8 +603,9 @@ export function Leads() {
         <LogActivityModal lead={logActivityLead} onClose={() => setLogActivityLead(null)} />
       )}
       {displayedLead && (
-        <LeadDetailDrawer key={displayedLead.id} lead={displayedLead} onClose={closeLead}
+        <LeadDetailDrawer key={`${displayedLead.id}:${requestedTask ?? ''}`} lead={displayedLead} onClose={closeLead}
           openFollowUp={searchParams.get('tab') === 'follow-up'}
+          followUpTaskId={requestedTask}
           onReviewSms={() => { closeLead(); setNurtureLead(displayedLead); }}
           onReviewCall={() => { closeLead(); setCallLead(displayedLead); }} />
       )}
@@ -1086,8 +1089,8 @@ type LeadDrawerEdits = Pick<LeadWrite,
   'score_motivation' | 'score_timeline' | 'score_equity' | 'score_condition' | 'score_flexibility'
 >;
 
-function LeadDetailDrawer({ lead, onClose, openFollowUp, onReviewSms, onReviewCall }: {
-  lead: Lead; onClose: () => void; openFollowUp: boolean; onReviewSms: () => void; onReviewCall: () => void;
+function LeadDetailDrawer({ lead, onClose, openFollowUp, followUpTaskId, onReviewSms, onReviewCall }: {
+  lead: Lead; onClose: () => void; openFollowUp: boolean; followUpTaskId: string | null; onReviewSms: () => void; onReviewCall: () => void;
 }) {
   const updateLead = useUpdateLead();
   const { qualify, loading: aiLoading, result: aiResult } = useLeadQualifier();
@@ -1251,7 +1254,7 @@ function LeadDetailDrawer({ lead, onClose, openFollowUp, onReviewSms, onReviewCa
           <Button onClick={handleSave} loading={updateLead.isPending}>Save Changes</Button>
         </div>
         </div>)}
-        {activeTab === 'follow-up' && <LeadFollowUp lead={lead} onReviewSms={onReviewSms} onReviewCall={onReviewCall} />}
+        {activeTab === 'follow-up' && <LeadFollowUp lead={lead} taskId={followUpTaskId} onReviewSms={onReviewSms} onReviewCall={onReviewCall} />}
         {activeTab === 'timeline' && (
           <OutreachTimeline leadId={lead.id} />
         )}

@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { Task } from '@/types';
-import { formatDateTime, daysUntil, getPriorityClass } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatDateTime, daysUntil, getPriorityClass } from '@/lib/utils';
 import { groupTasks, localDateTimeInput } from '@/lib/taskDates';
 import {
   Plus, CheckCircle, Circle, Clock,
@@ -43,7 +42,7 @@ const STATUS_OPTIONS = [
 export function MyFollowUps() {
   const { profile, loading, error: profileError } = useProfile();
   const { data = [], isLoading, error, refetch } = useTasks({ type: 'follow_up', assignedTo: profile?.id, openOnly: true }, !!profile?.id);
-  const linkedTasks = data.filter(task => task.lead_id);
+  const linkedTasks = data.filter((task): task is Task & { lead_id: string } => Boolean(task.lead_id));
 
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -60,12 +59,13 @@ export function MyFollowUps() {
           const lead = task.lead;
           const name = [lead?.owner_first_name, lead?.owner_last_name].filter(Boolean).join(' ');
           const address = !lead?.property_address || lead.property_address === 'Unknown' ? 'Address pending' : lead.property_address;
+          const followUpUrl = new URLSearchParams({ lead: task.lead_id, tab: 'follow-up', task: task.id });
           return <li key={task.id}>
-            <Link to={`/leads?lead=${task.lead_id}&tab=follow-up`} className="block space-y-1 rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50">
+            <Link to={`/leads?${followUpUrl}`} className="block space-y-1 rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50">
               <span className="block break-words font-semibold">{name || address}</span>
               {name && <span className="block break-words text-sm text-gray-600">{address}</span>}
               <span className="block break-words text-sm">{task.title}</span>
-              <span className="block text-xs text-gray-600">{task.due_date ? `Due ${formatDateTime(task.due_date)}` : 'No due date'} · {lead?.last_contact_date ? `Last contact ${formatDateTime(lead.last_contact_date)}` : 'No contact logged'}</span>
+              <span className="block text-xs text-gray-600">{task.due_date ? `Due ${formatDateTime(task.due_date)}` : 'No due date'} · {lead?.last_contact_date ? `Last contact ${formatDate(lead.last_contact_date)}` : 'No contact logged'}</span>
             </Link>
           </li>;
         })}

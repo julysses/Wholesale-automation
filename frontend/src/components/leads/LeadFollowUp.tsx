@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLogActivity } from '@/hooks/useLeads';
 import { useTasks, useUpdateTask } from '@/hooks/useTasks';
 import { Button } from '@/components/ui/button';
@@ -56,8 +57,14 @@ function FollowUpTask({ task, refresh }: { task: Task; refresh: () => void }) {
   </section>;
 }
 
-export function LeadFollowUp({ lead, onReviewSms, onReviewCall }: { lead: Lead; onReviewSms: () => void; onReviewCall: () => void }) {
+export function LeadFollowUp({ lead, taskId, onReviewSms, onReviewCall }: {
+  lead: Lead;
+  taskId: string | null;
+  onReviewSms: () => void;
+  onReviewCall: () => void;
+}) {
   const { data = [], isLoading, error, refetch } = useTasks({ leadId: lead.id, type: 'follow_up', openOnly: true });
+  const tasks = taskId === null ? data : data.filter(task => task.id === taskId);
   const logActivity = useLogActivity();
   const [note, setNote] = useState('');
   const [logError, setLogError] = useState('');
@@ -74,6 +81,11 @@ export function LeadFollowUp({ lead, onReviewSms, onReviewCall }: { lead: Lead; 
   };
 
   return <div className="space-y-4 text-gray-900">
+    {taskId !== null && (
+      <Link to="/tasks/follow-ups" className="inline-flex min-h-10 items-center text-sm font-medium text-blue-800 hover:underline">
+        Back to My Follow-ups
+      </Link>
+    )}
     <section className="space-y-2 text-sm">
       {lead.dnc && <p className="font-medium text-red-700">Do not contact</p>}
       <div className="flex flex-wrap gap-2">
@@ -83,8 +95,10 @@ export function LeadFollowUp({ lead, onReviewSms, onReviewCall }: { lead: Lead; 
     </section>
     {isLoading ? <p role="status">Loading follow-ups…</p> : error ? (
       <div role="alert"><p>Could not load follow-ups.</p><Button size="sm" variant="outline" onClick={() => void refetch()}>Retry</Button></div>
-    ) : data.length ? data.map(task => <FollowUpTask key={task.id} task={task} refresh={() => void refetch()} />)
-      : <p className="text-sm text-gray-600">No open follow-up tasks for this lead.</p>}
+    ) : tasks.length ? tasks.map(task => <FollowUpTask key={task.id} task={task} refresh={() => void refetch()} />)
+      : <p role="status" className="text-sm text-gray-600">
+        {taskId === null ? 'No open follow-up tasks for this lead.' : 'This follow-up is no longer available in this lead’s open tasks.'}
+      </p>}
     <section className="space-y-3 rounded-lg border border-gray-200 p-4">
       <h3 className="font-semibold">Log email activity</h3>
       <Textarea label="Email notes" rows={2} value={note} onChange={event => setNote(event.target.value)} />
