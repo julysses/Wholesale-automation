@@ -1942,16 +1942,16 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         "internal_notes": f"FB leadgen_id={entry.leadgen_id}",
     }
 
-    # Try to link to a campaign by external_campaign_id
-    if entry.campaign_id:
-        try:
-            camp = supabase.table("ad_campaigns").select("id").eq(
-                "external_campaign_id", entry.campaign_id
-            ).single().execute()
-            if camp.data:
-                lead_payload["ad_campaign_id"] = camp.data["id"]
-        except Exception:
-            pass
+    # Use only registered, unambiguous Facebook lineage. Missing attribution
+    # must not prevent durable inquiry capture; no mappings are created here.
+    from tools.facebook_attribution import resolve_attribution
+    try:
+        lead_payload.update(resolve_attribution(
+            supabase, ad_id=getattr(entry, "ad_id", None),
+            campaign_id=getattr(entry, "campaign_id", None),
+        ))
+    except Exception:
+        logger.warning("Facebook attribution lookup unavailable; capturing without attribution")
 
     # Recognize previously imported records from before deterministic IDs.
     existing = supabase.table("leads").select("id").eq(
