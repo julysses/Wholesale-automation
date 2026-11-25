@@ -75,3 +75,12 @@ The last command creates a new loopback-only `wholesale_sms_test` cluster, resto
 Implementation and test-evidence commit: `bd3f0c2d5951e99cba584c30fdc171d309312e93`. This documentation follow-up records the verified PR and publication state; runtime code and validated migration are unchanged.
 
 Next action requires owner review of PR #22 and explicit production-release authorization. Local candidate preparation is complete. Overall production readiness remains open until the deployment and controlled live acceptance gates above pass. Do not infer authorization from this checkpoint or from the overall goal.
+
+## Facebook attribution build continuation — November 2026
+
+Branch: codex/facebook-attribution-resolution, based on leads-workflow 77e257f92b27cadd6ebf44671fe2a531e186db80.
+Added registered ad-to-campaign/creative resolution to legacy intake. Rejects ambiguous mappings, non-Facebook campaigns and conflicting webhook campaign identity. Lookup errors preserve capture without claiming attribution. Does not create mappings, backfill existing inquiries, or replay outreach.
+Validation: 67 targeted tests passed across attribution, request security, receipt races, SMS handoff and consent. These are local tests, not provider acceptance.
+Resume: review/register authoritative campaign and creative mappings under separate production authorization; implement an audited idempotent existing-lead reconciliation path; verify exact Meta lead lineage and hosted acceptance. Existing production inquiry is not repaired by this change. Keep automated outreach paused. No deployment or migration performed.
+
+Continuation: added a pure review-only existing-lead reconciliation planner. It binds Meta receipt identity to the exact CRM lead, rejects conflicting existing attribution, returns only missing attribution fields and expected prior values, and produces an empty patch on repeated reconciled input. It does not perform a write or replay intake. 72 targeted tests passed. Remaining: authoritative Meta evidence, mapping registration, atomic audited application, integration acceptance and hosted launch gates.
