@@ -10,6 +10,18 @@ Use the following proposed opening after disclosure review:
 
 The prompt and greeting are business copy awaiting approval, not a statement that legal disclosure requirements have been satisfied. Do not add a recording claim until the actual provider and Twilio controls and approved language are verified.
 
+## Active milestone and resumption
+
+Julio confirmed Facebook ads have launched and instructed proceeding to the next step. The active development milestone is now inbound AI preparation, with direct-mail preparation next in the same channel phase. This instruction advances development; it does not certify the outstanding Facebook attribution, isolation, recovery or retention gates and does not activate inbound routing or outbound contact.
+
+Baseline: acquisition commit 2aee082a1d654a44648c052f3329c319dab363cf. Revalidated 85 local tests in test_acquisition_inbound_tools.py and test_acquisition_inbound_tool_http.py. All passed. Provider audio, actual routing and hosted acceptance remain unverified; acceptance.draft.json intentionally remains not_run.
+
+Resume in this package: verify the five tool contracts against a reviewed provider configuration, identify the inbound number/agent/version and operator handoff destination, then prepare synthetic audio cases for identification, interruption, saved-state recovery and opt-out. No paid simulation or test call is authorized by this checkpoint. Keep Spanish disabled pending bilingual acceptance.
+
+Direct-mail preparation resumes from docs/acquisition-automation/POSTAL-AND-BATCH-IMPLEMENTATION.md: canonical address eligibility, suppression and budget/cadence reservations precede vendor selection and proofs. No mail purchase or dispatch is authorized.
+
+Facebook residual work remains on codex/facebook-attribution-resolution, with its existing docs/facebook-release/PROGRESS.md. Do not replay existing leads or mark all launch gates complete because ads are running.
+
 ## Review and configuration
 
 1. Finish Phase 1 acceptance and the shared foundation release gates. Complete live acceptance of the locally implemented contact restriction and callback-withdrawal path before activating this agent. All recorded channel scopes must reach the eventual executing channel; postal-address matching remains part of the direct-mail release gate. Confirm an accountable person can review human-help requests and that any separately approved transfer destination exists before adding transfer capability.
