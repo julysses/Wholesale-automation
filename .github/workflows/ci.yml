@@ -47,6 +47,70 @@ jobs:
       - name: Frontend regression tests
         run: npm test
       - name: Dependency security audit
-        run: npm audit --audit-level=high
+        run: |
+          npm audit --omit=dev --audit-level=high
+          node scripts/check-dependency-audit.mjs
       - name: Type-check and build
         run: npm run build
+
+  pipeline:
+    name: Pipeline contracts and isolated SQL
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: pipeline/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - name: County collector regression tests
+        working-directory: .
+        run: python3 -m unittest discover -s pipeline/collectors -p 'test_*.py'
+      - name: Scoped collector credential routing tests
+        working-directory: .
+        run: python3 -m unittest discover -s pipeline/tests -p 'test_keychain_delivery.py'
+      - run: npm audit --audit-level=moderate
+      - name: Edge runtime typecheck and rejection tests
+        working-directory: .
+        run: npx --yes deno@2.9.6 test --lock=deno.lock --frozen --node-modules-dir=none --allow-env --allow-read pipeline/tests/edge-deno.ts
+
+  postgres-integration:
+    name: Real PostgreSQL ingestion, tracing and scoring contention
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install PostgreSQL test runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 openssl
+          npm install --global deno@2.9.6
+      - name: Run isolated TLS database acceptance
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: python3 pipeline/integration/run_local.py
+
+      - name: Install SMS contention test dependency
+        run: npm ci --ignore-scripts --prefix pipeline
+      - name: Real PostgreSQL SMS transport contention
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: python3 pipeline/integration/run_sms_transport.py
+
+      - name: Exact owner SMS retest authorization
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: python3 pipeline/integration/run_sms_transport.py pipeline/integration/retell-owner-retest.mjs
+
+      - name: Verified existing SMS generation recovery
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: python3 pipeline/integration/run_sms_transport.py pipeline/integration/retell-generation-recovery.mjs

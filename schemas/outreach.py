@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -59,6 +59,10 @@ class OutreachMessage(BaseModel):
     opt_out_keyword: str = ""
     provider_message_id: str = ""
     a2p_provider: str = ""             # "twilio" | "telnyx" | "messagebird"
+    # Per-attempt diagnostics are explicitly persisted by the intake workflow.
+    # Exclude them from generic message serialization; no CRM column change.
+    sms_outcome: Optional[Literal["blocked", "unknown", "failed", "accepted"]] = Field(default=None, exclude=True)
+    sms_reason: str = Field(default="", exclude=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     compliance_cleared: bool = False
     compliance_notes: str = ""

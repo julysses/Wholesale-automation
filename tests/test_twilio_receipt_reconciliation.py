@@ -211,4 +211,6 @@ def test_real_send_path_preserves_callback_before_http_return(sending, monkeypat
     assert SMSClient()._send_twilio(message,PHONE) is accepted
     assert db.rows[0]['status'] == outcome
     assert message.provider_message_id == SID
+    assert message.sms_outcome == ("accepted" if accepted else "failed")
+    assert message.sms_reason == ("provider_accepted" if accepted else "provider_failed")
     sdk.messages.create.assert_called_once()

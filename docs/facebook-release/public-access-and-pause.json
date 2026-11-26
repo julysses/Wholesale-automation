@@ -1,0 +1,48 @@
+{
+  "anonymous_checks": [
+    {
+      "path": "/api/readiness",
+      "status": 200,
+      "url": "https://wholesale-automation.vercel.app/api/readiness",
+      "content_type": "application/json"
+    },
+    {
+      "path": "/api/forms/hilltop-home-co",
+      "status": 200,
+      "url": "https://wholesale-automation.vercel.app/api/forms/hilltop-home-co",
+      "content_type": "application/json"
+    },
+    {
+      "path": "/api/forms/the-jays-dallas",
+      "status": 200,
+      "url": "https://wholesale-automation.vercel.app/api/forms/the-jays-dallas",
+      "content_type": "application/json"
+    },
+    {
+      "path": "/form/hilltop-home-co",
+      "status": 200,
+      "url": "https://wholesale-automation.vercel.app/form/hilltop-home-co",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/form/the-jays-dallas",
+      "status": 200,
+      "url": "https://wholesale-automation.vercel.app/form/the-jays-dallas",
+      "content_type": "text/html; charset=utf-8"
+    }
+  ],
+  "vercel_crons": {
+    "enabledAt": 1781546913426,
+    "disabledAt": 1792524296115,
+    "updatedAt": 1792524608203,
+    "deploymentId": "dpl_Dwjn7sjLUB5C9X2JsoezbSKjJ6go",
+    "definitions": [
+      {
+        "host": "wholesale-automation-1sxacbvo0-julysses-projects.vercel.app",
+        "path": "/webhooks/_worker/sms-nurture",
+        "schedule": "0 15 * * 1-5"
+      }
+    ]
+  },
+  "auto_assign_domains": false
+}

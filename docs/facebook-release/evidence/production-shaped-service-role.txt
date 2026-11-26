@@ -1,0 +1,22 @@
+{"catalog_restore": "passed", "tables": 100, "functions": 120, "constraints": 384, "triggers": 27, "policies": 127, "production_rows_copied": 0}
+{"migration_rehearsal": "passed", "rollback_before_commit": "passed", "retained_table_data_sha256": "b947625dbebf6f81810338620b245a42f5197f18e89d0f57be7fb39b6466c697", "unchanged_tables": 100, "existing_jobs": 10, "held_sessions_and_turns": 5, "preserved_migration_history": 91, "changed_existing_functions": ["protect_retell_form_transport()"], "concurrent_workers": 8, "receipts": 1, "jobs": 1, "ack_claims": 1, "provider_calls": 0, "migration_sha256": "7819ccb9676b67c8e3a6581b9aea8c479a19b4be6cfc49b4ffdebf9b2731837c"}
+============================= test session starts ==============================
+platform darwin -- Python 3.12.14, pytest-9.1.1, pluggy-1.7.0 -- /Users/juliodominguez/Documents/Codex/2026-10-20/a-review-of-the-wholesaleos-github/facebook-release/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/juliodominguez/Documents/Codex/2026-10-20/a-review-of-the-wholesaleos-github/facebook-release
+plugins: asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 10 items
+
+tests/test_local_lead_journeys.py::test_submission_ack_reply_receipts_stop_and_no_replay[hilltop-home-co] PASSED [ 10%]
+tests/test_local_lead_journeys.py::test_submission_ack_reply_receipts_stop_and_no_replay[the-jays-dallas] PASSED [ 20%]
+tests/test_local_lead_journeys.py::test_submission_ack_reply_receipts_stop_and_no_replay[facebook] PASSED [ 30%]
+tests/test_local_lead_journeys.py::test_no_sms_consent_still_saves_owner_handoff_without_job[hilltop-home-co] PASSED [ 40%]
+tests/test_local_lead_journeys.py::test_no_sms_consent_still_saves_owner_handoff_without_job[the-jays-dallas] PASSED [ 50%]
+tests/test_local_lead_journeys.py::test_no_sms_consent_still_saves_owner_handoff_without_job[facebook] PASSED [ 60%]
+tests/test_local_lead_journeys.py::test_missing_owner_preserves_receipt_and_retry_finishes_once[hilltop-home-co] PASSED [ 70%]
+tests/test_local_lead_journeys.py::test_missing_owner_preserves_receipt_and_retry_finishes_once[the-jays-dallas] PASSED [ 80%]
+tests/test_local_lead_journeys.py::test_missing_owner_preserves_receipt_and_retry_finishes_once[facebook] PASSED [ 90%]
+tests/test_local_lead_journeys.py::test_native_committed_receipt_lost_response_recovers_without_duplicate PASSED [100%]
+
+======================== 10 passed in 123.07s (0:02:03) ========================

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, UserCircle, ChevronDown, Settings, LogOut } from 'lucide-react';
+import { Search, Plus, UserCircle, ChevronDown, Settings, LogOut, Menu } from 'lucide-react';
 import { useUIStore } from '@/stores/useUIStore';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/lib/supabase';
@@ -9,9 +9,11 @@ import { NotificationPanel } from './NotificationPanel';
 
 interface TopBarProps {
   onAddLead?: () => void;
+  mobileNavOpen?: boolean;
+  onMobileNavToggle?: () => void;
 }
 
-export function TopBar({ onAddLead }: TopBarProps) {
+export function TopBar({ onAddLead, mobileNavOpen, onMobileNavToggle }: TopBarProps) {
   const [search, setSearch] = useState('');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { sidebarCollapsed } = useUIStore();
@@ -33,12 +35,17 @@ export function TopBar({ onAddLead }: TopBarProps) {
   return (
     <header
       className={cn(
-        'fixed top-0 right-0 h-16 bg-white border-b border-gray-200 flex items-center px-4 gap-4 z-20 transition-all duration-300',
-        sidebarCollapsed ? 'left-16' : 'left-60'
+        'fixed top-0 right-0 left-0 h-16 bg-white border-b border-gray-200 flex items-center px-3 md:px-4 gap-2 md:gap-4 z-20 transition-all duration-300',
+        sidebarCollapsed ? 'md:left-16' : 'md:left-60'
       )}
     >
-      {/* Search */}
-      <form onSubmit={handleSearch} className="flex-1 max-w-lg">
+      {onMobileNavToggle && (
+        <button type="button" onClick={onMobileNavToggle} aria-label="Open navigation" aria-expanded={mobileNavOpen}
+          aria-controls="main-navigation" className="shrink-0 rounded p-2 text-gray-700 hover:bg-gray-100 md:hidden">
+          <Menu className="h-5 w-5" />
+        </button>
+      )}
+      <form onSubmit={handleSearch} className="hidden flex-1 max-w-lg md:block">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -51,7 +58,7 @@ export function TopBar({ onAddLead }: TopBarProps) {
         </div>
       </form>
 
-      <div className="flex items-center gap-1.5">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 md:ml-0">
         {/* Quick add */}
         {onAddLead && (
           <button

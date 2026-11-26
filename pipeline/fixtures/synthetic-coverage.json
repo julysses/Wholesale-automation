@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "source_key": "tx-dallas-pre_foreclosure",
+  "run_id": "00000000-0000-4000-8000-000000000001",
+  "window_start": "2026-09-13",
+  "window_end": "2026-10-12",
+  "records_sha256": "1bbafec8abb0d8dce25029f4d54ab857118b57a0ecaf10db47c931ffd5873eb6",
+  "page_size": 50,
+  "scans": [
+    {
+      "started_at": "2026-10-12T05:00:00-05:00",
+      "finished_at": "2026-10-12T05:00:10-05:00",
+      "pages": [
+        {
+          "page": 1,
+          "total": 1,
+          "documents": [
+            {
+              "document_id": "SYNTHETIC-DOCUMENT-1",
+              "filed_date": "2026-10-09"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "started_at": "2026-10-12T05:00:20-05:00",
+      "finished_at": "2026-10-12T05:00:30-05:00",
+      "pages": [
+        {
+          "page": 1,
+          "total": 1,
+          "documents": [
+            {
+              "document_id": "SYNTHETIC-DOCUMENT-1",
+              "filed_date": "2026-10-09"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "reviews": [
+    {
+      "document_id": "SYNTHETIC-DOCUMENT-1",
+      "document_url": "https://www.dallascounty.org/government/county-clerk/recording/foreclosures.php",
+      "disposition": "included",
+      "record_ids": [
+        "SYNTHETIC-TEST-NOT-A-REAL-CASE"
+      ],
+      "reviewer": "SYNTHETIC TEST ONLY",
+      "reviewed_at": "2026-10-12T05:00:40-05:00",
+      "note": "Synthetic fixture only; no real notice or property has been reviewed.",
+      "filing_stamp_verified": true,
+      "property_identity_verified": true,
+      "current_status_checked": true
+    }
+  ]
+}

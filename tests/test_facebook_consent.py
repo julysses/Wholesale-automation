@@ -2,18 +2,26 @@ from types import SimpleNamespace
 
 import pytest
 
-from tools.facebook_consent import AI_CHECKBOX_KEY, SMS_CHECKBOX_KEY, HILLTOP_CONSENT_FORM_ID, facebook_consent_record
+from tools.facebook_consent import (
+    AI_CHECKBOX_KEY,
+    HILLTOP_CONSENT_FORM_ID,
+    HILLTOP_HOUSING_PILOT_FORM_ID,
+    SMS_CHECKBOX_KEY,
+    facebook_consent_record,
+)
 
 
+@pytest.mark.parametrize("form_id", [HILLTOP_CONSENT_FORM_ID, HILLTOP_HOUSING_PILOT_FORM_ID])
 @pytest.mark.parametrize("sms,ai,expected_sms,expected_ai", [
     ("1", "", True, False), ("", "1", False, True),
     ("", "", False, False), ("true", "yes", False, False),
 ])
-def test_channels_require_their_own_checked_box(sms, ai, expected_sms, expected_ai):
-    data = SimpleNamespace(form_id=HILLTOP_CONSENT_FORM_ID, created_time="2026-10-07T20:00:00Z",
+def test_channels_require_their_own_checked_box(form_id, sms, ai, expected_sms, expected_ai):
+    data = SimpleNamespace(form_id=form_id, created_time="2026-10-07T20:00:00Z",
         custom_disclaimer_responses=[{"checkbox_key": SMS_CHECKBOX_KEY, "is_checked": sms},
                                      {"checkbox_key": AI_CHECKBOX_KEY, "is_checked": ai}])
     receipt = facebook_consent_record(data, "test-lead")
+    assert receipt["recognized_form"] is True
     assert receipt["sms"]["accepted"] is expected_sms
     assert receipt["ai_calls"]["accepted"] is expected_ai
     assert receipt["raw_responses"] == data.custom_disclaimer_responses

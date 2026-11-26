@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Lead } from '@/types';
 import { toast } from 'sonner';
+import { FACEBOOK_AD_SOURCE, FACEBOOK_AD_SOURCES } from '@/lib/leadSources';
 
 interface LeadsFilter {
   status?: string;
@@ -9,6 +10,7 @@ interface LeadsFilter {
   tier?: string;
   motivation?: string;
   retention?: string;
+  inbound?: boolean;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -28,8 +30,32 @@ export type LeadWrite = Omit<Partial<Lead>, 'asking_price' | 'estimated_equity_p
   next_follow_up_date?: string | null;
 };
 
+function searchPattern(value: string) {
+  const literal = value.replace(/[\\%_]/g, '\\$&');
+  return JSON.stringify(`%${literal}%`);
+}
+
+function leadSearchConditions(search: string) {
+  const pattern = searchPattern(search);
+  const matches = ['property_address', 'owner_first_name', 'owner_last_name', 'owner_email', 'owner_phone_1']
+    .map(column => `${column}.ilike.${pattern}`);
+  const nameParts = search.split(/\s+/);
+  if (nameParts.length > 1 && /\p{L}/u.test(search) && !search.includes('@')) {
+    const first = searchPattern(nameParts[0]);
+    const last = searchPattern(nameParts.slice(1).join(' '));
+    matches.push(`and(owner_first_name.ilike.${first},owner_last_name.ilike.${last})`);
+  }
+  if (/^[\d+().\s-]+$/.test(search)) {
+    const digits = search.replace(/\D/g, '');
+    if (digits.length >= 7 && digits.length <= 11) {
+      matches.push(`owner_phone_1.ilike.${JSON.stringify(`%${Array.from(digits).join('%')}%`)}`);
+    }
+  }
+  return matches.join(',');
+}
+
 export function useLeads(filters: LeadsFilter = {}) {
-  const { status, source, tier, motivation, retention, search, page = 1, pageSize = 50, sortBy = 'total_score', sortDir = 'desc' } = filters;
+  const { status, source, tier, motivation, retention, inbound, search, page = 1, pageSize = 50, sortBy = 'total_score', sortDir = 'desc' } = filters;
   const sortColumn = (SORTABLE_LEAD_COLUMNS as readonly string[]).includes(sortBy) ? sortBy : 'total_score';
 
   return useQuery({
@@ -45,7 +71,9 @@ export function useLeads(filters: LeadsFilter = {}) {
         .range((page - 1) * pageSize, page * pageSize - 1);
 
       if (status) query = query.eq('status', status);
-      if (source) query = query.eq('source', source);
+      if (source === FACEBOOK_AD_SOURCE) query = query.in('source', FACEBOOK_AD_SOURCES);
+      else if (source) query = query.eq('source', source);
+      if (inbound) query = query.or(`inbound_channel.not.is.null,source.in.(${FACEBOOK_AD_SOURCES.join(',')},web_form)`);
       if (tier) query = query.eq('priority_tier', tier);
       if (motivation) query = query.eq('motivation_tag', motivation);
       if (retention) {
@@ -56,17 +84,15 @@ export function useLeads(filters: LeadsFilter = {}) {
             .lte('retention_due_at', new Date(now.getTime() + 30 * 86_400_000).toISOString());
         } else query = query.eq('retention_action', retention);
       }
-      if (search) {
-        query = query.or(
-          `property_address.ilike.%${search}%,owner_first_name.ilike.%${search}%,owner_last_name.ilike.%${search}%,owner_phone_1.ilike.%${search}%`
-        );
-      }
+      const term = search?.trim();
+      if (term) query = query.or(leadSearchConditions(term));
 
       const { data, error, count } = await query;
       if (error) throw error;
       return { data: data as Lead[], count: count ?? 0 };
     },
     staleTime: 60000,
+    refetchInterval: inbound ? 30_000 : false,
   });
 }
 
@@ -166,13 +192,19 @@ export function useOutreachActivity(leadId: string | null) {
     queryKey: ['outreach', leadId],
     queryFn: async () => {
       if (!leadId) return [];
-      const { data, error } = await supabase
-        .from('outreach_activity')
-        .select('*')
-        .eq('lead_id', leadId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      const [activity, sms] = await Promise.all([
+        supabase.from('outreach_activity').select('*').eq('lead_id', leadId)
+          .order('created_at', { ascending: false }),
+        supabase.from('sms_events').select('id,created_at,direction,body,status,opt_out')
+          .eq('lead_id', leadId).or('provider.eq.retell,and(provider.eq.twilio,direction.eq.inbound)')
+          .order('created_at', { ascending: false }),
+      ]);
+      if (activity.error) throw activity.error;
+      if (sms.error) throw sms.error;
+      return [...(activity.data ?? []), ...(sms.data ?? []).map(event => ({
+        ...event, id: `sms-${event.id}`, channel: 'sms', message: event.body,
+        status: event.opt_out ? 'opted out' : event.status,
+      }))].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
     },
     enabled: !!leadId,
     staleTime: 30000,

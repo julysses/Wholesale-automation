@@ -180,3 +180,117 @@ async def drain(request: Request):
     if not hmac.compare_digest(authorization,"Bearer "+secret):
         raise HTTPException(401,"Unauthorized")
     return await run_in_threadpool(_drain,_db())
+
+
+@router.get("/webhooks/_worker/retell-form-sms")
+async def drain_retell_form_sms(request: Request, check_connection: bool = False):
+    secret = os.getenv("CRON_SECRET", "")
+    if not secret:
+        raise HTTPException(503, "Worker secret not configured")
+    if not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + secret):
+        raise HTTPException(401, "Unauthorized")
+    if check_connection:
+        from tools.retell_form_sms import check_connection as verify_connection
+        return await run_in_threadpool(verify_connection)
+    from tools.retell_form_sms import drain as retell_drain
+    return await run_in_threadpool(retell_drain, _db())
+
+
+@router.post("/webhooks/_worker/retell-form-sms/{job_id}")
+async def run_retell_form_sms_job(job_id: UUID, request: Request):
+    """Run only an explicitly selected job, with all normal sending checks."""
+    secret = os.getenv("CRON_SECRET", "")
+    if not secret:
+        raise HTTPException(503, "Worker secret not configured")
+    if not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + secret):
+        raise HTTPException(401, "Unauthorized")
+    from tools.retell_form_sms import drain as retell_drain
+    return await run_in_threadpool(retell_drain, _db(), str(job_id))
+
+
+def _require_app_worker(request):
+    secret = os.getenv('CRON_SECRET', '')
+    if not secret:
+        raise HTTPException(503, 'Worker secret not configured')
+    if not hmac.compare_digest(request.headers.get('authorization', ''), 'Bearer ' + secret):
+        raise HTTPException(401, 'Unauthorized')
+
+
+@router.post('/webhooks/_worker/retell-app/ack/{job_id}')
+async def run_app_ack(job_id: UUID, request: Request):
+    """One explicit inquiry; no batch, fallback or recurring trigger."""
+    _require_app_worker(request)
+    from tools.retell_app_dispatch import dispatch_ready, process_ack
+    if not dispatch_ready():
+        return {'status': 'disabled', 'dispatch_authorized': False}
+    return await run_in_threadpool(process_ack, _db(), str(job_id))
+
+
+@router.post('/webhooks/_worker/retell-app/generate/{turn_id}')
+async def run_app_generation(turn_id: UUID, request: Request):
+    _require_app_worker(request)
+    from tools.retell_api_turns import ready, process_turn
+    if not ready():
+        return {'status': 'disabled', 'dispatch_authorized': False}
+    return await run_in_threadpool(process_turn, _db(), str(turn_id))
+
+
+@router.post('/webhooks/_worker/retell-app/reply/{turn_id}')
+async def run_app_reply(turn_id: UUID, request: Request):
+    _require_app_worker(request)
+    from tools.retell_app_dispatch import dispatch_ready, process_reply
+    if not dispatch_ready():
+        return {'status': 'disabled', 'dispatch_authorized': False}
+    return await run_in_threadpool(process_reply, _db(), str(turn_id))
+
+
+def _recover_app(function, parameter, identity):
+    try:
+        result = _db().rpc(function, {parameter: identity}).execute().data
+    except Exception:
+        raise HTTPException(503, 'Recovery outcome unconfirmed; inspect saved evidence') from None
+    if (not isinstance(result, dict) or type(result.get('recovered')) is not bool
+            or result.get('dispatch_authorized') is not False):
+        raise HTTPException(503, 'Recovery outcome unconfirmed; inspect saved evidence')
+    return result
+
+
+@router.post('/webhooks/_worker/retell-app/recover/ack/{job_id}')
+async def recover_app_ack(job_id: UUID, request: Request):
+    _require_app_worker(request)
+    # Available while sending is off. SQL can only reconcile or hold this job.
+    return await run_in_threadpool(_recover_app, 'recover_retell_app_ack', 'p_job', str(job_id))
+
+
+@router.post('/webhooks/_worker/retell-app/recover/turn/{turn_id}')
+async def recover_app_turn(turn_id: UUID, request: Request):
+    _require_app_worker(request)
+    return await run_in_threadpool(_recover_app, 'recover_retell_api_turn', 'p_turn', str(turn_id))
+
+
+@router.post('/webhooks/_worker/retell-app/automatic')
+async def run_app_automatic(request: Request):
+    _require_app_worker(request)
+    from tools.retell_app_automatic import scope, step
+    if scope() is None:
+        return {'status': 'disabled', 'processed': 0, 'dispatch_authorized': False}
+    return await run_in_threadpool(step, _db())
+
+
+@router.post('/webhooks/_worker/seller-reply-email/{event_id}')
+async def run_seller_reply_email(event_id: UUID, request: Request):
+    """Recover one owner alert from its saved receipt; cannot replay seller outreach."""
+    _require_app_worker(request)
+    from tools.seller_reply_email import notify_reply
+    return await run_in_threadpool(notify_reply, _db(), str(event_id))
+
+
+@router.get('/webhooks/_worker/retell-app/inspect/{session_id}/{chat_id}')
+async def inspect_app_session(session_id: UUID, chat_id: str, request: Request):
+    """Read-only schema/identity checks, available while sending is paused."""
+    _require_app_worker(request)
+    from tools.retell_api_inspect import inspect_session
+    from tools.retell_api_chat import _identifier
+    if not _identifier(chat_id):
+        raise HTTPException(422, 'Invalid chat identifier')
+    return await run_in_threadpool(inspect_session, _db(), str(session_id), chat_id)

@@ -463,6 +463,10 @@ def _send_lead_pipeline_sms(
     from config.settings import settings
 
     supabase = _get_supabase()
+    from tools.retell_form_sms import enabled as retell_enabled, enqueue as enqueue_retell
+    retell_selected = retell_enabled('RETELL_FORM_SMS_ENABLED')
+    # Durable form receipt is required, even while sending stays disabled.
+    retell_consent = str(answers.get('sms_opt_in', '')).strip().lower() in {'1','true','yes','on','agree','agreed','opted_in'}
     notification_id = str(uuid5(NAMESPACE_URL, f"wholesaleos:intake-alert:{lead_id}"))
     notification = {
         "id": notification_id, "recipient_role": "admin", "type": "pipeline_step",
@@ -487,6 +491,16 @@ def _send_lead_pipeline_sms(
         raise RuntimeError("Intake notification delivery claim was not confirmed")
 
     outcomes = notification["metadata"].copy()
+    retell_schedule = 'no_consent_or_form_confirmation_disabled'
+    if retell_selected and retell_consent:
+        try:
+            retell_schedule = enqueue_retell(supabase, lead_id)
+        except Exception:
+            # The queue write may have committed despite a lost response.
+            # Keep the owner notification independent and never fall back to
+            # a second sending provider or replay this claimed notification.
+            retell_schedule = 'schedule_unconfirmed'
+            logger.exception("[lead_forms] Retell schedule unconfirmed for lead %s", lead_id)
     name = str(answers.get("first_name") or "").strip() or "there"
     sms_client = SMSClient()
 
@@ -495,10 +509,17 @@ def _send_lead_pipeline_sms(
             return "not_configured"
         message = OutreachMessage(lead_id=lead_id, channel=OutreachChannel.SMS,
                                   body=body, is_inbound_reply=True, compliance_cleared=True)
+        outcomes["seller_sms_message_id"] = str(message.id)
+        from tools.sms_client import SMS_OUTCOME_REASONS
         try:
             accepted = sms_client.send(message, to_number)
         except Exception:
             logger.exception("[lead_forms] SMS outcome unknown for lead %s", lead_id)
+            outcomes["seller_sms_reason"] = "dispatch_unconfirmed"
+            return "unknown"
+        if message.sms_reason in SMS_OUTCOME_REASONS:
+            outcomes["seller_sms_reason"] = message.sms_reason
+        if message.sms_outcome == "unknown":
             return "unknown"
         if message.a2p_provider.endswith(":dry-run"):
             return "dry_run"
@@ -551,13 +572,18 @@ def _send_lead_pipeline_sms(
         except Exception:
             outcomes["owner_email"] = "unknown"
             logger.exception("[lead_forms] Owner email outcome unknown for lead %s", lead_id)
-    if seller_allowed:
+    if retell_selected:
+        outcomes["seller_sms"] = retell_schedule
+    elif seller_allowed:
         outcomes["seller_sms"] = _send(
             phone, f"Hi {name}, thanks for reaching out to Hilltop Home Co. about "
             f"{property_address}. We'll be in touch shortly. Reply STOP to opt out.",
         )
+    from tools.sms_client import SMS_OUTCOME_REASONS
+    reason = SMS_OUTCOME_REASONS.get(outcomes.get("seller_sms_reason"), "")
+    reason_summary = f" {reason}." if reason else ""
     summary = (f"{property_address} — source: {source}. "
-               f"Owner email: {outcomes['owner_email']}; seller SMS: {outcomes['seller_sms']}. "
+               f"Owner email: {outcomes['owner_email']}; seller SMS: {outcomes['seller_sms']}.{reason_summary} "
                "Review the lead and assign follow-up. Accepted does not confirm delivery.")
     saved = supabase.rpc("finish_intake_notification", {
         "p_lead_id": lead_id, "p_claim_id": claim_id, "p_outcomes": outcomes, "p_body": summary,

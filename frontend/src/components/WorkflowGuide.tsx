@@ -14,28 +14,28 @@ import { useWorkflowStep, WORKFLOW_STEPS, getManualComplete, toggleManualComplet
 import { PropStreamPullGuide } from '@/components/dashboard/PropStreamPullGuide';
 
 const STEP_DETAILS: Record<number, { what: string; system: string }> = {
-  1:  { what: 'Register, run the 7 database migrations in Supabase SQL Editor, and save your API keys in the Setup Wizard.',
-        system: 'Validates keys, creates your user profile, and initializes the full database schema.' },
-  2:  { what: 'Scroll to the Strategy Comparison Panel and click Select on Mass Outreach, Precision Targeting, or Stack-First Hybrid.',
-        system: 'Updates funnel targets, conversion benchmarks, and lead import recommendations to match your chosen strategy.' },
-  3:  { what: 'Click Import CSV, upload your county tax delinquent list or XLeads export, and confirm the column mapping.',
-        system: 'Removes DNC numbers, calculates distress scores with stacking bonuses, assigns Precision Tiers, and fills your Top 2,000 priority list.' },
-  4:  { what: 'Check the Precision Targeting Panel — confirm Top 2,000 is ≥ 50% filled and you have 200+ Tier 1 leads before dialing.',
-        system: 'Shows real-time tier breakdown and stack analytics so you know which lead sources are strongest.' },
-  5:  { what: 'Filter leads to Precision Tier 1, select all, click Launch AI Dialing Campaign, and confirm the schedule.',
-        system: 'Retell AI dials every lead, qualifies sellers with natural conversation, records calls, extracts intent signals, and scores every conversation.' },
-  6:  { what: 'Check the funnel morning and evening. Watch for HOT lead notifications — they require action within 1 hour.',
-        system: 'Updates funnel metrics every 2 minutes. Fires HOT lead automation instantly: pauses dialing, sends SMS, creates task.' },
-  7:  { what: 'Open Acquisitions → HOT Leads, read the qualification summary and key quotes, then call the seller personally.',
-        system: 'Already paused dialing, sent an SMS, and created your follow-up task before you even opened the page.' },
-  8:  { what: 'Click Run Deal Analysis on a HOT lead, add any property details from your call, then review ARV, MAO, and exit strategy.',
-        system: 'Estimates ARV with Claude AI, applies repair tiers ($15–$75+/sqft), calculates MAO, and generates your offer range.' },
-  9:  { what: 'Open the Negotiation tab, read the personalized brief, use the opening script, and stay within the offer structure.',
-        system: 'Generates opening/target/ceiling offers from your MAO, writes a seller-specific script from the call transcript, and provides 5 objection handlers.' },
-  10: { what: 'Click Schedule Appointment after verbal agreement — enter date, time, and type (virtual / in-person / contract signing).',
-        system: 'Sends the seller a confirmation SMS and a reminder SMS 24 hours before the meeting.' },
-  11: { what: 'Sign the Purchase & Sale Agreement, upload it to the lead record, update status to Under Contract, then market to buyers.',
-        system: 'Creates the deal in your Pipeline, updates KPI metrics, and logs the assignment fee into stack analytics to improve future targeting.' },
+  1: { what: 'Open Setup Wizard to review agency identity, PropStream, Retell and Twilio configuration. Database changes are managed during deployment.',
+       system: 'Checks configured connections. Successful checks do not prove lead intake, scheduled collection, call completion or SMS delivery.' },
+  2: { what: 'Choose your acquisition strategy in the Strategy Comparison Panel.',
+       system: 'Updates funnel targets and planning benchmarks. A strategy selection does not start outreach.' },
+  3: { what: 'Import a supported CSV in Leads, or review county evidence and existing PropStream results in Daily Lists. Confirm the saved lead, owner and follow-up task.',
+       system: 'Reconciles supported imports with existing CRM identities. DNC and other contact restrictions are preserved; a discovered phone number is not outreach clearance.' },
+  4: { what: 'Review priority scores, property evidence, contact identity and channel eligibility before selecting a calling batch.',
+       system: 'Shows tier and stack analytics. Scores prioritize review; they do not establish consent or permission to contact a seller.' },
+  5: { what: 'Review the selected leads, Retell agent, number and schedule. Start a campaign only after calling eligibility and provider acceptance are verified.',
+       system: 'Checks each lead before dispatch and records the provider outcome. A submitted call is not a completed conversation.' },
+  6: { what: 'Review call outcomes, stalled-work alerts and assigned follow-up tasks each day. Respond promptly to interested sellers.',
+       system: 'Records provider events and follow-up work. Check actual CRM history for task creation and message delivery.' },
+  7: { what: 'Open Acquisitions, review the seller conversation and assigned task, then follow up through an eligible channel.',
+       system: 'Shows recorded qualification and outreach history. A HOT score does not mean an SMS was delivered.' },
+  8: { what: 'Run Deal Analysis and review property details, comparable sales, repairs and the proposed offer range.',
+       system: 'Provides underwriting estimates for your review. Confirm the evidence and assumptions before making an offer.' },
+  9: { what: 'Review the Negotiation brief and adjust the proposed terms using confirmed seller and property information.',
+       system: 'Prepares a negotiation draft. You review the terms before communicating an offer.' },
+  10: { what: 'Record the agreed appointment date, time and type, then check any requested confirmation in the message history.',
+        system: 'Saves the appointment. Confirmation and reminder messages depend on eligibility, enabled delivery and provider receipts.' },
+  11: { what: 'Record the signed agreement and actual deal progress in Pipeline. Log the closing and assignment fee when confirmed.',
+        system: 'Uses recorded deal data for pipeline reporting. Completing this guide does not certify a closing or launch readiness.' },
 };
 
 export function WorkflowGuide() {
@@ -176,7 +176,7 @@ export function WorkflowGuide() {
                       </div>
                       {/* What system does */}
                       <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">System does automatically</p>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">What to verify</p>
                         <p className="text-sm text-gray-500 leading-relaxed">{detail.system}</p>
                       </div>
                       {/* Step 3: strategy-specific PropStream pull instructions */}

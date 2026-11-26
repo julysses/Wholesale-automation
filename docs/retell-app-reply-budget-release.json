@@ -1,0 +1,38 @@
+{
+  "state": "deployed_verified_paused",
+  "release_commit": "9060e3309c0f1befd348db589bd8d1ff01d07e57",
+  "deployment_id": "dpl_BdsRQrsspCRj1xZiA2ioxSoezYQD",
+  "ci_run": "https://github.com/julysses/Wholesale-automation/actions/runs/38995764295",
+  "pytest": 1083,
+  "pytest_subtests": 6,
+  "targeted_pytest": 144,
+  "reply_utf16_limit": 198,
+  "max_conservative_long_code_segments": 3,
+  "migration": null,
+  "health_http": 200,
+  "readiness_http": 200,
+  "unauthenticated_worker_http": 401,
+  "authenticated_probe": {
+    "id": 16,
+    "http": 200,
+    "status": "disabled",
+    "processed": 0,
+    "dispatch_authorized": false
+  },
+  "baseline_and_post_probe": {
+    "jobs": 3,
+    "job_hash": "218a98f90a18352af9e60921a2ec1e03",
+    "sms": 12,
+    "sms_hash": "bf3e757b4c2c2dcd7becf657f7a2fb4c",
+    "sessions": 0,
+    "turns": 0,
+    "app_enabled": false,
+    "native_enabled": false,
+    "sms_cron_active": false
+  },
+  "hash_method": "md5(coalesce(jsonb_agg(to_jsonb(row) order by id)::text,'[]'))",
+  "initial_error_fatal_log_groups": 0,
+  "provider_actions": 0,
+  "live_acceptance": "approved_not_executed",
+  "retell_billing_maximum": "preflight_open"
+}

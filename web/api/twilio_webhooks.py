@@ -8,11 +8,17 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from starlette.datastructures import FormData
+from starlette.concurrency import run_in_threadpool
 
 from config.settings import settings
 from tools.crm import get_supabase_client
 from tools.operational_alerts import record_provider_alert
 from tools.twilio_receipts import reconcile_twilio_callback
+from tools.seller_reply_email import notify_reply
+from tools.retell_sms import recipient_opted_out
+from tools.retell_reply_routing import reply_redirect
+from tools.retell_app_dispatch import sync_outcome as sync_app_outcome
+from tools.retell_app_routing import queue_reply as queue_app_reply
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/twilio", tags=["Twilio"])
@@ -67,26 +73,65 @@ async def _receive(request: Request, kind: str) -> Response:
             data["app_message_id"] = str(UUID(request.query_params["message_id"]))
         except ValueError:
             raise HTTPException(400, "Invalid message reference")
+    if kind == 'inbound':
+        # Derived only after signature validation. Retain the original carrier
+        # fields and attach a separate classification for natural-language STOP.
+        data['crm_opt_out'] = recipient_opted_out([{'role': 'user', 'content': data.get('Body')}])
     event_key = f"twilio:{data['AccountSid']}:{kind}:{data['MessageSid']}"
     if kind == "status":
         event_key += ":" + data["MessageStatus"]
+    event_id = str(uuid5(NAMESPACE_URL, event_key))
     sb = get_supabase_client()
     if sb is None:
         raise HTTPException(503, "Receipt storage unavailable")
     try:
         result = sb.rpc("record_twilio_event", {
-            "p_event": str(uuid5(NAMESPACE_URL, event_key)), "p_kind": kind, "p_payload": data,
+            "p_event": event_id, "p_kind": kind, "p_payload": data,
         }).execute().data
         if not isinstance(result, dict) or result.get("saved") is not True:
             raise RuntimeError("Receipt unconfirmed")
         reference, outcome = reconcile_twilio_callback(sb, data) if kind == 'status' else (None, None)
-        if reference and outcome in ('failed','undelivered','canceled','unknown'):
-            tracked = sb.table('sms_events').select('lead_id').eq('id',reference).limit(1).execute().data
-            if tracked:
+        if reference:
+            tracked = sb.table('sms_events').select('lead_id,raw_payload').eq('id',reference).limit(1).execute().data
+            if tracked and (tracked[0].get('raw_payload') or {}).get('transport') == 'app_twilio':
+                # Delivery reconciliation remains active while sending is paused.
+                # Never call the native Retell finish helper: carrier receipts
+                # and exact SID bindings must survive late HTTP acceptance.
+                sync_app_outcome(sb, reference)
+            if tracked and outcome in ('failed','undelivered','canceled','unknown'):
                 record_provider_alert(sb,'twilio',reference,outcome,tracked[0].get('lead_id'))
     except Exception:
         logger.exception("Twilio receipt failed for %s", data["MessageSid"])
         raise HTTPException(503, "Receipt storage unavailable")
+    if kind == 'inbound':
+        try:
+            email = await run_in_threadpool(notify_reply, sb, event_id)
+            if email.get('status') == 'not_found':
+                raise RuntimeError('Saved carrier receipt missing')
+        except Exception:
+            # Carrier retries reuse the saved event and atomic email claim. Never
+            # silently acknowledge a receipt whose owner alert could not persist.
+            logger.exception('Owner reply email unconfirmed for %s', event_id)
+            raise HTTPException(503, 'Owner reply notification unavailable') from None
+        try:
+            app_owned = queue_app_reply(sb, data, result, event_id)
+        except Exception:
+            # Enqueue is idempotent by the original carrier SID. Ask Twilio to
+            # retry persistence, never fall through to another sending route.
+            logger.warning("App reply queue unconfirmed for %s", data["MessageSid"])
+            raise HTTPException(503, "Reply queue persistence unavailable")
+        try:
+            target = None if app_owned else reply_redirect(sb, data, result)
+        except Exception:
+            # The receipt and human task already committed. Do not replay an
+            # uncertain handoff; keep the human follow-up when checks fail.
+            logger.warning("Retell reply routing held for %s", data["MessageSid"])
+            target = None
+        if target:
+            from twilio.twiml.messaging_response import MessagingResponse
+            response = MessagingResponse()
+            response.redirect(target, method='POST')
+            return Response(str(response), media_type='application/xml')
     # Twilio Advanced Opt-Out supplies STOP/HELP responses; no duplicate SMS here.
     return Response('<?xml version="1.0" encoding="UTF-8"?><Response/>', media_type="application/xml")
 

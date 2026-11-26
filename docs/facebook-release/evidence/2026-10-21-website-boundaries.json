@@ -1,0 +1,40 @@
+{
+  "valid_submissions": 0,
+  "live_delivery_proven": false,
+  "checks": [
+    {
+      "url": "https://hilltophome.co/",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "html": true
+    },
+    {
+      "url": "https://thejaysdallas.com/sell",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "html": true
+    },
+    {
+      "url": "https://hilltophome.co/api/get-offer",
+      "method": "POST",
+      "status": 422,
+      "expected": 422,
+      "response": {
+        "success": false,
+        "error": "Upstream rejected submission"
+      }
+    },
+    {
+      "url": "https://thejaysdallas.com/api/intake",
+      "method": "POST",
+      "status": 400,
+      "expected": 400,
+      "response": {
+        "success": false,
+        "error": "Invalid inquiry."
+      }
+    }
+  ]
+}

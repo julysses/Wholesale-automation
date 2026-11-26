@@ -1,0 +1,18 @@
+✔ contact receipt commits once with unknown DNC and matching billing (3509.081083ms)
+✔ changed owner/property or newly enriched lead blocks dispatch (2090.433209ms)
+✔ invalid contacts cannot settle spend; stale post-provider input requires reconciliation (1087.378792ms)
+✔ snapshot is immutable and contacts failure rolls back billing settlement (823.979ms)
+✔ operator cancellation is audited, replayable and cannot release a submitted hold (3669.316667ms)
+✔ historical spend and uncertain charges consume the total across days and providers (2945.148333ms)
+✔ settlement releases only unused quote and does not authorize retracing (1103.534209ms)
+✔ legacy over-cap reservations cannot dispatch and browser roles cannot read the ledger (819.443833ms)
+✔ website inquiry receipts survive duplicate and age-based list cleanup (2787.206417ms)
+✔ weekly tax monitoring creates one expectation, accepts midweek receipt and renews Monday (2666.061291ms)
+ℹ tests 196
+ℹ suites 0
+ℹ pass 196
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42999.008042

@@ -190,3 +190,64 @@ def test_signed_tracked_failure_requires_operator_alert(setup,monkeypatch,state)
     alert.assert_called_once_with(db,'twilio',ref,state,lead_id)
     alert.side_effect=RuntimeError('alert unavailable')
     assert signed(client,'status',data,'?message_id='+ref).status_code==503
+
+
+@pytest.mark.parametrize("provider", ["telnyx", "messagebird"])
+@pytest.mark.parametrize("enabled", [False, True])
+def test_unintegrated_sms_providers_never_bypass_launch_guards(monkeypatch, provider, enabled):
+    monkeypatch.setattr(hooks.settings, 'sms_live_enabled', enabled)
+    sender = SMSClient(provider)
+    sender._configured = True
+    monkeypatch.setattr(sender, '_in_allowed_hours', lambda: True)
+    monkeypatch.setattr(sender, '_is_weekend', lambda: False)
+    dispatch = MagicMock()
+    monkeypatch.setattr(sender, '_dispatch', dispatch)
+    message = OutreachMessage(lead_id=uuid4(), channel=OutreachChannel.SMS,
+                              body='Unreviewed offer', compliance_cleared=True)
+    assert sender.send(message, PHONE) is False
+    assert message.status == OutreachStatus.STOPPED
+    dispatch.assert_not_called()
+
+
+def test_natural_language_stop_classified_after_signature(setup):
+    client,db=setup
+    payload={'AccountSid':SID,'MessageSid':MESSAGE,'From':PHONE,'To':SENDER,'Body':'Please remove me'}
+    response=signed(client,data=payload)
+    assert response.status_code==200
+    assert '<Redirect' not in response.text
+    assert db.rpc.call_args.args[1]['p_payload']['crm_opt_out'] is True
+
+
+def test_handoff_only_after_durable_receipt(setup,monkeypatch):
+    client,db=setup
+    handoff=MagicMock(return_value='https://api.retellai.com/twilio-sms-webhook/org_test')
+    monkeypatch.setattr(hooks,'reply_redirect',handoff)
+    payload={'AccountSid':SID,'MessageSid':MESSAGE,'From':PHONE,'To':SENDER,'Body':'Tomorrow works'}
+    response=signed(client,data=payload)
+    assert response.status_code==200 and '<Redirect method="POST">' in response.text
+    db.rpc.return_value.execute.side_effect=RuntimeError('offline')
+    handoff.reset_mock()
+    assert signed(client,data=payload).status_code==503
+    handoff.assert_not_called()
+
+
+@pytest.mark.parametrize("mode,reason", [
+    ("phone", "invalid_phone"), ("route", "sender_route_not_configured"),
+    ("claim", "dispatch_claim_unconfirmed"), ("timeout", "dispatch_unconfirmed"),
+])
+def test_public_send_records_reason_without_extra_provider_attempts(sending, monkeypatch, mode, reason):
+    db, sdk, msg = sending
+    sender = SMSClient("twilio")
+    monkeypatch.setattr(sender, "_in_allowed_hours", lambda: True)
+    monkeypatch.setattr(sender, "_is_weekend", lambda: False)
+    monkeypatch.setattr(hooks.settings, "sms_allowed_recipients", PHONE)
+    monkeypatch.setattr("tools.sms_client.record_provider_alert", MagicMock())
+    msg.compliance_cleared = True
+    if mode == "route": monkeypatch.setattr(hooks.settings, "twilio_messaging_service_sid", "")
+    if mode == "claim": db.rpc.return_value.execute.return_value.data = {"suppressed": False, "claimed": False}
+    if mode == "timeout": sdk.messages.create.side_effect = TimeoutError("response lost")
+    assert sender.send(msg, "invalid" if mode == "phone" else PHONE) is False
+    assert msg.sms_reason == reason
+    assert msg.sms_outcome == ("unknown" if mode in {"claim", "timeout"} else "blocked")
+    assert sdk.messages.create.call_count == int(mode == "timeout")
+    assert msg.sent_at is None

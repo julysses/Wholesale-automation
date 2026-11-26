@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -58,11 +58,18 @@ beforeEach(() => {
   };
 });
 
-function renderDrawer() {
+function renderDrawer(openFromCard = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(<QueryClientProvider client={client}><MemoryRouter><Leads /></MemoryRouter></QueryClientProvider>);
-  fireEvent.click(screen.getByText('QA drawer address'));
+  fireEvent.click(openFromCard
+    ? screen.getByRole('button', { name: /Ana.*QA drawer address/ })
+    : within(screen.getByRole('table')).getByText('QA drawer address'));
 }
+
+it('opens the same lead from the mobile card', () => {
+  renderDrawer(true);
+  expect(screen.getByLabelText('Owner First')).toHaveValue('Ana');
+});
 
 async function save() {
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));

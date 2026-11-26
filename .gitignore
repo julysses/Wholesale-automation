@@ -16,3 +16,7 @@ build/
 .railway/
 data/*.db
 frontend/supabase/.temp/
+
+# Local intake dependencies and private working evidence
+pipeline/node_modules/
+work/

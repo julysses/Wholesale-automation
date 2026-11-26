@@ -15,26 +15,33 @@ interface TasksFilter {
   status?: string;
   priority?: string;
   type?: string;
+  leadId?: string;
+  assignedTo?: string;
+  openOnly?: boolean;
 }
 
-export function useTasks(filters: TasksFilter = {}) {
+export function useTasks(filters: TasksFilter = {}, enabled = true) {
   const id = useId();
   const { status, priority, type } = filters;
   const qc = useQueryClient();
 
   const query = useQuery({
     queryKey: ['tasks', filters],
+    enabled,
     queryFn: async () => {
       return queryAll<Task>((from, to) => {
         let query = supabase
           .from('tasks')
-          .select('*, lead:leads(property_address), deal:deals(deal_name)')
+          .select('*, lead:leads(property_address,owner_first_name,owner_last_name,last_contact_date), deal:deals(deal_name)')
           .order('due_date', { ascending: true, nullsFirst: false })
           .order('id', { ascending: true });
 
         if (status) query = query.eq('status', status);
         if (priority) query = query.eq('priority', priority);
         if (type) query = query.eq('type', type);
+        if (filters.leadId) query = query.eq('lead_id', filters.leadId);
+        if (filters.assignedTo) query = query.eq('assigned_to', filters.assignedTo);
+        if (filters.openOnly) query = query.in('status', ['pending', 'in_progress']);
 
         return query.range(from, to);
       });
@@ -43,6 +50,7 @@ export function useTasks(filters: TasksFilter = {}) {
   });
 
   useEffect(() => {
+    if (!enabled) return;
     const channel = supabase
       .channel(`tasks-realtime-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
@@ -50,7 +58,7 @@ export function useTasks(filters: TasksFilter = {}) {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [qc, id]);
+  }, [qc, id, enabled]);
 
   return query;
 }
@@ -100,13 +108,14 @@ export function useCreateTask() {
 export function useUpdateTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: TaskWrite }) => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+    mutationFn: async ({ id, updates, expected }: { id: string; updates: TaskWrite; expected?: Pick<Task, 'status' | 'description' | 'due_date'> }) => {
+      let request = supabase.from('tasks').update(updates).eq('id', id);
+      if (expected) {
+        request = request.eq('status', expected.status);
+        request = expected.description == null ? request.is('description', null) : request.eq('description', expected.description);
+        request = expected.due_date == null ? request.is('due_date', null) : request.eq('due_date', expected.due_date);
+      }
+      const { data, error } = await request.select().single();
       if (error) throw error;
       return data as Task;
     },

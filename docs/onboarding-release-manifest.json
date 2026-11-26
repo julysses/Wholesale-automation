@@ -1,0 +1,95 @@
+{
+  "source_branch": "codex/dallas-collin-launch-prep",
+  "source_commit": "7337de297e414e87d3f04bf1c7e2a06223b86f76",
+  "migrations": [
+    "frontend/supabase/migrations/20261012174408_daily_list_ingestion.sql",
+    "frontend/supabase/migrations/20261012174446_list_operations.sql",
+    "frontend/supabase/migrations/20261012201949_list_review_batch_guard.sql",
+    "frontend/supabase/migrations/20261012205453_list_monitor_receipts.sql",
+    "frontend/supabase/migrations/20261012210944_list_digest_delivery.sql",
+    "frontend/supabase/migrations/20261012224412_list_trace_budget.sql",
+    "frontend/supabase/migrations/20261012225103_list_trace_contacts.sql",
+    "frontend/supabase/migrations/20261012225802_list_trace_operations.sql",
+    "frontend/supabase/migrations/20261012231220_list_scoring_receipts.sql",
+    "frontend/supabase/migrations/20261012232054_list_scoring_jobs.sql",
+    "frontend/supabase/migrations/20261012232711_list_scoring_monitor.sql",
+    "frontend/supabase/migrations/20261012233212_list_scoring_admin.sql",
+    "frontend/supabase/migrations/20261012234031_list_scoring_worker.sql",
+    "frontend/supabase/migrations/20261012235046_list_scoring_inspection.sql",
+    "frontend/supabase/migrations/20261013154257_dallas_foreclosure_public_search.sql",
+    "frontend/supabase/migrations/20261013164454_list_trace_total_cap.sql",
+    "frontend/supabase/migrations/20261013173054_list_reviewed_identity.sql",
+    "frontend/supabase/migrations/20261013195311_foreclosure_daily_actions.sql",
+    "frontend/supabase/migrations/20261013202034_propstream_operator_handoff.sql",
+    "frontend/supabase/migrations/20261013202958_collin_appraisal_evidence_host.sql",
+    "frontend/supabase/migrations/20261013204007_foreclosure_status_review.sql",
+    "frontend/supabase/migrations/20261013204244_propstream_bulk_actions.sql",
+    "frontend/supabase/migrations/20261014011940_foreclosure_capture_receipts.sql",
+    "frontend/supabase/migrations/20261014021657_foreclosure_extraction_receipts.sql",
+    "frontend/supabase/migrations/20261014150607_foreclosure_trustee_status_evidence.sql",
+    "frontend/supabase/migrations/20261014153604_foreclosure_batch_receipts.sql",
+    "frontend/supabase/migrations/20261014161013_foreclosure_appraisal_index_receipts.sql",
+    "frontend/supabase/migrations/20261014174808_propstream_external_submission_recovery.sql",
+    "frontend/supabase/migrations/20261014200149_scheduled_bulk_supervision.sql",
+    "frontend/supabase/migrations/20261015022555_county_property_notifications.sql",
+    "frontend/supabase/migrations/20261015023121_weekly_tax_monitoring.sql",
+    "frontend/supabase/migrations/20261016193454_county_intake_assignment.sql",
+    "frontend/supabase/migrations/20261016195408_onboarding_promotion_receipts.sql",
+    "frontend/supabase/migrations/20261016210114_restricted_collector_login.sql",
+    "frontend/supabase/migrations/20261016214853_list_review_source_filters.sql",
+    "frontend/supabase/migrations/20261016222239_tax_review_evidence_context.sql",
+    "frontend/supabase/migrations/20261016223736_confirmed_suppression_handoff.sql",
+    "frontend/supabase/migrations/20261016230511_protect_website_inquiry_retention.sql",
+    "frontend/supabase/migrations/20261016233842_foreclosure_case_reference_formats.sql",
+    "frontend/supabase/migrations/20261017011633_foreclosure_address_suffix_triage.sql"
+  ],
+  "production_applied": true,
+  "data_transferred": true,
+  "scope": "County intake, verified identity, receipt monitoring, tracing and scoring. Existing SMS, offer and land behavior preserved.",
+  "production_project": "dvzhzlipbwzzcliujzyz",
+  "applied_date": "2026-10-16",
+  "data_transfer_scope": "Historical inventory transferred; one-record replay acceptance and bounded fresh Dallas/Collin index intake verified. Full notice/property verification and unattended acceptance remain pending.",
+  "promotion_receipt": "2e91ac73-af2d-410b-860c-b7e249212408",
+  "promotion_counts": {
+    "properties": 78,
+    "new_leads": 74,
+    "existing_leads": 4,
+    "completed_traces": 77,
+    "contacts": 481,
+    "follow_ups": 78
+  },
+  "additional_promotion_receipts": [
+    "864bcbf3-e3dd-4fca-be7f-0b05ec97035f",
+    "bcb76f65-ceaa-48fb-9ee5-33e010b29d38",
+    "79bf66e3-155f-4345-82a1-1a22de9e1500"
+  ],
+  "historical_tax_counts": {
+    "dallas": 30516,
+    "collin": 9182,
+    "new_leads": 0,
+    "assigned_review_tasks": 2
+  },
+  "migration_history_notes": {
+    "frontend/supabase/migrations/20261016230511_protect_website_inquiry_retention.sql": "Applied as remote version 20261016231306; name protect_website_inquiry_retention. Do not replay.",
+    "frontend/supabase/migrations/20261016233842_foreclosure_case_reference_formats.sql": "Applied as remote version 20261016234054; name foreclosure_case_reference_formats. Do not replay.",
+    "frontend/supabase/migrations/20261017011633_foreclosure_address_suffix_triage.sql": "Applied as remote version 20261017012042; name foreclosure_address_suffix_triage. Do not replay."
+  },
+  "fresh_collection_acceptance": {
+    "filing_window": [
+      "2026-10-14",
+      "2026-10-16"
+    ],
+    "dallas": {
+      "run_id": "016cb8cb-435a-4859-a7da-4abb270fa643",
+      "records": 25
+    },
+    "collin": {
+      "run_id": "ba34b741-b75e-4591-b923-63fa4c7b26df",
+      "records": 9
+    },
+    "coverage_complete": false,
+    "new_crm_leads": 0,
+    "all_source_gates_reclosed": true,
+    "recurring_schedule_paused": true
+  }
+}

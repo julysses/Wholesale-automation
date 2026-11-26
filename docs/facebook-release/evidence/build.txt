@@ -1,0 +1,18 @@
+dist/assets/SetupWizard-B0Vy8Qaq.js                35.90 kB │ gzip:  10.96 kB
+dist/assets/LeadGenEngine-C27z5CPC.js              38.14 kB │ gzip:   9.04 kB
+dist/assets/BuyerIntelligence-BDpQC70L.js          43.65 kB │ gzip:  12.43 kB
+dist/assets/Dashboard-ywq-7gQe.js                  44.70 kB │ gzip:  13.13 kB
+dist/assets/LandLeads-wGRKvKQP.js                  47.66 kB │ gzip:  11.82 kB
+dist/assets/Leads-B-plBIGe.js                      64.23 kB │ gzip:  17.95 kB
+dist/assets/Pipeline-B6tdSS4P.js                   65.56 kB │ gzip:  21.23 kB
+dist/assets/FacebookAdsCommandCenter-DxoSlsjl.js   82.74 kB │ gzip:  22.78 kB
+dist/assets/DailyLists-BEd8Gdtg.js                112.18 kB │ gzip:  32.61 kB
+dist/assets/CartesianChart-DRUqP17Y.js            336.71 kB │ gzip: 101.94 kB
+dist/assets/xlsx-BGhuli8m.js                      500.06 kB │ gzip: 163.12 kB
+dist/assets/index-BOGhoOtM.js                     584.74 kB │ gzip: 172.69 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 4.64s

@@ -84,6 +84,10 @@ export function Dashboard() {
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-0.5">Business activity excludes confirmed internal QA records.</p>
       </div>
+      <nav aria-label="Lead workflow" className="flex flex-wrap gap-2">
+        <RouterLink to="/leads?view=inquiries" className="rounded-md bg-[#1B3A5C] px-4 py-2 text-sm font-medium text-white">New Inquiries</RouterLink>
+        <RouterLink to="/tasks/follow-ups" className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800">My Follow-ups</RouterLink>
+      </nav>
 
       {/* Getting Started Guide */}
       <WorkflowGuide />

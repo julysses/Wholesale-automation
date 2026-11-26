@@ -1,0 +1,13 @@
+{
+  "reviewed_at": "2026-10-17T02:46:15.529855+00:00",
+  "documents": 2,
+  "owner_name_corroborated": 2,
+  "address_corroborated": 2,
+  "legal_components_corroborated": 2,
+  "identity_certified": 0,
+  "current_sale_verified": 0,
+  "trace_eligible": 0,
+  "production_writes": 0,
+  "evidence_sha256": "4183009ee3a2c6f7be989042e12aa1d4908e9f1b1dd79d8889900e96092292e3",
+  "private_evidence_path": "work/fresh-notice-review-20261016/manual-review/collin-identity-corroboration.json"
+}

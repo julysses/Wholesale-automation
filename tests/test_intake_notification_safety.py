@@ -259,3 +259,69 @@ def test_legacy_unresolved_alert_is_manual_review_not_proof_of_no_send(pipeline)
     db.tables['app_notifications']={alert_id:{'id':alert_id,'lead_id':LEAD_ID,'metadata':{'owner_email':'unresolved'}}}
     run()
     db.email_client.send.assert_not_called(); sms.send.assert_not_called()
+
+
+def test_retell_queue_failure_still_persists_alert_and_notifies_owner(pipeline, monkeypatch):
+    from tools import retell_form_sms
+    db, sms = pipeline
+    monkeypatch.setenv('RETELL_FORM_SMS_ENABLED', 'true')
+    enqueue = MagicMock(side_effect=RuntimeError('queue unavailable'))
+    monkeypatch.setattr(retell_form_sms, 'enqueue', enqueue)
+    run()
+    assert receipt(db)['metadata']['seller_sms'] == 'schedule_unconfirmed'
+    assert receipt(db)['metadata']['owner_email'] == 'accepted'
+    assert db.email_client.send.call_count == 1
+    sms.send.assert_not_called()
+    run()
+    assert enqueue.call_count == 1
+    assert db.email_client.send.call_count == 1
+
+
+def test_retell_queue_attempt_follows_durable_notification_claim(pipeline, monkeypatch):
+    from tools import retell_form_sms
+    db, sms = pipeline
+    monkeypatch.setenv('RETELL_FORM_SMS_ENABLED', 'true')
+    def enqueue(*args):
+        assert receipt(db)['metadata']['delivery_state'] == 'processing'
+        return 'scheduled_retell_60_seconds'
+    monkeypatch.setattr(retell_form_sms, 'enqueue', enqueue)
+    run()
+    assert receipt(db)['metadata']['seller_sms'] == 'scheduled_retell_60_seconds'
+    sms.send.assert_not_called()
+
+
+@pytest.mark.parametrize("mode,expected,reason", [
+    ("hours", "failed_or_blocked", "outside_contact_hours"),
+    ("paused", "failed_or_blocked", "sending_disabled"),
+    ("timeout", "unknown", "dispatch_unconfirmed"),
+])
+def test_real_sms_client_retains_intake_block_or_uncertainty_without_replaying(pipeline, monkeypatch, mode, expected, reason):
+    from tools.sms_client import SMSClient, SMS_OUTCOME_REASONS
+    from uuid import UUID
+    db, _ = pipeline
+    monkeypatch.delenv("RETELL_FORM_SMS_ENABLED", raising=False)
+    sender = SMSClient("twilio")
+    sender._configured = True
+    monkeypatch.setattr(sender, "_in_allowed_hours", lambda: mode != "hours")
+    monkeypatch.setattr(sender, "_is_weekend", lambda: False)
+    monkeypatch.setattr(settings, "sms_live_enabled", mode != "paused")
+    transport = MagicMock(side_effect=TimeoutError("private provider payload must not reach metadata"))
+    monkeypatch.setattr(sender, "_send_twilio", transport)
+    monkeypatch.setattr(forms, "SMSClient", lambda: sender)
+    run(); run()
+    saved = receipt(db)
+    assert saved["metadata"]["seller_sms"] == expected
+    assert saved["metadata"]["seller_sms_reason"] == reason
+    UUID(saved["metadata"]["seller_sms_message_id"])
+    assert SMS_OUTCOME_REASONS[reason] in saved["body"]
+    assert "private provider payload" not in str(saved)
+    assert transport.call_count == int(mode == "timeout")
+    db.email_client.send.assert_called_once()
+
+
+def test_message_diagnostics_do_not_add_columns_to_generic_serialization():
+    from schemas.outreach import OutreachMessage, OutreachChannel
+    msg = OutreachMessage(lead_id=LEAD_ID, channel=OutreachChannel.SMS, body="Synthetic",
+                          sms_outcome="unknown", sms_reason="dispatch_unconfirmed")
+    assert "sms_outcome" not in msg.model_dump(mode="json")
+    assert "sms_reason" not in msg.model_dump(mode="json")

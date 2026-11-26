@@ -526,6 +526,23 @@ async def retell_webhook(
     except Exception:
         raise HTTPException(400, "Invalid JSON payload")
 
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Invalid webhook object")
+    if payload.get("event") in {"chat_started", "chat_ended", "chat_analyzed"} or (
+        payload.get("event") == "transcript_updated" and "chat" in payload
+    ):
+        from tools.retell_sms import record_chat_event
+        sb = _get_supabase()
+        if sb is None:
+            raise HTTPException(503, "SMS receipt storage unavailable")
+        try:
+            return await run_in_threadpool(record_chat_event, sb, payload)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        except Exception:
+            logger.exception("Retell SMS receipt persistence failed")
+            raise HTTPException(503, "SMS receipt not confirmed; retry required")
+
     event_type = payload.get("event") or payload.get("event_type", "")
     call_data  = payload.get("call", {})
     call_id    = call_data.get("call_id", "")
@@ -1871,6 +1888,7 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
     Background task: fetch FB lead field_data → create lead → run qualification.
     """
     from tools.facebook_ads_adapter import normalize_facebook_fields
+    from tools.facebook_inquiry import save_submission
     from web.api.lead_forms_api import (
         _compute_scores_from_answers,
         _send_hot_lead_notification,
@@ -1924,22 +1942,23 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
         "internal_notes": f"FB leadgen_id={entry.leadgen_id}",
     }
 
-    # Try to link to a campaign by external_campaign_id
-    if entry.campaign_id:
-        try:
-            camp = supabase.table("ad_campaigns").select("id").eq(
-                "external_campaign_id", entry.campaign_id
-            ).single().execute()
-            if camp.data:
-                lead_payload["ad_campaign_id"] = camp.data["id"]
-        except Exception:
-            pass
+    # Use only registered, unambiguous Facebook lineage. Missing attribution
+    # must not prevent durable inquiry capture; no mappings are created here.
+    from tools.facebook_attribution import resolve_attribution
+    try:
+        lead_payload.update(resolve_attribution(
+            supabase, ad_id=getattr(entry, "ad_id", None),
+            campaign_id=getattr(entry, "campaign_id", None),
+        ))
+    except Exception:
+        logger.warning("Facebook attribution lookup unavailable; capturing without attribution")
 
     # Recognize previously imported records from before deterministic IDs.
     existing = supabase.table("leads").select("id").eq(
         "internal_notes", lead_payload["internal_notes"],
     ).limit(1).execute().data
     if existing:
+        fields = save_submission(supabase, existing[0]["id"], fields)
         _ensure_facebook_followup(supabase, existing[0]["id"])
         _send_lead_pipeline_sms(
             lead_id=existing[0]["id"], answers=fields, phone=fields.get("phone", ""),
@@ -1952,6 +1971,7 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
     if not resp.data:
         existing = supabase.table("leads").select("id").eq("id", lead_payload["id"]).limit(1).execute().data
         if existing:
+            fields = save_submission(supabase, existing[0]["id"], fields)
             _ensure_facebook_followup(supabase, existing[0]["id"])
             _send_lead_pipeline_sms(
                 lead_id=existing[0]["id"], answers=fields, phone=fields.get("phone", ""),
@@ -1960,6 +1980,7 @@ async def _process_facebook_lead(entry: Any, adapter: Any) -> None:
             return
         raise RuntimeError("Facebook lead persistence was not confirmed")
     lead_id = resp.data[0]["id"]
+    fields = save_submission(supabase, lead_id, fields)
     _ensure_facebook_followup(supabase, lead_id)
 
     # Update campaign lead count

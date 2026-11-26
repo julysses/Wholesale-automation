@@ -26,7 +26,7 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
   {
     number: 1,
     title: 'Complete Setup',
-    description: 'Configure API keys and run database migrations.',
+    description: 'Review agency identity, provider connections and operational checks.',
     path: '/setup',
     cta: 'Open Setup Wizard',
   },
@@ -40,21 +40,21 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
   {
     number: 3,
     title: 'Import Your First Leads',
-    description: 'Upload a county tax delinquent list or XLeads CSV.',
+    description: 'Import a supported CSV or review county and PropStream records.',
     path: '/leads',
     cta: 'Import Leads',
   },
   {
     number: 4,
     title: 'Review Precision Targeting',
-    description: 'Confirm your Top 2,000 priority list is ready before dialing.',
+    description: 'Review scores, source evidence and contact eligibility before dialing.',
     path: '/#precision',
     cta: 'Open Precision Panel',
   },
   {
     number: 5,
     title: 'Launch AI Calling Campaign',
-    description: 'Select Tier 1 leads and start the AI voice campaign.',
+    description: 'Review calling eligibility and provider acceptance before starting a batch.',
     path: '/leads',
     cta: 'Go to Leads',
   },
