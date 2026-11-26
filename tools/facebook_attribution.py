@@ -62,3 +62,30 @@ def plan_reconciliation(*, lead, receipt, meta_lead_id, mapping):
     return {"lead_id": lead["id"], "meta_lead_id": meta_lead_id,
             "expected": {key: lead.get(key) for key in allowed},
             "patch": patch, "requires_review": True}
+
+
+def apply_reconciliation(db, plan, *, actor, reason):
+    """Apply a reviewed plan through the audited compare-and-set database function.
+
+    Requires a plan from plan_reconciliation and an explicit actor/reason. An empty
+    patch performs no database call. The database re-verifies Meta identity, mapping
+    ownership and existing attribution under a row lock; failures propagate.
+    """
+    if not plan or plan.get("requires_review") is not True:
+        raise ValueError("A reviewed reconciliation plan is required")
+    if not (actor or "").strip() or not (reason or "").strip():
+        raise ValueError("Actor and reason are required")
+    patch = plan.get("patch")
+    if not isinstance(patch, dict) or set(patch) - {"ad_campaign_id", "ad_creative_id"}:
+        raise ValueError("Unsupported reconciliation patch")
+    if not patch:
+        return {"applied": False, "lead_id": plan["lead_id"], "patch": {}}
+    expected = plan.get("expected") or {}
+    campaign = patch.get("ad_campaign_id") or expected.get("ad_campaign_id")
+    creative = patch.get("ad_creative_id") or expected.get("ad_creative_id")
+    result = db.rpc("reconcile_facebook_lead_attribution", {
+        "p_lead_id": plan["lead_id"], "p_leadgen_id": plan["meta_lead_id"],
+        "p_campaign_id": campaign, "p_creative_id": creative,
+        "p_actor": actor.strip(), "p_reason": reason.strip(),
+    }).execute().data
+    return result

@@ -40,7 +40,7 @@ That roadmap was built from the stale default branch. Treat as invalid: the "Ret
 
 - [ ] **N1 Identify live code.** Determine commit behind production (`dpl_CTWtVLLrUbp8cq3pqWjKyZYza8yw`) by comparing deployed file listing / health output to the two tips. Record result here. (Read-only.)
 - [ ] **N2 Choose integration strategy** with owner: which line is the release trunk; plan a merge/rebase of the two lines (`628fc02` vs `e88a7c6`) into one reviewed branch, then retire stale default branch (and only then remove the `vercel.json` `git.deploymentEnabled` guard). Do not merge into default without owner approval.
-- [ ] **N3 Facebook attribution** (branch `codex/facebook-attribution-resolution`): continue from `docs/facebook-release/PROGRESS.md` "Facebook attribution build continuation". Local-only work: audited idempotent existing-lead reconciliation applier + tests (mocked providers). Production mapping registration needs owner authorization.
+- [~] **N3 Facebook attribution** — owner chose this line first (2026-11-26). DONE locally: `tools/facebook_attribution.apply_reconciliation`, migration `frontend/supabase/migrations/20261126000000_facebook_attribution_reconciliation.sql` (NOT applied anywhere), SQL proof `tests/sql/facebook_attribution_reconciliation.sql` (passed on a disposable local Postgres 16), 18 attribution tests, full backend suite 1187 passed/10 skipped. REMAINING: (a) owner-authorized production steps — fetch authoritative Meta lineage for the existing inquiry, register campaign/creative mappings, apply the migration (named migration only, bounded timeouts, backup point first), then call `plan_reconciliation` -> review -> `apply_reconciliation`; (b) wire an operator/admin entry point only if owner wants one (currently library + RPC only); (c) hosted acceptance with fresh controlled Meta lead; (d) frontend tests/build re-run (not run this session).
 - [ ] **N4 Inbound AI prep** (branch `codex/inbound-next-milestone`): per `config/acquisition/inbound/README.md` "Resume in this package": verify the five tool contracts against a reviewed provider config; identify inbound number/agent/version and human handoff destination; prepare synthetic audio cases (identification, interruption, saved-state recovery, opt-out). No paid simulation or test call without authorization.
 - [ ] **N5 Direct-mail prep**: resume from `docs/acquisition-automation/POSTAL-AND-BATCH-IMPLEMENTATION.md` (address eligibility, suppression, budget/cadence reservations before vendor/proofs). No purchase or dispatch.
 - [ ] **N6 Human/provider gates** (owner hands): 0100 STOP/refusal, secondary-mailbox unsubscribe, restore rehearsal (DB/Auth/Storage/Edge), independent failure-alert receipt, handset confirmations, ambiguous-inquiry classification.
@@ -56,11 +56,13 @@ That roadmap was built from the stale default branch. Treat as invalid: the "Ret
 
 ## 6. Open owner questions (do not re-ask once answered)
 
-1. Is Retell/inbound AI in v1 scope? (Chat said "defer to v1.1" but real branches show Retell SMS pilot + inbound as the active milestone.)
+1. ANSWERED 2026-11-26: Retell outbound calling/nurture deferred; inbound AI prep and SMS pilot remain in scope.
 2. Which line is the release trunk (acquisition `628fc02` vs Facebook/leads `e88a7c6`), and may they be merged?
 3. Which commit is production running?
 4. Business decisions in N7.
 
 ## 7. Progress log
+
+- 2026-11-26 Claude (2): Owner answers: continue Facebook attribution first; Retell scope = defer OUTBOUND only (inbound AI prep + SMS pilot stay in scope). Merged `origin/codex/facebook-attribution-resolution` (e88a7c6) into this branch `claude/sharp-pasteur-jsp5w4` so it is now the working trunk for the Facebook line (push only to this branch). Built audited reconciliation applier + migration + SQL proof (see N3). Test env: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`; run `.venv/bin/python scripts/run_offline_tests.py .venv/bin/python -m pytest -q tests`. Disposable Postgres for SQL proofs: initdb under /var/tmp (postgres user cannot read /tmp/claude-*), port 55432, stop and delete afterward. No production changes, no provider calls.
 
 - 2026-11-26 Claude: Reviewed repo from stale default branch; produced a roadmap later found stale (see section 3). Discovered 30+ newer remote branches, identified the two live development lines, confirmed production Vercel deploys are manual with unknown SHA. No production changes made. Wrote this handoff.

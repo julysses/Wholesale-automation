@@ -68,3 +68,49 @@ def test_reconciliation_rejects_identity_or_attribution_conflict(lead, receipt):
     with pytest.raises(ValueError):
         plan_reconciliation(lead=lead, receipt=receipt, meta_lead_id="meta",
                             mapping={"ad_campaign_id": "campaign"})
+
+
+def _plan(patch=None, expected=None):
+    return {"lead_id": "lead", "meta_lead_id": "meta", "requires_review": True,
+            "expected": expected or {"ad_campaign_id": None, "ad_creative_id": None},
+            "patch": patch if patch is not None else {"ad_campaign_id": "c", "ad_creative_id": "k"}}
+
+
+def test_apply_calls_audited_rpc_once_with_exact_arguments():
+    from tools.facebook_attribution import apply_reconciliation
+    db = MagicMock()
+    db.rpc.return_value.execute.return_value = SimpleNamespace(data={"applied": True})
+    assert apply_reconciliation(db, _plan(), actor=" julio ", reason=" ad launch ") == {"applied": True}
+    db.rpc.assert_called_once_with("reconcile_facebook_lead_attribution", {
+        "p_lead_id": "lead", "p_leadgen_id": "meta", "p_campaign_id": "c",
+        "p_creative_id": "k", "p_actor": "julio", "p_reason": "ad launch"})
+    db.table.assert_not_called()
+
+
+def test_apply_empty_patch_makes_no_database_call():
+    from tools.facebook_attribution import apply_reconciliation
+    db = MagicMock()
+    out = apply_reconciliation(db, _plan(patch={}), actor="a", reason="r")
+    assert out["applied"] is False
+    db.rpc.assert_not_called()
+
+
+@pytest.mark.parametrize("plan,actor,reason", [
+    (None, "a", "r"), ({**_plan(), "requires_review": False}, "a", "r"),
+    (_plan(), "", "r"), (_plan(), "a", " "),
+    (_plan(patch={"owner_id": "x"}), "a", "r"),
+])
+def test_apply_rejects_unreviewed_or_unaudited_requests(plan, actor, reason):
+    from tools.facebook_attribution import apply_reconciliation
+    db = MagicMock()
+    with pytest.raises(ValueError):
+        apply_reconciliation(db, plan, actor=actor, reason=reason)
+    db.rpc.assert_not_called()
+
+
+def test_apply_propagates_database_failure():
+    from tools.facebook_attribution import apply_reconciliation
+    db = MagicMock()
+    db.rpc.return_value.execute.side_effect = RuntimeError("conflict")
+    with pytest.raises(RuntimeError):
+        apply_reconciliation(db, _plan(), actor="a", reason="r")
