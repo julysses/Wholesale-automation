@@ -1,3 +1,5 @@
+> **AGENT HANDOFF: read `tasks/HANDOFF-NEXT-AGENT.md` first.** It holds the current state, hard rules, next actions and progress log. This file's older sections below are historical and this branch is stale versus the `codex/*` branches.
+
 # Claude Scoring 500 Hardening
 
 ## Checklist

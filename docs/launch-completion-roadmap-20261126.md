@@ -1,5 +1,7 @@
 # Wholesale OS — launch completion roadmap (November 26, 2026)
 
+> **CORRECTION — read `tasks/HANDOFF-NEXT-AGENT.md` first.** This roadmap was written from a stale branch (last real work Oct 18). Newer `codex/*` branches (through Nov 24) show paid Facebook ads launched and inbound Retell AI as the active milestone, so the Retell-deferral and Phase 0 assumptions below are unverified or wrong. Human-gate, business-decision and go/no-go sections remain valid.
+
 Scope decision (user, this session): **AI calling (Retell) and nurture are deferred to v1.1.** v1 launches as public intake → CRM → owner email alerts → restricted/controlled SMS → manual follow-up → analysis → pipeline → reporting. Calling and nurture stay disabled and are not launch blockers.
 
 Source of truth for evidence: `tasks/final-launch-verification-20261008.md`, `tasks/production-acceptance-20261007.md`, `docs/availability-monitor-repair-20261018.md`, `docs/hilltop-30-day-launch-plan.md`. Last repo activity: October 18, 2026. Status below is taken from those records; re-verify live state before acting on any item.
