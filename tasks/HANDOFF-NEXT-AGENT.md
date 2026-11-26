@@ -2,6 +2,31 @@
 
 Written so any agent (GPT/Codex or Claude) can resume without prior chat. Keep this file current: append a dated entry to "Progress log" after every meaningful step, and update "Next actions".
 
+## Manual handoff and Julio’s pickup notification
+
+**Setup status: planned.** Julio starts the receiving agent himself. This branch and this file are the shared source of context. An edit to Markdown alone is insufficient to deliver a phone alert.
+
+### One-time setup
+
+1. Choose one GitHub issue for WholesaleOS handoff notifications. Use a trusted, identifiable posting account distinct from Julio’s receiving account. If an agent’s connector posts as Julio, use the current chat for the pickup message until a distinct sender is available.
+2. On Julio’s iPhone enable GitHub Mobile direct-mention push notifications and iOS notifications for GitHub. Choose email as a fallback if desired. Confirm Julio’s GitHub handle before sending the test.
+3. With Julio’s approval, use a synthetic documentation review. Have the sender post one direct mention. Confirm Julio actually sees it, follows the link and starts the named agent. Repeat once in reverse. Record which delivery route worked. Until tested, show the pickup prompt in the sending chat as well.
+
+### At each handoff
+
+| Who | Action |
+|---|---|
+| Outgoing agent | Save one dated checkpoint here with a unique handoff ID, sender, recipient, working branch, revision reviewed, evidence link, exact next task, scope, and completion condition. Mark **Ready for pickup** after the checkpoint is readable on GitHub. Keep seller details and private CRM links outside this public repo. |
+| Outgoing agent | For that ID, post one issue comment mentioning Julio with the receiving agent, reason, permanent checkpoint link, and copyable pickup prompt. If a business decision blocks the work, mark **Needs Julio**, name the decision and recommendation, and wait for his answer before routing. Routine progress and completion need no pickup alert. |
+| Julio | Open the named app and paste the pickup prompt. For a decision, give the answer and explicitly identify any additional action approved. |
+| Receiving agent | Read the linked checkpoint and latest branch head. Check for an existing claim or superseding checkpoint. Acknowledge **Claimed** with the same ID before working. Record the result and mark **Done**, **Needs Julio**, or create a fresh handoff to the other agent. |
+
+**Pickup message template**
+
+> Julio — open [Claude Code / Codex]. [One sentence on why this agent is needed.] Paste this: “Pick up WholesaleOS handoff [ID] at [permanent GitHub link]. Read the latest checkpoint on [branch], claim the handoff if it is still ready, and complete [specific task] within the recorded scope. Save the result in the same handoff file.”
+
+Check the issue for the ID before posting a retry. If alert delivery fails, record the failure and show the same prompt in the current chat. A posted alert and a claimed task are separate states. A handoff conveys the existing scope; deployments, production writes, spending and seller contact retain their own approvals.
+
 ## Current business milestone
 
 Start with [the seller-inquiry milestone](../docs/seller-inquiry-milestone.md). Julio adopted it on November 25, 2026 (Mountain time). Its checkpoint and weekly source metrics govern operating progress. The numbered engineering actions below remain a separate backlog subject to their existing approvals.
