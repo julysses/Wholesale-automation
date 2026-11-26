@@ -2,6 +2,10 @@
 
 Written so any agent (GPT/Codex or Claude) can resume without prior chat. Keep this file current: append a dated entry to "Progress log" after every meaningful step, and update "Next actions".
 
+## Current business milestone
+
+Start with [the seller-inquiry milestone](../docs/seller-inquiry-milestone.md). Julio adopted it on November 25, 2026 (Mountain time). Its checkpoint and weekly source metrics govern operating progress. The numbered engineering actions below remain a separate backlog subject to their existing approvals.
+
 ## 0. Critical orientation (a previous review got this wrong)
 
 - This branch `claude/sharp-pasteur-jsp5w4` and the default branch `claude/ai-wholesaling-agency-KkDF1` are **stale** (last real work Oct 18). Do NOT plan from their `tasks/todo.md`, `docs/final-readiness-review.md` or from `docs/launch-completion-roadmap-20261126.md` without reading the correction in section 3.
@@ -62,6 +66,8 @@ That roadmap was built from the stale default branch. Treat as invalid: the "Ret
 4. Business decisions in N7.
 
 ## 7. Progress log
+
+- 2026-11-25 (Mountain), Codex: Recorded Julio’s seller-inquiry milestone and the cross-agent resume point. First qualified case remains unverified. See the linked milestone for the next action.
 
 - 2026-11-26 Claude (8): Owner direction: complete overhaul in the background while the current model stays live (Facebook ads running); no changes until approved. Saved `docs/overhaul-plan-20261126.md` (change list A1-A4, B1-B7, C1-C7, D1-D5; operating rules; recommended batch order chosen by Claude at owner's request: Batch 1 = A1, A3, A4, A2; Batch 2 = B1, B2; Batch 3 = C1, C2; Batch 4 = C3, C6, C4; Batch 5 = C5, C7, B3-B6, D1, D2; Batch 6 = intake cutover then D3/D4). NEXT: wait for owner approval of Batch 1 before any code or production change.
 
