@@ -2,17 +2,19 @@
 
 Status: **PLAN ONLY. No item is approved for implementation yet.** The owner asked for the list first; each batch needs explicit go-ahead. Companion docs: `docs/business-review-20261126.md` (why), `docs/code-review-20261126.md` (technical findings), `tasks/HANDOFF-NEXT-AGENT.md` (current state and rules).
 
+The [seller-inquiry milestone](seller-inquiry-milestone.md) is the operating plan and current baseline. A verified seller decision and outcome is the first measure of progress. The six batches below describe how to support it. Use the first 30 days to operate the live workflow and identify the highest-cost failure points. Schedule wider feature delivery after that review or explicit reprioritization.
+
 ## Owner constraints (2026-11-26)
 - Facebook ads are running. The current model must keep working throughout.
 - A complete overhaul is likely, built in the background.
 - No changes until the owner approves; owner asked Claude to choose the batch order (below).
 
 ## Operating rules during the overhaul
-1. **Live line**: production stays on the code at `77e257f` (`codex/wholesaleos-leads-workflow` = live). Hotfixes only; every deploy tagged with its commit.
-2. **Overhaul line**: one new trunk, preview deploys, staging database. Never deploys to production directly.
+1. **Live line**: the last deployment comparison matched the application code at `77e257f`. Reconfirm the live SHA before branching. Hotfixes only; every deploy tagged with its commit.
+2. **Overhaul line**: one new trunk, preview deploys, isolated staging database with synthetic or masked fixtures and outbound providers disabled. Only a separately approved release moves to production.
 3. **Expand-only schema** while old and new code coexist: add tables/columns; no renames or drops until cutover is complete.
 4. **Feature flags per screen/flow**: run old and new in parallel, compare, switch, keep rollback.
-5. **Intake (Facebook, website forms, owner alerts) migrates last**, after a parallel run with exactly matching counts, and keeps a fallback for 2 weeks.
+5. **Intake (Facebook, website forms, owner alerts) migrates last**, after a shadow run reconciles each source receipt, CRM lead, task and intended owner alert. Compare retry and failure handling, missing records and duplicates. Keep one live sender and a tested rollback for 2 weeks.
 6. Heavy proof gates only for consent, money, contracts and migrations; lightweight review for UI.
 
 ## Change list
@@ -22,8 +24,8 @@ Status: **PLAN ONLY. No item is approved for implementation yet.** The owner ask
 |---|---|---|
 | A1 | Hotfix branch and deploy tagging | Branch from live `77e257f`; record the commit on every Vercel deploy. |
 | A2 | Finish Facebook attribution | Register campaign/ad mappings (needs Ads Manager IDs), apply `20261126000000_facebook_attribution_reconciliation.sql`, deploy wiring, backfill the 7 existing leads. |
-| A3 | Intake health monitor | Daily read-only check: Facebook/web leads arrived, task created, owner alerted; flag zero-lead days during active campaigns. |
-| A4 | Overdue task triage | One-time bulk review/close/reschedule of 185 overdue tasks, filtered by source and age. |
+| A3 | Intake health monitor | Daily read-only check: Facebook/web leads arrived, task created, owner alerted; flag a zero-lead day for investigation. Distinguish quiet demand from missing receipts, tasks or alerts. |
+| A4 | Overdue task triage | Refresh the backlog, then review seller promises first. Record reasons when resolving stale or duplicate work and assign an owner and due time to live items. Use the dated operating baseline. |
 
 ### B. Foundation for the overhaul (background)
 | # | Change | Description |
@@ -39,20 +41,20 @@ Status: **PLAN ONLY. No item is approved for implementation yet.** The owner ask
 ### C. Revenue path (core of the overhaul)
 | # | Change | Description |
 |---|---|---|
-| C1 | Scorecard home screen | Weekly view: leads by source → contacted in SLA → appointments → offers → contracts → fees; cost per contract; overdue work. |
-| C2 | Unified lead inbox with SLA timers | One queue for every channel; countdown, owner, escalation when untouched past SLA. |
-| C3 | Multi-exit underwriting | Wholesale, wholetail, novation and owner build-to-rent/duplex/quad returns side by side; route deals that fail wholesale but pass development math to the owner's pipeline. |
+| C1 | Scorecard home screen | Weekly view: source → human response → decision → offer → contract → exit, with appointment counts, overdue promises, source spend, operator time and realized contribution by exit. |
+| C2 | Unified lead inbox with SLA timers | One operator inbox with separate views for seller inquiries and sourced prospects. Show primary, backup, next action, raw and staffed clocks; target 5 staffed minutes and escalate at 15. |
+| C3 | Multi-exit underwriting | Evaluate Hilltop purchase, resale, hold and feasible build-to-rent/duplex/quad first; compare assignment as fallback. Keep any other structure as a separately reviewed exception. Show sourced assumptions, downside and capital required. |
 | C4 | Offer workflow | Offer from analysis → approval under offer-authority rules → sent/countered/accepted/expired. |
-| C5 | Contract and title handoff | Contract status, title handoff, earnest money, inspection/closing deadlines with automatic tasks (partly exists; finish and simplify). |
+| C5 | Contract and title handoff | Separate principal and assignment closings. Require title handoff, earnest money, signed evidence and deadlines for the selected exit. A principal closing must work without an assignee or assignment agreement. |
 | C6 | Buyer CRM and disposition | Buyer intake, buy box, proof of funds, tiers; automatic deal-to-buyer matching; consented deal announcements; assignment tracking. |
-| C7 | Outcome attribution | Source/campaign/ad carried from lead to fee. |
+| C7 | Outcome attribution | Carry verified source/campaign/ad to an evidenced pass, offer, contract and applicable exit. Separate assignment fees, realized resale contribution, and held-property cash flow. |
 
 ### D. Channels (activate only on proven conversion)
 | # | Change | Timing |
 |---|---|---|
 | D1 | County distress pipeline strengthening (Collin/Dallas) | Early |
 | D2 | Consent-checked follow-up sequences | After C2 |
-| D3 | Inbound AI after hours (Retell) | After SLA holds 30 days |
+| D3 | AI voice | Deferred under the current human-response plan. Any reconsideration requires a separate owner decision. |
 | D4 | Direct mail (manual pilot first) | After manual pilot |
 | D5 | Virtual caller / agency calling | Deferred |
 
@@ -60,14 +62,14 @@ Status: **PLAN ONLY. No item is approved for implementation yet.** The owner ask
 
 | Batch | Items | Why first | Live impact |
 |---|---|---|---|
-| **1 — Protect and see** | A1, A3, A4, then A2 (when IDs available) | Zero-to-low risk; protects the ad spend now running; clears operating backlog | Process/read-only/additive |
+| **1 — Protect and see** | A1, A3, A4, then A2 (when IDs available) | protects the ad spend now running and triages the operating backlog | Process/read-only/additive |
 | **2 — Isolate the rebuild** | B1, B2 | Every later change needs one trunk and a staging environment | None |
 | **3 — Visibility and speed** | C1, C2 (parallel to old screens, flag switch) | Speed-to-lead and a scorecard drive conversion immediately | Flagged; old screens remain |
 | **4 — Money path** | C3, C6, then C4 | Underwriting plus buyers create revenue; offer workflow follows | Flagged |
 | **5 — Close the loop** | C5, C7, B3–B6, D1, D2 | Cleanup and attribution once core path works | Flagged / cleanup |
-| **6 — Migrate intake, then scale channels** | Intake cutover (parallel run, matched counts, 2-week fallback); D3, D4 by data | Highest-risk move goes last | Controlled cutover |
+| **6 — Migrate intake, then scale channels** | Intake cutover (parallel run, matched counts, 2-week fallback); D4 pilot expansion only if economics support it; D3 deferred | Highest-risk move goes last | Controlled cutover |
 
-Rough timing: batches 1–2 weeks 1–2; batch 3 weeks 3–6; batch 4 weeks 6–10; batch 5 weeks 10–12; batch 6 after. Estimates, not commitments.
+Original engineering estimates were weeks 1–2 for batches 1–2, weeks 3–6 for batch 3, weeks 6–10 for batch 4 and weeks 10–12 for batch 5. Reforecast at the first 30-day operating review using staffing, approvals, verified bottlenecks and intake parity. B7 applies across batches.
 
 ## Owner decisions needed (blocking specific items)
 1. Who owns the daily lead queue (owner or hire) → C2 escalation design.

@@ -6,6 +6,8 @@ Written so any agent (GPT/Codex or Claude) can resume without prior chat. Keep t
 
 Start with [the seller-inquiry milestone](../docs/seller-inquiry-milestone.md). Julio adopted it on November 25, 2026 (Mountain time). Its checkpoint and weekly source metrics govern operating progress. The numbered engineering actions below remain a separate backlog subject to their existing approvals.
 
+The [six-batch overhaul](../docs/overhaul-plan-20261126.md) supports the milestone. The latest production counts, 5-minute response target, 15-minute escalation, first ten-case cohort and 30/60/90-day operating plan are in the milestone file. The first private case remains unverified. No engineering batch has been started by this planning update.
+
 ## 0. Critical orientation (a previous review got this wrong)
 
 - This branch `claude/sharp-pasteur-jsp5w4` and the default branch `claude/ai-wholesaling-agency-KkDF1` are **stale** (last real work Oct 18). Do NOT plan from their `tasks/todo.md`, `docs/final-readiness-review.md` or from `docs/launch-completion-roadmap-20261126.md` without reading the correction in section 3.
@@ -22,7 +24,7 @@ Start with [the seller-inquiry milestone](../docs/seller-inquiry-milestone.md). 
 ## 1. Business state (from repo checkpoints; verify live)
 
 - Owner (Julio) confirmed on Nov 24 that **Facebook ads have launched** and said proceed to the next step. That advances development; it does **not** certify open gates and does **not** activate inbound routing or outbound contact.
-- Active milestone: **inbound AI preparation (Retell inbound agent)**, then **direct-mail preparation**. Resume file: `config/acquisition/inbound/README.md` on `628fc02`.
+- Current operating milestone: verify the first qualified seller inquiry through human response, decision and outcome. Prior inbound AI and mail preparation remains background material.
 - Facebook residual work (branch `codex/facebook-attribution-resolution`, `docs/facebook-release/PROGRESS.md`): registered ad→campaign/creative resolution built; review-only reconciliation planner built (72 targeted tests pass). Remaining: authoritative Meta evidence, mapping registration, atomic audited application, integration acceptance, hosted launch gates. The existing production inquiry is NOT repaired.
 - Earlier verified (Oct): auth/RLS, scoring backlog, intake references, SendGrid, Twilio restricted SMS, deal pipeline, QA-excluded reporting. See `tasks/final-launch-verification-20261008.md`, `tasks/production-acceptance-20261007.md`, `docs/facebook-release/LAUNCH-2026-10-23.md`.
 
@@ -45,7 +47,7 @@ That roadmap was built from the stale default branch. Treat as invalid: the "Ret
 - [x] **N1 Identify live code — DONE 2026-11-26.** Production `dpl_CTWtVLLrUbp8cq3pqWjKyZYza8yw` (CLI deploy ~Nov 21, READY, no alias list) matches `origin/codex/wholesaleos-leads-workflow` @ `77e257f`: 508 of 509 deployed files are content-identical (sha1 of raw file == Vercel uid); the single differing file is `frontend/tests/lead-deep-link.test.tsx` (test only). Method: Vercel `list_deployment_files` uids are sha1 of raw content; compare with `git cat-file blob`. Versus this branch, only `web/api/webhooks.py` (attribution wiring), `docs`, and the new reconcile code/migration are undeployed. Original task text: Determine commit behind production (`dpl_CTWtVLLrUbp8cq3pqWjKyZYza8yw`) by comparing deployed file listing / health output to the two tips. Record result here. (Read-only.)
 - [ ] **N2 Choose integration strategy** with owner: which line is the release trunk; plan a merge/rebase of the two lines (`628fc02` vs `e88a7c6`) into one reviewed branch, then retire stale default branch (and only then remove the `vercel.json` `git.deploymentEnabled` guard). Do not merge into default without owner approval.
 - [~] **N3 Facebook attribution** — owner chose this line first (2026-11-26). DONE locally: `tools/facebook_attribution.apply_reconciliation`, migration `frontend/supabase/migrations/20261126000000_facebook_attribution_reconciliation.sql` (NOT applied anywhere), SQL proof `tests/sql/facebook_attribution_reconciliation.sql` (passed on a disposable local Postgres 16), 18 attribution tests, full backend suite 1187 passed/10 skipped. REMAINING: (a) owner-authorized production steps — fetch authoritative Meta lineage for the existing inquiry, register campaign/creative mappings, apply the migration (named migration only, bounded timeouts, backup point first), then call `plan_reconciliation` -> review -> `apply_reconciliation`; (b) wire an operator/admin entry point only if owner wants one (currently library + RPC only); (c) hosted acceptance with fresh controlled Meta lead; (d) frontend tests/build re-run (not run this session).
-- [ ] **N4 Inbound AI prep** (branch `codex/inbound-next-milestone`): per `config/acquisition/inbound/README.md` "Resume in this package": verify the five tool contracts against a reviewed provider config; identify inbound number/agent/version and human handoff destination; prepare synthetic audio cases (identification, interruption, saved-state recovery, opt-out). No paid simulation or test call without authorization.
+- [ ] **N4 AI voice — deferred.** Historical preparation is on `codex/inbound-next-milestone`. The current operating plan uses human responses.
 - [ ] **N5 Direct-mail prep**: resume from `docs/acquisition-automation/POSTAL-AND-BATCH-IMPLEMENTATION.md` (address eligibility, suppression, budget/cadence reservations before vendor/proofs). No purchase or dispatch.
 - [ ] **N6 Human/provider gates** (owner hands): 0100 STOP/refusal, secondary-mailbox unsubscribe, restore rehearsal (DB/Auth/Storage/Edge), independent failure-alert receipt, handset confirmations, ambiguous-inquiry classification.
 - [ ] **N7 Business decision sheet** (owner): title partner, offer authority, ad cap, after-hours coverage, buyer roster, legal templates, earnest-money process, rehearsal staffing, go/no-go.
@@ -60,12 +62,14 @@ That roadmap was built from the stale default branch. Treat as invalid: the "Ret
 
 ## 6. Open owner questions (do not re-ask once answered)
 
-1. ANSWERED 2026-11-26: Retell outbound calling/nurture deferred; inbound AI prep and SMS pilot remain in scope.
+1. Historical Retell scope is recorded in the progress log. Current operating scope defers AI voice. Existing SMS pilot history does not authorize a new send.
 2. Which line is the release trunk (acquisition `628fc02` vs Facebook/leads `e88a7c6`), and may they be merged?
 3. Which commit is production running?
 4. Business decisions in N7.
 
 ## 7. Progress log
+
+- 2026-11-25 (Mountain), Codex: Reconciled the business review and overhaul with the seller-inquiry plan, refreshed the aggregate baseline and linked the two plans. Next action remains private queue review by the acquisitions operator.
 
 - 2026-11-25 (Mountain), Codex: Recorded Julio’s seller-inquiry milestone and the cross-agent resume point. First qualified case remains unverified. See the linked milestone for the next action.
 
