@@ -2,9 +2,13 @@
 
 Written so any agent (GPT/Codex or Claude) can resume without prior chat. Keep this file current: append a dated entry to "Progress log" after every meaningful step, and update "Next actions".
 
+## H-001 — Ready for pickup
+
+November 26, 2026. Codex → Claude Code. Branch `claude/sharp-pasteur-jsp5w4`. Reviewed revision `3201a7f1b6e8ecc22e0f173290db27d2d7c20f62`. Documentation-only pilot. Read the manual handoff instructions below and [the seller milestone](../docs/seller-inquiry-milestone.md). Claim H-001 on this branch. Verify whether the milestone distinguishes the five-minute response target from the fifteen-minute escalation and acceptance window. Record one sentence with the evidence and mark H-001 Done. Create H-002 Ready for pickup for Codex to verify your acknowledgment and close the pilot. Only edit this handoff file. GitHub currently posts as Julio; show him the next pickup prompt in chat when ready. No customer records needed.
+
 ## Manual handoff and Julio’s pickup notification
 
-**Setup status: planned.** Julio starts the receiving agent himself. This branch and this file are the shared source of context. An edit to Markdown alone is insufficient to deliver a phone alert.
+**Setup status: manual pickup pilot started. Phone delivery awaits confirmation.** Julio starts the receiving agent himself. This branch and this file are the shared source of context. An edit to Markdown alone is insufficient to deliver a phone alert.
 
 ### One-time setup
 
